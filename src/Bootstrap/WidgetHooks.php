@@ -6,7 +6,6 @@ namespace Porta\Bootstrap;
 
 use Porta\Container\AsIdeService;
 use Porta\Editor\BreadcrumbTrailProvider;
-use Porta\Editor\BufferNavigator;
 use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
 use Porta\Help\HelpViewerActions;
@@ -17,9 +16,7 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\EditorCallbacks;
 use Porta\Widget\FileTreeWidget;
-use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
-use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TabBarWidget;
@@ -49,9 +46,6 @@ final class WidgetHooks
         private readonly FileOpener $files,
         private readonly CodeEditorWidget $editor,
         private readonly EditorCallbacks $editorCallbacks,
-        private readonly ImageViewerWidget $imageViewer,
-        private readonly GraphViewerWidget $graphViewer,
-        private readonly BufferNavigator $bufferNavigator,
         private readonly HelpViewerWidget $helpViewer,
         private readonly HelpViewerActions $helpViewerActions,
         private readonly TabBarWidget $tabBar,
@@ -76,8 +70,6 @@ final class WidgetHooks
         $this->tree->onOpenFile(fn (string $path) => $this->files->openFile($path, focus: OpenFocus::Editor));
 
         $this->editor->setCallbacks($this->editorCallbacks);
-        $this->imageViewer->setHandler($this->bufferNavigator);
-        $this->graphViewer->setHandler($this->bufferNavigator);
         $this->helpViewer->setDocsRoot($this->docsDir);
         $this->helpViewer->setHandler($this->helpViewerActions);
 

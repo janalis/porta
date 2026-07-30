@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Git;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\LayoutStore;
 use Porta\Editor\BufferManager;
+use Porta\Editor\EditorPanes;
 use Porta\Event\GitCommitted;
 use Porta\Event\GitRemoteCompleted;
 use Porta\Git\GitInfo;
@@ -21,8 +22,6 @@ use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
 use Porta\Support\Clipboard;
-use Porta\Tests\Support\FakeLayoutEngine;
-use Porta\Tests\Support\FakeRasterizer;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\Probe;
@@ -39,9 +38,6 @@ use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
-use Porta\Widget\GraphViewerWidget;
-use Porta\Widget\HelpViewerWidget;
-use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
@@ -53,11 +49,9 @@ use Porta\Workbench\WorkspaceViews;
 use Revolt\EventLoop;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
-use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
-use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\ContainerWidget;
 
@@ -136,9 +130,7 @@ final class GitViewControllerTest extends TestCase
         $editorArea = new EditorArea(
             new BufferManager(),
             $this->editor,
-            new ImageViewerWidget(new FakeRasterizer(), new Translator('en')),
-            new HelpViewerWidget(),
-            new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
+            new EditorPanes(),
             $this->tui,
         );
         $t = new Translator('en');

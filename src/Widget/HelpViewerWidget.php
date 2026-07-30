@@ -15,22 +15,12 @@ use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Ui\ClickZones;
 use Porta\Ui\Glyphs;
-use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
-use Porta\Widget\Render\MenuOverlayHost;
-use Porta\Widget\Render\MenuOverlayHostTrait;
-use Porta\Widget\Support\FillsPaneTrait;
-use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
-use Symfony\Component\Tui\Widget\AbstractWidget;
-use Symfony\Component\Tui\Widget\FocusableInterface;
-use Symfony\Component\Tui\Widget\FocusableTrait;
-use Symfony\Component\Tui\Widget\KeybindingsTrait;
-use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 
 /**
  * The help tab's pane: shows a documentation page rendered by
@@ -42,14 +32,8 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  */
 #[AsIdeService]
 #[AsWidget('help-viewer')]
-final class HelpViewerWidget extends AbstractWidget implements FindTarget, FocusableInterface, LtrPane, MenuOverlayHost, VerticallyExpandableInterface
+final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
 {
-    use FillsPaneTrait;
-    use FocusableTrait;
-    use KeybindingsTrait;
-    use MenuOverlayHostTrait;
-    use StylesDefault;
-
     /** The clickable navigation header occupies the first rendered row. */
     private const int HEADER_ROWS = 1;
 
@@ -75,18 +59,12 @@ final class HelpViewerWidget extends AbstractWidget implements FindTarget, Focus
     /** The documentation root directory: the breadcrumb mirrors paths under it. */
     private ?string $docsRoot = null;
     private readonly MarkdownRenderer $renderer;
-    private ?HelpViewerHandler $handler = null;
 
     public function __construct(?Styles $styles = null)
     {
         $this->initStyles($styles);
         $this->renderer = new MarkdownRenderer($this->styles);
         $this->headerZones = new ClickZones();
-    }
-
-    public function setHandler(HelpViewerHandler $handler): void
-    {
-        $this->handler = $handler;
     }
 
     public function setDocsRoot(string $dir): void
@@ -96,7 +74,39 @@ final class HelpViewerWidget extends AbstractWidget implements FindTarget, Focus
     }
 
     /** Show a page from the top; the back history survives page changes. */
-    public function show(string $path, string $markdown): void
+    public function paneId(): string
+    {
+        return 'help';
+    }
+
+    /**
+     * Empty on purpose: a help page contributes no right-hand segment, so the
+     * status bar keeps showing the editor's diagnostics/LSP legend — which is
+     * exactly what it did when this was a branch in the provider.
+     */
+    public function statusRight(): string
+    {
+        return '';
+    }
+
+    /** @param mixed $payload the page markdown this pane's loader read */
+    /**
+     * Adopt the tab's page — but only when this pane is empty. Switching back to
+     * a help tab keeps whatever the user navigated to, which is why the caller
+     * used to ask `null === path()` before calling at all; the rule belongs
+     * here, where "what this pane is showing" is known. A live refresh of the
+     * page on disk goes through {@see refreshPage()} instead.
+     */
+    public function show(string $path, mixed $payload): void
+    {
+        if (null !== $this->path) {
+            return;
+        }
+        $this->refreshPage($path, (string) $payload);
+    }
+
+    /** Re-render a page whose file changed, replacing what is on screen. */
+    public function refreshPage(string $path, string $markdown): void
     {
         $resolved = realpath($path);
         $this->path = $resolved ? $resolved : $path;
@@ -106,6 +116,17 @@ final class HelpViewerWidget extends AbstractWidget implements FindTarget, Focus
         $this->currentLink = -1;
         ++$this->findVersion;
         $this->invalidate();
+    }
+
+    /**
+     * The help tab closed: the page, the scroll and the whole back/forward
+     * history go with it. Unconditional on $path deliberately — there is only
+     * ever one help tab, and after navigation this pane's own path is the page
+     * the user walked to rather than the tab's.
+     */
+    public function forget(string $path): void
+    {
+        $this->clear();
     }
 
     /** Drop everything, including the back/forward history (the help tab closed). */
@@ -120,6 +141,20 @@ final class HelpViewerWidget extends AbstractWidget implements FindTarget, Focus
         $this->forward = [];
         ++$this->findVersion;
         $this->invalidate();
+    }
+
+    /**
+     * The handler, narrowed to the help pane's own verbs.
+     *
+     * The pane contract carries the four tab verbs every pane needs
+     * ({@see ViewerTabHandler}); this pane's link-following, find and label
+     * lookups are extra, declared by {@see HelpViewerHandler} which extends it.
+     * One object arrives through `setHandler()` and this is where the wider
+     * half is asked for.
+     */
+    private function docs(): ?HelpViewerHandler
+    {
+        return $this->handler instanceof HelpViewerHandler ? $this->handler : null;
     }
 
     /** The shown page's absolute path, or null when the viewer is empty. */
@@ -279,7 +314,7 @@ final class HelpViewerWidget extends AbstractWidget implements FindTarget, Focus
     /** A page's crumb label: the host's naming (e.g. the docs root as "Documentation"), else the file name. */
     private function crumbLabel(string $path): string
     {
-        return $this->handler?->labelFor($path) ?? basename($path, suffix: '.md');
+        return $this->docs()?->labelFor($path) ?? basename($path, suffix: '.md');
     }
 
     /**
@@ -331,7 +366,7 @@ final class HelpViewerWidget extends AbstractWidget implements FindTarget, Focus
             $kb->matches($data, 'help_page_down') => $this->scrollBy($this->bodyRows()),
             $kb->matches($data, 'help_home') => $this->scrollBy(-\PHP_INT_MAX),
             $kb->matches($data, 'help_end') => $this->scrollBy(\PHP_INT_MAX),
-            $kb->matches($data, 'help_find') => $this->handler?->openFind(),
+            $kb->matches($data, 'help_find') => $this->docs()?->openFind(),
             $kb->matches($data, 'next_buffer') => $this->handler?->cycleBuffer(1),
             $kb->matches($data, 'prev_buffer') => $this->handler?->cycleBuffer(-1),
             $kb->matches($data, 'close_buffer') => $this->handler?->closeBuffer(),
@@ -401,24 +436,24 @@ final class HelpViewerWidget extends AbstractWidget implements FindTarget, Focus
     private function follow(string $target): void
     {
         if (1 === preg_match('#^https?://#i', $target)) {
-            $this->handler?->openUrl($target);
+            $this->docs()?->openUrl($target);
 
             return;
         }
         $resolved = str_starts_with($target, '/') ? $target : realpath(\dirname((string) $this->path).'/'.$target);
         if (false === $resolved || !is_file($resolved)) {
-            $this->handler?->missingTarget($target);
+            $this->docs()?->missingTarget($target);
 
             return;
         }
         if (str_ends_with($resolved, '.md')) {
             $this->history[] = ['path' => (string) $this->path, 'scrollTop' => $this->scrollTop, 'currentLink' => $this->currentLink];
             $this->forward = []; // a fresh navigation invalidates the forward trail
-            $this->handler?->openHelp($resolved);
+            $this->docs()?->openHelp($resolved);
 
             return;
         }
-        $this->handler?->openFile($resolved);
+        $this->docs()?->openFile($resolved);
     }
 
     /** Backspace / the ‹ arrow: back one page, restoring scroll and focus. */
@@ -426,7 +461,7 @@ final class HelpViewerWidget extends AbstractWidget implements FindTarget, Focus
     {
         $previous = array_pop($this->history);
         if (null === $previous) {
-            $this->handler?->backEmpty();
+            $this->docs()?->backEmpty();
 
             return;
         }
@@ -449,7 +484,7 @@ final class HelpViewerWidget extends AbstractWidget implements FindTarget, Focus
     private function restore(array $entry): void
     {
         // onOpenHelp re-shows synchronously; restore the view state after.
-        $this->handler?->openHelp($entry['path']);
+        $this->docs()?->openHelp($entry['path']);
         $this->scrollTop = $entry['scrollTop'];
         $this->currentLink = $entry['currentLink'];
         $this->invalidate();

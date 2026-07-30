@@ -92,10 +92,26 @@ final class ImageViewerWidgetTest extends TestCase
         $this->assertSame('', $widget->zoomLabel());
     }
 
+    public function testTheStatusSegmentCarriesTheSizeTheZoomAndItsOwnKeys(): void
+    {
+        // The pane answers for its whole segment, hints included: the status bar
+        // used to hold one hint string per viewer and had to know which was which.
+        $widget = new ImageViewerWidget(new FakeRasterizer(), new Translator('en'));
+        $this->assertSame('+/- zoom  0 fit  Arrows pan  Ctrl+Q quit', $widget->statusRight(), 'an empty pane still names its keys');
+
+        $widget->show('/p/a.png', $this->gradient());
+        $widget->render(new RenderContext(20, 6));
+
+        $segment = $widget->statusRight();
+        $this->assertStringContainsString('64 × 8', $segment, "the document's own size");
+        $this->assertStringContainsString('Arrows pan', $segment);
+        $this->assertSame('image', $widget->paneId());
+    }
+
     public function testShowsAnImageAndZoomKeysDriveTheLabel(): void
     {
         $widget = new ImageViewerWidget(new FakeRasterizer(), new Translator('en'));
-        $widget->show($this->gradient());
+        $widget->show('/p/a.png', $this->gradient());
         $widget->render(new RenderContext(8, 2)); // fit = min(8/64, 4/8) = 0.125
 
         $this->assertSame('Fit (13%)', $widget->zoomLabel());
@@ -123,7 +139,7 @@ final class ImageViewerWidgetTest extends TestCase
     public function testATrackpadBurstGlidesBetweenTheRungs(): void
     {
         $widget = new ImageViewerWidget(new FakeRasterizer(), new Translator('en'));
-        $widget->show($this->gradient());
+        $widget->show('/p/a.png', $this->gradient());
         $widget->render(new RenderContext(8, 2));
         $widget->handleInput('1'); // 100%, off the fit
 
@@ -140,7 +156,7 @@ final class ImageViewerWidgetTest extends TestCase
     public function testArrowsPanAndShiftPansFiveTimesAsFar(): void
     {
         $widget = new ImageViewerWidget(new FakeRasterizer(), new Translator('en'));
-        $widget->show($this->gradient());
+        $widget->show('/p/a.png', $this->gradient());
         $widget->render(new RenderContext(4, 2)); // viewport 4×4 px at 100%
         $widget->handleInput('1');
         $widget->handleInput("\x1b[1;2H"); // unmatched sequence → no-op branch
@@ -177,7 +193,7 @@ final class ImageViewerWidgetTest extends TestCase
         $widget = new ImageViewerWidget(new FakeRasterizer(), new Translator('en'));
         $handler = new RecordingViewerTabHandler();
         $widget->setHandler($handler);
-        $widget->show($this->gradient());
+        $widget->show('/p/a.png', $this->gradient());
         $widget->render(new RenderContext(8, 2));
 
         $widget->handleInput("\x1b[1;5C"); // ctrl+right → next tab
@@ -198,7 +214,7 @@ final class ImageViewerWidgetTest extends TestCase
         $handler = new RecordingViewerTabHandler();
         $widget = $this->vectorWidget();
         $widget->setHandler($handler);
-        $widget->showVector('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
+        $widget->show('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
 
         $this->assertSame([null], $this->rasterizer->scales, 'the first ask has no scale: that IS the size probe');
         $this->assertSame('100 × 50', $widget->statusInfo(), "the document's own pixels, from the converter");
@@ -212,8 +228,8 @@ final class ImageViewerWidgetTest extends TestCase
     {
         $this->rasterizer->nextPng = PngFixture::bytes(100, 50);
         $widget = $this->vectorWidget();
-        $widget->showVector('/p/a.svg', '<svg/>');
-        $widget->showVector('/p/a.svg', '<svg/>');
+        $widget->show('/p/a.svg', '<svg/>');
+        $widget->show('/p/a.svg', '<svg/>');
 
         $this->assertSame([null], $this->rasterizer->scales, 'same tab, same document');
     }
@@ -222,7 +238,7 @@ final class ImageViewerWidgetTest extends TestCase
     {
         $this->rasterizer->deferred = true;
         $widget = $this->vectorWidget();
-        $widget->showVector('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
+        $widget->show('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
 
         $this->assertStringContainsString('rendering…', self::plain($widget->render(new RenderContext(40, 8))));
         $this->assertSame('', $widget->statusInfo(), 'no size until the converter answers');
@@ -238,7 +254,7 @@ final class ImageViewerWidgetTest extends TestCase
         $this->rasterizer->nextPng = 'no SVG converter found';
         $this->rasterizer->pngIsError = true;
         $widget = $this->vectorWidget();
-        $widget->showVector('/p/a.svg', '<svg/>');
+        $widget->show('/p/a.svg', '<svg/>');
 
         $this->assertStringContainsString('no SVG converter found', self::plain($widget->render(new RenderContext(60, 9))));
     }
@@ -247,12 +263,12 @@ final class ImageViewerWidgetTest extends TestCase
     {
         $this->rasterizer->nextPng = PngFixture::bytes(100, 50);
         $widget = $this->vectorWidget();
-        $widget->showVector('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
+        $widget->show('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
         $widget->render(new RenderContext(50, 13));
 
         // A later render fails: the pane keeps its pixels and says why.
         $this->rasterizer->deferred = true;
-        $widget->showVector('/p/a.svg', '<svg viewBox="0 0 100 50"><rect/></svg>');
+        $widget->show('/p/a.svg', '<svg viewBox="0 0 100 50"><rect/></svg>');
         $fail = $this->rasterizer->pendingError;
         $this->assertNotNull($fail);
         $fail('XML parse error');
@@ -266,7 +282,7 @@ final class ImageViewerWidgetTest extends TestCase
     {
         $this->rasterizer->nextPng = 'this is not a PNG';
         $widget = $this->vectorWidget();
-        $widget->showVector('/p/a.svg', '<svg/>');
+        $widget->show('/p/a.svg', '<svg/>');
 
         $this->assertStringContainsString('could not be decoded', self::plain($widget->render(new RenderContext(60, 9))));
     }
@@ -275,11 +291,11 @@ final class ImageViewerWidgetTest extends TestCase
     {
         $this->rasterizer->deferred = true;
         $widget = $this->vectorWidget();
-        $widget->showVector('/p/a.svg', '<svg id="a"/>');
+        $widget->show('/p/a.svg', '<svg id="a"/>');
         $deliverA = $this->rasterizer->pendingPng;
         $this->assertNotNull($deliverA);
 
-        $widget->showVector('/p/b.svg', '<svg id="b"/>'); // the tab moves on
+        $widget->show('/p/b.svg', '<svg id="b"/>'); // the tab moves on
         $deliverA(PngFixture::bytes(100, 50)); // the converter answers for the one that left
 
         $this->assertSame('', $widget->statusInfo(), 'a stale raster never reaches the pane');
@@ -289,12 +305,12 @@ final class ImageViewerWidgetTest extends TestCase
     {
         $this->rasterizer->nextPng = PngFixture::bytes(100, 50);
         $widget = $this->vectorWidget();
-        $widget->showVector('/p/a.svg', '<svg/>');
+        $widget->show('/p/a.svg', '<svg/>');
         $widget->clear();
 
         $this->assertSame('', $widget->statusInfo());
         $this->assertSame('', $widget->zoomLabel());
-        $widget->showVector('/p/a.svg', '<svg/>'); // the same source is a fresh document after a clear
+        $widget->show('/p/a.svg', '<svg/>'); // the same source is a fresh document after a clear
         $this->assertSame([null, null], $this->rasterizer->scales);
     }
 
@@ -302,7 +318,7 @@ final class ImageViewerWidgetTest extends TestCase
     {
         $this->rasterizer->nextPng = PngFixture::bytes(100, 50);
         $widget = $this->vectorWidget();
-        $widget->showVector('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
+        $widget->show('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
         $widget->render(new RenderContext(50, 13));
         $widget->handleInput('1'); // actual size — the probe already covers 1:1
         $this->settle();
@@ -321,7 +337,7 @@ final class ImageViewerWidgetTest extends TestCase
     {
         $this->rasterizer->nextPng = PngFixture::bytes(100, 50);
         $widget = $this->vectorWidget();
-        $widget->showVector('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
+        $widget->show('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
         $widget->render(new RenderContext(50, 13));
         $widget->handleInput('1'); // actual size
 
@@ -340,7 +356,7 @@ final class ImageViewerWidgetTest extends TestCase
     {
         $this->rasterizer->nextPng = PngFixture::bytes(100, 50);
         $widget = $this->vectorWidget();
-        $widget->showVector('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
+        $widget->show('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
         $widget->render(new RenderContext(50, 13));
 
         $widget->handleInput("\x1b[C"); // right
@@ -356,7 +372,7 @@ final class ImageViewerWidgetTest extends TestCase
         // times the decoder's ceiling, so the ask is capped instead.
         $this->rasterizer->nextPng = PngFixture::bytes(2000, 1500);
         $widget = $this->vectorWidget();
-        $widget->showVector('/p/big.svg', '<svg viewBox="0 0 2000 1500"/>');
+        $widget->show('/p/big.svg', '<svg viewBox="0 0 2000 1500"/>');
         $widget->render(new RenderContext(50, 13));
         $widget->handleInput('1'); // fit is ~2% here, so start from the document's own size
         $widget->handleInput('=');
@@ -373,7 +389,7 @@ final class ImageViewerWidgetTest extends TestCase
     {
         $this->rasterizer->nextPng = PngFixture::bytes(100, 50);
         $widget = $this->vectorWidget();
-        $widget->showVector('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
+        $widget->show('/p/a.svg', '<svg viewBox="0 0 100 50"/>');
         $widget->render(new RenderContext(50, 13));
         $widget->handleInput('1');
         $widget->handleInput('='); // 200%: arms a re-render

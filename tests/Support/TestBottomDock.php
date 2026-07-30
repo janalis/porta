@@ -5,15 +5,13 @@ declare(strict_types=1);
 namespace Porta\Tests\Support;
 
 use Porta\Editor\BufferManager;
+use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\FakeRasterizer;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
-use Porta\Widget\GraphViewerWidget;
-use Porta\Widget\HelpViewerWidget;
-use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
@@ -49,9 +47,7 @@ final class TestBottomDock
             $editorArea ?? new EditorArea(
                 new BufferManager(),
                 new CodeEditorWidget(),
-                new ImageViewerWidget(new FakeRasterizer(), new Translator('en')),
-                new HelpViewerWidget(),
-                new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
+                new EditorPanes(),
                 $tui,
             ),
         );

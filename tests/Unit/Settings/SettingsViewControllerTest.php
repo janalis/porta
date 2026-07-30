@@ -11,6 +11,7 @@ use Porta\Config\KeybindingsFactory;
 use Porta\Config\LiveKeybindings;
 use Porta\Debug\DebugAdapters;
 use Porta\Editor\BufferManager;
+use Porta\Editor\EditorPanes;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
 use Porta\Git\GitSettings;
@@ -53,7 +54,6 @@ use Porta\Settings\SettingsSection;
 use Porta\Settings\SettingsViewController;
 use Porta\Tests\Support\FakeLayoutEngine;
 use Porta\Tests\Support\FakePluginLifecycle;
-use Porta\Tests\Support\FakeRasterizer;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\NavigatesSettings;
@@ -68,7 +68,6 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
-use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
@@ -255,9 +254,7 @@ final class SettingsViewControllerTest extends TestCase
             editorArea: new EditorArea(
                 new BufferManager(),
                 $this->editorWidget = new CodeEditorWidget(),
-                new ImageViewerWidget(new FakeRasterizer(), new Translator('en')),
-                new HelpViewerWidget(),
-                new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
+                new EditorPanes(),
                 $this->tui,
             ),
             views: $views ?? new WorkspaceViews(),

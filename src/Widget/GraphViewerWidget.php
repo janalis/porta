@@ -21,24 +21,14 @@ use Porta\Support\DebouncedRequest;
 use Porta\Support\RevoltScheduler;
 use Porta\Support\Scheduler;
 use Porta\Ui\Glyphs;
-use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\GraphRenderer;
 use Porta\Widget\Render\GraphSelectionOverlay;
-use Porta\Widget\Render\MenuOverlayHost;
-use Porta\Widget\Render\MenuOverlayHostTrait;
-use Porta\Widget\Support\FillsPaneTrait;
-use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
-use Symfony\Component\Tui\Widget\AbstractWidget;
-use Symfony\Component\Tui\Widget\FocusableInterface;
-use Symfony\Component\Tui\Widget\FocusableTrait;
-use Symfony\Component\Tui\Widget\KeybindingsTrait;
-use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 
 /**
  * The graph tab's pane: shows a Graphviz DOT document as the PICTURE dot itself
@@ -66,14 +56,8 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  */
 #[AsIdeService]
 #[AsWidget('graph-viewer')]
-final class GraphViewerWidget extends AbstractWidget implements FocusableInterface, LtrPane, MenuOverlayHost, VerticallyExpandableInterface
+final class GraphViewerWidget extends NavigablePaneWidget
 {
-    use FillsPaneTrait;
-    use FocusableTrait;
-    use KeybindingsTrait;
-    use MenuOverlayHostTrait;
-    use StylesDefault;
-
     /** The graph zoom ladder: fit scales for wide graphs sit far below the image ladder's 12.5% floor. */
     private const array ZOOM_STEPS = [0.031_25, 0.062_5, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0];
 
@@ -120,7 +104,6 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
     private array $viewCache = [];
     private int $lastCols = 80;
     private int $lastRows = 24;
-    private ?ViewerTabHandler $handler = null;
     private readonly ImageDecoder $decoder;
 
     public function __construct(
@@ -145,14 +128,16 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         $this->scaled = new ScaledSource();
     }
 
-    public function setHandler(ViewerTabHandler $handler): void
+    /** Show a DOT document: adopt the cached layout for its hash, or run the engine. */
+    public function paneId(): string
     {
-        $this->handler = $handler;
+        return 'graph';
     }
 
-    /** Show a DOT document: adopt the cached layout for its hash, or run the engine. */
-    public function show(string $path, string $dot): void
+    /** @param mixed $payload the DOT (or PlantUML) source this pane's loader read */
+    public function show(string $path, mixed $payload): void
     {
+        $dot = (string) $payload;
         $hash = hash('xxh128', $dot);
         if ($path === $this->path && $hash === $this->dotHash) {
             return; // same tab, same content — nothing to do
@@ -258,6 +243,12 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
     }
 
     /** Ctrl+wheel: zoom one step anchored on the pane cell under the pointer. */
+    /** This pane's status segment: extent, zoom, and its own keys (n/p select, unlike the image pane's). */
+    public function statusRight(): string
+    {
+        return trim(\sprintf('%s  %s  %s', $this->statusInfo(), $this->zoomLabel(), $this->translator->trans('+/- zoom  0 fit  n/p select  Ctrl+Q quit')));
+    }
+
     public function zoomAt(int $dir, int $relCol, int $relRow): void
     {
         if (null === $this->view) {
@@ -590,7 +581,7 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         }
     }
 
-    private function afterViewChange(): void
+    protected function afterViewChange(): void
     {
         $this->invalidate();
         $this->handler?->viewChanged();

@@ -6,13 +6,9 @@ namespace Porta\Editor;
 
 use Porta\Git\GitRefresher;
 use Porta\I18n\Translator;
-use Porta\Image\ImageDecoder;
 use Porta\Lsp\LspSessionPool;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\FileTreeWidget;
-use Porta\Widget\GraphViewerWidget;
-use Porta\Widget\HelpViewerWidget;
-use Porta\Widget\ImageViewerWidget;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Tui;
 
@@ -27,14 +23,11 @@ final class FilesystemReconciler
 {
     public function __construct(
         private readonly BufferManager $buffers,
+        private readonly EditorPanes $panes,
         private readonly FileTreeWidget $tree,
         private readonly Tui $tui,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
-        private readonly HelpViewerWidget $helpViewer,
-        private readonly ImageViewerWidget $imageViewer,
-        private readonly GraphViewerWidget $graphViewer,
-        private readonly ImageDecoder $imageDecoder,
         private readonly LspSessionPool $lsp,
         private readonly GitRefresher $gitRefresher,
         private readonly string $rootDir,
@@ -69,44 +62,8 @@ final class FilesystemReconciler
 
         // The file changed on disk. Record the new stamp either way so we react once.
         $buffer->diskStamp = $stamp;
-        if ('image' === $buffer->paneId) {
-            // A VECTOR tab's payload is its SOURCE, not pixels: the bitmap path
-            // would ask the decoder for an SVG, be refused, and return — which
-            // is why an SVG edited on disk never used to reload at all. The
-            // payload shape is what tells the two apart.
-            if (\is_string($buffer->panePayload)) {
-                $this->reloadVectorBuffer($buffer);
-
-                return;
-            }
-            $this->reloadImageBuffer($buffer);
-
-            return;
-        }
-        if ('help' === $buffer->paneId) {
-            $content = $this->readTextFile($buffer->path);
-            if (null !== $content) {
-                $buffer->panePayload = $content;
-                if ($this->buffers->active() === $buffer && $buffer->path === $this->helpViewer->path()) {
-                    $this->helpViewer->show($buffer->path, $content);
-                }
-                $this->notifier->flash($this->translator->trans('Reloaded %file%', ['%file%' => $this->relativePath($buffer->path)]));
-            }
-
-            return;
-        }
-        if ('graph' === $buffer->paneId) {
-            // The live-refresh path: a regenerated (or hand-edited) DOT re-lays
-            // out in place; invalid new content keeps the previous rendering
-            // under the viewer's error banner.
-            $content = $this->readTextFile($buffer->path);
-            if (null !== $content) {
-                $buffer->panePayload = $content;
-                if ($this->buffers->active() === $buffer) {
-                    $this->graphViewer->show($buffer->path, $content);
-                }
-                $this->notifier->flash($this->translator->trans('Reloaded %file%', ['%file%' => $this->relativePath($buffer->path)]));
-            }
+        if ($buffer->isViewer()) {
+            $this->reloadPaneBuffer($buffer);
 
             return;
         }
@@ -122,30 +79,29 @@ final class FilesystemReconciler
         $this->reloadBuffer($buffer, $content);
     }
 
-    /** Re-read an externally changed SVG; the viewer re-rasterizes it at the current zoom. */
-    private function reloadVectorBuffer(Buffer $buffer): void
+    /**
+     * A pane tab's file changed: ask that pane's loader for the new payload and
+     * show it. A loader that refuses (unreadable, undecodable, no longer UTF-8)
+     * leaves the last good payload on screen — blanking a pane that is showing
+     * something valid is never the better answer.
+     */
+    private function reloadPaneBuffer(Buffer $buffer): void
     {
-        $content = $this->readTextFile($buffer->path);
-        if (null === $content) {
-            return;
+        $pane = $this->panes->paneFor((string) $buffer->paneId);
+        $load = $this->panes->loaderFor((string) $buffer->paneId);
+        if (null === $pane || null === $load) {
+            return; // the pane's plugin was disabled: the tab keeps what it has
         }
-        $buffer->panePayload = $content;
-        if ($buffer === $this->buffers->active()) {
-            $this->imageViewer->showVector($buffer->path, $content);
-        }
-        $this->notifier->flash($this->translator->trans('Reloaded %file%', ['%file%' => $this->relativePath($buffer->path)]));
-    }
 
-    /** Re-decode an externally changed image; undecodable new bytes keep the old pixels. */
-    private function reloadImageBuffer(Buffer $buffer): void
-    {
-        $image = (int) filesize($buffer->path) > ImageDecoder::MAX_BYTES ? null : $this->imageDecoder->decode($buffer->path);
-        if (null === $image) {
+        try {
+            /** @var mixed $payload */
+            $payload = $load($buffer->path);
+        } catch (\Throwable) {
             return;
         }
-        $buffer->panePayload = $image;
+        $buffer->panePayload = $payload;
         if ($buffer === $this->buffers->active()) {
-            $this->imageViewer->show($image);
+            $pane->show($buffer->path, $payload);
         }
         $this->notifier->flash($this->translator->trans('Reloaded %file%', ['%file%' => $this->relativePath($buffer->path)]));
     }

@@ -30,11 +30,11 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->setFocused(true);
         $this->handler = new RecordingHelpViewerHandler();
         $this->handler->onOpenHelp = static function (string $path) use ($viewer): void {
-            $viewer->show($path, (string) file_get_contents($path)); // mirror the IDE's synchronous re-show
+            $viewer->refreshPage($path, (string) file_get_contents($path)); // mirror the IDE's synchronous re-show
         };
         $viewer->setHandler($this->handler);
         $viewer->setDocsRoot($this->docs->dir);
-        $viewer->show($this->docs->path('README.md'), (string) file_get_contents($this->docs->path('README.md')));
+        $viewer->refreshPage($this->docs->path('README.md'), (string) file_get_contents($this->docs->path('README.md')));
 
         return $viewer;
     }
@@ -43,6 +43,24 @@ final class HelpViewerWidgetTest extends TestCase
     private function screen(HelpViewerWidget $viewer, int $cols = 60, int $rows = 10): array
     {
         return array_map(AnsiUtils::stripAnsiCodes(...), $viewer->render(new RenderContext($cols, $rows)));
+    }
+
+    public function testTheHelpPaneContributesNoStatusSegmentAndDiesWithItsTab(): void
+    {
+        $viewer = new HelpViewerWidget();
+        $this->assertSame('help', $viewer->paneId());
+        // Empty: the status bar keeps showing the editor's diagnostics legend,
+        // which is what it did when this was a branch in the provider.
+        $this->assertSame('', $viewer->statusRight());
+
+        $viewer->refreshPage('/p/docs/README.md', "# Hi\n");
+        $this->assertNotNull($viewer->path());
+
+        // A switch back to the tab keeps the navigated page; closing it does not.
+        $viewer->show('/p/docs/other.md', "# Other\n");
+        $this->assertStringEndsWith('README.md', (string) $viewer->path(), 'show() adopts a page only when the pane is empty');
+        $viewer->forget('/p/docs/README.md');
+        $this->assertNull($viewer->path(), 'the page and its history die with the tab');
     }
 
     public function testRendersStyledPageAndScrolls(): void
@@ -193,7 +211,7 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer = $this->viewer();
         $this->docs->write('guide/README.md', "# Guide index\n");
         $this->docs->write('guide/sub/deep.md', "# Deep page\n");
-        $viewer->show($this->docs->path('guide/sub/deep.md'), "# Deep page\n");
+        $viewer->refreshPage($this->docs->path('guide/sub/deep.md'), "# Deep page\n");
 
         $this->assertFalse($viewer->clickAt(0, 1), 'the ‹ arrow is inert with no history');
         $this->assertFalse($viewer->clickAt(0, 3), 'the › arrow is inert with no forward');
@@ -208,7 +226,7 @@ final class HelpViewerWidgetTest extends TestCase
         $this->assertStringNotContainsString('guide › README', $this->screen($viewer)[0], "a folder's index page wears the folder's name");
 
         // Narrow pane: the left-most crumbs collapse, the current page stays.
-        $viewer->show($this->docs->path('guide/sub/deep.md'), "# Deep page\n");
+        $viewer->refreshPage($this->docs->path('guide/sub/deep.md'), "# Deep page\n");
         $narrow = $this->screen($viewer, 24, 10)[0];
         $this->assertStringContainsString('…', $narrow, 'left-most crumbs collapse behind an ellipsis');
         $this->assertStringContainsString('deep', $narrow, 'the current page stays visible');
@@ -337,7 +355,7 @@ final class HelpViewerWidgetTest extends TestCase
 
         // The version moves when the page changes (a re-search trigger).
         $before = $viewer->findVersion();
-        $viewer->show($this->docs->path('editor.md'), (string) file_get_contents($this->docs->path('editor.md')));
+        $viewer->refreshPage($this->docs->path('editor.md'), (string) file_get_contents($this->docs->path('editor.md')));
         $this->assertGreaterThan($before, $viewer->findVersion());
     }
 

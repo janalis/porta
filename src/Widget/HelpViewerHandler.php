@@ -10,7 +10,7 @@ namespace Porta\Widget;
  * tab actions re-bound while the code editor is detached. Implemented by
  * {@see \Porta\Help\HelpViewerActions}; tests inject recording fakes.
  */
-interface HelpViewerHandler
+interface HelpViewerHandler extends ViewerTabHandler
 {
     /** Render another markdown page (absolute path). */
     public function openHelp(string $path): void;
@@ -32,12 +32,4 @@ interface HelpViewerHandler
 
     /** Backspace with an empty history. */
     public function backEmpty(): void;
-
-    public function cycleBuffer(int $offset): void;
-
-    public function closeBuffer(): void;
-
-    public function openGotoFile(): void;
-
-    public function saveAll(): void;
 }

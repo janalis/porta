@@ -17,10 +17,13 @@ trait StylesDefault
 {
     // Not readonly: mago rejects readonly writes outside a constructor, and
     // this is initialized from the using classes' constructors via initStyles.
-    private Styles $styles;
+    // PROTECTED, not private: EditorPaneWidget uses this trait as a base class,
+    // and a private property would be the parent's alone — every pane subclass
+    // reading $this->styles would silently see an undefined one.
+    protected Styles $styles;
 
     /** Adopt the injected palette, defaulting to the dark scheme. */
-    private function initStyles(?Styles $styles): void
+    protected function initStyles(?Styles $styles): void
     {
         $this->styles = $styles ?? Styles::dark();
     }

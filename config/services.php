@@ -6,6 +6,7 @@ use Porta\Bootstrap\EagerServices;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
 use Porta\Container\AsWidget;
+use Porta\Editor\BufferNavigator;
 use Porta\Editor\BufferService;
 use Porta\Graph\DiagramEngine;
 use Porta\Graph\PlantUmlEngine;
@@ -29,6 +30,7 @@ use Porta\Ui\FrameHooks;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\Themes;
 use Porta\Widget\SeparatorWidget;
+use Porta\Widget\ViewerTabHandler;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface as PsrEventDispatcherInterface;
 use Symfony\Component\Clock\NativeClock;
@@ -227,6 +229,13 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // the class. The plugin-supplied backends come from PluginManager through the
     // interface Porta\Highlight owns, so the subsystem never depends on Porta\Plugin.
     $services->alias(SyntaxHighlightProviderSource::class, PluginManager::class);
+
+    // ViewerTabHandler gained a second implementation when HelpViewerHandler
+    // started extending it (the help pane needs the same four tab verbs), so the
+    // loader derives no alias and one has to be named. BufferNavigator is the
+    // general answer: HelpViewerActions is the help pane's own superset, reached
+    // by that widget alone.
+    $services->alias(ViewerTabHandler::class, BufferNavigator::class);
 
     // The single public boundary: Ide resolves every service through this
     // locator, so the entries stay private (alive because referenced) and the

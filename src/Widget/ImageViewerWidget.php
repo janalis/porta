@@ -17,21 +17,11 @@ use Porta\Support\DebouncedRequest;
 use Porta\Support\RevoltScheduler;
 use Porta\Support\Scheduler;
 use Porta\Ui\Glyphs;
-use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
-use Porta\Widget\Render\MenuOverlayHost;
-use Porta\Widget\Render\MenuOverlayHostTrait;
-use Porta\Widget\Support\FillsPaneTrait;
-use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
-use Symfony\Component\Tui\Widget\AbstractWidget;
-use Symfony\Component\Tui\Widget\FocusableInterface;
-use Symfony\Component\Tui\Widget\FocusableTrait;
-use Symfony\Component\Tui\Widget\KeybindingsTrait;
-use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 
 /**
  * The image tab's pane: renders the active image as truecolor half-blocks
@@ -42,14 +32,8 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  */
 #[AsIdeService]
 #[AsWidget('image-viewer')]
-final class ImageViewerWidget extends AbstractWidget implements FocusableInterface, LtrPane, MenuOverlayHost, VerticallyExpandableInterface
+final class ImageViewerWidget extends NavigablePaneWidget
 {
-    use FillsPaneTrait;
-    use FocusableTrait;
-    use KeybindingsTrait;
-    use MenuOverlayHostTrait;
-    use StylesDefault;
-
     /** How long a zoom has to settle before the converter is asked for a sharper raster. */
     private const float RENDER_DEBOUNCE = 0.15;
 
@@ -71,7 +55,6 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
     /** last rendered pane size, so key handling scales/pans what is on screen */
     private int $lastCols = 80;
     private int $lastRows = 24;
-    private ?ViewerTabHandler $handler = null;
 
     public function __construct(
         private readonly Rasterizer $rasterizer,
@@ -84,13 +67,31 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
         $this->scaled = new ScaledSource();
     }
 
-    public function setHandler(ViewerTabHandler $handler): void
+    public function paneId(): string
     {
-        $this->handler = $handler;
+        return 'image';
     }
 
-    /** Show an image, resetting the view to fit-to-pane. */
-    public function show(ImageData $image): void
+    /**
+     * Show $path's payload — decoded pixels, or an SVG's source this pane
+     * rasterizes for itself. The two shapes are told apart HERE, where the
+     * difference means something: core carries whichever its loader produced
+     * and never looks inside.
+     */
+    public function show(string $path, mixed $payload): void
+    {
+        if (\is_string($payload)) {
+            $this->showVector($path, $payload);
+
+            return;
+        }
+        if ($payload instanceof ImageData) {
+            $this->showBitmap($payload);
+        }
+    }
+
+    /** Show decoded pixels, resetting the view to fit-to-pane. */
+    private function showBitmap(ImageData $image): void
     {
         $this->reset();
         $this->image = $image;
@@ -105,7 +106,7 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
      * label go on speaking in the SVG's own pixels — 100% means 100% of the
      * document, not of whatever raster happens to be on screen.
      */
-    public function showVector(string $path, string $svg): void
+    private function showVector(string $path, string $svg): void
     {
         if ($path === $this->svgPath && $svg === $this->svg) {
             return; // same tab, same document
@@ -121,6 +122,12 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
         $this->svg = $svg;
         $this->rasterize(scale: null);
         $this->invalidate();
+    }
+
+    /** Losing the slot frees the pixels: whoever shows next needs the memory more. */
+    public function hide(): void
+    {
+        $this->clear();
     }
 
     /** Drop the image reference (frees the GdImage once the buffer is gone too). */
@@ -254,6 +261,16 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
     }
 
     /** Ctrl+wheel: zoom one step anchored on the pane cell under the pointer. */
+    /**
+     * The status bar's right segment while this pane holds the slot: the
+     * document's own size, the zoom, and the keys — the pane knows what its keys
+     * do and the status bar does not.
+     */
+    public function statusRight(): string
+    {
+        return trim(\sprintf('%s  %s  %s', $this->statusInfo(), $this->zoomLabel(), $this->translator->trans('+/- zoom  0 fit  Arrows pan  Ctrl+Q quit')));
+    }
+
     public function zoomAt(int $dir, int $relCol, int $relRow): void
     {
         if (null === $this->view) {
@@ -447,7 +464,7 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
         }
     }
 
-    private function afterViewChange(): void
+    protected function afterViewChange(): void
     {
         $this->invalidate();
         $this->handler?->viewChanged();

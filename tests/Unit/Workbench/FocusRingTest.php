@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
+use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Tests\Support\FakeLayoutEngine;
@@ -56,9 +57,7 @@ final class FocusRingTest extends TestCase
         $editorArea = new EditorArea(
             new BufferManager(),
             $this->editor,
-            new ImageViewerWidget(new FakeRasterizer(), new Translator('en')),
-            new HelpViewerWidget(),
-            new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
+            new EditorPanes(),
             $this->tui,
         );
         $dock = TestBottomDock::create($this->tui, $this->terminal, $this->results, $this->debug, $editorArea);

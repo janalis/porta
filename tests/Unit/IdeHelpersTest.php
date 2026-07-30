@@ -679,6 +679,11 @@ final class IdeHelpersTest extends TestCase
         $help->missingTarget('ghost.md');
         $this->assertStringContainsString('Cannot read ghost.md', $flash(), 'a dangling link target flashes');
 
+        // The pane contract's fifth verb reaches the same navigator the two
+        // navigable panes use, so a help pane that ever moves its view repaints
+        // the bar through one path rather than a special case.
+        $help->viewChanged();
+
         $help->saveAll(); // nothing dirty: a silent sweep
         $help->closeBuffer();
         $buffers = Services::resolve($this->ide, BufferManager::class);

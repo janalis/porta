@@ -54,6 +54,16 @@ final class GraphViewerWidgetTest extends TestCase
         return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines));
     }
 
+    public function testTheStatusSegmentNamesTheGraphsOwnKeys(): void
+    {
+        // n/p select, which the image pane has no equivalent for — the reason a
+        // pane owns its hint text instead of the status bar branching on kind.
+        $widget = $this->widget();
+
+        $this->assertStringContainsString('n/p select', $widget->statusRight());
+        $this->assertSame('graph', $widget->paneId());
+    }
+
     public function testShowsALayoutWithNodesEdgesAndAFitView(): void
     {
         $this->engine->nextResult = self::layout();

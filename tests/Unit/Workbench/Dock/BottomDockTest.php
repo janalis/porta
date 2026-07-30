@@ -6,20 +6,15 @@ namespace Porta\Tests\Unit\Workbench\Dock;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
-use Porta\I18n\Translator;
+use Porta\Editor\EditorPanes;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Terminal\TerminalSessions;
-use Porta\Tests\Support\FakeLayoutEngine;
-use Porta\Tests\Support\FakeRasterizer;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
-use Porta\Widget\GraphViewerWidget;
-use Porta\Widget\HelpViewerWidget;
-use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Widget\TerminalPanelWidget;
@@ -28,11 +23,7 @@ use Porta\Workbench\Dock\DockTab;
 use Porta\Workbench\Dock\DockToolTabs;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\EditorArea;
-use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
-use Symfony\Component\Tui\Render\Renderer;
-use Symfony\Component\Tui\Style\StyleSheet;
-use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
 final class BottomDockTest extends TestCase
@@ -65,9 +56,7 @@ final class BottomDockTest extends TestCase
             new EditorArea(
                 new BufferManager(),
                 $this->editor,
-                new ImageViewerWidget(new FakeRasterizer(), new Translator('en')),
-                new HelpViewerWidget(),
-                new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
+                new EditorPanes(),
                 $this->tui,
             ),
             $this->strip,

@@ -12,12 +12,8 @@ use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
 use Porta\Event\DiagnosticsChanged;
-use Porta\Graph\DotFiles;
 use Porta\History\LocalHistory;
 use Porta\I18n\Translator;
-use Porta\Image\ImageData;
-use Porta\Image\ImageDecoder;
-use Porta\Image\SvgConverter;
 use Porta\Lsp\BufferReopener;
 use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
@@ -25,9 +21,7 @@ use Porta\Lsp\Uri;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
-use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
-use Porta\Widget\ImageViewerWidget;
 use Porta\Workbench\Notifier;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
@@ -74,15 +68,13 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         private readonly string $rootDir,
         private readonly Translator $translator,
         private readonly FilesystemReconciler $reconciler,
-        private readonly ImageViewerWidget $imageViewer,
         private readonly HelpViewerWidget $helpViewer,
-        private readonly GraphViewerWidget $graphViewer,
-        private readonly ImageDecoder $imageDecoder,
         #[LayoutSlot('editor_body')]
         private readonly ContainerWidget $editorBody,
         private readonly EventDispatcherInterface $dispatcher,
         private readonly FormatOnSave $formatOnSave,
         private readonly ViewerProviderSource $viewers,
+        private readonly EditorPanes $panes,
     ) {}
 
     public function openFile(string $path, OpenFocus $focus = OpenFocus::Keep, OpenAs $as = OpenAs::Viewer): void
@@ -117,13 +109,9 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         // disabling one routes its files here to the text path instead; an id
         // no built-in pane answers to falls through the same way).
         $viewer = OpenAs::Text === $as ? null : $this->viewers->viewerFor($path);
-        if ('image' === $viewer) {
-            $this->openImageFile($path, $focus);
-
-            return;
-        }
-        if ('graph' === $viewer) {
-            $this->openGraphFile($path, $focus);
+        $load = null === $viewer ? null : $this->panes->loaderFor($viewer);
+        if (null !== $viewer && null !== $load) {
+            $this->openInPane($path, $viewer, $load, $focus);
 
             return;
         }
@@ -176,128 +164,47 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         if (!$buffer->isViewer() || $buffer->diskStamp === $buffer->diskStampNow()) {
             return;
         }
-        if ('graph' === $buffer->paneId) {
-            $dot = (string) file_get_contents($buffer->path);
-            if ('' === $dot || mb_check_encoding($dot, encoding: 'UTF-8')) {
-                $buffer->panePayload = $dot;
-                $buffer->stampFromDisk();
-            }
-
+        $load = $this->panes->loaderFor((string) $buffer->paneId);
+        if (null === $load) {
             return;
         }
-        // Any other pane keeps what it has: a help page is re-read by its own
-        // open path, and a third-party pane's payload is core's to carry, not to
-        // refresh behind its back.
-        if ('image' === $buffer->paneId) {
-            $this->refreshStaleImagePayload($buffer);
-        }
-    }
 
-    /** The image pane's two payload shapes: an SVG's source, or decoded pixels. */
-    private function refreshStaleImagePayload(Buffer $buffer): void
-    {
-        if (\is_string($buffer->panePayload)) {
-            // A VECTOR tab: the payload IS the source, re-rasterized per zoom.
-            $svg = (string) file_get_contents($buffer->path);
-            if ('' === $svg || mb_check_encoding($svg, encoding: 'UTF-8')) {
-                $buffer->panePayload = $svg;
-                $buffer->stampFromDisk();
-            }
-
-            return;
+        try {
+            /** @var mixed $payload */
+            $payload = $load($buffer->path);
+        } catch (\Throwable) {
+            return; // unreadable or refused now: keep the last good payload
         }
-        // One condition, not an early return: an image too big to decode needs
-        // no line of its own to be understood, and would need a multi-megabyte
-        // fixture to cover.
-        if ((int) filesize($buffer->path) <= ImageDecoder::MAX_BYTES) {
-            $image = $this->imageDecoder->decode($buffer->path);
-            if (null !== $image) {
-                $buffer->panePayload = $image;
-                $buffer->stampFromDisk();
-            }
-        }
-    }
-
-    /**
-     * Open an image file into a viewer tab: no editorconfig, no LSP didOpen,
-     * no git marks — just the decoded pixels behind a normal buffer/tab.
-     */
-    private function openImageFile(string $path, OpenFocus $focus): void
-    {
-        if (SvgConverter::isSvgPath($path)) {
-            $this->openSvgFile($path, $focus);
-
-            return;
-        }
-        if ((int) filesize($path) > ImageDecoder::MAX_BYTES) {
-            $this->notifier->flash($this->translator->trans('Image too large (> 20 MB)'));
-
-            return;
-        }
-        $image = $this->imageDecoder->decode($path);
-        if (null === $image) {
-            $this->notifier->flash($this->translator->trans('Cannot display image %file%', ['%file%' => $this->relativePath($path)]));
-
-            return;
-        }
-        $buffer = $this->buffers->openPane($path, 'image', $image);
+        $buffer->panePayload = $payload;
         $buffer->stampFromDisk();
-        $this->showBuffer($buffer);
-        $this->dispatcher->dispatch(new BufferOpened($buffer));
-        if (OpenFocus::Editor === $focus) {
-            $this->focusEditorArea();
-        }
-        $this->tui->requestRender();
     }
 
     /**
-     * Open an SVG into the image viewer: the source rides the buffer and the
-     * VIEWER rasterizes it, because the pixels depend on the zoom — the graph
-     * tab's arrangement, for the other vector format.
+     * Open $path into the pane that claimed it: its loader reads the payload,
+     * the buffer carries it, and the pane shows it. No editorconfig, no LSP
+     * didOpen, no git marks — a pane tab holds an empty document.
+     *
+     * A loader THROWS to refuse the file (too large, not decodable, not UTF-8)
+     * and its message is flashed as-is. That is the pane's last word on a file
+     * its claim already accepted.
+     *
+     * The loader arrives as an argument rather than being looked up here: the
+     * caller had to find it to know a pane answers at all, and looking twice
+     * would leave a "no pane" branch here that cannot happen.
+     *
+     * @param \Closure(string): mixed $load
      */
-    private function openSvgFile(string $path, OpenFocus $focus): void
+    private function openInPane(string $path, string $paneId, \Closure $load, OpenFocus $focus): void
     {
-        // No size guard here on purpose, unlike the bitmap branch: there is no
-        // decoder to protect (the source is handed to a subprocess as text), and
-        // the viewer claim's own maxBytes IS the limit — re-checking it against a
-        // constant would contradict a user who deliberately raised that setting.
-        $svg = (string) file_get_contents($path);
-        if ('' !== $svg && !mb_check_encoding($svg, encoding: 'UTF-8')) {
-            $this->notifier->flash($this->translator->trans('Not a UTF-8 text file'));
+        try {
+            /** @var mixed $payload */
+            $payload = $load($path);
+        } catch (\Throwable $refusal) {
+            $this->notifier->flash($refusal->getMessage());
 
             return;
         }
-        $buffer = $this->buffers->openPane($path, 'image', $svg);
-        $buffer->stampFromDisk();
-        $this->showBuffer($buffer);
-        $this->dispatcher->dispatch(new BufferOpened($buffer));
-        if (OpenFocus::Editor === $focus) {
-            $this->focusEditorArea();
-        }
-        $this->tui->requestRender();
-    }
-
-    /**
-     * Open a Graphviz DOT document into a graph-viewer tab: no editorconfig,
-     * no LSP didOpen, no git marks — the DOT source rides the buffer beside
-     * an empty document. The generated architecture artifact gets its tab
-     * title here, so session restore reproduces it through the plain
-     * path-keyed reuse.
-     */
-    private function openGraphFile(string $path, OpenFocus $focus): void
-    {
-        if ((int) filesize($path) > DotFiles::MAX_BYTES) {
-            $this->notifier->flash($this->translator->trans('Graph file too large (> 10 MB)'));
-
-            return;
-        }
-        $dot = (string) file_get_contents($path);
-        if ('' !== $dot && !mb_check_encoding($dot, encoding: 'UTF-8')) {
-            $this->notifier->flash($this->translator->trans('Not a UTF-8 text file'));
-
-            return;
-        }
-        $buffer = $this->buffers->openPane($path, 'graph', $dot);
+        $buffer = $this->buffers->openPane($path, $paneId, $payload);
         // The artifact's directory is a plugin setting, so the FILE NAME is all
         // core can key the title on (and a hand-written architecture.dot is
         // titled the same, which is the honest reading of the name).
@@ -360,7 +267,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
 
             return;
         }
-        $this->helpViewer->show($path, (string) file_get_contents($path));
+        $this->helpViewer->refreshPage($path, (string) file_get_contents($path));
         $this->tui->requestRender();
     }
 
@@ -368,12 +275,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
     public function focusEditorArea(): void
     {
         $active = $this->buffers->active();
-        $this->tui->setFocus(match (true) {
-            'image' === $active?->paneId => $this->imageViewer,
-            'help' === $active?->paneId => $this->helpViewer,
-            'graph' === $active?->paneId => $this->graphViewer,
-            default => $this->editor,
-        });
+        $this->tui->setFocus($this->panes->paneFor((string) $active?->paneId) ?? $this->editor);
     }
 
     /**
@@ -393,59 +295,21 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         }
     }
 
-    /**
-     * Hand an image tab to the viewer. A VECTOR tab hands over its source
-     * instead of pixels — the viewer owns those, because which pixels depends on
-     * the zoom — and the two are exclusive: an SVG buffer carries no decoded
-     * image and a bitmap one carries no source.
-     */
-    private function showImageBuffer(Buffer $buffer): void
-    {
-        // Neutralize the editor so any jumpTo() fired after openFile() mutates a
-        // throwaway document, not the previous buffer's cursor.
-        $this->editor->showDocument('', new Document(''));
-        if (\is_string($buffer->panePayload)) {
-            $this->imageViewer->showVector($buffer->path, $buffer->panePayload);
-        }
-        if ($buffer->panePayload instanceof ImageData) {
-            $this->imageViewer->show($buffer->panePayload);
-        }
-        $this->swapEditorPaneTo($this->imageViewer);
-        $this->dispatcher->dispatch(new BufferSwitched($buffer));
-        $this->tui->requestRender();
-    }
-
     public function showBuffer(Buffer $buffer): void
     {
-        if ('image' === $buffer->paneId) {
-            $this->showImageBuffer($buffer);
-
-            return;
-        }
-        if ('help' === $buffer->paneId) {
+        $pane = $this->panes->paneFor((string) $buffer->paneId);
+        if (null !== $pane) {
+            // Neutralize the editor so any jumpTo() fired after openFile()
+            // mutates a throwaway document, not the previous buffer's cursor.
             $this->editor->showDocument('', new Document(''));
-            if (null === $this->helpViewer->path()) {
-                $this->helpViewer->show($buffer->path, (string) $buffer->panePayload);
-            }
-            $this->imageViewer->clear();
-            $this->swapEditorPaneTo($this->helpViewer);
-            $this->dispatcher->dispatch(new BufferSwitched($buffer));
-            $this->tui->requestRender();
-
-            return;
-        }
-        if ('graph' === $buffer->paneId) {
-            $this->editor->showDocument('', new Document(''));
-            $this->graphViewer->show($buffer->path, (string) $buffer->panePayload);
-            $this->imageViewer->clear();
-            $this->swapEditorPaneTo($this->graphViewer);
+            $pane->show($buffer->path, $buffer->panePayload);
+            $this->swapEditorPaneTo($pane);
             $this->dispatcher->dispatch(new BufferSwitched($buffer));
             $this->tui->requestRender();
 
             return;
         }
         $this->swapEditorPaneTo($this->editor);
-        $this->imageViewer->clear();
         $this->editor->showDocument($buffer->path, $buffer->document, $buffer->diagnostics, $buffer->highlighter, $buffer->editorConfig);
         $this->editor->setGitMarks($buffer->gitMarks);
         $this->dispatcher->dispatch(new BufferSwitched($buffer));
@@ -463,13 +327,23 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         if (\in_array($widget, $this->editorBody->all(), strict: true)) {
             return;
         }
+        $focused = $this->tui->getFocus();
         $hadFocus = false;
-        foreach ([$this->editor, $this->imageViewer, $this->helpViewer, $this->graphViewer] as $occupant) {
-            if ($occupant === $widget) {
+        foreach ($this->panes->all() as $pane) {
+            if ($pane === $widget) {
                 continue;
             }
-            $hadFocus = $hadFocus || $this->tui->getFocus() === $occupant;
-            $this->editorBody->remove($occupant);
+            $hadFocus = $hadFocus || $focused === $pane;
+            $this->editorBody->remove($pane);
+            // Losing the slot is not the same as closing: a pane frees what only
+            // the VISIBLE pane needs (the image pane's decoded pixels) and keeps
+            // the rest — which is what the per-viewer clear() calls scattered
+            // through this class used to say one viewer at a time.
+            $pane->hide();
+        }
+        if ($widget !== $this->editor) {
+            $hadFocus = $hadFocus || $focused === $this->editor;
+            $this->editorBody->remove($this->editor);
         }
         $this->editorBody->add($widget);
         if ($hadFocus) {
@@ -481,9 +355,9 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
     private function showEmptyEditor(): void
     {
         $this->swapEditorPaneTo($this->editor);
-        $this->imageViewer->clear();
-        $this->helpViewer->clear();
-        $this->graphViewer->clear();
+        foreach ($this->panes->all() as $pane) {
+            $pane->clear();
+        }
         $this->editor->showDocument('', new Document(''));
         $this->tui->setFocus($this->tree);
     }
@@ -519,12 +393,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
             if (!$buffer->isViewer()) {
                 $this->lsp->notifyDidClose($buffer->path);
             }
-            if ('help' === $buffer->paneId) {
-                $this->helpViewer->clear();
-            }
-            if ('graph' === $buffer->paneId) {
-                $this->graphViewer->forget($buffer->path);
-            }
+            $this->panes->paneFor((string) $buffer->paneId)?->forget($buffer->path);
             $this->buffers->close($buffer->path);
         }
 
@@ -593,12 +462,10 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         }
 
         $next = $this->buffers->close($active->path);
-        if ('help' === $active->paneId) {
-            $this->helpViewer->clear(); // history dies with the tab, not on tab switches
-        }
-        if ('graph' === $active->paneId) {
-            $this->graphViewer->forget($active->path); // the remembered zoom dies with the tab
-        }
+        // The tab is gone for good, so per-path state goes with it: the graph
+        // pane's remembered zoom, the help pane's navigation history. A pane
+        // that keeps nothing per path inherits a no-op.
+        $this->panes->paneFor((string) $active->paneId)?->forget($active->path);
         if (null !== $next) {
             $this->showBuffer($next);
 

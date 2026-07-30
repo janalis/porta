@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta;
 
+use Porta\Bootstrap\CorePanes;
 use Porta\Bootstrap\EagerServices;
 use Porta\Bootstrap\StartupWiring;
 use Porta\Bootstrap\WidgetHooks;
@@ -200,6 +201,9 @@ final class Ide
         $this->service(SearchUiWiring::class)->wire();
         // Panes before commands: a pane's registration is what makes its
         // routing id answerable, and nothing may open a file before it does.
+        // Core's own panes first, so a plugin claiming a built-in id replaces it
+        // rather than being replaced by it.
+        $this->service(CorePanes::class)->register();
         $this->service(PaneRegistrar::class)->register();
         $this->service(CommandRegistryPopulator::class)->populate();
         $this->service(WidgetHooks::class)->wire();

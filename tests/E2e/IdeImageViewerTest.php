@@ -422,6 +422,15 @@ final class IdeImageViewerTest extends TestCase
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '70 × 35'), what: 'the reloaded document');
                     $this->assertSame('70 × 35', $tui->getById('image-viewer')->statusInfo(), 'the poller re-read the source and the pane re-rasterized it');
 
+                    // The same rule on the EXPLICIT re-open path, which reads the
+                    // payload through the pane's loader too: a refusal there
+                    // keeps the last good document rather than blanking the pane.
+                    file_put_contents($project->path('logo.svg'), data: "\xff\xfe\x00<svg");
+                    touch($project->path('logo.svg'), mtime: time() + 3);
+                    Services::resolve($ide, BufferService::class)->openFile((string) realpath($project->path('logo.svg')));
+                    $this->pump(0.3);
+                    $this->assertSame('70 × 35', $tui->getById('image-viewer')->statusInfo(), 'a refused re-open keeps the document');
+
                     // Garbage keeps the picture, the same contract the bitmap
                     // path keeps: an unreadable new payload is not a reason to
                     // blank a pane that is showing something valid.

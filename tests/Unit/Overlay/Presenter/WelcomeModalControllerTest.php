@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Overlay\Presenter;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferManager;
+use Porta\Editor\EditorPanes;
 use Porta\Event\ThemeChanged;
 use Porta\Highlight\HighlightRequest;
 use Porta\Highlight\HighlightSink;
@@ -20,20 +21,14 @@ use Porta\Overlay\Presenter\OverlayDelivery;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Settings\SettingsHighlightController;
-use Porta\Tests\Support\FakeLayoutEngine;
 use Porta\Tests\Support\FakePluginLifecycle;
-use Porta\Tests\Support\FakeRasterizer;
 use Porta\Tests\Support\RendersRoot;
 use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\GraphViewerWidget;
-use Porta\Widget\HelpViewerWidget;
-use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Onboarding\WelcomeWidget;
 use Porta\Widget\Render\MenuOverlayHost;
-use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Workbench\ChromeInvalidator;
 use Porta\Workbench\ChromeRefreshListener;
 use Porta\Workbench\EditorArea;
@@ -83,9 +78,7 @@ final class WelcomeModalControllerTest extends TestCase
         $editArea = new EditorArea(
             new BufferManager(),
             new CodeEditorWidget(),
-            new ImageViewerWidget(new FakeRasterizer(), new Translator('en')),
-            new HelpViewerWidget(),
-            new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
+            new EditorPanes(),
             $this->tui,
         );
 

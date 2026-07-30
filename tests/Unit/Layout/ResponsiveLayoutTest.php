@@ -6,13 +6,12 @@ namespace Porta\Tests\Unit\Layout;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
+use Porta\Editor\EditorPanes;
 use Porta\I18n\PaneReorder;
 use Porta\I18n\Translator;
 use Porta\Layout\PaneLayout;
 use Porta\Layout\ResponsiveLayout;
 use Porta\Overlay\Region\FloatingRegions;
-use Porta\Tests\Support\FakeLayoutEngine;
-use Porta\Tests\Support\FakeRasterizer;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\BidiTui;
@@ -20,9 +19,6 @@ use Porta\Ui\PaneSegmenter;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\Git\DiffViewWidget;
-use Porta\Widget\GraphViewerWidget;
-use Porta\Widget\HelpViewerWidget;
-use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\WorkspaceViews;
@@ -73,9 +69,7 @@ final class ResponsiveLayoutTest extends TestCase
         $editorArea = new EditorArea(
             new BufferManager(),
             $this->editor,
-            new ImageViewerWidget(new FakeRasterizer(), new Translator('en')),
-            new HelpViewerWidget(),
-            new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
+            new EditorPanes(),
             $this->bidi,
         );
 

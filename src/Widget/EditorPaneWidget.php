@@ -69,6 +69,15 @@ abstract class EditorPaneWidget extends AbstractWidget implements FocusableInter
      */
     abstract public function statusRight(): string;
 
+    /**
+     * Another pane (or the editor) took the slot. Free what only the VISIBLE
+     * pane needs and keep the rest — the image pane drops its decoded pixels
+     * here, while the graph pane's layout cache and the help pane's navigation
+     * history survive a tab switch, which is what they did before this had a
+     * name.
+     */
+    public function hide(): void {}
+
     /** Drop per-path state (a remembered zoom, a cached layout); most panes keep none. */
     public function forget(string $path): void {}
 

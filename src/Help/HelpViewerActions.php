@@ -90,4 +90,14 @@ final class HelpViewerActions implements HelpViewerHandler
     {
         $this->navigator->saveAll();
     }
+
+    /**
+     * The help pane scrolls rather than zooms, so a "view changed" ping would
+     * repaint a status segment it does not contribute — but the pane contract is
+     * one interface, and the navigator already knows how to refresh the bar.
+     */
+    public function viewChanged(): void
+    {
+        $this->navigator->viewChanged();
+    }
 }

@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
+use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
 use Porta\Image\ImageData;
 use Porta\Tests\Support\FakeLayoutEngine;
@@ -42,7 +43,11 @@ final class EditorAreaTest extends TestCase
         $this->helpViewer = new HelpViewerWidget();
         $this->graphViewer = new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en'));
         $this->tui = new Tui(terminal: new VirtualTerminal(columns: 40, rows: 10));
-        $this->area = new EditorArea($this->buffers, $this->editor, $this->imageViewer, $this->helpViewer, $this->graphViewer, $this->tui);
+        $panes = new EditorPanes();
+        foreach ([$this->imageViewer, $this->helpViewer, $this->graphViewer] as $pane) {
+            $panes->register($pane, static fn (string $path): string => '');
+        }
+        $this->area = new EditorArea($this->buffers, $this->editor, $panes, $this->tui);
     }
 
     public function testTheEditorIsTheContentWithoutBuffersAndForTextBuffers(): void

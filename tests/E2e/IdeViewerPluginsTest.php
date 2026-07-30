@@ -131,10 +131,16 @@ final class IdeViewerPluginsTest extends TestCase
                     $this->assertNotNull($loader);
                     $this->assertSame('demo payload', $loader($project->path('doc.demo')), 'the pane reads its own payload');
 
+                    // Open the claimed file IN the pane while the plugin is live.
+                    $buffers = Services::resolve($ide, BufferManager::class);
+                    $service = Services::resolve($ide, BufferService::class);
+                    $demo = (string) realpath($project->path('doc.demo'));
+                    $service->openFile($demo);
+                    $this->assertSame('demo', $buffers->get($demo)?->paneId, 'the claim routed it to the plugin pane');
+
                     // Disabling stops the ROUTING claim and leaves the pane
-                    // standing: a tab opened before the toggle still has to
-                    // render, which is the contract this suite already pins for
-                    // the bundled viewers.
+                    // standing: this tab still has to render, which is the
+                    // contract this suite already pins for the bundled viewers.
                     $lifecycle = Services::resolve($ide, PluginLifecycle::class);
                     $lifecycle->disable('demo-pane');
                     $this->assertNotNull($panes->paneFor('demo'), 'a disabled plugin keeps its pane for tabs already open in it');
@@ -143,6 +149,16 @@ final class IdeViewerPluginsTest extends TestCase
                     // nothing may route to it again.
                     $lifecycle->deactivate('demo-pane');
                     $this->assertNull($panes->paneFor('demo'), 'a removed plugin takes its pane with it');
+
+                    // The tab it left behind survives both refresh paths. With no
+                    // loader there is nothing to read a new payload with, and that
+                    // must read as "keep what you have", not as a crash — on the
+                    // explicit re-open AND on the filesystem poll.
+                    file_put_contents($demo, data: 'changed underneath');
+                    touch($demo, mtime: time() + 5);
+                    $service->openFile($demo);
+                    $service->pollFilesystem();
+                    $this->assertSame('demo payload', $buffers->get($demo)?->panePayload, 'no loader, no refresh');
                 },
             ],
         );

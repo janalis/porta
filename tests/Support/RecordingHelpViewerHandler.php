@@ -68,6 +68,11 @@ final class RecordingHelpViewerHandler implements HelpViewerHandler
         $this->events[] = 'goto';
     }
 
+    public function viewChanged(): void
+    {
+        $this->events[] = 'view';
+    }
+
     public function saveAll(): void
     {
         $this->events[] = 'save-all';
