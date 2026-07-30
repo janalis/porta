@@ -744,7 +744,11 @@ tables. **A consequence worth knowing**: `IdeConfig::load()` no longer checks wh
 exists — it parses `.porta.json` before the container, let alone the plugins, so it judges SHAPE
 only and keeps every well-formed entry. Membership is asked once, in `KeybindingsFactory::create()`
 right after `ensureLoaded()`, which drops unknown ids and reports each ONE time (`rebuild()`
-re-enters it on every keymap edit) through the plugin boot-warning channel. `Config/CommandRegistry` holds IDE-level
+re-enters it on every keymap edit) through the plugin boot-warning channel. The page resolves
+each row's key in THREE tiers — editor, then the registered `Editor/EditorPanes` in registration
+order, then the IDE map — because a pane's actions are bound on the pane and nowhere else; with
+the middle tier missing (as it was until round 25's follow-up) every viewer action renders as
+unbound. `Config/CommandRegistry` holds IDE-level
 commands (id → handler, key-bound?, in-palette?). `Workbench/Menu/MenuModel` builds the menu bar / context
 menus from these. Don't hand-maintain parallel keybinding/palette/menu lists — extend the
 catalog/registry. View gating rides ONE `?\Closure(): ?WorkspaceView $activeView` param and one
