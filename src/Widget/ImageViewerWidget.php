@@ -13,6 +13,7 @@ use Porta\Image\ImageDecoder;
 use Porta\Image\Rasterizer;
 use Porta\Image\ScaledSource;
 use Porta\Image\ZoomPanModel;
+use Porta\Support\DebouncedRequest;
 use Porta\Support\RevoltScheduler;
 use Porta\Support\Scheduler;
 use Porta\Ui\Glyphs;
@@ -60,9 +61,8 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
     private ?string $svgPath = null;
     /** The scale the shown raster was rendered at — its pixels per document pixel. */
     private float $rasterScale = 1.0;
-    /** The scale the current zoom wants, or null before one has been decided. */
-    private ?float $wantedScale = null;
-    private ?string $rasterTimer = null;
+    /** Coalesces and debounces the re-render the current zoom wants. */
+    private readonly DebouncedRequest $pending;
     private bool $rasterizing = false;
     /** The converter's stderr (or the missing-converter message), shown as a banner. */
     private ?string $error = null;
@@ -72,7 +72,6 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
     private int $lastCols = 80;
     private int $lastRows = 24;
     private ?ViewerTabHandler $handler = null;
-    private readonly Scheduler $scheduler;
 
     public function __construct(
         private readonly Rasterizer $rasterizer,
@@ -81,7 +80,7 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
         ?Styles $styles = null,
     ) {
         $this->initStyles($styles);
-        $this->scheduler = $scheduler ?? new RevoltScheduler();
+        $this->pending = new DebouncedRequest($scheduler ?? new RevoltScheduler(), self::RENDER_DEBOUNCE);
         $this->scaled = new ScaledSource();
     }
 
@@ -139,11 +138,7 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
         $this->svg = null;
         $this->svgPath = null;
         $this->rasterScale = 1.0;
-        $this->wantedScale = null;
-        if (null !== $this->rasterTimer) {
-            $this->scheduler->cancel($this->rasterTimer);
-            $this->rasterTimer = null;
-        }
+        $this->pending->reset();
         $this->rasterizing = false;
         $this->error = null;
     }
@@ -159,7 +154,7 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
         // Only reachable from showVector() and the zoom path, both of which run
         // with a document shown.
         \assert(null !== $svg, description: 'a rasterization is only ever asked for a shown document');
-        $this->wantedScale = $scale ?? 1.0;
+        $this->pending->settle($scale ?? 1.0);
         $this->rasterizing = true;
         $this->rasterizer->rasterize(
             $svg,
@@ -230,17 +225,7 @@ final class ImageViewerWidget extends AbstractWidget implements FocusableInterfa
             return; // a bitmap tab has nothing to re-render
         }
         $scale = $this->scaleFor($this->view->effectiveScale($this->lastCols, 2 * $this->lastRows));
-        if (abs($scale - (float) $this->wantedScale) < 1e-9) {
-            return; // already asked for exactly this
-        }
-        $this->wantedScale = $scale;
-        if (null !== $this->rasterTimer) {
-            $this->scheduler->cancel($this->rasterTimer);
-        }
-        $this->rasterTimer = $this->scheduler->delay(self::RENDER_DEBOUNCE, function () use ($scale): void {
-            $this->rasterTimer = null;
-            $this->rasterize($scale);
-        });
+        $this->pending->want($scale, fn (float $value) => $this->rasterize($value));
     }
 
     /** The PNG the converter produced, or null after recording why it is unusable. */

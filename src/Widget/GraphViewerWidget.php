@@ -15,6 +15,7 @@ use Porta\Image\ImageData;
 use Porta\Image\ImageDecoder;
 use Porta\Image\ScaledSource;
 use Porta\Image\ZoomPanModel;
+use Porta\Support\DebouncedRequest;
 use Porta\Support\RevoltScheduler;
 use Porta\Support\Scheduler;
 use Porta\Ui\Glyphs;
@@ -90,9 +91,8 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
     private ?ImageData $bitmap = null;
     /** The dpi the shown bitmap was rendered at — its pixels per layout point. */
     private int $bitmapDpi = self::BITMAP_DPI;
-    /** The dpi the current zoom wants, or null when it has not been decided yet. */
-    private ?int $wantedDpi = null;
-    private ?string $renderTimer = null;
+    /** Coalesces and debounces the re-render the current zoom wants. */
+    private readonly DebouncedRequest $pending;
     /** Which rendering paints: the persisted default, flipped live by its key. */
     private GraphRenderMode $mode;
     /** The laid-out extent in points, for the resolution cap. */
@@ -118,7 +118,6 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
     private int $lastRows = 24;
     private ?ViewerTabHandler $handler = null;
     private readonly ImageDecoder $decoder;
-    private readonly Scheduler $scheduler;
 
     public function __construct(
         private readonly LayoutEngine $engine,
@@ -135,7 +134,7 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         $this->initStyles($styles);
         $this->mode = GraphRenderMode::fromId($renderMode);
         $this->decoder = $decoder ?? new ImageDecoder();
-        $this->scheduler = $scheduler ?? new RevoltScheduler();
+        $this->pending = new DebouncedRequest($scheduler ?? new RevoltScheduler(), self::RENDER_DEBOUNCE);
         $this->scaled = new ScaledSource();
     }
 
@@ -200,11 +199,7 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         $this->dotHash = null;
         $this->dot = null;
         $this->bitmap = null;
-        $this->wantedDpi = null;
-        if (null !== $this->renderTimer) {
-            $this->scheduler->cancel($this->renderTimer);
-            $this->renderTimer = null;
-        }
+        $this->pending->reset();
         $this->layout = null;
         $this->view = null;
         $this->error = null;
@@ -387,7 +382,7 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
         $height = max(1, (int) ceil($layout->height));
         $this->extentW = $width;
         $this->extentH = $height;
-        $this->wantedDpi = null; // re-decide the resolution for this graph
+        $this->pending->reset(); // re-decide the resolution for this graph
         $path = (string) $this->path;
         $remembered = $this->viewCache[$path] ?? null;
         $this->view =
@@ -436,17 +431,7 @@ final class GraphViewerWidget extends AbstractWidget implements FocusableInterfa
             return; // the cell rendering needs no process
         }
         $dpi = $this->dpiFor($this->view->effectiveScale($this->lastCols, 2 * $this->lastRows));
-        if ($dpi === $this->wantedDpi) {
-            return; // already asked for exactly this
-        }
-        $this->wantedDpi = $dpi;
-        if (null !== $this->renderTimer) {
-            $this->scheduler->cancel($this->renderTimer);
-        }
-        $this->renderTimer = $this->scheduler->delay(self::RENDER_DEBOUNCE, function () use ($dpi): void {
-            $this->renderTimer = null;
-            $this->requestBitmap($dpi);
-        });
+        $this->pending->want((float) $dpi, fn (float $value) => $this->requestBitmap((int) $value));
     }
 
     /**
