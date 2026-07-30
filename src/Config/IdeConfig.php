@@ -51,6 +51,7 @@ final class IdeConfig
         'gitPath' => '',
         'dotPath' => '',
         'graphRender' => 'bitmap',
+        'svgConverter' => '',
     ];
 
     /**

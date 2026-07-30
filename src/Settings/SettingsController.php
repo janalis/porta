@@ -153,6 +153,13 @@ final class SettingsController
                 'restart' => true, // the engine resolves its binary from the compiled env channel
                 'apply' => null,
             ],
+            'svgConverter' => [
+                'label' => 'SVG converter path',
+                'kind' => SettingsRowKind::Text,
+                'group' => 'general',
+                'restart' => true, // the rasterizer resolves its binary from the compiled env channel
+                'apply' => null,
+            ],
             'graphRender' => [
                 'label' => 'Graph rendering',
                 'kind' => SettingsRowKind::Choice,

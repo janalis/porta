@@ -1,0 +1,39 @@
+#!/usr/bin/env php
+<?php
+
+// An SVG converter stand-in for tests: drains stdin (the document), and emits a
+// real PNG whose WIDTH ENCODES THE REQUESTED SCALE — 100px at 1:1, so a test can
+// tell one zoom level's render from another's without librsvg installed. It
+// answers to both argv shapes, librsvg's `-z <factor>` and ImageMagick's
+// `-density <96 × factor>`, so one stub covers every converter.
+//
+// A document containing the 'broken' sentinel fails the way a real converter
+// does: a parse error on stderr, non-zero exit.
+
+declare(strict_types=1);
+
+$stdin = (string) stream_get_contents(STDIN);
+if (str_contains($stdin, 'broken')) {
+    fwrite(STDERR, "Error reading SVG stdin: XML parse error\n");
+
+    exit(1);
+}
+
+$scale = 1.0;
+$args = array_slice($argv, 1);
+foreach ($args as $index => $arg) {
+    if ('-z' === $arg && isset($args[$index + 1])) {
+        $scale = (float) $args[$index + 1];
+    }
+    if ('-density' === $arg && isset($args[$index + 1])) {
+        $scale = ((float) $args[$index + 1]) / 96;
+    }
+}
+
+$width = max(1, (int) round(100 * $scale));
+$height = max(1, (int) round(50 * $scale));
+$gd = imagecreatetruecolor($width, $height);
+imagefilledrectangle($gd, 0, 0, $width - 1, $height - 1, (int) imagecolorallocate($gd, 40, 130, 70));
+imagepng($gd);
+
+exit(0);

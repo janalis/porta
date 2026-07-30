@@ -121,6 +121,7 @@ final class ArchitectureCheckCommand extends Command
         'History>Workbench',
         'I18n>Container',
         'I18n>Ui',
+        'Image>Support',
         'Image>Ui',
         'Input>Config',
         'Input>Container',
