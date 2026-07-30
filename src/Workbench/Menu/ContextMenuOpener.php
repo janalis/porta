@@ -12,11 +12,10 @@ use Porta\Tree\TreeOperations;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DockTabsWidget;
+use Porta\Widget\EditorPaneWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\HistoryListWidget;
-use Porta\Widget\HelpViewerWidget;
-use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
@@ -62,8 +61,6 @@ final class ContextMenuOpener
         private readonly CodeEditorWidget $editor,
         private readonly FileTreeWidget $tree,
         private readonly TabBarWidget $tabBar,
-        private readonly ImageViewerWidget $imageViewer,
-        private readonly HelpViewerWidget $helpViewer,
         private readonly BufferManager $buffers,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
@@ -100,7 +97,10 @@ final class ContextMenuOpener
             return;
         }
 
-        if (($focus === $this->imageViewer || $focus === $this->helpViewer) && null !== ($active = $this->buffers->active())) {
+        // ANY focused pane, not two of the three: a right-click over a focused
+        // graph pane used to fall through and open nothing, because this list
+        // named the image and help viewers and was never revisited.
+        if ($focus instanceof EditorPaneWidget && null !== ($active = $this->buffers->active())) {
             $rect = $this->renderer->getWidgetRect($this->tabBar);
             $index = array_search($active, $this->buffers->all(), strict: true);
             // A scrolled-out active tab falls back to the strip's origin cell.

@@ -29,6 +29,12 @@ abstract class NavigablePaneWidget extends EditorPaneWidget
     /** A continuous zoom by $factor toward ($relCol, $relRow) — the trackpad glide. */
     abstract public function magnifyAt(float $factor, int $relCol, int $relRow): void;
 
+    /** A wheel notch pans: one cell is two vertical pixels, so a notch covers the same distance. */
+    public function wheelBy(int $rows): void
+    {
+        $this->scrollBy(0, 2 * $rows);
+    }
+
     /** A click that selects what is under it; panes with nothing selectable keep the no-op. */
     public function selectAt(int $relRow, int $relCol): void {}
 }

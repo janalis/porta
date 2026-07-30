@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Overlay\State;
 
+use Porta\Editor\EditorPanes;
 use Porta\Widget\Render\MenuOverlayHost;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
@@ -30,6 +31,7 @@ final readonly class MenuOverlayPanes
         private array $settings,
         private \Closure $gitViewOpen,
         private \Closure $settingsViewOpen,
+        private ?EditorPanes $panes = null,
     ) {}
 
     /**
@@ -43,7 +45,11 @@ final readonly class MenuOverlayPanes
         return match (true) {
             ($this->settingsViewOpen)() => $this->settings,
             ($this->gitViewOpen)() => $this->git,
-            default => $this->editor,
+            // The registered panes are appended at ASK time, not baked in: this
+            // value is built while the widget tree is assembled, and panes
+            // register at the constructor tail — a plugin's even later, when it
+            // is enabled live.
+            default => [...$this->editor, ...($this->panes?->all() ?? [])],
         };
     }
 

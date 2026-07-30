@@ -78,6 +78,28 @@ abstract class EditorPaneWidget extends AbstractWidget implements FocusableInter
      */
     public function hide(): void {}
 
+    /**
+     * A wheel notch over this pane's body, in ROWS; negative scrolls up.
+     *
+     * Named `wheelBy` rather than `scrollBy` for the reason
+     * {@see DockPanelWidget} gives: a navigable pane's `scrollBy()` takes
+     * columns and HALF-rows, so sharing the name would make two different units
+     * look interchangeable. The default pane does not scroll.
+     */
+    public function wheelBy(int $rows): void {}
+
+    /**
+     * A left press at a pane-relative cell, AFTER core has focused this pane.
+     * Return true to arm a drag: the router then feeds motion to
+     * {@see NavigablePaneWidget::scrollBy()} and turns a release without motion
+     * into {@see NavigablePaneWidget::selectAt()}. The default is a pane that
+     * does nothing with a press beyond taking focus.
+     */
+    public function press(int $relRow, int $relCol): bool
+    {
+        return false;
+    }
+
     /** Drop per-path state (a remembered zoom, a cached layout); most panes keep none. */
     public function forget(string $path): void {}
 

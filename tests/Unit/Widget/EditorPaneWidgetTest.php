@@ -81,12 +81,46 @@ final class EditorPaneWidgetTest extends TestCase
 
     public function testTheInheritedDefaultsAreInertRatherThanAbstract(): void
     {
-        // A pane with no per-path state and nothing selectable inherits both —
-        // that is what keeps a simple pane a dozen lines long.
+        // A pane with no per-path state, nothing selectable and nothing to do
+        // with a press inherits all three — that is what keeps a simple pane a
+        // dozen lines long.
         $pane = $this->pane();
 
         $pane->forget('/p/anything.demo');
         $pane->selectAt(3, 4);
+
+        $this->assertFalse($pane->press(1, 2), 'a press takes focus and arms no drag');
+    }
+
+    public function testAPaneThatDoesNotScrollIgnoresTheWheel(): void
+    {
+        // The bare base: `wheelBy` is a no-op, which is what a pane showing a
+        // single fitted picture wants. NavigablePaneWidget overrides it to pan,
+        // and the help pane to scroll whole rows.
+        $pane = new class extends \Porta\Widget\EditorPaneWidget {
+            public function paneId(): string
+            {
+                return 'inert';
+            }
+
+            public function show(string $path, mixed $payload): void {}
+
+            public function clear(): void {}
+
+            public function statusRight(): string
+            {
+                return '';
+            }
+
+            public function handleInput(string $data): void {}
+
+            public function render(RenderContext $context): array
+            {
+                return [];
+            }
+        };
+
+        $pane->wheelBy(3);
 
         $this->addToAssertionCount(1);
     }

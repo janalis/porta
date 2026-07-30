@@ -6,6 +6,7 @@ namespace Porta\Workbench;
 
 use Porta\Debug\DebugController;
 use Porta\Editor\BufferManager;
+use Porta\Editor\EditorPanes;
 use Porta\Git\GitRefresher;
 use Porta\Git\GitSettings;
 use Porta\I18n\Translator;
@@ -15,8 +16,6 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\GraphViewerWidget;
-use Porta\Widget\ImageViewerWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -29,8 +28,7 @@ final class StatusBarProvider
     public function __construct(
         private readonly BufferManager $buffers,
         private readonly CodeEditorWidget $editor,
-        private readonly ImageViewerWidget $imageViewer,
-        private readonly GraphViewerWidget $graphViewer,
+        private readonly EditorPanes $panes,
         private readonly GitRefresher $gitRefresher,
         private readonly DebugController $debug,
         private readonly LspSessionPool $lsp,
@@ -50,7 +48,6 @@ final class StatusBarProvider
     public function segments(): array
     {
         $active = $this->buffers->active();
-        $isImage = 'image' === $active?->paneId;
 
         $doc = $this->editor->getDocument();
         $path = $this->editor->getFilePath();
@@ -80,20 +77,14 @@ final class StatusBarProvider
         }
         $left = $prefix.$left;
 
-        if ($isImage) {
-            // An image tab: dimensions + zoom instead of cursor/LSP/problems.
-            // The WIDGET answers for the size, not the buffer: an SVG tab has no
-            // decoded pixels of its own, and its dimensions are the document's.
-            $right = trim(\sprintf('%s  %s  %s', $this->imageViewer->statusInfo(), $this->imageViewer->zoomLabel(), $this->translator->trans('+/- zoom  0 fit  Arrows pan  Ctrl+Q quit')));
-
-            return ['left' => $left, 'right' => $right, 'branchStart' => $branchStart, 'branchEnd' => $branchEnd];
-        }
-
-        if ('graph' === $active?->paneId) {
-            // A graph tab: node/edge counts + zoom + the key hints.
-            $right = trim(\sprintf('%s  %s  %s', $this->graphViewer->statusInfo(), $this->graphViewer->zoomLabel(), $this->translator->trans('+/- zoom  0 fit  n/p select  Ctrl+Q quit')));
-
-            return ['left' => $left, 'right' => $right, 'branchStart' => $branchStart, 'branchEnd' => $branchEnd];
+        // A pane answers for its own right-hand segment — extent, zoom and the
+        // keys it binds. The two branches this replaced held one hint string per
+        // viewer, so the status bar had to know which viewer was showing; a pane
+        // that contributes nothing (the help pane) returns '' and falls through
+        // to the editor's diagnostics/LSP legend below.
+        $paneSegment = $this->panes->paneFor((string) $active?->paneId)?->statusRight();
+        if (null !== $paneSegment && '' !== $paneSegment) {
+            return ['left' => $left, 'right' => $paneSegment, 'branchStart' => $branchStart, 'branchEnd' => $branchEnd];
         }
 
         if (null !== ($diagnostic = $this->editor->getCursorDiagnostic())) {

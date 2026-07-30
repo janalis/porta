@@ -52,7 +52,6 @@ use Porta\Settings\SettingsLspController;
 use Porta\Settings\SettingsPluginsController;
 use Porta\Settings\SettingsSection;
 use Porta\Settings\SettingsViewController;
-use Porta\Tests\Support\FakeLayoutEngine;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
@@ -66,8 +65,6 @@ use Porta\Ui\Theme\Themes;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\Git\DiffViewWidget;
-use Porta\Widget\GraphViewerWidget;
-use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
@@ -135,8 +132,7 @@ final class SettingsViewControllerTest extends TestCase
             new CursorStyle(),
             new Translator('en'),
             new DiffViewWidget(new Translator('en')),
-            new HelpViewerWidget(),
-            new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en')),
+            new EditorPanes(),
             new TabBarWidget(),
             TestWorkspaceLayout::create(
                 rootDir: $this->project->dir,

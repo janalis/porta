@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Overlay\State;
 
+use Porta\Editor\EditorPanes;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
@@ -15,9 +16,6 @@ use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
-use Porta\Widget\GraphViewerWidget;
-use Porta\Widget\HelpViewerWidget;
-use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
@@ -39,9 +37,7 @@ final class MenuOverlayPanesFactory
         private readonly WorkspaceLayout $layout,
         private readonly TabBarWidget $tabBar,
         private readonly CodeEditorWidget $editor,
-        private readonly ImageViewerWidget $imageViewer,
-        private readonly HelpViewerWidget $helpViewer,
-        private readonly GraphViewerWidget $graphViewer,
+        private readonly EditorPanes $panes,
         private readonly BreadcrumbsWidget $breadcrumbs,
         private readonly DockTabsWidget $dockTabs,
         private readonly ResultsPanelWidget $resultsPanel,
@@ -68,9 +64,6 @@ final class MenuOverlayPanesFactory
                 $this->layout->separator(),
                 $this->tabBar,
                 $this->editor,
-                $this->imageViewer,
-                $this->helpViewer,
-                $this->graphViewer,
                 $this->breadcrumbs,
                 $this->dockTabs,
                 $this->resultsPanel,
@@ -81,6 +74,7 @@ final class MenuOverlayPanesFactory
             [$this->settingsNav, $this->layout->settingsSeparator(), $this->settingsForm, $this->settingsKeys],
             fn (): bool => $this->views->isOpen(WorkspaceView::Git),
             fn (): bool => $this->views->isOpen(WorkspaceView::Settings),
+            $this->panes,
         );
     }
 }

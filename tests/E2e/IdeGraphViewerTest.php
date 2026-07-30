@@ -50,6 +50,36 @@ final class IdeGraphViewerTest extends TestCase
         putenv('PATH='.$bin);
     }
 
+    public function testAFocusedGraphPaneGetsTheTabContextMenu(): void
+    {
+        // EVERY pane gets the tab context menu, not the two the old list happened
+        // to name: Ctrl+F10 over a focused graph pane used to fall through and
+        // open nothing at all. Its own session — opening a menu mid-script
+        // perturbs the interactions the long test above asserts on.
+        $project = new TempProject([
+            '.porta.json' => (string) json_encode(['settings' => ['dotPath' => self::fakeDot()]]),
+            'g.dot' => self::SMALL_DOT,
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            $project->path('g.dot'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout to land');
+                    $this->assertSame('graph-viewer', $tui->getFocus()?->getId());
+
+                    $terminal->clearOutput();
+                    $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 over the focused graph pane
+                    $tui->tick();
+
+                    $this->assertStringContainsString('Close Others', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'a graph tab gets the tab context menu');
+                },
+            ],
+        );
+    }
+
     public function testDotFileOpensInTheGraphViewerWithZoomPanAndSelection(): void
     {
         $project = new TempProject([
@@ -78,6 +108,7 @@ final class IdeGraphViewerTest extends TestCase
                 380 => function ($tui, $terminal): void {
                     $tui->tick();
                     $this->assertStringContainsString('· A', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'selection surfaces in the status bar');
+
                     $tui->handleInput("\x1b[<64;40;10M"); // wheel over the graph pane → pans (no crash)
                     $tui->handleInput("\x1b[<67;40;10M"); // horizontal wheel → pans sideways
                     $tui->handleInput("\x1b[<80;40;10M"); // ctrl+wheel → zoom toward the pointer

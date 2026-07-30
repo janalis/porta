@@ -59,7 +59,7 @@ final class MouseRouter
     private ?array $dockTabDrag = null;
 
     /** @var array{row: int, col: int, moved: bool}|null a left-drag panning the graph viewer (release without motion = select) */
-    private ?array $graphDrag = null;
+    private ?array $paneDrag = null;
     private ?string $tabDragPath = null;
 
     /** Double/triple-click detection, kept out of the routing logic. */
@@ -155,7 +155,7 @@ final class MouseRouter
             $this->continueTextDrag($mouse, $editorRect)
             || $this->continueColumnDrag($mouse, $editorRect)
             || $this->continueTabDrag($mouse, $tabsRect)
-            || $this->continueGraphDrag($mouse)
+            || $this->continuePaneDrag($mouse)
             || $this->continueDockTabDrag($mouse)
             || $this->git->continueDiffDrag($mouse)
             || $this->welcome->continueDrag($mouse)
@@ -183,7 +183,7 @@ final class MouseRouter
         $this->columnSelecting = false;
         $this->tabDragging = false;
         $this->dockTabDrag = null;
-        $this->graphDrag = null;
+        $this->paneDrag = null;
         $this->git->cancelDrag();
         $this->welcome->cancelDrag();
         $this->panes->editor()->cancelFindModalDrag();
@@ -268,26 +268,27 @@ final class MouseRouter
      * moves WITH the pointer, so the pan is the negated delta in half-rows);
      * a release that never moved is a click and selects the node under it.
      */
-    private function continueGraphDrag(MouseEvent $mouse): bool
+    private function continuePaneDrag(MouseEvent $mouse): bool
     {
-        if (null === $this->graphDrag || !$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
+        $pane = $this->panes->navigablePane();
+        if (null === $this->paneDrag || null === $pane || !$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
             return false;
         }
-        $dCols = $mouse->col - $this->graphDrag['col'];
-        $dRows = $mouse->row - $this->graphDrag['row'];
+        $dCols = $mouse->col - $this->paneDrag['col'];
+        $dRows = $mouse->row - $this->paneDrag['row'];
         if (0 !== $dCols || 0 !== $dRows) {
-            $this->panes->graphViewer()->scrollBy(-$dCols, -2 * $dRows);
-            $this->graphDrag = ['row' => $mouse->row, 'col' => $mouse->col, 'moved' => true];
+            $pane->scrollBy(-$dCols, -2 * $dRows);
+            $this->paneDrag = ['row' => $mouse->row, 'col' => $mouse->col, 'moved' => true];
         }
         if ($mouse->isLeftRelease()) {
-            if (!$this->graphDrag['moved']) {
-                $rect = $this->hit->rect($this->panes->graphViewer());
+            if (!$this->paneDrag['moved']) {
+                $rect = $this->hit->rect($pane);
                 if (null !== $rect && $rect->contains($mouse->row, $mouse->col)) {
                     $rel = $rect->toRelative($mouse->row, $mouse->col);
-                    $this->panes->graphViewer()->selectAt($rel['row'], $rel['col']);
+                    $pane->selectAt($rel['row'], $rel['col']);
                 }
             }
-            $this->graphDrag = null;
+            $this->paneDrag = null;
         }
         $this->tui->requestRender();
 
@@ -504,30 +505,17 @@ final class MouseRouter
         if ($this->tryChromeClick($mouse, $tabsRect, $treeRect)) {
             return;
         }
-        // The image viewer replaces the editor on image tabs: a click focuses it.
-        $imageRect = $this->hit->rect($this->panes->imageViewer());
-        if (null !== $imageRect && $imageRect->contains($mouse->row, $mouse->col)) {
-            $this->tui->setFocus($this->panes->imageViewer());
-            $this->tui->requestRender();
-
-            return;
-        }
-        // The help viewer likewise: a click focuses it and follows a link hit.
-        $helpRect = $this->hit->rect($this->panes->helpViewer());
-        if (null !== $helpRect && $helpRect->contains($mouse->row, $mouse->col)) {
-            $this->tui->setFocus($this->panes->helpViewer());
-            $rel = $helpRect->toRelative($mouse->row, $mouse->col);
-            $this->panes->helpViewer()->clickAt($rel['row'], $rel['col']);
-            $this->tui->requestRender();
-
-            return;
-        }
-        // The graph viewer: a press focuses it and ARMS a drag-pan; release
-        // without motion selects the node under the pointer instead.
-        $graphRect = $this->hit->rect($this->panes->graphViewer());
-        if (null !== $graphRect && $graphRect->contains($mouse->row, $mouse->col)) {
-            $this->tui->setFocus($this->panes->graphViewer());
-            $this->graphDrag = ['row' => $mouse->row, 'col' => $mouse->col, 'moved' => false];
+        // A pane holds the editor slot on its tabs: a press focuses it, and what
+        // else the press MEANS is the pane's answer — the help pane follows a
+        // link, the graph pane arms a drag-pan, the image pane wants only focus.
+        $pane = $this->panes->pane();
+        $paneRect = null === $pane ? null : $this->hit->rect($pane);
+        if (null !== $pane && null !== $paneRect && $paneRect->contains($mouse->row, $mouse->col)) {
+            $this->tui->setFocus($pane);
+            $rel = $paneRect->toRelative($mouse->row, $mouse->col);
+            if ($pane->press($rel['row'], $rel['col'])) {
+                $this->paneDrag = ['row' => $mouse->row, 'col' => $mouse->col, 'moved' => false];
+            }
             $this->tui->requestRender();
 
             return;

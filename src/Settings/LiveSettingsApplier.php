@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
+use Porta\Editor\EditorPanes;
 use Porta\Event\CursorShapeChanged;
 use Porta\Event\LocaleChanged;
 use Porta\Event\TabBarPositionChanged;
@@ -19,8 +20,6 @@ use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\StyleSheetThemer;
 use Porta\Ui\Theme\Themes;
 use Porta\Widget\Git\DiffViewWidget;
-use Porta\Widget\GraphViewerWidget;
-use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -40,8 +39,7 @@ final class LiveSettingsApplier
         private readonly CursorStyle $cursorStyle,
         private readonly Translator $translator,
         private readonly DiffViewWidget $gitDiff,
-        private readonly HelpViewerWidget $helpViewer,
-        private readonly GraphViewerWidget $graphViewer,
+        private readonly EditorPanes $panes,
         private readonly TabBarWidget $tabBar,
         private readonly WorkspaceLayout $workspaceLayout,
         private readonly EventDispatcherInterface $dispatcher,
@@ -53,7 +51,8 @@ final class LiveSettingsApplier
      * Live theme switch: swap the shared styles + syntax-theme holders every
      * widget and buffer holds, and re-apply the renderer's stylesheet rules.
      * Chrome re-renders from the listener sweep. The git diff and help viewer
-     * cache colored output by content, so they are busted explicitly here;
+     * cache colored output by content, so they are busted explicitly here (the
+     * panes through the registry, so a plugin's pane is swept too);
      * buffer highlighters are busted by {@see \Porta\Highlight\HighlightThemeListener}
      * once the plugin bridge has had its turn.
      */
@@ -68,8 +67,12 @@ final class LiveSettingsApplier
         // -200 — after the plugin bridge, so a plugin backend that bakes the
         // theme has rebuilt itself before core drops the caches.
         $this->gitDiff->refreshTheme();
-        $this->helpViewer->refreshTheme(); // rendered help lines bake palette codes
-        $this->graphViewer->refreshTheme(); // graph lines bake SGR too
+        // Every pane, not a list of the ones that happened to bake codes: a pane
+        // that caches rendered lines has to re-make them, and the default is a
+        // plain invalidate().
+        foreach ($this->panes->all() as $pane) {
+            $pane->refreshTheme();
+        }
         $this->dispatcher->dispatch(new ThemeChanged($theme));
     }
 

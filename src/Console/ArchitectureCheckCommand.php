@@ -164,6 +164,7 @@ final class ArchitectureCheckCommand extends Command
         'Onboarding>Settings',
         'Onboarding>Support',
         'Overlay>Container',
+        'Overlay>Editor',
         'Overlay>Layout',
         'Overlay>Onboarding',
         'Overlay>Search',

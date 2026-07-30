@@ -170,10 +170,24 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
         $this->invalidate();
     }
 
+    /** The wheel scrolls the page, in whole rows — this pane has no zoom to anchor. */
+    public function wheelBy(int $rows): void
+    {
+        $this->scrollBy($rows);
+    }
+
     public function scrollBy(int $rows): void
     {
         $this->scrollTop = $this->clampScroll($this->scrollTop + $rows);
         $this->invalidate();
+    }
+
+    /** A press follows what is under it — a header zone or a link — and arms no drag. */
+    public function press(int $relRow, int $relCol): bool
+    {
+        $this->clickAt($relRow, $relCol);
+
+        return false;
     }
 
     /** A click: a header zone (arrows/crumbs), a link under the cell, or a miss. */

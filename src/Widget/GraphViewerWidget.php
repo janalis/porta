@@ -282,6 +282,15 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $this->afterViewChange();
     }
 
+    /**
+     * A press arms the drag-pan: the world moves with the pointer, and a release
+     * that never moved is the click that selects a node.
+     */
+    public function press(int $relRow, int $relCol): bool
+    {
+        return true;
+    }
+
     /** Click: select the node under the pane cell (deselects over empty space). */
     public function selectAt(int $relRow, int $relCol): void
     {

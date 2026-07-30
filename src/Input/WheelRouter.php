@@ -7,9 +7,8 @@ namespace Porta\Input;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Ui\BidiTui;
 use Porta\Widget\ContextMenu;
-use Porta\Widget\GraphViewerWidget;
-use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
+use Porta\Widget\NavigablePaneWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
@@ -51,7 +50,7 @@ final class WheelRouter
      * deliver), an isolated notch steps the zoom ladder.
      *
      */
-    private function zoomToward(ImageViewerWidget|GraphViewerWidget $pane, MouseEvent $mouse, WidgetRect $rect): void
+    private function zoomToward(NavigablePaneWidget $pane, MouseEvent $mouse, WidgetRect $rect): void
     {
         $rel = $rect->toRelative($mouse->row, $mouse->col);
         $dir = $mouse->wheelDelta < 0 ? 1 : -1;
@@ -70,7 +69,6 @@ final class WheelRouter
     {
         // Horizontal wheel (trackpad swipe or shift+wheel): only the panes
         // with long lines scroll sideways; everything else ignores it.
-        $imageRect = $this->hit->rect($this->panes->imageViewer());
         if (0 !== $mouse->wheelHDelta) {
             if ($this->git->scrollHorizontal($mouse)) {
                 $this->tui->requestRender();
@@ -91,14 +89,9 @@ final class WheelRouter
 
                 return;
             }
-            if ($this->hit->contains($imageRect, $mouse)) {
-                $this->panes->imageViewer()->scrollBy(WheelStep::cols($mouse), 0);
-                $this->tui->requestRender();
-
-                return;
-            }
-            if ($this->hit->contains($this->hit->rect($this->panes->graphViewer()), $mouse)) {
-                $this->panes->graphViewer()->scrollBy(WheelStep::cols($mouse), 0);
+            $navigable = $this->panes->navigablePane();
+            if (null !== $navigable && $this->hit->contains($this->hit->rect($navigable), $mouse)) {
+                $navigable->scrollBy(WheelStep::cols($mouse), 0);
                 $this->tui->requestRender();
             }
 
@@ -185,27 +178,16 @@ final class WheelRouter
 
             return;
         }
-        if (null !== $imageRect && $imageRect->contains($mouse->row, $mouse->col)) {
-            // Plain wheel pans the image; Ctrl+wheel zooms toward the pointer.
-            $mouse->ctrl
-                ? $this->zoomToward($this->panes->imageViewer(), $mouse, $imageRect)
-                // Pixel rows are half-height, so a notch covers the same distance.
-                : $this->panes->imageViewer()->scrollBy(0, WheelStep::rows($mouse, factor: 2));
-            $this->tui->requestRender();
-
-            return;
-        }
-        if (null !== ($helpRect = $this->hit->rect($this->panes->helpViewer())) && $helpRect->contains($mouse->row, $mouse->col)) {
-            $this->panes->helpViewer()->scrollBy($step);
-            $this->tui->requestRender();
-
-            return;
-        }
-        if (null !== ($graphRect = $this->hit->rect($this->panes->graphViewer())) && $graphRect->contains($mouse->row, $mouse->col)) {
-            // The image viewer's contract: plain wheel pans, Ctrl+wheel zooms toward the pointer.
-            $mouse->ctrl
-                ? $this->zoomToward($this->panes->graphViewer(), $mouse, $graphRect)
-                : $this->panes->graphViewer()->scrollBy(0, WheelStep::rows($mouse, factor: 2));
+        // Whatever pane holds the slot: a plain notch is its own wheel verb (the
+        // help pane scrolls rows, a navigable one pans by half-rows), and
+        // Ctrl+wheel zooms toward the pointer for the panes that can.
+        $pane = $this->panes->pane();
+        $paneRect = null === $pane ? null : $this->hit->rect($pane);
+        if (null !== $pane && null !== $paneRect && $paneRect->contains($mouse->row, $mouse->col)) {
+            $navigable = $pane instanceof NavigablePaneWidget ? $pane : null;
+            $mouse->ctrl && null !== $navigable
+                ? $this->zoomToward($navigable, $mouse, $paneRect)
+                : $pane->wheelBy($step);
             $this->tui->requestRender();
 
             return;
