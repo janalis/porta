@@ -17,22 +17,15 @@ namespace Porta\Workbench\Dock;
  */
 final readonly class DockToolHandlers
 {
+    /**
+     * @param string                            $id       the strip identity — the (mode, title) key does not apply, so this replaces it
+     * @param (\Closure(string, int): void)|null $activate Enter on a row (project-relative path, 0-based line); null takes core's
+     *                                                    built-in open-the-file-and-jump, which is what five of core's six tools do
+     * @param (\Closure(): void)|null            $rerun    F5 on this tab; null leaves it inert
+     */
     public function __construct(
-        /** The strip identity — the (mode, title) key does not apply, so this replaces it. */
         public string $id,
-        /**
-         * Enter on a row: (project-relative path, 0-based line). Null takes
-         * core's built-in open-the-file-and-jump, which is what five of core's
-         * six tools do.
-         *
-         * @var (\Closure(string, int): void)|null
-         */
         public ?\Closure $activate = null,
-        /**
-         * F5 on this tab; null leaves it inert.
-         *
-         * @var (\Closure(): void)|null
-         */
         public ?\Closure $rerun = null,
     ) {}
 }

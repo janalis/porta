@@ -20,9 +20,16 @@ use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestBottomDock;
+use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
+use Porta\Widget\TerminalPanelWidget;
+use Porta\Workbench\Dock\DockToolController;
+use Porta\Workbench\Dock\ToolRun;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
@@ -50,7 +57,9 @@ final class PluginApiTest extends TestCase
         $this->buffers = new BufferManager();
         if (Presence::With === $wired) {
             $tui = TestTui::create(100, 24);
-            $manager->wireRuntime(new PluginRuntime(new Notifier($this->status, $tui), new Translator('en'), $this->editor, $this->files, $tui, $this->diagnostics, $this->buffers));
+            $manager->wireRuntime(
+                new PluginRuntime(new Notifier($this->status, $tui), new Translator('en'), $this->editor, $this->files, $tui, $this->diagnostics, $this->buffers, TestDockTools::controller()),
+            );
         }
 
         return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
@@ -187,6 +196,7 @@ final class PluginApiTest extends TestCase
     {
         $api = $this->api(wired: Presence::Without);
         $api->registerSetting('flag', 'Flag', 'bool', false); // a registered key, so changeSetting reaches the runtime gate
+        $api->registerListTool('todo', 'TODO'); // likewise: a registered tool, so showList reaches the gate
         $actions = [
             static fn () => $api->flash('x'),
             $api->activeFile(...),
@@ -197,6 +207,8 @@ final class PluginApiTest extends TestCase
             static fn () => $api->jumpTo(0),
             static fn () => $api->setDiagnostics('/x', []),
             static fn () => $api->changeSetting('flag', true),
+            static fn () => $api->showList('todo'),
+            static fn () => $api->updateList('todo', []),
         ];
         foreach ($actions as $i => $action) {
             try {
@@ -222,6 +234,7 @@ final class PluginApiTest extends TestCase
                 $tui,
                 new RecordingDiagnosticsSink(),
                 new BufferManager(),
+                TestDockTools::controller(),
             ),
         );
         $api = new PluginApi('demo', $manager, $project->dir, $settings);
@@ -296,5 +309,48 @@ final class PluginApiTest extends TestCase
 
         $api->setDiagnostics('/p/a.php', []); // empty list clears
         $this->assertSame([], $this->diagnostics->published[1]['byLine']);
+    }
+
+    public function testPublishingToAListToolTheresNoRegistrationForIsRefused(): void
+    {
+        // The id is the plugin's own bare one and gets namespaced on the way
+        // out, so a typo here can only ever be this plugin's — saying so beats
+        // a tab that silently never appears.
+        $api = $this->api();
+
+        $this->expectException(PluginException::class);
+        $this->expectExceptionMessageMatches('/Unknown list tool "ghost" — registerListTool\(\) it first/');
+        $api->showList('ghost');
+    }
+
+    public function testAListToolPublishesAndRefreshesThroughTheRuntime(): void
+    {
+        // The whole path a plugin's tool takes: register, commit, publish by
+        // bare id, and land in the dock under the namespaced one.
+        $manager = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        $tui = TestTui::create(100, 24);
+        $dock = TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget());
+        $manager->wireRuntime(new PluginRuntime(
+            new Notifier(new StatusBarWidget(), $tui),
+            new Translator('en'),
+            new CodeEditorWidget(),
+            new RecordingFileOpener(),
+            $tui,
+            new RecordingDiagnosticsSink(),
+            new BufferManager(),
+            new DockToolController($manager, $dock, '/p'), // the manager IS the source
+        ));
+        $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
+        $api->registerListTool('todo', 'TODO');
+        $manager->commit($api);
+
+        $api->showList('todo', [['path' => 'a.php', 'line' => 0, 'text' => 'first']], ToolRun::Running);
+        $tab = $dock->findTool('demo:todo');
+        $this->assertNotNull($tab, 'the bare id was namespaced on the way out');
+        $this->assertTrue($tab->searching);
+
+        $api->updateList('todo', [['path' => 'a.php', 'line' => 0, 'text' => 'second']]);
+        $this->assertSame('second', $tab->rows[0]['text']);
+        $this->assertFalse($tab->searching);
     }
 }

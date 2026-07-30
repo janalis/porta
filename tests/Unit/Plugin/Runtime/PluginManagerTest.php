@@ -22,6 +22,7 @@ use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
+use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
@@ -47,7 +48,16 @@ final class PluginManagerTest extends TestCase
         $tui = TestTui::create(120, 24);
         $this->status = new StatusBarWidget();
         $manager->wireRuntime(
-            new PluginRuntime(new Notifier($this->status, $tui), new Translator('en'), new CodeEditorWidget(), new RecordingFileOpener(), $tui, new RecordingDiagnosticsSink(), new BufferManager()),
+            new PluginRuntime(
+                new Notifier($this->status, $tui),
+                new Translator('en'),
+                new CodeEditorWidget(),
+                new RecordingFileOpener(),
+                $tui,
+                new RecordingDiagnosticsSink(),
+                new BufferManager(),
+                TestDockTools::controller(),
+            ),
         );
 
         return $manager;

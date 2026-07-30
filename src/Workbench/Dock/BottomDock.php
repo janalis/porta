@@ -387,6 +387,12 @@ final class BottomDock
         return $this->resultsPanel->isOpen() ? $this->tools->active() : null;
     }
 
+    /** A contributed tool's tab, or null once the user has ×'d it — the staleness guard for a publisher that holds only an id. */
+    public function findTool(string $id): ?DockToolTab
+    {
+        return $this->tools->findByToolId($id);
+    }
+
     /** Whether $tab is still in the strip — the async-completion staleness guard. */
     public function isToolAlive(DockToolTab $tab): bool
     {

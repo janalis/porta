@@ -13,6 +13,7 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginMenuSpec;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\SettingsRowKind;
+use Porta\Workbench\Dock\ToolRun;
 use Tempest\Highlight\TerminalTheme;
 
 /**
@@ -67,6 +68,10 @@ final class PluginApi
     private readonly PluginBuffer $panes;
     /** @var PluginBuffer<array{plugin: string, id: string, label: string}> */
     private readonly PluginBuffer $actions;
+    /** @var PluginBuffer<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}> */
+    private readonly PluginBuffer $listTools;
+    /** @var array<string, true> bare ids, so showList() can reject one this plugin never registered */
+    private array $listToolIds = [];
 
     public function __construct(
         private readonly string $pluginName,
@@ -82,6 +87,7 @@ final class PluginApi
         $this->viewers = new PluginBuffer();
         $this->panes = new PluginBuffer();
         $this->actions = new PluginBuffer();
+        $this->listTools = new PluginBuffer();
     }
 
     /**
@@ -338,6 +344,42 @@ final class PluginApi
     }
 
     /**
+     * Declare a LIST TOOL: a bottom-dock tab of results with jump-to-location,
+     * the shape core's Problems and Usages tabs have. Registration only
+     * declares it — nothing appears until {@see showList()} publishes rows.
+     *
+     * A row is `['path' => …, 'line' => …, 'text' => …]` with the path
+     * project-relative (an absolute one inside the project is relativised) and
+     * the line **0-based**, the convention {@see setDiagnostics()} already
+     * uses. An optional `ranges` of `['start' => …, 'length' => …]` display
+     * columns bolds the match.
+     *
+     * @param (\Closure(): void)|null            $rerun    F5 on this tab; null leaves the key inert
+     * @param (\Closure(string, int): void)|null $activate Enter on a row (path, 0-based line); null takes core's
+     *                                                    open-the-file-and-jump, which is what most tools want
+     */
+    public function registerListTool(string $id, string $title, ?\Closure $rerun = null, ?\Closure $activate = null): void
+    {
+        if (1 !== preg_match(self::ID_PATTERN, $id)) {
+            throw new PluginException(\sprintf('Invalid list tool id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $id));
+        }
+        if (array_key_exists($id, $this->listToolIds)) {
+            throw new PluginException(\sprintf('Duplicate list tool id "%s"', $id));
+        }
+        if ('' === trim($title)) {
+            throw new PluginException(\sprintf('List tool "%s" needs a title — it is the strip label', $id));
+        }
+        $this->listToolIds[$id] = true;
+        $this->listTools->add([
+            'plugin' => $this->pluginName,
+            'id' => $this->pluginName.':'.$id,
+            'title' => $title,
+            'rerun' => $rerun,
+            'activate' => $activate,
+        ]);
+    }
+
+    /**
      * Declare REBINDABLE ACTIONS — keys a pane binds itself, listed on the
      * Settings → Keymap page and overridable in `.porta.json` under their bare
      * ids, exactly like core's.
@@ -478,6 +520,41 @@ final class PluginApi
     }
 
     // --- Actions (live IDE; PluginException during activate()) ---------------
+
+    /**
+     * Open (or reuse) this tool's dock tab, show $rows and focus it.
+     *
+     * @param list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $rows
+     * @param ToolRun                                                                                          $run     whether more rows may follow (the tab shows 'searching…')
+     */
+    public function showList(string $id, array $rows = [], ToolRun $run = ToolRun::Finished): void
+    {
+        $runtime = $this->manager->runtime(); // activate()-phase gate
+        $runtime->dockTools->open($this->listToolId($id), $rows, $run);
+    }
+
+    /**
+     * Replace this tool's rows in place — no open, no focus steal, the user's
+     * selection and collapse preserved. A silent no-op once the user has ×'d
+     * the tab, which is why an async tool publishes by id and never holds one.
+     *
+     * @param list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $rows
+     */
+    public function updateList(string $id, array $rows, ToolRun $run = ToolRun::Finished): void
+    {
+        $runtime = $this->manager->runtime();
+        $runtime->dockTools->update($this->listToolId($id), $rows, $run);
+    }
+
+    /** This plugin's namespaced tool id, or a refusal naming the missing registration. */
+    private function listToolId(string $id): string
+    {
+        if (!array_key_exists($id, $this->listToolIds)) {
+            throw new PluginException(\sprintf('Unknown list tool "%s" — registerListTool() it first', $id));
+        }
+
+        return $this->pluginName.':'.$id;
+    }
 
     /** Show a transient status-bar message. */
     public function flash(string $message, float $seconds = 2.5): void
@@ -659,5 +736,11 @@ final class PluginApi
     public function bufferedActions(): array
     {
         return $this->actions->all();
+    }
+
+    /** @return list<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}> */
+    public function bufferedListTools(): array
+    {
+        return $this->listTools->all();
     }
 }

@@ -19,6 +19,7 @@ use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
@@ -105,6 +106,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
             $tui,
             $this->sink,
             $this->buffers,
+            TestDockTools::controller(),
         ));
 
         return new PluginApi('demo', $this->manager, $this->project->dir, $settings);

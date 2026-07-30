@@ -11,6 +11,7 @@ use Porta\Editor\EditorTextAccess;
 use Porta\Editor\FileOpener;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
+use Porta\Workbench\Dock\DockToolController;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Tui;
 
@@ -31,5 +32,6 @@ final readonly class PluginRuntime
         public Tui $tui,
         public DiagnosticsSink $diagnostics,
         public BufferManager $buffers,
+        public DockToolController $dockTools,
     ) {}
 }

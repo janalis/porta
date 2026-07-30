@@ -176,4 +176,62 @@ final class PluginViewerTest extends TestCase
         $this->expectExceptionMessageMatches('/"save" is a core action/');
         $api->registerActions(['save' => 'Demo: Save']);
     }
+
+    public function testAPluginsListToolsReachTheDockGuardedAndLeaveWithThePlugin(): void
+    {
+        $manager = $this->manager();
+        $api = $this->api($manager, 'demo');
+        $api->registerListTool(
+            'todo',
+            'TODO',
+            rerun: static function (): void {
+                throw new \RuntimeException('scan exploded');
+            },
+            activate: static function (string $path, int $line): void {
+                throw new \RuntimeException('jump exploded');
+            },
+        );
+        $api->registerListTool('bare', 'Bare');
+        $manager->commit($api);
+
+        $tools = $manager->listTools();
+        $this->assertSame(['demo:todo', 'demo:bare'], array_column($tools, 'id'), 'namespaced, in registration order');
+        $this->assertSame(['TODO', 'Bare'], array_column($tools, 'title'));
+        $this->assertNull($tools[1]['rerun'], 'an undeclared F5 stays null rather than becoming a no-op closure');
+        $this->assertNull($tools[1]['activate']);
+
+        // Both closures arrive guarded — a throwing tool must not kill the loop,
+        // and the consumer cannot forget to wrap what it is handed.
+        $this->assertNotNull($tools[0]['rerun']);
+        $this->assertNotNull($tools[0]['activate']);
+        $tools[0]['rerun']();
+        $line = 1;
+        $tools[0]['activate']('a.php', $line);
+        $this->assertCount(2, $manager->warnings(), 'both faults were reported, neither escaped');
+
+        $manager->deactivate('demo', new CommandRegistry());
+        $this->assertSame([], $manager->listTools(), 'a removed plugin takes its tools with it');
+    }
+
+    public function testListToolRegistrationIsValidated(): void
+    {
+        $api = $this->api($this->manager(), 'p');
+        try {
+            $api->registerListTool('BAD ID!', 'Nope');
+            $this->fail('an invalid id must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('Invalid list tool id', $e->getMessage());
+        }
+        try {
+            $api->registerListTool('ok', '  ');
+            $this->fail('a blank title must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('needs a title', $e->getMessage(), 'the title is the strip label — there is no fallback');
+        }
+
+        $api->registerListTool('ok', 'Ok');
+        $this->expectException(PluginException::class);
+        $this->expectExceptionMessageMatches('/Duplicate list tool id "ok"/');
+        $api->registerListTool('ok', 'Ok again');
+    }
 }

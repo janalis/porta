@@ -16,6 +16,7 @@ use Porta\Lsp\LanguageServerProvider;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
 use Porta\Search\TokenSpanProvider;
+use Porta\Workbench\Dock\DockToolSource;
 
 /**
  * The committed plugin state: commands, default keys, menu entries, hook
@@ -26,7 +27,7 @@ use Porta\Search\TokenSpanProvider;
  * an action method used before that (i.e. during activate()) hits the
  * {@see runtime()} gate.
  */
-final class PluginManager implements EditorPaneSource, RebindableActionSource, LanguageServerProvider, SyntaxHighlightProviderSource, TokenSpanProvider, ViewerProviderSource
+final class PluginManager implements DockToolSource, EditorPaneSource, LanguageServerProvider, RebindableActionSource, SyntaxHighlightProviderSource, TokenSpanProvider, ViewerProviderSource
 {
     /** @var list<array{plugin: string, id: string, label: string, handler: \Closure(): void, keys: list<string>}> */
     private array $commands = [];
@@ -48,6 +49,8 @@ final class PluginManager implements EditorPaneSource, RebindableActionSource, L
     private array $panes = [];
     /** @var list<array{plugin: string, id: string, label: string}> committed rebindable actions, in load order */
     private array $actions = [];
+    /** @var list<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}> committed dock list tools, in load order */
+    private array $listTools = [];
     /** @var list<string> */
     private array $warnings = [];
     /** @var array<string, true> loaded plugin names */
@@ -126,6 +129,9 @@ final class PluginManager implements EditorPaneSource, RebindableActionSource, L
         }
         foreach ($api->bufferedActions() as $action) {
             $this->actions[] = $action;
+        }
+        foreach ($api->bufferedListTools() as $tool) {
+            $this->listTools[] = $tool;
         }
         $this->settings->registerFor($name, $api->bufferedSettings());
     }
@@ -216,6 +222,7 @@ final class PluginManager implements EditorPaneSource, RebindableActionSource, L
         $this->viewers = array_values(array_filter($this->viewers, static fn (array $viewer): bool => $name !== $viewer['plugin']));
         $this->panes = array_values(array_filter($this->panes, static fn (array $pane): bool => $name !== $pane['plugin']));
         $this->actions = array_values(array_filter($this->actions, static fn (array $action): bool => $name !== $action['plugin']));
+        $this->listTools = array_values(array_filter($this->listTools, static fn (array $tool): bool => $name !== $tool['plugin']));
         $this->registered = \count($this->commands);
 
         unset($this->reportedWhens[$name], $this->reportedHighlighters[$name], $this->reportedViewers[$name]);
@@ -367,6 +374,22 @@ final class PluginManager implements EditorPaneSource, RebindableActionSource, L
     }
 
     /**
+     * The dock list tools plugins declared, in load order — each closure
+     * wrapped in its own plugin's fault barrier, so a throwing Enter or F5
+     * flashes instead of killing the loop.
+     *
+     * @return list<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}>
+     */
+    public function listTools(): array
+    {
+        return array_map(fn (array $tool): array => [
+            ...$tool,
+            'rerun' => null === $tool['rerun'] ? null : $this->wrapCommand($tool['plugin'], $tool['rerun']),
+            'activate' => null === $tool['activate'] ? null : $this->wrapActivate($tool['plugin'], $tool['activate']),
+        ], $this->listTools);
+    }
+
+    /**
      * The rebindable actions plugins declared, in load order — what
      * {@see \Porta\Config\ActionRegistry} composes onto core's catalog so the
      * keymap page lists them and `.porta.json` may rebind them.
@@ -469,6 +492,25 @@ final class PluginManager implements EditorPaneSource, RebindableActionSource, L
                 }
 
                 return false;
+            }
+        };
+    }
+
+    /**
+     * Guard a list tool's row activation — the one plugin closure that takes
+     * arguments, so it cannot ride {@see wrapCommand()}.
+     *
+     * @param \Closure(string, int): void $activate
+     *
+     * @return \Closure(string, int): void
+     */
+    private function wrapActivate(string $plugin, \Closure $activate): \Closure
+    {
+        return function (string $path, int $line) use ($plugin, $activate): void {
+            try {
+                $activate($path, $line);
+            } catch (\Throwable $error) {
+                $this->reportFailure($plugin, $error);
             }
         };
     }
