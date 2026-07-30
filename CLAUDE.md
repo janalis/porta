@@ -512,7 +512,8 @@ latest wins).
 
 **Graph viewer (Project Architecture).** `.dot`/`.gv` files route to `Widget/GraphViewerWidget`
 (the third editor-pane occupant; `Buffer::$graphDot` + `isGraph()`, with `isViewer()` the single
-"not code" guard). The REAL `dot` binary answers TWICE per graph, on two independent slots of
+"not code" guard) — as do PlantUML's `.puml`/`.plantuml`/`.pu`/`.iuml`/`.wsd`, which makes it the
+DIAGRAM tab rather than the graph one. The REAL `dot` binary answers TWICE per graph, on two independent slots of
 `Graph/DotLayoutEngine` (async, stdin-fed, exit-code-keyed, latest-wins each; explicit `dotPath`
 setting → `ExecutableFinder`): `-Tjson0` for the geometry, parsed into point-denominated
 screen-down VOs, and **`-Tpng -Gdpi=<n> -Gpad=0` for the PICTURE** — PNG bytes off the child's
@@ -534,6 +535,25 @@ geometry it is about to be drawn with.
   pixels, and the expensive half (the layout) is what stays cached per DOT hash. A tab switch
   drops it immediately so the previous tab's picture cannot paint under this tab's geometry, and
   a late answer is discarded by its DOT hash.
+- **Two engines, one of which has geometry.** `Graph/DiagramEngine` (`binary()`, `baseDpi()`,
+  `render()`) is everything the pane needs to show a PICTURE; `Graph/LayoutEngine` extends it with
+  `layout()`/`export()`, the things only `dot` can answer. `Graph/PlantUmlEngine` implements the
+  supertype alone, which is exactly why a `.puml` tab has **no node selection, no counts, no
+  cell rendering and an inert `v`** — `Graph/DiagramKind::forPath()` decides which tool draws, and
+  `hasLayout()` is the single spelling of that difference. With no layout the FIRST render (at the
+  tool's own 1:1) establishes the extent, the image viewer's probe rule and its "only a probe may"
+  clause included. `baseDpi()` is on the interface because the tools disagree about 1:1 — 72 for
+  dot (one point per pixel), **96 for PlantUML** — so the resolution ladder is in multiples of
+  whichever is drawing. `DiagramEngine` has two implementations, so the loader derives NO alias:
+  `config/services.php` aliases the bare interface to `PlantUmlEngine` (it means "the tool with no
+  geometry"), and without that the widget's nullable dependency resolves to null in silence.
+  `Graph/PlantUmlCommand` is pure and static so the three shapes PlantUML arrives in — a launcher
+  on PATH, an explicit path, and a bare `plantuml.jar` that must become `java -jar <path>` — are
+  pinned without a JVM in the suite. **`-failfast2` is what makes a syntax error an error**: by
+  default PlantUML draws the message INTO the image and exits 0, which would reach the pane as a
+  perfectly valid picture of a mistake. PlantUML shells out to Graphviz itself for several diagram
+  types, so a machine without `dot` renders some documents and not others — its stderr says which,
+  and that is what the banner shows.
 - **`Graph/GraphRenderMode`** (backed — it crosses `.porta.json`) picks the rendering: `Bitmap`
   or `Cells`, the `graphRender` core setting for the default and `v` (`graph_render_mode` in
   `ActionCatalog`) to flip live. `Widget/Render/GraphRenderer`'s cell rendering is NOT a
@@ -567,7 +587,7 @@ active tab's file and reach the core `dotPath` setting through the seeded `PORTA
 stubs (env-shebang'd — E2e uses a php-only PATH dir so git/LSP stay blocked while the stubs
 run; `fake-dot` fails on the 'broken' sentinel and, for `-Tpng`, emits a real PNG whose WIDTH
 ENCODES the requested dpi — 10 px per 72 — which is how a test tells one zoom level's render from
-another's) + `FakeLayoutEngine` (`nextPng`/`renderDpis`) and `FakeScheduler` for widget tests;
+another's; `fake-plantuml` does the same at 96) + `FakeLayoutEngine` (`nextPng`/`renderDpis`) and `FakeScheduler` for widget tests;
 two real-binary smoke tests sit behind `GraphvizBinary::skipWithoutDot`, the bitmap one skipping
 itself with dot's own message when the local build cannot do PNG. The graph feature re-pinned
 two ratchets (MouseRouter cyclomatic 145, WidgetHooks params 25 — the drag-pan routing and the

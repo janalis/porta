@@ -132,6 +132,18 @@ gets); pan with the arrows, the wheel, or by dragging; select nodes with
 Zooming in re-renders the graph at a higher resolution rather than magnifying
 pixels, so labels sharpen as you go.
 
+The same tab opens **PlantUML** documents — `.puml`, `.plantuml`, `.pu`,
+`.iuml` and `.wsd` — rendered by the `plantuml` tool: set the *PlantUML path*
+setting to a launcher **or straight to a `plantuml.jar`** (it is run with
+`java -jar`), or leave it empty to use `plantuml` from your PATH. Zoom, pan and
+the re-render-as-you-zoom all work the same, and a syntax error is reported in
+the banner instead of being drawn into the picture. What a PlantUML tab does
+*not* have is a node model, so `n`/`p`, click-select, the node counts and the
+`v` cell rendering do nothing there. PlantUML uses Graphviz for several diagram
+types (class, activity, state), so install `dot` as well if those come out
+empty. With no tool installed — or with *Render PlantUML diagrams* off on the
+graph-viewer plugin's page — these files stay editable text.
+
 `v` switches to a **cell rendering** that draws node labels as terminal text
 — less faithful, but readable when the picture's own type is only a few
 pixels tall. The *Graph rendering* setting (Settings ▸ General) picks which
