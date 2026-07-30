@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
-use Porta\Graph\DiagramEngine;
-use Porta\Graph\GraphExportFormat;
-use Porta\Graph\GraphLayout;
-use Porta\Graph\LayoutEngine;
+use Porta\GraphViewer\Graph\DiagramEngine;
+use Porta\GraphViewer\Graph\GraphExportFormat;
+use Porta\GraphViewer\Graph\GraphLayout;
+use Porta\GraphViewer\Graph\LayoutEngine;
 
 /**
  * A scriptable {@see LayoutEngine} for widget tests: delivers a queued layout

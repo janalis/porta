@@ -45,7 +45,6 @@ final class ArchitectureCheckCommand extends Command
         'Bootstrap>Config',
         'Bootstrap>Container',
         'Bootstrap>Editor',
-        'Bootstrap>Graph',
         'Bootstrap>Help',
         'Bootstrap>Image',
         'Bootstrap>Overlay',
@@ -104,13 +103,19 @@ final class ArchitectureCheckCommand extends Command
         'Git>Ui',
         'Git>Widget',
         'Git>Workbench',
-        'Graph>Support',
         // The graph-viewer plugin's own classes (plugins/graph-viewer/src): the
         // architecture scanner reaches core's AsyncProcess and JsonFile. A
         // plugin depending on core is the allowed direction — core depending on
         // a plugin is what the missing `Editor>GraphViewer` edge shows it does
         // not do.
+        // The graph viewer's own code (plugins/graph-viewer/src). GraphViewer>Image
+        // is the shared rasterizer, and it lasts exactly one commit: when the
+        // image viewer moves into ITS plugin this becomes GraphViewer>ImageViewer,
+        // the first cross-plugin edge, declared by a manifest requirement.
+        'GraphViewer>Image',
         'GraphViewer>Support',
+        'GraphViewer>Ui',
+        'GraphViewer>Widget',
         'Help>Editor',
         'Help>Support',
         'Help>Ui',
@@ -233,7 +238,6 @@ final class ArchitectureCheckCommand extends Command
         'Widget>Debug',
         'Widget>Editor',
         'Widget>Git',
-        'Widget>Graph',
         'Widget>Help',
         'Widget>Highlight',
         'Widget>Image',

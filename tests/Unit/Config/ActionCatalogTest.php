@@ -11,7 +11,6 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
-use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\MenuBarWidget;
@@ -20,13 +19,19 @@ use Porta\Widget\TerminalPanelWidget;
 
 final class ActionCatalogTest extends TestCase
 {
-    /** Every widget that contributes default keybindings. */
+    /**
+     * Every CORE widget that contributes default keybindings.
+     *
+     * A plugin's pane binds catalog actions too — the graph viewer's eleven —
+     * and asserting that here would make a core test import plugin code. The
+     * plugin's own suite pins its half instead, the same direction as the
+     * architecture-filename agreement.
+     */
     private const array WIDGETS = [
         CodeEditorWidget::class,
         ContextMenu::class,
         FileTreeWidget::class,
         FindBarWidget::class,
-        GraphViewerWidget::class,
         HelpViewerWidget::class,
         ImageViewerWidget::class,
         MenuBarWidget::class,
@@ -59,6 +64,9 @@ final class ActionCatalogTest extends TestCase
         }
 
         foreach (ActionCatalog::ACTIONS as $id => $spec) {
+            if (str_starts_with($id, 'graph_')) {
+                continue; // bound by the graph-viewer plugin's pane; pinned in its suite
+            }
             if (!array_key_exists('keys', $spec)) {
                 $this->assertArrayHasKey($id, $widgetBound, "action '{$id}' has no default binding anywhere");
                 continue;

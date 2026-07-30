@@ -9,10 +9,9 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
 use Porta\Image\ImageData;
-use Porta\Tests\Support\FakeLayoutEngine;
 use Porta\Tests\Support\FakeRasterizer;
+use Porta\Tests\Support\TestPane;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Workbench\EditorArea;
@@ -29,7 +28,7 @@ final class EditorAreaTest extends TestCase
 
     private HelpViewerWidget $helpViewer;
 
-    private GraphViewerWidget $graphViewer;
+    private TestPane $graphViewer;
 
     private Tui $tui;
 
@@ -41,7 +40,7 @@ final class EditorAreaTest extends TestCase
         $this->editor = new CodeEditorWidget();
         $this->imageViewer = new ImageViewerWidget(new FakeRasterizer(), new Translator('en'));
         $this->helpViewer = new HelpViewerWidget();
-        $this->graphViewer = new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en'));
+        $this->graphViewer = new TestPane('graph');
         $this->tui = new Tui(terminal: new VirtualTerminal(columns: 40, rows: 10));
         $panes = new EditorPanes();
         foreach ([$this->imageViewer, $this->helpViewer, $this->graphViewer] as $pane) {

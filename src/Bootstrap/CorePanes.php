@@ -6,18 +6,17 @@ namespace Porta\Bootstrap;
 
 use Porta\Container\AsIdeService;
 use Porta\Editor\EditorPanes;
-use Porta\Graph\DotFiles;
 use Porta\I18n\Translator;
 use Porta\Image\ImageDecoder;
 use Porta\Image\SvgConverter;
 use Porta\Support\ProjectPaths;
-use Porta\Widget\GraphViewerWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\ImageViewerWidget;
 use Porta\Widget\ViewerTabHandler;
 
 /**
- * Registers the panes core ships — image, graph and help — into the same
+ * Registers the panes core ships — the image viewer and the help browser — into
+ * the same
  * registry a plugin's `registerPane()` reaches through
  * {@see \Porta\Editor\PaneRegistrar}.
  *
@@ -36,7 +35,6 @@ final class CorePanes
     public function __construct(
         private readonly EditorPanes $panes,
         private readonly ImageViewerWidget $imageViewer,
-        private readonly GraphViewerWidget $graphViewer,
         private readonly HelpViewerWidget $helpViewer,
         private readonly ImageDecoder $imageDecoder,
         private readonly Translator $translator,
@@ -47,9 +45,7 @@ final class CorePanes
     public function register(): void
     {
         $this->imageViewer->setHandler($this->tabs);
-        $this->graphViewer->setHandler($this->tabs);
         $this->panes->register($this->imageViewer, $this->loadImage(...));
-        $this->panes->register($this->graphViewer, $this->loadGraph(...));
         $this->panes->register($this->helpViewer, $this->loadHelp(...));
     }
 
@@ -70,15 +66,6 @@ final class CorePanes
         }
 
         return $this->imageDecoder->decode($path) ?? throw new \RuntimeException($this->translator->trans('Cannot display image %file%', ['%file%' => ProjectPaths::relative($this->rootDir, $path)]));
-    }
-
-    private function loadGraph(string $path): string
-    {
-        if ((int) filesize($path) > DotFiles::MAX_BYTES) {
-            throw new \RuntimeException($this->translator->trans('Graph file too large (> 10 MB)'));
-        }
-
-        return $this->text($path);
     }
 
     private function loadHelp(string $path): string
