@@ -27,9 +27,17 @@ final class PaneReorder
         $out = '';
         foreach ($runs as $run) {
             $slice = AnsiUtils::sliceByColumn($line, $run['start'], $run['width'], strict: true);
-            // Reset after every run: redundant after a (self-balanced) reordered
-            // run, load-bearing after a verbatim run that may end mid-SGR — that
-            // stray background is exactly what used to bleed across panes.
+            // Reset after every run. MEASURED (July 2026): with the current
+            // slicer this changes no rendered output — `Bidi::reorder()` already
+            // brackets its result with resets, and `sliceByColumn(strict: true)`
+            // opens every slice by re-emitting the source's SGR state at that
+            // column, reset included. Deleting it survived every case that could
+            // be constructed (verbatim→reordered, verbatim→verbatim, and a
+            // verbatim run ending mid-SGR — the case this comment used to claim
+            // it for). It stays because closing the row's SGR state is THIS
+            // class's contract and not the slicer's: two vendored behaviours
+            // currently make it redundant, and a stray background bleeding
+            // across panes is the bug that made this class exist.
             $out .= ($run['ltr'] ? $slice : Bidi::reorder($slice, BaseDirection::Rtl)).Sgr::RESET;
         }
 
