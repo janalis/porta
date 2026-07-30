@@ -47,7 +47,7 @@
         "analyze": "mago analyze",
         "test": "@php vendor/bin/paratest --processes=auto --functional",
         "test:serial": "@php vendor/bin/phpunit",
-        "coverage": "@php -d pcov.enabled=1 vendor/bin/paratest --processes=auto --functional --passthru-php='-d pcov.enabled=1' --coverage-clover coverage/clover.xml",
+        "coverage": "@php -d pcov.enabled=1 -d pcov.directory=. -d pcov.exclude='#/(vendor|tests)/#' vendor/bin/paratest --processes=auto --functional --passthru-php=\"'-d' 'pcov.enabled=1' '-d' 'pcov.directory=.' '-d' 'pcov.exclude=#/(vendor|tests)/#'\" --coverage-clover coverage/clover.xml",
         "coverage:check": [
             "@coverage",
             "@php bin/porta-dev coverage:check coverage/clover.xml 100"

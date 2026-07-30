@@ -13,7 +13,12 @@
 php-version = "8.4"
 
 [source]
-paths = ["src", "tests"]
+# `plugins` is here for the same reason `src` is: a plugin ships code, and code
+# this project ships is formatted, linted and analysed. It was outside every
+# gate while a plugin file could only WIRE; now that a plugin may own classes,
+# leaving it out would make plugins/ the place to put code you did not want
+# graded.
+paths = ["src", "tests", "plugins"]
 # Analyzed for type information but never reported on, so the analyzer knows the
 # types of third-party classes (symfony/tui, PHPUnit, …) instead of treating
 # everything from them as `mixed`.

@@ -37,9 +37,8 @@ return new class('phpstan', 'phpstan') extends AbstractAnalyzerPlugin {
     protected function diagnostics(array $report): array
     {
         $diagnostics = [];
-        $files = is_array($report['files'] ?? null) ? $report['files'] : [];
-        foreach ($files as $entry) {
-            foreach ($entry['messages'] ?? [] as $message) {
+        foreach (self::rowsAt($report, 'files') as $entry) {
+            foreach (self::rowsAt($entry, 'messages') as $message) {
                 $diagnostics[] = [
                     'line' => max(0, (int) ($message['line'] ?? 1) - 1), // phpstan lines are 1-based
                     'message' => (string) ($message['message'] ?? ''),

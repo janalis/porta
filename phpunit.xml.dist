@@ -29,11 +29,21 @@
         <testsuite name="E2e">
             <directory>tests/E2e</directory>
         </testsuite>
+        <!-- A plugin owns its tests the way it owns its code. -->
+        <testsuite name="Plugins">
+            <directory>plugins/*/tests</directory>
+        </testsuite>
     </testsuites>
 
     <source>
         <include>
             <directory>src</directory>
+            <!-- Code a plugin ships is code this project ships: the 100% gate
+                 follows it into plugins/, or moving a class there would be a way
+                 to launder it past the gate. `composer coverage` widens pcov's
+                 own instrumentation window to match (pcov.directory) — without
+                 that, this include admits files the driver never measured. -->
+            <directory>plugins/*/src</directory>
         </include>
     </source>
 

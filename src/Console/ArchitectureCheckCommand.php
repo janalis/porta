@@ -317,7 +317,7 @@ final class ArchitectureCheckCommand extends Command
         $pathArgument = $input->getArgument('path');
         $root = rtrim($pathArgument ?? (string) getcwd(), characters: '/');
 
-        [$nsEdges, $classEdges] = $this->graphs($root.'/src');
+        [$nsEdges, $classEdges] = $this->graphs([$root.'/src' => 'Porta\\', ...$this->pluginRoots($root.'/plugins')]);
         $current = array_keys($nsEdges);
         sort($current);
         $sccs = $this->cycles($classEdges);
@@ -348,21 +348,77 @@ final class ArchitectureCheckCommand extends Command
     }
 
     /**
-     * Both graphs in one pass over the source tree: namespace-level edges
+     * The class directories to scan, keyed by directory with the PSR-4 prefix
+     * that directory maps to: the project's own `src/`, plus every plugin that
+     * ships classes of its own. A plugin's code is this project's code — it is
+     * formatted, linted, analysed and covered like the rest, so it is graded
+     * here too.
+     *
+     * The manifest is re-read by hand rather than through `PluginManifest`
+     * deliberately: this command scans `src/`, so it scans ITSELF, and importing
+     * from `Porta\` would grow the very edges it grades.
+     *
+     * @return array<string, string>
+     */
+    private function pluginRoots(string $pluginsDir): array
+    {
+        $roots = [];
+        $manifests = glob($pluginsDir.'/*/plugin.json');
+        foreach (false === $manifests ? [] : $manifests as $path) {
+            /** @var array<array-key, mixed>|scalar|null $data */
+            $data = json_decode((string) file_get_contents($path), associative: true);
+            if (!\is_array($data) || !\is_string($data['namespace'] ?? null)) {
+                continue; // a plugin that ships no classes has no graph
+            }
+            $autoload = \is_string($data['autoload'] ?? null) ? $data['autoload'] : 'src';
+            $dir = \dirname($path).'/'.trim($autoload, characters: '/');
+            if (!is_dir($dir)) {
+                continue;
+            }
+            $roots[$dir] = trim($data['namespace'], characters: '\\').'\\';
+        }
+
+        return $roots;
+    }
+
+    /**
+     * Both graphs in one pass over the source trees: namespace-level edges
      * (`From>To`) and class-level ones (FQCN => imported FQCNs). An import
      * counts only when its short name also appears in the comment-stripped
      * body — a `{@see}`-only reference is prose, not coupling.
      *
+     * The namespace an edge is attributed to comes from the FQCN, not the path:
+     * `plugins/graph-viewer/src/Foo.php` under `Porta\GraphViewer\` is a
+     * `GraphViewer` file exactly as `src/Ui/Foo.php` is a `Ui` one.
+     *
+     * @param array<string, string> $roots directory => PSR-4 prefix
+     *
      * @return array{array<string, true>, array<string, list<string>>}
      */
-    private function graphs(string $srcDir): array
+    private function graphs(array $roots): array
     {
         $nsEdges = [];
         $classEdges = [];
+        foreach ($roots as $dir => $prefix) {
+            $this->scan($dir, $prefix, $nsEdges, $classEdges);
+        }
+
+        return [$nsEdges, $classEdges];
+    }
+
+    /**
+     * @param array<string, true>         $nsEdges
+     * @param array<string, list<string>> $classEdges
+     */
+    private function scan(string $srcDir, string $prefix, array &$nsEdges, array &$classEdges): void
+    {
         foreach ($this->phpFiles($srcDir) as $path) {
             $rel = substr($path, \strlen($srcDir) + 1, -4); // strip the src dir and .php
-            $fqcn = 'Porta\\'.str_replace('/', replace: '\\', subject: $rel);
-            $parts = explode('/', $rel);
+            $fqcn = $prefix.str_replace('/', replace: '\\', subject: $rel);
+            // `Porta\Ui\Foo` is a Ui file and `Porta\GraphViewer\Foo` a GraphViewer
+            // one; a plugin under a vendor prefix of its own keeps that prefix as
+            // its namespace, so its edges are attributed to it and not to Porta.
+            $parts = explode(separator: '\\', string: str_starts_with($fqcn, needle: 'Porta\\') ? substr($fqcn, offset: 6) : $fqcn);
             $ns = \count($parts) > 1 ? $parts[0] : null;
             $source = (string) file_get_contents($path);
             $code = $this->stripComments($source);
@@ -381,8 +437,6 @@ final class ArchitectureCheckCommand extends Command
                 }
             }
         }
-
-        return [$nsEdges, $classEdges];
     }
 
     /**

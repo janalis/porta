@@ -149,6 +149,54 @@ final class ArchitectureCheckCommandTest extends TestCase
         $this->assertStringContainsString('architecture-check: FAILED', $tester->getDisplay());
     }
 
+    public function testAPluginsOwnClassesAreGradedUnderTheirOwnNamespace(): void
+    {
+        // The plugin's directory name says nothing; its manifest namespace does.
+        $project = new TempProject([
+            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+            'plugins/graph-viewer/plugin.json' => '{"namespace": "Porta\\\\GraphViewer", "autoload": "src"}',
+            'plugins/graph-viewer/src/Artifact.php' => $this->file('GraphViewer', 'Artifact', '    public function f(): void { new Two(); }', "use Porta\\Beta\\Two;\n"),
+        ]);
+
+        $tester = $this->tester(['GraphViewer>Beta']);
+        $status = $tester->execute(['path' => $project->dir]);
+
+        $this->assertSame(Command::SUCCESS, $status, $tester->getDisplay());
+        $this->assertStringContainsString('(1 namespace edges', $tester->getDisplay());
+    }
+
+    public function testAPluginUnderItsOwnVendorPrefixKeepsIt(): void
+    {
+        $project = new TempProject([
+            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+            'plugins/acme/plugin.json' => '{"namespace": "Acme\\\\Tools", "autoload": "lib"}',
+            'plugins/acme/lib/Greeting.php' => "<?php\n\nnamespace Acme\\Tools;\n\nuse Porta\\Beta\\Two;\n\nfinal class Greeting\n{\n    public function f(): void { new Two(); }\n}\n",
+        ]);
+
+        $tester = $this->tester(['Acme>Beta']);
+
+        $this->assertSame(Command::SUCCESS, $tester->execute(['path' => $project->dir]), $tester->getDisplay());
+    }
+
+    public function testAPluginThatShipsNoClassesHasNoGraph(): void
+    {
+        // No manifest, a manifest without a namespace, a namespace pointing at a
+        // directory that is not there, and metadata that does not parse: four
+        // ways to ship only a plugin.php, none of them an error.
+        $project = new TempProject([
+            'plugins/wires-only/plugin.php' => "<?php\n",
+            'plugins/no-namespace/plugin.json' => '{"requires": ["wires-only"]}',
+            'plugins/no-directory/plugin.json' => '{"namespace": "Porta\\\\Absent"}',
+            'plugins/junk/plugin.json' => 'not json at all',
+        ]);
+
+        $tester = $this->tester();
+        $status = $tester->execute(['path' => $project->dir]);
+
+        $this->assertSame(Command::SUCCESS, $status, $tester->getDisplay());
+        $this->assertStringContainsString('(0 namespace edges', $tester->getDisplay());
+    }
+
     public function testTheProductionDefaultsGradePortasOwnTree(): void
     {
         // No path argument, no pins: the real gate over the real repository —

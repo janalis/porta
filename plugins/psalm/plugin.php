@@ -38,6 +38,7 @@ return new class('psalm', 'psalm') extends AbstractAnalyzerPlugin {
     protected function diagnostics(array $report): array
     {
         $diagnostics = [];
+        /** @var mixed $issue psalm's report is a bare list of issues, not a keyed envelope */
         foreach ($report as $issue) {
             if (!is_array($issue)) {
                 continue;
@@ -45,7 +46,7 @@ return new class('psalm', 'psalm') extends AbstractAnalyzerPlugin {
             $diagnostics[] = [
                 'line' => max(0, (int) ($issue['line_from'] ?? 1) - 1), // psalm lines are 1-based
                 'column' => max(0, (int) ($issue['column_from'] ?? 1) - 1),
-                'message' => trim(($issue['type'] ?? 'psalm').': '.($issue['message'] ?? '')),
+                'message' => trim((string) ($issue['type'] ?? 'psalm').': '.(string) ($issue['message'] ?? '')),
                 'severity' => match ($issue['severity'] ?? '') {
                     'error' => 1,
                     'info' => 3,

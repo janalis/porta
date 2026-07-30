@@ -28,15 +28,13 @@ return new class('graph-viewer') extends AbstractPlugin {
     public function activate(PluginApi $api): void
     {
         $api->registerSetting('plantuml', 'Render PlantUML diagrams', 'bool', true);
-        $api->registerViewer('graph', function (string $path): bool {
-            return DotFiles::isDotPath($path) || $this->claimsPlantUml($path);
-        });
+        $api->registerViewer('graph', fn (string $path): bool => DotFiles::isDotPath($path) || $this->claimsPlantUml($path));
         $api->registerSetting('command', 'Architecture command (stdout = DOT)', hint: 'empty = built-in PHP namespace scanner');
         $api->registerSetting('outputDir', 'Architecture output directory', hint: 'empty = project root; relative paths resolve from it');
 
         $this->api = $api;
 
-        $api->registerCommand('architecture', 'Project Architecture', function () use ($api): void {
+        $api->registerCommand('architecture', 'Project Architecture', static function () use ($api): void {
             $command = (string) $api->setting('command');
             $outputDir = (string) $api->setting('outputDir');
             new ArchitectureArtifact($api->projectRoot(), $outputDir)->generate('' === $command ? null : $command, static function (?string $error, ?string $path) use ($api): void {
@@ -80,9 +78,11 @@ return new class('graph-viewer') extends AbstractPlugin {
      */
     private function claimsPlantUml(string $path): bool
     {
-        return null !== DiagramKind::forPath($path)
+        return (
+            null !== DiagramKind::forPath($path)
             && !DotFiles::isDotPath($path)
             && true === (bool) $this->api?->setting('plantuml')
-            && null !== PlantUmlCommand::tool($this->coreSetting('plantuml'));
+            && null !== PlantUmlCommand::tool($this->coreSetting('plantuml'))
+        );
     }
 };

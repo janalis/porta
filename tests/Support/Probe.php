@@ -78,4 +78,15 @@ final class Probe
 
         throw new \LogicException(\sprintf('No static $%s or constant %s on %s', $member, $member, $class));
     }
+
+    /**
+     * Write a private static property — process-global state a test perturbs
+     * and must put back (the plugin autoloader's prefix map).
+     *
+     * @param class-string $class
+     */
+    public static function setStatic(string $class, string $property, mixed $value): void
+    {
+        new \ReflectionProperty($class, $property)->setValue(null, $value);
+    }
 }

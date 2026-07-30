@@ -71,12 +71,19 @@ final class AbstractAnalyzerPluginTest extends TestCase
 
             protected function diagnostics(array $report): array
             {
-                $rows = \is_array($report['rows'] ?? null) ? $report['rows'] : [];
+                return array_map(
+                    static fn (array $row): array => [
+                        'line' => (int) $row['line'],
+                        'message' => (string) $row['message'],
+                    ],
+                    self::rowsAt($report, 'rows'),
+                );
+            }
 
-                return array_values(array_map(static fn (array $row): array => [
-                    'line' => (int) $row['line'],
-                    'message' => (string) $row['message'],
-                ], $rows));
+            /** Reaches the shared JSON walkers, which are protected for the plugins that use them. */
+            public function walk(mixed $data, string $key): array
+            {
+                return [self::arrayAt($data, $key), self::rowsAt($data, $key)];
             }
         };
     }
@@ -180,6 +187,23 @@ final class AbstractAnalyzerPluginTest extends TestCase
 
         $saved('/p/a.php');
         $this->assertStringContainsString('demo not found', $this->flashText($this->status));
+    }
+
+    public function testTheSharedJsonWalkersDropWhateverTheToolDidNotPromise(): void
+    {
+        // A tool's JSON is mixed all the way down: the walkers answer "is this
+        // an array" once, here, instead of in every plugin file.
+        $analyzer = $this->analyzer();
+
+        $this->assertSame([[], []], $analyzer->walk('not an array at all', 'files'), 'a report that is not an array holds nothing');
+        $this->assertSame([[], []], $analyzer->walk(['other' => []], 'files'), 'a key that is not there');
+        $this->assertSame([[], []], $analyzer->walk(['files' => 'a string'], 'files'), 'a key holding something else');
+        $this->assertSame([['x' => 1], []], $analyzer->walk(['files' => ['x' => 1]], 'files'), 'an array of scalars is an array, but no rows');
+        $this->assertSame(
+            [[['line' => 2], 7], [['line' => 2]]],
+            $analyzer->walk(['files' => [['line' => 2], 7]], 'files'),
+            'a row of some other shape is dropped rather than guessed at',
+        );
     }
 
     public function testAValidReportBecomesDiagnosticsAndACount(): void

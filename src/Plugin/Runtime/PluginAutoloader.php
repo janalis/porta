@@ -40,18 +40,6 @@ final class PluginAutoloader
         }
     }
 
-    /** Every registered prefix, for tests and for `composer container`-style introspection. */
-    public static function prefixes(): array
-    {
-        return self::$prefixes;
-    }
-
-    /** Forget every mapping (tests, which build whole IDEs over throwaway plugin dirs). */
-    public static function reset(): void
-    {
-        self::$prefixes = [];
-    }
-
     private static function load(string $class): void
     {
         foreach (self::$prefixes as $prefix => $directory) {

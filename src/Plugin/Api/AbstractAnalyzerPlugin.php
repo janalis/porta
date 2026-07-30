@@ -51,6 +51,47 @@ abstract class AbstractAnalyzerPlugin extends AbstractToolPlugin
     }
 
     /**
+     * The array at $key of a decoded report — `[]` when the report is not an
+     * array, has no such key, or holds something else there.
+     *
+     * A tool's JSON is `mixed` all the way down and no schema promises
+     * otherwise, so every `diagnostics()` implementation asks the same two
+     * questions on the way in. They are asked here because this is where the
+     * analyzer can see the answer: a plugin file walking raw decoded output is
+     * exactly the code that used to sit outside the gates.
+     *
+     * @return array<array-key, mixed>
+     */
+    final protected static function arrayAt(mixed $data, string $key): array
+    {
+        if (!\is_array($data) || !\is_array($data[$key] ?? null)) {
+            return [];
+        }
+
+        return $data[$key];
+    }
+
+    /**
+     * The rows at $key: the elements of that array which are arrays themselves,
+     * in order. A row of some other shape is dropped rather than guessed at.
+     *
+     * @return list<array<array-key, mixed>>
+     */
+    final protected static function rowsAt(mixed $data, string $key): array
+    {
+        $rows = [];
+        /** @var mixed $row */
+        foreach (self::arrayAt($data, $key) as $row) {
+            if (!\is_array($row)) {
+                continue;
+            }
+            $rows[] = $row;
+        }
+
+        return $rows;
+    }
+
+    /**
      * The analysis command, its on-save toggle, both menu entries and the save
      * hook — the registration block both analyzers had verbatim. `$display` is
      * the human name that prefixes the two command labels ("PHPStan", "Psalm");
