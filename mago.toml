@@ -90,13 +90,18 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 # with zero halstead warnings in the output" — standing warning noise would
 # train everyone to ignore the log. What sets each floor (re-bisected after
 # the round-5 tree, July 2026 — for the first time EVERY pin is production
-# code; the round-5 test split retired the E2e monolith that pinned two rules):
+# code; the round-5 test split retired the E2e monolith that pinned two rules;
+# all nine re-bisected again under mago 1.45, where exactly one moved):
 #
 #   cyclomatic-complexity   145  Input/MouseRouter — back on top: round 5's
 #                                handler map took FindInFilesModal below it
 #                                (was 220 two rounds ago, 133 before the graph
 #                                viewer's click/drag-pan routing landed)
-#   too-many-methods        106  Widget/CodeEditorWidget (was 208, a test file)
+#   too-many-methods         97  Widget/CodeEditorWidget (was 208, a test file;
+#                                106 until mago 1.45, which counts the same
+#                                unchanged class as 97 — a counting change, not
+#                                a code change, and the only one of the nine
+#                                floors the 1.43 → 1.45 upgrade moved)
 #   too-many-properties      32  Widget/CodeEditorWidget (round 8's
 #                                StylesDefault trait absorbed its $styles
 #                                field; FindInFilesModal sits at 32 too after
@@ -126,12 +131,14 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 # without a decision that was considered and declined. Round 6 re-probed
 # every threshold after its cleanups: no floor moved.
 #
-# Re-bisect and lower again after the next structural change; a threshold far
-# above the real maximum is not a gate. Verified failing: injecting 60 dummy
+# Re-bisect and lower again after the next structural change — AND after a mago
+# upgrade, which can change how a metric is counted without a line of code
+# moving (1.45 did exactly that to too-many-methods). A threshold far above the
+# real maximum is not a gate. Verified failing: injecting 60 dummy
 # properties into Ui/Notifier trips too-many-properties and lint exits 1.
 [linter.rules]
 cyclomatic-complexity = { threshold = 145 }
-too-many-methods = { threshold = 106 }
+too-many-methods = { threshold = 97 }
 too-many-properties = { threshold = 32 }
 too-many-enum-cases = { threshold = 58 }
 excessive-parameter-list = { threshold = 25 }
