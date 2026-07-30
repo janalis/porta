@@ -280,6 +280,16 @@ and keep it forever, since renaming one silently breaks every existing rebind.
 An id core already declares is refused at registration — you cannot relabel
 `save`. Removing your plugin takes the rows away with it.
 
+One caveat worth knowing before you choose: a rebind of a pane action **applies
+on the next launch**, and the settings page says so when it persists one. Keys
+matched by a widget resolve through the keymap that widget merged at startup,
+which is why the live half of the map — the one a rebind rebuilds immediately —
+only covers commands and IDE-scope actions. If an action needs to be
+re-bindable *live*, register it as a command (`registerCommand(..., keys:)`)
+instead; if it is a pane key like `-`, `0` or an arrow, an action is still the
+right choice, because a command would also fire while your pane is nowhere in
+sight.
+
 Disabling your plugin stops the routing, so its files fall back to the text
 editor; a tab already open in your pane keeps working. Removing the plugin drops
 the pane for good.
