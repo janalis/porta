@@ -160,6 +160,61 @@ final class IdeRtlLocaleTest extends TestCase
         );
     }
 
+    public function testRtlSurvivesATerminalResize(): void
+    {
+        // RTL and resize meet in one place and nowhere else: `Tui::start()`
+        // forces a FULL repaint on SIGWINCH (symfony/tui 8.1.2), and the frame
+        // it forces goes through `BidiTui::processRender()` — an override that
+        // reimplements the parent's private render step and re-mirrors every
+        // row. Both halves are covered on their own (IdeResponsiveTest resizes
+        // in LTR, the tests above mirror without resizing); the 100% line gate
+        // cannot see that the COMBINATION was never run, because every line is
+        // executed, just never together.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            'demo.php' => "<?php\necho \$name;\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('demo.php'),
+            [
+                300 => function ($tui, $terminal): void {
+                    $this->frame($tui);
+                    $terminal->simulateResize(120, 24);
+                    $tui->requestRender();
+                    $this->frame($tui);
+                },
+                500 => function ($tui, $terminal, $ide): void {
+                    $ids = array_map(static fn ($w) => $w->getId(), $tui->getById('main')->all());
+                    $this->assertSame(['editor-pane', 'separator', 'tree'], $ids, 'still mirrored after the resize');
+
+                    // Two assertions, because the first alone does not bite:
+                    // the pane RUNS must span the new width (a segmentation
+                    // still describing 160 columns is what a missed resize
+                    // looks like — verified by mutation: reordering rows at the
+                    // old width still yields correctly-wide rows, so only this
+                    // check catches it), and the reordered rows must then be
+                    // exactly the terminal width, which is what the RTL garble
+                    // bug violated by bleeding one pane across another.
+                    $renderer = Probe::get($tui, 'renderer');
+                    $root = Probe::get($tui, 'root');
+                    $segmenter = Services::resolve($ide, \Porta\Ui\PaneSegmenter::class);
+                    $reorder = Services::resolve($ide, \Porta\I18n\PaneReorder::class);
+                    $this->assertSame(120, $terminal->getColumns());
+                    $lines = array_values($renderer->render($root, 120, $terminal->getRows()));
+                    $runs = $segmenter->segment($root, 120, $terminal->getRows());
+                    $last = $runs[0][array_key_last($runs[0])];
+                    $this->assertSame(120, $last['start'] + $last['width'], 'the pane segmentation spans the new width');
+                    foreach ($lines as $row => $line) {
+                        $this->assertSame(120, AnsiUtils::visibleWidth($reorder->reorderRow($line, $runs[$row])), "row {$row} kept the new width");
+                    }
+                },
+            ],
+        );
+    }
+
     public function testRtlClickInTheTreeRoutesToTheClickedEntry(): void
     {
         // End-to-end mouse chain in RTL: SGR click → MouseRouter → per-pane
