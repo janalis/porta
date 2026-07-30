@@ -40,9 +40,10 @@ final class CoverageCheckCommandTest extends TestCase
                 '/p/src/Widget/Zebra.php' => [4, 4],
                 '/p/src/Editor/Alpha.php' => [10, 10],
                 '/p/src/Empty.php' => [0, 0], // no executable statements: skipped
+                '/p/plugins/graph-viewer/src/Artifact.php' => [6, 6],
             ],
-            totalCovered: 14,
-            totalStatements: 14,
+            totalCovered: 20,
+            totalStatements: 20,
         )]);
 
         $tester = $this->tester();
@@ -58,7 +59,12 @@ final class CoverageCheckCommandTest extends TestCase
             (int) strpos($display, needle: 'Editor/Alpha.php'),
             'rows sort by display name',
         );
-        $this->assertStringContainsString('TOTAL: 100.00% (14/14) — required: 100.00%', $display);
+        $this->assertStringContainsString(
+            'graph-viewer/src/Artifact.php',
+            $display,
+            'plugin-owned code is named from its plugin: `src/Artifact.php` would read as core\'s',
+        );
+        $this->assertStringContainsString('TOTAL: 100.00% (20/20) — required: 100.00%', $display);
         $this->assertStringContainsString('coverage-check: OK', $display);
     }
 

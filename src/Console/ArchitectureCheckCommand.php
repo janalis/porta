@@ -104,6 +104,12 @@ final class ArchitectureCheckCommand extends Command
         'Git>Widget',
         'Git>Workbench',
         'Graph>Support',
+        // The graph-viewer plugin's own classes (plugins/graph-viewer/src): the
+        // architecture scanner reaches core's AsyncProcess and JsonFile. A
+        // plugin depending on core is the allowed direction — core depending on
+        // a plugin is what the missing `Editor>GraphViewer` edge shows it does
+        // not do.
+        'GraphViewer>Support',
         'Help>Editor',
         'Help>Support',
         'Help>Ui',

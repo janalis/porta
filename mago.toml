@@ -30,7 +30,13 @@ includes = ["vendor"]
 # follow. (The quality gates themselves used to sit in tools/ and be excluded
 # too; they are Symfony commands in src/Console/ now, analysed like everything
 # else.)
-excludes = ["tests"]
+#
+# A plugin's tests are tests, so they are excluded too — one literal entry per
+# plugin, because mago's excludes take paths and not globs (`plugins/*/tests`
+# and `plugins/**/tests` were both tried and match nothing). A plugin that
+# grows a tests/ directory adds its line here; forgetting shows up immediately
+# as analyzer errors about test-only idioms.
+excludes = ["tests", "plugins/graph-viewer/tests"]
 
 [formatter]
 # Never re-wrap: keep the author's line breaks, like php-cs-fixer does.

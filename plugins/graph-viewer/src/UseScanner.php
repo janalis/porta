@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Graph;
+namespace Porta\GraphViewer;
 
 /**
  * Token-based extraction of a PHP file's namespace and class imports — the

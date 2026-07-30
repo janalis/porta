@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Graph;
+namespace Porta\GraphViewer\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Graph\ComposerRoots;
+use Porta\GraphViewer\ComposerRoots;
 use Porta\Tests\Support\TempProject;
 
 final class ComposerRootsTest extends TestCase

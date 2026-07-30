@@ -380,10 +380,12 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     );
 
                     // The one whose requirement does not exist is skipped, and
-                    // the boot warning says which requirement.
+                    // the boot warning says which requirement. The toast MODEL,
+                    // not the painted screen: the warning is flashed during the
+                    // boot wiring, and what has reached the terminal by now is a
+                    // question about frame timing, not about the warning.
                     $this->assertNotContains('Orphan Run', $labels);
-                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('needs "absent"', $screen);
+                    $this->assertStringContainsString('needs "absent"', implode("\n", Toasts::all($ide)));
                 },
             ],
         );

@@ -1,0 +1,4 @@
+{
+    "namespace": "Porta\\GraphViewer",
+    "autoload": "src"
+}

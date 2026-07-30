@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Graph;
+namespace Porta\GraphViewer\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Graph\DotWriter;
-use Porta\Graph\NamespaceGraphScanner;
+use Porta\GraphViewer\DotWriter;
+use Porta\GraphViewer\NamespaceGraphScanner;
 use Porta\Tests\Support\TempProject;
 
 final class NamespaceGraphScannerTest extends TestCase

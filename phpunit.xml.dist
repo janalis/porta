@@ -38,12 +38,23 @@
     <source>
         <include>
             <directory>src</directory>
-            <!-- Code a plugin ships is code this project ships: the 100% gate
-                 follows it into plugins/, or moving a class there would be a way
-                 to launder it past the gate. `composer coverage` widens pcov's
-                 own instrumentation window to match (pcov.directory) — without
-                 that, this include admits files the driver never measured. -->
-            <directory>plugins/*/src</directory>
+            <!-- plugins/*/src is deliberately NOT here, though plugin code is
+                 gated at 100% like everything else: it is graded by its own
+                 SERIAL pass (`composer coverage:plugins`, which adds the
+                 directory through phpunit's own coverage-filter flag). It
+                 cannot be graded in this parallel run, and the reason is
+                 upstream: each worker
+                 serializes its coverage with every path made relative to that
+                 worker's own longest common directory (php-code-coverage's
+                 PathReducer), while the merge keeps only the FIRST worker's
+                 base path (Serialization/Merger). A worker that covered a
+                 plugin file reduces to the repo root instead of `src`, so on
+                 merge every one of its paths resolves wrong, fails the filter,
+                 and that entire worker's data is dropped — silently, and
+                 differently each run (measured: totals of 86%–95%, spread over
+                 every file, from one or two lost workers). Nothing in this
+                 project's configuration can prevent it; a serial run has no
+                 merge at all. -->
         </include>
     </source>
 

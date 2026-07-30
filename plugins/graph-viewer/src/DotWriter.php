@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Graph;
+namespace Porta\GraphViewer;
 
 /**
  * Emits the architecture graph as Graphviz DOT: one subgraph cluster per

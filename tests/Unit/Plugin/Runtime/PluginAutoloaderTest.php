@@ -19,7 +19,10 @@ final class PluginAutoloaderTest extends TestCase
     {
         // The map is process-global and the test bootstrap has already filled it
         // with the bundled plugins: perturb it, then put it back, or the rest of
-        // this paratest worker loses their classes.
+        // this paratest worker loses their classes. Emptying it also makes the
+        // next register() take the first-plugin branch again, which leaves one
+        // extra (identical, inert) autoloader on the stack per test — the price
+        // of covering that branch, since the bootstrap always takes it first.
         $this->prefixes = self::registered();
         Probe::setStatic(PluginAutoloader::class, 'prefixes', []);
     }

@@ -12,7 +12,6 @@ use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
 use Porta\Event\DiagnosticsChanged;
-use Porta\Graph\ArchitectureArtifact;
 use Porta\Graph\DotFiles;
 use Porta\History\LocalHistory;
 use Porta\I18n\Translator;
@@ -51,6 +50,17 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
 #[AsIdeService]
 final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
 {
+    /**
+     * The file name that titles a graph tab "Project Architecture".
+     *
+     * Core's own constant, deliberately not the graph-viewer plugin's: titling
+     * the tab is core's policy, and core must not know which plugin — if any —
+     * wrote the file. The plugin owns the writer and pins that the two agree
+     * (its `ArchitectureArtifact` is what produces this name), which is the
+     * right direction for that dependency.
+     */
+    private const string ARCHITECTURE_FILENAME = 'architecture.dot';
+
     public function __construct(
         private readonly BufferManager $buffers,
         private readonly CodeEditorWidget $editor,
@@ -275,7 +285,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         // The artifact's directory is a plugin setting, so the FILE NAME is all
         // core can key the title on (and a hand-written architecture.dot is
         // titled the same, which is the honest reading of the name).
-        if (ArchitectureArtifact::FILENAME === basename($path)) {
+        if (self::ARCHITECTURE_FILENAME === basename($path)) {
             $buffer->title = 'Project Architecture';
         }
         $buffer->stampFromDisk();

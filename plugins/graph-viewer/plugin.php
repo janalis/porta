@@ -2,20 +2,22 @@
 
 declare(strict_types=1);
 
-use Porta\Graph\ArchitectureArtifact;
 use Porta\Graph\DiagramKind;
 use Porta\Graph\DotFiles;
 use Porta\Graph\DotLayoutEngine;
 use Porta\Graph\GraphExportFormat;
 use Porta\Graph\PlantUmlCommand;
+use Porta\GraphViewer\ArchitectureArtifact;
 use Porta\Plugin\Api\AbstractPlugin;
 use Porta\Plugin\Api\PluginApi;
 
 /**
  * The Graphviz graph viewer as a bundled plugin: the routing claim (.dot/.gv
  * open in the built-in graph pane), the Project Architecture command, the
- * SVG/PNG exports and the generator-command setting. Implementation stays in
- * `src/` (registration-only doctrine): the commands are thin glue over
+ * SVG/PNG exports and the generator-command setting. This file only WIRES: the
+ * architecture scanner is this plugin's OWN code (`src/`, namespace
+ * `Porta\GraphViewer`, declared in plugin.json and graded by the same gates as
+ * everything else), and the graph PANE is core's — hence the two homes behind
  * {@see ArchitectureArtifact} and {@see DotLayoutEngine}. Disabling this
  * plugin routes .dot files to the TEXT editor (deliberate: edit the source),
  * and its commands leave the palette and Plugins menu live.

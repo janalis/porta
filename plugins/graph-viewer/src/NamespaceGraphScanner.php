@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Graph;
+namespace Porta\GraphViewer;
 
 /**
  * The built-in architecture source for PHP projects: walks the composer PSR-4

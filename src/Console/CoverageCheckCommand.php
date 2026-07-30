@@ -8,6 +8,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\ConsoleOutputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -29,7 +30,8 @@ final class CoverageCheckCommand extends Command
     {
         $this
             ->addArgument('clover', InputArgument::OPTIONAL, 'Path to the Clover XML report', 'coverage/clover.xml')
-            ->addArgument('threshold', InputArgument::OPTIONAL, 'Required line-coverage percentage', '100');
+            ->addArgument('threshold', InputArgument::OPTIONAL, 'Required line-coverage percentage', '100')
+            ->addOption('only', mode: InputOption::VALUE_REQUIRED, description: 'Grade only files whose path contains this string');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -61,7 +63,9 @@ final class CoverageCheckCommand extends Command
             return Command::INVALID;
         }
 
-        $rows = $this->rows($xml);
+        /** @var string|null $only */
+        $only = $input->getOption('only');
+        $rows = $this->rows($xml, $only);
         $width = ([] === $rows ? 0 : max(array_map(static fn (array $row): int => \strlen($row['name']), $rows))) + 2;
         foreach ($rows as $row) {
             $output->writeln(\sprintf(
@@ -73,13 +77,22 @@ final class CoverageCheckCommand extends Command
             ));
         }
 
+        // A scoped run sums the rows it kept; an unscoped one reads the
+        // report's own totals, which also count files with nothing executable.
         $totals = self::element($xml, '/coverage/project/metrics');
-        $totalStatements = self::number($totals, 'statements');
-        $totalCovered = self::number($totals, 'coveredstatements');
+        $totalStatements = null === $only ? self::number($totals, 'statements') : array_sum(array_column($rows, 'statements'));
+        $totalCovered = null === $only ? self::number($totals, 'coveredstatements') : array_sum(array_column($rows, 'covered'));
         $percentage = $totalStatements > 0 ? (100 * $totalCovered) / $totalStatements : 0.0;
 
         $output->writeln('');
-        $output->writeln(\sprintf('  TOTAL: %.2f%% (%d/%d) — required: %.2f%%', $percentage, $totalCovered, $totalStatements, $threshold));
+        $output->writeln(\sprintf(
+            '  TOTAL%s: %.2f%% (%d/%d) — required: %.2f%%',
+            null === $only ? '' : ' ('.$only.')',
+            $percentage,
+            $totalCovered,
+            $totalStatements,
+            $threshold,
+        ));
 
         if (($percentage + 1e-9) < $threshold) {
             $errors->writeln('');
@@ -96,23 +109,23 @@ final class CoverageCheckCommand extends Command
 
     /**
      * One row per covered file, sorted by display name; files with no
-     * executable statements are skipped (they cannot be under-covered).
+     * executable statements are skipped (they cannot be under-covered), as are
+     * files outside $only when a scope is given.
      *
      * @return list<array{name: string, covered: int, statements: int}>
      */
-    private function rows(\SimpleXMLElement $xml): array
+    private function rows(\SimpleXMLElement $xml, ?string $only = null): array
     {
         $files = $xml->xpath('//file');
         $rows = [];
         foreach (\is_array($files) ? $files : [] as $file) {
             $metrics = self::element($file, 'metrics');
             $statements = self::number($metrics, 'statements');
-            if (0 === $statements) {
+            if (0 === $statements || null !== $only && !str_contains((string) $file['name'], needle: $only)) {
                 continue;
             }
-            $name = (string) $file['name'];
             $rows[] = [
-                'name' => basename(\dirname($name)).'/'.basename($name),
+                'name' => self::displayName((string) $file['name']),
                 'covered' => self::number($metrics, 'coveredstatements'),
                 'statements' => $statements,
             ];
@@ -120,6 +133,19 @@ final class CoverageCheckCommand extends Command
         usort($rows, static fn (array $a, array $b): int => $a['name'] <=> $b['name']);
 
         return $rows;
+    }
+
+    /**
+     * Enough of the path to know which file it is: the last two segments, which
+     * for `src/` reads as `Workbench/WorkspaceViews.php`. Plugin-owned code is
+     * named from its plugin instead — `src/ArchitectureArtifact.php` would read
+     * as core's `src/`, and which plugin owns a file is the interesting half.
+     */
+    private static function displayName(string $path): string
+    {
+        $at = strpos($path, needle: '/plugins/');
+
+        return false === $at ? basename(\dirname($path)).'/'.basename($path) : substr($path, $at + 9);
     }
 
     /** The first node matching $path, or null when the document has none. */

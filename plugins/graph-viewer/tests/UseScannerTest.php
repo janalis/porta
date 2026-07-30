@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Graph;
+namespace Porta\GraphViewer\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Graph\UseScanner;
+use Porta\GraphViewer\UseScanner;
 
 final class UseScannerTest extends TestCase
 {

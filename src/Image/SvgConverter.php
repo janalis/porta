@@ -68,7 +68,7 @@ enum SvgConverter
      * The first installed converter, or null when none is — asked by the
      * image-viewer plugin's routing claim, so an `.svg` stays TEXT on a machine
      * that cannot render one. Plugin-constructible on purpose (no container),
-     * like {@see \Porta\Graph\ArchitectureArtifact}.
+     * like {@see \Porta\GraphViewer\ArchitectureArtifact}.
      */
     public static function discover(): ?self
     {

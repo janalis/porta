@@ -48,9 +48,12 @@
         "test": "@php vendor/bin/paratest --processes=auto --functional",
         "test:serial": "@php vendor/bin/phpunit",
         "coverage": "@php -d pcov.enabled=1 -d pcov.directory=. -d pcov.exclude='#/(vendor|tests)/#' vendor/bin/paratest --processes=auto --functional --passthru-php=\"'-d' 'pcov.enabled=1' '-d' 'pcov.directory=.' '-d' 'pcov.exclude=#/(vendor|tests)/#'\" --coverage-clover coverage/clover.xml",
+        "coverage:plugins": "@php -d pcov.enabled=1 -d pcov.directory=. -d pcov.exclude='#/(vendor|tests)/#' vendor/bin/phpunit --testsuite Plugins --coverage-filter plugins --coverage-clover coverage/plugins-clover.xml",
         "coverage:check": [
             "@coverage",
-            "@php bin/porta-dev coverage:check coverage/clover.xml 100"
+            "@php bin/porta-dev coverage:check coverage/clover.xml 100",
+            "@coverage:plugins",
+            "@php bin/porta-dev coverage:check coverage/plugins-clover.xml 100 --only=/plugins/"
         ],
         "arch": "@php bin/porta-dev arch",
         "container": "@php bin/porta-dev container"

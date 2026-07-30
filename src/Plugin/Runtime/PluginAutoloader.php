@@ -24,8 +24,6 @@ final class PluginAutoloader
     /** @var array<string, string> namespace prefix (trailing \) => directory */
     private static array $prefixes = [];
 
-    private static bool $registered = false;
-
     /** Map $manifest's namespace to its directory; a plugin that ships no classes is ignored. */
     public static function register(PluginManifest $manifest): void
     {
@@ -33,11 +31,13 @@ final class PluginAutoloader
         if (null === $manifest->namespace || null === $directory) {
             return;
         }
-        self::$prefixes[$manifest->namespace.'\\'] = $directory;
-        if (!self::$registered) {
-            self::$registered = true;
+        // The map IS the registration state: empty means nothing has claimed a
+        // class yet, so this is the first plugin and the loader goes on the
+        // stack with it.
+        if ([] === self::$prefixes) {
             spl_autoload_register(self::load(...));
         }
+        self::$prefixes[$manifest->namespace.'\\'] = $directory;
     }
 
     private static function load(string $class): void

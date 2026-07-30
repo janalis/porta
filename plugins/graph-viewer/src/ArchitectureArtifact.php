@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Graph;
+namespace Porta\GraphViewer;
 
 use Porta\Support\AsyncProcess;
 
