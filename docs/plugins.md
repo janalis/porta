@@ -43,37 +43,62 @@ entries with separators.
 | Bundled | `<package>/plugins/<name>/plugin.php`, available everywhere (opt-in) |
 
 A plugin directory may hold more than the entry file: an optional
-`plugin.json`, and — with one — a `src/` of its own classes (see below).
+`composer.json`, and — with one — a `src/` of its own classes and a `vendor/`
+of packages it depends on (see below).
 
 All three sources are scanned at startup, in that precedence order: a project
 plugin shadows a global one of the same directory name, and both shadow a
 bundled one — so you can override a bundled plugin by installing your own
 under the same name.
 
-## `plugin.json`: your own classes, and what you depend on
+## `composer.json`: your own classes, and what you depend on
 
-A plugin may ship a `plugin.json` beside its `plugin.php`. Every field is
-optional, and a plugin without one behaves exactly as before there was one.
+A plugin may ship a `composer.json` beside its `plugin.php` — composer's own
+file, because everything a plugin needs to declare, composer already has a field
+for. Every field is optional, and a plugin without one behaves exactly as it did
+before there was one.
 
 ```json
 {
-    "namespace": "Acme\\Tools",
-    "autoload": "src",
-    "requires": ["image-viewer"]
+    "name": "acme/tools",
+    "require": { "php": ">=8.4" },
+    "autoload": {
+        "psr-4": { "Acme\\Tools\\": "src/" }
+    },
+    "extra": {
+        "porta": { "requires": ["image-viewer"] }
+    }
 }
 ```
 
-- **`namespace` / `autoload`** — a PSR-4 prefix and the directory it maps to,
-  relative to the plugin. `Acme\Tools\Greeting` then loads from
-  `<plugin>/src/Greeting.php`. Composer maps only `Porta\ => src/` and cannot
-  be edited by a plugin you install, so this is how a plugin ships classes of
-  its own; the mapping is registered **before** your `plugin.php` is required,
-  so your classes resolve from its first line.
-- **`requires`** — plugin **names** (directory names) that must load, and load
-  **first**. A plugin whose requirement is missing or disabled does not
+- **`autoload.psr-4`** — prefixes and the directories they map to, relative to
+  the plugin. `Acme\Tools\Greeting` then loads from `<plugin>/src/Greeting.php`.
+  Porta's own composer.json maps only `Porta\ => src/` and cannot be edited by a
+  plugin you install, so this is how a plugin ships classes of its own; the
+  mapping is registered **before** your `plugin.php` is required, so your classes
+  resolve from its first line. A prefix may name several directories, and `"."`
+  means the plugin's own root.
+- **`extra.porta.requires`** — plugin **names** (directory names) that must load,
+  and load **first**. A plugin whose requirement is missing or disabled does not
   activate, and says which requirement in a startup warning. Dependency cycles
-  are reported rather than resolved: no member of a cycle loads, because
-  picking one to go first would make the bug intermittent.
+  are reported rather than resolved: no member of a cycle loads, because picking
+  one to go first would make the bug intermittent.
+
+  They cannot go in composer's own `require`: those are plugin directory names,
+  and composer would go looking for them on Packagist.
+- **`name`** is not read by Porta. A plugin's identity is its **directory name**
+  everywhere it matters — `enabledPlugins`, `disabledPlugins`, `requires`, and
+  its `plugins.<name>.<key>` settings. Give it one anyway so `composer install`
+  inside the plugin doesn't warn.
+
+Three of composer's autoload modes are **not** read from your manifest, and each
+says so at boot rather than failing silently later:
+
+| Mode | What happens |
+| --- | --- |
+| `psr-0` | Not read. It is dead in composer too; use `psr-4`. |
+| `classmap`, `files` | Only ever read from a *dumped* map, so declaring one makes your plugin count as needing `composer install` (see below) — after which it works. |
+| the empty prefix (`"": "src/"`) | Refused. `str_starts_with($class, '')` is true for every class, so that one plugin would be consulted for every unresolved name in the IDE. |
 
 The manifest is read before any plugin PHP is executed — it has to be, since
 `requires` decides load order and load order cannot be discovered by loading.
@@ -84,13 +109,18 @@ whatever required it ("Also disabled: …"), since those cannot work without it.
 Startup does **not** rewrite your config that way: a launch that silently
 re-enabled things you turned off would be a worse surprise than a message.
 
+> **Upgrading from `plugin.json`.** It is no longer read. `namespace` +
+> `autoload` become `autoload.psr-4`, and `requires` becomes
+> `extra.porta.requires`. A plugin that still has one loads, with a startup
+> warning naming it — but its classes will not resolve until you move them.
+
 ## Depending on a composer package
 
-A plugin may ship a `composer.json` and its own `vendor/` directory, and use
-what it declares. Installing a plugin that has a `composer.json` and no
-`vendor/` runs `composer install --no-dev` **inside the plugin's own
-directory** — never in your project, where a plugin's libraries have no
-business.
+The same file declares what your plugin depends on, and Porta will install it:
+a plugin whose `require` names a real package (as opposed to `php` or an
+`ext-*`, which install nothing) and has no `vendor/` gets `composer install
+--no-dev` run **inside its own directory** at install time — never in your
+project, where a plugin's libraries have no business.
 
 The resolution rule matters, because it decides what happens when your plugin
 and Porta want the same package:
@@ -116,9 +146,11 @@ needs either will simply fail to resolve:
   because running arbitrary plugin code at discovery time is exactly the
   hazard the whole arrangement avoids.
 
-A plugin with a `composer.json` and no `vendor/` **does not load**: Porta
-declines it by name at startup and tells you to run `composer install` in its
-directory. Whatever required it is skipped too.
+A plugin that declares packages (or a `classmap`/`files` autoload) and has no
+`vendor/` **does not load**: Porta declines it by name at startup and tells you
+to run `composer install` in its directory. Whatever required it is skipped too.
+A `require` of only `php` or `ext-*` asks for nothing, so a manifest that exists
+purely to declare `autoload.psr-4` never triggers this.
 
 ## Putting a command in a menu
 

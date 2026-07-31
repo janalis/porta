@@ -60,8 +60,8 @@ Run gate commands capturing output rather than piping to a pager, e.g.
   arch command's scan roots are derived from an argument and its pins are constructor-injected,
   so it can be driven over fixture trees. It scans `src/` AND each plugin's declared class
   directory, so it scans itself: keep it importing nothing from `Porta\` or it grows the very
-  edges it grades (which is why it re-reads `plugin.json` by hand instead of using
-  `PluginManifest`).
+  edges it grades (which is why it re-reads each plugin's `composer.json` by hand instead of
+  using `PluginManifest`).
 
 ## Conventions
 
@@ -1014,8 +1014,32 @@ image pane frees its pixels; the graph pane's layout cache and the help pane's h
 a closed tab gets `forget($path)`, and the last tab closing gets `clear()` — three moments core
 used to spell inconsistently per viewer.
 
-**A plugin may VENDOR its dependencies (round 28).** `plugin.json`'s sibling is an optional
-`composer.json` + `vendor/`, and `PluginAutoloader` extends to it by reading composer's
+**The plugin manifest IS `composer.json` (round 29).** `plugin.json` is gone — every field it
+held has a native composer one, and a plugin that vendors packages had a composer.json anyway, so
+the alternative was two manifests with overlapping jobs. `namespace`+`autoload` → `autoload.psr-4`
+(so `PluginManifest::$autoload` is `array<string, list<string>>` and `autoloadDir()` became
+`autoloadDirs()`; a prefix whose directories are all absent is dropped); `requires` →
+**`extra.porta.requires`**, because those are plugin DIRECTORY names and composer's own `require`
+would send composer to Packagist for something that is not a package. `name` is read by NOTHING —
+identity stays the directory name, which `enabledPlugins`/`disabledPlugins`/`requires`/the
+`plugins.<name>.<key>` settings all assume. The **empty prefix** (`"": "src/"`, composer's
+fallback directory) is refused: `str_starts_with($class, '')` is true for every class, so that one
+plugin would answer for every unresolved name in the process. **The trap this round is really
+about is `needsInstall()`**: it used to mean "has a composer.json and no `vendor/`", which once
+that file is every plugin's manifest declines the entire bundled set. It now means "declares
+something an install would PRODUCE" — an installable requirement (name contains a `/`; that is
+composer's own discriminator, no platform requirement has one, and `require-dev` is excluded
+because the installer runs `--no-dev`) or an `autoload.classmap`/`files` (dumped, never read from
+the manifest). Two warning wordings, since those are two different things missing.
+`PluginInstaller` calls the same predicate instead of duplicating it, so the installer and the
+loader cannot disagree. A leftover `plugin.json` gets a named boot warning — it still loads, but a
+plugin that relied on it loses its classes silently otherwise. `ArchitectureCheckCommand`'s
+hand-rolled parser moved WITH the bundled manifests in one commit: `composer arch` fails on
+vanished edges too, so converting the plugins without teaching the parser drops four namespaces
+from the graph (the count stayed 217, which is the proof no prefix was lost).
+
+**A plugin may VENDOR its dependencies (round 28).** A plugin's `composer.json` may have a
+`vendor/` beside it, and `PluginAutoloader` extends to it by reading composer's
 **generated maps** — `vendor/composer/autoload_psr4.php` (prefix → list of dirs, so the prefix map
 is `array<string, list<string>>` now) and `autoload_classmap.php` — into the ONE appended loader it
 already owns (an explicit `$registered` bool, since two maps feed it and neither can be the flag).
@@ -1040,14 +1064,15 @@ a literal line; `tests/Unit/Plugin/Runtime/BundledPluginVendorTest` fails until 
 bundled plugin vendors yet — the two `tests/Support/fixtures/thirdparty/acme-*` vendors are what
 make it non-vacuous).
 
-**A plugin may own its code (round 24).** An optional `plugin.json` beside `plugin.php`
-(`Plugin/Runtime/PluginManifest`, a readonly VO + `beside()` reader) declares `namespace`,
-`autoload` (default `src`) and `requires`; it is read **before any plugin PHP is required**,
-which is a requirement and not a preference — `requires` decides LOAD ORDER, so it cannot be
-discovered by loading. `Plugin/Runtime/PluginAutoloader` holds ONE `spl_autoload_register` over a
-prefix→directory map (composer maps only `Porta\ => src/`, and a third-party plugin cannot edit
-composer.json); it is registered from `PluginLoader` at boot AND from `tests/bootstrap.php`, so
-plugin classes resolve under paratest including CI's `--classmap-authoritative` install.
+**A plugin may own its code (round 24; the manifest became `composer.json` in round 29).** A
+plugin's own `composer.json` beside `plugin.php` (`Plugin/Runtime/PluginManifest`, a readonly VO +
+`beside()` reader) declares `autoload.psr-4` and `extra.porta.requires`; it is read **before any
+plugin PHP is required**, which is a requirement and not a preference — `requires` decides LOAD
+ORDER, so it cannot be discovered by loading. `Plugin/Runtime/PluginAutoloader` holds ONE
+`spl_autoload_register` over a prefix→directories map (Porta's own composer.json maps only
+`Porta\ => src/`, and a third-party plugin cannot edit it); it is registered from `PluginLoader`
+at boot AND from `tests/bootstrap.php`, so plugin classes resolve under paratest including CI's
+`--classmap-authoritative` install.
 `Plugin/Runtime/PluginOrder::resolve()` topologically sorts the manifests: a missing/disabled
 requirement skips the plugin with a named warning, the skip propagates to its dependents, and a
 CYCLE is reported rather than resolved (no member loads — picking one to go first would make the

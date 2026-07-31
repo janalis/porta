@@ -116,11 +116,13 @@ THE EDITOR PANE for the files it claims: `Editor/EditorPanes` is the registry,
 `Widget/EditorPaneWidget` the base a pane extends, and both bundled viewers are
 plugins that own their whole implementation — the image viewer, and the graph
 viewer that `requires` it for the shared rasterizer. A plugin may also own
-CLASSES and declare DEPENDENCIES: `Plugin/Runtime/PluginManifest` reads an
-optional `plugin.json` before any plugin PHP is required,
-`Plugin/Runtime/PluginAutoloader` maps its namespace to its directory (composer
-maps only `Porta\ => src/`), and `Plugin/Runtime/PluginOrder` puts the set into
-load order, skipping a plugin whose requirement is absent. The user-facing
+CLASSES and declare DEPENDENCIES: `Plugin/Runtime/PluginManifest` reads its own
+`composer.json` before any plugin PHP is required — `autoload.psr-4` for its
+classes, `extra.porta.requires` for the plugins it needs —
+`Plugin/Runtime/PluginAutoloader` maps those prefixes to their directories (and
+reads composer's generated maps for anything it vendored; Porta's own
+composer.json maps only `Porta\ => src/`), and `Plugin/Runtime/PluginOrder` puts
+the set into load order, skipping a plugin whose requirement is absent. The user-facing
 guide is [plugins.md](plugins.md).
 
 ## Tests and quality gates
