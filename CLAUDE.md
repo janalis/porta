@@ -1299,8 +1299,9 @@ flaky shapes are all on the fixed-clock side, and each has a named cure:
 - **`pump()` only for genuine negatives** (proving something did NOT happen).
 - **The event loop is process-global per paratest worker**; `tests/Support/LoopIsolationExtension`
   (phpunit.xml `<extensions>`) isolates after EVERY test and reports leaked identifiers as
-  `[loop-leak]` (report-only; escalate to a failure once the suite runs leak-clean — the recorded
-  follow-up). It isolates by ONE OF TWO routes: a fresh driver where possible (which also resets
+  `[loop-leak]` — **report-only, permanently: the long-recorded "escalate it to a failure"
+  follow-up is CLOSED, measured, in round 26** (see the leak-hunt note below). It isolates by ONE
+  OF TWO routes: a fresh driver where possible (which also resets
   the suspension WeakMap), else — `setDriver()` refuses while the driver still considers itself
   running, which a Tui that parked a suspension leaves it doing for HUNDREDS of E2e tests —
   cancelling each leaked identifier by hand. It used to skip isolation there silently, which is
@@ -1314,8 +1315,13 @@ flaky shapes are all on the fixed-clock side, and each has a named cure:
   gets dropped to plain). Diagnose before fixing: the leaked identifier's Revolt callback class
   and its closure's file:line are reachable by reflecting the driver's `callbacks` map, and the
   four singletons fixed earlier split evenly into timers and stream watchers, which want opposite
-  cures. So `[loop-leak]` cannot become a flat failure — a test that deliberately stops mid-flight
-  will always have one armed; the gate needs a declared per-test allowance.
+  cures. **The escalation is refused on evidence, not on effort**: three full serial runs reported
+  7, 8 and 7 lines, differing by exactly one test
+  (`IdeGraphViewerTest::testAFocusedGraphPaneGetsTheTabContextMenu`), because whether a 0.15s
+  debounce is still armed depends on where the loop happened to stop. A gate on that is a flake
+  generator, and a per-test allowance would be a list of tests permitted to be
+  non-deterministic — worse than the report it replaced. `[loop-leak]` stays a diagnostic: read it
+  when hunting a cross-test poisoning, and expect a handful of correct pending timers in it.
 - **Both leak reports are invisible under `composer test`** — measured: paratest swallows worker
   STDERR, so an unconditional write from an extension never reaches the log. `composer test:serial`
   is the only way to read them (raise `COMPOSER_PROCESS_TIMEOUT`; the serial suite outruns the
