@@ -9,6 +9,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\DiagnosticsSink;
 use Porta\Editor\EditorTextAccess;
 use Porta\Editor\FileOpener;
+use Porta\Editor\ModalHost;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Workbench\Dock\DockToolController;
@@ -33,5 +34,6 @@ final readonly class PluginRuntime
         public DiagnosticsSink $diagnostics,
         public BufferManager $buffers,
         public DockToolController $dockTools,
+        public ModalHost $modals,
     ) {}
 }

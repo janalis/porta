@@ -63,6 +63,7 @@ final class TodoScanTest extends TestCase
             new RecordingDiagnosticsSink(),
             new \Porta\Editor\BufferManager(),
             new DockToolController($manager, $this->dock, $project->dir),
+            new CodeEditorWidget(),
         ));
 
         $api = new PluginApi('todo', $manager, $project->dir, $settings);

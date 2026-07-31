@@ -15,7 +15,9 @@ use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\Presence;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
 use Porta\Tests\Support\StatusReads;
@@ -58,7 +60,17 @@ final class PluginApiTest extends TestCase
         if (Presence::With === $wired) {
             $tui = TestTui::create(100, 24);
             $manager->wireRuntime(
-                new PluginRuntime(new Notifier($this->status, $tui), new Translator('en'), $this->editor, $this->files, $tui, $this->diagnostics, $this->buffers, TestDockTools::controller()),
+                new PluginRuntime(
+                    new Notifier($this->status, $tui),
+                    new Translator('en'),
+                    $this->editor,
+                    $this->files,
+                    $tui,
+                    $this->diagnostics,
+                    $this->buffers,
+                    TestDockTools::controller(),
+                    $this->editor,
+                ),
             );
         }
 
@@ -209,6 +221,8 @@ final class PluginApiTest extends TestCase
             static fn () => $api->changeSetting('flag', true),
             static fn () => $api->showList('todo'),
             static fn () => $api->updateList('todo', []),
+            static fn () => $api->pick('t', [], static function (string $v): void {}),
+            static fn () => $api->prompt('t', '', static function (string $v): void {}),
         ];
         foreach ($actions as $i => $action) {
             try {
@@ -235,6 +249,7 @@ final class PluginApiTest extends TestCase
                 new RecordingDiagnosticsSink(),
                 new BufferManager(),
                 TestDockTools::controller(),
+                new CodeEditorWidget(),
             ),
         );
         $api = new PluginApi('demo', $manager, $project->dir, $settings);
@@ -339,6 +354,7 @@ final class PluginApiTest extends TestCase
             new RecordingDiagnosticsSink(),
             new BufferManager(),
             new DockToolController($manager, $dock, '/p'), // the manager IS the source
+            new CodeEditorWidget(),
         ));
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
         $api->registerListTool('todo', 'TODO');
@@ -352,5 +368,43 @@ final class PluginApiTest extends TestCase
         $api->updateList('todo', [['path' => 'a.php', 'line' => 0, 'text' => 'second']]);
         $this->assertSame('second', $tab->rows[0]['text']);
         $this->assertFalse($tab->searching);
+    }
+
+    public function testAPluginMayAskTheUserSomething(): void
+    {
+        // Before this, flash() told and nothing asked — a plugin could not put
+        // a question on screen at all.
+        $api = $this->api();
+        $picked = null;
+        $typed = null;
+
+        $api->pick('Pick a target', ['a' => 'Alpha', 'b' => 'Beta'], static function (string $value) use (&$picked): void {
+            $picked = $value;
+        });
+        $this->assertTrue(EditorState::pickerOpen($this->editor), 'the list overlay is up');
+
+        /** @var array{items: list<array{label: string, hint: string, value: string}>, onPick: \Closure} $overlay */
+        $overlay = Probe::get(Probe::get($this->editor, 'overlayHost'), 'overlay');
+        $this->assertSame(
+            [
+                ['label' => 'Alpha', 'hint' => '', 'value' => 'a'],
+                ['label' => 'Beta', 'hint' => '', 'value' => 'b'],
+            ],
+            $overlay['items'],
+            'value => label, in the order given',
+        );
+
+        $api->prompt('New name', 'old', static function (string $value) use (&$typed): void {
+            $typed = $value;
+        });
+        $this->assertTrue(EditorState::promptOpen($this->editor), 'and the prompt over it');
+
+        // The callbacks are the plugin's own — core hands them the answer verbatim.
+        $overlay['onPick']('b');
+        $this->assertSame('b', $picked);
+        /** @var array{onSubmit: \Closure} $prompt */
+        $prompt = Probe::get(Probe::get($this->editor, 'overlayHost'), 'prompt');
+        $prompt['onSubmit']('new');
+        $this->assertSame('new', $typed);
     }
 }

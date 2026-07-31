@@ -97,6 +97,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
             new RecordingDiagnosticsSink(),
             new BufferManager(),
             TestDockTools::controller(),
+            new CodeEditorWidget(),
         ));
 
         $api = new PluginApi('demo', $this->manager, $this->project->dir, $settings);

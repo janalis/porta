@@ -613,6 +613,39 @@ final class PluginApi
         return $this->pluginName.':'.$id;
     }
 
+    /**
+     * Ask the user to pick one of $items — the centered list overlay the IDE's
+     * own pickers use. `$onPick` receives the chosen item's value; dismissing
+     * the overlay calls nothing.
+     *
+     * The one thing a plugin could not do before this: `flash()` tells, and
+     * nothing asked.
+     *
+     * @param array<string, string>  $items  value => label, in the order to show them
+     * @param \Closure(string): void $onPick
+     */
+    public function pick(string $title, array $items, \Closure $onPick): void
+    {
+        $runtime = $this->manager->runtime(); // activate()-phase gate
+        $rows = [];
+        foreach ($items as $value => $label) {
+            $rows[] = ['label' => $label, 'hint' => '', 'value' => $value];
+        }
+        $runtime->modals->openListOverlay($title, $rows, $onPick);
+    }
+
+    /**
+     * Ask the user for one line of text, pre-filled with $initial. `$onSubmit`
+     * receives what they typed; cancelling calls nothing.
+     *
+     * @param \Closure(string): void $onSubmit
+     */
+    public function prompt(string $label, string $initial, \Closure $onSubmit): void
+    {
+        $runtime = $this->manager->runtime();
+        $runtime->modals->openPrompt($label, $initial, $onSubmit);
+    }
+
     /** Show a transient status-bar message. */
     public function flash(string $message, float $seconds = 2.5): void
     {

@@ -57,6 +57,7 @@ final class PluginManagerTest extends TestCase
                 new RecordingDiagnosticsSink(),
                 new BufferManager(),
                 TestDockTools::controller(),
+                new CodeEditorWidget(),
             ),
         );
 
