@@ -454,4 +454,18 @@ final class PluginApiTest extends TestCase
         $this->assertSame('Rebound Save File to F12', $api->trans('Rebound %action% to %key%', ['%action%' => 'Save File', '%key%' => 'F12']), 'placeholders are filled');
         $this->assertSame('a plugin string core never heard of', $api->trans('a plugin string core never heard of'), 'and an unknown one passes through');
     }
+
+    public function testSubscribingAfterTheBufferIsDrainedIsARefusalNotANoOp(): void
+    {
+        // Registrations are collected during activate() and committed
+        // atomically. One arriving later used to append to an array nobody
+        // reads again — the listener simply never fired, with nothing said.
+        $api = $this->api();
+        $api->onFileSaved(static fn () => null);
+        $api->bufferedHooks(); // what commit() does
+
+        $this->expectException(PluginException::class);
+        $this->expectExceptionMessage('Listeners must be registered during activate()');
+        $api->onFileSaved(static fn () => null);
+    }
 }

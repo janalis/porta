@@ -56,6 +56,9 @@ final class PluginApi
      * @var list<array{0: class-string, 1: \Closure(object): void}> [event class, listener]
      */
     private array $hooks = [];
+
+    /** Set when the hooks are drained: registering after that is a mistake, not a no-op. */
+    private bool $drained = false;
     /**
      * Plain array: keyed by setting key for dedup, drains into PluginSettings.
      *
@@ -686,11 +689,21 @@ final class PluginApi
      * {@see BufferOpened}/{@see BufferSaved} stay internal — they carry a
      * mutable `Buffer`, so they are not something a plugin may hold.
      *
+     * Refuses once the buffer has been drained. Registrations are collected
+     * during `activate()` and committed atomically; one arriving after that
+     * used to append to an array nobody would read again, so a listener
+     * subscribed from a command handler simply never fired. A silent no-op is
+     * the wrong answer to a plugin author's mistake, and `on()` widens the door
+     * it comes through.
+     *
      * @param class-string           $eventClass
      * @param \Closure(never): void  $listener
      */
     private function listen(string $eventClass, \Closure $listener): void
     {
+        if ($this->drained) {
+            throw new PluginException(\sprintf('Listeners must be registered during activate(); the one for "%s" arrived after this plugin was committed', $eventClass));
+        }
         /** @var \Closure(object): void $listener */
         $this->hooks[] = [$eventClass, $listener];
     }
@@ -950,6 +963,8 @@ final class PluginApi
     /** @return list<array{0: class-string, 1: \Closure(object): void}> */
     public function bufferedHooks(): array
     {
+        $this->drained = true;
+
         return $this->hooks;
     }
 
