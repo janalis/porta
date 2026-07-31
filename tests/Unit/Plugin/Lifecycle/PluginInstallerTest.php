@@ -25,9 +25,26 @@ final class PluginInstallerTest extends TestCase
         $this->global = new TempProject();
     }
 
-    private function installer(?string $globalBase = 'own', ?string $git = null): PluginInstaller
+    private function installer(?string $globalBase = 'own', ?string $git = null, ?string $composer = null): PluginInstaller
     {
-        return new PluginInstaller($this->project->dir, 'own' === $globalBase ? $this->global->dir : $globalBase, new Translator('en'), $git);
+        return new PluginInstaller($this->project->dir, 'own' === $globalBase ? $this->global->dir : $globalBase, new Translator('en'), $git, null, $composer);
+    }
+
+    /**
+     * A stub standing in for composer: it writes the vendor tree a real
+     * `composer install` would, then exits with $exitCode. Real composer is not
+     * in the suite's business — network, minutes, and a resolver we do not own.
+     */
+    private function composerStub(int $exitCode): string
+    {
+        $path = $this->project->dir.'/fake-composer';
+        file_put_contents($path, '#!'.\PHP_BINARY.' -n'."\n<?php\n".<<<'PHP'
+            @mkdir(getcwd().'/vendor/composer', 0o777, true);
+            file_put_contents(getcwd().'/vendor/composer/autoload_psr4.php', "<?php return [];\n");
+            PHP."\nexit({$exitCode});\n");
+        chmod($path, permissions: 0o755);
+
+        return $path;
     }
 
     /** Runs install() and pumps the loop until the callback fires; returns [error, file]. */
@@ -238,5 +255,61 @@ final class PluginInstallerTest extends TestCase
             $this->installer(globalBase: null)->installed(),
             'a null global base lists only the project scope',
         );
+    }
+
+    public function testInstallingAPluginInstallsItsComposerDependencies(): void
+    {
+        // In the PLUGIN's directory, never the user's project — that tree is
+        // ToolInstaller's, and a plugin's libraries have no business in it.
+        $source = $this->sourceDir('needy');
+        file_put_contents($source.'/composer.json', data: '{"require":{"vend/lib":"^1.0"}}');
+
+        [$error, $file] = $this->install($this->installer(composer: $this->composerStub(0)), $source);
+
+        $this->assertNull($error);
+        $this->assertSame($this->project->dir.'/.porta/plugins/needy/plugin.php', $file);
+        $this->assertFileExists($this->project->dir.'/.porta/plugins/needy/vendor/composer/autoload_psr4.php');
+        $this->assertDirectoryDoesNotExist($this->project->dir.'/vendor', 'nothing was installed into the project');
+    }
+
+    public function testAFailedDependencyInstallKeepsThePluginAndSaysSo(): void
+    {
+        // The directory is what the user asked for; the next boot declines the
+        // plugin by name with the command to run. Removing a good clone over a
+        // transient network error would be the worse trade.
+        $source = $this->sourceDir('flaky');
+        file_put_contents($source.'/composer.json', data: '{"require":{"vend/lib":"^1.0"}}');
+
+        [$error, $file] = $this->install($this->installer(composer: $this->composerStub(3)), $source);
+
+        $this->assertNotNull($error);
+        $this->assertStringContainsString('composer install failed (exit code 3)', (string) $error);
+        $this->assertNull($file);
+        $this->assertFileExists($this->project->dir.'/.porta/plugins/flaky/plugin.php', 'the install itself stands');
+    }
+
+    public function testWithoutComposerADependentPluginInstallsButSaysWhatIsMissing(): void
+    {
+        $source = $this->sourceDir('needy');
+        file_put_contents($source.'/composer.json', data: '{"require":{"vend/lib":"^1.0"}}');
+
+        [$error, $file] = $this->install($this->installer(), $source);
+
+        $this->assertStringContainsString('composer is not available', (string) $error);
+        $this->assertNull($file);
+    }
+
+    public function testAPluginThatShippedItsVendorIsNotReinstalled(): void
+    {
+        // A copied source that already has vendor/ (or none at all) skips the
+        // step entirely — no subprocess, so an install stays synchronous.
+        $source = $this->sourceDir('prevendored');
+        file_put_contents($source.'/composer.json', data: '{}');
+        mkdir($source.'/vendor', permissions: 0o777, recursive: true);
+
+        [$error, $file] = $this->install($this->installer(composer: '/nonexistent/composer'), $source);
+
+        $this->assertNull($error, 'composer was never needed');
+        $this->assertSame($this->project->dir.'/.porta/plugins/prevendored/plugin.php', $file);
     }
 }

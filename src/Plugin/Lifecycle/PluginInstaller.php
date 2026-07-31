@@ -21,6 +21,11 @@ use Symfony\Component\Process\ExecutableFinder;
  * {@see AsyncProcess}, so clone failures can only report the exit code).
  * Activation of the installed plugin is the caller's concern — this class
  * only manages the directories.
+ *
+ * A plugin that ships a `composer.json` gets its dependencies installed, once,
+ * in ITS OWN directory — never in the user's project, where {@see ToolInstaller}
+ * runs and where a plugin's libraries have no business. That is also why this
+ * cannot reuse ToolInstaller: same command, different tree, opposite meaning.
  */
 #[Autoconfigure(constructor: 'create')]
 final class PluginInstaller
@@ -34,12 +39,15 @@ final class PluginInstaller
         private readonly Translator $translator,
         private readonly ?string $gitBinary,
         private readonly ?string $embeddedDir = null,
+        private readonly ?string $composerBinary = null,
     ) {}
 
-    /** The production wiring: plugin dirs and the git binary resolved from the environment. */
+    /** The production wiring: plugin dirs and the git/composer binaries resolved from the environment. */
     public static function create(string $rootDir, Translator $translator): self
     {
-        return new self($rootDir, PluginLoader::globalBase(), $translator, new ExecutableFinder()->find('git'), PluginLoader::embeddedDir());
+        $finder = new ExecutableFinder();
+
+        return new self($rootDir, PluginLoader::globalBase(), $translator, $finder->find('git'), PluginLoader::embeddedDir(), $finder->find('composer'));
     }
 
     /**
@@ -113,7 +121,7 @@ final class PluginInstaller
 
             return;
         }
-        $onDone(null, $dest.'/plugin.php');
+        $this->installDependencies($dest, $onDone);
     }
 
     /** @param \Closure(?string, ?string): void $onDone */
@@ -140,13 +148,57 @@ final class PluginInstaller
 
                 return;
             }
-            $onDone(null, $dest.'/plugin.php');
+            $this->installDependencies($dest, $onDone);
         });
         if (!$started) {
             // proc_open failure is environmental (fd exhaustion)
             // @codeCoverageIgnoreStart
             $this->running = null;
             $this->fail($onDone, $this->translator->trans('git is not available'));
+
+            // @codeCoverageIgnoreEnd
+        }
+    }
+
+    /**
+     * `composer install --no-dev` in the freshly installed plugin, when it
+     * declares dependencies and did not ship them.
+     *
+     * A failure here does NOT undo the install: the directory is exactly what
+     * the user asked for, and the next boot declines the plugin by name with
+     * the command to run ({@see \Porta\Plugin\Runtime\PluginManifest::needsInstall}).
+     * Removing it would throw away a good clone over a transient network error.
+     *
+     * @param \Closure(?string, ?string): void $onDone
+     */
+    private function installDependencies(string $dest, \Closure $onDone): void
+    {
+        $pluginFile = $dest.'/plugin.php';
+        if (!is_file($dest.'/composer.json') || is_dir($dest.'/vendor')) {
+            $onDone(null, $pluginFile);
+
+            return;
+        }
+        if (null === $this->composerBinary) {
+            $this->fail($onDone, $this->translator->trans('Installed, but composer is not available to install its dependencies'));
+
+            return;
+        }
+        $this->running = new AsyncProcess([$this->composerBinary, 'install', '--no-dev', '--no-interaction'], $dest);
+        $started = $this->running->start(function (int $code) use ($pluginFile, $onDone): void {
+            $this->running = null;
+            if (0 !== $code) {
+                $this->fail($onDone, $this->translator->trans('Installed, but composer install failed (exit code %code%)', ['%code%' => $code]));
+
+                return;
+            }
+            $onDone(null, $pluginFile);
+        });
+        if (!$started) {
+            // proc_open failure is environmental (fd exhaustion)
+            // @codeCoverageIgnoreStart
+            $this->running = null;
+            $this->fail($onDone, $this->translator->trans('Installed, but composer is not available to install its dependencies'));
 
             // @codeCoverageIgnoreEnd
         }
