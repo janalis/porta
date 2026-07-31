@@ -8,8 +8,11 @@ use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Widget\ContextMenu;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\Renderer;
 
 /**
  * Full-app plugin scenarios: a fixture plugin registering a keyed command, a
@@ -272,5 +275,63 @@ final class IdePluginTest extends TestCase
             (string) file_get_contents($project->path('lifecycle.log')),
             'ready lands after activate and before the first open; shutdown is last',
         );
+    }
+
+    public function testAPluginCommandCanLandInTheEditorContextMenu(): void
+    {
+        // The seam a file-scoped plugin verb wants: the Plugins menu is a
+        // global list, and "do this to the file I am looking at" belongs where
+        // the user is pointing.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            'a.php' => "<?php\n",
+            '.porta/plugins/ctx/plugin.php' => <<<'PHP'
+                <?php
+                use Porta\Plugin\Api\PluginApi;
+                use Porta\Plugin\Api\PortaPlugin;
+                use Porta\Workbench\Menu\MenuSurface;
+
+                return new class implements PortaPlugin {
+                    public function name(): string
+                    {
+                        return 'ctx';
+                    }
+
+                    public function activate(PluginApi $api): void
+                    {
+                        $api->registerCommand('here', 'Do It Here', static function (): void {});
+                        $api->registerCommand('anywhere', 'Do It Anywhere', static function (): void {});
+                        $api->addMenuItem('here', surface: MenuSurface::EditorContext);
+                        $api->addMenuItem('anywhere');
+                    }
+                };
+                PHP,
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    $tui->tick();
+                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('editor'));
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 1)); // right-click
+                    $tui->tick();
+
+                    // The menu floats via the overlay and occupies no layout
+                    // row, so its rows come from segments(), not render().
+                    $widget = Services::resolve($ide, ContextMenu::class);
+                    $menu = implode("\n", array_map(
+                        static fn (array $row): string => AnsiUtils::stripAnsiCodes($row['segment']),
+                        $widget->segments($widget->panelWidth()),
+                    ));
+                    $this->assertStringContainsString('Do It Here', $menu, "the plugin's editor-context item is offered");
+                    $this->assertStringNotContainsString('Do It Anywhere', $menu, 'and a Plugins-menu item stays out of it');
+                    $this->assertStringContainsString('Cut', $menu, "core's own items are still first");
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
     }
 }

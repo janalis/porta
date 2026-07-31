@@ -11,6 +11,7 @@ use Porta\Git\ChangeEntry;
 use Porta\Git\GitCommands;
 use Porta\Git\LogEntry;
 use Porta\I18n\Translator;
+use Porta\Plugin\Runtime\PluginManager;
 use Porta\Run\RunController;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Workbench\Dock\BottomDock;
@@ -33,6 +34,7 @@ final class ContextMenuBuilder
         private readonly RunController $run,
         private readonly ChangesListWidget $changes,
         private readonly GitCommands $git,
+        private readonly PluginManager $plugins,
     ) {}
 
     /**
@@ -50,9 +52,21 @@ final class ContextMenuBuilder
         ];
     }
 
-    /** @return list<MenuItem> */
+    /**
+     * The editor's right-click menu: core's verbs, then whatever plugins have
+     * put on this surface, behind a separator.
+     *
+     * Plugin items come LAST and grouped because this menu is core's — a
+     * plugin adding one must not push cut/copy/paste down the list. The
+     * separator disappears on its own when no plugin contributes: MenuModel
+     * drops one that would trail the list.
+     *
+     * @return list<MenuItem>
+     */
     public function editorItems(): array
     {
+        $plugins = $this->plugins->menuSpecs(MenuSurface::EditorContext);
+
         return MenuModel::items(
             [
                 'e:cut',
@@ -66,6 +80,8 @@ final class ContextMenuBuilder
                 'e:rename_symbol',
                 'i:reformat',
                 'e:code_action',
+                MenuModel::SEP,
+                ...$plugins,
             ],
             $this->commands,
             $this->editor,
