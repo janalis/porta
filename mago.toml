@@ -150,7 +150,9 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 # seam, the TODO plugin, four smaller seams) re-probed all nine: only
 # excessive-parameter-list moved, and downward — a stale pin, not a shrunk
 # class. Round 27 (the document verb, the local-history plugin) re-probed all
-# nine again: none moved.
+# nine again: none moved. Round 28 (the menu-surface seam, plugin composer
+# dependencies) re-bisected all nine once more — every floor is still exactly
+# where it was, which is what a round that adds small classes should do.
 #
 # Re-bisect and lower again after the next structural change — AND after a mago
 # upgrade, which can change how a metric is counted without a line of code

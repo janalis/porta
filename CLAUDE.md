@@ -743,6 +743,19 @@ language, `DropdownRegion(framed:)` hit-testing: item runs / border swallows / o
 dismisses); the completion popup and signature hint stay editor-pane-composited, framed the
 same way.
 
+**A plugin item may name its menu surface (round 28).** `PluginApi::addMenuItem()` takes a
+`Workbench/Menu/MenuSurface` — `Plugins` (the trailing menu, the unchanged default) or
+`EditorContext`, which `ContextMenuBuilder::editorItems()` appends behind a separator. Two cases
+only, and the enum's docblock says why: the tab/tree/git-row/dock-strip menus are hand-built
+`MenuItem` closures with no registry, so a case for one of those is a promise the builder cannot
+keep until it is converted. An **adopted** id (`adoptCommand`) is registered BARE, so `PluginApi`
+remembers which ids those are and spells their spec bare too — prefixing would name a command
+nothing answers to. First consumer: `local-history` puts "Show Local History" in the editor's
+right-click menu (greyed with no file open, absent when the plugin is off). Graph-viewer's exports
+were measured for the same move and **rejected**: `EditorContext` resolves from the code editor
+widget's rect and a viewer pane DETACHES that widget, so a viewer-scoped command there is gated on
+exactly the state that hides it.
+
 **Commands & keybindings are single-sourced.** `Config/ActionCatalog` is the descriptor table
 for CORE's rebindable actions (label + default keys); `Config/ActionRegistry` is the whole set —
 the catalog composed with what plugins declare through `PluginApi::registerActions()`, arriving
@@ -990,6 +1003,32 @@ image pane frees its pixels; the graph pane's layout cache and the help pane's h
 a closed tab gets `forget($path)`, and the last tab closing gets `clear()` — three moments core
 used to spell inconsistently per viewer.
 
+**A plugin may VENDOR its dependencies (round 28).** `plugin.json`'s sibling is an optional
+`composer.json` + `vendor/`, and `PluginAutoloader` extends to it by reading composer's
+**generated maps** — `vendor/composer/autoload_psr4.php` (prefix → list of dirs, so the prefix map
+is `array<string, list<string>>` now) and `autoload_classmap.php` — into the ONE appended loader it
+already owns (an explicit `$registered` bool, since two maps feed it and neither can be the flag).
+**Composer's own autoloader is never run, and that is the design**: `autoload_real.php` ends in
+`$loader->register(true)` — PREPEND — so `require $plugin/vendor/autoload.php` would let any plugin
+replace Porta's dependencies process-wide, and would execute the package's `autoload.files` at
+discovery time, before `PluginOrder` has decided anything may load. Reading the maps keeps Porta's
+copy in front by construction (pinned by a fixture that points `symfony/clock` at a directory that
+does not exist and asserts `NativeClock` still loads from `vendor/symfony/clock`). PSR-0 and
+`autoload.files` are unsupported and say so. Two boot reports: `PluginManifest::needsInstall()`
+(composer.json, no vendor/) declines the plugin by name — its dependents go with it, via the order
+it never enters — and `shadowedPackages()` (its `installed.json` × `Composer\InstalledVersions`)
+names each package whose plugin copy will never be reached. `PluginInstaller` runs `composer
+install --no-dev` in THE PLUGIN'S directory after a clone/copy (not the project root — that is
+`ToolInstaller`'s tree; same command, different tree, opposite meaning) and a failure does NOT undo
+the install. **Gate plumbing**: `.gitignore` += `plugins/*/vendor/`, `CoverageCheckCommand` skips
+any `/vendor/` path (the plugin pass scopes by the `/plugins/` prefix), and mago excludes vendored
+dirs at **`[source]`** level — which drops them from format, lint AND analyze at once; per-tool
+excludes cannot, because `composer format` has no exclude list and would REWRITE a vendored file.
+Every glob form was measured against a real vendored file and none matched, so each directory needs
+a literal line; `tests/Unit/Plugin/Runtime/BundledPluginVendorTest` fails until it gets one (no
+bundled plugin vendors yet — the two `tests/Support/fixtures/thirdparty/acme-*` vendors are what
+make it non-vacuous).
+
 **A plugin may own its code (round 24).** An optional `plugin.json` beside `plugin.php`
 (`Plugin/Runtime/PluginManifest`, a readonly VO + `beside()` reader) declares `namespace`,
 `autoload` (default `src`) and `requires`; it is read **before any plugin PHP is required**,
@@ -997,8 +1036,7 @@ which is a requirement and not a preference — `requires` decides LOAD ORDER, s
 discovered by loading. `Plugin/Runtime/PluginAutoloader` holds ONE `spl_autoload_register` over a
 prefix→directory map (composer maps only `Porta\ => src/`, and a third-party plugin cannot edit
 composer.json); it is registered from `PluginLoader` at boot AND from `tests/bootstrap.php`, so
-plugin classes resolve under paratest including CI's `--classmap-authoritative` install. The map
-IS the registration state (empty ⇒ register the loader), so there is no second static.
+plugin classes resolve under paratest including CI's `--classmap-authoritative` install.
 `Plugin/Runtime/PluginOrder::resolve()` topologically sorts the manifests: a missing/disabled
 requirement skips the plugin with a named warning, the skip propagates to its dependents, and a
 CYCLE is reported rather than resolved (no member loads — picking one to go first would make the
@@ -1371,6 +1409,13 @@ flaky shapes are all on the fixed-clock side, and each has a named cure:
 duplicated lines onto these): `PreservesPath` + `ClearsPortaLsp` (attribute hooks — the env rig;
 classes keep their own setUp/tearDown), `PumpsLoop` (`await()`/`pump()`, composed by `RunsIde`),
 `ScreenReads` (screen scrape + the force-`frame()` idiom, composed by `RunsIde`),
+**`RunsIde::awaitPainted($tui, $terminal, $needle)`** (round 28: 91 E2e sites did
+`handleInput`/command-run → `tick()` → assert the message is on screen, and a bare tick is not a
+frame, so whether the status bar had painted was a timing accident — invisible under `composer
+test`, fatal under the slower coverage run and at load ≳25. Forcing ONE frame was measured and is
+NOT enough: a loop callback can sit between the action and the paint, so the barrier forces a frame
+PER TURN. The assertion stays at the call site, so a real regression still fails as an assertion
+rather than a bare timeout),
 `FindModalReads`, `RendersWidget` (`plain()`/`rows()` ANSI-stripping), `StatusReads`
 (`flashText()` reads the MODEL, `statusRow()` the RENDERED row — pick deliberately; `Toasts`
 makes the same model argument for toasts), `GitBinary` (`skipWithoutGit()`/`whichGit()`),

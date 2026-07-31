@@ -84,6 +84,42 @@ whatever required it ("Also disabled: …"), since those cannot work without it.
 Startup does **not** rewrite your config that way: a launch that silently
 re-enabled things you turned off would be a worse surprise than a message.
 
+## Depending on a composer package
+
+A plugin may ship a `composer.json` and its own `vendor/` directory, and use
+what it declares. Installing a plugin that has a `composer.json` and no
+`vendor/` runs `composer install --no-dev` **inside the plugin's own
+directory** — never in your project, where a plugin's libraries have no
+business.
+
+The resolution rule matters, because it decides what happens when your plugin
+and Porta want the same package:
+
+> **Porta's copy always wins.** Porta reads composer's *generated maps*
+> (`vendor/composer/autoload_psr4.php` and `autoload_classmap.php`) and serves
+> them from its own autoloader, which sits **behind** Porta's. It never runs
+> your `vendor/autoload.php` — composer registers that one with *prepend*, so
+> requiring it would let any plugin replace Porta's dependencies for the whole
+> process and break the IDE rather than the plugin.
+
+So a package Porta itself ships (`symfony/*`, `tempest/highlight`, …) resolves
+to **Porta's version** whatever you pinned. Porta names each one in a startup
+warning so the mismatch is visible rather than turning up as a `TypeError` in
+something unrelated. If you need a different major of a package Porta ships,
+you cannot have it — vendor the logic you need instead.
+
+Two of composer's autoload modes are **not supported**, and a package that
+needs either will simply fail to resolve:
+
+- **PSR-0** (`autoload_namespaces.php`) — effectively dead, and not read.
+- **`files`** (`autoload_files.php`) — side-effect includes are not executed,
+  because running arbitrary plugin code at discovery time is exactly the
+  hazard the whole arrangement avoids.
+
+A plugin with a `composer.json` and no `vendor/` **does not load**: Porta
+declines it by name at startup and tells you to run `composer install` in its
+directory. Whatever required it is skipped too.
+
 ## Installing, removing, disabling
 
 Open **Settings → Plugins** and use the form:
