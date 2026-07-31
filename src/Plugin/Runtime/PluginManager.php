@@ -69,6 +69,12 @@ final class PluginManager implements
     private array $debugAdapters = [];
     /** @var list<string> */
     private array $warnings = [];
+
+    /** @var list<string> enabled plugins whose composer packages are missing */
+    private array $pendingInstalls = [];
+
+    /** @var list<string> plugins held out of boot only because a PENDING one is what they require */
+    private array $deferred = [];
     /** @var array<string, true> loaded plugin names */
     private array $names = [];
     /** Watermark into $commands: how many are already in the registry. */
@@ -261,6 +267,43 @@ final class PluginManager implements
     public function addWarning(string $warning): void
     {
         $this->warnings[] = $warning;
+    }
+
+    /**
+     * Record a plugin that is enabled but owes a composer install, so boot can
+     * do something about it rather than only complain.
+     */
+    public function addPendingInstall(string $name): void
+    {
+        $this->pendingInstalls[] = $name;
+    }
+
+    /**
+     * The enabled plugins boot could not load because their packages are not
+     * installed, in discovery order.
+     *
+     * @return list<string>
+     */
+    public function pendingInstalls(): array
+    {
+        return $this->pendingInstalls;
+    }
+
+    /** Record a plugin whose only obstacle is a requirement that is being installed. */
+    public function addDeferred(string $name): void
+    {
+        $this->deferred[] = $name;
+    }
+
+    /**
+     * Plugins that were skipped at boot ONLY because something they require is
+     * being installed — they load as soon as it does.
+     *
+     * @return list<string>
+     */
+    public function deferred(): array
+    {
+        return $this->deferred;
     }
 
     /** @return list<string> */

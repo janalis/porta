@@ -848,4 +848,120 @@ final class IdeEmbeddedPluginsTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    public function testABootWithAnEnabledButUninstalledPluginInstallsAndActivatesIt(): void
+    {
+        // The route that had no answer before: a plugin enabled in .porta.json
+        // whose packages are missing — after an update, after a vendor wipe, or
+        // because it was enabled on another machine. Boot itself never shells
+        // out (it runs while the container is still being built); the drain
+        // does, once the IDE is up.
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $this->needyPlugin($project, 'zbase');
+        $this->projectPlugin($project, 'app', ['zbase']); // owes nothing itself: held out only because zbase is
+        putenv('PATH='.$this->fakeComposerPath($project));
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    $commands = Services::resolve($ide, CommandRegistry::class);
+                    $labels = static fn (): array => array_column($commands->paletteCommands(), 'label');
+
+                    $this->await(static fn (): bool => \in_array('Zbase Run', $labels(), strict: true), what: 'the boot drain');
+                    $this->assertContains('App Run', $labels(), 'and its dependent came with it');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testABootDrainThatCannotInstallLeavesTheDependentOut(): void
+    {
+        // Loading a plugin whose requirement never came up would be loading one
+        // that cannot work — the same refusal the boot order makes.
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $this->needyPlugin($project, 'zbase');
+        $this->projectPlugin($project, 'app', ['zbase']);
+        putenv('PATH='.$this->fakeComposerPath($project, exitCode: 4));
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    $this->await(static fn (): bool => \in_array('Plugin "zbase" enabled, but composer install failed (exit code 4)', Toasts::all($ide), strict: true), what: 'the failure report');
+
+                    $labels = array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label');
+                    $this->assertNotContains('Zbase Run', $labels);
+                    $this->assertNotContains('App Run', $labels, 'its dependent stayed out too');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testTheBootDrainInstallsRequirementsBeforeWhatNeedsThem(): void
+    {
+        // Discovery order is alphabetical, which is not load order: `app`
+        // sorts first and requires `zbase`. Both owe an install, so both are
+        // pending, and installing `app` first would activate it with its
+        // requirement still missing.
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $this->needyPlugin($project, 'zbase');
+        $this->needyPlugin($project, 'app', ['zbase']);
+        putenv('PATH='.$this->fakeComposerPath($project));
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    $commands = Services::resolve($ide, CommandRegistry::class);
+                    $labels = static fn (): array => array_column($commands->paletteCommands(), 'label');
+
+                    $this->await(static fn (): bool => \in_array('App Run', $labels(), strict: true), what: 'both installs');
+
+                    $order = $labels();
+                    $this->assertLessThan(
+                        array_search('App Run', $order, strict: true),
+                        (int) array_search('Zbase Run', $order, strict: true),
+                        'the requirement installed and loaded first',
+                    );
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAPendingPluginWhoseRequirementAlreadyLoadedJustInstalls(): void
+    {
+        // The ordering pass only has to move plugins that are THEMSELVES
+        // pending: a requirement that loaded normally at boot is already there,
+        // and one that is never coming cannot be waited for.
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $this->projectPlugin($project, 'zbase'); // plain: loads at boot
+        $this->needyPlugin($project, 'app', ['zbase']);
+        putenv('PATH='.$this->fakeComposerPath($project));
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    $commands = Services::resolve($ide, CommandRegistry::class);
+                    $labels = static fn (): array => array_column($commands->paletteCommands(), 'label');
+
+                    $this->assertContains('Zbase Run', $labels(), 'the requirement never needed an install');
+                    $this->await(static fn (): bool => \in_array('App Run', $labels(), strict: true), what: "the dependent's install");
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
 }

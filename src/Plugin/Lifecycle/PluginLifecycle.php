@@ -219,9 +219,11 @@ final class PluginLifecycle implements PluginLifecycleOps
      * previous one's exit callback.
      *
      * @param list<string> $queue    targets still to do, in order
+     * @param ?string      $name      the plugin the user acted on, or null when nobody did (the boot
+     *                                drain), in which case only failures are reported
      * @param list<string> $required the companions, for the closing flash
      */
-    private function activateQueue(array $queue, string $name, array $required, EnableProgress $progress): void
+    private function activateQueue(array $queue, ?string $name, array $required, EnableProgress $progress): void
     {
         while ([] !== $queue) {
             $target = array_shift($queue);
@@ -262,7 +264,7 @@ final class PluginLifecycle implements PluginLifecycleOps
      * @param list<string> $queue
      * @param list<string> $required
      */
-    private function afterDependencies(string $target, int $code, array $queue, string $name, array $required, EnableProgress $progress): void
+    private function afterDependencies(string $target, int $code, array $queue, ?string $name, array $required, EnableProgress $progress): void
     {
         $progress = $this->progressAfterInstall($target, $code, $progress);
         $this->refreshView(); // an async landing arrives after the view rendered
@@ -298,8 +300,16 @@ final class PluginLifecycle implements PluginLifecycleOps
      *
      * @param list<string> $required
      */
-    private function finishEnable(string $name, array $required, EnableProgress $progress): void
+    private function finishEnable(?string $name, array $required, EnableProgress $progress): void
     {
+        if (null === $name) {
+            // The boot drain: nobody pressed anything, so there is nothing to
+            // report but the failures the queue already reported itself.
+            $this->activateDeferred();
+            $this->afterToggle();
+
+            return;
+        }
         $message = match (true) {
             $progress->activated => 'Plugin "%name%" enabled',
             !$progress->reported => 'Plugin "%name%" is not installed',
@@ -310,6 +320,104 @@ final class PluginLifecycle implements PluginLifecycleOps
         }
         $this->flashCompanions('Also enabled: %names%', $required);
         $this->afterToggle();
+    }
+
+    /**
+     * Install and activate the plugins boot found enabled but uninstalled.
+     *
+     * Called once the IDE is up, never during discovery: `loadInto()` runs
+     * while the container is still being built, and a startup that blocks on
+     * composer with no UI to explain itself is the failure this avoids.
+     *
+     * Deliberately NOT `enable()`: these plugins are already enabled, so
+     * nothing is persisted and no requirement is auto-enabled — a boot that
+     * silently re-enabled what the user switched off is the surprise the
+     * lifecycle has always refused to be.
+     */
+    public function installPending(): void
+    {
+        $pending = $this->plugins->pendingInstalls();
+        if ([] !== $pending) {
+            $this->activateQueue($this->depsFirst($pending), name: null, required: [], progress: new EnableProgress());
+        }
+    }
+
+    /**
+     * $names ordered so a plugin follows every pending plugin it requires.
+     *
+     * Discovery order is alphabetical, which is not load order: `app` requiring
+     * `zbase` would otherwise install and activate first, with its requirement
+     * still missing. Requirements that are not themselves pending are ignored —
+     * they are already loaded, or they are not coming.
+     *
+     * @param list<string> $names
+     *
+     * @return list<string>
+     */
+    private function depsFirst(array $names): array
+    {
+        $ordered = [];
+        $seen = [];
+        foreach ($names as $name) {
+            $this->appendDepsFirst($name, $names, $ordered, $seen);
+        }
+
+        return $ordered;
+    }
+
+    /**
+     * Depth-first: a name is appended only after the pending plugins it
+     * requires.
+     *
+     * @param list<string>        $pending
+     * @param list<string>        $ordered accumulated, requirements first
+     * @param array<string, true> $seen    claimed before recursing, so a requirement cycle terminates
+     */
+    private function appendDepsFirst(string $name, array $pending, array &$ordered, array &$seen): void
+    {
+        if (array_key_exists($name, $seen)) {
+            return;
+        }
+        $seen[$name] = true;
+        foreach ($this->manifestsOf($name) as $required) {
+            if (!\in_array($required, $pending, strict: true)) {
+                continue; // already loaded, or not coming
+            }
+            $this->appendDepsFirst($required, $pending, $ordered, $seen);
+        }
+        $ordered[] = $name;
+    }
+
+    /**
+     * Load the plugins boot held out ONLY because something they require was
+     * being installed.
+     *
+     * Repeated until a pass changes nothing, because a chain unlocks one link
+     * at a time: A requires B requires C, and C's install frees B, which frees
+     * A. A plugin whose requirement did NOT come up (its install failed) stays
+     * out — loading it would be loading a plugin that cannot work, which is
+     * exactly what the order refused to do at boot.
+     */
+    private function activateDeferred(): void
+    {
+        $waiting = $this->plugins->deferred();
+        do {
+            $stillWaiting = [];
+            foreach ($waiting as $name) {
+                $ready = true;
+                foreach ($this->manifestsOf($name) as $required) {
+                    $ready = $ready && $this->plugins->hasPlugin($required);
+                }
+                if ($ready) {
+                    $this->activateInstalledCopy($name);
+
+                    continue;
+                }
+                $stillWaiting[] = $name;
+            }
+            $changed = \count($stillWaiting) !== \count($waiting);
+            $waiting = $stillWaiting;
+        } while ($changed && [] !== $waiting);
     }
 
     /** The highest-precedence installed copy of $name, or null when there is none. */

@@ -224,17 +224,15 @@ final class PluginLoaderTest extends TestCase
         $this->assertFalse($manager->hasPlugin('needy'));
         $this->assertFalse($manager->hasPlugin('dependent'), 'the skip propagates');
         $this->assertTrue($manager->hasPlugin('unrelated'), 'and stops there');
-        $warnings = implode(' | ', $manager->warnings());
-        $this->assertStringContainsString('Plugin "needy" needs its dependencies installed', $warnings);
-        $this->assertStringContainsString('composer install', $warnings, 'and says what to do about it');
+        $this->assertSame(['needy'], $manager->pendingInstalls(), 'recorded for the drain that runs once the IDE is up');
+        $this->assertSame([], $manager->warnings(), 'and not complained about — boot is going to fix it');
     }
 
-    public function testAPluginOwedOnlyItsAutoloadDumpIsToldThatInstead(): void
+    public function testAPluginOwedOnlyItsAutoloadDumpIsPendingToo(): void
     {
-        // Same refusal, different reason: nothing is missing from vendor/, the
-        // maps that would carry a classmap were simply never dumped. Saying
-        // "needs its dependencies installed" to a plugin with no dependencies
-        // sends the reader looking for something that is not there.
+        // Nothing is missing from vendor/; the maps that would carry a classmap
+        // were simply never dumped. Same answer — it owes a composer run — so
+        // it joins the same queue.
         $project = new TempProject([
             '.porta/plugins/undumped/composer.json' => '{"autoload":{"classmap":["lib/"]}}',
             '.porta/plugins/undumped/plugin.php' => $this->pluginSource('undumped'),
@@ -243,7 +241,7 @@ final class PluginLoaderTest extends TestCase
         $manager = $this->load($project);
 
         $this->assertFalse($manager->hasPlugin('undumped'));
-        $this->assertStringContainsString('Plugin "undumped" declares autoload maps it has not dumped', implode(' | ', $manager->warnings()));
+        $this->assertSame(['undumped'], $manager->pendingInstalls());
     }
 
     public function testAPlatformOnlyRequirementIsNotAnUninstalledDependency(): void

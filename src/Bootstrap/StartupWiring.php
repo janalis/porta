@@ -6,6 +6,7 @@ namespace Porta\Bootstrap;
 
 use Porta\Config\IdeConfig;
 use Porta\Container\AsIdeService;
+use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Workbench\Notifier;
@@ -14,7 +15,8 @@ use Porta\Workbench\Notifier;
  * The last step of the Ide ctor-tail composition, run once every service
  * exists: hands the plugin handlers their live runtime seam (so flash / editor
  * access / openFile resolve at call time) and surfaces the config-parse and
- * plugin-load warnings as toasts. A sibling of {@see WidgetHooks} — kept
+ * plugin-load warnings as toasts, and starts the install of any enabled plugin
+ * whose composer packages are missing. A sibling of {@see WidgetHooks} — kept
  * separate so neither grows an unwieldy constructor. One wire() call from Ide.
  */
 #[AsIdeService]
@@ -25,6 +27,7 @@ final readonly class StartupWiring
         private PluginRuntime $runtime,
         private IdeConfig $config,
         private Notifier $notifier,
+        private PluginLifecycle $lifecycle,
     ) {}
 
     public function wire(): void
@@ -34,5 +37,9 @@ final readonly class StartupWiring
         foreach ([...$this->config->warnings, ...$this->plugins->warnings()] as $warning) {
             $this->notifier->flash($warning, 5.0);
         }
+        // Enabled plugins whose packages are missing: boot recorded them rather
+        // than shelling out mid-discovery. The subprocesses are armed here and
+        // run once the loop starts.
+        $this->lifecycle->installPending();
     }
 }

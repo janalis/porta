@@ -75,18 +75,14 @@ final class PluginLoader
         foreach ($this->discover() as $file) {
             $manifest = PluginManifest::beside($file);
             if ($manifest->needsInstall()) {
-                // Declining it here rather than letting it fatal later: its
-                // dependents are skipped by name too, because it never enters
-                // the order. Two wordings, because a plugin can be missing its
-                // dependencies OR merely its dumped autoload maps, and one
-                // message covering both would be untrue for one of them.
-                $manager->addWarning(\sprintf(
-                    [] === $manifest->packages
-                        ? 'Plugin "%s" declares autoload maps it has not dumped — run composer install in %s'
-                        : 'Plugin "%s" needs its dependencies installed — run composer install in %s',
-                    $manifest->name,
-                    $manifest->directory,
-                ));
+                // Not loaded now — its classes are not there — but recorded, so
+                // the drain that runs once the IDE is up installs it and
+                // activates it live. Boot itself never shells out: this method
+                // runs while the container is still being built.
+                //
+                // Its dependents are skipped by name too, because it never
+                // enters the order; they come back when it does.
+                $manager->addPendingInstall($manifest->name);
 
                 continue;
             }
@@ -105,8 +101,23 @@ final class PluginLoader
         }
 
         ['order' => $order, 'skipped' => $skipped] = PluginOrder::resolve($manifests);
-        foreach ($skipped as $warning) {
-            $manager->addWarning($warning);
+        $pending = $manager->pendingInstalls();
+        // Walked over the MANIFESTS rather than over $skipped, so each name's
+        // requires are in hand without a lookup that could miss.
+        foreach ($manifests as $manifest) {
+            if (!array_key_exists($manifest->name, $skipped)) {
+                continue;
+            }
+            // A plugin held out because something it needs is being INSTALLED
+            // is a different story from one held out because its requirement is
+            // absent: this one gets to load the moment the install lands, so it
+            // is deferred rather than complained about.
+            if ([] !== array_intersect($manifest->requires, $pending)) {
+                $manager->addDeferred($manifest->name);
+
+                continue;
+            }
+            $manager->addWarning($skipped[$manifest->name]);
         }
         foreach ($order as $manifest) {
             $error = $this->loadFile($manifest->directory.'/plugin.php', $manager);
