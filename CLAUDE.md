@@ -1039,7 +1039,11 @@ marking it and deleting core's registration are ONE commit. The identity stays c
 implementation moves — the opposite of the call above for pane actions, and deliberately: a pane
 action is invisible without its pane, while `ide_todo` has a key and a menu position a user may
 already have rebound. `plugins/todo` is the first feature to move this way (round 26), which is
-why `ResultsPanelMode` has five cases and not six.
+why `ResultsPanelMode` has five cases and not six. **`MenuModel::items()` skips an `i:` spec
+whose id is adoptable and unregistered** — an adopted verb is the one kind that may go unanswered
+(its plugin can be disabled), and without the skip the item renders core's label, carries the
+catalog's shortcut and runs a documented no-op. Every other `i:` id is core's own and always
+registered, which is why the rule is narrow rather than "skip anything unregistered".
 
 **Plugin coverage runs a SECOND, SERIAL pass, and the reason is upstream.** `composer
 coverage:check` = the parallel run over `src` (100%) **plus** `composer coverage:plugins` (serial
