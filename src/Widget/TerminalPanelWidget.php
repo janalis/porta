@@ -7,6 +7,8 @@ namespace Porta\Widget;
 use Porta\Container\AsChromeRoot;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
+use Porta\Event\TerminalSessionClosed;
+use Porta\Event\TerminalSessionCycled;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
@@ -18,6 +20,7 @@ use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\PanelRows;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -48,23 +51,33 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
     private TerminalBuffer $buffer;
     private int $scrollBack = 0; // lines scrolled up from the bottom
 
-    private TerminalPanelCallbacks $callbacks;
+    /** @var (callable(string): void)|null forwards input bytes to the process */
+    private $onInputForward = null;
 
     private readonly CursorStyle $cursorStyle;
     private readonly Translator $translator;
 
-    public function __construct(?CursorStyle $cursorStyle = null, ?Translator $translator = null)
-    {
+    public function __construct(
+        ?CursorStyle $cursorStyle = null,
+        ?Translator $translator = null,
+        private readonly ?EventDispatcherInterface $events = null,
+    ) {
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
         $this->translator = $translator ?? new Translator('en');
         $this->buffer = new TerminalBuffer();
         $this->visibleRows = 12;
-        $this->callbacks = new TerminalPanelCallbacks(); // a bare widget fires nothing
     }
 
-    public function setCallbacks(TerminalPanelCallbacks $callbacks): void
+    /**
+     * Byte transport, not a notification: one call per keystroke, straight to
+     * the PTY. It stays a closure while close/cycle became events — a dispatch
+     * per typed character would put the whole listener map on that path.
+     *
+     * @param callable(string): void $callback
+     */
+    public function onInputForward(callable $callback): void
     {
-        $this->callbacks = $callbacks;
+        $this->onInputForward = $callback;
     }
 
     public function open(string $title, TerminalBuffer $buffer): void
@@ -161,16 +174,14 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
             return;
         }
         if ($kb->matches($data, 'terminal_close_session')) {
-            if (null !== $this->callbacks->onSessionClosed) {
-                ($this->callbacks->onSessionClosed)(-1); // -1 = the active session
-            }
+            $this->events?->dispatch(new TerminalSessionClosed(-1)); // -1 = the active session
 
             return;
         }
 
         // Everything else is forwarded verbatim to the process.
-        if (null !== $this->callbacks->onInputForward) {
-            ($this->callbacks->onInputForward)($data);
+        if (null !== $this->onInputForward) {
+            ($this->onInputForward)($data);
         }
     }
 
@@ -213,9 +224,7 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
 
     private function cycle(int $delta): void
     {
-        if (null !== $this->callbacks->onSessionCycled) {
-            ($this->callbacks->onSessionCycled)($delta);
-        }
+        $this->events?->dispatch(new TerminalSessionCycled($delta));
     }
 
     /** @return array<string, string[]> */

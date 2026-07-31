@@ -20,7 +20,6 @@ use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TabBarWidget;
-use Porta\Widget\TerminalPanelCallbacks;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\TabListProvider;
@@ -80,14 +79,10 @@ final class WidgetHooks
         // The dock hooks (single-visible invariant, MRU restore, focus return)
         // register on all three bottom panels here.
         $this->panels->wire();
-        $this->panels->onTerminalReveal(fn () => $this->run->showActiveSession());
-        $this->panels->onTerminalSessionClose(fn (int $index) => $this->run->closeSession($index));
-        $terminalPanel = $this->terminalPanel;
-        $terminalPanel->setCallbacks(new TerminalPanelCallbacks(
-            onInputForward: fn (string $data) => $this->run->forwardInput($data),
-            onSessionClosed: fn (int $index) => $this->run->closeSession($index),
-            onSessionCycled: fn (int $delta) => $this->run->cycleSession($delta),
-        ));
+        // Reveal, close and cycle are events the run controller listens for;
+        // what is left here is the byte transport, which is one call per
+        // keystroke and has no business on a bus.
+        $this->terminalPanel->onInputForward(fn (string $data) => $this->run->forwardInput($data));
 
         $this->menuBar->onNavigate(function (): void {
             $this->overlay->refreshMenu();

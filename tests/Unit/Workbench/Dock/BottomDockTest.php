@@ -8,6 +8,8 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\Event\DockToolClosed;
+use Porta\Event\TerminalRevealRequested;
+use Porta\Event\TerminalSessionClosed;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\Probe;
@@ -236,7 +238,8 @@ final class BottomDockTest extends TestCase
 
     public function testRevealSwitchesTabsAndFocuses(): void
     {
-        $dock = $this->dock();
+        $events = new EventDispatcher();
+        $dock = $this->dock($events);
         $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
         $usages = $dock->showList(ResultsPanelMode::Search, 'Usages', [['path' => 'a.php', 'line' => 0, 'text' => 'x']]);
         $this->debug->open('a.php');
@@ -263,7 +266,7 @@ final class BottomDockTest extends TestCase
         $this->assertSame($this->results, $dock->visiblePanel());
 
         $revealed = false;
-        $dock->onTerminalReveal(static function () use (&$revealed): void {
+        $events->addListener(TerminalRevealRequested::class, static function () use (&$revealed): void {
             $revealed = true;
         });
         $dock->reveal(DockTab::Terminal);
@@ -303,7 +306,8 @@ final class BottomDockTest extends TestCase
 
     public function testCloseTabClosesToolsAndRoutesSessionTabsToTheirController(): void
     {
-        $dock = $this->dock();
+        $events = new EventDispatcher();
+        $dock = $this->dock($events);
         $this->sessions->create('shell:1', 'sh 1');
         $this->sessions->create('shell:2', 'sh 2');
         $this->terminal->open('sh 2', new TerminalBuffer());
@@ -321,8 +325,8 @@ final class BottomDockTest extends TestCase
 
         $dock->closeTab(DockTab::Terminal, 'shell:1'); // no close hook wired: a no-op
         $closed = [];
-        $dock->onTerminalSessionClose(static function (int $index) use (&$closed): void {
-            $closed[] = $index;
+        $events->addListener(TerminalSessionClosed::class, static function (TerminalSessionClosed $event) use (&$closed): void {
+            $closed[] = $event->index;
         });
         $dock->closeTab(DockTab::Terminal, 'shell:1');
         $dock->closeTab(DockTab::Terminal, 'nope'); // unknown session: a no-op
@@ -386,10 +390,11 @@ final class BottomDockTest extends TestCase
 
     public function testStripClicksRevealAndCloseThroughTheWiring(): void
     {
-        $dock = $this->dock();
+        $events = new EventDispatcher();
+        $dock = $this->dock($events);
         $this->sessions->create('shell:1', 'sh 1');
         $this->terminal->open('sh 1', new TerminalBuffer());
-        $dock->onTerminalReveal(function (): void {
+        $events->addListener(TerminalRevealRequested::class, function (): void {
             $this->terminal->open('sh 1', new TerminalBuffer());
         });
         $this->debug->open('a.php');

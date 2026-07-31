@@ -7,6 +7,8 @@ namespace Porta\Workbench\Dock;
 use Porta\Container\AsIdeService;
 use Porta\Event\DockToolBound;
 use Porta\Event\DockToolClosed;
+use Porta\Event\TerminalRevealRequested;
+use Porta\Event\TerminalSessionClosed;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
 use Porta\Ui\Glyphs;
@@ -58,12 +60,6 @@ final class BottomDock
     /** @var list<DockPanelWidget> visibility order, most recently visible last */
     private array $mru = [];
 
-    /** @var (callable(): void)|null reveals a Terminal tab by re-opening the active session (RunController) */
-    private $onTerminalReveal = null;
-
-    /** @var (callable(int): void)|null closes the session at an index for real (RunController) */
-    private $onTerminalSessionClose = null;
-
     public function __construct(
         private readonly Tui $tui,
         private readonly TerminalPanelWidget $terminalPanel,
@@ -101,18 +97,6 @@ final class BottomDock
                 DockTab::Debug => null,
             },
         ));
-    }
-
-    /** How a Terminal tab reveals itself: re-open the active session (wired to RunController). */
-    public function onTerminalReveal(callable $callback): void
-    {
-        $this->onTerminalReveal = $callback;
-    }
-
-    /** How a session tab's × closes its session for real (wired to RunController). */
-    public function onTerminalSessionClose(callable $callback): void
-    {
-        $this->onTerminalSessionClose = $callback;
     }
 
     /**
@@ -185,9 +169,7 @@ final class BottomDock
             if (null !== $session) {
                 $this->sessions->makeActive($session);
             }
-            if (null !== $this->onTerminalReveal) {
-                ($this->onTerminalReveal)();
-            }
+            $this->events?->dispatch(new TerminalRevealRequested());
 
             return;
         }
@@ -260,9 +242,7 @@ final class BottomDock
                     continue;
                 }
 
-                if (null !== $this->onTerminalSessionClose) {
-                    ($this->onTerminalSessionClose)($index);
-                }
+                $this->events?->dispatch(new TerminalSessionClosed($index));
                 break;
             }
 

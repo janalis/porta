@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Porta\Run;
 
 use Porta\Container\AsIdeService;
+use Porta\Event\TerminalRevealRequested;
+use Porta\Event\TerminalSessionClosed;
+use Porta\Event\TerminalSessionCycled;
 use Porta\I18n\Translator;
 use Porta\Terminal\PtyProcess;
 use Porta\Terminal\TerminalKeyEncoder;
@@ -13,6 +16,7 @@ use Porta\Terminal\TerminalSessions;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Notifier;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -100,6 +104,12 @@ final class RunController
     }
 
     /** Reveal the active session in the terminal panel — the dock's Terminal tab. */
+    #[AsEventListener]
+    public function onRevealRequested(TerminalRevealRequested $event): void
+    {
+        $this->showActiveSession();
+    }
+
     public function showActiveSession(): void
     {
         $active = $this->sessions->active();
@@ -170,6 +180,12 @@ final class RunController
     }
 
     /** Cycle to the next (+1) or previous (-1) session tab. */
+    #[AsEventListener]
+    public function onSessionCycled(TerminalSessionCycled $event): void
+    {
+        $this->cycleSession($event->delta);
+    }
+
     public function cycleSession(int $delta): void
     {
         if (null !== ($session = $delta > 0 ? $this->sessions->next() : $this->sessions->prev())) {
@@ -178,6 +194,12 @@ final class RunController
     }
 
     /** Close a session tab ($index, or -1 for the active one); closes the panel when the last goes. */
+    #[AsEventListener]
+    public function onSessionClosed(TerminalSessionClosed $event): void
+    {
+        $this->closeSession($event->index);
+    }
+
     public function closeSession(int $index): void
     {
         $target = -1 === $index ? $this->sessions->activeIndex() : $index;
