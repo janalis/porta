@@ -403,7 +403,10 @@ final class PluginInstallerTest extends TestCase
         // wants several installs has to serialize them itself.
         $installer = $this->installer(git: $this->git(), composer: $this->composerStub(0));
         $repo = $this->repo(Presence::With);
-        $installer->install('file://'.$repo, 'project', static fn (?string $error, ?string $file) => null);
+        $done = false;
+        $installer->install('file://'.$repo, 'project', static function (?string $error, ?string $file) use (&$done): void {
+            $done = true;
+        });
 
         $this->assertSame(
             DependencyInstall::Busy,
@@ -416,6 +419,11 @@ final class PluginInstallerTest extends TestCase
             DependencyInstall::NotNeeded,
             $installer->installDependencies($this->pluginDir('nodeps', '{}'), static fn (int $exit) => null),
         );
+
+        // Let the clone finish rather than ending on an armed stream watcher.
+        $this->await(static function () use (&$done): bool {
+            return $done;
+        }, what: 'the clone that held the slot');
     }
 
     public function testASuccessfulInstallMarksTheTreeAsOurs(): void
@@ -485,10 +493,17 @@ final class PluginInstallerTest extends TestCase
         mkdir($dir.'/vendor', permissions: 0o777, recursive: true);
         file_put_contents($dir.'/'.PluginInstaller::MARKER, data: "x\n");
 
-        $installer->install('file://'.$this->repo(Presence::With), 'project', static fn (?string $error, ?string $file) => null);
+        $done = false;
+        $installer->install('file://'.$this->repo(Presence::With), 'project', static function (?string $error, ?string $file) use (&$done): void {
+            $done = true;
+        });
 
         $this->assertSame(DependencyRemoval::Busy, $installer->removeDependencies($dir));
         $this->assertDirectoryExists($dir.'/vendor');
+
+        $this->await(static function () use (&$done): bool {
+            return $done;
+        }, what: 'the clone that held the slot');
     }
 
     public function testAVendorTreeThatWillNotDeleteIsReportedNotSwallowed(): void
