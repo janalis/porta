@@ -151,10 +151,10 @@ final class ArchitectureCheckCommandTest extends TestCase
 
     public function testAPluginsOwnClassesAreGradedUnderTheirOwnNamespace(): void
     {
-        // The plugin's directory name says nothing; its manifest namespace does.
+        // The plugin's directory name says nothing; its composer.json psr-4 does.
         $project = new TempProject([
             'src/Beta/Two.php' => $this->file('Beta', 'Two'),
-            'plugins/graph-viewer/plugin.json' => '{"namespace": "Porta\\\\GraphViewer", "autoload": "src"}',
+            'plugins/graph-viewer/composer.json' => '{"autoload": {"psr-4": {"Porta\\\\GraphViewer\\\\": "src/"}}}',
             'plugins/graph-viewer/src/Artifact.php' => $this->file('GraphViewer', 'Artifact', '    public function f(): void { new Two(); }', "use Porta\\Beta\\Two;\n"),
         ]);
 
@@ -169,7 +169,7 @@ final class ArchitectureCheckCommandTest extends TestCase
     {
         $project = new TempProject([
             'src/Beta/Two.php' => $this->file('Beta', 'Two'),
-            'plugins/acme/plugin.json' => '{"namespace": "Acme\\\\Tools", "autoload": "lib"}',
+            'plugins/acme/composer.json' => '{"autoload": {"psr-4": {"Acme\\\\Tools\\\\": "lib"}}}',
             'plugins/acme/lib/Greeting.php' => "<?php\n\nnamespace Acme\\Tools;\n\nuse Porta\\Beta\\Two;\n\nfinal class Greeting\n{\n    public function f(): void { new Two(); }\n}\n",
         ]);
 
@@ -180,14 +180,19 @@ final class ArchitectureCheckCommandTest extends TestCase
 
     public function testAPluginThatShipsNoClassesHasNoGraph(): void
     {
-        // No manifest, a manifest without a namespace, a namespace pointing at a
-        // directory that is not there, and metadata that does not parse: four
-        // ways to ship only a plugin.php, none of them an error.
+        // No manifest, one with no psr-4, a prefix pointing at a directory that
+        // is not there, an empty prefix, a non-string prefix and directory, an
+        // autoload that is not an object, and metadata that does not parse:
+        // every way to ship only a plugin.php, none of them an error.
         $project = new TempProject([
             'plugins/wires-only/plugin.php' => "<?php\n",
-            'plugins/no-namespace/plugin.json' => '{"requires": ["wires-only"]}',
-            'plugins/no-directory/plugin.json' => '{"namespace": "Porta\\\\Absent"}',
-            'plugins/junk/plugin.json' => 'not json at all',
+            'plugins/no-namespace/composer.json' => '{"extra": {"porta": {"requires": ["wires-only"]}}}',
+            'plugins/no-directory/composer.json' => '{"autoload": {"psr-4": {"Porta\\\\Absent\\\\": "src/"}}}',
+            'plugins/empty-prefix/composer.json' => '{"autoload": {"psr-4": {"": "src/"}}}',
+            'plugins/junk-entries/composer.json' => '{"autoload": {"psr-4": {"7": "src/", "A\\\\": 7}}}',
+            'plugins/not-an-object/composer.json' => '{"autoload": {"psr-4": "nope"}}',
+            'plugins/no-autoload/composer.json' => '{"autoload": "nope"}',
+            'plugins/junk/composer.json' => 'not json at all',
         ]);
 
         $tester = $this->tester();

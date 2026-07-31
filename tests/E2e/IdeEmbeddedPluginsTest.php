@@ -318,7 +318,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
     public function testAThirdPartyPluginShipsItsOwnNamespacedClass(): void
     {
         // The committed fixture is shaped like a real third-party plugin: a
-        // plugin.json declaring `Acme\\Tools`, and a class under its own src/
+        // composer.json whose psr-4 declares `Acme\\Tools`, and a class under its own src/
         // that composer's autoloader knows nothing about.
         // setUp() already opted this class out of the PORTA_HOME fixture, and
         // tearDown restores it — calling either again here would capture the
@@ -385,7 +385,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         mkdir($dir, permissions: 0o777, recursive: true);
         file_put_contents($dir.'/plugin.php', data: $this->namedPlugin($name, ucfirst($name).' Run'));
         if ([] !== $requires) {
-            file_put_contents($dir.'/plugin.json', data: (string) json_encode(['requires' => $requires]));
+            file_put_contents($dir.'/composer.json', data: (string) json_encode(['extra' => ['porta' => ['requires' => $requires]]]));
         }
     }
 

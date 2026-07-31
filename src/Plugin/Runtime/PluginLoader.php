@@ -19,7 +19,7 @@ use Tempest\Highlight\TerminalTheme;
  * and a boot warning is collected. Plugins are trusted in-process PHP, like
  * composer scripts.
  *
- * A plugin that ships CLASSES of its own declares them in a `plugin.json`
+ * A plugin that ships CLASSES of its own declares them in a `composer.json`
  * beside its entry file ({@see PluginManifest}); those namespaces are
  * registered with {@see PluginAutoloader} before anything is required.
  */
@@ -89,6 +89,13 @@ final class PluginLoader
                 ));
 
                 continue;
+            }
+            if ($manifest->hasLegacyManifest()) {
+                // It still LOADS — only its manifest is being ignored, and a
+                // plugin that ships no classes and requires nothing loses
+                // nothing at all. Saying so is the point: the alternative is a
+                // plugin whose classes silently stop resolving.
+                $manager->addWarning(\sprintf('Plugin "%s" still has a plugin.json — its fields moved to composer.json (autoload.psr-4, extra.porta.requires)', $manifest->name));
             }
             foreach ($manifest->shadowedPackages() as $package) {
                 $manager->addWarning(\sprintf('Plugin "%s" vendors %s, which Porta ships — Porta\'s copy is used', $manifest->name, $package));

@@ -11,7 +11,7 @@ use Porta\Tests\Support\TempProject;
 /** What a plugin declares about itself, and what it means when it declares nothing. */
 final class PluginManifestTest extends TestCase
 {
-    /** A plugin directory with a src/ dir, and its manifest when $json is given. */
+    /** A plugin directory with a src/ dir, and its composer.json when $json is given. */
     private function pluginDir(TempProject $project, string $name, ?string $json): string
     {
         $dir = $project->path('plugins/'.$name);
@@ -33,7 +33,7 @@ final class PluginManifestTest extends TestCase
     {
         file_put_contents($dir.'/plugin.php', data: "<?php\n");
         if (null !== $json) {
-            file_put_contents($dir.'/plugin.json', data: $json);
+            file_put_contents($dir.'/composer.json', data: $json);
         }
 
         return $dir.'/plugin.php';
@@ -59,28 +59,56 @@ final class PluginManifestTest extends TestCase
         $manifest = PluginManifest::beside($this->pluginDir($project, 'plain', null));
 
         $this->assertSame('plain', $manifest->name, 'the directory name is the identity');
-        $this->assertNull($manifest->namespace);
-        $this->assertNull($manifest->autoloadDir(), 'no namespace, nothing to autoload');
+        $this->assertSame([], $manifest->autoloadDirs(), 'no psr-4, nothing to autoload');
         $this->assertSame([], $manifest->requires);
     }
 
-    public function testADeclaredNamespaceMapsToItsDirectory(): void
+    public function testComposersPsr4MapIsTheAutoloadMap(): void
     {
         $project = new TempProject();
-        $file = $this->pluginDir($project, 'acme', '{"namespace": "Acme\\\\Tools", "autoload": "src", "requires": ["image-viewer"]}');
+        $file = $this->pluginDir($project, 'acme', '{"autoload": {"psr-4": {"Acme\\\\Tools\\\\": "src/"}}, "extra": {"porta": {"requires": ["image-viewer"]}}}');
         $manifest = PluginManifest::beside($file);
 
-        $this->assertSame('Acme\\Tools', $manifest->namespace, 'stored without a leading separator');
-        $this->assertSame(realpath($project->path('plugins/acme/src')), realpath((string) $manifest->autoloadDir()));
+        $this->assertSame(['Acme\\Tools\\' => ['src/']], $manifest->autoload, 'the prefix keeps its trailing separator');
+        $this->assertSame(
+            [realpath($project->path('plugins/acme/src'))],
+            array_map(realpath(...), $manifest->autoloadDirs()['Acme\\Tools\\'] ?? []),
+        );
         $this->assertSame(['image-viewer'], $manifest->requires);
+    }
+
+    public function testAPrefixMayNameSeveralDirectoriesAndThePluginRoot(): void
+    {
+        // Composer accepts a string or a list, and `.`/`""` mean the package
+        // root — a plugin whose classes sit beside its plugin.php.
+        $project = new TempProject();
+        $file = $this->pluginDir($project, 'multi', '{"autoload": {"psr-4": {"A\\\\": ["src/", "."], "B\\\\": "src"}}}');
+        $dirs = PluginManifest::beside($file)->autoloadDirs();
+
+        $this->assertSame(
+            [realpath($project->path('plugins/multi/src')), realpath($project->path('plugins/multi'))],
+            array_map(realpath(...), $dirs['A\\'] ?? []),
+        );
+        $this->assertSame([realpath($project->path('plugins/multi/src'))], array_map(realpath(...), $dirs['B\\'] ?? []));
     }
 
     public function testAnAutoloadDirectoryThatDoesNotExistIsNotOne(): void
     {
         $project = new TempProject();
-        $file = $this->pluginDirWithoutSrc($project, 'empty', '{"namespace": "Acme\\\\Empty"}');
+        $file = $this->pluginDirWithoutSrc($project, 'empty', '{"autoload": {"psr-4": {"Acme\\\\Empty\\\\": "src/"}}}');
 
-        $this->assertNull(PluginManifest::beside($file)->autoloadDir());
+        $this->assertSame([], PluginManifest::beside($file)->autoloadDirs(), 'a prefix left with no directory goes with them');
+    }
+
+    public function testTheEmptyPrefixIsRefused(): void
+    {
+        // Composer's fallback directory. `str_starts_with($class, '')` is true
+        // for everything, so accepting it would make this one plugin the
+        // answer to every unresolved class in the process.
+        $project = new TempProject();
+        $file = $this->pluginDir($project, 'greedy', '{"autoload": {"psr-4": {"": "src/", "\\\\": "src/"}}}');
+
+        $this->assertSame([], PluginManifest::beside($file)->autoload);
     }
 
     public function testMalformedOrJunkMetadataFallsBackToTheDefaults(): void
@@ -89,10 +117,18 @@ final class PluginManifestTest extends TestCase
         // has a typo — and the failure is visible anyway: its classes will not
         // resolve.
         $project = new TempProject();
-        foreach (['not json at all', '"a string"', '{"namespace": 7, "requires": "nope"}', '{"requires": [1, "", "ok"]}'] as $index => $json) {
+        $junk = [
+            'not json at all',
+            '"a string"',
+            '{"autoload": "nope", "extra": "nope"}',
+            '{"autoload": {"psr-4": "nope"}, "extra": {"porta": "nope"}}',
+            '{"autoload": {"psr-4": {"A\\\\": 7, "8": "src/"}}, "extra": {"porta": {"requires": "nope"}}}',
+            '{"extra": {"porta": {"requires": [1, "", "ok"]}}}',
+        ];
+        foreach ($junk as $index => $json) {
             $manifest = PluginManifest::beside($this->pluginDir($project, 'junk'.$index, $json));
-            $this->assertNull($manifest->namespace, $json);
-            $this->assertSame('{"requires": [1, "", "ok"]}' === $json ? ['ok'] : [], $manifest->requires, $json);
+            $this->assertSame([], $manifest->autoload, $json);
+            $this->assertSame(str_contains($json, '"ok"') ? ['ok'] : [], $manifest->requires, $json);
         }
     }
 
@@ -142,7 +178,7 @@ final class PluginManifestTest extends TestCase
 
     public function testAMalformedComposerJsonAsksForNothing(): void
     {
-        // Same doctrine as a malformed plugin.json: degrade, never decline. A
+        // Same doctrine as any malformed manifest: degrade, never decline. A
         // typo must not make a plugin vanish behind a message about installing.
         $project = new TempProject();
 

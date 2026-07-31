@@ -118,13 +118,25 @@ final class PluginAutoloaderTest extends TestCase
     public function testTheSamePrefixFromTwoPluginsKeepsBothDirectories(): void
     {
         PluginAutoloader::register(PluginManifest::beside(self::vendored()));
-        PluginAutoloader::register(new PluginManifest('other', \dirname(self::vendored()), 'Vend\\Lib', 'src'));
+        PluginAutoloader::register(new PluginManifest('other', \dirname(self::vendored()), ['Vend\\Lib\\' => ['src']]));
 
         $this->assertCount(2, self::registered()['Vend\\Lib\\'] ?? [], 'both directories are searched');
 
         // And registering the identical directory again does not grow it.
-        PluginAutoloader::register(new PluginManifest('other', \dirname(self::vendored()), 'Vend\\Lib', 'src'));
+        PluginAutoloader::register(new PluginManifest('other', \dirname(self::vendored()), ['Vend\\Lib\\' => ['src']]));
         $this->assertCount(2, self::registered()['Vend\\Lib\\'] ?? []);
+    }
+
+    public function testAVendoredPluginsOwnPrefixArrivesTwiceAndIsDedupedOnce(): void
+    {
+        // Composer dumps the root package's psr-4 into autoload_psr4.php too,
+        // so a plugin that vendors registers its own prefix from BOTH halves.
+        // Asserted against the committed fixture, never a TempProject: a temp
+        // dir is reached through a symlink on macOS (/var → /private/var), so
+        // the two strings would differ there and the dedup could not fire.
+        PluginAutoloader::register(PluginManifest::beside(self::vendored()));
+
+        $this->assertCount(1, self::registered()['Acme\\Vendored\\'] ?? [], 'the manifest and the dump agree on one directory');
     }
 
     public function testAMapShapeComposerNeverEmitsIsIgnoredEntryByEntry(): void

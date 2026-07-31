@@ -7,16 +7,34 @@ namespace Porta\Plugin\Runtime;
 use Composer\InstalledVersions;
 
 /**
- * What a plugin declares about ITSELF, in an optional `plugin.json` beside its
+ * What a plugin declares about ITSELF, in an optional `composer.json` beside its
  * `plugin.php`:
  *
  * ```json
- * { "namespace": "Porta\\GraphViewer", "autoload": "src", "requires": ["image-viewer"] }
+ * {
+ *     "require": { "php": ">=8.4" },
+ *     "autoload": { "psr-4": { "Porta\\GraphViewer\\": "src/" } },
+ *     "extra": { "porta": { "requires": ["image-viewer"] } }
+ * }
  * ```
+ *
+ * Composer's own file, because everything this needs to say composer already
+ * has a field for — and a plugin that vendors packages has one anyway, so the
+ * alternative was two manifests with overlapping jobs.
+ *
+ * The one field with nowhere native to go is cross-plugin `requires`: those are
+ * plugin DIRECTORY names, and putting them in composer's `require` would send
+ * composer to Packagist for something that is not a package. `extra` is the
+ * field composer guarantees to leave alone.
+ *
+ * `name` is read by nothing. A plugin's identity is its directory name
+ * everywhere it matters — `enabledPlugins`, `disabledPlugins`, `requires`, the
+ * `plugins.<name>.<key>` settings — so a composer name that disagreed would be
+ * a second identity that decides nothing.
  *
  * It is read **before any of the plugin's PHP is required**, and that ordering
  * is a requirement rather than a preference: `requires` decides LOAD ORDER, so
- * it cannot itself be discovered by loading. The namespace is registered with
+ * it cannot itself be discovered by loading. The autoload map is registered with
  * {@see PluginAutoloader} for the same reason — a plugin's own classes must
  * resolve from the first line of its `plugin.php`.
  *
@@ -26,32 +44,50 @@ use Composer\InstalledVersions;
 final readonly class PluginManifest
 {
     /**
-     * @param string  $name      the plugin's directory name, which is its identity everywhere else
-     * @param ?string $namespace the PSR-4 prefix its classes live under, when it ships any
-     * @param string  $autoload  the directory that prefix maps to, relative to the plugin
-     * @param list<string> $requires plugin names that must load, and load FIRST
+     * @param string $name the plugin's directory name, which is its identity everywhere else
+     * @param array<string, list<string>> $autoload composer's `autoload.psr-4`: prefix (trailing \) => plugin-relative directories
+     * @param list<string> $requires plugin names that must load, and load FIRST (`extra.porta.requires`)
      * @param list<string> $packages the INSTALLABLE composer packages it requires — `vendor/name`, never a platform requirement
      * @param bool $dumpsAutoload whether its composer.json declares an autoload mode only a dump can satisfy
      */
     public function __construct(
         public string $name,
         public string $directory,
-        public ?string $namespace = null,
-        public string $autoload = 'src',
+        public array $autoload = [],
         public array $requires = [],
         public array $packages = [],
         public bool $dumpsAutoload = false,
     ) {}
 
-    /** The absolute directory $namespace maps to, or null when the plugin ships no classes. */
-    public function autoloadDir(): ?string
+    /**
+     * The absolute directories each prefix maps to — composer's own map shape,
+     * so it hands straight to {@see PluginAutoloader}.
+     *
+     * A directory that is not there is dropped, and a prefix left with none
+     * goes with it: declaring `src/` and shipping none is the same as shipping
+     * no classes, which is how a manifest that is only there for `requires`
+     * costs nothing.
+     *
+     * @return array<string, list<string>> prefix (trailing \) => existing absolute directories
+     */
+    public function autoloadDirs(): array
     {
-        if (null === $this->namespace) {
-            return null;
+        $dirs = [];
+        foreach ($this->autoload as $prefix => $relatives) {
+            $existing = [];
+            foreach ($relatives as $relative) {
+                $trimmed = trim($relative, characters: '/');
+                $dir = '' === $trimmed || '.' === $trimmed ? $this->directory : $this->directory.'/'.$trimmed;
+                if (is_dir($dir)) {
+                    $existing[] = $dir;
+                }
+            }
+            if ([] !== $existing) {
+                $dirs[$prefix] = $existing;
+            }
         }
-        $dir = $this->directory.'/'.trim($this->autoload, characters: '/');
 
-        return is_dir($dir) ? $dir : null;
+        return $dirs;
     }
 
     /**
@@ -127,45 +163,107 @@ final readonly class PluginManifest
     {
         $directory = \dirname($pluginFile);
         $name = basename($directory);
-        $path = $directory.'/plugin.json';
         /** @var array<array-key, mixed>|scalar|null $data */
-        $data = is_file($path) ? json_decode((string) file_get_contents($path), associative: true) : null;
+        $data = self::read($directory.'/composer.json');
         if (!\is_array($data)) {
-            // No plugin.json, or an unreadable one — but its composer.json is a
-            // separate file with a separate question to answer, so it is read
-            // either way.
-            return new self($name, $directory, ...self::composerFacts($directory));
+            return new self($name, $directory);
+        }
+        $autoload = \is_array($data['autoload'] ?? null) ? $data['autoload'] : [];
+        $facts = self::composerFacts($autoload, $data);
+
+        return new self($name, $directory, self::psr4($autoload), self::requires($data), ...$facts);
+    }
+
+    /** A JSON file's decoded contents, or null when it is absent or unreadable. */
+    private static function read(string $path): mixed
+    {
+        return is_file($path) ? json_decode((string) file_get_contents($path), associative: true) : null;
+    }
+
+    /**
+     * Composer's `autoload.psr-4`, normalised to the shape the loader wants.
+     *
+     * The value may be a string or a list of them — composer accepts both, so
+     * a manifest that used either must work. Three things are refused, each
+     * for its own reason: a non-string key or directory is not a mapping at
+     * all; and the EMPTY prefix (composer's fallback directory) would make
+     * `str_starts_with($class, '')` true for every class in the process, so
+     * that one plugin would be consulted for every unresolved name in the IDE.
+     *
+     * @param array<array-key, mixed> $autoload
+     *
+     * @return array<string, list<string>> prefix (trailing \) => plugin-relative directories
+     */
+    private static function psr4(array $autoload): array
+    {
+        $map = [];
+        /** @var mixed $relatives */
+        foreach (\is_array($autoload['psr-4'] ?? null) ? $autoload['psr-4'] : [] as $prefix => $relatives) {
+            if (!\is_string($prefix) || '' === trim($prefix, characters: '\\')) {
+                continue;
+            }
+            $directories = [];
+            /** @var mixed $relative */
+            foreach (\is_array($relatives) ? $relatives : [$relatives] as $relative) {
+                if (!\is_string($relative)) {
+                    continue;
+                }
+                $directories[] = $relative;
+            }
+            if ([] !== $directories) {
+                $map[trim($prefix, characters: '\\').'\\'] = $directories;
+            }
         }
 
-        $namespace = \is_string($data['namespace'] ?? null) ? trim($data['namespace'], characters: '\\') : null;
-        $autoload = \is_string($data['autoload'] ?? null) ? $data['autoload'] : 'src';
+        return $map;
+    }
+
+    /**
+     * The plugin names in `extra.porta.requires` — composer's own `require`
+     * cannot hold them ({@see the class docblock}).
+     *
+     * @param array<array-key, mixed> $data
+     *
+     * @return list<string>
+     */
+    private static function requires(array $data): array
+    {
+        $extra = \is_array($data['extra'] ?? null) ? $data['extra'] : [];
+        $porta = \is_array($extra['porta'] ?? null) ? $extra['porta'] : [];
         $requires = [];
         /** @var mixed $required */
-        foreach (\is_array($data['requires'] ?? null) ? $data['requires'] : [] as $required) {
+        foreach (\is_array($porta['requires'] ?? null) ? $porta['requires'] : [] as $required) {
             if (!\is_string($required) || '' === $required) {
                 continue;
             }
             $requires[] = $required;
         }
 
-        return new self($name, $directory, '' === $namespace ? null : $namespace, $autoload, $requires, ...self::composerFacts($directory));
+        return $requires;
     }
 
     /**
-     * What the plugin's own `composer.json` says about installing it.
+     * Whether a `plugin.json` is still sitting where the manifest used to be.
+     *
+     * Its fields moved into composer.json and it is no longer read at all, so
+     * a plugin relying on one loses its classes and its dependency order in
+     * silence — the one failure this whole tier exists to prevent.
+     */
+    public function hasLegacyManifest(): bool
+    {
+        return is_file($this->directory.'/plugin.json');
+    }
+
+    /**
+     * What the manifest says about installing the plugin.
+     *
+     * @param array<array-key, mixed> $autoload
+     * @param array<array-key, mixed> $data
      *
      * @return array{packages: list<string>, dumpsAutoload: bool}
      */
-    private static function composerFacts(string $directory): array
+    private static function composerFacts(array $autoload, array $data): array
     {
-        $path = $directory.'/composer.json';
-        /** @var array<array-key, mixed>|scalar|null $data */
-        $data = is_file($path) ? json_decode((string) file_get_contents($path), associative: true) : null;
-        if (!\is_array($data)) {
-            return ['packages' => [], 'dumpsAutoload' => false];
-        }
-        $autoload = \is_array($data['autoload'] ?? null) ? $data['autoload'] : [];
-
         return [
             'packages' => self::packages($data),
             // `classmap` and `files` are dumped, never read from the manifest:

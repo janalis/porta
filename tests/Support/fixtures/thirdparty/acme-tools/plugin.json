@@ -1,5 +1,0 @@
-{
-    "namespace": "Acme\\Tools",
-    "autoload": "src",
-    "requires": []
-}

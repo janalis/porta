@@ -22,7 +22,7 @@ use Porta\Widget\EditorPaneWidget;
  * SVG/PNG exports and the generator-command setting. This file only WIRES:
  * everything behind it — the pane widget, the layout engines, the DOT parser,
  * the renderers and the architecture scanner — is this plugin's OWN code
- * (`src/`, namespace `Porta\GraphViewer`, declared in plugin.json and graded by
+ * (`src/`, namespace `Porta\GraphViewer`, declared in composer.json and graded by
  * the same gates as `src/`). Core supplies only the pane SEAM it registers
  * through. Disabling this plugin routes .dot files to the TEXT editor
  * (deliberate: edit the source), and its commands leave the palette and Plugins

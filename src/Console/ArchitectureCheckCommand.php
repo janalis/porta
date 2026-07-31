@@ -365,28 +365,37 @@ final class ArchitectureCheckCommand extends Command
      * formatted, linted, analysed and covered like the rest, so it is graded
      * here too.
      *
-     * The manifest is re-read by hand rather than through `PluginManifest`
-     * deliberately: this command scans `src/`, so it scans ITSELF, and importing
-     * from `Porta\` would grow the very edges it grades.
+     * The manifest — a plugin's own `composer.json` — is re-read by hand rather
+     * than through `PluginManifest` deliberately: this command scans `src/`, so
+     * it scans ITSELF, and importing from `Porta\` would grow the very edges it
+     * grades.
      *
      * @return array<string, string>
      */
     private function pluginRoots(string $pluginsDir): array
     {
         $roots = [];
-        $manifests = glob($pluginsDir.'/*/plugin.json');
+        $manifests = glob($pluginsDir.'/*/composer.json');
         foreach (false === $manifests ? [] : $manifests as $path) {
             /** @var array<array-key, mixed>|scalar|null $data */
             $data = json_decode((string) file_get_contents($path), associative: true);
-            if (!\is_array($data) || !\is_string($data['namespace'] ?? null)) {
-                continue; // a plugin that ships no classes has no graph
+            $autoload = \is_array($data) && \is_array($data['autoload'] ?? null) ? $data['autoload'] : [];
+            /** @var mixed $relatives */
+            foreach (\is_array($autoload['psr-4'] ?? null) ? $autoload['psr-4'] : [] as $prefix => $relatives) {
+                if (!\is_string($prefix) || '' === trim($prefix, characters: '\\')) {
+                    continue; // a plugin that ships no classes has no graph
+                }
+                /** @var mixed $relative */
+                foreach (\is_array($relatives) ? $relatives : [$relatives] as $relative) {
+                    if (!\is_string($relative)) {
+                        continue;
+                    }
+                    $dir = \dirname($path).'/'.trim($relative, characters: '/');
+                    if (is_dir($dir)) {
+                        $roots[$dir] = trim($prefix, characters: '\\').'\\';
+                    }
+                }
             }
-            $autoload = \is_string($data['autoload'] ?? null) ? $data['autoload'] : 'src';
-            $dir = \dirname($path).'/'.trim($autoload, characters: '/');
-            if (!is_dir($dir)) {
-                continue;
-            }
-            $roots[$dir] = trim($data['namespace'], characters: '\\').'\\';
         }
 
         return $roots;

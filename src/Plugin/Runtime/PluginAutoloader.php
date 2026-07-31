@@ -47,14 +47,18 @@ final class PluginAutoloader
     private static bool $registered = false;
 
     /**
-     * Map $manifest's namespace to its directory and add whatever it vendored.
-     * A plugin that ships no classes and vendors nothing is ignored.
+     * Map $manifest's own PSR-4 prefixes to their directories and add whatever
+     * it vendored. A plugin that ships no classes and vendors nothing is
+     * ignored.
      */
     public static function register(PluginManifest $manifest): void
     {
-        $directory = $manifest->autoloadDir();
-        if (null !== $manifest->namespace && null !== $directory) {
-            self::addPrefix($manifest->namespace.'\\', $directory);
+        // The plugin's own prefixes go in BEFORE its vendor dump, so its own
+        // class always beats a vendored copy of the same name.
+        foreach ($manifest->autoloadDirs() as $prefix => $directories) {
+            foreach ($directories as $directory) {
+                self::addPrefix($prefix, $directory);
+            }
         }
         self::addVendor($manifest->vendorDir());
     }
@@ -102,6 +106,14 @@ final class PluginAutoloader
         return is_file($path) ? (require $path) : null;
     }
 
+    /**
+     * A plugin that vendors registers its own prefix TWICE — once from its
+     * manifest, once from the dump, since composer writes the root package's
+     * psr-4 into `autoload_psr4.php` as well. The dedup below is why that is a
+     * no-op; a plugin reached through a symlinked directory dodges it and ends
+     * up with two paths to the same files, which is harmless (the first
+     * existing file wins and PHP calls an autoloader once per class).
+     */
     private static function addPrefix(string $prefix, string $directory): void
     {
         self::ensureRegistered();

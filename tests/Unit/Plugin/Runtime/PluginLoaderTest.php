@@ -214,7 +214,7 @@ final class PluginLoaderTest extends TestCase
         $project = new TempProject([
             '.porta/plugins/needy/composer.json' => '{"require":{"vend/lib":"^1.0"}}',
             '.porta/plugins/needy/plugin.php' => $this->pluginSource('needy'),
-            '.porta/plugins/dependent/plugin.json' => '{"requires":["needy"]}',
+            '.porta/plugins/dependent/composer.json' => '{"extra":{"porta":{"requires":["needy"]}}}',
             '.porta/plugins/dependent/plugin.php' => $this->pluginSource('dependent'),
             '.porta/plugins/unrelated/plugin.php' => $this->pluginSource('unrelated'),
         ]);
@@ -278,5 +278,24 @@ final class PluginLoaderTest extends TestCase
         $warnings = implode(' | ', $manager->warnings());
         $this->assertStringContainsString('Plugin "shadowy" vendors symfony/clock, which Porta ships', $warnings);
         $this->assertStringNotContainsString('vend/lib', $warnings, 'a package Porta does not ship is not its business');
+    }
+
+    public function testALeftoverPluginJsonIsNamedRatherThanIgnored(): void
+    {
+        // Its fields moved to composer.json and it is not read any more. The
+        // plugin still loads — a plugin that ships no classes and requires
+        // nothing loses nothing — but a plugin that relied on it would lose its
+        // classes in silence, which is the one failure worth a warning.
+        $project = new TempProject([
+            '.porta/plugins/legacy/plugin.json' => '{"namespace":"Legacy","autoload":"src"}',
+            '.porta/plugins/legacy/plugin.php' => $this->pluginSource('legacy'),
+        ]);
+
+        $manager = $this->load($project);
+
+        $this->assertTrue($manager->hasPlugin('legacy'));
+        $warnings = implode(' | ', $manager->warnings());
+        $this->assertStringContainsString('Plugin "legacy" still has a plugin.json', $warnings);
+        $this->assertStringContainsString('autoload.psr-4', $warnings, 'and says where the fields went');
     }
 }
