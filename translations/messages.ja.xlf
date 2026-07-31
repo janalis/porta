@@ -2174,6 +2174,22 @@
         <source>Architecture command (stdout = DOT)</source>
         <target>アーキテクチャコマンド (stdout = DOT)</target>
       </trans-unit>
+      <trans-unit id="546">
+        <source>Installing dependencies for "%name%"…</source>
+        <target>「%name%」の依存関係をインストール中…</target>
+      </trans-unit>
+      <trans-unit id="547">
+        <source>Cannot install "%name%" dependencies now — another install is already running</source>
+        <target>別のインストールが実行中のため、「%name%」の依存関係を今はインストールできません</target>
+      </trans-unit>
+      <trans-unit id="548">
+        <source>Plugin "%name%" enabled, but composer is not available to install its dependencies</source>
+        <target>プラグイン「%name%」を有効にしましたが、依存関係をインストールする composer がありません</target>
+      </trans-unit>
+      <trans-unit id="549">
+        <source>Plugin "%name%" enabled, but composer install failed (exit code %code%)</source>
+        <target>プラグイン「%name%」を有効にしましたが、composer install に失敗しました (終了コード %code%)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -378,6 +378,41 @@ final class IdeEmbeddedPluginsTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    /**
+     * A PATH holding one executable named `composer` that fabricates the vendor
+     * tree a real install would and exits with $exitCode.
+     *
+     * Real composer is not the suite's business — network, minutes, and a
+     * resolver we do not own. `PluginInstaller::create()` resolves the binary
+     * per boot rather than at compile time, so a PATH set before runIde() is
+     * what the IDE finds. The php binary is on it too, or the plugin stubs'
+     * `#!/usr/bin/env php` shebangs would not run.
+     */
+    private function fakeComposerPath(TempProject $project, int $exitCode = 0): string
+    {
+        $bin = $project->path('fakebin');
+        mkdir($bin, permissions: 0o777, recursive: true);
+        file_put_contents($bin.'/composer', data: '#!'.\PHP_BINARY.' -n'."\n<?php\n".<<<'PHP'
+            @mkdir(getcwd().'/vendor/composer', 0o777, true);
+            file_put_contents(getcwd().'/vendor/composer/autoload_psr4.php', "<?php return [];\n");
+            PHP."\nexit({$exitCode});\n");
+        chmod($bin.'/composer', permissions: 0o755);
+        symlink(\PHP_BINARY, $bin.'/php');
+
+        return $bin;
+    }
+
+    /** A project plugin that declares a composer package it has not installed. */
+    private function needyPlugin(TempProject $project, string $name, array $requires = []): void
+    {
+        $this->projectPlugin($project, $name);
+        $manifest = ['require' => ['vend/lib' => '^1.0']];
+        if ([] !== $requires) {
+            $manifest['extra'] = ['porta' => ['requires' => $requires]];
+        }
+        file_put_contents($project->path('.porta/plugins/'.$name.'/composer.json'), data: (string) json_encode($manifest));
+    }
+
     /** A project plugin directory: an entry file, and a manifest when $requires is given. */
     private function projectPlugin(TempProject $project, string $name, array $requires = []): void
     {
@@ -491,6 +526,199 @@ final class IdeEmbeddedPluginsTest extends TestCase
 
                     $this->assertContains('Plugin "not-installed-anywhere" is not installed', Toasts::all($ide));
                     $this->assertNotContains('Plugin "not-installed-anywhere" enabled', Toasts::all($ide));
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testEnablingAPluginInstallsItsDependenciesFirst(): void
+    {
+        // The toggle means "make this plugin work", and a plugin that owes an
+        // install does not work — it is declined at boot with a message telling
+        // the user to run composer by hand. Now Porta runs it.
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $this->needyPlugin($project, 'needy');
+        $project->write('.porta.json', (string) json_encode(['disabledPlugins' => ['needy']]));
+        putenv('PATH='.$this->fakeComposerPath($project));
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $commands = Services::resolve($ide, CommandRegistry::class);
+                    $labels = static fn (): array => array_column($commands->paletteCommands(), 'label');
+                    $this->assertNotContains('Needy Run', $labels(), 'disabled to start with');
+
+                    Services::resolve($ide, PluginLifecycle::class)->enable('needy');
+
+                    // Synchronously, before any loop turn: the call did not block.
+                    $this->assertContains('Installing dependencies for "needy"…', Toasts::all($ide));
+                    $this->assertNotContains('Needy Run', $labels(), 'and did not activate ahead of its own install');
+
+                    $this->await(static fn (): bool => \in_array('Needy Run', $labels(), strict: true), what: 'the plugin to activate after its install');
+
+                    $this->assertFileExists($project->path('.porta/plugins/needy/vendor/composer/autoload_psr4.php'));
+                    $this->assertContains('Plugin "needy" enabled', Toasts::all($ide));
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testTheRequirementChainInstallsOneAtATimeAndStillDepsFirst(): void
+    {
+        // One process slot, so the queue is the whole design: `app` must not
+        // load while `zbase` — which it requires — is still installing.
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $this->needyPlugin($project, 'zbase');
+        $this->needyPlugin($project, 'app', ['zbase']);
+        $project->write('.porta.json', (string) json_encode(['disabledPlugins' => ['app', 'zbase']]));
+        putenv('PATH='.$this->fakeComposerPath($project));
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    $commands = Services::resolve($ide, CommandRegistry::class);
+                    $labels = static fn (): array => array_column($commands->paletteCommands(), 'label');
+
+                    Services::resolve($ide, PluginLifecycle::class)->enable('app');
+                    $this->await(static fn (): bool => \in_array('App Run', $labels(), strict: true), what: 'both installs to land');
+
+                    $order = $labels();
+                    $this->assertLessThan(
+                        array_search('App Run', $order, strict: true),
+                        (int) array_search('Zbase Run', $order, strict: true),
+                        'the requirement installed and loaded first',
+                    );
+                    $this->assertContains('Also enabled: zbase', Toasts::all($ide));
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testEnablingWithoutComposerKeepsTheChoiceAndSaysWhatIsMissing(): void
+    {
+        // The enable is what the user expressed; a missing binary is a
+        // transient fact about the machine. A checkbox that flips itself back
+        // would be worse than a message — and the next boot picks it up.
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $this->needyPlugin($project, 'needy');
+        $project->write('.porta.json', (string) json_encode(['disabledPlugins' => ['needy']]));
+        putenv('PATH=/nonexistent');
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    Services::resolve($ide, PluginLifecycle::class)->enable('needy');
+
+                    $toasts = Toasts::all($ide);
+                    $this->assertContains('Plugin "needy" enabled, but composer is not available to install its dependencies', $toasts);
+                    $this->assertNotContains('Plugin "needy" is not installed', $toasts, 'it IS installed; only its packages are missing');
+                    $this->assertNotContains('Needy Run', array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label'));
+                    $this->assertSame([], \Porta\Config\IdeConfig::load($project->dir)->disabledPlugins, 'the choice stands');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAFailedInstallLeavesThePluginEnabledAndSaysWhichCodeFailed(): void
+    {
+        // "is not installed" would be a lie here — it IS installed; its
+        // packages are not. The choice stands, and the next boot retries.
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $this->needyPlugin($project, 'needy');
+        $project->write('.porta.json', (string) json_encode(['disabledPlugins' => ['needy']]));
+        putenv('PATH='.$this->fakeComposerPath($project, exitCode: 3));
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    Services::resolve($ide, PluginLifecycle::class)->enable('needy');
+                    $this->await(static fn (): bool => \in_array('Plugin "needy" enabled, but composer install failed (exit code 3)', Toasts::all($ide), strict: true), what: 'the failure report');
+
+                    $this->assertNotContains('Plugin "needy" is not installed', Toasts::all($ide));
+                    $this->assertNotContains(
+                        'Needy Run',
+                        array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label'),
+                        'not loaded: it would fatal on the first missing symbol',
+                    );
+                    $this->assertSame([], \Porta\Config\IdeConfig::load($project->dir)->disabledPlugins, 'the choice stands');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testDisablingAPluginMidInstallDropsItsActivation(): void
+    {
+        // The install lands after the user changed their mind. Loading it then
+        // would resurrect a plugin the user just switched off — and the disable
+        // has already flashed, so there is nothing left to say.
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $this->needyPlugin($project, 'needy');
+        $project->write('.porta.json', (string) json_encode(['disabledPlugins' => ['needy']]));
+        putenv('PATH='.$this->fakeComposerPath($project));
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $lifecycle = Services::resolve($ide, PluginLifecycle::class);
+                    $lifecycle->enable('needy');
+                    $lifecycle->disable('needy'); // before the subprocess can exit
+
+                    $this->await(static fn (): bool => is_dir($project->path('.porta/plugins/needy/vendor')), what: 'the install to finish anyway');
+                    $this->pump(0.1); // let the exit callback land, proving it does nothing
+
+                    $this->assertNotContains('Needy Run', array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label'), 'the late install did not resurrect it');
+                    $this->assertContains('Plugin "needy" disabled', Toasts::all($ide));
+                    $this->assertNotContains('Plugin "needy" enabled', Toasts::all($ide));
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testEnablingWhileAnotherInstallRunsIsRefusedRatherThanQueued(): void
+    {
+        // One process slot, one visible refusal. A hidden queue would leave the
+        // user with a plugin that silently comes up minutes later.
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $this->needyPlugin($project, 'busy');
+        $this->needyPlugin($project, 'needy');
+        $project->write('.porta.json', (string) json_encode(['disabledPlugins' => ['busy', 'needy']]));
+        putenv('PATH='.$this->fakeComposerPath($project));
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    // Another plugin's enable takes the slot; this one asks for
+                    // it while composer is still running.
+                    $lifecycle = Services::resolve($ide, PluginLifecycle::class);
+                    $lifecycle->enable('busy');
+                    $lifecycle->enable('needy');
+
+                    $this->assertContains('Cannot install "needy" dependencies now — another install is already running', Toasts::all($ide));
+                    $this->assertNotContains('Needy Run', array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label'));
                 },
             ],
         );

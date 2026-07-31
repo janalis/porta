@@ -2174,6 +2174,22 @@
         <source>Architecture command (stdout = DOT)</source>
         <target>פקודת ארכיטקטורה (stdout = DOT)</target>
       </trans-unit>
+      <trans-unit id="546">
+        <source>Installing dependencies for "%name%"…</source>
+        <target>מתקין תלויות עבור "%name%"…</target>
+      </trans-unit>
+      <trans-unit id="547">
+        <source>Cannot install "%name%" dependencies now — another install is already running</source>
+        <target>לא ניתן להתקין כעת את התלויות של "%name%" — התקנה אחרת כבר פועלת</target>
+      </trans-unit>
+      <trans-unit id="548">
+        <source>Plugin "%name%" enabled, but composer is not available to install its dependencies</source>
+        <target>התוסף "%name%" הופעל, אך composer אינו זמין כדי להתקין את התלויות שלו</target>
+      </trans-unit>
+      <trans-unit id="549">
+        <source>Plugin "%name%" enabled, but composer install failed (exit code %code%)</source>
+        <target>התוסף "%name%" הופעל, אך composer install נכשל (קוד יציאה %code%)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

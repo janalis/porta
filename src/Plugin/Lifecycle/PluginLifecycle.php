@@ -169,44 +169,149 @@ final class PluginLifecycle implements PluginLifecycleOps
         // Only here, never at boot: a startup that silently re-enables what the
         // user switched off is a worse surprise than a message.
         $required = $this->missingRequirementsOf($name);
-        $activated = false;
-        foreach ([...$required, $name] as $target) {
+        $targets = [...$required, $name];
+        // PASS 1, complete and synchronous: every choice reaches .porta.json
+        // before any subprocess starts, so a crash or a quit mid-install still
+        // records what the user asked for.
+        foreach ($targets as $target) {
             $this->persistEnabledChoice($target);
-            $activated = $this->activateInstalledCopy($target) || $activated;
         }
-        // The choice is persisted either way — install the plugin later and it
-        // comes up enabled — but saying "enabled" when nothing loaded is a
-        // report of something that did not happen.
-        $this->notifier->flash(
-            $activated
-                ? $this->translator->trans('Plugin "%name%" enabled', ['%name%' => $name])
-                : $this->translator->trans('Plugin "%name%" is not installed', ['%name%' => $name]),
-        );
+        $this->activateQueue($targets, $name, $required, new EnableProgress());
+    }
+
+    /**
+     * PASS 2: activate each target, installing its composer dependencies first
+     * when it owes some.
+     *
+     * Serialized on purpose, and by the CALLER rather than inside the
+     * installer: there is one process slot, the chain is deps-first, and a
+     * plugin must not load while the one it requires is still installing.
+     * Only one target is ever in flight, and the next is dispatched from the
+     * previous one's exit callback.
+     *
+     * @param list<string> $queue    targets still to do, in order
+     * @param list<string> $required the companions, for the closing flash
+     */
+    private function activateQueue(array $queue, string $name, array $required, EnableProgress $progress): void
+    {
+        while ([] !== $queue) {
+            $target = array_shift($queue);
+            $dir = $this->installedDir($target);
+            $outcome = null === $dir
+                ? DependencyInstall::NotNeeded
+                : $this->installer->installDependencies($dir, function (int $code) use ($target, $queue, $name, $required, $progress): void {
+                    $this->afterDependencies($target, $code, $queue, $name, $required, $progress);
+                });
+
+            if (DependencyInstall::Started === $outcome) {
+                $this->notifier->flash($this->translator->trans('Installing dependencies for "%name%"…', ['%name%' => $target]));
+                $this->afterToggle(); // paint what already activated while composer works
+
+                return; // resumes in afterDependencies()
+            }
+            if (DependencyInstall::NotNeeded === $outcome) {
+                $progress = $progress->withActivation($this->activateInstalledCopy($target));
+
+                continue;
+            }
+            // Busy or NoComposer. Loading it anyway would fatal on the first
+            // missing symbol, somewhere far from the cause.
+            $this->notifier->error(
+                DependencyInstall::Busy === $outcome
+                    ? $this->translator->trans('Cannot install "%name%" dependencies now — another install is already running', ['%name%' => $target])
+                    : $this->translator->trans('Plugin "%name%" enabled, but composer is not available to install its dependencies', ['%name%' => $target]),
+                seconds: 5.0,
+            );
+            $progress = $progress->withFailure();
+        }
+        $this->finishEnable($name, $required, $progress);
+    }
+
+    /**
+     * One target's install finished: activate it, then carry on with the queue.
+     *
+     * @param list<string> $queue
+     * @param list<string> $required
+     */
+    private function afterDependencies(string $target, int $code, array $queue, string $name, array $required, EnableProgress $progress): void
+    {
+        $progress = $this->progressAfterInstall($target, $code, $progress);
+        $this->refreshView(); // an async landing arrives after the view rendered
+        $this->activateQueue($queue, $name, $required, $progress);
+    }
+
+    /** What one finished install did to the enable's progress. */
+    private function progressAfterInstall(string $target, int $code, EnableProgress $progress): EnableProgress
+    {
+        if (0 !== $code) {
+            $this->notifier->error($this->translator->trans('Plugin "%name%" enabled, but composer install failed (exit code %code%)', ['%name%' => $target, '%code%' => $code]), seconds: 5.0);
+
+            return $progress->withFailure();
+        }
+        if ($this->isDisabled($target)) {
+            // Turned back off while composer ran. The disable already said so,
+            // so this is a failure with nothing left to report.
+            return $progress->withFailure();
+        }
+
+        return $progress->withActivation($this->activateInstalledCopy($target));
+    }
+
+    /**
+     * The closing report — three-way, not two.
+     *
+     * The choice is persisted either way (install the plugin later and it comes
+     * up enabled), but saying "enabled" when nothing loaded reports something
+     * that did not happen, and saying "is not installed" about a plugin whose
+     * composer run merely failed is worse: it sends the reader looking for a
+     * missing directory that is right there. When an error already named the
+     * reason, the closing flash says nothing.
+     *
+     * @param list<string> $required
+     */
+    private function finishEnable(string $name, array $required, EnableProgress $progress): void
+    {
+        $message = match (true) {
+            $progress->activated => 'Plugin "%name%" enabled',
+            !$progress->reported => 'Plugin "%name%" is not installed',
+            default => null, // an error already named the reason
+        };
+        if (null !== $message) {
+            $this->notifier->flash($this->translator->trans($message, ['%name%' => $name]));
+        }
         $this->flashCompanions('Also enabled: %names%', $required);
         $this->afterToggle();
+    }
+
+    /** The highest-precedence installed copy of $name, or null when there is none. */
+    private function installedDir(string $name): ?string
+    {
+        foreach ($this->installer->installed() as $candidate) {
+            if ($candidate['name'] === $name) {
+                return $candidate['dir'];
+            }
+        }
+
+        return null;
     }
 
     /** Load the highest-precedence installed copy of one plugin, reporting a failure. False when there is no copy to load. */
     private function activateInstalledCopy(string $name): bool
     {
-        foreach ($this->installer->installed() as $candidate) {
-            if ($candidate['name'] !== $name) {
-                continue;
-            }
-
-            $error = $this->loader->loadFile($candidate['dir'].'/plugin.php', $this->plugins);
-            if (null !== $error) {
-                $this->notifier->error($error);
-
-                return false;
-            }
-            $this->plugins->registerCommands($this->commands);
-            $this->reconfigureLspIf($this->plugins->providesLanguageServer($name));
-
-            return true;
+        $dir = $this->installedDir($name);
+        if (null === $dir) {
+            return false;
         }
+        $error = $this->loader->loadFile($dir.'/plugin.php', $this->plugins);
+        if (null !== $error) {
+            $this->notifier->error($error);
 
-        return false;
+            return false;
+        }
+        $this->plugins->registerCommands($this->commands);
+        $this->reconfigureLspIf($this->plugins->providesLanguageServer($name));
+
+        return true;
     }
 
     /**
@@ -257,8 +362,10 @@ final class PluginLifecycle implements PluginLifecycleOps
      */
     private function manifestsOf(string $name): array
     {
-        $dirs = array_column($this->installer->installed(), 'dir', 'name');
-        $dir = $dirs[$name] ?? null;
+        // The FIRST copy, like every other read: array_column() would key the
+        // LAST one, so a plugin installed both in the project and globally
+        // would take its requires from one copy and its code from the other.
+        $dir = $this->installedDir($name);
 
         return null === $dir ? [] : PluginManifest::beside($dir.'/plugin.php')->requires;
     }

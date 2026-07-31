@@ -293,6 +293,7 @@ final class WelcomeScreenTest extends TestCase
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
                     'one enable, one plugin',
                 );
+                $this->awaitPainted($tui, $terminal, 'Plugin "mago" enabled');
                 $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                 $this->assertStringContainsString('Plugin "mago" enabled', $screen);
                 $this->assertStringContainsString('2 of 4 done', $screen, 'the analysis step completed with the fixer step');

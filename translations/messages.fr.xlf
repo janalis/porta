@@ -2174,6 +2174,22 @@
         <source>Architecture command (stdout = DOT)</source>
         <target>Commande d'architecture (stdout = DOT)</target>
       </trans-unit>
+      <trans-unit id="546">
+        <source>Installing dependencies for "%name%"…</source>
+        <target>Installation des dépendances de « %name% »…</target>
+      </trans-unit>
+      <trans-unit id="547">
+        <source>Cannot install "%name%" dependencies now — another install is already running</source>
+        <target>Impossible d'installer les dépendances de « %name% » maintenant — une autre installation est en cours</target>
+      </trans-unit>
+      <trans-unit id="548">
+        <source>Plugin "%name%" enabled, but composer is not available to install its dependencies</source>
+        <target>Extension « %name% » activée, mais composer n'est pas disponible pour installer ses dépendances</target>
+      </trans-unit>
+      <trans-unit id="549">
+        <source>Plugin "%name%" enabled, but composer install failed (exit code %code%)</source>
+        <target>Extension « %name% » activée, mais composer install a échoué (code de sortie %code%)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
