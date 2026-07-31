@@ -484,7 +484,19 @@ downcasts in `Input/MouseRouter`. It is a **class, not an interface**, deliberat
 and `Layout/PaneResizer` compare the panel against the focused widget and the router hands it to
 `setFocus()`/the hit-tester, all of which need an `AbstractWidget`. Note `wheelBy` is **not** named
 `scrollBy` (the `Widget/Support/WheelScrollable` verb) precisely because the terminal inverts
-direction — sharing the name would make two opposite meanings look interchangeable. **Every list tool lives as a `Workbench/Dock/DockToolTab`
+direction — sharing the name would make two opposite meanings look interchangeable.
+
+**A plugin may contribute a list tool** (round 26): `registerListTool(id, title, rerun:, activate:)`
+declares one and `showList()`/`updateList()` publish rows into it, over
+`Workbench/Dock/DockToolSource` → `DockToolController`. Its tab carries a
+`Workbench/Dock/DockToolHandlers` (id + the two closures) and a **null** `mode` — null rather
+than a seventh `ResultsPanelMode` case because `findByMode()` returns the FIRST tab in a mode, so
+a shared case would let a core caller clobber a contributed tab, while a null can never equal an
+enum case; it also fixes identity, since contributed tabs key off the id and two plugins may pick
+the same title. Publishing is BY ID, never by a tab handle: `update()` on a ×'d tab is a silent
+no-op, which is the async staleness guard, and holding a handle is impossible by construction.
+Rows are normalised core-side (`plugin.php` sits outside mago's analyzer, so it is the only place
+a row's shape is checked at all). **Every list tool lives as a `Workbench/Dock/DockToolTab`
 in the `Workbench/Dock/DockToolTabs` model** — the model, not the widget, is the source of truth: the single
 `ResultsPanelWidget` displays exactly one tab, and tool tabs **coexist** (each Find-in-Project
 query, Problems, TODO, each Usages/Choose-target list, the LSP/notification logs, Local History
@@ -1017,6 +1029,18 @@ Each plugin's suite pins the two halves against each other (declared == bound, s
 core does NOT declare, since a pane also binds core actions like `goto_file`); a core test
 asserting it would import plugin code.
 
+**A bundled plugin may ADOPT a vacated core command id** (round 26): `registerCommand`'s sibling
+`adoptCommand('ide_todo', $handler)` registers under the BARE core id instead of the namespaced
+one, inheriting the label, the default keys and the `MenuModel` position — so a feature that moves
+out of `src/` keeps its `.porta.json` binding, its keymap row and its place in a core menu. Only
+ids `ActionCatalog` marks `'adoptable' => true` may be taken, which is what stops a third party
+becoming `save`; the flag cannot precede the vacancy (two registrations would both dispatch), so
+marking it and deleting core's registration are ONE commit. The identity stays core's, the
+implementation moves — the opposite of the call above for pane actions, and deliberately: a pane
+action is invisible without its pane, while `ide_todo` has a key and a menu position a user may
+already have rebound. `plugins/todo` is the first feature to move this way (round 26), which is
+why `ResultsPanelMode` has five cases and not six.
+
 **Plugin coverage runs a SECOND, SERIAL pass, and the reason is upstream.** `composer
 coverage:check` = the parallel run over `src` (100%) **plus** `composer coverage:plugins` (serial
 phpunit, `--testsuite Plugins`, `--coverage-filter plugins`, graded with the checker's new
@@ -1047,20 +1071,20 @@ triggered by the `Keybindings` factory) runs each file's `activate(PluginApi)` *
 overrides them; ids are
 namespaced `plugin:command` and bypass the ActionCatalog keymap validation — plugin ids stay
 OUT of `ActionCatalog::ACTIONS`). Registration buffers in the per-plugin `PluginApi` and commits
-atomically after `activate()`. **Seven** of the eleven extension points share the generic
+atomically after `activate()`. **Ten** of the fifteen extension points share the generic
 `Plugin/Api/PluginBuffer` (language servers, installers, highlighters, token spans, panes,
-rebindable actions, and **viewers**
+rebindable actions, dock list tools, status-bar segments, debug adapters, and **viewers**
 — `registerViewer(id, claims)`, the routing claim behind the bundled image-viewer/graph-viewer
 plugins: `Editor/ViewerProviderSource` is the consumer-owned seam `BufferService::openFile`
 consults, first claiming plugin in load order wins, a throwing claim declines and reports once,
 and an id no built-in pane answers to falls through to the text path — which is also what
 DISABLING a viewer plugin means: `.dot` opens as editable text, images hit the not-UTF-8
-refusal, open tabs stay); the other four stay plain
+refusal, open tabs stay); the other five stay plain
 arrays **on purpose**, each saying why at its declaration (commands: paired `$ids` dedup index;
 menu items: drain-time `PluginMenuSpec` transform; hooks: four writers + positional tuples;
 settings: keyed map sinking into `PluginSettings`) — unifying them was measured as needing five
-variance axes for four conforming cases. The nine `register*` signatures plus `addMenuItem` and the three `on*` hooks are frozen public
-plugin API; `activeFile()` is BUFFER truth (the active tab's path, viewer tabs included — every
+variance axes for four conforming cases. The twelve `register*` signatures plus `adoptCommand`, `addMenuItem`, `pick`/`prompt` and the six
+`on*` hooks are frozen public plugin API; `activeFile()` is BUFFER truth (the active tab's path, viewer tabs included — every
 consumer guards by extension). Every bundled plugin surfaces its commands as Plugins-menu items
 and its knobs as plugin settings (the viewers deliberately carry no menu — nothing to invoke). Action methods (flash/editor access/openFile) resolve services
 lazily via `Plugin/Runtime/PluginRuntime` (wired late in the ctor) and throw during `activate()`. Every
@@ -1091,6 +1115,22 @@ and `psalm` (the phpstan pattern for Psalm's JSON array output — 1-based lines
 exit 2 = issues found). The on-save toggle commands flip the persisted settings via
 `PluginApi::changeSetting()` (an action method mirroring `flash()`'s runtime gate).
 Their E2e tests load the real files from those paths.
+
+**Round 26's other three seams**, each justified without the feature that prompted it:
+`registerStatusSegment()` (a pull, once per RENDER, so a throwing closure reads as nothing and
+reports once per plugin) reaches `Workbench/StatusBarProvider` through the `porta.status_segment`
+tag — `Workbench/StatusSegment` returns a **`Role`, not a colour**, so a plugin cannot invent one
+and all plugin segments share `Role::Subtle` while the debugger keeps `Role::StatusDebug`; the
+seam is what deleted the `Workbench>Debug` edge. `pick()`/`prompt()` delegate to the existing
+`Editor/ModalHost` — before them a plugin could only `flash()`, i.e. tell and never ask.
+`registerDebugAdapter()` mirrors `registerLanguageServer()` exactly (resolver called at session
+start, null = not installed, first plugin wins the language) and is consulted BELOW
+`.porta.json`'s `languages.<id>.debug`, so a hand-configured adapter is never shadowed. The hook
+list is six now: `onReady`/`onShutdown` are NOT bus events — "the IDE is up" and "going down" are
+positions in `run()`, so `Ide` calls `Plugin/Runtime/PluginEvents` directly. `ready` fires after
+`applyLayout()` and before the initial file opens (a plugin's setup lands ahead of its own
+`fileOpened`); `shutdown` fires FIRST in the teardown, while services are alive but the loop has
+already stopped — so a hook must finish synchronously, and anything it schedules never runs.
 
 **A plugin file wires; `src/` implements — enforced by four abstract bases in `Plugin/Api/`.**
 Every bundled plugin is `return new class('<name>', …) extends …`, and the machinery they used to

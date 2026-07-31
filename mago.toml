@@ -107,10 +107,12 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 #                                field; FindInFilesModal sits at 32 too after
 #                                reabsorbing the round-5 VOs as plain fields)
 #   too-many-enum-cases      58  Ui/Role (the theme role vocabulary)
-#   excessive-parameter-list 25  Bootstrap/WidgetHooks' constructor — near-
+#   excessive-parameter-list 22  Bootstrap/WidgetHooks' constructor — near-
 #                                unmoved since round 2 (splitting it was
-#                                measured: it INCREASES coupling edges; +1 for
-#                                the graph viewer's handler wiring)
+#                                measured: it INCREASES coupling edges). Round
+#                                26 dropped it 25 → 22: the pin had drifted
+#                                above the real maximum, which is the exact
+#                                failure mode this re-bisection exists to catch
 #   kan-defect                8  Widget/Git/DiffViewWidget and
 #                                Overlay/State/FindInFilesModal (was 14, the
 #                                E2e monolith)
@@ -129,7 +131,10 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 # 6 — 0/8 and 2/10 exclusive, worse than any prior rejection — so this
 # sentence is no longer an assertion ahead of its evidence). None can drop
 # without a decision that was considered and declined. Round 6 re-probed
-# every threshold after its cleanups: no floor moved.
+# every threshold after its cleanups: no floor moved. Round 26 (the dock-tool
+# seam, the TODO plugin, four smaller seams) re-probed all nine: only
+# excessive-parameter-list moved, and downward — a stale pin, not a shrunk
+# class.
 #
 # Re-bisect and lower again after the next structural change — AND after a mago
 # upgrade, which can change how a metric is counted without a line of code
@@ -141,6 +146,6 @@ cyclomatic-complexity = { threshold = 145 }
 too-many-methods = { threshold = 97 }
 too-many-properties = { threshold = 32 }
 too-many-enum-cases = { threshold = 58 }
-excessive-parameter-list = { threshold = 25 }
+excessive-parameter-list = { threshold = 22 }
 kan-defect = { threshold = 8 }
 halstead = { effort-threshold = 21435, difficulty-threshold = 30, volume-threshold = 3236 }

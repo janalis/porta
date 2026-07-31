@@ -294,10 +294,67 @@ Disabling your plugin stops the routing, so its files fall back to the text
 editor; a tab already open in your pane keeps working. Removing the plugin drops
 the pane for good.
 
+### Showing a list of results
+
+A tool that finds things — matches, failures, offenders — puts them in the
+bottom dock, where Enter jumps to the location:
+
+```php
+$api->registerListTool('offenders', 'Offenders', rerun: fn () => $this->scan($api));
+
+// later, from a command or a hook:
+$api->showList('offenders', [], ToolRun::Running);          // opens and focuses the tab
+$api->updateList('offenders', [
+    ['path' => 'src/A.php', 'line' => 41, 'text' => '        $x = 1;'],
+]);                                                          // replaces the rows in place
+```
+
+- **Paths are project-relative**, lines are **0-based** (the same convention
+  `setDiagnostics()` uses). An absolute path inside the project is relativised
+  for you; a row missing `path`, `line` or `text` is dropped rather than shown
+  blank. An optional `ranges` of `['start' => …, 'length' => …]` display
+  columns bolds the match.
+- **You publish by id, never by a handle.** The user can × your tab at any
+  moment, including while your scan is still running — `updateList()` on a
+  closed tab is a silent no-op, which is exactly what you want for an async
+  result that arrives late.
+- `rerun` is F5 on your tab; `activate` is Enter on a row, and leaving it null
+  takes the built-in open-the-file-and-jump, which is what most tools want.
+- Your tab coexists with every other tool's. Re-invoking your tool reuses its
+  tab rather than adding another.
+
+### Ambient state in the status bar
+
+```php
+$api->registerStatusSegment(fn (): ?string => $this->failing > 0 ? "✗ {$this->failing}" : null);
+```
+
+Pulled **once per render**, so it must be cheap and must never block — report
+something you already know, don't compute it here. Return null to show nothing,
+which should be the normal case. A throwing closure shows nothing and is
+reported once.
+
+### Asking the user something
+
+```php
+$api->pick('Run which suite?', ['unit' => 'Unit', 'e2e' => 'E2e'], fn (string $v) => $this->run($v));
+$api->prompt('New name', $current, fn (string $name) => $this->rename($name));
+```
+
+The same overlays the IDE's own pickers use. Both are action methods — call
+them from a command handler or a hook, never from `activate()`.
+
 ### Lifecycle
 
 - Plugins load during startup, **before** the keybinding map is built, so
   their default keys merge into it.
+- `onReady($hook)` runs once the IDE is up — layout applied, services wired,
+  and **before the first file opens**, so your setup lands ahead of your own
+  `onFileOpened` instead of racing it.
+- `onShutdown($hook)` runs as the IDE goes down, while core's services are
+  still alive. The event loop has already stopped, so finish synchronously:
+  a timer or subprocess you start there will never run. Persisting state is
+  what it is for.
 - Registrations buffer inside `activate()` and commit **atomically** — if
   `activate()` throws, the plugin contributes nothing and a warning is
   flashed.
@@ -318,6 +375,12 @@ Registration (during `activate()`):
 | `registerCommand(string $id, string $label, \Closure $handler, array $keys = [])` | Register a command; `$keys` are default keybindings (e.g. `['ctrl+alt+y']`) |
 | `addMenuItem(string $commandId, ?\Closure $enabledWhen = null)` | Add the command to the **Plugins** menu; with `$enabledWhen`, the item renders dimmed while the closure returns false (re-evaluated per render; a throw reads as disabled) |
 | `registerSetting(string $key, string $label, string $kind = 'text', $default = '', ?array $options = null, ?string $hint = null)` | Declare a user-editable setting shown on the plugin's settings page; kinds: `text`, `bool`, `int`, `choice` (with `$options`). Values persist under `plugins.<name>.<key>` in `.porta.json` |
+| `registerListTool(string $id, string $title, ?\Closure $rerun = null, ?\Closure $activate = null)` | Declare a bottom-dock list of results with jump-to-location |
+| `registerStatusSegment(\Closure $segment)` | Contribute ambient state to the status bar; pulled once per render |
+| `registerDebugAdapter(string $languageId, \Closure $resolveCommand)` | Supply a DAP adapter's argv for a language (consulted below `.porta.json`) |
+| `adoptCommand(string $id, \Closure $handler)` | Implement a core command whose id core has vacated, keeping its label, keys and menu position. Bundled plugins only in practice — the id must be marked adoptable |
+| `onReady(\Closure $hook)` | `$hook(string $projectRoot)` once the IDE is up, before the first file opens |
+| `onShutdown(\Closure $hook)` | `$hook(string $projectRoot)` as the IDE goes down; synchronous only |
 | `registerActions(array $actions)` | Declare rebindable actions (`id => label`) your pane binds — they appear on Settings → Keymap and may be rebound in `.porta.json`. Ids are bare and permanent; a core id is refused |
 | `onFileOpened(\Closure $hook)` | `$hook(string $path)` after a file opens |
 | `onFileSaved(\Closure $hook)` | `$hook(string $path)` after a buffer saves |
@@ -328,6 +391,10 @@ Actions (from handlers/hooks):
 | Method | Purpose |
 | --- | --- |
 | `flash(string $message, float $seconds = 2.5)` | Status-bar notification |
+| `showList(string $id, array $rows = [], ToolRun $run = ToolRun::Finished)` | Open your list tool's tab and show rows |
+| `updateList(string $id, array $rows, ToolRun $run = ToolRun::Finished)` | Replace its rows in place; a no-op once the user ×'d the tab |
+| `pick(string $title, array $items, \Closure $onPick)` | Ask the user to choose from `value => label` |
+| `prompt(string $label, string $initial, \Closure $onSubmit)` | Ask the user for one line of text |
 | `activeFile(): ?string` | Absolute path of the focused buffer |
 | `documentText(): ?string` | Full text of the focused buffer |
 | `caretPosition(): ?array` | `['line' => …, 'column' => …]` (0-based) |
