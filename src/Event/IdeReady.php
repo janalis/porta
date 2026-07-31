@@ -13,7 +13,7 @@ namespace Porta\Event;
  * locator: an event is a fact, and handing observers the service graph through
  * one would make every service reachable from a listener.
  */
-final readonly class IdeReady
+final readonly class IdeReady implements PluginObservable
 {
     public function __construct(
         public string $projectRoot,

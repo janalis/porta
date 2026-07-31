@@ -8,10 +8,10 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
+use Porta\Event\BufferSaved;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
-use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
@@ -35,6 +35,7 @@ use Porta\Workbench\Dock\ToolRun;
 use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Menu\MenuSurface;
 use Porta\Workbench\Notifier;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
@@ -53,7 +54,7 @@ final class PluginApiTest extends TestCase
 
     private function api(Presence $wired = Presence::With): PluginApi
     {
-        $manager = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         $this->editor = new CodeEditorWidget();
         $this->status = new StatusBarWidget();
         $this->files = new RecordingFileOpener();
@@ -90,7 +91,7 @@ final class PluginApiTest extends TestCase
 
         $this->assertSame('demo:hello', $api->bufferedCommands()[0]['id']);
         $this->assertSame(['f8'], $api->bufferedCommands()[0]['keys']);
-        $this->assertSame('fileSaved', $api->bufferedHooks()[0][0]);
+        $this->assertSame(BufferSaved::class, $api->bufferedHooks()[0][0]);
         $this->assertSame('demo', $api->pluginName());
 
         $api->addMenuItem('hello');
@@ -175,7 +176,7 @@ final class PluginApiTest extends TestCase
 
     public function testRegisterSettingValidatesAndSettingReadsSeededConfig(): void
     {
-        $manager = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         $seeded = new PluginSettings('/p', ['demo' => ['binary' => '/opt/x', 'strict' => 'yes', 'level' => 'nope', 'jobs' => '7']]);
         $api = new PluginApi('demo', $manager, '/p', $seeded);
 
@@ -243,7 +244,7 @@ final class PluginApiTest extends TestCase
     public function testChangeSettingValidatesPersistsAndCoerces(): void
     {
         $project = new TempProject();
-        $manager = new PluginManager(new PluginEvents(), $settings = new PluginSettings($project->dir, []));
+        $manager = new PluginManager(new EventDispatcher(), $settings = new PluginSettings($project->dir, []));
         $tui = TestTui::create(100, 24);
         $manager->wireRuntime(
             new PluginRuntime(
@@ -350,7 +351,7 @@ final class PluginApiTest extends TestCase
     {
         // The whole path a plugin's tool takes: register, commit, publish by
         // bare id, and land in the dock under the namespaced one.
-        $manager = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         $tui = TestTui::create(100, 24);
         $dock = TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget());
         $manager->wireRuntime(new PluginRuntime(

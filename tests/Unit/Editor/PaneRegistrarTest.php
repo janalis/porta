@@ -10,7 +10,6 @@ use Porta\Editor\PaneRegistrar;
 use Porta\Editor\PaneServices;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
-use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Support\RevoltScheduler;
@@ -19,6 +18,7 @@ use Porta\Tests\Support\RecordingViewerTabHandler;
 use Porta\Tests\Support\TestPane;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\EditorPaneWidget;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /** Plugin pane registrations become live panes in the core registry — once, at the ctor tail. */
 final class PaneRegistrarTest extends TestCase
@@ -43,7 +43,7 @@ final class PaneRegistrarTest extends TestCase
     private function commit(\Closure $factory, string $plugin = 'demo', string $id = 'demo'): void
     {
         $settings = new PluginSettings('/p', []);
-        $this->manager = new PluginManager(new PluginEvents(), $settings);
+        $this->manager = new PluginManager(new EventDispatcher(), $settings);
         $api = new PluginApi($plugin, $this->manager, '/p', $settings);
         $api->registerPane($id, $factory, static fn (string $path): string => 'payload:'.$path);
         $this->manager->commit($api);

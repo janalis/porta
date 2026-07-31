@@ -8,9 +8,9 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\ActionRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
-use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Tests\Support\TempProject;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
  * The keymap's membership check lives here rather than in {@see IdeConfig},
@@ -33,7 +33,7 @@ final class KeybindingsFactoryTest extends TestCase
     private function factory(TempProject $project): array
     {
         $config = IdeConfig::load($project->dir);
-        $host = new PluginHost($config, new PluginEvents(), $project->dir);
+        $host = new PluginHost($config, new EventDispatcher(), $project->dir);
 
         return [new KeybindingsFactory($host, $config, new ActionRegistry($host->manager())), $host];
     }

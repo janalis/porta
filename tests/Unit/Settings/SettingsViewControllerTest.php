@@ -31,7 +31,6 @@ use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Plugin\Lifecycle\ToolInstaller;
-use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
@@ -154,7 +153,7 @@ final class SettingsViewControllerTest extends TestCase
             new BreadcrumbsWidget(),
         );
         $bootKeys = new Keybindings([]);
-        $keysHost = new PluginHost(IdeConfig::load($this->project->dir), new PluginEvents(), $this->project->dir);
+        $keysHost = new PluginHost(IdeConfig::load($this->project->dir), new EventDispatcher(), $this->project->dir);
         $keysFactory = new KeybindingsFactory($keysHost, IdeConfig::load($this->project->dir), new ActionRegistry($keysHost->manager()));
         $liveKeys = new LiveKeybindings($keysFactory, $bootKeys, $this->project->dir);
         $keymapRebuilder = new MenuRebuilder(
@@ -164,7 +163,7 @@ final class SettingsViewControllerTest extends TestCase
             $liveKeys,
             new Translator('en'),
             new WorkspaceViews(),
-            new PluginManager(new PluginEvents(), $this->pluginSettings ?? new PluginSettings($this->project->dir, [])),
+            new PluginManager(new EventDispatcher(), $this->pluginSettings ?? new PluginSettings($this->project->dir, [])),
         );
         $keymap = new SettingsKeymapController(
             new ActionRegistry($keysHost->manager()),
@@ -203,7 +202,7 @@ final class SettingsViewControllerTest extends TestCase
             $notifier,
             new Translator('en'),
             $this->lifecycle,
-            new PluginManager(new PluginEvents(), $this->pluginSettings),
+            new PluginManager(new EventDispatcher(), $this->pluginSettings),
             new ToolInstaller($this->project->dir, []),
         );
         $gitSettings = new GitSettings([]);

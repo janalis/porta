@@ -11,9 +11,9 @@ use Porta\Highlight\HighlightRequest;
 use Porta\Highlight\SyntaxHighlightProvider;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
-use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
  * Plugin-provided highlighting backends: registration, load order, the
@@ -23,7 +23,7 @@ final class PluginHighlighterTest extends TestCase
 {
     private function manager(): PluginManager
     {
-        return new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        return new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
     }
 
     private function markup(SyntaxHighlightProvider $provider, string $source): string

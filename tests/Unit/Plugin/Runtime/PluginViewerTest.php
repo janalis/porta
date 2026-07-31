@@ -9,13 +9,13 @@ use Porta\Config\CommandRegistry;
 use Porta\Editor\PaneServices;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
-use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginMenuSpec;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\TestPane;
 use Porta\Widget\EditorPaneWidget;
 use Porta\Workbench\Menu\MenuSurface;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
  * Plugin-provided viewer routes: registration, claim normalization, load
@@ -26,7 +26,7 @@ final class PluginViewerTest extends TestCase
 {
     private function manager(): PluginManager
     {
-        return new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        return new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
     }
 
     private function api(PluginManager $manager, string $name): PluginApi

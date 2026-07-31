@@ -191,9 +191,9 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
 
     // The app event bus. The id must be exactly 'event_dispatcher' — the
     // RegisterListenersPass hard-codes it. Emitters autowire the PSR interface
-    // (dispatch() only); the component-interface alias (and its locator key)
-    // is the wiring test's seam for runtime addListener() — no src consumer
-    // imports it today.
+    // (dispatch() only); the component-interface alias is for the two consumers
+    // that need more than dispatching — PluginManager adds and removes plugin
+    // listeners at runtime, and Ide resolves it through the locator key below.
     $services->set('event_dispatcher', EventDispatcher::class)
         ->tag('porta.ide_service', ['key' => EventDispatcherInterface::class]);
     $services->alias(EventDispatcherInterface::class, 'event_dispatcher');

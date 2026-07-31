@@ -15,7 +15,7 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  * event was dispatched at all. As a listener it is ordered with the rest of the
  * theme reaction and stays testable on its own.
  *
- * Priority -200 is load-bearing, now that {@see \Porta\Plugin\Runtime\PluginEvents}
+ * Priority -200 is load-bearing, now that {@see \Porta\Plugin\Runtime\PluginManager::PLUGIN_PRIORITY}
  * bridges `themeChanged` to plugins at -100: a backend that bakes the theme's
  * escape codes (the bundled tempest plugin does) rebuilds itself *before* core
  * drops the caches it feeds. Reversed, the next paint would use the stale

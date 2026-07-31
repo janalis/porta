@@ -11,7 +11,6 @@ use Porta\GraphViewer\Graph\GraphLayout;
 use Porta\GraphViewer\GraphViewerWidget;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
-use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\FakeLayoutEngine;
@@ -20,6 +19,7 @@ use Porta\Tests\Support\PngFixture;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RecordingViewerTabHandler;
 use Porta\Ui\Glyphs;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -68,7 +68,7 @@ final class GraphViewerWidgetTest extends TestCase
         // direction catches a real defect the other cannot see: a declared
         // action nothing binds is a keymap row that does nothing, and a bound
         // key nothing declares is a key the user can never find or rebind.
-        $manager = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         $api = new PluginApi('graph-viewer', $manager, '/p', new PluginSettings('/p', []));
         $plugin = require \dirname(__DIR__).'/plugin.php';
         $plugin->activate($api);

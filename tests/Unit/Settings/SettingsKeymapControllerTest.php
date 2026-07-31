@@ -13,7 +13,6 @@ use Porta\Config\KeyDispatch;
 use Porta\Config\LiveKeybindings;
 use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
-use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
@@ -27,6 +26,7 @@ use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\WorkspaceViews;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -44,7 +44,7 @@ final class SettingsKeymapControllerTest extends TestCase
     private function controller(string $rootDir, StatusBarWidget $status, Keybindings $boot, ?EditorPanes $panes = null): SettingsKeymapController
     {
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
-        $this->host = new PluginHost(IdeConfig::load($rootDir), new PluginEvents(), $rootDir);
+        $this->host = new PluginHost(IdeConfig::load($rootDir), new EventDispatcher(), $rootDir);
         $this->actions = new ActionRegistry($this->host->manager());
         $this->live = new LiveKeybindings(new KeybindingsFactory($this->host, IdeConfig::load($rootDir), $this->actions), $boot, $rootDir);
 
@@ -57,7 +57,7 @@ final class SettingsKeymapControllerTest extends TestCase
             $this->live,
             new Translator('en'),
             new WorkspaceViews(),
-            new PluginManager(new PluginEvents(), new PluginSettings($rootDir, [])),
+            new PluginManager(new EventDispatcher(), new PluginSettings($rootDir, [])),
         );
 
         return new SettingsKeymapController(

@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Plugin\Runtime;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\TempProject;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class PluginLoaderTest extends TestCase
 {
@@ -48,7 +48,7 @@ final class PluginLoaderTest extends TestCase
 
     private function load(TempProject $project, ?string $globalBase = null): PluginManager
     {
-        $manager = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         new PluginLoader($project->dir, $globalBase, new PluginSettings($project->dir, []))->loadInto($manager);
 
         return $manager;
@@ -115,7 +115,7 @@ final class PluginLoaderTest extends TestCase
             '.porta/plugins/demo/plugin.php' => $this->pluginSource('demo'),
             '.porta/plugins/broken/plugin.php' => '<?php return 42;',
         ]);
-        $manager = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         $loader = new PluginLoader($project->dir, null, new PluginSettings($project->dir, []));
 
         $this->assertNull($loader->loadFile($project->path('.porta/plugins/demo/plugin.php'), $manager));
@@ -164,7 +164,7 @@ final class PluginLoaderTest extends TestCase
         $global = new TempProject(['.porta/plugins/extra/plugin.php' => $this->pluginSource('globalextra')]);
         $project = new TempProject(['.porta/plugins/demo/plugin.php' => $this->pluginSource('demo')]);
 
-        $manager = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         // Bundled plugins are off by default; only 'own' is opted into enabledPlugins.
         new PluginLoader($project->dir, $global->dir, new PluginSettings($project->dir, []), $embedded->dir, [], ['own'])->loadInto($manager);
 
@@ -181,13 +181,13 @@ final class PluginLoaderTest extends TestCase
         $project = new TempProject(['.porta/plugins/local/plugin.php' => $this->pluginSource('local')]);
 
         // No enabledPlugins → the bundled plugin stays off; the project plugin loads by default.
-        $off = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        $off = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         new PluginLoader($project->dir, null, new PluginSettings($project->dir, []), $embedded->dir)->loadInto($off);
         $this->assertFalse($off->hasPlugin('bundled'), 'a bundled plugin is off by default');
         $this->assertTrue($off->hasPlugin('local'), 'a project plugin loads by default');
 
         // Opting the bundled plugin in loads it.
-        $on = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        $on = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         new PluginLoader($project->dir, null, new PluginSettings($project->dir, []), $embedded->dir, [], ['bundled'])->loadInto($on);
         $this->assertTrue($on->hasPlugin('bundled'), 'enabledPlugins opts it in');
     }

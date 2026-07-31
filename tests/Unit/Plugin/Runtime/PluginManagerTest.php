@@ -7,14 +7,16 @@ namespace Porta\Tests\Unit\Plugin\Runtime;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
+use Porta\Editor\ActiveBufferTracker;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
+use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
-use Porta\Plugin\Runtime\PluginEvents;
+use Porta\Plugin\Api\PluginException;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginMenuSpec;
 use Porta\Plugin\Runtime\PluginRuntime;
@@ -28,6 +30,7 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Notifier;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
@@ -43,7 +46,7 @@ final class PluginManagerTest extends TestCase
 
     private StatusBarWidget $status;
 
-    private function wiredManager(PluginEvents $events): PluginManager
+    private function wiredManager(EventDispatcher $events): PluginManager
     {
         $manager = new PluginManager($events, new PluginSettings('/p', []));
         $tui = TestTui::create(120, 24);
@@ -69,7 +72,7 @@ final class PluginManagerTest extends TestCase
 
     public function testCommitAggregatesCommandsKeysAndMenuSpecs(): void
     {
-        $manager = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
         $api->registerCommand('hello', 'Say Hello', static function (): void {}, ['ctrl+alt+y']);
         $api->registerCommand('quiet', 'Quiet One', static function (): void {});
@@ -90,7 +93,7 @@ final class PluginManagerTest extends TestCase
 
     public function testRegisterCommandsIsIncrementalAcrossCommits(): void
     {
-        $manager = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         $first = new PluginApi('one', $manager, '/p', new PluginSettings('/p', []));
         $first->registerCommand('a', 'Command A', static function (): void {});
         $manager->commit($first);
@@ -111,7 +114,7 @@ final class PluginManagerTest extends TestCase
 
     public function testDeactivateUndoesEverythingAndAllowsAReinstall(): void
     {
-        $events = new PluginEvents();
+        $events = new EventDispatcher();
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager($events, $settings);
         $registry = new CommandRegistry();
@@ -145,7 +148,7 @@ final class PluginManagerTest extends TestCase
         $this->assertContains('core:stay', $registry->keyBoundIds(), 'core commands survive');
         $this->assertNotContains('Say Hi', array_column($registry->paletteCommands(), 'label'), 'palette entry died');
         $this->assertSame([], $settings->rows('demo'), 'setting descriptors dropped');
-        $events->onBufferSaved(new BufferSaved($this->buffer('/a')));
+        $events->dispatch(new BufferSaved($this->buffer('/a')));
         $this->assertSame(0, $hookRan, 'hooks unsubscribed');
 
         // The same name reinstalls live, and the watermark stayed exact.
@@ -160,7 +163,7 @@ final class PluginManagerTest extends TestCase
 
     public function testLanguageServersResolveWithFirstAvailableWinningTheLanguage(): void
     {
-        $manager = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
 
         // one registers a php server whose binary is missing (resolver null).
         $one = new PluginApi('one', $manager, '/p', new PluginSettings('/p', []));
@@ -193,7 +196,7 @@ final class PluginManagerTest extends TestCase
 
     public function testLanguageServersReportAThrowingResolverAndDeactivateDropsProviders(): void
     {
-        $events = new PluginEvents();
+        $events = new EventDispatcher();
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager($events, $settings);
         $registry = new CommandRegistry();
@@ -217,7 +220,7 @@ final class PluginManagerTest extends TestCase
     public function testInstallOfferReportsToolAndLiveAvailabilityAndDropsOnDeactivate(): void
     {
         $settings = new PluginSettings('/p', []);
-        $manager = new PluginManager(new PluginEvents(), $settings);
+        $manager = new PluginManager(new EventDispatcher(), $settings);
         $registry = new CommandRegistry();
 
         $available = false;
@@ -248,7 +251,7 @@ final class PluginManagerTest extends TestCase
 
     public function testAThrowingMenuWhenClosureReadsDisabledAndReportsOnce(): void
     {
-        $manager = $this->wiredManager(new PluginEvents());
+        $manager = $this->wiredManager(new EventDispatcher());
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
         $api->registerCommand('hi', 'Say Hi', static function (): void {});
         $api->addMenuItem('hi', static function (): bool {
@@ -265,7 +268,7 @@ final class PluginManagerTest extends TestCase
 
     public function testWrappedCommandHandlersCatchAndFlash(): void
     {
-        $manager = $this->wiredManager(new PluginEvents());
+        $manager = $this->wiredManager(new EventDispatcher());
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
         $ran = false;
         $api->registerCommand('ok', 'Ok', static function () use (&$ran): void {
@@ -287,7 +290,7 @@ final class PluginManagerTest extends TestCase
 
     public function testWrappedHooksCatchAndUnwiredFailuresBecomeWarnings(): void
     {
-        $events = new PluginEvents();
+        $events = new EventDispatcher();
         $manager = $this->wiredManager($events);
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
         $seen = [];
@@ -302,14 +305,17 @@ final class PluginManagerTest extends TestCase
         });
         $manager->commit($api);
 
-        $events->onBufferSaved(new BufferSaved($this->buffer('/a')));
-        $events->onBufferOpened(new BufferOpened($this->buffer('/a')));
-        $events->onBufferSwitched(new BufferSwitched($this->buffer('/a')));
+        $events->dispatch(new BufferSaved($this->buffer('/a')));
+        $events->dispatch(new BufferOpened($this->buffer('/a')));
+        // onBufferSwitched listens to the DEDUPED stream, so the tracker that
+        // derives it has to be on the bus — the same wiring the container does.
+        $events->addListener(BufferSwitched::class, new ActiveBufferTracker($events)->onBufferSwitched(...), -100);
+        $events->dispatch(new BufferSwitched($this->buffer('/a')));
         $this->assertSame(['/a', 'switch:/a'], $seen);
         $this->assertStringContainsString('Plugin "demo" failed: bad hook', $this->renderedStatus());
 
         // Before the runtime exists, failures collect as boot warnings instead.
-        $cold = new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        $cold = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         $cold->reportFailure('demo', new \RuntimeException('early'));
         $this->assertSame(['Plugin "demo" failed: early'], $cold->warnings());
     }
@@ -317,5 +323,77 @@ final class PluginManagerTest extends TestCase
     private function renderedStatus(): string
     {
         return \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(implode(' ', $this->status->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))));
+    }
+
+    public function testDeactivatingOnePluginLeavesAnothersListenerOnTheSameEventAlive(): void
+    {
+        // removeListener() matches by identity, so the manager has to hand back
+        // the exact wrapped instances it registered — not "everything on this
+        // event", which would silence the innocent plugin beside it.
+        $events = new EventDispatcher();
+        $manager = $this->wiredManager($events);
+        $seen = [];
+        foreach (['one', 'two'] as $name) {
+            $api = new PluginApi($name, $manager, '/p', new PluginSettings('/p', []));
+            $api->onFileSaved(static function (string $path) use (&$seen, $name): void {
+                $seen[] = $name;
+            });
+            $manager->commit($api);
+        }
+
+        $manager->deactivate('one', new CommandRegistry());
+        $events->dispatch(new BufferSaved($this->buffer('/a')));
+
+        $this->assertSame(['two'], $seen);
+    }
+
+    public function testAnEnableDisableEnableCycleNeitherStrandsAListenerNorDoubleFires(): void
+    {
+        $events = new EventDispatcher();
+        $manager = $this->wiredManager($events);
+        $calls = 0;
+        $subscribe = static function (PluginManager $manager) use (&$calls): void {
+            $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
+            $api->onFileSaved(static function () use (&$calls): void {
+                ++$calls;
+            });
+            $manager->commit($api);
+        };
+
+        $subscribe($manager);
+        $manager->deactivate('demo', new CommandRegistry());
+        $subscribe($manager);
+        $events->dispatch(new BufferSaved($this->buffer('/a')));
+
+        $this->assertSame(1, $calls, 'one live registration, not two and not none');
+    }
+
+    public function testOnRefusesAnEventThatIsNotObservable(): void
+    {
+        // BufferSaved carries a mutable Buffer, so it is deliberately not part
+        // of the frozen subset — even though a core adapter listens to it on
+        // the plugin's behalf for onFileSaved().
+        $manager = $this->wiredManager(new EventDispatcher());
+        $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
+
+        $this->expectException(PluginException::class);
+        $this->expectExceptionMessage('is not a plugin-observable event');
+        $api->on(BufferSaved::class, static fn () => null);
+    }
+
+    public function testOnSubscribesToAnObservableEvent(): void
+    {
+        $events = new EventDispatcher();
+        $manager = $this->wiredManager($events);
+        $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
+        $seen = null;
+        $api->on(ActiveBufferChanged::class, static function (ActiveBufferChanged $event) use (&$seen): void {
+            $seen = $event->path;
+        });
+        $manager->commit($api);
+
+        $events->dispatch(new ActiveBufferChanged('/a'));
+
+        $this->assertSame('/a', $seen, 'the listener receives the event OBJECT, not a string');
     }
 }

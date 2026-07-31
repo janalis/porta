@@ -9,7 +9,6 @@ use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\AbstractSubprocessHighlighter;
 use Porta\Plugin\Api\PluginApi;
-use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
@@ -24,6 +23,7 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Notifier;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Tempest\Highlight\Tokens\TokenTypeEnum;
 
@@ -87,7 +87,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
         chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
 
         $settings = new PluginSettings($this->project->dir, []);
-        $this->manager = new PluginManager(new PluginEvents(), $settings);
+        $this->manager = new PluginManager(new EventDispatcher(), $settings);
         $tui = TestTui::create(100, 24);
         $this->manager->wireRuntime(new PluginRuntime(
             new Notifier(new StatusBarWidget(), $tui),

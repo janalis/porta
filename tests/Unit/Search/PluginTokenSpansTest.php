@@ -8,10 +8,10 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
-use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Search\TokenClassifier;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
  * Plugin-supplied comment/string classification for project search's
@@ -21,7 +21,7 @@ final class PluginTokenSpansTest extends TestCase
 {
     private function manager(): PluginManager
     {
-        return new PluginManager(new PluginEvents(), new PluginSettings('/p', []));
+        return new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
     }
 
     private function api(PluginManager $manager, string $name): PluginApi

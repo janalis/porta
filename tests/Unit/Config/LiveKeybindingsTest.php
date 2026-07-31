@@ -10,9 +10,9 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
 use Porta\Config\LiveKeybindings;
-use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Tests\Support\TempProject;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
  * The rebuildable keybindings holder: a live plugin toggle re-merges the map
@@ -37,7 +37,7 @@ final class LiveKeybindingsTest extends TestCase
     private function live(TempProject $project): array
     {
         $config = IdeConfig::load($project->dir);
-        $host = new PluginHost($config, new PluginEvents(), $project->dir);
+        $host = new PluginHost($config, new EventDispatcher(), $project->dir);
         $factory = new KeybindingsFactory($host, $config, new ActionRegistry($host->manager()));
 
         return [new LiveKeybindings($factory, $factory->create(), $project->dir), $host];

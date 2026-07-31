@@ -6,9 +6,15 @@ namespace Porta\Plugin\Api;
 
 use Porta\Config\ActionCatalog;
 use Porta\Editor\OpenFocus;
+use Porta\Event\ActiveBufferChanged;
+use Porta\Event\BufferOpened;
+use Porta\Event\BufferSaved;
+use Porta\Event\IdeReady;
+use Porta\Event\IdeShuttingDown;
+use Porta\Event\PluginObservable;
+use Porta\Event\ThemeChanged;
 use Porta\Highlight\DarkTerminalTheme;
 use Porta\Lsp\Uri;
-use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginMenuSpec;
 use Porta\Plugin\Runtime\PluginSettings;
@@ -44,9 +50,10 @@ final class PluginApi
      */
     private array $menuItems = [];
     /**
-     * Plain array: four writer methods, positional tuples, drains into PluginEvents.
+     * Plain array: seven writer methods, positional tuples, drained into the
+     * event dispatcher at commit.
      *
-     * @var list<array{0: string, 1: \Closure(string): void}> [event, listener]
+     * @var list<array{0: class-string, 1: \Closure(object): void}> [event class, listener]
      */
     private array $hooks = [];
     /**
@@ -589,7 +596,7 @@ final class PluginApi
      */
     public function onReady(\Closure $listener): void
     {
-        $this->hooks[] = ['ready', $listener];
+        $this->listen(IdeReady::class, static fn (IdeReady $event) => $listener($event->projectRoot));
     }
 
     /**
@@ -603,25 +610,33 @@ final class PluginApi
      */
     public function onShutdown(\Closure $listener): void
     {
-        $this->hooks[] = ['shutdown', $listener];
+        $this->listen(IdeShuttingDown::class, static fn (IdeShuttingDown $event) => $listener($event->projectRoot));
     }
 
     /** @param \Closure(string): void $listener receives the absolute path */
     public function onFileOpened(\Closure $listener): void
     {
-        $this->hooks[] = ['fileOpened', $listener];
+        $this->listen(BufferOpened::class, static fn (BufferOpened $event) => $listener($event->buffer->path));
     }
 
     /** @param \Closure(string): void $listener receives the absolute path */
     public function onFileSaved(\Closure $listener): void
     {
-        $this->hooks[] = ['fileSaved', $listener];
+        $this->listen(BufferSaved::class, static fn (BufferSaved $event) => $listener($event->buffer->path));
     }
 
-    /** @param \Closure(string): void $listener receives the absolute path */
+    /**
+     * The active file changed — not every SHOW of it.
+     *
+     * Listens to the deduped {@see ActiveBufferChanged}, so re-showing the
+     * buffer that is already active (config re-apply, pane swaps, focus churn)
+     * stays silent while core listeners still see every show.
+     *
+     * @param \Closure(string): void $listener receives the absolute path
+     */
     public function onBufferSwitched(\Closure $listener): void
     {
-        $this->hooks[] = ['bufferSwitched', $listener];
+        $this->listen(ActiveBufferChanged::class, static fn (ActiveBufferChanged $event) => $listener($event->path));
     }
 
     /**
@@ -636,7 +651,48 @@ final class PluginApi
      */
     public function onThemeChanged(\Closure $listener): void
     {
-        $this->hooks[] = ['themeChanged', $listener];
+        $this->listen(ThemeChanged::class, static fn (ThemeChanged $event) => $listener($event->theme));
+    }
+
+    /**
+     * Listen to a core event directly.
+     *
+     * The six named hooks above are sugar over this one; `on()` reaches the
+     * rest of the observable set, and hands the listener the event OBJECT
+     * rather than a string. The class must implement
+     * {@see \Porta\Event\PluginObservable} — the frozen, documented subset of
+     * `Porta\Event`; everything else there is internal and changes without
+     * notice, which is why naming one is refused rather than merely useless.
+     *
+     * Runs at {@see \Porta\Plugin\Runtime\PluginManager::PLUGIN_PRIORITY},
+     * after every priority-0 core listener. A throw is caught and flashed like
+     * any other plugin closure. There is no `off()`: disabling the plugin
+     * removes its listeners.
+     *
+     * @param class-string                  $eventClass a {@see PluginObservable} implementation
+     * @param \Closure(PluginObservable): void $listener
+     */
+    public function on(string $eventClass, \Closure $listener): void
+    {
+        if (!is_a($eventClass, PluginObservable::class, allow_string: true)) {
+            throw new PluginException(\sprintf('"%s" is not a plugin-observable event — see the event list in docs/plugins.md', $eventClass));
+        }
+        $this->listen($eventClass, $listener);
+    }
+
+    /**
+     * The unchecked door the named hooks use: core code naming core event
+     * classes, which is how `onFileOpened`/`onFileSaved` keep working while
+     * {@see BufferOpened}/{@see BufferSaved} stay internal — they carry a
+     * mutable `Buffer`, so they are not something a plugin may hold.
+     *
+     * @param class-string           $eventClass
+     * @param \Closure(never): void  $listener
+     */
+    private function listen(string $eventClass, \Closure $listener): void
+    {
+        /** @var \Closure(object): void $listener */
+        $this->hooks[] = [$eventClass, $listener];
     }
 
     // --- Actions (live IDE; PluginException during activate()) ---------------
@@ -891,7 +947,7 @@ final class PluginApi
         return $this->menuItems;
     }
 
-    /** @return list<array{0: string, 1: \Closure(string): void}> */
+    /** @return list<array{0: class-string, 1: \Closure(object): void}> */
     public function bufferedHooks(): array
     {
         return $this->hooks;

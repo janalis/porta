@@ -6,6 +6,7 @@ namespace Porta\Plugin\Runtime;
 
 use Porta\Config\IdeConfig;
 use Porta\Container\AsIdeService;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Tempest\Highlight\TerminalTheme;
 
 /**
@@ -28,7 +29,7 @@ final class PluginHost
 
     private readonly PluginLoader $loader;
 
-    public function __construct(IdeConfig $config, PluginEvents $events, string $rootDir, ?TerminalTheme $syntaxTheme = null)
+    public function __construct(IdeConfig $config, EventDispatcherInterface $events, string $rootDir, ?TerminalTheme $syntaxTheme = null)
     {
         $this->settings = new PluginSettings($rootDir, $config->plugins);
         $this->manager = new PluginManager($events, $this->settings);

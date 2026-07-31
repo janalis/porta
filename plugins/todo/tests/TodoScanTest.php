@@ -6,7 +6,6 @@ namespace Porta\Todo\Tests;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Plugin\Api\PluginApi;
-use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
@@ -28,6 +27,7 @@ use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockToolController;
 use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Notifier;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -52,7 +52,7 @@ final class TodoScanTest extends TestCase
     private function api(TempProject $project, string $tags = ''): PluginApi
     {
         $settings = new PluginSettings($project->dir, []);
-        $manager = new PluginManager(new PluginEvents(), $settings);
+        $manager = new PluginManager(new EventDispatcher(), $settings);
         $tui = TestTui::create(120, 24);
         $this->results = new ResultsPanelWidget();
         $this->dock = TestBottomDock::create($tui, new TerminalPanelWidget(), $this->results, new DebugPanelWidget());

@@ -15,7 +15,7 @@ namespace Porta\Event;
  * A path, not a `Buffer`: this is the shape a third party may observe, and a
  * `Buffer` is a mutable bag of core editor state.
  */
-final readonly class ActiveBufferChanged
+final readonly class ActiveBufferChanged implements PluginObservable
 {
     public function __construct(
         public string $path,

@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Plugin\Api;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
+use Porta\Editor\Document;
+use Porta\Event\BufferSaved;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\AbstractAnalyzerPlugin;
 use Porta\Plugin\Api\PluginApi;
-use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
@@ -25,6 +27,7 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Notifier;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
  * The analyzer template, driven end to end through a real {@see PluginApi}
@@ -94,7 +97,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
     private function api(): PluginApi
     {
         $settings = new PluginSettings($this->project->dir, []);
-        $this->manager = new PluginManager(new PluginEvents(), $settings);
+        $this->manager = new PluginManager(new EventDispatcher(), $settings);
         $this->status = new StatusBarWidget();
         $this->buffers = new BufferManager();
         $this->sink = new RecordingDiagnosticsSink();
@@ -179,8 +182,11 @@ final class AbstractAnalyzerPluginTest extends TestCase
         $this->manager->commit($api);
 
         $hooks = $api->bufferedHooks();
-        $this->assertSame('fileSaved', $hooks[0][0]);
-        $saved = $hooks[0][1];
+        $this->assertSame(BufferSaved::class, $hooks[0][0]);
+        // The buffered listener takes the EVENT now; the path-shaped closure the
+        // plugin wrote is behind a core adapter.
+        $adapter = $hooks[0][1];
+        $saved = static fn (string $path) => $adapter(new BufferSaved(new Buffer($path, new Document(''))));
 
         // The analyzer's binary does not exist, so a run that STARTS flashes
         // that — which is how these three cases tell each other apart.

@@ -9,15 +9,15 @@ use Porta\Config\ActionCatalog;
 use Porta\Config\ActionRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
-use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Tests\Support\TempProject;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class PluginHostTest extends TestCase
 {
     private function host(TempProject $project): PluginHost
     {
-        return new PluginHost(IdeConfig::load($project->dir), new PluginEvents(), $project->dir);
+        return new PluginHost(IdeConfig::load($project->dir), new EventDispatcher(), $project->dir);
     }
 
     public function testBuildsTheSubsystemAndLoadsPluginsExactlyOnce(): void
@@ -62,7 +62,7 @@ final class PluginHostTest extends TestCase
                 PHP,
         ]);
         $config = IdeConfig::load($project->dir);
-        $host = new PluginHost($config, new PluginEvents(), $project->dir);
+        $host = new PluginHost($config, new EventDispatcher(), $project->dir);
         $keybindings = new KeybindingsFactory($host, $config, new ActionRegistry($host->manager()))->create();
 
         $this->assertTrue($host->manager()->hasPlugin('keyed'), 'creating the map forces the plugin load');

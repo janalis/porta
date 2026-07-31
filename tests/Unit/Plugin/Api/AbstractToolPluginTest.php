@@ -11,7 +11,6 @@ use Porta\Plugin\Api\AbstractPlugin;
 use Porta\Plugin\Api\AbstractToolPlugin;
 use Porta\Plugin\Api\BinarySearch;
 use Porta\Plugin\Api\PluginApi;
-use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
@@ -25,6 +24,7 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Notifier;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
  * The shared tool-plugin machinery, driven through a real {@see PluginApi}
@@ -118,7 +118,7 @@ final class AbstractToolPluginTest extends TestCase
         // ONE settings instance, like PluginLoader wires it — two would read
         // back stale values after changeSetting().
         $settings = new PluginSettings($this->project->dir, []);
-        $manager = new PluginManager(new PluginEvents(), $settings);
+        $manager = new PluginManager(new EventDispatcher(), $settings);
         $this->manager = $manager;
         $this->status = new StatusBarWidget();
         $this->buffers = new BufferManager();

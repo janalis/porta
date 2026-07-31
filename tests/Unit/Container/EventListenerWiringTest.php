@@ -8,16 +8,16 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\Container\Ansi;
 use Porta\Container\IdeContainerFactory;
-use Porta\Editor\ActiveBufferTracker;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
 use Porta\Event\IdeReady;
 use Porta\Event\IdeShuttingDown;
 use Porta\Event\LocaleChanged;
+use Porta\Event\PluginObservable;
 use Porta\Event\ThemeChanged;
 use Porta\Highlight\HighlightThemeListener;
-use Porta\Plugin\Runtime\PluginEvents;
+use Porta\Plugin\Runtime\PluginManager;
 use Porta\Workbench\ChromeRefreshListener;
 use Porta\Workbench\Menu\MenuLayoutRefreshListener;
 use Symfony\Component\DependencyInjection\ServiceLocator;
@@ -109,28 +109,64 @@ final class EventListenerWiringTest extends TestCase
         }
     }
 
-    public function testThePluginBridgeObservesLast(): void
+    public function testNoCoreListenerSitsWhereAPluginWould(): void
     {
+        // The bridge used to BE this pin: it was the compiled -100 listener you
+        // could assert came last. Plugin listeners are added at runtime now, so
+        // the contract has to be stated the other way round — on the events a
+        // plugin can actually reach, nothing compiled may sit at or below the
+        // priority plugins get, or a core listener would silently run after
+        // third-party code.
+        //
+        // Scoped to the observable set on purpose: ActiveBufferTracker sits at
+        // exactly -100 on BufferSwitched, which is not observable, and that is
+        // precisely how it manages to run before anything watching the event it
+        // derives.
+        //
+        // STRICTLY below, not at: the chrome sweep also sits at -100, and has
+        // since before plugins were dispatcher listeners. Neither depends on
+        // the other, so sharing the bucket is the pre-existing truth rather
+        // than a regression to assert away.
+        //
+        // One documented exception: HighlightThemeListener at -200, so a
+        // backend that bakes theme colours rebuilds BEFORE the caches it feeds
+        // are dropped.
         $dispatcher = $this->dispatcher();
+        $allowed = [ThemeChanged::class => HighlightThemeListener::class];
 
-        foreach ([BufferOpened::class, BufferSaved::class] as $event) {
-            $listeners = $dispatcher->getListeners($event);
-            $last = end($listeners);
-            \assert(\is_array($last), description: 'a listener entry is a [service, method] pair');
-            $this->assertInstanceOf(PluginEvents::class, $last[0], $event.': third-party hooks run after every core listener');
+        foreach ($this->observableEvents() as $event) {
+            foreach ($dispatcher->getListeners($event) as $listener) {
+                // A closure IS a plugin listener — the bundled plugins in the
+                // fixture home register on this bus now, which is the thing
+                // this refactor did.
+                if (!\is_array($listener) || $dispatcher->getListenerPriority($event, $listener) >= PluginManager::PLUGIN_PRIORITY) {
+                    continue;
+                }
+                $this->assertSame(
+                    $allowed[$event] ?? null,
+                    $listener[0]::class,
+                    \sprintf('%s: a core listener at %d runs after plugin listeners', $event, (int) $dispatcher->getListenerPriority($event, $listener)),
+                );
+            }
+        }
+    }
+
+    /**
+     * The events a plugin may listen to.
+     *
+     * @return list<class-string>
+     */
+    private function observableEvents(): array
+    {
+        $events = [];
+        foreach (glob(\dirname(__DIR__, levels: 3).'/src/Event/*.php') as $file) {
+            $class = 'Porta\\Event\\'.basename($file, suffix: '.php');
+            if (is_a($class, PluginObservable::class, allow_string: true) && class_exists($class)) {
+                $events[] = $class;
+            }
         }
 
-        // BufferSwitched now ends in TWO listeners at -100 — the bridge and the
-        // tracker that derives ActiveBufferChanged — so "last" is compile order
-        // rather than contract. What the contract actually says is that both sit
-        // behind every priority-0 core listener.
-        $switched = $dispatcher->getListeners(BufferSwitched::class);
-        $tail = array_map(
-            static fn (array $listener): string => $listener[0]::class,
-            \array_slice($switched, offset: -2),
-        );
-        sort($tail);
-        $this->assertSame([ActiveBufferTracker::class, PluginEvents::class], $tail, 'the two -100 listeners are the final two, in either order');
+        return $events;
     }
 
     public function testThemeAndLocaleRefreshersAreCompiledListenersAheadOfTheChromeSweep(): void
@@ -158,11 +194,11 @@ final class EventListenerWiringTest extends TestCase
         }
     }
 
-    /** @param array<int, array{0: object, 1: string}> $listeners */
+    /** @param array<int, mixed> $listeners */
     private function indexOf(array $listeners, string $class): int
     {
         foreach (array_values($listeners) as $index => $entry) {
-            if ($entry[0] instanceof $class) {
+            if (\is_array($entry) && $entry[0] instanceof $class) {
                 return $index;
             }
         }
@@ -188,17 +224,15 @@ final class EventListenerWiringTest extends TestCase
         }
     }
 
-    public function testTheLifecycleMomentsAreCompiledListeners(): void
+    public function testTheLifecycleMomentsAreOrdinaryEvents(): void
     {
-        // They were direct calls from Ide until they became events; the bridge
-        // reaching them through the compiled map is what makes them ordinary.
+        // Dispatched by Ide at two fixed positions in run(); nothing in core
+        // listens, which is the point — they exist for observers, and a plugin
+        // registers on them at runtime like any other listener.
         $dispatcher = $this->dispatcher();
 
         foreach ([IdeReady::class, IdeShuttingDown::class] as $event) {
-            $listeners = $dispatcher->getListeners($event);
-            $this->assertNotSame([], $listeners, $event.' has a compiled listener');
-            $this->assertInstanceOf(PluginEvents::class, $listeners[0][0]);
-            $this->assertSame(-100, $dispatcher->getListenerPriority($event, $listeners[0]), 'behind every priority-0 core listener');
+            $this->assertSame([], $dispatcher->getListeners($event), $event.' is observed, not reacted to');
         }
     }
 }

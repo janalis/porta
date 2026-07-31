@@ -9,7 +9,6 @@ use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Plugin\Lifecycle\ToolInstaller;
-use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\SettingsPluginsController;
@@ -23,6 +22,7 @@ use Porta\Tests\Support\TestTui;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
 use Revolt\EventLoop;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
@@ -54,7 +54,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $tui = TestTui::create(80, 24);
 
         $this->pluginSettings = new PluginSettings($this->project->dir, []);
-        $this->plugins = new PluginManager(new PluginEvents(), $this->pluginSettings);
+        $this->plugins = new PluginManager(new EventDispatcher(), $this->pluginSettings);
         $this->installerTool = new ToolInstaller($this->project->dir, $this->managerBinaries);
 
         return new SettingsPluginsController(

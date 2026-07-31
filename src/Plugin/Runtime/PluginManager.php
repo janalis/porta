@@ -20,6 +20,7 @@ use Porta\Search\TokenSpanProvider;
 use Porta\Workbench\Dock\DockToolSource;
 use Porta\Workbench\Menu\MenuSurface;
 use Porta\Workbench\StatusSegmentSource;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * The committed plugin state: commands, default keys, menu entries, hook
@@ -77,6 +78,13 @@ final class PluginManager implements
     private array $deferred = [];
     /** @var array<string, true> loaded plugin names */
     private array $names = [];
+    /**
+     * The WRAPPED listeners each plugin registered, so deactivate() can hand
+     * the same instances back to removeListener().
+     *
+     * @var array<string, list<array{0: class-string, 1: \Closure(object): void}>>
+     */
+    private array $pluginListeners = [];
     /** Watermark into $commands: how many are already in the registry. */
     private int $registered = 0;
     /** @var array<string, true> plugins whose menu-enabled closure already reported a throw */
@@ -90,8 +98,18 @@ final class PluginManager implements
 
     private ?PluginRuntime $runtime = null;
 
+    /**
+     * Third-party listeners observe after every priority-0 core listener.
+     *
+     * Not "after every core listener", which is already false:
+     * {@see \Porta\Highlight\HighlightThemeListener} sits at -200 on purpose,
+     * so a plugin that bakes theme colours rebuilds before the caches it feeds
+     * are dropped.
+     */
+    public const int PLUGIN_PRIORITY = -100;
+
     public function __construct(
-        private readonly PluginEvents $events,
+        private readonly EventDispatcherInterface $events,
         private readonly PluginSettings $settings,
     ) {}
 
@@ -131,8 +149,12 @@ final class PluginManager implements
                 surface: $item['surface'],
             );
         }
-        foreach ($api->bufferedHooks() as [$event, $listener]) {
-            $this->events->subscribe($name, $event, $this->wrap($name, $listener));
+        foreach ($api->bufferedHooks() as [$eventClass, $listener]) {
+            $wrapped = $this->wrap($name, $listener);
+            // Kept because removeListener() matches by IDENTITY: the instance
+            // handed to addListener() is the one deactivate() must hand back.
+            $this->pluginListeners[$name][] = [$eventClass, $wrapped];
+            $this->events->addListener($eventClass, $wrapped, self::PLUGIN_PRIORITY);
         }
         foreach ($api->bufferedLanguageServers() as $server) {
             $this->languageServers[] = $server;
@@ -260,7 +282,10 @@ final class PluginManager implements
 
         unset($this->reportedWhens[$name], $this->reportedHighlighters[$name], $this->reportedViewers[$name], $this->reportedSegments[$name]);
         $registry->remove($removed);
-        $this->events->removeFor($name);
+        foreach ($this->pluginListeners[$name] ?? [] as [$eventClass, $wrapped]) {
+            $this->events->removeListener($eventClass, $wrapped);
+        }
+        unset($this->pluginListeners[$name]);
         $this->settings->removeFor($name);
     }
 
@@ -595,15 +620,19 @@ final class PluginManager implements
     }
 
     /**
-     * @param \Closure(string): void $listener
+     * @param \Closure(object): void $listener
      *
-     * @return \Closure(string): void
+     * @return \Closure(object): void
      */
     private function wrap(string $plugin, \Closure $listener): \Closure
     {
-        return function (string $path) use ($plugin, $listener): void {
+        // ONE parameter, and that is load-bearing beyond types: the dispatcher
+        // calls listeners as ($event, $eventName, $dispatcher), so a wrapper
+        // that declared (...$args) would hand every plugin the bus itself.
+        // Plugins listen; they never dispatch.
+        return function (object $event) use ($plugin, $listener): void {
             try {
-                $listener($path);
+                $listener($event);
             } catch (\Throwable $error) {
                 $this->reportFailure($plugin, $error);
             }
