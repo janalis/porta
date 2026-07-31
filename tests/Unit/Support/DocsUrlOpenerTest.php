@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Support\DocsUrlOpener;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\StatusBarWidget;
@@ -18,6 +19,7 @@ use Symfony\Component\Tui\Tui;
 final class DocsUrlOpenerTest extends TestCase
 {
     use PreservesPath;
+    use PumpsLoop;
     use StatusReads;
 
     public function testWithoutAnOpenerOnPathTheUrlItselfIsFlashed(): void
@@ -48,5 +50,10 @@ final class DocsUrlOpenerTest extends TestCase
         $docs->open('https://docs.test/str_pad');
 
         $this->assertStringContainsString('Opened https://docs.test/str_pad', $this->flashText($status));
+
+        // The open is fire-and-forget — DocsUrlOpener keeps no handle — so
+        // there is nothing to await; the child's stdout watcher clears itself
+        // once the loop gets a turn, which in production it always has.
+        $this->pump(0.2);
     }
 }

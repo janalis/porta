@@ -15,6 +15,7 @@ use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\SettingsPluginsController;
 use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\FakePluginLifecycle;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
@@ -315,6 +316,13 @@ final class SettingsPluginsControllerTest extends TestCase
         $controller->changePlugin('demo', 'pluginInstallBinary', false); // starts, stays running
         $controller->changePlugin('demo', 'pluginInstallBinary', false); // rejected
         $this->assertStringContainsString('An install is already running', $this->statusRow($this->status, 120));
+
+        // The state DURING the install is the point, but leaving mid-flight
+        // leaves a watcher on a stream the reaped child is about to close.
+        // src carries no test-only isRunning(); the barrier reads the
+        // installer's in-flight slot through the blessed Probe, like awaitGit.
+        $installer = $this->installerTool;
+        $this->await(static fn (): bool => null === Probe::get($installer, 'running'), what: 'the in-flight install to finish');
     }
 
     public function testInstallingWithoutADeclaredOfferIsANoOp(): void

@@ -9,12 +9,17 @@ use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
+use Porta\Git\GitInfo;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
+use Porta\Tests\Support\AwaitsGit;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Notifier;
+use Porta\Workbench\WorkspaceViews;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 
 /**
@@ -24,6 +29,8 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
  */
 final class EditorConfigIntegrationTest extends TestCase
 {
+    use AwaitsGit;
+    use PumpsLoop;
     use PreservesPath;
 
     protected function setUp(): void
@@ -31,11 +38,31 @@ final class EditorConfigIntegrationTest extends TestCase
         putenv('PATH=/nonexistent'); // keep git/LSP out of these unit runs
     }
 
+    /** The Ide the current test built, so tearDown can perform the teardown run() never gets to. */
+    private ?Ide $ide = null;
+
+    /**
+     * These tests build an Ide and never run() it, so the teardown in its
+     * finally never happens — and a flash arms a toast-expiry timer that
+     * outlives the test. Same three parts as IdeHelpersTest, for the same
+     * reason.
+     */
+    protected function tearDown(): void
+    {
+        if (null === $this->ide) {
+            return;
+        }
+
+        Services::resolve($this->ide, WorkspaceViews::class)->closeAll();
+        Services::resolve($this->ide, Notifier::class)->dismissAll();
+        $this->awaitGitInfo(Services::resolve($this->ide, GitInfo::class));
+    }
+
     private function ide(TempProject $project): Ide
     {
         new OnboardingState($project->dir)->markWelcomeSeen();
 
-        return new Ide($project->dir, null, new VirtualTerminal(columns: 80, rows: 24));
+        return $this->ide = new Ide($project->dir, null, new VirtualTerminal(columns: 80, rows: 24));
     }
 
     private function open(Ide $ide, string $path): Buffer

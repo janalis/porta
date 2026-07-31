@@ -355,6 +355,10 @@ final class SettingsControllerTest extends TestCase
         $settings->toggle('doesNotExist');
 
         $this->assertStringContainsString('Unknown setting "doesNotExist"', \Porta\Tests\Support\Toasts::last($ide));
+
+        // The toast arms an expiry timer, and this Ide never run()s — so
+        // nothing else will ever cancel it.
+        Services::resolve($ide, Notifier::class)->dismissAll();
         $this->assertFalse(is_file($project->path('.porta.json')), 'nothing was persisted');
     }
 
