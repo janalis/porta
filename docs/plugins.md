@@ -5,7 +5,7 @@ Porta is extensible with small PHP plugins: a directory containing a
 hooks through a stable API. Plugins run in-process on the shared event loop
 and are trusted code, like composer scripts.
 
-Ten plugins ship **bundled with Porta** ([`plugins/`](../plugins/) in the
+Twelve plugins ship **bundled with Porta** ([`plugins/`](../plugins/) in the
 package). Bundled plugins are governed by the `enabledPlugins` list; when your
 `.porta.json` has no such key, the two viewer plugins (`image-viewer`,
 `graph-viewer`) are enabled by default — an explicit list (even an empty one)
@@ -467,6 +467,5 @@ A **synchronous** highlighter needs none of that — call `$deliver` before
 returning, as the bundled `tempest` plugin does.
 
 See the shipped reference plugins for complete, tested examples of the
-formatter pattern (rewrite the file on disk — the IDE's filesystem poller
-reloads clean buffers within a second) and the linter pattern
-(`setDiagnostics`).
+formatter pattern (rewrite the file, then apply the result into the buffer with
+`applyFormatted()`) and the linter pattern (`setDiagnostics`).

@@ -9,9 +9,11 @@ use Porta\Support\AsyncProcess;
 /**
  * php-cs-fixer integration: "Fix Current File" (Ctrl+Alt+F) and a persisted
  * "Format on save" setting (toggled from the palette or the plugin's settings
- * page). The fixer runs asynchronously on the shared event loop; the
- * rewritten file is picked up by Porta's filesystem poller, which reloads the
- * (clean) buffer within a second. The binary, the single-flight slot and the
+ * page). The fixer runs asynchronously on the shared event loop and rewrites
+ * the file in place; its result is then applied INTO the buffer
+ * ({@see AbstractToolPlugin::applyFormatted()}), so the change lands the moment
+ * the tool exits, is one Ctrl+Z away, and works on a dirty buffer — none of
+ * which a filesystem-poller reload could do. The binary, the single-flight slot and the
  * on-save toggle all come from {@see AbstractToolPlugin}; the `args` setting
  * appends extra arguments to the fix command. The menu entry dims while no
  * binary is resolvable.

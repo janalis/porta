@@ -1116,8 +1116,10 @@ still after every *rebuild* listener, which is what its contract means. Plugin c
 `CommandRegistry` after core (core wins key collisions) and surface in the palette plus a
 trailing translated "Plugins" menu (`MenuModel::build`'s `$pluginSpecs`, grouped per plugin
 with separators). Prefer anonymous
-classes in plugin files — cross-plugin class redeclaration is an uncatchable fatal. EIGHT plugins
-ship in this repo under `plugins/` (also: `tempest`, `chroma`, `phpantom`, `phpactor`); four are
+classes in plugin files — cross-plugin class redeclaration is an uncatchable fatal. TWELVE plugins
+ship in this repo under `plugins/` (also: `tempest`, `chroma`, `phpantom`, `phpactor`, and the
+FOUR core features that moved out — `image-viewer`, `graph-viewer`, `todo`, `local-history`);
+four are
 the complete reference patterns: `php-cs-fixer` (async process via
 `Support/AsyncProcess`, binary discovery via `PluginApi::projectRoot()`, persisted
 `autoFormat` on-save setting), `phpstan` (publishes editor diagnostics via

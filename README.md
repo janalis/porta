@@ -108,7 +108,12 @@ rendered: `Tab` cycles the links, `Enter` or a click follows them, and
 - **Local history & session restore**: each save snapshots the file under
   `.porta/history/` (restore any snapshot with `Ctrl+Alt+H`); the open
   buffers and cursors are saved to `.porta/session.json` on quit and
-  reopened next time you launch the IDE with no file argument
+  reopened next time you launch the IDE with no file argument.
+  Local history ships as the bundled `local-history` plugin and is on by
+  default — **but if your `.porta.json` already pins an explicit
+  `enabledPlugins` list** (any project where you have toggled a bundled plugin
+  in Settings ▸ Plugins), add `"local-history"` to it or snapshots stop being
+  taken. Existing snapshots under `.porta/history/` are untouched either way
 - File tree with lazy expansion, editor with undo/redo, auto-indent,
   smart Home, horizontal scrolling and a line-number gutter
 

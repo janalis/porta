@@ -17,7 +17,8 @@ use Porta\Support\AsyncProcess;
  * the Settings page offers to install it via Homebrew
  * (`brew install phpantom-lsp`) or cargo (`cargo install phpantom_lsp
  * --locked`). The CLI drives "Fix Current File" / "Fix Project"
- * (`phpantom_lsp fix`, in place — the filesystem poller reloads the buffer)
+ * (`phpantom_lsp fix`, in place; the single-file fix is applied into the buffer,
+ * where "Fix Project" leaves its many files to the filesystem poller)
  * with a persisted "Fix on save" setting, and "Generate Config"
  * (`phpantom_lsp init`). Everything runs asynchronously on the shared loop.
  */
