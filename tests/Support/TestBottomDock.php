@@ -19,6 +19,7 @@ use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockToolTabs;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\Notifier;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Tui;
 
 /** Builds a wired {@see BottomDock} over the given panels for unit tests. */
@@ -33,6 +34,7 @@ final class TestBottomDock
         ?DockTabsWidget $dockTabs = null,
         ?TerminalSessions $sessions = null,
         ?DockToolTabs $tools = null,
+        ?EventDispatcherInterface $events = null,
     ): BottomDock {
         $dock = new BottomDock(
             $tui,
@@ -50,6 +52,7 @@ final class TestBottomDock
                 new EditorPanes(),
                 $tui,
             ),
+            $events,
         );
         $dock->wire();
 

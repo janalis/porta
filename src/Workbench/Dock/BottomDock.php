@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Workbench\Dock;
 
 use Porta\Container\AsIdeService;
+use Porta\Event\DockToolBound;
+use Porta\Event\DockToolClosed;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
 use Porta\Ui\Glyphs;
@@ -18,6 +20,7 @@ use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\Notifier;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
@@ -61,12 +64,6 @@ final class BottomDock
     /** @var (callable(int): void)|null closes the session at an index for real (RunController) */
     private $onTerminalSessionClose = null;
 
-    /** @var list<callable(DockToolTab): void> fired when a tool tab is bound into the panel */
-    private array $onToolBound = [];
-
-    /** @var list<callable(DockToolTab): void> fired when a tool tab is closed */
-    private array $onToolClosed = [];
-
     public function __construct(
         private readonly Tui $tui,
         private readonly TerminalPanelWidget $terminalPanel,
@@ -78,6 +75,7 @@ final class BottomDock
         private readonly Translator $translator,
         private readonly Notifier $notifier,
         private readonly EditorArea $editorArea,
+        private readonly ?EventDispatcherInterface $events = null,
     ) {}
 
     /** Register the dock lifecycle hooks on the three panels and the tab strip; called once from WidgetHooks. */
@@ -281,9 +279,7 @@ final class BottomDock
         }
         $wasBound = $this->activeTool() === $tool;
         $neighbour = $this->tools->close($tool);
-        foreach ($this->onToolClosed as $callback) {
-            $callback($tool);
-        }
+        $this->events?->dispatch(new DockToolClosed($tool));
         if (!$wasBound) {
             $this->tui->requestRender(); // the strip shrinks; the display is untouched
 
@@ -422,18 +418,6 @@ final class BottomDock
         $this->tui->requestRender();
     }
 
-    /** Register a hook fired whenever a tool tab is bound into the panel. */
-    public function onToolBound(callable $callback): void
-    {
-        $this->onToolBound[] = $callback;
-    }
-
-    /** Register a hook fired whenever a tool tab is closed (its × / programmatic close). */
-    public function onToolClosed(callable $callback): void
-    {
-        $this->onToolClosed[] = $callback;
-    }
-
     /** Make $tab the displayed tool: freeze the outgoing tab's view state, open (reset) + rows, restore $tab's own. */
     private function bind(DockToolTab $tab): void
     {
@@ -454,9 +438,9 @@ final class BottomDock
             $this->resultsPanel->setSearching();
         }
         $this->boundTab = $tab;
-        foreach ($this->onToolBound as $callback) {
-            $callback($tab);
-        }
+        // At the tail, after the tab is recorded: a listener that re-binds this
+        // same tab then finds nothing to do instead of recursing.
+        $this->events?->dispatch(new DockToolBound($tab));
     }
 
     /** Return focus to the editor area when the results panel currently holds it, then repaint. */

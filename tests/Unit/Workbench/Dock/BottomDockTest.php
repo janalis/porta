@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Workbench\Dock;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
+use Porta\Event\DockToolClosed;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\Probe;
@@ -24,6 +25,7 @@ use Porta\Workbench\Dock\DockToolHandlers;
 use Porta\Workbench\Dock\DockToolTabs;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\EditorArea;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Tui;
 
@@ -38,7 +40,7 @@ final class BottomDockTest extends TestCase
     private TerminalSessions $sessions;
     private DockToolTabs $tools;
 
-    private function dock(): BottomDock
+    private function dock(?EventDispatcher $events = null): BottomDock
     {
         $this->tui = TestTui::create(100, 24);
         $this->editor = new CodeEditorWidget();
@@ -63,6 +65,7 @@ final class BottomDockTest extends TestCase
             $this->strip,
             $this->sessions,
             $this->tools,
+            $events,
         );
     }
 
@@ -332,16 +335,17 @@ final class BottomDockTest extends TestCase
 
     public function testClosingTheDisplayedInstanceBindsItsNeighbour(): void
     {
-        $dock = $this->dock();
+        $events = new EventDispatcher();
+        $dock = $this->dock($events);
         $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', [['path' => 'a.php', 'line' => 0, 'text' => 'boom']]);
         $todo = $dock->showList(ResultsPanelMode::Notifications, 'Notifications', []);
         $closed = [];
-        $dock->onToolClosed(static function ($tab) use (&$closed): void {
-            $closed[] = $tab;
+        $events->addListener(DockToolClosed::class, static function (DockToolClosed $event) use (&$closed): void {
+            $closed[] = $event->tab;
         });
 
         $dock->closeTab(DockTab::Results, (string) $todo->id);
-        $this->assertSame([$todo], $closed, 'the close hook fired for the ×ed tab');
+        $this->assertSame([$todo], $closed, 'the close event carried the ×ed tab');
         $this->assertSame($problems, $dock->activeTool(), 'the neighbour instance took the slot');
         $this->assertSame(ResultsPanelMode::Problems, $dock->mode());
         $this->assertTrue($this->results->isOpen(), 'the panel stays open while instances remain');

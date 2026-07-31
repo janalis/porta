@@ -14,7 +14,6 @@ use Porta\Widget\FindBarWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockTab;
-use Porta\Workbench\Dock\DockToolTab;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\EditorArea;
 use Symfony\Component\Tui\Tui;
@@ -105,17 +104,6 @@ final class SearchUiWiring
 
         // A Search tab taking the display rehydrates its frozen query
         // definition; ×ing one records its query/mask and cancels its run.
-        $this->panels->onToolBound(function (DockToolTab $tab): void {
-            if (ResultsPanelMode::Search === $tab->mode) {
-                $this->projectSearch->adopt($tab);
-            }
-        });
-        $this->panels->onToolClosed(function (DockToolTab $tab): void {
-            if (null !== $tab->searchState) {
-                $this->projectSearch->closeSearch($tab->searchState);
-            }
-        });
-
         $this->resultsPanel->onJump(function (string $relativePath, int $line): void {
             $tool = $this->panels->activeTool();
             $activate = $tool?->handlers?->activate;
