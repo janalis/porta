@@ -11,6 +11,8 @@ use Porta\Editor\EditorInvalidator;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\FixedActiveFile;
+use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\TempProject;
 
 /**
  * The one place a whole-document swap is written. Project replace-all wrote it
@@ -113,5 +115,32 @@ final class DocumentReplacerTest extends TestCase
         $this->buffers->setActive($text->path);
         $this->assertTrue($replacer->replaceActive("new\n"));
         $this->assertSame("new\n", $text->document->getText());
+    }
+
+    public function testABufferThatNowMATCHESDiskIsNotModified(): void
+    {
+        // A formatter rewrites the file and applies the same bytes here. Saying
+        // "modified" then is a lie, and it costs more than a wrong dot: the 1s
+        // poller sees an unrecognised stamp, reloads identical content and
+        // flashes "Reloaded a.php" after every format.
+        $project = new TempProject(['a.php' => "formatted\n"]);
+        $replacer = $this->replacer();
+        $buffer = $this->buffers->open($project->path('a.php'), "unformatted\n");
+
+        $this->assertTrue($replacer->replace($buffer, "formatted\n"));
+        $this->assertFalse($buffer->document->isDirty(), 'the buffer IS what is on disk');
+        $this->assertSame($buffer->diskStampNow(), Probe::get($buffer, 'diskStamp'), 'and the poller will recognise it');
+    }
+
+    public function testABufferThatDivergesFromDiskStaysModified(): void
+    {
+        // The project-replace case: the buffer is edited, disk is not.
+        $project = new TempProject(['a.php' => "on disk\n"]);
+        $replacer = $this->replacer();
+        $buffer = $this->buffers->open($project->path('a.php'), "on disk\n");
+        $buffer->document->markSaved();
+
+        $this->assertTrue($replacer->replace($buffer, "edited\n"));
+        $this->assertTrue($buffer->document->isDirty());
     }
 }

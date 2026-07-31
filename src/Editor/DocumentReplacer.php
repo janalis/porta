@@ -42,12 +42,36 @@ final readonly class DocumentReplacer
             return false;
         }
         $buffer->document->replaceAll($text);
+        // The buffer may now BE what is on disk — a formatter rewrites the file
+        // and applies the same bytes here. Saying "modified" then is a lie, and
+        // it costs more than a wrong dot: the 1s poller sees a stamp it does not
+        // recognise, reloads identical content, and flashes "Reloaded a.php"
+        // after every format.
+        if ($this->matchesDisk($buffer, $text)) {
+            $buffer->document->markSaved();
+            $buffer->stampFromDisk();
+        }
         if ($buffer === $this->buffers->active()) {
             $this->editor->invalidate();
         }
         $this->lsp->notifyFullChange($buffer->path, $buffer->document);
 
         return true;
+    }
+
+    /**
+     * Whether $text is byte-for-byte what the file holds.
+     *
+     * The size is checked first because it decides the common case for nothing:
+     * a project-wide replace deliberately leaves the buffer diverged from disk,
+     * and reading every touched file to learn that would be a full read per
+     * buffer to answer no.
+     */
+    private function matchesDisk(Buffer $buffer, string $text): bool
+    {
+        $size = is_file($buffer->path) ? filesize($buffer->path) : false;
+
+        return $size === \strlen($text) && file_get_contents($buffer->path) === $text;
     }
 
     /**
