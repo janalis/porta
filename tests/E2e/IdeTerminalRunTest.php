@@ -15,6 +15,7 @@ use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Glyphs;
+use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
 
@@ -186,11 +187,18 @@ final class IdeTerminalRunTest extends TestCase
                     // still throws.
                     $sessions = \Porta\Tests\Support\Probe::get(Services::resolve($ide, \Porta\Run\RunController::class), 'sessions');
                     $this->await(static fn (): bool => false === ($sessions->active()?->isRunning() ?? true), timeout: 20.0, what: 'the shell exit to be reaped');
-                    $this->frame($tui);
-                    $out = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString(Glyphs::SESSION_STOPPED, $out, 'the exited session shows the ○ stopped marker');
-                    $this->assertStringContainsString('(0)', $out, 'and its exit code — without the redundant "exited" prose');
-                    $this->assertStringNotContainsString('exited', $out, 'the "exited" word is gone; the glyph carries the state');
+                    // Assert the label on the MODEL, not on the painted strip.
+                    // aliveTabs() returns [] whenever no dock panel is visible,
+                    // so a screen scrape here is asserting the marker AND the
+                    // panel's visibility at one instant — and under parallel
+                    // load that second half is what fails (500 forced frames,
+                    // no glyph). The strip's rendering of labels is pinned by
+                    // the DockTabsWidget tests; what this test owns is that an
+                    // exited session is LABELLED stopped, with its code.
+                    $labels = implode(' | ', array_column(Services::resolve($ide, BottomDock::class)->aliveTabs(), 'label'));
+                    $this->assertStringContainsString(Glyphs::SESSION_STOPPED, $labels, 'the exited session is marked ○ stopped');
+                    $this->assertStringContainsString('(0)', $labels, 'and carries its exit code — without the redundant "exited" prose');
+                    $this->assertStringNotContainsString('exited', $labels, 'the "exited" word is gone; the glyph carries the state');
                 },
             ],
         );
@@ -259,7 +267,7 @@ final class IdeTerminalRunTest extends TestCase
                     }
                 },
                 500 => function ($tui, $terminal): void {
-                    $this->frame($tui);
+                    $this->awaitPainted($tui, $terminal, 'Open Terminal');
                     $this->assertStringContainsString('Open Terminal', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\r"); // run it
                 },
@@ -287,7 +295,7 @@ final class IdeTerminalRunTest extends TestCase
                     $this->assertTrue(EditorState::pickerOpen($tui->getById('editor')));
                 },
                 400 => function ($tui, $terminal): void {
-                    $this->frame($tui);
+                    $this->awaitPainted($tui, $terminal, 'Run current file: hello.php');
                     $this->assertStringContainsString('Run current file: hello.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\r"); // run it -> terminal panel
                 },
@@ -295,7 +303,7 @@ final class IdeTerminalRunTest extends TestCase
                     $this->assertTrue($tui->getById('terminal')->isOpen());
                 },
                 900 => function ($tui, $terminal): void {
-                    $this->frame($tui);
+                    $this->awaitPainted($tui, $terminal, 'run-output-ok');
                     $this->assertStringContainsString('run-output-ok', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -315,7 +323,7 @@ final class IdeTerminalRunTest extends TestCase
                 300 => function ($tui, $terminal): void {
                     // Run Last with no prior run flashes a hint.
                     $tui->handleInput("\x1b[21;2~"); // shift+f10
-                    $this->frame($tui);
+                    $this->awaitPainted($tui, $terminal, 'No previous run');
                     $this->assertStringContainsString('No previous run', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // Pick a run via the menu.
                     $tui->handleInput("\x1b[114;6u");

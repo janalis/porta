@@ -367,7 +367,7 @@ final class WelcomeScreenTest extends TestCase
                 // The app menu opens over the modal and its dropdown renders above it.
                 $tui->handleInput("\x1b[<0;2;1M"); // the File title on the menu bar
                 $tui->tick();
-                $this->frame($tui);
+                $this->awaitPainted($tui, $terminal, 'Save File');
                 $this->assertStringContainsString('Save File', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the dropdown rendered above the modal');
                 $tui->handleInput("\x1b"); // close the menu again
                 $tui->tick();

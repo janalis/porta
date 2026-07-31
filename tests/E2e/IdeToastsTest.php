@@ -67,7 +67,7 @@ final class IdeToastsTest extends TestCase
                     $notifier = Services::resolve($ide, Notifier::class);
                     $notifier->error('boom', 0.15);
                     $this->assertSame(['boom'], Toasts::all($ide));
-                    $this->frame($tui); // paint the card before sampling the terminal
+                    $this->awaitPainted($tui, $terminal, '✗');
                     $this->assertStringContainsString('✗', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the error glyph renders');
                     $this->await(static fn (): bool => [] === Toasts::all($ide));
                 },

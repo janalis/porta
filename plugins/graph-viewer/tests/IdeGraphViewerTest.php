@@ -106,7 +106,7 @@ final class IdeGraphViewerTest extends TestCase
                     $tui->handleInput('n'); // select the first node
                 },
                 380 => function ($tui, $terminal): void {
-                    $this->frame($tui);
+                    $this->awaitPainted($tui, $terminal, '· A');
                     $this->assertStringContainsString('· A', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'selection surfaces in the status bar');
 
                     $tui->handleInput("\x1b[<64;40;10M"); // wheel over the graph pane → pans (no crash)
@@ -276,7 +276,7 @@ final class IdeGraphViewerTest extends TestCase
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'a text tab swaps the editor back in');
 
                     $service->openFile($dotPath); // back to the graph: cached layout, no re-run
-                    $this->frame($tui);
+                    $this->awaitPainted($tui, $terminal, '3 nodes');
                     $this->assertStringContainsString('3 nodes', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
 
                     // An explicit re-open of a tab whose file changed on disk
@@ -294,7 +294,7 @@ final class IdeGraphViewerTest extends TestCase
                     $this->assertCount(2, $buffers->all(), 'a non-UTF-8 DOT is refused');
 
                     $service->openFile($archPath, OpenFocus::Editor);
-                    $this->frame($tui);
+                    $this->awaitPainted($tui, $terminal, 'Project Architecture');
                     $this->assertStringContainsString('Project Architecture', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the artifact path titles its tab');
                     $this->assertSame('graph-viewer', $tui->getFocus()?->getId(), 'OpenFocus::Editor lands on the viewer');
 

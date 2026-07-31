@@ -9,6 +9,7 @@ use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\Services;
 use Revolt\EventLoop;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -28,6 +29,30 @@ trait RunsIde
     use AwaitsGit;
     use PumpsLoop;
     use ScreenReads;
+
+    /**
+     * Wait for $needle to be ON SCREEN, forcing a frame each turn.
+     *
+     * The two-moments problem: a flash is set synchronously, but whether it has
+     * PAINTED depends on a render happening after it — and a bare tick() is not
+     * a frame (the ticker is adaptive). Forcing one frame is right when nothing
+     * else has to happen first; when a loop callback sits between the action and
+     * the paint, only forcing a frame per turn is reliable, and under parallel
+     * load that gap is real. The assertion stays at the call site: this is the
+     * barrier, not the check.
+     */
+    private function awaitPainted(Tui $tui, VirtualTerminal $terminal, string $needle, float $timeout = 10.0): void
+    {
+        $this->await(
+            function () use ($tui, $terminal, $needle): bool {
+                $this->frame($tui);
+
+                return str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), $needle);
+            },
+            timeout: $timeout,
+            what: $needle.' to paint',
+        );
+    }
 
     /** Set by {@see allowFirstRunWelcome()} for the tests that want the real first boot. */
     private bool $allowFirstRunWelcome = false;

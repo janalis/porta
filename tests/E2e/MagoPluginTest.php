@@ -122,7 +122,7 @@ final class MagoPluginTest extends TestCase
                     $this->assertStringContainsString('test-rule: Bad thing', $screen, 'the diagnostic renders inline');
 
                     $tui->handleInput("\x1b6"); // alt+6 → Problems panel
-                    $this->frame($tui);
+                    $this->awaitPainted($tui, $terminal, '✗ test-rule: Bad thing');
                     $this->assertStringContainsString('✗ test-rule: Bad thing', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\x1b");
 
@@ -179,7 +179,7 @@ final class MagoPluginTest extends TestCase
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $commands->run('mago:toggle-auto-format');
                     $commands->run('mago:toggle-auto-lint');
-                    $this->frame($tui);
+                    $this->awaitPainted($tui, $terminal, 'mago lint on save: off');
                     $this->assertStringContainsString('mago lint on save: off', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertFalse((bool) (\Porta\Config\IdeConfig::load($project->dir)->plugins['mago']['autoFormat'] ?? true), 'off state persisted');
                     Services::resolve($ide, BufferService::class)
@@ -205,7 +205,7 @@ final class MagoPluginTest extends TestCase
             [
                 100 => function ($tui, $terminal, $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('mago:toggle-auto-lint');
-                    $this->frame($tui);
+                    $this->awaitPainted($tui, $terminal, 'mago lint on save: on');
                     $this->assertStringContainsString('mago lint on save: on', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\x13"); // ctrl+s → save → lint only
                 },
@@ -233,7 +233,7 @@ final class MagoPluginTest extends TestCase
             [
                 100 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b\x07");
-                    $this->frame($tui);
+                    $this->awaitPainted($tui, $terminal, 'mago not found (vendor/bin or PATH)');
                     $this->assertStringContainsString('mago not found (vendor/bin or PATH)', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -246,7 +246,7 @@ final class MagoPluginTest extends TestCase
             [
                 100 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b\x05");
-                    $this->frame($tui);
+                    $this->awaitPainted($tui, $terminal, 'mago: open a PHP file first');
                     $this->assertStringContainsString('mago: open a PHP file first', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],

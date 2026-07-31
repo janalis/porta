@@ -116,7 +116,7 @@ final class PhpstanPluginTest extends TestCase
             [
                 100 => function ($tui, $terminal, $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('phpstan:toggle-on-save');
-                    $this->frame($tui);
+                    $this->awaitPainted($tui, $terminal, 'phpstan on save: on');
                     $this->assertStringContainsString('phpstan on save: on', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertTrue((bool) (\Porta\Config\IdeConfig::load($project->dir)->plugins['phpstan']['autoLint'] ?? false), 'the toggle persisted to .porta.json');
                     $tui->handleInput("\x13"); // ctrl+s → save → analyse

@@ -890,7 +890,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->setFocus($tui->getById('tree'));
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 on the tree's selected node
-                    $this->frame($tui);
+                    $this->awaitPainted($tui, $terminal, 'New File');
                     $this->assertStringContainsString('New File', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'tree file operations under the selection');
                     $tui->handleInput("\x1b");
                 },
@@ -899,7 +899,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->tick();
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 on the help viewer: the tab menu
-                    $this->frame($tui);
+                    $this->awaitPainted($tui, $terminal, 'Close Others');
                     $this->assertStringContainsString('Close Others', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'viewer tabs get the tab context menu');
                     $tui->handleInput("\x1b");
                 },
