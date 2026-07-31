@@ -18,6 +18,8 @@ use Porta\Debug\DebugStatePersistence;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\Editor\PaneRegistrar;
+use Porta\Event\IdeReady;
+use Porta\Event\IdeShuttingDown;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
 use Porta\History\SessionRestorer;
@@ -29,7 +31,6 @@ use Porta\Lsp\LspBootstrapper;
 use Porta\Lsp\LspSessionPool;
 use Porta\Onboarding\OnboardingState;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
-use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Run\RunController;
 use Porta\Search\SearchUiWiring;
 use Porta\Settings\SettingsController;
@@ -48,6 +49,7 @@ use Porta\Workbench\WorkspaceViews;
 use Revolt\EventLoop;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\TailwindStylesheet;
@@ -289,9 +291,9 @@ final class Ide
             // paints restored breakpoints into the gutter for free.
             $this->debugState->restore();
 
-            // Same reason, for plugins: onReady lands before the first
-            // fileOpened instead of racing it.
-            $this->service(PluginEvents::class)->ready($this->rootDir);
+            // Same reason, for observers: IdeReady lands before the first
+            // BufferOpened instead of racing it.
+            $this->service(EventDispatcherInterface::class)->dispatch(new IdeReady($this->rootDir));
 
             $openedInitial = false;
             if (null !== $this->initialFile) {
@@ -313,10 +315,10 @@ final class Ide
 
             $this->tui->run();
         } finally {
-            // Plugins first, while every service they might touch is still up.
-            // The loop has stopped, so a hook that schedules work is a no-op —
-            // that is the contract onShutdown documents.
-            $this->service(PluginEvents::class)->shutdown($this->rootDir);
+            // Observers first, while every service they might touch is still
+            // up. The loop has stopped, so a listener that schedules work is a
+            // no-op — that is the contract IdeShuttingDown documents.
+            $this->service(EventDispatcherInterface::class)->dispatch(new IdeShuttingDown($this->rootDir));
             // Then: closing the full-screen views cancels their timers (the
             // git view's 2s status-poll repeat) so nothing re-arms below.
             $this->service(WorkspaceViews::class)->closeAll();

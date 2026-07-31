@@ -12,6 +12,8 @@ use Porta\Editor\ActiveBufferTracker;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
+use Porta\Event\IdeReady;
+use Porta\Event\IdeShuttingDown;
 use Porta\Event\LocaleChanged;
 use Porta\Event\ThemeChanged;
 use Porta\Highlight\HighlightThemeListener;
@@ -183,6 +185,20 @@ final class EventListenerWiringTest extends TestCase
             $last = end($listeners);
             \assert(\is_array($last), description: 'listener entries are [service, method] pairs');
             $this->assertInstanceOf(ChromeRefreshListener::class, $last[0], $event.': the chrome sweep runs last');
+        }
+    }
+
+    public function testTheLifecycleMomentsAreCompiledListeners(): void
+    {
+        // They were direct calls from Ide until they became events; the bridge
+        // reaching them through the compiled map is what makes them ordinary.
+        $dispatcher = $this->dispatcher();
+
+        foreach ([IdeReady::class, IdeShuttingDown::class] as $event) {
+            $listeners = $dispatcher->getListeners($event);
+            $this->assertNotSame([], $listeners, $event.' has a compiled listener');
+            $this->assertInstanceOf(PluginEvents::class, $listeners[0][0]);
+            $this->assertSame(-100, $dispatcher->getListenerPriority($event, $listeners[0]), 'behind every priority-0 core listener');
         }
     }
 }

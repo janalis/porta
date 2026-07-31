@@ -8,6 +8,8 @@ use Porta\Container\AsIdeService;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
+use Porta\Event\IdeReady;
+use Porta\Event\IdeShuttingDown;
 use Porta\Event\ThemeChanged;
 use Porta\Plugin\Api\PluginException;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -89,24 +91,23 @@ final class PluginEvents
     }
 
     /**
-     * The IDE is up: layout applied, every service wired, the event loop about
-     * to run — and no buffer opened yet, so a plugin's setup lands before the
-     * first `fileOpened` rather than racing it.
+     * The IDE is up — {@see IdeReady} says what that means and when.
+     *
+     * A bus listener like the rest now: the moment used to be a direct call
+     * from `Ide`, which made it the one part of the plugin hook surface with no
+     * event behind it.
      */
-    public function ready(string $rootDir): void
+    #[AsEventListener(priority: -100)]
+    public function onIdeReady(IdeReady $event): void
     {
-        $this->emit('ready', $rootDir);
+        $this->emit('ready', $event->projectRoot);
     }
 
-    /**
-     * The IDE is going down. Called FIRST in the teardown, while the services a
-     * plugin might need are still alive — but the event loop has already
-     * stopped, so a hook must do its work synchronously: anything it schedules
-     * will never run.
-     */
-    public function shutdown(string $rootDir): void
+    /** The IDE is going down — {@see IdeShuttingDown} for the synchronous-only contract. */
+    #[AsEventListener(priority: -100)]
+    public function onIdeShuttingDown(IdeShuttingDown $event): void
     {
-        $this->emit('shutdown', $rootDir);
+        $this->emit('shutdown', $event->projectRoot);
     }
 
     private function emit(string $event, string $path): void

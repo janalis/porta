@@ -10,6 +10,8 @@ use Porta\Editor\BufferManager;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
+use Porta\Event\IdeReady;
+use Porta\Event\IdeShuttingDown;
 use Porta\Plugin\Api\PluginException;
 use Porta\Plugin\Runtime\PluginEvents;
 
@@ -82,11 +84,11 @@ final class PluginEventsTest extends TestCase
         new PluginEvents()->subscribe('demo', 'fileClosed', static function (): void {});
     }
 
-    public function testTheLifecycleMomentsAreNotBusEventsAndCarryTheProjectRoot(): void
+    public function testTheLifecycleMomentsAreEventsNowAndCarryTheProjectRoot(): void
     {
-        // ready/shutdown are called by Ide directly — "the IDE is up" is a
-        // position in run(), not something dispatched — but they ride the same
-        // subscriber map, so a removed plugin loses them like any other hook.
+        // They used to be direct calls from Ide — the one part of the hook
+        // surface with no event behind it. Same subscriber map either way, so a
+        // removed plugin loses them like any other hook.
         $events = new PluginEvents();
         $seen = [];
         $events->subscribe('demo', 'ready', static function (string $root) use (&$seen): void {
@@ -96,12 +98,12 @@ final class PluginEventsTest extends TestCase
             $seen[] = 'shutdown:'.$root;
         });
 
-        $events->ready('/p');
-        $events->shutdown('/p');
+        $events->onIdeReady(new IdeReady('/p'));
+        $events->onIdeShuttingDown(new IdeShuttingDown('/p'));
         $this->assertSame(['ready:/p', 'shutdown:/p'], $seen);
 
         $events->removeFor('demo');
-        $events->ready('/p');
+        $events->onIdeReady(new IdeReady('/p'));
         $this->assertSame(['ready:/p', 'shutdown:/p'], $seen, 'a removed plugin hears nothing');
     }
 }

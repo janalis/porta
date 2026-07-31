@@ -262,6 +262,7 @@ final class WelcomeScreenTest extends TestCase
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
                     'the choice persisted',
                 );
+                $this->awaitPainted($tui, $terminal, 'Plugin "php-cs-fixer" enabled');
                 $this->assertStringContainsString(
                     'Plugin "php-cs-fixer" enabled',
                     AnsiUtils::stripAnsiCodes($terminal->getOutput()),
