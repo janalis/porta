@@ -69,6 +69,7 @@ final class PluginApiTest extends TestCase
                     $this->diagnostics,
                     $this->buffers,
                     TestDockTools::controller(),
+                    TestDockTools::replacer($this->buffers),
                     $this->editor,
                 ),
             );
@@ -222,6 +223,8 @@ final class PluginApiTest extends TestCase
             static fn () => $api->showList('todo'),
             static fn () => $api->updateList('todo', []),
             static fn () => $api->pick('t', [], static function (string $v): void {}),
+            static fn () => $api->replaceDocument('x'),
+            static fn () => $api->trans('x'),
             static fn () => $api->prompt('t', '', static function (string $v): void {}),
         ];
         foreach ($actions as $i => $action) {
@@ -249,6 +252,7 @@ final class PluginApiTest extends TestCase
                 new RecordingDiagnosticsSink(),
                 new BufferManager(),
                 TestDockTools::controller(),
+                TestDockTools::replacer(),
                 new CodeEditorWidget(),
             ),
         );
@@ -354,6 +358,7 @@ final class PluginApiTest extends TestCase
             new RecordingDiagnosticsSink(),
             new BufferManager(),
             new DockToolController($manager, $dock, '/p'), // the manager IS the source
+            TestDockTools::replacer(),
             new CodeEditorWidget(),
         ));
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
@@ -406,5 +411,41 @@ final class PluginApiTest extends TestCase
         $prompt = Probe::get(Probe::get($this->editor, 'overlayHost'), 'prompt');
         $prompt['onSubmit']('new');
         $this->assertSame('new', $typed);
+    }
+
+    public function testReplacingTheDocumentIsOneUndoStepAndRefusesWhatItCannotEdit(): void
+    {
+        // The verb behind "apply what my tool produced". The refusals matter as
+        // much as the swap: an async tool's subprocess may land when the user
+        // has moved to another tab, or to none.
+        $api = $this->api();
+        $api->replaceDocument("nothing open\n"); // no buffer: silent
+
+        $this->editor->showDocument('/p/a.php', new Document("one\ntwo\n"));
+        $this->buffers->open('/p/a.php', "one\ntwo\n");
+        $this->buffers->setActive('/p/a.php');
+        $this->editor->getDocument()->markSaved();
+
+        $api->replaceDocument("replaced\n");
+        $this->assertSame("replaced\n", $this->buffers->active()?->document->getText());
+
+        $this->buffers->active()?->document->undo();
+        $this->assertSame("one\ntwo\n", $this->buffers->active()?->document->getText(), 'one Ctrl+Z puts it all back');
+
+        // Identical text changes nothing at all — not even the modified flag.
+        $this->buffers->active()?->document->markSaved();
+        $api->replaceDocument("one\ntwo\n");
+        $this->assertFalse($this->buffers->active()?->document->isDirty(), 'a tool that changed nothing does not look like it did');
+    }
+
+    public function testTransGoesThroughTheIdesOwnCatalogs(): void
+    {
+        // Why it exists: a bundled feature that moves into a plugin keeps its
+        // translations, because the message id IS the English source string.
+        $api = $this->api();
+
+        $this->assertSame('Save File', $api->trans('Save File'), 'a known string round-trips through the en catalog');
+        $this->assertSame('Rebound Save File to F12', $api->trans('Rebound %action% to %key%', ['%action%' => 'Save File', '%key%' => 'F12']), 'placeholders are filled');
+        $this->assertSame('a plugin string core never heard of', $api->trans('a plugin string core never heard of'), 'and an unknown one passes through');
     }
 }

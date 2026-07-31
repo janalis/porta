@@ -334,6 +334,22 @@ something you already know, don't compute it here. Return null to show nothing,
 which should be the normal case. A throwing closure shows nothing and is
 reported once.
 
+### Applying what your tool produced
+
+```php
+$api->replaceDocument($formatted);
+```
+
+One undoable edit — Ctrl+Z puts back what was there — with the caret kept and a
+full LSP sync. It never writes to disk; saving stays the user's verb.
+
+Three silent no-ops, and they are the contract: nothing open, a viewer tab
+holding the editor slot, and **an identical text** (a tool that changed nothing
+must not mark the buffer modified). If your tool is asynchronous, check
+`activeFile()` yourself before applying — the user may have switched tabs while
+your subprocess ran, and the buffer you read is not necessarily the one in front
+of them.
+
 ### Asking the user something
 
 ```php
@@ -393,6 +409,8 @@ Actions (from handlers/hooks):
 | `flash(string $message, float $seconds = 2.5)` | Status-bar notification |
 | `showList(string $id, array $rows = [], ToolRun $run = ToolRun::Finished)` | Open your list tool's tab and show rows |
 | `updateList(string $id, array $rows, ToolRun $run = ToolRun::Finished)` | Replace its rows in place; a no-op once the user ×'d the tab |
+| `replaceDocument(string $text)` | Replace the active text buffer's whole content as ONE undoable edit; no-op on an identical text, a viewer tab, or nothing open |
+| `trans(string $id, array $params = [])` | Translate through the IDE's catalogs; an unknown string passes through |
 | `pick(string $title, array $items, \Closure $onPick)` | Ask the user to choose from `value => label` |
 | `prompt(string $label, string $initial, \Closure $onSubmit)` | Ask the user for one line of text |
 | `activeFile(): ?string` | Absolute path of the focused buffer |

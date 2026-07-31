@@ -107,6 +107,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
             $this->sink,
             $this->buffers,
             TestDockTools::controller(),
+            TestDockTools::replacer(),
             new CodeEditorWidget(),
         ));
 

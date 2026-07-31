@@ -7,6 +7,7 @@ namespace Porta\Plugin\Runtime;
 use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
 use Porta\Editor\DiagnosticsSink;
+use Porta\Editor\DocumentReplacer;
 use Porta\Editor\EditorTextAccess;
 use Porta\Editor\FileOpener;
 use Porta\Editor\ModalHost;
@@ -34,6 +35,7 @@ final readonly class PluginRuntime
         public DiagnosticsSink $diagnostics,
         public BufferManager $buffers,
         public DockToolController $dockTools,
+        public DocumentReplacer $documents,
         public ModalHost $modals,
     ) {}
 }

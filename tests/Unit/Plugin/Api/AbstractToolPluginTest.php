@@ -120,6 +120,7 @@ final class AbstractToolPluginTest extends TestCase
             new RecordingDiagnosticsSink(),
             $this->buffers,
             TestDockTools::controller(),
+            TestDockTools::replacer(),
             new CodeEditorWidget(),
         ));
 

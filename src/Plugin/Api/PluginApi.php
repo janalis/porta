@@ -755,6 +755,46 @@ final class PluginApi
         return ['line' => $document->getCursorLine(), 'column' => $document->getCursorCol()];
     }
 
+    /**
+     * Replace the active text buffer's WHOLE content — the verb behind "apply
+     * what my tool produced": a formatter's output, a restored snapshot.
+     *
+     * - **One** undo step: Ctrl+Z puts back what was there, caret and all.
+     * - The caret stays where it is, clamped into the new text — a restore does
+     *   not dump the user at the end of the document.
+     * - A full LSP didChange goes out, as if the text had been typed.
+     * - A silent no-op when nothing is open, when the active tab is a VIEWER
+     *   pane, or when the text is IDENTICAL: a tool that changed nothing must
+     *   not look like it did.
+     *
+     * It never touches the file on disk. Save stays the user's verb — which is
+     * also why an async tool must check `activeFile()` before applying: the
+     * buffer the user is looking at may not be the one your subprocess read.
+     */
+    public function replaceDocument(string $text): void
+    {
+        $runtime = $this->manager->runtime(); // activate()-phase gate
+        if ($runtime->documents->replaceActive($text)) {
+            $runtime->tui->requestRender();
+        }
+    }
+
+    /**
+     * Translate a message through the IDE's catalogs — the same lookup core's
+     * own strings take, so a bundled feature that moves into a plugin keeps its
+     * translations instead of becoming English in every other locale.
+     *
+     * The message id IS the English source string. A string the catalogs do not
+     * know passes through unchanged, which is what a third-party plugin's own
+     * copy will do.
+     *
+     * @param array<string, string> $params placeholders, e.g. `['%name%' => $file]`
+     */
+    public function trans(string $id, array $params = []): string
+    {
+        return $this->manager->runtime()->translator->trans($id, $params);
+    }
+
     /** Insert text at the caret (undoable, LSP-synced). No-op without a text file. */
     public function insertAtCaret(string $text): void
     {
