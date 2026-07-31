@@ -11,9 +11,11 @@ use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
 use Porta\Plugin\Runtime\PluginEvents;
 use Porta\Plugin\Runtime\PluginManager;
+use Porta\Plugin\Runtime\PluginMenuSpec;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\TestPane;
 use Porta\Widget\EditorPaneWidget;
+use Porta\Workbench\Menu\MenuSurface;
 
 /**
  * Plugin-provided viewer routes: registration, claim normalization, load
@@ -329,5 +331,25 @@ final class PluginViewerTest extends TestCase
         $this->expectException(PluginException::class);
         $this->expectExceptionMessageMatches('/Invalid language id/');
         $api->registerDebugAdapter('BAD ID!', static fn (): array => ['x']);
+    }
+
+    public function testAMenuItemCarriesItsSurfaceAndAnAdoptedIdStaysBare(): void
+    {
+        // Two facts in one: a spec knows which menu it is for, and an ADOPTED
+        // id is registered bare (it is core's), so prefixing its spec would
+        // name a command nothing answers to.
+        $manager = $this->manager();
+        $api = $this->api($manager, 'demo');
+        $api->registerCommand('own', 'Own', static function (): void {});
+        $api->addMenuItem('own');
+        $api->adoptCommand('ide_todo', static function (): void {});
+        $api->addMenuItem('ide_todo', surface: MenuSurface::EditorContext);
+        $manager->commit($api);
+
+        $this->assertSame(['i:demo:own'], array_map(static fn (PluginMenuSpec $s): string => $s->spec, $manager->menuSpecs()));
+        $this->assertSame(['i:ide_todo'], array_map(static fn (PluginMenuSpec $s): string => $s->spec, $manager->menuSpecs(MenuSurface::EditorContext)), 'bare, because core owns the id');
+
+        $manager->deactivate('demo', new CommandRegistry());
+        $this->assertSame([], $manager->menuSpecs(MenuSurface::EditorContext), 'a removed plugin takes its context item with it');
     }
 }

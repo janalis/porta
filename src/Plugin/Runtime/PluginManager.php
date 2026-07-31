@@ -18,6 +18,7 @@ use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
 use Porta\Search\TokenSpanProvider;
 use Porta\Workbench\Dock\DockToolSource;
+use Porta\Workbench\Menu\MenuSurface;
 use Porta\Workbench\StatusSegmentSource;
 
 /**
@@ -121,6 +122,7 @@ final class PluginManager implements
                 plugin: $name,
                 spec: 'i:'.$item['id'],
                 when: null === $item['when'] ? null : $this->wrapWhen($name, $item['when']),
+                surface: $item['surface'],
             );
         }
         foreach ($api->bufferedHooks() as [$event, $listener]) {
@@ -273,10 +275,19 @@ final class PluginManager implements
         return $this->keys;
     }
 
-    /** @return list<PluginMenuSpec> entries for MenuModel's Plugins menu */
-    public function menuSpecs(): array
+    /**
+     * The plugin menu entries for ONE surface, in load order.
+     *
+     * Filtered here rather than at the consumer because "which menu is this
+     * for" is the registration's own fact — a consumer that had to know about
+     * the other surfaces in order to skip them would be the wrong shape the
+     * moment a third one exists.
+     *
+     * @return list<PluginMenuSpec>
+     */
+    public function menuSpecs(MenuSurface $surface = MenuSurface::Plugins): array
     {
-        return $this->menuSpecs;
+        return array_values(array_filter($this->menuSpecs, static fn (PluginMenuSpec $spec): bool => $surface === $spec->surface));
     }
 
     /**

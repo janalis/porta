@@ -39,7 +39,7 @@ final class MenuRebuilder
             $this->keybindings->current(),
             $this->translator,
             fn (): ?WorkspaceView => $this->views->activeView(),
-            $this->plugins->menuSpecs(),
+            $this->plugins->menuSpecs(MenuSurface::Plugins),
         ));
     }
 }

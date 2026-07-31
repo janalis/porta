@@ -14,6 +14,7 @@ use Porta\Plugin\Runtime\PluginMenuSpec;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\SettingsRowKind;
 use Porta\Workbench\Dock\ToolRun;
+use Porta\Workbench\Menu\MenuSurface;
 use Tempest\Highlight\TerminalTheme;
 
 /**
@@ -39,7 +40,7 @@ final class PluginApi
     /**
      * Plain array: the drain transforms rows into {@see PluginMenuSpec}s.
      *
-     * @var list<array{id: string, when: (\Closure(): bool)|null}> namespaced command ids shown in the Plugins menu
+     * @var list<array{id: string, when: (\Closure(): bool)|null, surface: MenuSurface}> command ids and the menu surface each belongs to
      */
     private array $menuItems = [];
     /**
@@ -76,6 +77,8 @@ final class PluginApi
     private readonly PluginBuffer $debugAdapters;
     /** @var array<string, true> bare ids, so showList() can reject one this plugin never registered */
     private array $listToolIds = [];
+    /** @var array<string, true> ids taken with adoptCommand() — registered BARE, so their menu specs are too */
+    private array $adopted = [];
 
     public function __construct(
         private readonly string $pluginName,
@@ -173,6 +176,7 @@ final class PluginApi
             throw new PluginException(\sprintf('Duplicate command id "%s"', $id));
         }
         $this->ids[$id] = true;
+        $this->adopted[$id] = true;
         $this->commands[] = [
             'plugin' => $this->pluginName,
             'id' => $id,
@@ -191,14 +195,23 @@ final class PluginApi
      * false (e.g. the tool's binary is missing) — it is re-evaluated on every
      * menu render, and a throw reads as disabled.
      *
+     * $surface picks WHERE it lands: the trailing Plugins menu by default, or
+     * the editor's right-click menu ({@see MenuSurface}).
+     *
      * @param (\Closure(): bool)|null $enabledWhen
      */
-    public function addMenuItem(string $commandId, ?\Closure $enabledWhen = null): void
+    public function addMenuItem(string $commandId, ?\Closure $enabledWhen = null, MenuSurface $surface = MenuSurface::Plugins): void
     {
         if (!array_key_exists($commandId, $this->ids)) {
             throw new PluginException(\sprintf('Unknown command id "%s" for a menu item — register it first', $commandId));
         }
-        $this->menuItems[] = ['id' => $this->pluginName.':'.$commandId, 'when' => $enabledWhen];
+        // An ADOPTED id is registered bare (it is core's), so its menu spec must
+        // be bare too — prefixing it would name a command nothing answers to.
+        $this->menuItems[] = [
+            'id' => array_key_exists($commandId, $this->adopted) ? $commandId : $this->pluginName.':'.$commandId,
+            'when' => $enabledWhen,
+            'surface' => $surface,
+        ];
     }
 
     /**
@@ -858,7 +871,7 @@ final class PluginApi
         return $this->commands;
     }
 
-    /** @return list<array{id: string, when: (\Closure(): bool)|null}> */
+    /** @return list<array{id: string, when: (\Closure(): bool)|null, surface: MenuSurface}> */
     public function bufferedMenuItems(): array
     {
         return $this->menuItems;

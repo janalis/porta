@@ -32,6 +32,7 @@ use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\DockToolController;
 use Porta\Workbench\Dock\ToolRun;
+use Porta\Workbench\Menu\MenuSurface;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
@@ -91,7 +92,7 @@ final class PluginApiTest extends TestCase
         $this->assertSame('demo', $api->pluginName());
 
         $api->addMenuItem('hello');
-        $this->assertSame([['id' => 'demo:hello', 'when' => null]], $api->bufferedMenuItems());
+        $this->assertSame([['id' => 'demo:hello', 'when' => null, 'surface' => MenuSurface::Plugins]], $api->bufferedMenuItems(), 'the trailing Plugins menu is the default surface');
 
         try {
             $api->registerCommand('hello', 'Again', static function (): void {});
