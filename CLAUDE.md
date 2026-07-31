@@ -1029,7 +1029,8 @@ Each plugin's suite pins the two halves against each other (declared == bound, s
 core does NOT declare, since a pane also binds core actions like `goto_file`); a core test
 asserting it would import plugin code.
 
-**A bundled plugin may ADOPT a vacated core command id** (round 26): `registerCommand`'s sibling
+**A bundled plugin may ADOPT a vacated core command id** (round 26; `plugins/local-history`
+is the second user, round 27): `registerCommand`'s sibling
 `adoptCommand('ide_todo', $handler)` registers under the BARE core id instead of the namespaced
 one, inheriting the label, the default keys and the `MenuModel` position — so a feature that moves
 out of `src/` keeps its `.porta.json` binding, its keymap row and its place in a core menu. Only
@@ -1038,12 +1039,20 @@ becoming `save`; the flag cannot precede the vacancy (two registrations would bo
 marking it and deleting core's registration are ONE commit. The identity stays core's, the
 implementation moves — the opposite of the call above for pane actions, and deliberately: a pane
 action is invisible without its pane, while `ide_todo` has a key and a menu position a user may
-already have rebound. `plugins/todo` is the first feature to move this way (round 26), which is
-why `ResultsPanelMode` has five cases and not six. **`MenuModel::items()` skips an `i:` spec
+already have rebound. `plugins/todo` and `plugins/local-history` are the two features that moved this
+way, which is why `ResultsPanelMode` has FOUR cases and not six. **`MenuModel::items()` skips an `i:` spec
 whose id is adoptable and unregistered** — an adopted verb is the one kind that may go unanswered
 (its plugin can be disabled), and without the skip the item renders core's label, carries the
 catalog's shortcut and runs a documented no-op. Every other `i:` id is core's own and always
 registered, which is why the rule is narrow rather than "skip anything unregistered".
+
+**Core's plugin recommendations live in `Config/RecommendedPlugins`** (round 27) — the one list
+behind the first-run screen and the highlighting settings page. They are core's product opinion,
+not leaked plugin knowledge, and they cannot be anything else: the plugins worth recommending are
+exactly the ones that are OFF, so they have not loaded and cannot announce themselves. A
+`registerWelcomeStep()` seam was designed and **rejected** on that — the only cards it could
+produce are ones already ticked. `Config` rather than `Onboarding` because two namespaces consume
+it and the arch gate settled the direction.
 
 **Plugin coverage runs a SECOND, SERIAL pass, and the reason is upstream.** `composer
 coverage:check` = the parallel run over `src` (100%) **plus** `composer coverage:plugins` (serial
@@ -1119,6 +1128,21 @@ and `psalm` (the phpstan pattern for Psalm's JSON array output — 1-based lines
 exit 2 = issues found). The on-save toggle commands flip the persisted settings via
 `PluginApi::changeSetting()` (an action method mirroring `flash()`'s runtime gate).
 Their E2e tests load the real files from those paths.
+
+**Whole-document swaps go through `Editor/DocumentReplacer`** (round 27), which is also
+`PluginApi::replaceDocument()`. One undoable edit, caret clamped into the new text, a full LSP
+didChange, and three silent refusals that ARE the contract: nothing open, a VIEWER pane holding the
+slot, and an identical text (a tool that changed nothing must not mark the buffer modified). It
+also tells the truth about the modified flag: a swap whose text is byte-for-byte what the file
+holds marks the document saved and re-stamps it, because otherwise the 1s poller reloads identical
+content and flashes "Reloaded a.php" after every format. The size is compared before the content —
+a project-wide replace deliberately diverges from disk, and reading every touched file to learn
+that would be a full read per buffer to answer no. The bundled formatters apply through it now
+(`AbstractToolPlugin::applyFormatted()` + `textBefore()`): the result lands in the buffer when the
+tool exits rather than on the next poll tick, is one Ctrl+Z away, and works while the buffer is
+dirty — and `$before` is a real version guard, since deleting it lets stale output clobber a
+keystroke typed while the subprocess ran. `PluginApi::trans()` came with it: message ids ARE the
+English source strings, so a bundled feature that moves out keeps its translations.
 
 **Round 26's other three seams**, each justified without the feature that prompted it:
 `registerStatusSegment()` (a pull, once per RENDER, so a throwing closure reads as nothing and

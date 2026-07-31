@@ -134,7 +134,8 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 # every threshold after its cleanups: no floor moved. Round 26 (the dock-tool
 # seam, the TODO plugin, four smaller seams) re-probed all nine: only
 # excessive-parameter-list moved, and downward — a stale pin, not a shrunk
-# class.
+# class. Round 27 (the document verb, the local-history plugin) re-probed all
+# nine again: none moved.
 #
 # Re-bisect and lower again after the next structural change — AND after a mago
 # upgrade, which can change how a metric is counted without a line of code
