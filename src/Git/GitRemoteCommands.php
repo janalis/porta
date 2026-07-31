@@ -129,14 +129,13 @@ final class GitRemoteCommands
         $this->notifier->flash($this->translator->trans('Git remote operation cancelled'));
     }
 
-    /** Route a git-view key ('fetch' | 'pull' | 'push') to its operation. */
-    public function runOperation(string $operation): void
+    /** Route a git-view remote key to its operation. */
+    public function runOperation(GitRemoteOperation $operation): void
     {
         match ($operation) {
-            'fetch' => $this->fetch(),
-            'pull' => $this->pull(),
-            'push' => $this->push(),
-            default => null,
+            GitRemoteOperation::Fetch => $this->fetch(),
+            GitRemoteOperation::Pull => $this->pull(),
+            GitRemoteOperation::Push => $this->push(),
         };
     }
 

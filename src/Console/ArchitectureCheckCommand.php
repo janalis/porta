@@ -90,6 +90,7 @@ final class ArchitectureCheckCommand extends Command
         'Editor>Widget',
         'Editor>Workbench',
         'Event>Editor',
+        'Event>Git',
         'Event>Workbench',
         'Event>Widget',
         'Git>Container',

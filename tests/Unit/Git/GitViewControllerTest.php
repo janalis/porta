@@ -10,6 +10,8 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\Event\GitCommitted;
 use Porta\Event\GitRemoteCompleted;
+use Porta\Event\GitRemoteRequested;
+use Porta\Event\GitViewModeRequested;
 use Porta\Git\GitInfo;
 use Porta\Git\GitPanes;
 use Porta\Git\GitViewController;
@@ -119,12 +121,13 @@ final class GitViewControllerTest extends TestCase
         }
         $this->git = new GitInfo($this->project->dir);
 
-        $this->changes = new ChangesListWidget(new Translator('en'));
+        $dispatcher = new EventDispatcher();
+        $this->changes = new ChangesListWidget(new Translator('en'), events: $dispatcher);
         $this->diffView = new DiffViewWidget(new Translator('en'));
         $this->commitBox = new CommitBoxWidget(new Translator('en'));
-        $this->history = new HistoryListWidget(new Translator('en'));
+        $this->history = new HistoryListWidget(new Translator('en'), events: $dispatcher);
         $this->history->setId('git-history');
-        $this->tabs = new GitTabsWidget(new Translator('en'));
+        $this->tabs = new GitTabsWidget(new Translator('en'), events: $dispatcher);
         $this->tabs->setId('git-tabs');
         $this->menuBar = new MenuBarWidget();
         $this->menuBar->setId('menu');
@@ -141,7 +144,6 @@ final class GitViewControllerTest extends TestCase
         $this->statusBar = new StatusBarWidget();
         $this->tui = TestTui::create(100, 24);
         $this->committed = 0;
-        $dispatcher = new EventDispatcher();
         $dispatcher->addListener(GitCommitted::class, function (): void {
             ++$this->committed;
         });
@@ -168,7 +170,7 @@ final class GitViewControllerTest extends TestCase
             $t,
         );
 
-        return $this->controller = new GitViewController(
+        $controller = new GitViewController(
             $this->git,
             $this->project->dir,
             new GitPanes($this->changes, $this->diffView, $this->commitBox, $this->history, $this->tabs),
@@ -196,6 +198,12 @@ final class GitViewControllerTest extends TestCase
             new WorkspaceViews(),
             historyPageSize: $historyPageSize,
         );
+        // The container compiles these from #[AsEventListener]; a unit test
+        // wires the same two by hand.
+        $dispatcher->addListener(GitViewModeRequested::class, $controller->onViewModeRequested(...));
+        $dispatcher->addListener(GitRemoteRequested::class, $controller->onRemoteRequested(...));
+
+        return $this->controller = $controller;
     }
 
     /** @return list<string> porcelain rows of the test repo */
@@ -990,5 +998,19 @@ final class GitViewControllerTest extends TestCase
         $controller->openFileHistory($this->project->path('a.txt'));
         $this->assertFalse($controller->isOpen());
         $this->assertStringContainsString('Not a git repository', $this->statusRow($this->statusBar));
+    }
+
+    public function testARemoteKeyFromAPaneReachesTheRemoteCommands(): void
+    {
+        // The two git panes used to hold a closure each, both calling the same
+        // method. One event, one listener — and with no GitRemoteCommands
+        // wired (the nullable dependency) it is a no-op rather than a fatal.
+        $controller = $this->controller();
+        $controller->open();
+
+        $this->changes->setFocused(true);
+        $this->changes->handleInput('f'); // fetch
+
+        $this->addToAssertionCount(1); // reaching here IS the assertion: no throw
     }
 }

@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Git;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Event\GitViewModeRequested;
 use Porta\Git\GitViewMode;
 use Porta\I18n\Translator;
 use Porta\Widget\Git\GitTabsWidget;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -37,9 +39,10 @@ final class GitTabsWidgetTest extends TestCase
     public function testClickOnTheInactiveTabFiresAndTheActiveOneDoesNot(): void
     {
         $selected = [];
-        $widget = new GitTabsWidget(new Translator('en'));
-        $widget->onSelect(static function (GitViewMode $mode) use (&$selected): void {
-            $selected[] = $mode;
+        $events = new EventDispatcher();
+        $widget = new GitTabsWidget(new Translator('en'), events: $events);
+        $events->addListener(GitViewModeRequested::class, static function (GitViewModeRequested $event) use (&$selected): void {
+            $selected[] = $event->mode;
         });
         $widget->render(new RenderContext(44, 1)); // populate the layout map
 

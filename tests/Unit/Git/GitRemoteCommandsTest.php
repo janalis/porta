@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Event\GitRemoteCompleted;
 use Porta\Git\GitRemote;
 use Porta\Git\GitRemoteCommands;
+use Porta\Git\GitRemoteOperation;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\GitBinary;
@@ -101,12 +102,12 @@ final class GitRemoteCommandsTest extends TestCase
         $remote = $this->selfRemoteRepo();
         $commands = $this->commands($remote);
 
-        $commands->runOperation('push');
+        $commands->runOperation(GitRemoteOperation::Push);
         $this->assertStringContainsString('Pushing…', $this->statusRow($this->status), 'runOperation routed to push');
-        $commands->runOperation('fetch');
+        $commands->runOperation(GitRemoteOperation::Fetch);
         $this->assertStringContainsString('already running', $this->statusRow($this->status), 'a second operation is refused while one runs');
-        $commands->runOperation('pull'); // routed, then refused by the busy guard
-        $commands->runOperation('unknown'); // silently ignored
+        $commands->runOperation(GitRemoteOperation::Pull); // routed, then refused by the busy guard
+        // (there is no 'unknown' case any more — the enum is the routing table)
 
         $this->await(fn (): bool => [] !== $this->events);
         $this->assertCount(1, $this->events, 'only the first operation completed');

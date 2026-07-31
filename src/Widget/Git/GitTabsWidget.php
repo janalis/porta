@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Git;
 
 use Porta\Container\AsWidget;
+use Porta\Event\GitViewModeRequested;
 use Porta\Git\GitViewMode;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
@@ -16,6 +17,7 @@ use Porta\Widget\Render\TabState;
 use Porta\Widget\Render\TabStyle;
 use Porta\Widget\Support\PanelWidth;
 use Porta\Widget\Support\StylesDefault;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
@@ -23,7 +25,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * The [Changes][History] tab strip heading the git sidebar. Not focusable —
  * the '1'/'2' keys in the lists switch tabs too; this is the mouse target.
  * The active tab is set by the controller, and a click on the inactive one
- * fires onSelect with its mode.
+ * dispatches {@see GitViewModeRequested}.
  */
 #[AsWidget('git-tabs', flex: 0)]
 final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
@@ -39,13 +41,11 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
     /** @var list<array{mode: GitViewMode, start: int, width: int}> tab layout from the last render, for hit-testing */
     private array $layout = [];
 
-    /** @var (callable(GitViewMode): void)|null a click chose the other tab */
-    private $onSelect = null;
-
     public function __construct(
         private readonly Translator $translator,
         int $width = 44,
         ?Styles $styles = null,
+        private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->width = $width;
         $this->initStyles($styles);
@@ -63,14 +63,10 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
         return 0.6;
     }
 
-    /** @param callable(GitViewMode): void $callback */
-    public function onSelect(callable $callback): self
-    {
-        $this->onSelect = $callback;
-
-        return $this;
-    }
-
+    /**
+     * Silent on purpose: the controller calls this after ACTING on a mode
+     * request, so dispatching here would loop the event that got us here.
+     */
     public function setActive(GitViewMode $mode): void
     {
         if ($mode !== $this->active) {
@@ -107,8 +103,8 @@ final class GitTabsWidget extends AbstractWidget implements MenuOverlayHost
     public function handleClick(int $relCol): void
     {
         $mode = $this->modeAtColumn($relCol);
-        if (null !== $mode && $mode !== $this->active && null !== $this->onSelect) {
-            ($this->onSelect)($mode);
+        if (null !== $mode && $mode !== $this->active) {
+            $this->events?->dispatch(new GitViewModeRequested($mode));
         }
     }
 

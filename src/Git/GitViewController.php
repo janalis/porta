@@ -8,6 +8,8 @@ use Porta\Container\AsEager;
 use Porta\Container\LayoutSlot;
 use Porta\Event\GitCommitted;
 use Porta\Event\GitRemoteCompleted;
+use Porta\Event\GitRemoteRequested;
+use Porta\Event\GitViewModeRequested;
 use Porta\I18n\Translator;
 use Porta\Layout\DiffLayout;
 use Porta\Layout\EditorAreaPanes;
@@ -89,8 +91,6 @@ final class GitViewController implements FullScreenView
         private readonly ?GitSettings $gitSettings = null,
     ) {
         $views->attachGit($this);
-        $this->panes->changes->onRemote(fn (string $operation) => $this->remoteCommands?->runOperation($operation));
-        $this->panes->history->onRemote(fn (string $operation) => $this->remoteCommands?->runOperation($operation));
         $this->staging = new GitStagingService($this->git, $this->rootDir, $this->panes->commitBox, $this->notifier, $this->translator);
 
         $exit = $this->close(...);
@@ -100,13 +100,11 @@ final class GitViewController implements FullScreenView
             onSelect: $this->loadDiff(...),
             onToggleStage: $this->toggleStage(...),
             onDiscard: $this->discard(...),
-            onShowHistory: fn () => $this->switchMode(GitViewMode::History),
         ));
         $this->panes->changes->onFocusNext($next)->onExit($exit);
         $this->panes->history->setCallbacks(new HistoryListCallbacks(
             onSelectCommit: $this->loadCommitFiles(...),
             onSelectFile: $this->loadCommitFileDiff(...),
-            onShowChanges: fn () => $this->switchMode(GitViewMode::Changes),
             onLoadMore: $this->loadMoreHistory(...),
         ));
         $this->panes->history->onFocusNext($next)->onExit($exit);
@@ -118,7 +116,6 @@ final class GitViewController implements FullScreenView
             onCopy: $this->copyDiffText(...),
         ));
         $this->panes->diffView->onFocusNext($next)->onExit($exit);
-        $this->panes->tabs->onSelect($this->switchMode(...));
         $this->panes
             ->commitBox
             ->setStagedChangesProvider($this->hasStagedChanges(...))
@@ -453,6 +450,23 @@ final class GitViewController implements FullScreenView
      * After a fetch/pull/push: the history tab shows stale commits — reload
      * page 0 (the changes list self-heals via its poll).
      */
+    /** fetch / pull / push, from either git list pane. */
+    #[AsEventListener]
+    public function onRemoteRequested(GitRemoteRequested $event): void
+    {
+        $this->remoteCommands?->runOperation($event->operation);
+    }
+
+    /**
+     * Changes or History — one listener for what the two panes' keys and the
+     * tab strip all asked for separately.
+     */
+    #[AsEventListener]
+    public function onViewModeRequested(GitViewModeRequested $event): void
+    {
+        $this->switchMode($event->mode);
+    }
+
     #[AsEventListener]
     public function onRemoteCompleted(GitRemoteCompleted $event): void
     {

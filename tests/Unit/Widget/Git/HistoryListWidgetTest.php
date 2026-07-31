@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Git;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Event\GitRemoteRequested;
+use Porta\Event\GitViewModeRequested;
+use Porta\Git\GitRemoteOperation;
 use Porta\Git\LogEntry;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Git\HistoryListCallbacks;
 use Porta\Widget\Git\HistoryListWidget;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -18,9 +22,9 @@ final class HistoryListWidgetTest extends TestCase
 {
     use RendersWidget;
 
-    private function widget(): HistoryListWidget
+    private function widget(?EventDispatcher $events = null): HistoryListWidget
     {
-        $widget = new HistoryListWidget(new Translator('en'));
+        $widget = new HistoryListWidget(new Translator('en'), events: $events);
         $widget->setFocused(true);
         $widget->setCommits([
             new LogEntry('full1', 'aaa111', 'Alice', 1_700_000_100, 'Newest work'),
@@ -139,13 +143,12 @@ final class HistoryListWidgetTest extends TestCase
 
     public function testShowChangesHookAndHousekeeping(): void
     {
-        $widget = $this->widget();
+        $dispatcher = new EventDispatcher();
+        $widget = $this->widget($dispatcher);
         $events = [];
-        $widget->setCallbacks(new HistoryListCallbacks(
-            onShowChanges: static function () use (&$events): void {
-                $events[] = 'changes';
-            },
-        ));
+        $dispatcher->addListener(GitViewModeRequested::class, static function () use (&$events): void {
+            $events[] = 'changes';
+        });
         $widget->onFocusNext(static function () use (&$events): void {
             $events[] = 'next';
         });
@@ -215,16 +218,17 @@ final class HistoryListWidgetTest extends TestCase
 
     public function testRemoteKeysRouteToTheHook(): void
     {
-        $widget = $this->widget();
-        $widget->handleInput('f'); // no hook attached: a safe no-op
+        $this->widget()->handleInput('f'); // no dispatcher attached: a safe no-op
 
+        $dispatcher = new EventDispatcher();
+        $widget = $this->widget($dispatcher);
         $operations = [];
-        $widget->onRemote(static function (string $operation) use (&$operations): void {
-            $operations[] = $operation;
+        $dispatcher->addListener(GitRemoteRequested::class, static function (GitRemoteRequested $event) use (&$operations): void {
+            $operations[] = $event->operation;
         });
         $widget->handleInput('p');
         $widget->handleInput('P');
-        $this->assertSame(['pull', 'push'], $operations);
+        $this->assertSame([GitRemoteOperation::Pull, GitRemoteOperation::Push], $operations);
     }
 
     public function testSelectionShadesFollowTheListElementRules(): void

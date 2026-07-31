@@ -16,13 +16,11 @@ final readonly class HistoryListCallbacks
     /**
      * @param (callable(LogEntry): void)|null         $onSelectCommit selection moved to this commit
      * @param (callable(LogEntry, string): void)|null $onSelectFile   commit + file path
-     * @param (callable(): void)|null                 $onShowChanges  `1`: switch back to the Changes tab
      * @param (callable(): void)|null                 $onLoadMore     fired once when the selection reaches the last loaded commit
      */
     public function __construct(
         public mixed $onSelectCommit = null,
         public mixed $onSelectFile = null,
-        public mixed $onShowChanges = null,
         public mixed $onLoadMore = null,
     ) {}
 }

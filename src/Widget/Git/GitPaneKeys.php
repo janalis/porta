@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Git;
 
+use Porta\Event\GitRemoteRequested;
+use Porta\Git\GitRemoteOperation;
 use Porta\Widget\PaneNavigationCallbacks;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Input\Keybindings;
 
 /**
  * The keys the two git list panes share: the remote-operation trio
- * (fetch/pull/push) plus the pane-navigation pair. Composes
+ * (fetch/pull/push, dispatched) plus the pane-navigation pair (still closures —
+ * two live panes wire them to different targets, so a broadcast could not tell
+ * which one asked). Composes
  * {@see PaneNavigationCallbacks} rather than sitting beside it, so mago's
  * isolated trait analysis sees $onExit/$onFocusNext/fire() as members here
  * and each widget states one dependency instead of two.
@@ -18,27 +23,21 @@ trait GitPaneKeys
 {
     use PaneNavigationCallbacks;
 
-    /** @var (callable(string): void)|null a remote-operation key: 'fetch' | 'pull' | 'push' */
-    private $onRemote = null;
-
-    public function onRemote(callable $callback): self
-    {
-        $this->onRemote = $callback;
-
-        return $this;
-    }
+    /**
+     * Declared here rather than promoted in each widget's constructor: mago
+     * analyses a trait in isolation, so the dispatch below has to see the
+     * property it uses.
+     */
+    private ?EventDispatcherInterface $events = null;
 
     /** Handle a key shared by the git list panes; true when it consumed the key. */
     private function handleGitPaneKey(string $data, Keybindings $kb): bool
     {
-        foreach (['fetch', 'pull', 'push'] as $remoteOp) {
-            if (!$kb->matches($data, $remoteOp)) {
+        foreach (GitRemoteOperation::cases() as $operation) {
+            if (!$kb->matches($data, $operation->value)) {
                 continue;
             }
-
-            if (null !== $this->onRemote) {
-                ($this->onRemote)($remoteOp);
-            }
+            $this->events?->dispatch(new GitRemoteRequested($operation));
 
             return true;
         }

@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Git;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Event\GitRemoteRequested;
+use Porta\Event\GitViewModeRequested;
 use Porta\Git\ChangeEntry;
+use Porta\Git\GitRemoteOperation;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Git\ChangesListCallbacks;
 use Porta\Widget\Git\ChangesListWidget;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -113,20 +117,21 @@ final class ChangesListWidgetTest extends TestCase
 
     public function testContextMenuTriggersReuseTheExistingCallbacks(): void
     {
-        $widget = new ChangesListWidget(new Translator('en'));
+        $events = new EventDispatcher();
+        $widget = new ChangesListWidget(new Translator('en'), events: $events);
         $widget->setEntries($this->entries());
         $selected = [];
         $toggled = [];
         $history = 0;
+        $events->addListener(GitViewModeRequested::class, static function (GitViewModeRequested $event) use (&$history): void {
+            ++$history;
+        });
         $widget->setCallbacks(new ChangesListCallbacks(
             onSelect: static function (ChangeEntry $entry) use (&$selected): void {
                 $selected[] = $entry->path;
             },
             onToggleStage: static function (ChangeEntry $entry) use (&$toggled): void {
                 $toggled[] = $entry->path;
-            },
-            onShowHistory: static function () use (&$history): void {
-                ++$history;
             },
         ));
         $widget->render(new RenderContext(60, 8));
@@ -141,7 +146,7 @@ final class ChangesListWidgetTest extends TestCase
         $this->assertSame(['src/b.php'], $toggled, 'the Stage/Unstage item rides onToggleStage');
 
         $widget->showHistory();
-        $this->assertSame(1, $history, 'the File History item rides onShowHistory');
+        $this->assertSame(1, $history, 'the File History item dispatches the mode request');
 
         $widget->armDiscardSelected();
         $this->assertStringContainsString('Discard changes?', $this->plain($widget->render(new RenderContext(60, 8))), 'the Discard… item arms the two-press confirmation');
@@ -262,17 +267,20 @@ final class ChangesListWidgetTest extends TestCase
 
     public function testRemoteKeysRouteToTheHook(): void
     {
-        $widget = new ChangesListWidget(new Translator('en'));
-        $widget->setFocused(true);
-        $widget->handleInput('f'); // no hook attached: a safe no-op
+        $bare = new ChangesListWidget(new Translator('en'));
+        $bare->setFocused(true);
+        $bare->handleInput('f'); // no dispatcher attached: a safe no-op
 
+        $events = new EventDispatcher();
+        $widget = new ChangesListWidget(new Translator('en'), events: $events);
+        $widget->setFocused(true);
         $operations = [];
-        $widget->onRemote(static function (string $operation) use (&$operations): void {
-            $operations[] = $operation;
+        $events->addListener(GitRemoteRequested::class, static function (GitRemoteRequested $event) use (&$operations): void {
+            $operations[] = $event->operation;
         });
         $widget->handleInput('f');
         $widget->handleInput('p');
         $widget->handleInput('P');
-        $this->assertSame(['fetch', 'pull', 'push'], $operations);
+        $this->assertSame([GitRemoteOperation::Fetch, GitRemoteOperation::Pull, GitRemoteOperation::Push], $operations);
     }
 }

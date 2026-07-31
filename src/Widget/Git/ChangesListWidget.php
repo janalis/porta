@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Porta\Widget\Git;
 
 use Porta\Container\AsWidget;
+use Porta\Event\GitViewModeRequested;
 use Porta\Git\ChangeEntry;
+use Porta\Git\GitViewMode;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
@@ -24,6 +26,7 @@ use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\PanelWidth;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Widget\Support\WheelScrollable;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -74,7 +77,9 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         private readonly Translator $translator,
         int $width = 44,
         ?Styles $styles = null,
+        ?EventDispatcherInterface $events = null,
     ) {
+        $this->events = $events;
         $this->width = $width;
         $this->initStyles($styles);
         $this->list = new ListSelection();
@@ -157,9 +162,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             return;
         }
         if ($kb->matches($data, 'show_history')) {
-            if (null !== $this->callbacks->onShowHistory) {
-                ($this->callbacks->onShowHistory)();
-            }
+            $this->events?->dispatch(new GitViewModeRequested(GitViewMode::History));
 
             return;
         }
@@ -206,9 +209,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     /** Context-menu trigger: switch to the History tab (same path as the `2` key). */
     public function showHistory(): void
     {
-        if (null !== $this->callbacks->onShowHistory) {
-            ($this->callbacks->onShowHistory)();
-        }
+        $this->events?->dispatch(new GitViewModeRequested(GitViewMode::History));
     }
 
     /** The selected entry's widget-relative row (row 0 is the header). */

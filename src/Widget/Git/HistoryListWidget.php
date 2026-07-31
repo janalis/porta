@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Widget\Git;
 
 use Porta\Container\AsWidget;
+use Porta\Event\GitViewModeRequested;
+use Porta\Git\GitViewMode;
 use Porta\Git\LogEntry;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
@@ -22,6 +24,7 @@ use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\PanelWidth;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Widget\Support\WheelScrollable;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -74,7 +77,9 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         private readonly Translator $translator,
         int $width = 44,
         ?Styles $styles = null,
+        ?EventDispatcherInterface $events = null,
     ) {
+        $this->events = $events;
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the focused sub-list
         $this->width = $width;
         $this->initStyles($styles);
@@ -169,9 +174,7 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
             return;
         }
         if ($kb->matches($data, 'show_changes')) {
-            if (null !== $this->callbacks->onShowChanges) {
-                ($this->callbacks->onShowChanges)();
-            }
+            $this->events?->dispatch(new GitViewModeRequested(GitViewMode::Changes));
 
             return;
         }
