@@ -90,6 +90,18 @@ final class ChromaPluginTest extends TestCase
 
         $terminal = $this->runIde($project, $project->path('a.rs'), [
             120 => static function (): void {},
+            // Past the 250ms debounce, then long enough for the child to exit
+            // inside a RUNNING loop: this test asserts what does NOT reach the
+            // buffer, so it never awaits the backend, and walking out between
+            // the debounce and the exit strands its stdout watcher.
+            //
+            // What stays armed after this is CodeHighlighter's 2s answer
+            // deadline — correct, since the backend died without delivering and
+            // that timer is how it gets dropped to plain. A test that stops the
+            // loop before it fires reports a [loop-leak] and should.
+            400 => function (): void {
+                $this->pump(0.3);
+            },
         ]);
 
         $this->assertStringContainsString('fn main()', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -119,6 +131,18 @@ final class ChromaPluginTest extends TestCase
 
         $terminal = $this->runIde($project, $project->path('a.rs'), [
             120 => static function (): void {},
+            // Past the 250ms debounce, then long enough for the child to exit
+            // inside a RUNNING loop: this test asserts what does NOT reach the
+            // buffer, so it never awaits the backend, and walking out between
+            // the debounce and the exit strands its stdout watcher.
+            //
+            // What stays armed after this is CodeHighlighter's 2s answer
+            // deadline — correct, since the backend died without delivering and
+            // that timer is how it gets dropped to plain. A test that stops the
+            // loop before it fires reports a [loop-leak] and should.
+            400 => function (): void {
+                $this->pump(0.3);
+            },
         ]);
 
         $this->assertStringContainsString('fn main()', AnsiUtils::stripAnsiCodes($terminal->getOutput()));

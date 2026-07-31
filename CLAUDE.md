@@ -1306,6 +1306,16 @@ flaky shapes are all on the fixed-clock side, and each has a named cure:
   cancelling each leaked identifier by hand. It used to skip isolation there silently, which is
   how a serial suite accumulated ~31 watchers per test; the fallback took a full serial run from
   2448 leak lines to 53.
+- **What is left after round 26's leak hunt is EXPECTED pending state, and the escalation has to
+  account for it.** A full serial run went 2448 → 7 lines, and every one of the 7 is a timer that
+  is correct at the moment the test stops the loop: `Support/DebouncedRequest`'s 0.15s coalescing
+  timer (a viewer pane that has just asked for a re-render, ×4) and `Highlight/CodeHighlighter`'s
+  2s answer deadline (×3 — the backend died without delivering, and that timer is precisely how it
+  gets dropped to plain). Diagnose before fixing: the leaked identifier's Revolt callback class
+  and its closure's file:line are reachable by reflecting the driver's `callbacks` map, and the
+  four singletons fixed earlier split evenly into timers and stream watchers, which want opposite
+  cures. So `[loop-leak]` cannot become a flat failure — a test that deliberately stops mid-flight
+  will always have one armed; the gate needs a declared per-test allowance.
 - **Both leak reports are invisible under `composer test`** — measured: paratest swallows worker
   STDERR, so an unconditional write from an extension never reaches the log. `composer test:serial`
   is the only way to read them (raise `COMPOSER_PROCESS_TIMEOUT`; the serial suite outruns the
