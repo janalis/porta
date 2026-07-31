@@ -5,19 +5,22 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Event\DockTabClosed;
+use Porta\Event\DockTabMoved;
+use Porta\Event\DockTabSelected;
 use Porta\Ui\Glyphs;
-use Porta\Widget\DockTabsCallbacks;
 use Porta\Widget\DockTabsWidget;
 use Porta\Workbench\Dock\DockTab;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class DockTabsWidgetTest extends TestCase
 {
     /** @param list<array{tab: DockTab, label: string, active: bool, status: string}> $tabs */
-    private static function strip(array $tabs): DockTabsWidget
+    private static function strip(array $tabs, ?EventDispatcher $events = null): DockTabsWidget
     {
-        $bar = new DockTabsWidget();
+        $bar = new DockTabsWidget(events: $events);
         $bar->setProvider(static fn (): array => $tabs);
 
         return $bar;
@@ -55,18 +58,17 @@ final class DockTabsWidgetTest extends TestCase
     {
         $selected = [];
         $closed = [];
+        $events = new EventDispatcher();
         $bar = self::strip([
             ['tab' => DockTab::Terminal, 'label' => 'Terminal', 'active' => true, 'key' => '', 'status' => ''],
             ['tab' => DockTab::Debug, 'label' => 'Debug', 'active' => false, 'key' => '', 'status' => ''],
-        ]);
-        $bar->setCallbacks(new DockTabsCallbacks(
-            onTabSelected: static function (DockTab $tab, string $key) use (&$selected): void {
-                $selected[] = [$tab, $key];
-            },
-            onTabClosed: static function (DockTab $tab, string $key) use (&$closed): void {
-                $closed[] = [$tab, $key];
-            },
-        ));
+        ], $events);
+        $events->addListener(DockTabSelected::class, static function (DockTabSelected $event) use (&$selected): void {
+            $selected[] = [$event->tab, $event->key];
+        });
+        $events->addListener(DockTabClosed::class, static function (DockTabClosed $event) use (&$closed): void {
+            $closed[] = [$event->tab, $event->key];
+        });
         $bar->render(new RenderContext(80, 1));
 
         // ' Terminal × │ Debug × ': tab 1 body starts at col 0, its × at col 10.
@@ -141,32 +143,32 @@ final class DockTabsWidgetTest extends TestCase
         for ($i = 0; $i < 8; ++$i) {
             $tabs[] = ['tab' => DockTab::Results, 'key' => (string) ($i + 1), 'label' => \sprintf('search-%02d', $i), 'active' => 6 === $i, 'status' => ''];
         }
+        $events = new EventDispatcher();
         $bar = self::strip($tabs);
 
         $bar->render(new RenderContext(40, 1));
-        $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(40, 1))[0]);
+        $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(40, 1))[0], $events);
         $this->assertStringContainsString('search-06', $plain, 'the active tab is always on the strip');
         $this->assertStringNotContainsString('search-00', $plain, 'leading tabs drop first');
         // The hit map follows the window: clicking column 2 hits the first VISIBLE tab.
         $selected = [];
-        $bar->setCallbacks(new DockTabsCallbacks(
-            onTabSelected: static function (DockTab $tab, string $key) use (&$selected): void {
-                $selected[] = $key;
-            },
-        ));
+        $events->addListener(DockTabSelected::class, static function (DockTabSelected $event) use (&$selected): void {
+            $selected[] = $event->key;
+        });
         $this->assertTrue($bar->handleTabClick(2));
         $this->assertNotContains('1', $selected, 'the dropped leading tab is not clickable');
     }
 
     public function testFamilyIndexAtIsFamilyRelativeAndDragZonesExcludeTheClose(): void
     {
+        $events = new EventDispatcher();
         $bar = self::strip([
             ['tab' => DockTab::Terminal, 'label' => 'sh 1', 'active' => false, 'key' => 'shell:1', 'status' => ''],
             ['tab' => DockTab::Terminal, 'label' => 'sh 2', 'active' => false, 'key' => 'shell:2', 'status' => ''],
             ['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'key' => '1', 'status' => ''],
             ['tab' => DockTab::Results, 'label' => 'TODO', 'active' => false, 'key' => '2', 'status' => ''],
             ['tab' => DockTab::Debug, 'label' => 'Debug', 'active' => false, 'key' => '', 'status' => ''],
-        ]);
+        ], $events);
         $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(100, 1))[0]);
         $problems = (int) mb_strpos($plain, needle: 'Problems');
 
@@ -180,13 +182,10 @@ final class DockTabsWidgetTest extends TestCase
         $this->assertSame(['tab' => DockTab::Results, 'index' => 0], $bar->dragSourceAt($problems), 'a body press arms a drag');
         $this->assertNull($bar->dragSourceAt((int) mb_strpos($plain, needle: '×', offset: $problems)), 'a close press must not arm one');
 
-        $bar->moveTab(DockTab::Results, 0, 1); // unwired: a no-op
         $moves = [];
-        $bar->setCallbacks(new DockTabsCallbacks(
-            onTabMoved: static function (DockTab $family, int $from, int $to) use (&$moves): void {
-                $moves[] = [$family, $from, $to];
-            },
-        ));
+        $events->addListener(DockTabMoved::class, static function (DockTabMoved $event) use (&$moves): void {
+            $moves[] = [$event->family, $event->from, $event->to];
+        });
         $bar->moveTab(DockTab::Results, 0, 1);
         $this->assertSame([[DockTab::Results, 0, 1]], $moves, 'the reorder request reaches the wired dock');
     }

@@ -6,6 +6,9 @@ namespace Porta\Tests\Support;
 
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
+use Porta\Event\DockTabClosed;
+use Porta\Event\DockTabMoved;
+use Porta\Event\DockTabSelected;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\FakeRasterizer;
@@ -20,6 +23,7 @@ use Porta\Workbench\Dock\DockToolTabs;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\Notifier;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Tui;
 
 /** Builds a wired {@see BottomDock} over the given panels for unit tests. */
@@ -41,7 +45,7 @@ final class TestBottomDock
             $terminal,
             $results,
             $debug,
-            $dockTabs ?? new DockTabsWidget(),
+            $dockTabs ?? new DockTabsWidget(events: $events),
             $tools ?? new DockToolTabs(),
             $sessions ?? new TerminalSessions(),
             new Translator('en'),
@@ -55,6 +59,13 @@ final class TestBottomDock
             $events,
         );
         $dock->wire();
+        if ($events instanceof EventDispatcher) {
+            // What the container compiles from #[AsEventListener]; a test rig
+            // wires the same three by hand.
+            $events->addListener(DockTabSelected::class, $dock->onTabSelected(...));
+            $events->addListener(DockTabClosed::class, $dock->onTabClosed(...));
+            $events->addListener(DockTabMoved::class, $dock->onTabMoved(...));
+        }
 
         return $dock;
     }

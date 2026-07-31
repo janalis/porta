@@ -44,12 +44,13 @@ final class BottomDockTest extends TestCase
 
     private function dock(?EventDispatcher $events = null): BottomDock
     {
+        $events ??= new EventDispatcher();
         $this->tui = TestTui::create(100, 24);
         $this->editor = new CodeEditorWidget();
         $this->terminal = new TerminalPanelWidget();
         $this->results = new ResultsPanelWidget();
         $this->debug = new DebugPanelWidget();
-        $this->strip = new DockTabsWidget();
+        $this->strip = new DockTabsWidget(events: $events);
         $this->sessions = new TerminalSessions();
         $this->tools = new DockToolTabs();
 

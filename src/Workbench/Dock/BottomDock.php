@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Porta\Workbench\Dock;
 
 use Porta\Container\AsIdeService;
+use Porta\Event\DockTabClosed;
+use Porta\Event\DockTabMoved;
+use Porta\Event\DockTabSelected;
 use Porta\Event\DockToolBound;
 use Porta\Event\DockToolClosed;
 use Porta\Event\TerminalRevealRequested;
@@ -14,7 +17,6 @@ use Porta\Terminal\TerminalSessions;
 use Porta\Ui\Glyphs;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockPanelWidget;
-use Porta\Widget\DockTabsCallbacks;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\OverlayWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -23,6 +25,7 @@ use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\Notifier;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
@@ -74,6 +77,32 @@ final class BottomDock
         private readonly ?EventDispatcherInterface $events = null,
     ) {}
 
+    #[AsEventListener]
+    public function onTabSelected(DockTabSelected $event): void
+    {
+        $this->reveal($event->tab, $event->key);
+    }
+
+    #[AsEventListener]
+    public function onTabClosed(DockTabClosed $event): void
+    {
+        $this->closeTab($event->tab, $event->key);
+    }
+
+    /**
+     * A strip drag reorders within its own family: session tabs among
+     * themselves, tool tabs among themselves (Debug is a single tab).
+     */
+    #[AsEventListener]
+    public function onTabMoved(DockTabMoved $event): void
+    {
+        match ($event->family) {
+            DockTab::Terminal => $this->sessions->move($event->from, $event->to),
+            DockTab::Results => $this->tools->move($event->from, $event->to),
+            DockTab::Debug => null,
+        };
+    }
+
     /** Register the dock lifecycle hooks on the three panels and the tab strip; called once from WidgetHooks. */
     public function wire(): void
     {
@@ -86,17 +115,6 @@ final class BottomDock
         $this->debugPanel->onDismiss($this->hide(...));
         $this->resultsPanel->onDismiss($this->hide(...));
         $this->dockTabs->setProvider($this->aliveTabs(...));
-        $this->dockTabs->setCallbacks(new DockTabsCallbacks(
-            onTabSelected: $this->reveal(...),
-            onTabClosed: $this->closeTab(...),
-            // A strip drag reorders within its own family: session tabs among
-            // themselves, tool tabs among themselves (Debug is a single tab).
-            onTabMoved: fn (DockTab $family, int $from, int $to) => match ($family) {
-                DockTab::Terminal => $this->sessions->move($from, $to),
-                DockTab::Results => $this->tools->move($from, $to),
-                DockTab::Debug => null,
-            },
-        ));
     }
 
     /**

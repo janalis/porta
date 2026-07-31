@@ -7,6 +7,9 @@ namespace Porta\Widget;
 use Porta\Container\AsChromeRoot;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
+use Porta\Event\DockTabClosed;
+use Porta\Event\DockTabMoved;
+use Porta\Event\DockTabSelected;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\LtrPane;
@@ -20,6 +23,7 @@ use Porta\Widget\Support\ProviderFingerprint;
 use Porta\Widget\Support\StripScroll;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Workbench\Dock\DockTab;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
@@ -62,25 +66,17 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
     /** The active index the strip window last followed, so a manual scroll survives parked frames. */
     private ?int $lastActive = null;
 
-    private DockTabsCallbacks $callbacks;
-
-    public function __construct(?Styles $styles = null)
-    {
+    public function __construct(
+        ?Styles $styles = null,
+        private readonly ?EventDispatcherInterface $events = null,
+    ) {
         $this->initStyles($styles);
-        $this->callbacks = new DockTabsCallbacks(); // a bare strip fires nothing
-    }
-
-    public function setCallbacks(DockTabsCallbacks $callbacks): void
-    {
-        $this->callbacks = $callbacks;
     }
 
     /** A drag over the strip crossed same-family tabs: ask the dock to reorder that model. */
     public function moveTab(DockTab $family, int $from, int $to): void
     {
-        if (null !== $this->callbacks->onTabMoved) {
-            ($this->callbacks->onTabMoved)($family, $from, $to);
-        }
+        $this->events?->dispatch(new DockTabMoved($family, $from, $to));
     }
 
     /** Repaint whenever the alive tabs / labels / active tool change. */
@@ -231,9 +227,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
                 continue;
             }
 
-            if (null !== $this->callbacks->onTabClosed) {
-                ($this->callbacks->onTabClosed)($entry['tab'], $entry['key']);
-            }
+            $this->events?->dispatch(new DockTabClosed($entry['tab'], $entry['key']));
 
             return true;
         }
@@ -242,9 +236,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
                 continue;
             }
 
-            if (null !== $this->callbacks->onTabSelected) {
-                ($this->callbacks->onTabSelected)($entry['tab'], $entry['key']);
-            }
+            $this->events?->dispatch(new DockTabSelected($entry['tab'], $entry['key']));
 
             return true;
         }
