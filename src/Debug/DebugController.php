@@ -6,7 +6,10 @@ namespace Porta\Debug;
 
 use Porta\Container\AsIdeService;
 use Porta\Editor\FileOpener;
+use Porta\Event\DebugFrameSelected;
 use Porta\Event\DebugStatusChanged;
+use Porta\Event\DebugVariableEditRequested;
+use Porta\Event\DebugWatchRemoved;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Terminal\TerminalSessions;
@@ -22,6 +25,7 @@ use Porta\Workbench\Notifier;
 use Porta\Workbench\StatusSegment;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -63,17 +67,12 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         private readonly TerminalSessions $sessions,
         private readonly BottomDock $dock,
     ) {
+        // Only the variable expansion stays a closure: it is
+        // continuation-passing — the widget hands in the channel the answer
+        // comes back through — which a one-way notification cannot express.
         $this->panel->setCallbacks(new DebugPanelCallbacks(
-            onFrameSelected: $this->jumpToFrame(...),
             onExpandVariable: function (int $reference, callable $deliver): void {
                 $this->session?->variables($reference, static fn (array $variables) => $deliver($variables));
-                $this->tui->requestRender();
-            },
-            onEditVariable: $this->editVariable(...),
-            onRemoveWatch: function (int $index): void {
-                $this->watches->remove($index);
-                $this->panel->setWatches($this->watches->all());
-                $this->reevaluateWatches();
                 $this->tui->requestRender();
             },
         ));
@@ -441,6 +440,29 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         $this->files->openFile($path);
         $this->editor->jumpTo($line, 0);
         $this->applyEditorDecorations($path);
+    }
+
+    #[AsEventListener]
+    public function onFrameSelected(DebugFrameSelected $event): void
+    {
+        // The path and line ride along for observers; the controller has the
+        // frame table and reads them from there.
+        $this->jumpToFrame($event->frameId);
+    }
+
+    #[AsEventListener]
+    public function onVariableEditRequested(DebugVariableEditRequested $event): void
+    {
+        $this->editVariable($event->parentReference, $event->name, $event->value);
+    }
+
+    #[AsEventListener]
+    public function onWatchRemoved(DebugWatchRemoved $event): void
+    {
+        $this->watches->remove($event->index);
+        $this->panel->setWatches($this->watches->all());
+        $this->reevaluateWatches();
+        $this->tui->requestRender();
     }
 
     private function jumpToFrame(int $frameId): void

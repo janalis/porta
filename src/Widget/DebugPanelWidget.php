@@ -8,6 +8,9 @@ use Porta\Container\AsChromeRoot;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Debug\DebugState;
+use Porta\Event\DebugFrameSelected;
+use Porta\Event\DebugVariableEditRequested;
+use Porta\Event\DebugWatchRemoved;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
@@ -23,6 +26,7 @@ use Porta\Widget\Support\DebugRowKind;
 use Porta\Widget\Support\ListPanelInteraction;
 use Porta\Widget\Support\PanelRows;
 use Porta\Widget\Support\StylesDefault;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -73,8 +77,11 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
 
     private readonly Translator $translator;
 
-    public function __construct(?Styles $styles = null, ?Translator $translator = null)
-    {
+    public function __construct(
+        ?Styles $styles = null,
+        ?Translator $translator = null,
+        private readonly ?EventDispatcherInterface $events = null,
+    ) {
         $this->initStyles($styles);
         $this->translator = $translator ?? new Translator('en');
         $this->list = new ListSelection();
@@ -210,18 +217,18 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
         }
         if ($kb->matches($data, 'edit_variable')) {
             $row = $this->rows[$this->list->selected()] ?? null;
-            if (null !== $row && DebugRowKind::Variable === $row->kind && $row->parentRef > 0 && null !== $this->callbacks->onEditVariable) {
+            if (null !== $row && DebugRowKind::Variable === $row->kind && $row->parentRef > 0) {
                 // The label is "name = value"; hand the current value back for prefill.
                 $value = explode(' = ', $row->label, limit: 2)[1] ?? '';
-                ($this->callbacks->onEditVariable)($row->parentRef, $row->name, $value);
+                $this->events?->dispatch(new DebugVariableEditRequested($row->parentRef, $row->name, $value));
             }
 
             return;
         }
         if ($kb->matches($data, 'remove_watch')) {
             $row = $this->rows[$this->list->selected()] ?? null;
-            if (null !== $row && DebugRowKind::Watch === $row->kind && null !== $this->callbacks->onRemoveWatch) {
-                ($this->callbacks->onRemoveWatch)($row->watchIndex);
+            if (null !== $row && DebugRowKind::Watch === $row->kind) {
+                $this->events?->dispatch(new DebugWatchRemoved($row->watchIndex));
             }
         }
     }
@@ -376,8 +383,8 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
         if (null === $row) {
             return;
         }
-        if (DebugRowKind::Frame === $row->kind && null !== $this->callbacks->onFrameSelected) {
-            ($this->callbacks->onFrameSelected)($row->frameId, $row->path, $row->line);
+        if (DebugRowKind::Frame === $row->kind) {
+            $this->events?->dispatch(new DebugFrameSelected($row->frameId, $row->path, $row->line));
 
             return;
         }

@@ -6,17 +6,21 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Debug\DebugState;
+use Porta\Event\DebugFrameSelected;
+use Porta\Event\DebugVariableEditRequested;
+use Porta\Event\DebugWatchRemoved;
 use Porta\Tests\Support\Probe;
 use Porta\Widget\DebugPanelCallbacks;
 use Porta\Widget\DebugPanelWidget;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class DebugPanelWidgetTest extends TestCase
 {
-    private function panel(): DebugPanelWidget
+    private function panel(?EventDispatcher $events = null): DebugPanelWidget
     {
-        $panel = new DebugPanelWidget();
+        $panel = new DebugPanelWidget(events: $events);
         $panel->open('a.php');
         $panel->setSessionState(DebugState::Paused, 'src/a.php:5');
         $panel->setFrames([
@@ -91,13 +95,12 @@ final class DebugPanelWidgetTest extends TestCase
 
     public function testEditKeyOnAVariableFiresWithItsContainerNameAndValue(): void
     {
-        $panel = $this->panel();
+        $events = new EventDispatcher();
+        $panel = $this->panel($events);
         $edited = null;
-        $panel->setCallbacks(new DebugPanelCallbacks(
-            onEditVariable: static function (int $ref, string $name, string $value) use (&$edited): void {
-                $edited = [$ref, $name, $value];
-            },
-        ));
+        $events->addListener(DebugVariableEditRequested::class, static function (DebugVariableEditRequested $event) use (&$edited): void {
+            $edited = [$event->parentReference, $event->name, $event->value];
+        });
 
         // Rows: 0 Frames, 1 #0, 2 #1, 3 Variables, 4 Locals, 5 $x — step to $x.
         for ($i = 0; $i < 5; ++$i) {
@@ -115,13 +118,14 @@ final class DebugPanelWidgetTest extends TestCase
 
     public function testEnterOnAFrameJumpsAndOnAVariableExpandsLazily(): void
     {
-        $panel = $this->panel();
+        $events = new EventDispatcher();
+        $panel = $this->panel($events);
         $jumped = null;
         $expanded = [];
+        $events->addListener(DebugFrameSelected::class, static function (DebugFrameSelected $event) use (&$jumped): void {
+            $jumped = [$event->frameId, $event->path, $event->line];
+        });
         $panel->setCallbacks(new DebugPanelCallbacks(
-            onFrameSelected: static function (int $frameId, string $path, int $line) use (&$jumped): void {
-                $jumped = [$frameId, $path, $line];
-            },
             onExpandVariable: static function (int $ref, callable $deliver) use (&$expanded): void {
                 $expanded[] = $ref;
                 $deliver([['name' => '0', 'value' => "'a'", 'variablesReference' => 0]]);
@@ -153,13 +157,12 @@ final class DebugPanelWidgetTest extends TestCase
 
     public function testHoverTintsTheRowWithoutMovingTheSelection(): void
     {
-        $panel = $this->panel();
+        $events = new EventDispatcher();
+        $panel = $this->panel($events);
         $jumped = null;
-        $panel->setCallbacks(new DebugPanelCallbacks(
-            onFrameSelected: static function (int $frameId) use (&$jumped): void {
-                $jumped = $frameId;
-            },
-        ));
+        $events->addListener(DebugFrameSelected::class, static function (DebugFrameSelected $event) use (&$jumped): void {
+            $jumped = $event->frameId;
+        });
         $panel->render(new RenderContext(80, 14));
         $panel->handleInput("\x1b[B"); // ↓ off the 'Frames' section onto the first frame
 
@@ -187,13 +190,12 @@ final class DebugPanelWidgetTest extends TestCase
 
     public function testMouseClickHoverScrollAndEscape(): void
     {
-        $panel = $this->panel();
+        $events = new EventDispatcher();
+        $panel = $this->panel($events);
         $jumped = null;
-        $panel->setCallbacks(new DebugPanelCallbacks(
-            onFrameSelected: static function (int $frameId) use (&$jumped): void {
-                $jumped = $frameId;
-            },
-        ));
+        $events->addListener(DebugFrameSelected::class, static function (DebugFrameSelected $event) use (&$jumped): void {
+            $jumped = $event->frameId;
+        });
 
         $panel->render(new RenderContext(80, 14));
         $this->assertTrue($panel->hoverRow(2), 'hover tints the row under the pointer (rel 2 → row 2, no header row)');
@@ -260,18 +262,19 @@ final class DebugPanelWidgetTest extends TestCase
 
     public function testWatchRowsExpandThroughRefsAndDeleteFiresRemoval(): void
     {
-        $panel = $this->panel();
+        $events = new EventDispatcher();
+        $panel = $this->panel($events);
         $panel->setWatches(['$arr']);
         $panel->setWatchResult(0, 'array(2)', 2000);
         $expanded = [];
         $removed = [];
+        $events->addListener(DebugWatchRemoved::class, static function (DebugWatchRemoved $event) use (&$removed): void {
+            $removed[] = $event->index;
+        });
         $panel->setCallbacks(new DebugPanelCallbacks(
             onExpandVariable: static function (int $ref, callable $deliver) use (&$expanded): void {
                 $expanded[] = $ref;
                 $deliver([['name' => '0', 'value' => "'a'", 'variablesReference' => 0]]);
-            },
-            onRemoveWatch: static function (int $index) use (&$removed): void {
-                $removed[] = $index;
             },
         ));
 

@@ -17,7 +17,10 @@ use Porta\Debug\WatchStore;
 use Porta\Editor\Document;
 use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
+use Porta\Event\DebugFrameSelected;
 use Porta\Event\DebugStatusChanged;
+use Porta\Event\DebugVariableEditRequested;
+use Porta\Event\DebugWatchRemoved;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\EditorState;
@@ -55,7 +58,8 @@ final class DebugControllerTest extends TestCase
         if (Presence::With === $withFile) {
             $this->editor->showDocument('/p/prog.php', new Document("<?php\n// l2\n// l3\n// l4\n"));
         }
-        $this->panel = new DebugPanelWidget();
+        $dispatcher = new EventDispatcher();
+        $this->panel = new DebugPanelWidget(events: $dispatcher);
         $this->statusBar = new StatusBarWidget();
         $this->client = new FakeDapClient();
         $this->opened = [];
@@ -68,12 +72,11 @@ final class DebugControllerTest extends TestCase
         $state = new DebugSessionState();
         $opened = &$this->opened;
         $this->statusEvents = 0;
-        $dispatcher = new EventDispatcher();
         $dispatcher->addListener(DebugStatusChanged::class, function (): void {
             ++$this->statusEvents;
         });
 
-        return new DebugController(
+        $controller = new DebugController(
             $breakpoints,
             new DebugAdapters(Presence::With === $withAdapter ? ['php' => ['debug' => ['adapter' => 'mock-adapter']]] : []),
             $this->editor,
@@ -112,6 +115,12 @@ final class DebugControllerTest extends TestCase
             $this->sessions,
             $dock,
         );
+        // Compiled from #[AsEventListener] in the container.
+        $dispatcher->addListener(DebugFrameSelected::class, $controller->onFrameSelected(...));
+        $dispatcher->addListener(DebugVariableEditRequested::class, $controller->onVariableEditRequested(...));
+        $dispatcher->addListener(DebugWatchRemoved::class, $controller->onWatchRemoved(...));
+
+        return $controller;
     }
 
     private function flashed(): string
