@@ -6,15 +6,18 @@ namespace Porta\Tests\Unit\Plugin\Lifecycle;
 
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
+use Porta\Plugin\Lifecycle\DependencyInstall;
 use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 
 final class PluginInstallerTest extends TestCase
 {
     use GitBinary;
+    use PumpsLoop;
 
     private TempProject $project;
     private TempProject $global;
@@ -327,5 +330,90 @@ final class PluginInstallerTest extends TestCase
 
         $this->assertNull($error, 'composer was never needed');
         $this->assertSame($this->project->dir.'/.porta/plugins/platform/plugin.php', $file);
+    }
+
+    /** A plugin directory with $json as its composer.json. */
+    private function pluginDir(string $name, string $json): string
+    {
+        $dir = $this->project->dir.'/.porta/plugins/'.$name;
+        mkdir($dir, permissions: 0o777, recursive: true);
+        file_put_contents($dir.'/plugin.php', data: "<?php\n");
+        file_put_contents($dir.'/composer.json', data: $json);
+
+        return $dir;
+    }
+
+    public function testInstallingDependenciesAnswersSynchronouslyWhatItDid(): void
+    {
+        // The caller has to know whether to wait BEFORE the subprocess could
+        // possibly finish — that is what the return value is for.
+        $installer = $this->installer(composer: $this->composerStub(0));
+        $never = static function (int $code): void {
+            self::fail('composer ran for a plugin that owes nothing');
+        };
+
+        $this->assertSame(DependencyInstall::NotNeeded, $installer->installDependencies($this->pluginDir('nodeps', '{"require":{"php":">=8.4"}}'), $never));
+        $this->assertSame(DependencyInstall::NotNeeded, $installer->installDependencies($this->pluginDir('nomanifest', '{}'), $never));
+        $this->assertSame(
+            DependencyInstall::NoComposer,
+            $this->installer()->installDependencies($this->pluginDir('needy', '{"require":{"vend/lib":"^1.0"}}'), $never),
+            'no composer on this machine',
+        );
+    }
+
+    public function testInstallingDependenciesRunsComposerAndReportsItsExitCode(): void
+    {
+        $installer = $this->installer(composer: $this->composerStub(0));
+        $dir = $this->pluginDir('needy', '{"require":{"vend/lib":"^1.0"}}');
+
+        $code = null;
+        $this->assertSame(DependencyInstall::Started, $installer->installDependencies($dir, static function (int $exit) use (&$code): void {
+            $code = $exit;
+        }));
+        $this->await(static function () use (&$code): bool {
+            return null !== $code;
+        }, what: "composer's exit");
+
+        $this->assertSame(0, $code);
+        $this->assertFileExists($dir.'/vendor/composer/autoload_psr4.php', 'composer ran in the PLUGIN directory');
+
+        // A second call now answers NotNeeded — the vendor tree is there.
+        $this->assertSame(DependencyInstall::NotNeeded, $installer->installDependencies($dir, static fn (int $exit) => null));
+    }
+
+    public function testAFailingComposerReportsItsCodeToTheCaller(): void
+    {
+        $installer = $this->installer(composer: $this->composerStub(3));
+
+        $code = null;
+        $installer->installDependencies($this->pluginDir('flaky', '{"require":{"vend/lib":"^1.0"}}'), static function (int $exit) use (&$code): void {
+            $code = $exit;
+        });
+        $this->await(static function () use (&$code): bool {
+            return null !== $code;
+        }, what: "composer's exit");
+
+        $this->assertSame(3, $code, 'the wording is the caller\'s; the code is ours');
+    }
+
+    public function testInstallingDependenciesIsRefusedWhileAnotherInstallRuns(): void
+    {
+        // One slot for the whole class, shared with the clone — a caller that
+        // wants several installs has to serialize them itself.
+        $installer = $this->installer(git: $this->git(), composer: $this->composerStub(0));
+        $repo = $this->repo(Presence::With);
+        $installer->install('file://'.$repo, 'project', static fn (?string $error, ?string $file) => null);
+
+        $this->assertSame(
+            DependencyInstall::Busy,
+            $installer->installDependencies($this->pluginDir('needy', '{"require":{"vend/lib":"^1.0"}}'), static fn (int $exit) => null),
+        );
+
+        // …and a plugin that owes nothing is NOT refused, because NotNeeded is
+        // answered before the slot is ever consulted.
+        $this->assertSame(
+            DependencyInstall::NotNeeded,
+            $installer->installDependencies($this->pluginDir('nodeps', '{}'), static fn (int $exit) => null),
+        );
     }
 }

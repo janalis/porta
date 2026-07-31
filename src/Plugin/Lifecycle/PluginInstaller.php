@@ -122,7 +122,42 @@ final class PluginInstaller
 
             return;
         }
-        $this->installDependencies($dest, $onDone);
+        $this->finishInstall($dest, $onDone);
+    }
+
+    /**
+     * The install's tail: its dependencies, then the one $onDone.
+     *
+     * A composer failure does NOT undo the install — the directory is exactly
+     * what the user asked for, and the next boot installs it or declines it by
+     * name ({@see \Porta\Plugin\Runtime\PluginManifest::needsInstall}).
+     * Removing it would throw away a good clone over a transient network error.
+     *
+     * @param \Closure(?string, ?string): void $onDone
+     */
+    private function finishInstall(string $dest, \Closure $onDone): void
+    {
+        $pluginFile = $dest.'/plugin.php';
+        $outcome = $this->installDependencies($dest, function (int $code) use ($pluginFile, $onDone): void {
+            if (0 !== $code) {
+                $this->fail($onDone, $this->translator->trans('Installed, but composer install failed (exit code %code%)', ['%code%' => $code]));
+
+                return;
+            }
+            $onDone(null, $pluginFile);
+        });
+        if (DependencyInstall::Started === $outcome) {
+            return;
+        }
+        if (DependencyInstall::NotNeeded === $outcome) {
+            $onDone(null, $pluginFile);
+
+            return;
+        }
+        // Busy cannot arrive here — the copy branch never took the slot and the
+        // clone branch cleared it before calling — so it shares NoComposer's
+        // line rather than claiming an arm no test could reach.
+        $this->fail($onDone, $this->translator->trans('Installed, but composer is not available to install its dependencies'));
     }
 
     /** @param \Closure(?string, ?string): void $onDone */
@@ -149,7 +184,7 @@ final class PluginInstaller
 
                 return;
             }
-            $this->installDependencies($dest, $onDone);
+            $this->finishInstall($dest, $onDone);
         });
         if (!$started) {
             // proc_open failure is environmental (fd exhaustion)
@@ -162,51 +197,56 @@ final class PluginInstaller
     }
 
     /**
-     * `composer install --no-dev` in the freshly installed plugin, when it
-     * declares dependencies and did not ship them.
+     * `composer install --no-dev` in a plugin's OWN directory, when its manifest
+     * says it owes one.
      *
-     * A failure here does NOT undo the install: the directory is exactly what
-     * the user asked for, and the next boot declines the plugin by name with
-     * the command to run ({@see \Porta\Plugin\Runtime\PluginManifest::needsInstall}).
-     * Removing it would throw away a good clone over a transient network error.
+     * The result comes back synchronously because the caller has to know
+     * whether to wait: only {@see DependencyInstall::Started} is followed by
+     * $onExit, and only then exactly once. The MESSAGE is the caller's, not
+     * this method's — "installed, but…" and "enabled, but…" are different
+     * sentences about the same exit code.
      *
-     * @param \Closure(?string, ?string): void $onDone
+     * The guard order is deliberate. `NotNeeded` is answered FIRST, so a plugin
+     * that owes nothing is never refused because someone else's clone holds the
+     * slot — which is what lets a whole requirement chain of dependency-free
+     * plugins enable during an install.
+     *
+     * @param \Closure(int): void $onExit composer's exit code
      */
-    private function installDependencies(string $dest, \Closure $onDone): void
+    public function installDependencies(string $pluginDir, \Closure $onExit): DependencyInstall
     {
-        $pluginFile = $dest.'/plugin.php';
         // The SAME predicate the loader declines a plugin with, so the two can
         // never disagree about whether an install is owed: a composer.json
         // whose only requirement is `php` asks for nothing, and shelling out
         // for it would be a subprocess to answer no.
-        if (!PluginManifest::beside($pluginFile)->needsInstall()) {
-            $onDone(null, $pluginFile);
-
-            return;
+        if (!PluginManifest::beside($pluginDir.'/plugin.php')->needsInstall()) {
+            return DependencyInstall::NotNeeded;
+        }
+        if (null !== $this->running) {
+            return DependencyInstall::Busy;
         }
         if (null === $this->composerBinary) {
-            $this->fail($onDone, $this->translator->trans('Installed, but composer is not available to install its dependencies'));
-
-            return;
+            return DependencyInstall::NoComposer;
         }
-        $this->running = new AsyncProcess([$this->composerBinary, 'install', '--no-dev', '--no-interaction'], $dest);
-        $started = $this->running->start(function (int $code) use ($pluginFile, $onDone): void {
+        $this->running = new AsyncProcess([$this->composerBinary, 'install', '--no-dev', '--no-interaction'], $pluginDir);
+        // The slot is cleared BEFORE the callback runs, with no loop turn in
+        // between, so a caller draining a queue can start the next install from
+        // inside it and never see Busy.
+        $started = $this->running->start(function (int $code) use ($onExit): void {
             $this->running = null;
-            if (0 !== $code) {
-                $this->fail($onDone, $this->translator->trans('Installed, but composer install failed (exit code %code%)', ['%code%' => $code]));
-
-                return;
-            }
-            $onDone(null, $pluginFile);
+            $onExit($code);
         });
         if (!$started) {
             // proc_open failure is environmental (fd exhaustion)
             // @codeCoverageIgnoreStart
             $this->running = null;
-            $this->fail($onDone, $this->translator->trans('Installed, but composer is not available to install its dependencies'));
+
+            return DependencyInstall::NoComposer;
 
             // @codeCoverageIgnoreEnd
         }
+
+        return DependencyInstall::Started;
     }
 
     /** Delete an installed plugin's directory; a translated error, or null on success. */
