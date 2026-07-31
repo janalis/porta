@@ -7,7 +7,6 @@ namespace Porta\Search;
 use Porta\Container\AsIdeService;
 use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
-use Porta\History\LocalHistoryController;
 use Porta\Overlay\State\FindModalCallbacks;
 use Porta\Support\Scheduler;
 use Porta\Widget\CodeEditorWidget;
@@ -40,7 +39,6 @@ final class SearchUiWiring
         private readonly Tui $tui,
         private readonly BottomDock $panels,
         private readonly ProjectSearchController $projectSearch,
-        private readonly LocalHistoryController $localHistory,
         private readonly ResultContextProvider $resultContext,
         private readonly FileOpener $bufferService,
         private readonly Scheduler $scheduler,
@@ -138,11 +136,6 @@ final class SearchUiWiring
                 $mode = null === $tool ? $this->panels->mode() : $tool->mode;
                 if (\in_array($mode, [ResultsPanelMode::LspLog, ResultsPanelMode::Notifications], strict: true)) {
                     return; // log rows carry no file location
-                }
-                if (ResultsPanelMode::History === $mode) {
-                    $this->localHistory->restore($line);
-
-                    return;
                 }
             }
             $this->bufferService->openFile($this->rootDir.'/'.$relativePath, focus: OpenFocus::Editor);

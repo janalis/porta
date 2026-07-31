@@ -118,7 +118,7 @@ final class DockLiveRefreshListenerTest extends TestCase
         $listener->onDiagnosticsChanged(new DiagnosticsChanged()); // closed panel: a no-op
         $this->assertFalse($this->results->isOpen());
 
-        $this->dock->showList(ResultsPanelMode::History, 'Local History', [['path' => 'x', 'line' => 0, 'text' => 'entry']]);
+        $this->dock->showList(ResultsPanelMode::Notifications, 'Notifications', [['path' => 'x', 'line' => 0, 'text' => 'entry']]);
         $listener->onDiagnosticsChanged(new DiagnosticsChanged()); // foreign mode: a no-op
         $this->assertStringContainsString('entry', $this->plainPanel(), 'the history rows were not clobbered');
         $this->assertStringNotContainsString('boom', $this->plainPanel());

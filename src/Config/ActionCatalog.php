@@ -134,7 +134,7 @@ final class ActionCatalog
         'ide_todo' => ['label' => 'Show TODOs', 'keys' => ['alt+8'], 'adoptable' => true], // implemented by the bundled todo plugin
         'ide_command_palette' => ['label' => 'Find Action', 'keys' => ['ctrl+shift+a']],
         'ide_search_everywhere' => ['label' => 'Search Everywhere', 'keys' => ['ctrl+shift+e']],
-        'ide_local_history' => ['label' => 'Show Local History', 'keys' => ['ctrl+alt+h']],
+        'ide_local_history' => ['label' => 'Show Local History', 'keys' => ['ctrl+alt+h'], 'adoptable' => true], // implemented by the bundled local-history plugin
         'ide_terminal' => ['label' => 'Open Terminal', 'keys' => ['ctrl+`', 'alt+f12']],
         'ide_terminal_new' => ['label' => 'New Terminal Session', 'keys' => ['ctrl+shift+`', 'alt+f11']],
         'dock_next_panel' => ['label' => 'Next Dock Panel', 'keys' => ['alt+page_down']],

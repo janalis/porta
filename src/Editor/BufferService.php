@@ -12,7 +12,6 @@ use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
 use Porta\Event\DiagnosticsChanged;
-use Porta\History\LocalHistory;
 use Porta\I18n\Translator;
 use Porta\Lsp\BufferReopener;
 use Porta\Lsp\FormatOnSave;
@@ -63,7 +62,6 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         private readonly Notifier $notifier,
         private readonly Tui $tui,
         private readonly LspSessionPool $lsp,
-        private readonly LocalHistory $history,
         private readonly EditorConfigResolver $editorConfigResolver,
         private readonly string $rootDir,
         private readonly Translator $translator,
@@ -524,7 +522,6 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         }
         $buffer->document->markSaved();
         $buffer->stampFromDisk(); // our own save must not look external
-        $this->history->snapshot($buffer->path, $bytes);
         $this->dispatcher->dispatch(new BufferSaved($buffer));
 
         return true;

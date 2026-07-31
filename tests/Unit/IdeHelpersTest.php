@@ -325,27 +325,6 @@ final class IdeHelpersTest extends TestCase
         return $controller;
     }
 
-    public function testShowLocalHistoryWithNoActiveFileIsNoOp(): void
-    {
-        // The bare Ide has no file open.
-        $this->localHistory()->show();
-        $this->assertFalse(Services::resolve($this->ide, Tui::class)->getById('results')->isOpen());
-    }
-
-    public function testRestoreHistorySnapshotWithBadIndexOrMissingFile(): void
-    {
-        // No snapshots listed and no active buffer -> guard returns.
-        $this->localHistory()->restore(0);
-
-        // Now point at a snapshot file that does not exist, with a buffer open.
-        $buffers = Services::resolve($this->ide, BufferManager::class);
-        $buffers->open($this->project->path('x.php'), "content\n");
-        Probe::set($this->localHistory(), 'snapshots', ['/nonexistent/1.snap']);
-
-        $this->localHistory()->restore(0);
-        $this->assertStringContainsString('Could not read that snapshot', \Porta\Tests\Support\Toasts::last($this->ide));
-    }
-
     public function testRestoreSessionSkipsMissingFiles(): void
     {
         // Write a session referencing one real and one missing file.

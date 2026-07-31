@@ -538,11 +538,12 @@ final class IdeConfigTest extends TestCase
         // Disabling from the default state writes "the default minus that name".
         $project = new TempProject(['.porta.json' => '{}']);
         $this->assertTrue(PortaJsonWriter::persistBundledDisabled($project->dir, 'image-viewer'));
-        $this->assertSame(['graph-viewer', 'todo'], IdeConfig::load($project->dir)->enabledPlugins);
+        $this->assertSame(['graph-viewer', 'todo', 'local-history'], IdeConfig::load($project->dir)->enabledPlugins);
 
         // Disabling the last one must persist an explicit [] — an unset key would flip the default back on.
         $this->assertTrue(PortaJsonWriter::persistBundledDisabled($project->dir, 'graph-viewer'));
         $this->assertTrue(PortaJsonWriter::persistBundledDisabled($project->dir, 'todo'));
+        $this->assertTrue(PortaJsonWriter::persistBundledDisabled($project->dir, 'local-history'));
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertSame([], $written['enabledPlugins'] ?? null, 'the empty list is explicit in the file');
         $this->assertSame([], IdeConfig::load($project->dir)->enabledPlugins);

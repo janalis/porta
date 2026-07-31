@@ -8,7 +8,6 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
 use Porta\Config\PaletteVisibility;
 use Porta\Editor\BufferService;
-use Porta\History\LocalHistoryController;
 use Porta\Layout\PaneResizer;
 use Porta\Run\RunController;
 use Porta\Search\Everywhere\SearchEverywhereController;
@@ -36,7 +35,6 @@ final class WorkbenchCommands implements CommandProvider
         private readonly SearchEverywhereController $searchEverywhere,
         #[Autowire(service: 'porta.command_palette')]
         private readonly SearchEverywhereController $commandPalette,
-        private readonly LocalHistoryController $localHistory,
         private readonly RunController $run,
         private readonly EditorArea $editorArea,
         private readonly Tui $tui,
@@ -114,7 +112,6 @@ final class WorkbenchCommands implements CommandProvider
                 keyBound: KeyDispatch::Bound,
                 inPalette: PaletteVisibility::Hidden,
             )
-            ->add('ide_local_history', fn () => $this->localHistory->show(), keyBound: KeyDispatch::Bound, inPalette: PaletteVisibility::Hidden)
             ->add('ide_run_last', fn () => $this->run->runLast(), keyBound: KeyDispatch::Bound, inPalette: PaletteVisibility::Hidden)
             ->add('ide_menu', fn () => $this->workbench->openMenu(), keyBound: KeyDispatch::Bound, inPalette: PaletteVisibility::Hidden);
     }

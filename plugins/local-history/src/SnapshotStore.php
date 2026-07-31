@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\History;
+namespace Porta\LocalHistory;
 
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
@@ -13,8 +13,12 @@ use Symfony\Component\Filesystem\Filesystem;
  * `<root>/.porta/history/<hash>/<stamp>.snap`. A hard per-file cap prunes
  * the oldest snapshots. Independent of git — this is the editor's own undo
  * safety net across sessions.
+ *
+ * The path layout is unchanged from when this lived in `src/`, deliberately:
+ * every existing user's snapshots stay reachable across the move, and there is
+ * no migration worth writing for what is a cache.
  */
-final readonly class LocalHistory
+final readonly class SnapshotStore
 {
     private string $baseDir;
     private Filesystem $fs;

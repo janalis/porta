@@ -175,7 +175,11 @@ final class MenuModelTest extends TestCase
 
     public function testFileScopedItemsDisabledWhenNoFileOpen(): void
     {
-        $menus = $this->build($this->gitCommands(), new CodeEditorWidget()); // filePath === null
+        // ide_local_history is the local-history PLUGIN's now, so the File-menu
+        // item exists only when that plugin registered it — registering it here
+        // is what keeps the file-scoped rule under test.
+        $commands = $this->gitCommands()->add('ide_local_history', static function (): void {}, label: 'Show Local History');
+        $menus = $this->build($commands, new CodeEditorWidget()); // filePath === null
 
         // Editor document actions + file-scoped IDE commands are disabled.
         $this->assertFalse($this->item($menus, 'Edit', 'Undo')->enabled());
@@ -183,6 +187,8 @@ final class MenuModelTest extends TestCase
         $this->assertFalse($this->item($menus, 'Navigate', 'Go to Line')->enabled());
         $this->assertFalse($this->item($menus, 'Edit', 'Reformat File')->enabled());
         $this->assertFalse($this->item($menus, 'Git', 'Git: Stage Current File')->enabled());
+        // Adopted by the local-history plugin now, so it is only in the menu
+        // when that plugin registered it — which is what $commands does here.
         $this->assertFalse($this->item($menus, 'File', 'Show Local History')->enabled());
 
         // The git view itself is not file-scoped.

@@ -42,13 +42,13 @@ final class DockToolTabsTest extends TestCase
     {
         $tabs = new DockToolTabs();
         $foo = $tabs->openOrReuse(ResultsPanelMode::Search, 'foo', ResultsPanelFields::searchResults());
-        $todo = $tabs->openOrReuse(ResultsPanelMode::History, 'Local History', ResultsPanelFields::resultsOnly());
+        $todo = $tabs->openOrReuse(ResultsPanelMode::Notifications, 'Notifications', ResultsPanelFields::resultsOnly());
 
         // find() is private (its public face is openOrReuse's identity rule):
         // reusing the same (mode, title) returns the same tab, a new title appends.
         $this->assertSame($foo, $tabs->openOrReuse(ResultsPanelMode::Search, 'foo', ResultsPanelFields::searchResults()));
         $this->assertNotSame($foo, $tabs->openOrReuse(ResultsPanelMode::Search, 'missing', ResultsPanelFields::searchResults()));
-        $this->assertSame($todo, $tabs->findByMode(ResultsPanelMode::History));
+        $this->assertSame($todo, $tabs->findByMode(ResultsPanelMode::Notifications));
         $this->assertNull($tabs->findByMode(ResultsPanelMode::Problems));
         $this->assertSame($foo, $tabs->findById(1));
         $this->assertNull($tabs->findById(99));

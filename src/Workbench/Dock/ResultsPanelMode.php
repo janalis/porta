@@ -11,16 +11,14 @@ namespace Porta\Workbench\Dock;
  *
  * Core's own list, and it stays closed: a {@see DockToolTab} may carry a null
  * mode instead, which is what a CONTRIBUTED tool does (see
- * {@see DockToolHandlers}). The TODO scan used to have a case here and lost it
- * when it became a bundled plugin — a case leaving is the measurable half of a
- * built-in becoming an extension.
+ * {@see DockToolHandlers}). The TODO scan and Local History each used to have a
+ * case here and lost it on becoming a bundled plugin — a case leaving is the
+ * measurable half of a built-in becoming an extension.
  */
 enum ResultsPanelMode
 {
     /** Project-wide text search (grep), with replace. */
     case Search;
-    /** Local-history snapshots for the active file. */
-    case History;
     /** Aggregated diagnostics across open buffers. */
     case Problems;
     /** The captured language-server output, newest first (inert rows). */

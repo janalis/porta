@@ -70,7 +70,7 @@ final class IdeConfig
      * {@see PortaJsonWriter} materializes it before editing so a disable from
      * the default state persists "the default minus that name".
      */
-    public const array DEFAULT_ENABLED_PLUGINS = ['image-viewer', 'graph-viewer', 'todo'];
+    public const array DEFAULT_ENABLED_PLUGINS = ['image-viewer', 'graph-viewer', 'todo', 'local-history'];
 
     /** An empty `highlight` block: no global default, no per-language overrides. */
     private const array NO_HIGHLIGHT = ['default' => '', 'languages' => []];

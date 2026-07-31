@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\History;
+namespace Porta\LocalHistory\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Porta\History\LocalHistory;
+use Porta\LocalHistory\SnapshotStore;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Clock\MockClock;
 
-final class LocalHistoryTest extends TestCase
+final class SnapshotStoreTest extends TestCase
 {
     /** A deterministic clock; advance it with ->sleep() to get distinct stamps. */
     private function clock(): MockClock
@@ -22,7 +22,7 @@ final class LocalHistoryTest extends TestCase
     {
         $project = new TempProject(['a.php' => "v1\n"]);
         $clock = $this->clock();
-        $history = new LocalHistory($project->dir, $clock);
+        $history = new SnapshotStore($project->dir, $clock);
         $path = $project->path('a.php');
 
         $this->assertSame(0, $history->snapshot($path, "v1\n"));
@@ -39,7 +39,7 @@ final class LocalHistoryTest extends TestCase
     public function testIdenticalContentIsNotDuplicated(): void
     {
         $project = new TempProject(['a.php' => 'x']);
-        $history = new LocalHistory($project->dir, $this->clock());
+        $history = new SnapshotStore($project->dir, $this->clock());
         $path = $project->path('a.php');
 
         $history->snapshot($path, 'same');
@@ -51,7 +51,7 @@ final class LocalHistoryTest extends TestCase
     {
         $project = new TempProject(['a.php' => 'x']);
         $clock = $this->clock();
-        $history = new LocalHistory($project->dir, $clock, maxPerFile: 3);
+        $history = new SnapshotStore($project->dir, $clock, maxPerFile: 3);
         $path = $project->path('a.php');
 
         for ($i = 0; $i < 6; ++$i) {
@@ -69,14 +69,14 @@ final class LocalHistoryTest extends TestCase
     public function testListForUnknownFileIsEmpty(): void
     {
         $project = new TempProject();
-        $history = new LocalHistory($project->dir, $this->clock());
+        $history = new SnapshotStore($project->dir, $this->clock());
         $this->assertSame([], $history->list($project->path('never.php')));
     }
 
     public function testReadMissingSnapshotReturnsNull(): void
     {
         $project = new TempProject();
-        $history = new LocalHistory($project->dir, $this->clock());
+        $history = new SnapshotStore($project->dir, $this->clock());
         $this->assertNull($history->read($project->path('.porta/history/x/1.snap')));
     }
 
@@ -89,14 +89,14 @@ final class LocalHistoryTest extends TestCase
         }
         file_put_contents($project->path('.porta/history'), data: 'not a dir');
 
-        $history = new LocalHistory($project->dir, $this->clock());
+        $history = new SnapshotStore($project->dir, $this->clock());
         $this->assertSame(-1, $history->snapshot($project->path('a.php'), 'x'));
     }
 
     public function testSnapshotFailsWhenFileCannotBeWritten(): void
     {
         $project = new TempProject(['a.php' => 'x']);
-        $history = new LocalHistory($project->dir, $this->clock());
+        $history = new SnapshotStore($project->dir, $this->clock());
         $path = $project->path('a.php');
 
         // First snapshot creates the per-file directory; make it read-only so
