@@ -70,13 +70,50 @@ final class MultiCaret
 
     public function hasMultiple(): bool
     {
-        return [] !== $this->extraCarets;
+        return [] !== $this->alive();
     }
 
     /** @return list<Caret> secondary carets (for tests/render) */
     public function carets(): array
     {
-        return $this->extraCarets;
+        return $this->alive();
+    }
+
+    /**
+     * The extras that still address text that exists.
+     *
+     * A caret is a position, and a WHOLESALE document swap — the filesystem
+     * reconciler reloading a file changed on disk, a project-wide replace, a
+     * plugin restoring a snapshot — moves every position out from under them
+     * without telling anyone: `Document::replaceAll()` has no way to reach the
+     * widget-owned carets. Left alone, the next keystroke writes at a line that
+     * no longer exists: typing one character into a one-line document with two
+     * stale extras produced "Xtiny\nXX".
+     *
+     * Filtering on READ rather than clearing on write is what keeps that true
+     * for every path, including ones that do not know carets exist. A caret
+     * whose line survives but whose column does not is clamped instead of
+     * dropped — the user's second cursor is still on that line.
+     *
+     * @return list<Caret>
+     */
+    private function alive(): array
+    {
+        $lines = $this->document->getLineCount();
+        $kept = [];
+        foreach ($this->extraCarets as $caret) {
+            if ($caret->line >= $lines || $caret->anchorLine >= $lines) {
+                continue;
+            }
+            $col = $this->document->clampCol($caret->line, $caret->col);
+            $anchorCol = $this->document->clampCol($caret->anchorLine, $caret->anchorCol);
+            $kept[] =
+                $col === $caret->col && $anchorCol === $caret->anchorCol
+                    ? $caret
+                    : new Caret($caret->line, $col, $caret->anchorLine, $anchorCol);
+        }
+
+        return $kept;
     }
 
     /**
@@ -353,7 +390,7 @@ final class MultiCaret
     /** @return list<Caret> primary + extras, with selections */
     private function caretRecords(): array
     {
-        return [$this->primaryRecord(), ...$this->extraCarets];
+        return [$this->primaryRecord(), ...$this->alive()];
     }
 
     /** Restore a caret's selection (or bare cursor) onto the Document. */

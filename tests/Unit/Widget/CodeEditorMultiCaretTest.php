@@ -414,4 +414,44 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor->handleInput("\x1a"); // ctrl+z: one atomic undo restores every row
         $this->assertSame("aaaa\nbb\ncccc\n", $editor->getDocument()->getText());
     }
+
+    public function testCaretsThatOutliveTheTextTheyPointedAtAreDropped(): void
+    {
+        // A wholesale document swap — the filesystem reconciler reloading a
+        // file changed on disk, a project-wide replace, a plugin restoring a
+        // snapshot — moves every position out from under the extra carets, and
+        // Document::replaceAll() has no way to reach them: they are the
+        // widget's. Left alone the next keystroke writes at a line that no
+        // longer exists.
+        $editor = $this->editor("one\ntwo\nthree\nfour\n");
+        $editor->getDocument()->setCursor(0, 0);
+        $editor->handleInput("\x1b[1;7B"); // ctrl+alt+down ×3 → extras on lines 0, 1, 2
+        $editor->handleInput("\x1b[1;7B");
+        $editor->handleInput("\x1b[1;7B");
+        $this->assertCount(3, EditorState::multiCaret($editor)->carets());
+
+        $editor->getDocument()->replaceAll("tiny\n"); // two lines: "tiny" and the empty tail
+
+        $carets = EditorState::multiCaret($editor)->carets();
+        $this->assertCount(2, $carets, 'the caret addressing line 2 is gone; the two that still have text stay');
+        foreach ($carets as $caret) {
+            $this->assertLessThan($editor->getDocument()->getLineCount(), $caret->line);
+        }
+    }
+
+    public function testACaretWhoseLineSurvivesIsClampedRatherThanDropped(): void
+    {
+        // The user's second cursor is still on that line; only the column moved
+        // out from under it.
+        $editor = $this->editor("aaaaaaaa\nbbbbbbbb\n");
+        $editor->getDocument()->setCursor(1, 8);
+        $editor->handleInput("\x1b[1;7B"); // the extra stays at line 1, column 8
+        $this->assertSame(8, EditorState::multiCaret($editor)->carets()[0]->col);
+
+        $editor->getDocument()->replaceAll("aaaaaaaa\nbb\n");
+
+        $carets = EditorState::multiCaret($editor)->carets();
+        $this->assertCount(1, $carets, 'the line is still there');
+        $this->assertSame(2, $carets[0]->col, 'clamped to the shorter line');
+    }
 }
