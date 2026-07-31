@@ -1,0 +1,8 @@
+{
+    "name": "acme/tools",
+    "autoload": {
+        "psr-4": {
+            "Acme\\Tools\\": "src/"
+        }
+    }
+}

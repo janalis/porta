@@ -4,7 +4,13 @@
 
 $vendorDir = dirname(__DIR__);
 
+$baseDir = dirname($vendorDir);
+
 return array(
+    // Composer dumps the ROOT package's own psr-4 as well, which is what makes
+    // a plugin's own prefix arrive twice — once from its manifest, once from
+    // here. The loader's dedup is why that is a no-op.
+    'Acme\\Vendored\\' => array($baseDir.'/src'),
     'Vend\\Lib\\' => array($vendorDir.'/vend/lib/src'),
     // The shadowing case: a package Porta itself ships. Composer's loader is
     // ahead of ours, so this directory is never reached.

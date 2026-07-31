@@ -1,1 +1,11 @@
-{ "name": "acme/needs-install", "require": { "vend/lib": "^1.0" } }
+{
+    "name": "acme/needs-install",
+    "require": {
+        "vend/lib": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Acme\\NeedsInstall\\": "src/"
+        }
+    }
+}

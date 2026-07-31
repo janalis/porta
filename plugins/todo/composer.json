@@ -1,0 +1,14 @@
+{
+    "name": "porta/todo",
+    "description": "Scans the project for TODO and FIXME comments into a dock tool",
+    "type": "porta-plugin",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "Porta\\Todo\\": "src/"
+        }
+    }
+}

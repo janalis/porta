@@ -1,1 +1,11 @@
-{ "name": "acme/vendored", "require": { "vend/lib": "^1.0" } }
+{
+    "name": "acme/vendored",
+    "require": {
+        "vend/lib": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Acme\\Vendored\\": "src/"
+        }
+    }
+}

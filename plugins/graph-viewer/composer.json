@@ -1,0 +1,21 @@
+{
+    "name": "porta/graph-viewer",
+    "description": "Renders .dot/.gv graphs and PlantUML diagrams in an editor pane",
+    "type": "porta-plugin",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "Porta\\GraphViewer\\": "src/"
+        }
+    },
+    "extra": {
+        "porta": {
+            "requires": [
+                "image-viewer"
+            ]
+        }
+    }
+}
