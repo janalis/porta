@@ -107,7 +107,7 @@ final class IdePhpLspPluginsTest extends TestCase
                     $tui->handleInput("\t"); // form → nav
                     $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
                     $tui->handleInput("\x1b[B"); // phpantom sub-item
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('phpantom_lsp binary', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the binary setting shows on the page');
 
                     // Disable phpantom → the php server is dropped live.
@@ -116,17 +116,17 @@ final class IdePhpLspPluginsTest extends TestCase
                     $tui->handleInput("\x1b[A"); // clamp to the Enabled row
                     $tui->handleInput("\x1b[A");
                     $tui->handleInput("\r"); // toggle off
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Plugin "phpantom" disabled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
                 600 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('enable a PHP server in Settings', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'disabling the provider unserves PHP → the hint returns');
 
                     // Re-enable → PHP is served again.
                     $terminal->clearOutput();
                     $tui->handleInput("\r"); // toggle back on
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Plugin "phpantom" enabled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
                 750 => function ($tui, $terminal): void {
@@ -151,7 +151,7 @@ final class IdePhpLspPluginsTest extends TestCase
             $project->path('a.php'),
             [
                 300 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('LSP:none (enable a PHP server in Settings)', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -175,7 +175,7 @@ final class IdePhpLspPluginsTest extends TestCase
                     $tui->handleInput("\t"); // form → nav
                     $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
                     $tui->handleInput("\x1b[B"); // phpantom sub-item
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Install phpantom', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the missing binary offers an install');
                 },
             ],

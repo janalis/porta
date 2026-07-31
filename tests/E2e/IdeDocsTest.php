@@ -75,19 +75,19 @@ final class IdeDocsTest extends TestCase
                     $this->assertStringContainsString('plain prose here', $screen);
 
                     $tui->handleInput("\x7f"); // Backspace → back to the README
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Guides', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
 
                     $tui->handleInput("\x7f"); // history exhausted
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Nowhere to go back to', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
 
                     // Ctrl+Right cycles back to the code tab and Ctrl+Left returns.
                     $tui->handleInput("\x1b[1;5C");
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('<?php', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the editor pane swapped back in');
                     $tui->handleInput("\x1b[1;5D");
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Guides', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'and the help tab returns rendered');
                 },
                 900 => function ($tui, $terminal, $ide): void {
@@ -184,14 +184,14 @@ final class IdeDocsTest extends TestCase
                     $this->assertNotNull($rect, 'the help viewer pane is laid out');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 1 + 1, $rect->row + 1)); // 0-based rect → 1-based SGR
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 1 + 1, $rect->row + 1));
-                    $tui->tick(); // render the page so its links are cycle-able
+                    $this->frame($tui); // render the page so its links are cycle-able
                     $this->assertStringContainsString('Guides', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the ‹ arrow navigated back');
                     $tui->handleInput("\x1b[Z"); // shift+tab → the last link (Site)
                     $tui->handleInput("\r");
                     $tui->tick();
                 },
                 2600 => function ($tui, $terminal, $ide) use ($captureFile, $docs): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Opened https://example.com/x', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // The shim runs as an independent OS process — poll for its
                     // write instead of racing it at a fixed tick (blocking here

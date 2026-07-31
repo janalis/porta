@@ -211,7 +211,7 @@ final class IdeGitFlowsTest extends TestCase
                     $tui->handleInput("\r");
                 },
                 700 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('No blame for this line', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -246,7 +246,7 @@ final class IdeGitFlowsTest extends TestCase
                     $palette($tui, label: 'Git: Stash');
                 },
                 1300 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Git not available', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -403,7 +403,7 @@ final class IdeGitFlowsTest extends TestCase
                     $tui->handleInput("\r");
                 },
                 1100 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('No other local branches to delete', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -695,7 +695,7 @@ final class IdeGitFlowsTest extends TestCase
                     $tui->handleInput("\x1b[<0;10;5m");
                 },
                 1950 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('+new', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the click loaded the untracked diff');
                     // Horizontal wheel (trackpad code 67) over the diff pane
                     // scrolls sideways; the tree/list panes ignore it.

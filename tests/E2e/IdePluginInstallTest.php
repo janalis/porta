@@ -115,7 +115,7 @@ final class IdePluginInstallTest extends TestCase
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $this->assertContains('Hi from installee', array_column($commands->paletteCommands(), 'label'));
                     $commands->run('installee:hi');
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('installee says hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
 
                     // The DEFAULT KEY dispatches live too — no restart: the
@@ -124,7 +124,7 @@ final class IdePluginInstallTest extends TestCase
                     // focus dance is needed.)
                     $terminal->consumeOutput();
                     $tui->handleInput("\x1b\x17"); // ctrl+alt+w, the plugin's default key
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('installee says hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the default key dispatched without a restart');
 
                     // A plugin that installs but fails to load flashes the loader's error.
@@ -145,7 +145,7 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\x1b[B"); // installee sub-item
                     $tui->handleInput("\t"); // nav → form (Enabled row)
                     $tui->handleInput("\r"); // toggle off
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Plugin "installee" disabled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
                     $this->assertSame(['installee'], $config['disabledPlugins'] ?? null, 'a project plugin disables via disabledPlugins');
@@ -210,7 +210,7 @@ final class IdePluginInstallTest extends TestCase
                     $tui->tick();
                     $this->assertContains('Hi from demo', array_column($commands->paletteCommands(), 'label'), 'reinstalled live');
                     $commands->run('demo:hi');
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('demo says hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'and its boot-time key/handler works again');
                 },
             ],
@@ -254,7 +254,7 @@ final class IdePluginInstallTest extends TestCase
 
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $commands->run('cloned:hi');
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('cloned says hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -279,7 +279,7 @@ final class IdePluginInstallTest extends TestCase
                 100 => function ($tui, $terminal, $ide) use ($project, $home): void {
                     $this->openPluginsSection($tui, $ide);
                     $tui->handleInput("\r"); // cycle the scope row: project → global
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Install into  < Global (all projects) >', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
 
                     $tui->handleInput("\x1b[B"); // install row

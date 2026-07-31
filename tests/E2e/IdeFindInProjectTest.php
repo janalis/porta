@@ -446,7 +446,7 @@ final class IdeFindInProjectTest extends TestCase
                     $tui->handleInput("\x1ba"); // alt+a with a multiline query but no matches
                 },
                 900 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Nothing to replace', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],

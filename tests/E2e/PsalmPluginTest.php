@@ -92,7 +92,7 @@ final class PsalmPluginTest extends TestCase
 
                     // The Problems panel aggregates it like any LSP diagnostic.
                     $tui->handleInput("\x1b6"); // alt+6
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('✗ UndefinedVariable: Boom detected', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\x1b"); // close the panel
 
@@ -123,7 +123,7 @@ final class PsalmPluginTest extends TestCase
             [
                 100 => function ($tui, $terminal, $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('psalm:toggle-on-save');
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('psalm on save: on', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertTrue((bool) (\Porta\Config\IdeConfig::load($project->dir)->plugins['psalm']['autoLint'] ?? false), 'the toggle persisted to .porta.json');
 

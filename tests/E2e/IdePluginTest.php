@@ -97,7 +97,7 @@ final class IdePluginTest extends TestCase
                     $tui->tick();
                     $this->assertSame('yes', (string) file_get_contents($project->path('a.php.hooked')), 'the onFileSaved hook ran');
                     $tui->handleInput("\x1b\x15"); // ctrl+alt+u → demo:boom (throws)
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Plugin "demo" failed: kaboom', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the throw became a flash');
                     // …and the IDE is still alive: the next keystroke lands in the editor.
                     $tui->handleInput('Z');
@@ -130,7 +130,7 @@ final class IdePluginTest extends TestCase
                     foreach (str_split('Say') as $char) {
                         $tui->handleInput($char);
                     }
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Say Hello', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the palette lists the plugin command');
                     $tui->handleInput("\x1b"); // close the palette
                 },

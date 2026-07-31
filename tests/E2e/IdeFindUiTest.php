@@ -223,7 +223,7 @@ final class IdeFindUiTest extends TestCase
                     foreach (str_split('foo') as $ch) {
                         $tui->handleInput($ch);
                     }
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('[1/3]', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'substring mode hits foobar too');
 
                     // Click the right-aligned [\b] tag through the real router.
@@ -262,7 +262,7 @@ final class IdeFindUiTest extends TestCase
                     }
                 },
                 750 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('0 results', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\x1br"); // alt+r -> enable regex, re-runs the search
                 },
@@ -336,7 +336,7 @@ final class IdeFindUiTest extends TestCase
                     $tui->handleInput("\x1ba"); // alt+a -> replace all
                 },
                 1000 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Replaced in 1 file', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -357,7 +357,7 @@ final class IdeFindUiTest extends TestCase
                     $tui->handleInput("\x1ba"); // replace all with no query/results
                 },
                 500 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Nothing to replace', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],

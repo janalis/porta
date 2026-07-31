@@ -259,7 +259,7 @@ final class IdeTerminalRunTest extends TestCase
                     }
                 },
                 500 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Open Terminal', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\r"); // run it
                 },
@@ -287,7 +287,7 @@ final class IdeTerminalRunTest extends TestCase
                     $this->assertTrue(EditorState::pickerOpen($tui->getById('editor')));
                 },
                 400 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Run current file: hello.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\r"); // run it -> terminal panel
                 },
@@ -295,7 +295,7 @@ final class IdeTerminalRunTest extends TestCase
                     $this->assertTrue($tui->getById('terminal')->isOpen());
                 },
                 900 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('run-output-ok', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -315,7 +315,7 @@ final class IdeTerminalRunTest extends TestCase
                 300 => function ($tui, $terminal): void {
                     // Run Last with no prior run flashes a hint.
                     $tui->handleInput("\x1b[21;2~"); // shift+f10
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('No previous run', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // Pick a run via the menu.
                     $tui->handleInput("\x1b[114;6u");

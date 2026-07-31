@@ -125,7 +125,7 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->handleInput("\x1b[116;6u");
                 },
                 340 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('No test found', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -140,7 +140,7 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->handleInput("\x1b[116;6u");
                 },
                 340 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('No test subject found', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -429,7 +429,7 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->handleInput("\x1b\x02"); // ctrl+alt+b
                 },
                 700 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('No implementation found', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // >= 80 returns several candidates, all outside the filesystem.
                     $tui->getById('editor')->getDocument()->setCursor(85, 0);
@@ -515,7 +515,7 @@ final class IdeLspFeaturesTest extends TestCase
                 600 => function ($tui, $terminal): void {
                     $editor = $tui->getById('editor');
                     $this->assertTrue(EditorState::pickerOpen($editor));
-                    $tui->tick(); // flush pending render before reading the screen
+                    $this->frame($tui); // flush pending render before reading the screen
                     $this->assertStringContainsString('Quick Fixes', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertStringContainsString('Import class', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\r"); // pick "Import class"
@@ -523,7 +523,7 @@ final class IdeLspFeaturesTest extends TestCase
                 750 => function ($tui, $terminal): void {
                     $editor = $tui->getById('editor');
                     $this->assertSame('use Acme\Imported;', $editor->getDocument()->getLine(1));
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Applied "Import class" to 1 file', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // Command-based action next
                     $tui->handleInput("\x1b\r");
@@ -544,7 +544,7 @@ final class IdeLspFeaturesTest extends TestCase
                 },
                 1300 => function ($tui, $terminal): void {
                     $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')));
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('No quick fixes here', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -629,7 +629,7 @@ final class IdeLspFeaturesTest extends TestCase
                 400 => static fn ($tui) => $tui->handleInput("\x1b7"), // alt+7
                 600 => function ($tui, $terminal): void {
                     $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')));
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('No symbols in this file', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -735,7 +735,7 @@ final class IdeLspFeaturesTest extends TestCase
                 600 => function ($tui, $terminal): void {
                     $editor = $tui->getById('editor');
                     $this->assertSame('formatted();', $editor->getDocument()->getLine(2));
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Reformatted src/Messy.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -798,14 +798,14 @@ final class IdeLspFeaturesTest extends TestCase
                 },
                 600 => function ($tui, $terminal): void {
                     $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')));
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Nothing to peek', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // A definition that resolves outside the filesystem is refused.
                     $tui->getById('editor')->getDocument()->setCursor(96, 0); // mock: >=95 untitled uri
                     $tui->handleInput("\x1b[105;6u");
                 },
                 800 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Peek target outside the filesystem', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -1184,7 +1184,7 @@ final class IdeLspFeaturesTest extends TestCase
         $tui = Services::resolve($ide, Tui::class);
 
         $timer = EventLoop::delay(0.2, function () use ($tui): void {
-            $tui->tick();
+            $this->frame($tui);
             $this->assertStringContainsString('LSP:disabled', AnsiUtils::stripAnsiCodes($tui->getTerminal()->getOutput()));
             $tui->stop();
         });
@@ -1216,7 +1216,7 @@ final class IdeLspFeaturesTest extends TestCase
                     // skipped and Ctrl+S still saves exactly once, immediately.
                     $tui->handleInput('x');
                     $tui->handleInput("\x13"); // ctrl+s
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Saved a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertStringContainsString('x', (string) file_get_contents($project->path('a.php')));
                 },

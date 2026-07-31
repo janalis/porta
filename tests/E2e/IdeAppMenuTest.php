@@ -396,7 +396,7 @@ final class IdeAppMenuTest extends TestCase
                     }
                 },
                 450 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Cycle Line Numbers', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\r"); // run the cycle: absolute → relative
                 },

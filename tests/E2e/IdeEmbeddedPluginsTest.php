@@ -141,7 +141,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     // The plugin's settings page: set the binary → the menu entry enables.
                     $tui->handleInput("\t"); // form → nav (on Plugins)
                     $tui->handleInput("\x1b[B"); // → the bundled sub-item
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('   bundled', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the nav lists the plugin as an indented sub-item');
                     $tui->handleInput("\t"); // nav → form (Enabled row)
                     $tui->handleInput("\x1b[B"); // → Tool binary
@@ -161,7 +161,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $tui->tick();
                     $this->assertTrue($this->menus($tui)[4]->items[0]->enabled(), 'the menu entry enabled once configured');
                     Services::resolve($ide, CommandRegistry::class)->run('bundled:run');
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('bundled ran /opt/tool', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
                 200 => function ($tui, $terminal, $ide) use ($project): void {
@@ -175,7 +175,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $tui->handleInput("\x1b[A"); // clamp to the Enabled row
                     $tui->handleInput("\x1b[A");
                     $tui->handleInput("\r"); // toggle off
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Plugin "bundled" disabled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertNotContains('Plugins', array_column($this->menus($tui), 'title'), 'the only plugin gone → no Plugins menu');
                     $commands = Services::resolve($ide, CommandRegistry::class);
@@ -185,7 +185,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
 
                     // And re-enable it live from the same page.
                     $tui->handleInput("\r");
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Plugin "bundled" enabled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertContains('Plugins', array_column($this->menus($tui), 'title'));
                     $this->assertContains('Bundled Run', array_column($commands->paletteCommands(), 'label'));
@@ -273,7 +273,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $tui->handleInput("\x1b[A"); // clamp to the Enabled row
                     $tui->handleInput("\x1b[A");
                     $tui->handleInput("\r"); // toggle on → load fails
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Plugin "sleeper" failed to load', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],

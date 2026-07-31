@@ -128,7 +128,7 @@ final class IdeFilesystemSessionTest extends TestCase
                     $tui->handleInput("\x11"); // ctrl+q -> first press warns
                 },
                 400 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('1 file has edits', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
