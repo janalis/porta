@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\Container\Ansi;
 use Porta\Container\IdeContainerFactory;
+use Porta\Editor\ActiveBufferTracker;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
@@ -110,12 +111,24 @@ final class EventListenerWiringTest extends TestCase
     {
         $dispatcher = $this->dispatcher();
 
-        foreach ([BufferOpened::class, BufferSaved::class, BufferSwitched::class] as $event) {
+        foreach ([BufferOpened::class, BufferSaved::class] as $event) {
             $listeners = $dispatcher->getListeners($event);
             $last = end($listeners);
             \assert(\is_array($last), description: 'a listener entry is a [service, method] pair');
             $this->assertInstanceOf(PluginEvents::class, $last[0], $event.': third-party hooks run after every core listener');
         }
+
+        // BufferSwitched now ends in TWO listeners at -100 — the bridge and the
+        // tracker that derives ActiveBufferChanged — so "last" is compile order
+        // rather than contract. What the contract actually says is that both sit
+        // behind every priority-0 core listener.
+        $switched = $dispatcher->getListeners(BufferSwitched::class);
+        $tail = array_map(
+            static fn (array $listener): string => $listener[0]::class,
+            \array_slice($switched, offset: -2),
+        );
+        sort($tail);
+        $this->assertSame([ActiveBufferTracker::class, PluginEvents::class], $tail, 'the two -100 listeners are the final two, in either order');
     }
 
     public function testThemeAndLocaleRefreshersAreCompiledListenersAheadOfTheChromeSweep(): void
