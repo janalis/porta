@@ -7,6 +7,7 @@ namespace Porta\Todo\Tests;
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -120,6 +121,25 @@ final class IdeTodoPluginTest extends TestCase
                     $dock = Services::resolve($ide, BottomDock::class);
                     $this->assertNull($dock->visiblePanel(), 'alt+8 opened no panel');
                     $this->assertSame([], $dock->aliveTabs(), 'and left no tab behind');
+
+                    // And the View menu must not offer a verb nothing answers:
+                    // core NAMES ide_todo in its catalog, so a menu item built
+                    // from the spec alone would render "Show TODOs", carry the
+                    // alt+8 label from the catalog's defaults, and do nothing.
+                    /** @var list<\Porta\Workbench\Menu\Menu> $menus */
+                    $menus = Probe::get($tui->getById('menu'), 'menus');
+                    $view = null;
+                    foreach ($menus as $candidate) {
+                        if ('View' !== $candidate->title) {
+                            continue;
+                        }
+
+                        $view = $candidate;
+                    }
+                    $this->assertNotNull($view, 'the View menu is there to inspect');
+                    $labels = array_map(static fn (object $item): string => $item->label, $view->items);
+                    $this->assertContains('Show Problems', $labels, 'and it really is the View menu');
+                    $this->assertNotContains('Show TODOs', $labels, 'no dead menu entry for a verb nothing answers');
                 },
             ],
         );

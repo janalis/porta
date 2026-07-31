@@ -219,6 +219,14 @@ final class MenuModel
         foreach ($specs as $entry) {
             $spec = $entry instanceof PluginMenuSpec ? $entry->spec : $entry;
             $when = $entry instanceof PluginMenuSpec ? $entry->when : null;
+            // An ADOPTABLE id is the one kind of spec nothing may answer to:
+            // core names the verb but a bundled plugin implements it, so with
+            // that plugin disabled the item would render, carry the catalog's
+            // shortcut and do nothing. Every other 'i:' id is core's own and
+            // its provider always registers it.
+            if (self::SEP !== $spec && str_starts_with($spec, 'i:') && ActionCatalog::isAdoptable(substr($spec, offset: 2)) && !$commands->has(substr($spec, offset: 2))) {
+                continue;
+            }
             $items[] = self::SEP === $spec
                 ? MenuItem::separator()
                 : self::item($spec, $commands, $editor, $ideKeys, $translator, $activeView, $when);

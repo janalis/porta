@@ -88,6 +88,12 @@ final class CommandRegistry
         ));
     }
 
+    /** Whether anything answers to $id — false for a command whose plugin is disabled or gone. */
+    public function has(string $id): bool
+    {
+        return array_key_exists($id, $this->byId);
+    }
+
     /** The registered label for $id (including custom labels), or null when unknown. */
     public function label(string $id): ?string
     {
