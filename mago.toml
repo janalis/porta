@@ -153,8 +153,8 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 # nine again: none moved. Round 28 (the menu-surface seam, plugin composer
 # dependencies) re-bisected all nine once more — every floor is still exactly
 # where it was, which is what a round that adds small classes should do. Round
-# 29 (composer.json as the plugin manifest) re-bisected the six counting rules:
-# unmoved again.
+# 29 (composer.json as the plugin manifest, then dependencies following the
+# enabled state) re-bisected the six counting rules twice: unmoved both times.
 #
 # Re-bisect and lower again after the next structural change — AND after a mago
 # upgrade, which can change how a metric is counted without a line of code

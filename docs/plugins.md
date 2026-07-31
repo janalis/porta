@@ -116,11 +116,33 @@ re-enabled things you turned off would be a worse surprise than a message.
 
 ## Depending on a composer package
 
-The same file declares what your plugin depends on, and Porta will install it:
-a plugin whose `require` names a real package (as opposed to `php` or an
-`ext-*`, which install nothing) and has no `vendor/` gets `composer install
---no-dev` run **inside its own directory** at install time — never in your
-project, where a plugin's libraries have no business.
+The same file declares what your plugin depends on, and Porta installs them for
+you. A plugin whose `require` names a real package — as opposed to `php` or an
+`ext-*`, which install nothing — gets `composer install --no-dev` run **inside
+its own directory**, never in your project, where a plugin's libraries have no
+business.
+
+That happens at three moments, all of them the same run:
+
+| When | What you see |
+| --- | --- |
+| You install the plugin | the usual install report |
+| You **enable** it | `Installing dependencies for "x"…`, then `Plugin "x" enabled` when it lands |
+| **Startup**, for a plugin that is enabled but has no `vendor/` | the same two, once the IDE is up |
+
+Enabling a plugin that requires others installs them **one at a time and
+requirements first** — a plugin must not load while something it needs is still
+installing. If a composer run fails, or there is no composer on the machine, the
+plugin stays enabled and says what went wrong; it is not activated (loading it
+would fail on the first missing symbol) and the next startup tries again. The
+checkbox never flips itself back: the enable is what you asked for, and a failed
+download is a fact about the machine.
+
+**Disabling a plugin removes the `vendor/` Porta installed** — and only that
+one. A successful install leaves a `vendor/.porta-installed` marker, and without
+it nothing is deleted, so a plugin that ships or commits its own `vendor/` keeps
+it. Your `composer.lock` is never touched. The trade is worth knowing: turning a
+plugin off and on again now costs a fresh install, network and all.
 
 The resolution rule matters, because it decides what happens when your plugin
 and Porta want the same package:
@@ -147,10 +169,11 @@ needs either will simply fail to resolve:
   hazard the whole arrangement avoids.
 
 A plugin that declares packages (or a `classmap`/`files` autoload) and has no
-`vendor/` **does not load**: Porta declines it by name at startup and tells you
-to run `composer install` in its directory. Whatever required it is skipped too.
-A `require` of only `php` or `ext-*` asks for nothing, so a manifest that exists
-purely to declare `autoload.psr-4` never triggers this.
+`vendor/` is not loaded at the moment startup reads it — its classes are not
+there yet — but it is installed and activated a moment later, and anything
+waiting on it comes up with it. A `require` of only `php` or `ext-*` asks for
+nothing, so a manifest that exists purely to declare `autoload.psr-4` never
+triggers any of this.
 
 ## Putting a command in a menu
 

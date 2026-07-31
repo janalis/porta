@@ -1038,6 +1038,37 @@ hand-rolled parser moved WITH the bundled manifests in one commit: `composer arc
 vanished edges too, so converting the plugins without teaching the parser drops four namespaces
 from the graph (the count stayed 217, which is the proof no prefix was lost).
 
+**A plugin's dependencies follow its ENABLED state (round 29).** `composer install --no-dev` runs
+at three moments, all the same verb: install (as before), **enable**, and a boot **drain** for a
+plugin that is enabled with no `vendor/`. `PluginInstaller::installDependencies($pluginDir,
+\Closure(int $exitCode))` is public and returns a `Lifecycle/DependencyInstall`
+(`NotNeeded|Started|Busy|NoComposer`) synchronously — the caller must know whether to wait before
+the subprocess can finish — and the **guard order is load-bearing**: `NotNeeded` is answered
+BEFORE the single-flight slot is consulted, so a chain of dependency-free plugins is never refused
+because someone else is cloning. The message stays the CALLER's ("Installed, but…" vs "enabled,
+but…" are different sentences about one exit code). **The queue is the caller's too**:
+`PluginLifecycle::enable()` splits into pass 1 (persist every choice synchronously, so a crash
+mid-install still records the decision) and `activateQueue()`, which shifts ONE target at a time
+and dispatches the next from the previous exit callback — the slot is provably free there because
+the installer nulls `$running` before invoking it, with no loop turn in between. **Activation must
+never precede the install**: `loadFile()` → `PluginAutoloader::register()` reads
+`vendor/composer/autoload_psr4.php` EAGERLY, so loading first bakes in an empty vendor map.
+The closing report is three-way (`Lifecycle/EnableProgress` carries `activated`+`reported`) — a
+two-way branch would say "is not installed" about a plugin that is installed and whose composer
+run merely failed. **Nothing is ever rolled back**; the next boot retries. **Disable removes only
+what Porta installed**: a successful run writes `PluginInstaller::MARKER`
+(`vendor/.porta-installed`) and `removeDependencies()` answers `NotOurs` without it — a plugin
+that commits its `vendor/` must not lose tracked files to a keypress, and two fixtures here are
+that shape. `composer.lock` stays (Porta did not write it; it makes the next install reproducible;
+`needsInstall()` keys on `vendor/` alone). Synchronous `Filesystem::remove()` — a deferred delete
+would race a re-enable. **Boot never shells out**: `PluginLoader::loadInto()` runs while the
+container is still being built, so it RECORDS the set (`PluginManager::pendingInstalls()`) and
+`Bootstrap/StartupWiring` drains it at the ctor tail. Two orderings had to be right — the pending
+set is sorted **deps-first** (discovery order is alphabetical, so `app` would install before the
+`zbase` it requires), and a plugin skipped ONLY because a PENDING plugin is what it requires is
+`deferred()` rather than warned about, then activated when its requirements come up (looped, since
+a chain unlocks one link at a time; one whose requirement never came up stays out).
+
 **A plugin may VENDOR its dependencies (round 28).** A plugin's `composer.json` may have a
 `vendor/` beside it, and `PluginAutoloader` extends to it by reading composer's
 **generated maps** — `vendor/composer/autoload_psr4.php` (prefix → list of dirs, so the prefix map
