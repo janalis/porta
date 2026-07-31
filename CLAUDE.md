@@ -436,6 +436,58 @@ Re-opening either verdict requires new evidence (e.g. a TUI-relevant bundle, or 
 preloading becoming applicable to the CLI boot). `composer container` is the round's keeper:
 the kernel-less `debug:container` equivalent.
 
+**Hooks became dispatched events (round 30) — and the four-clause test is the keeper.** The plugin
+half is done: `PluginEvents` is DELETED. It kept `event => plugin => list<Closure>` with
+`subscribe`/`removeFor`/`emit`, which are `addListener`/`removeListener`/`dispatch` under other
+names. `PluginManager` now holds the COMPONENT `EventDispatcherInterface` (the first `src`
+consumer — the "no src consumer imports it" notes in `config/services.php` and below were corrected
+with it), registers each wrapped closure at `PluginManager::PLUGIN_PRIORITY` (-100) and keeps the
+wrapped instances per plugin because `removeListener` matches by IDENTITY. `wrap()` still is the
+fault barrier and its SINGLE parameter is load-bearing beyond types: the dispatcher calls listeners
+as `($event, $eventName, $dispatcher)`, so a `(...$args)` wrapper would hand every plugin the bus.
+`PluginApi::on()` opens the marked subset; the six named hooks are sugar over a private `listen()`
+with core-written adapters, which is how they keep their `\Closure(string): void` signatures
+honestly while `BufferOpened`/`BufferSaved` stay INTERNAL (they carry a mutable `Buffer`).
+Registration after the drain THROWS (it used to append to an array nobody reads again).
+`Event/PluginObservable` marks the public subset — six events, all scalar payloads — pinned by
+`tests/Unit/Event/PluginObservableContractTest` (set + `final readonly` + scalar/backed-enum
+payloads + documented in `docs/plugins.md`; that last rule is what would have caught the
+`onThemeChanged` docs gap). **The dedup could not stay a priority trick**: a listener cannot filter
+an event for the listeners behind it, and `BufferSwitched` is `final readonly`, so
+`Editor/ActiveBufferTracker` derives `Event/ActiveBufferChanged` at -100 — assignment BEFORE the
+dispatch, which is what ends the recursion when a listener opens a file. `ready`/`shutdown` are
+`IdeReady`/`IdeShuttingDown`, dispatched from the identical two lines in `run()`.
+
+**The conversion test for core's closure wirings** — apply it per call site, and record the verdict
+rather than re-measuring: a wiring may become an event only if **(a)** it returns void and no
+caller reads a return; **(b)** it is a notification, not a PULL (`setProvider`, anything called
+from `beforeRender`); **(c)** it needs no identity among several live instances of the same widget
+class; **(d)** broadcasting does not break ordering the single-consumer call guarantees. Of ~80
+wirings, ~34 fail outright. Converted: dock tool tabs (`DockToolBound`/`DockToolClosed` — the one
+place core had grown its OWN multicast observer), the terminal's four wirings → three events, the
+git view's mode + remote keys (five wirings → two events, and `GitRemoteOperation` exists because
+those strings cross into the observable `GitRemoteCompleted`), the settings page-jump pair, the
+dock strip's three, the debug panel's three, and the tree's `onOpenFile` → `TreeFileActivated`.
+**Standing rules that came out of it**: events carry scalars, enums and VOs, **never widget
+instances** (that is what keeps the class graph acyclic while `Widget>Event` and `Event>Widget`
+both exist); **never dispatch from `beforeRender`/`render`/`processRender``; the dispatcher is an
+OPTIONAL TRAILING constructor argument on widgets (`$this->events?->dispatch(...)`, the
+`LspSessionPool` precedent) and putting it anywhere but last silently re-binds positional callers;
+a `*Callbacks` DTO that drops below three slots becomes a plain setter, EXCEPT
+`DebugPanelCallbacks`, whose one remaining slot is continuation-passing and keeps the name to say
+so. **Measured and left alone, with reasons — do not re-litigate**: `OverlayWidget::onOpen/onClose`
+(the base of ~8 overlays; dispatching there broadcasts every overlay open, and restricting it to
+dock panels needs a tab identity `DockPanelWidget` does not have — inventing one whose only
+consumer is an event payload is a model change, not a conversion); the menu bar / context menu
+`onNavigate`/`onClose` (same shared base, plus `MenuOverlayController::refreshMenu()` CLEARS the
+overlay panes when its menu is shut, so one shared event with both listeners would wipe the other
+menu's spans); the seven `onFocusNext` (one trait, two live controllers, different targets, and
+`cycleFocus` has no open-view guard); `previewReplacement`, `setStagedChangesProvider`,
+`onExpandVariable`, `onInputForward` (byte transport, one dispatch per keystroke) and the nine
+Search Everywhere slots (three controllers share ONE overlay widget, so the installed closure IS
+the identity). **Correction to the round's own plan**: `Bootstrap>Run` did NOT vanish — keeping the
+byte transport keeps `WidgetHooks` naming `RunController`.
+
 **Events.** `symfony/event-dispatcher`, kernel-less: `config/services.php` registers the
 `#[AsEventListener]` attribute autoconfiguration and the `RegisterListenersPass` (the service id
 must be exactly `event_dispatcher`). Typed domain events live in `src/Event/`: the buffer

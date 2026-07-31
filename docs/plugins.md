@@ -201,6 +201,53 @@ and an `EditorContext` item is reachable only while the code editor holds the
 pane — a viewer tab (an image, a `.dot` graph) detaches that widget, so a
 command scoped to a viewer belongs in the Plugins menu instead.
 
+## Listening to core events
+
+The six `on*` hooks above are sugar. Underneath, a plugin's listeners are
+ordinary `symfony/event-dispatcher` listeners on Porta's own bus, and `on()`
+reaches the rest of what you may observe:
+
+```php
+$api->on(GitCommitted::class, function (GitCommitted $event) use ($api): void {
+    $api->flash('committed');
+});
+```
+
+Only these events are open to plugins. The rest of `Porta\Event` is internal
+and changes without notice — a marker interface, `PluginObservable`, is what
+says which is which, and naming an unmarked class throws rather than quietly
+never firing.
+
+| Event | Carries |
+| --- | --- |
+| `IdeReady` | `string $projectRoot` — layout applied, services wired, no buffer open yet |
+| `IdeShuttingDown` | `string $projectRoot` — services alive, event loop already stopped |
+| `ActiveBufferChanged` | `string $path` — the editor is showing a different file |
+| `ThemeChanged` | `string $theme` |
+| `LocaleChanged` | `string $locale` |
+| `GitCommitted` | — a commit was made from the git view |
+
+Four rules govern the list, and they are enforced by a test rather than by
+convention:
+
+- **Payloads are scalars or backed enums.** No core objects: `BufferOpened`
+  carries a `Buffer`, which is a mutable bag of editor state, so it is *not*
+  observable — `onFileOpened()` still works because a core-written adapter
+  hands your closure the path and nothing else.
+- **Every observable event is listed here**, and the test fails if one is not.
+- **The set is pinned.** Adding an event to it is a deliberate, reviewed change.
+- **Listeners run after every priority-0 core listener**, so you see the state
+  core already reacted to. (One core listener deliberately runs *after* you:
+  the highlight-cache drop, so a backend that bakes theme colours rebuilds
+  first.)
+
+Register during `activate()`. A listener added later — from a command handler,
+say — throws, because registrations are committed atomically when your plugin
+loads and one arriving afterwards would silently never fire.
+
+Plugins **listen**; they never dispatch. There is no way to put an event on the
+bus from a plugin, and that is deliberate.
+
 ## Installing, removing, disabling
 
 Open **Settings → Plugins** and use the form:
@@ -507,6 +554,7 @@ Registration (during `activate()`):
 | --- | --- |
 | `registerCommand(string $id, string $label, \Closure $handler, array $keys = [])` | Register a command; `$keys` are default keybindings (e.g. `['ctrl+alt+y']`) |
 | `addMenuItem(string $commandId, ?\Closure $enabledWhen = null, MenuSurface $surface = MenuSurface::Plugins)` | Put the command in a menu: the trailing **Plugins** menu (default), `MenuSurface::EditorContext` (right-click over the editor text) or `MenuSurface::FileContext` (right-click over a **file** — a tab, or a tree row). With `$enabledWhen`, the item renders dimmed while the closure returns false (re-evaluated per render; a throw reads as disabled) |
+| `on(string $eventClass, \Closure $listener)` | Listen to a core event. `$eventClass` must implement `Porta\Event\PluginObservable` (the table below); the listener receives the event object. Runs after every priority-0 core listener; a throw is caught and flashed. There is no `off()` — disabling the plugin removes its listeners |
 | `contextFile()` | The file the running invocation is **about**: the right-clicked path when it came from a file context menu, else `activeFile()`. Use it instead of `activeFile()` in any command you put on `FileContext` |
 | `registerSetting(string $key, string $label, string $kind = 'text', $default = '', ?array $options = null, ?string $hint = null)` | Declare a user-editable setting shown on the plugin's settings page; kinds: `text`, `bool`, `int`, `choice` (with `$options`). Values persist under `plugins.<name>.<key>` in `.porta.json` |
 | `registerListTool(string $id, string $title, ?\Closure $rerun = null, ?\Closure $activate = null)` | Declare a bottom-dock list of results with jump-to-location |
@@ -518,7 +566,8 @@ Registration (during `activate()`):
 | `registerActions(array $actions)` | Declare rebindable actions (`id => label`) your pane binds — they appear on Settings → Keymap and may be rebound in `.porta.json`. Ids are bare and permanent; a core id is refused |
 | `onFileOpened(\Closure $hook)` | `$hook(string $path)` after a file opens |
 | `onFileSaved(\Closure $hook)` | `$hook(string $path)` after a buffer saves |
-| `onBufferSwitched(\Closure $hook)` | `$hook(string $path)` when the active buffer changes |
+| `onBufferSwitched(\Closure $hook)` | `$hook(string $path)` when the active buffer changes — a real change, not every re-show of the same file |
+| `onThemeChanged(\Closure $hook)` | `$hook(string $theme)` after a theme switch, **before** core drops its highlight caches — where a backend that bakes colours rebuilds |
 
 Actions (from handlers/hooks):
 
