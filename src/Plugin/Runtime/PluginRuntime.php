@@ -14,6 +14,7 @@ use Porta\Editor\ModalHost;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Workbench\Dock\DockToolController;
+use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Tui;
 
@@ -37,5 +38,6 @@ final readonly class PluginRuntime
         public DockToolController $dockTools,
         public DocumentReplacer $documents,
         public ModalHost $modals,
+        public MenuFileContext $menuFile,
     ) {}
 }

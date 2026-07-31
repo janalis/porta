@@ -22,6 +22,7 @@ use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Tempest\Highlight\Tokens\TokenTypeEnum;
@@ -99,6 +100,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
             TestDockTools::controller(),
             TestDockTools::replacer(),
             new CodeEditorWidget(),
+            new MenuFileContext(),
         ));
 
         $api = new PluginApi('demo', $this->manager, $this->project->dir, $settings);

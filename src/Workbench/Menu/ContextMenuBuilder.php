@@ -35,6 +35,7 @@ final class ContextMenuBuilder
         private readonly ChangesListWidget $changes,
         private readonly GitCommands $git,
         private readonly PluginManager $plugins,
+        private readonly MenuFileContext $fileContext,
     ) {}
 
     /**
@@ -150,6 +151,42 @@ final class ContextMenuBuilder
             new MenuItem($this->translator->trans('Close'), '', fn () => $this->bufferService->closeTab($path)),
             new MenuItem($this->translator->trans('Close Others'), '', fn () => $this->bufferService->closeTabsExcept($path)),
             new MenuItem($this->translator->trans('Close All'), '', fn () => $this->bufferService->closeTabsExcept(null)),
+            ...$this->fileItems($path),
         ];
+    }
+
+    /**
+     * What plugins have put on the FILE surface, for the file at $path —
+     * appended to the tab menu and to a tree FILE row's menu, behind a
+     * separator when there is anything to show.
+     *
+     * Two things differ from {@see editorItems()} and both are the point:
+     * every item runs inside {@see MenuFileContext}, so the handler learns
+     * WHICH file was clicked rather than assuming the active one; and the
+     * `FILE_SCOPED_IDE` gate is dropped, because a path was clicked — that
+     * gate asks whether a buffer is open, which is the wrong question here
+     * (right-clicking a tree row with an empty editor is the ordinary way to
+     * reach this menu). A plugin's own `enabledWhen` still applies.
+     *
+     * @return list<MenuItem>
+     */
+    public function fileItems(string $path): array
+    {
+        $items = [];
+        foreach ($this->plugins->menuSpecs(MenuSurface::FileContext) as $spec) {
+            // One spec at a time so label, shortcut and the adoptable-but-
+            // unregistered skip stay single-sourced in MenuModel.
+            foreach (MenuModel::items([$spec], $this->commands, $this->editor, $this->keybindings->current(), $this->translator) as $item) {
+                $run = $item->run;
+                $items[] = new MenuItem(
+                    $item->label,
+                    $item->shortcut,
+                    null === $run ? null : fn () => $this->fileContext->with($path, $run),
+                    isEnabled: $spec->when,
+                );
+            }
+        }
+
+        return [] === $items ? [] : [MenuItem::separator(), ...$items];
     }
 }

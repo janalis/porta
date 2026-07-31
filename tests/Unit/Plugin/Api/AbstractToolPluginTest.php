@@ -23,6 +23,7 @@ use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Notifier;
 
 /**
@@ -134,6 +135,7 @@ final class AbstractToolPluginTest extends TestCase
             TestDockTools::controller(),
             TestDockTools::replacer($this->buffers),
             $this->editor,
+            new MenuFileContext(),
         ));
 
         return new PluginApi($pluginName, $manager, $this->project->dir, $settings);

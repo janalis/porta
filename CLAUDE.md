@@ -744,14 +744,25 @@ dismisses); the completion popup and signature hint stay editor-pane-composited,
 same way.
 
 **A plugin item may name its menu surface (round 28).** `PluginApi::addMenuItem()` takes a
-`Workbench/Menu/MenuSurface` — `Plugins` (the trailing menu, the unchanged default) or
-`EditorContext`, which `ContextMenuBuilder::editorItems()` appends behind a separator. Two cases
-only, and the enum's docblock says why: the tab/tree/git-row/dock-strip menus are hand-built
-`MenuItem` closures with no registry, so a case for one of those is a promise the builder cannot
-keep until it is converted. An **adopted** id (`adoptCommand`) is registered BARE, so `PluginApi`
+`Workbench/Menu/MenuSurface` — `Plugins` (the trailing menu, the unchanged default), `EditorContext`
+(the right-click over the editor TEXT, appended by `ContextMenuBuilder::editorItems()` behind a
+separator) or **`FileContext`** (the right-click over a FILE — a tab, and a tree row that is not a
+directory; `ContextMenuBuilder::fileItems()`, appended by `tabItems()` and by `ContextMenuRouter`
+for the tree). Three cases, and the enum says why not more: the git-row and dock-strip menus are
+hand-built `MenuItem` closures with no registry, so a case for one of those is a promise the
+builder cannot keep until it is converted. **The file surface carries a PATH**, which a spec (a
+command id) cannot: it travels through `Workbench/Menu/MenuFileContext`, set for the duration of
+the dispatch and cleared after — scoped to ONE call on purpose, since a path outliving its menu
+would misdirect the NEXT invocation — and plugins read it with `PluginApi::contextFile()`, which
+falls back to `activeFile()` so the same command answers a right-click, a keystroke and a palette
+entry without knowing which. `fileItems()` also drops the `FILE_SCOPED_IDE` gate: that gate asks
+whether a BUFFER is open, and right-clicking a tree row with an empty editor is the ordinary way
+to reach this menu. An **adopted** id (`adoptCommand`) is registered BARE, so `PluginApi`
 remembers which ids those are and spells their spec bare too — prefixing would name a command
-nothing answers to. First consumer: `local-history` puts "Show Local History" in the editor's
-right-click menu (greyed with no file open, absent when the plugin is off). Graph-viewer's exports
+nothing answers to. First consumer: `local-history` puts "Show Local History" on BOTH context surfaces — the editor's
+(greyed with no file open, absent when the plugin is off) and the file's, where `HistoryTool::show()`
+reads `contextFile()` so right-clicking `other.php` while editing `a.php` answers about
+`other.php`. Graph-viewer's exports
 were measured for the same move and **rejected**: `EditorContext` resolves from the code editor
 widget's rect and a viewer pane DETACHES that widget, so a viewer-scoped command there is gated on
 exactly the state that hides it.

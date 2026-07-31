@@ -744,6 +744,20 @@ final class PluginApi
         return null !== $path && '' !== $path ? $path : null;
     }
 
+    /**
+     * The file this invocation is ABOUT: the right-clicked path when the
+     * command came from a file context menu (a tree row, a tab), else
+     * {@see activeFile()}.
+     *
+     * The fallback is what makes this the right default for a file verb: the
+     * same command answers a right-click on `Other.php`, a keystroke, and a
+     * palette entry, without the plugin knowing which one it was.
+     */
+    public function contextFile(): ?string
+    {
+        return $this->manager->runtime()->menuFile->file() ?? $this->activeFile();
+    }
+
     /** The active text document's full contents, or null when none is active. */
     public function documentText(): ?string
     {

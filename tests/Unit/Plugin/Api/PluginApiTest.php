@@ -32,6 +32,7 @@ use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\DockToolController;
 use Porta\Workbench\Dock\ToolRun;
+use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Menu\MenuSurface;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -72,6 +73,7 @@ final class PluginApiTest extends TestCase
                     TestDockTools::controller(),
                     TestDockTools::replacer($this->buffers),
                     $this->editor,
+                    new MenuFileContext(),
                 ),
             );
         }
@@ -255,6 +257,7 @@ final class PluginApiTest extends TestCase
                 TestDockTools::controller(),
                 TestDockTools::replacer(),
                 new CodeEditorWidget(),
+                new MenuFileContext(),
             ),
         );
         $api = new PluginApi('demo', $manager, $project->dir, $settings);
@@ -361,6 +364,7 @@ final class PluginApiTest extends TestCase
             new DockToolController($manager, $dock, '/p'), // the manager IS the source
             TestDockTools::replacer(),
             new CodeEditorWidget(),
+            new MenuFileContext(),
         ));
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
         $api->registerListTool('todo', 'TODO');

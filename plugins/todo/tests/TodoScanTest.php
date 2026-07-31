@@ -26,6 +26,7 @@ use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockToolController;
+use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -66,6 +67,7 @@ final class TodoScanTest extends TestCase
             new DockToolController($manager, $this->dock, $project->dir),
             TestDockTools::replacer(),
             new CodeEditorWidget(),
+            new MenuFileContext(),
         ));
 
         $api = new PluginApi('todo', $manager, $project->dir, $settings);

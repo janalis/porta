@@ -7,11 +7,14 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\ContextMenu;
+use Porta\Workbench\Menu\MenuItem;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
 
 /**
@@ -328,6 +331,84 @@ final class IdePluginTest extends TestCase
                     $this->assertStringContainsString('Do It Here', $menu, "the plugin's editor-context item is offered");
                     $this->assertStringNotContainsString('Do It Anywhere', $menu, 'and a Plugins-menu item stays out of it');
                     $this->assertStringContainsString('Cut', $menu, "core's own items are still first");
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAPluginCommandOnTheFileSurfaceLearnsWhichFileWasClicked(): void
+    {
+        // The file surface is the one that carries a PATH: right-clicking
+        // other.php in the tree while editing a.php has to answer about
+        // other.php, so contextFile() — not activeFile() — is what the handler
+        // reads, and it falls back to the active file everywhere else.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            'a.php' => "<?php\n",
+            'other.php' => "<?php\n",
+            '.porta/plugins/filectx/plugin.php' => <<<'PHP'
+                <?php
+                use Porta\Plugin\Api\PluginApi;
+                use Porta\Plugin\Api\PortaPlugin;
+                use Porta\Workbench\Menu\MenuSurface;
+
+                return new class implements PortaPlugin {
+                    public function name(): string
+                    {
+                        return 'filectx';
+                    }
+
+                    public function activate(PluginApi $api): void
+                    {
+                        $api->registerCommand('which', 'Which File', static function () use ($api): void {
+                            $api->flash('acted on '.basename((string) $api->contextFile()));
+                        });
+                        $api->addMenuItem('which', surface: MenuSurface::FileContext);
+                    }
+                };
+                PHP,
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    $this->frame($tui);
+                    $renderer = Services::resolve($ide, Renderer::class);
+
+                    // The tree row for other.php — a file we are NOT editing.
+                    $tree = $tui->getById('tree');
+                    $treeRect = $renderer->getWidgetRect($tree);
+                    $row = null;
+                    foreach ($tree->render(new RenderContext($treeRect->columns, $treeRect->rows)) as $i => $line) {
+                        if (!str_contains(AnsiUtils::stripAnsiCodes($line), 'other.php')) {
+                            continue;
+                        }
+                        $row = $i;
+                    }
+                    $this->assertNotNull($row, 'other.php is in the tree');
+
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $treeRect->col + 3, $treeRect->row + $row + 1));
+                    $this->frame($tui);
+
+                    $widget = Services::resolve($ide, ContextMenu::class);
+                    /** @var list<MenuItem> $items */
+                    $items = Probe::get($widget, 'items');
+                    $index = null;
+                    foreach ($items as $i => $item) {
+                        if ('Which File' !== $item->label) {
+                            continue;
+                        }
+                        $index = $i;
+                    }
+                    $this->assertNotNull($index, "the tree row offers the plugin's item");
+
+                    $widget->runItem($index);
+                    $this->awaitPainted($tui, $terminal, 'acted on other.php');
+                    $this->assertStringContainsString('acted on other.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the handler saw the CLICKED file, not the active one');
                 },
             ],
         );

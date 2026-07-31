@@ -92,7 +92,12 @@ final class ContextMenuRouter
 
                 return;
             }
-            $items = $this->treeOps->contextItems($node);
+            // A FILE row also offers what plugins put on the file surface; a
+            // directory does not (the surface names a file, and core's own
+            // folder verbs are the ones that make sense there).
+            $items = $node->isDir
+                ? $this->treeOps->contextItems($node)
+                : [...$this->treeOps->contextItems($node), ...$this->contextItems->fileItems($node->path)];
         }
         $stripCol = $this->hover->dockStripRelCol($mouse);
         if (!$handled && null !== $stripCol) {

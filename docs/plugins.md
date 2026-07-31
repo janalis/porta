@@ -120,6 +120,32 @@ A plugin with a `composer.json` and no `vendor/` **does not load**: Porta
 declines it by name at startup and tells you to run `composer install` in its
 directory. Whatever required it is skipped too.
 
+## Putting a command in a menu
+
+`addMenuItem()` takes an optional surface:
+
+```php
+$api->registerCommand('audit', 'Audit This File', $handler);
+$api->addMenuItem('audit');                                     // the Plugins menu
+$api->addMenuItem('audit', surface: MenuSurface::EditorContext); // right-click in the editor
+$api->addMenuItem('audit', surface: MenuSurface::FileContext);   // right-click a tab or a tree row
+```
+
+Plugin items always come **last** in a context menu, grouped behind a
+separator: the menu is core's, and a plugin must not push Cut/Copy/Paste down
+the list.
+
+The file surface is the one that names a path, so a command there must ask
+**`$api->contextFile()`** rather than `activeFile()` — right-clicking
+`Other.php` in the tree while you are editing `App.php` has to answer about
+`Other.php`. `contextFile()` falls back to the active file, so the same command
+still does the right thing from a keystroke or the palette.
+
+A `FileContext` item is offered on file tree rows only, never on directories,
+and an `EditorContext` item is reachable only while the code editor holds the
+pane — a viewer tab (an image, a `.dot` graph) detaches that widget, so a
+command scoped to a viewer belongs in the Plugins menu instead.
+
 ## Installing, removing, disabling
 
 Open **Settings → Plugins** and use the form:
@@ -425,7 +451,8 @@ Registration (during `activate()`):
 | Method | Purpose |
 | --- | --- |
 | `registerCommand(string $id, string $label, \Closure $handler, array $keys = [])` | Register a command; `$keys` are default keybindings (e.g. `['ctrl+alt+y']`) |
-| `addMenuItem(string $commandId, ?\Closure $enabledWhen = null)` | Add the command to the **Plugins** menu; with `$enabledWhen`, the item renders dimmed while the closure returns false (re-evaluated per render; a throw reads as disabled) |
+| `addMenuItem(string $commandId, ?\Closure $enabledWhen = null, MenuSurface $surface = MenuSurface::Plugins)` | Put the command in a menu: the trailing **Plugins** menu (default), `MenuSurface::EditorContext` (right-click over the editor text) or `MenuSurface::FileContext` (right-click over a **file** — a tab, or a tree row). With `$enabledWhen`, the item renders dimmed while the closure returns false (re-evaluated per render; a throw reads as disabled) |
+| `contextFile()` | The file the running invocation is **about**: the right-clicked path when it came from a file context menu, else `activeFile()`. Use it instead of `activeFile()` in any command you put on `FileContext` |
 | `registerSetting(string $key, string $label, string $kind = 'text', $default = '', ?array $options = null, ?string $hint = null)` | Declare a user-editable setting shown on the plugin's settings page; kinds: `text`, `bool`, `int`, `choice` (with `$options`). Values persist under `plugins.<name>.<key>` in `.porta.json` |
 | `registerListTool(string $id, string $title, ?\Closure $rerun = null, ?\Closure $activate = null)` | Declare a bottom-dock list of results with jump-to-location |
 | `registerStatusSegment(\Closure $segment)` | Contribute ambient state to the status bar; pulled once per render |

@@ -26,6 +26,7 @@ use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
@@ -59,6 +60,7 @@ final class PluginManagerTest extends TestCase
                 TestDockTools::controller(),
                 TestDockTools::replacer(),
                 new CodeEditorWidget(),
+                new MenuFileContext(),
             ),
         );
 
