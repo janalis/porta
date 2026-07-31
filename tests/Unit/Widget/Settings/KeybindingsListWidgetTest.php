@@ -6,10 +6,12 @@ namespace Porta\Tests\Unit\Widget\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\KeybindingRow;
+use Porta\Event\SettingsSectionRequested;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -27,10 +29,10 @@ final class KeybindingsListWidgetTest extends TestCase
         ];
     }
 
-    private function widget(?array &$rebinds = null): KeybindingsListWidget
+    private function widget(?array &$rebinds = null, ?EventDispatcher $events = null): KeybindingsListWidget
     {
         $rebinds = [];
-        $widget = new KeybindingsListWidget(new Translator('en'));
+        $widget = new KeybindingsListWidget(new Translator('en'), events: $events);
         $widget->setFocused(true);
         $widget->setRows($this->rows());
         $widget->onRebind(static function (string $action, string $key) use (&$rebinds): void {
@@ -103,16 +105,17 @@ final class KeybindingsListWidgetTest extends TestCase
     public function testTabAndTabSwitchCallbacks(): void
     {
         $fired = [];
-        $widget = $this->widget();
-        $widget->onShowSettings(static function () use (&$fired): void {
-            $fired[] = 'settings';
+        $events = new EventDispatcher();
+        $widget = $this->widget(events: $events);
+        $events->addListener(SettingsSectionRequested::class, static function (SettingsSectionRequested $event) use (&$fired): void {
+            $fired[] = $event->section;
         });
         $widget->onFocusNext(static function () use (&$fired): void {
             $fired[] = 'next';
         });
         $widget->handleInput('1');
         $widget->handleInput("\t");
-        $this->assertSame(['settings', 'next'], $fired);
+        $this->assertSame(['general', 'next'], $fired);
     }
 
     public function testClickSelectsThenArmsCaptureAndIgnoresDeadRows(): void

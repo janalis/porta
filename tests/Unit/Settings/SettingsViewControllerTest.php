@@ -13,6 +13,7 @@ use Porta\Config\LiveKeybindings;
 use Porta\Debug\DebugAdapters;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
+use Porta\Event\SettingsSectionRequested;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
 use Porta\Git\GitSettings;
@@ -89,6 +90,7 @@ final class SettingsViewControllerTest extends TestCase
 
     private TempProject $project;
     private Tui $tui;
+    private EventDispatcher $sectionEvents;
     private SettingsNavWidget $nav;
     private SettingsFormWidget $form;
     private KeybindingsListWidget $keymapList;
@@ -108,9 +110,10 @@ final class SettingsViewControllerTest extends TestCase
         $this->main->add($editWidget);
 
         $this->nav = new SettingsNavWidget(new Translator('en'));
-        $this->form = new SettingsFormWidget(new Translator('en'));
+        $this->sectionEvents = new EventDispatcher();
+        $this->form = new SettingsFormWidget(new Translator('en'), events: $this->sectionEvents);
         $this->form->setId('settings-form');
-        $this->keymapList = new KeybindingsListWidget(new Translator('en'));
+        $this->keymapList = new KeybindingsListWidget(new Translator('en'), events: $this->sectionEvents);
         $this->keymapList->setId('settings-keys');
         $this->content = new ContainerWidget();
         $area = new ContainerWidget();
@@ -219,7 +222,7 @@ final class SettingsViewControllerTest extends TestCase
             $this->project->dir,
         );
 
-        return new SettingsViewController(
+        $controller = new SettingsViewController(
             $this->nav,
             $this->form,
             $this->keymapList,
@@ -264,6 +267,10 @@ final class SettingsViewControllerTest extends TestCase
             ),
             views: $views ?? new WorkspaceViews(),
         );
+        // Compiled from #[AsEventListener] in the container; wired by hand here.
+        $this->sectionEvents->addListener(SettingsSectionRequested::class, $controller->onSectionRequested(...));
+
+        return $controller;
     }
 
     /** @return list<string> */

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Settings;
 
 use Porta\Container\AsWidget;
+use Porta\Event\SettingsSectionRequested;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
@@ -26,6 +27,7 @@ use Porta\Widget\Support\HoverTrait;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Widget\Support\WheelScrollable;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -66,6 +68,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         private readonly Translator $translator,
         ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
+        private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->initStyles($styles);
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
@@ -81,20 +84,11 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
 
     /** @var (callable(string, bool|int|string): void)|null a row's value changed */
     private $onChange = null;
-    /** @var (callable(): void)|null `2`: switch to the Keybindings tab */
-    private $onShowKeybindings = null;
 
     /** @param callable(string, bool|int|string): void $callback */
     public function onChange(callable $callback): self
     {
         $this->onChange = $callback;
-
-        return $this;
-    }
-
-    public function onShowKeybindings(callable $callback): self
-    {
-        $this->onShowKeybindings = $callback;
 
         return $this;
     }
@@ -136,7 +130,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             return;
         }
         if ($kb->matches($data, 'show_keybindings')) {
-            $this->fire($this->onShowKeybindings);
+            $this->events?->dispatch(new SettingsSectionRequested('keybindings'));
 
             return;
         }

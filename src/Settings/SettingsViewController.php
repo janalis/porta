@@ -6,6 +6,7 @@ namespace Porta\Settings;
 
 use Porta\Container\AsEager;
 use Porta\Container\LayoutSlot;
+use Porta\Event\SettingsSectionRequested;
 use Porta\Layout\EditorAreaPanes;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
@@ -15,6 +16,7 @@ use Porta\Workbench\EditorArea;
 use Porta\Workbench\FullScreenView;
 use Porta\Workbench\WorkspaceViews;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
@@ -64,15 +66,10 @@ final class SettingsViewController implements FullScreenView
             ->onExit($exit);
         $this->form
             ->onChange($this->changeSetting(...))
-            // '2' on the form jumps to the Keybindings page (the widget
-            // advertises the key; this wiring is what makes it real).
-            ->onShowKeybindings(fn () => $this->selectSection('keybindings'))
             ->onFocusNext($this->focusNav(...))
             ->onExit($exit);
         $this->keymapList
             ->onRebind($this->rebind(...))
-            // '1' on the keybindings list jumps back to the Settings form.
-            ->onShowSettings(fn () => $this->selectSection('general'))
             ->onFocusNext($this->focusNav(...))
             ->onExit($exit);
     }
@@ -129,6 +126,16 @@ final class SettingsViewController implements FullScreenView
      * Show a section's content pane. Does not steal focus — the sidebar keeps it
      * while navigating (Tab moves to the content).
      */
+    /**
+     * The form's `2` and the keybindings list's `1` — two widgets advertising a
+     * shortcut to the other page, which is one intent with two spellings.
+     */
+    #[AsEventListener]
+    public function onSectionRequested(SettingsSectionRequested $event): void
+    {
+        $this->selectSection($event->section);
+    }
+
     private function selectSection(string $id): void
     {
         $this->section = $id;

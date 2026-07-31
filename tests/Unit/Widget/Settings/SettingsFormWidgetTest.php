@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Event\SettingsSectionRequested;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
@@ -12,6 +13,7 @@ use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -31,10 +33,10 @@ final class SettingsFormWidgetTest extends TestCase
         ];
     }
 
-    private function widget(?array &$changes = null): SettingsFormWidget
+    private function widget(?array &$changes = null, ?EventDispatcher $events = null): SettingsFormWidget
     {
         $changes = [];
-        $widget = new SettingsFormWidget(new Translator('en'));
+        $widget = new SettingsFormWidget(new Translator('en'), events: $events);
         AttachedStyles::attach($widget); // the selection shade resolves through the themed sheet
         $widget->setFocused(true);
         $widget->setRows($this->rows());
@@ -233,9 +235,10 @@ final class SettingsFormWidgetTest extends TestCase
     public function testTabSwitchExitAndKeybindingsCallbacks(): void
     {
         $fired = [];
-        $widget = $this->widget();
-        $widget->onShowKeybindings(static function () use (&$fired): void {
-            $fired[] = 'kb';
+        $events = new EventDispatcher();
+        $widget = $this->widget(events: $events);
+        $events->addListener(SettingsSectionRequested::class, static function (SettingsSectionRequested $event) use (&$fired): void {
+            $fired[] = $event->section;
         });
         $widget->onFocusNext(static function () use (&$fired): void {
             $fired[] = 'next';
@@ -247,7 +250,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->handleInput('2');
         $widget->handleInput("\t");
         $widget->handleInput("\x1b");
-        $this->assertSame(['kb', 'next', 'exit'], $fired);
+        $this->assertSame(['keybindings', 'next', 'exit'], $fired);
     }
 
     public function testClickSelectsAndActuatesButIgnoresDeadRows(): void
@@ -273,7 +276,7 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $widget = new SettingsFormWidget(new Translator('en'));
         $widget->setRows($this->rows());
-        $widget->handleInput('2'); // no onShowKeybindings
+        $widget->handleInput('2'); // no dispatcher attached
         $widget->handleInput("\t"); // no onFocusNext
         $widget->handleInput("\x1b"); // no onExit
         $this->expectNotToPerformAssertions();

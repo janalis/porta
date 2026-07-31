@@ -6,6 +6,7 @@ namespace Porta\Widget\Settings;
 
 use Porta\Config\KeybindingRow;
 use Porta\Container\AsWidget;
+use Porta\Event\SettingsSectionRequested;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Ui\ListNavigation;
@@ -24,6 +25,7 @@ use Porta\Widget\Support\HoverTrait;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Widget\Support\WheelScrollable;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -61,12 +63,11 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
 
     /** @var (callable(string, string): void)|null a captured key (action, raw key data) to rebind */
     private $onRebind = null;
-    /** @var (callable(): void)|null `1`: switch to the Settings tab */
-    private $onShowSettings = null;
 
     public function __construct(
         private readonly Translator $translator,
         ?Styles $styles = null,
+        private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->initStyles($styles);
         $this->list = new ListSelection();
@@ -77,13 +78,6 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     public function onRebind(callable $callback): self
     {
         $this->onRebind = $callback;
-
-        return $this;
-    }
-
-    public function onShowSettings(callable $callback): self
-    {
-        $this->onShowSettings = $callback;
 
         return $this;
     }
@@ -133,7 +127,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             return;
         }
         if ($kb->matches($data, 'show_settings')) {
-            $this->fire($this->onShowSettings);
+            $this->events?->dispatch(new SettingsSectionRequested('general'));
 
             return;
         }
