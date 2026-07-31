@@ -22,6 +22,7 @@ use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
 use Porta\Support\Clipboard;
+use Porta\Tests\Support\AwaitsGit;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\Probe;
@@ -63,11 +64,33 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
 final class GitViewControllerTest extends TestCase
 {
     use GitBinary;
+    use AwaitsGit;
     use PumpsLoop;
     use StatusReads;
 
     private TempProject $project;
-    private GitInfo $git;
+    private ?GitInfo $git = null;
+    /** Held so tearDown can close the view a test left open (the poll timer is armed by open()). */
+    private ?GitViewController $controller = null;
+
+    /**
+     * A test that opens the view and asserts on layout or focus leaves two
+     * things behind: the 2s status-POLL the open armed (a repeating timer that
+     * outlives the test, which is most of what this class used to leak), and
+     * whatever git subprocesses the refresh started, whose watchers sit on
+     * streams their reaped children are about to close.
+     *
+     * Closing cancels the first, draining waits out the second. Doing it here
+     * beats bolting both onto thirty-odd tests that do not otherwise care.
+     */
+    protected function tearDown(): void
+    {
+        $this->controller?->close();
+        if (null !== $this->git) {
+            $this->awaitGitInfo($this->git);
+        }
+    }
+
     private Tui $tui;
     private ChangesListWidget $changes;
     private DiffViewWidget $diffView;
@@ -145,7 +168,7 @@ final class GitViewControllerTest extends TestCase
             $t,
         );
 
-        return new GitViewController(
+        return $this->controller = new GitViewController(
             $this->git,
             $this->project->dir,
             new GitPanes($this->changes, $this->diffView, $this->commitBox, $this->history, $this->tabs),

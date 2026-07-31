@@ -25,6 +25,7 @@ use Symfony\Component\Tui\Tui;
  */
 trait RunsIde
 {
+    use AwaitsGit;
     use PumpsLoop;
     use ScreenReads;
 
@@ -117,9 +118,6 @@ trait RunsIde
      */
     private function awaitGit(Ide $ide, float $timeout = 5.0): void
     {
-        // src carries no test-only isBusy(); the barrier reads the runner's
-        // in-flight map through the blessed Probe (once, outside the poll).
-        $runner = Probe::get(Services::resolve($ide, GitInfo::class), 'runner');
-        $this->await(static fn (): bool => [] === Probe::get($runner, 'running'), $timeout, 'git to finish');
+        $this->awaitGitInfo(Services::resolve($ide, GitInfo::class), $timeout);
     }
 }

@@ -23,11 +23,14 @@ use Porta\Lsp\WorkspaceEditor;
 use Porta\Onboarding\OnboardingState;
 use Porta\Search\SearchActions;
 use Porta\Support\ProjectPaths;
+use Porta\Tests\Support\AwaitsGit;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Workbench\Notifier;
+use Porta\Workbench\WorkspaceViews;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -38,6 +41,7 @@ use Symfony\Component\Tui\Tui;
  */
 final class IdeHelpersTest extends TestCase
 {
+    use AwaitsGit;
     use PumpsLoop;
 
     private TempProject $project;
@@ -48,6 +52,19 @@ final class IdeHelpersTest extends TestCase
         $this->project = new TempProject(['composer.json' => '{}']);
         new OnboardingState($this->project->dir)->markWelcomeSeen();
         $this->ide = new Ide($this->project->dir, null, new VirtualTerminal(columns: 80, rows: 24));
+    }
+
+    /**
+     * These tests BUILD an Ide but never run() it, so the teardown in its
+     * finally never happens — and the helpers they invoke arm the same timers
+     * and subprocess watchers a real session would. This is that finally, in
+     * the three parts a non-running IDE can still have armed.
+     */
+    protected function tearDown(): void
+    {
+        Services::resolve($this->ide, WorkspaceViews::class)->closeAll();
+        Services::resolve($this->ide, Notifier::class)->dismissAll();
+        $this->awaitGitInfo(Services::resolve($this->ide, GitInfo::class));
     }
 
     private function call(string $method, mixed ...$args): mixed
