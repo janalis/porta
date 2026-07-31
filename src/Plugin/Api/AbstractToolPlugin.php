@@ -132,6 +132,39 @@ abstract class AbstractToolPlugin extends AbstractPlugin
         });
     }
 
+    /**
+     * Apply what an in-place formatter just wrote, into the BUFFER — the step
+     * that turns "rewrite the file and let the 1s poller notice" into an edit
+     * the user can Ctrl+Z, that works while the buffer is dirty, and that
+     * arrives the moment the tool exits.
+     *
+     * `$before` is the document text captured when the run STARTED, and it is
+     * the version guard: if it no longer matches, the user typed while the
+     * subprocess worked and their keystrokes win. Core's own format-on-save
+     * makes the same check with a document version, which plugins cannot see.
+     *
+     * A null `$before` means the file was not the active one at launch, so
+     * there is nothing to apply into — the poller still reloads it later, which
+     * is the right outcome for a file the user is not looking at.
+     */
+    final protected function applyFormatted(PluginApi $api, string $file, ?string $before): void
+    {
+        if (null === $before || $api->activeFile() !== $file) {
+            return; // the user moved on; the file on disk is still correct
+        }
+        $formatted = is_file($file) ? file_get_contents($file) : false;
+        if (false === $formatted || $formatted === $before || $api->documentText() !== $before) {
+            return; // unreadable, unchanged, or typed into while the tool ran
+        }
+        $api->replaceDocument($formatted);
+    }
+
+    /** The document text to hand {@see applyFormatted()} later, or null when $file is not the active buffer. */
+    final protected function textBefore(PluginApi $api, string $file): ?string
+    {
+        return $api->activeFile() === $file ? $api->documentText() : null;
+    }
+
     /** The exit-code report every tool run ends with: the success line, or the code. */
     protected function flashExit(PluginApi $api, int $code, string $success): void
     {

@@ -429,6 +429,27 @@ diagnostics — inline end-of-line messages, the scroll-stripe, and the
 Problems panel — and the two sources replace each other per file (last
 writer wins).
 
+### Applying an in-place formatter's output
+
+A tool that rewrites the file (php-cs-fixer, mago format) should put its result
+into the BUFFER as well, not leave it for the filesystem poller:
+
+```php
+$before = $this->textBefore($api, $file);       // at launch
+new AsyncProcess([$binary, 'fix', $file], $api->projectRoot())->start(function () use ($api, $file, $before): void {
+    $this->applyFormatted($api, $file, $before); // when it exits
+});
+```
+
+`AbstractToolPlugin` carries both. The user gets the change immediately instead
+of on the next poll tick, one Ctrl+Z away, and it works while the buffer is
+dirty — the poller refuses that case and strands the result on disk.
+
+`$before` is the version guard: if the document no longer matches what it was at
+launch, the user typed while your subprocess ran and their keystrokes win. Pass
+null for a run that touches many files (a whole-project fix) — the poller is the
+right answer for files the user is not looking at.
+
 ### Running external tools
 
 Use `Porta\Support\AsyncProcess` so the UI never blocks:

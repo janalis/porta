@@ -51,7 +51,7 @@ final class PhpCsFixerPluginTest extends TestCase
         return $project;
     }
 
-    public function testFixCommandRunsTheFixerAndThePollerReloadsTheBuffer(): void
+    public function testFixCommandRunsTheFixerAndTheBufferUpdatesItself(): void
     {
         $project = $this->project();
 
@@ -69,10 +69,16 @@ final class PhpCsFixerPluginTest extends TestCase
                     $this->await(static fn (): bool => str_contains((string) (is_file($project->path('a.php')) ? file_get_contents($project->path('a.php')) : false), '// fixed'));
                     $this->assertStringContainsString('// fixed', (string) file_get_contents($project->path('a.php')), 'the stub rewrote the file');
 
-                    // The filesystem poller reloads the clean buffer with the fixed content.
-                    Services::resolve($ide, BufferService::class)
-                        ->pollFilesystem();
-                    $this->assertStringContainsString('// fixed', $tui->getById('editor')->getDocument()->getText(), 'buffer reloaded');
+                    // No pollFilesystem() here on purpose: the plugin applies
+                    // the result into the buffer when the tool exits, so the
+                    // edit is there without waiting a poll tick — and it is one
+                    // Ctrl+Z away, which a poller reload never was.
+                    $this->await(static fn (): bool => str_contains($tui->getById('editor')->getDocument()->getText(), '// fixed'));
+                    $this->assertStringContainsString('// fixed', $tui->getById('editor')->getDocument()->getText(), 'the buffer updated itself');
+                    $this->assertFalse($tui->getById('editor')->getDocument()->isDirty(), 'and it matches disk, so it is not modified');
+
+                    $tui->getById('editor')->handleInput("\x1a"); // ctrl+z
+                    $this->assertStringNotContainsString('// fixed', $tui->getById('editor')->getDocument()->getText(), 'the format is undoable');
                 },
             ],
         );
@@ -165,6 +171,36 @@ final class PhpCsFixerPluginTest extends TestCase
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'php-cs-fixer: exited with code 3'));
                     $tui->tick();
                     $this->assertStringContainsString('php-cs-fixer: exited with code 3', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testTypingWhileTheFixerRunsKeepsTheKeystrokes(): void
+    {
+        // The version guard. The subprocess read the file a moment ago; if the
+        // user has typed since, applying its output would silently discard
+        // their edit. Core's format-on-save makes the same check with a
+        // document version, which a plugin cannot see.
+        $project = $this->project();
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                100 => static function ($tui): void {
+                    $tui->handleInput("\x1b\x06"); // ctrl+alt+f
+                    $tui->getById('editor')->getDocument()->insert('X'); // typed while it runs
+                },
+                400 => function ($tui, $terminal) use ($project): void {
+                    $this->await(static fn (): bool => str_contains((string) (is_file($project->path('a.php')) ? file_get_contents($project->path('a.php')) : false), '// fixed'));
+                    $tui->tick();
+
+                    $text = $tui->getById('editor')->getDocument()->getText();
+                    $this->assertStringContainsString('X', $text, 'the keystroke survived');
+                    $this->assertStringNotContainsString('// fixed', $text, 'and the stale output was not applied over it');
                 },
             ],
         );

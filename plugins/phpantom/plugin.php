@@ -42,7 +42,7 @@ return new class('phpantom', 'phpantom_lsp', BinarySearch::PathOnly) extends Abs
             function () use ($api): void {
                 $file = $this->activeFileOrFlash($api);
                 if (null !== $file) {
-                    $this->run($api, ['fix', $file], 'fixed '.basename($file));
+                    $this->run($api, ['fix', $file], 'fixed '.basename($file), $file);
                 }
             },
             ['ctrl+alt+m'],
@@ -69,19 +69,28 @@ return new class('phpantom', 'phpantom_lsp', BinarySearch::PathOnly) extends Abs
     }
 
     /**
-     * One CLI invocation under the shared single-flight slot; `fix` rewrites
-     * in place and the filesystem poller reloads the buffer.
+     * One CLI invocation under the shared single-flight slot.
+     *
+     * $formatted names the ONE file this run rewrites, so its result can be
+     * applied into the buffer — one Ctrl+Z away, and without waiting for a poll
+     * tick. "Fix Project" passes null on purpose: it touches many files, and
+     * the filesystem poller is the right answer for the ones the user is not
+     * looking at.
      *
      * @param list<string> $arguments
      */
-    private function run(PluginApi $api, array $arguments, string $success): void
+    private function run(PluginApi $api, array $arguments, string $success, ?string $formatted = null): void
     {
         $binary = $this->acquire($api);
         if (null === $binary) {
             return;
         }
-        new AsyncProcess([$binary, ...$arguments], $api->projectRoot())->start(function (int $code) use ($api, $success): void {
+        $before = null === $formatted ? null : $this->textBefore($api, $formatted);
+        new AsyncProcess([$binary, ...$arguments], $api->projectRoot())->start(function (int $code) use ($api, $success, $formatted, $before): void {
             $this->release();
+            if (null !== $formatted) {
+                $this->applyFormatted($api, $formatted, $before);
+            }
             $this->flashExit($api, $code, 'phpantom: '.$success);
         });
     }

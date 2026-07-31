@@ -37,6 +37,7 @@ final class AbstractToolPluginTest extends TestCase
 
     private StatusBarWidget $status;
     private BufferManager $buffers;
+    private CodeEditorWidget $editor;
     private TempProject $project;
     private PluginManager $manager;
 
@@ -77,6 +78,16 @@ final class AbstractToolPluginTest extends TestCase
                 return $this->binaryAvailable($api);
             }
 
+            public function callApplyFormatted(PluginApi $api, string $file, ?string $before): void
+            {
+                $this->applyFormatted($api, $file, $before);
+            }
+
+            public function callTextBefore(PluginApi $api, string $file): ?string
+            {
+                return $this->textBefore($api, $file);
+            }
+
             public function callRegisterBinarySetting(PluginApi $api, array $via): void
             {
                 $this->registerBinarySetting($api, $via);
@@ -110,18 +121,19 @@ final class AbstractToolPluginTest extends TestCase
         $this->manager = $manager;
         $this->status = new StatusBarWidget();
         $this->buffers = new BufferManager();
+        $this->editor = new CodeEditorWidget();
         $tui = TestTui::create(100, 24);
         $manager->wireRuntime(new PluginRuntime(
             new Notifier($this->status, $tui),
             new Translator('en'),
-            new CodeEditorWidget(),
+            $this->editor,
             new RecordingFileOpener(),
             $tui,
             new RecordingDiagnosticsSink(),
             $this->buffers,
             TestDockTools::controller(),
-            TestDockTools::replacer(),
-            new CodeEditorWidget(),
+            TestDockTools::replacer($this->buffers),
+            $this->editor,
         ));
 
         return new PluginApi($pluginName, $manager, $this->project->dir, $settings);
@@ -330,5 +342,52 @@ final class AbstractToolPluginTest extends TestCase
         $this->assertNull($plugin->callCoreSetting('dotPath'), 'an empty core setting reads as unset');
         unset($_ENV['PORTA_DOT_PATH']);
         $this->assertNull($plugin->callCoreSetting('dotPath'));
+    }
+
+    public function testApplyingAFormattersOutputOnlyTouchesTheBufferItRanOn(): void
+    {
+        // Everything here is "the user moved while the subprocess worked". The
+        // file on disk is correct in every case; the question is only whether
+        // the BUFFER may be written, and the answer is no unless it is still
+        // the one the run started from.
+        $api = $this->api();
+        $plugin = $this->plugin();
+        $plugin->activate($api);
+        $path = $this->project->path('a.php');
+        file_put_contents($path, data: "formatted\n");
+        $buffer = $this->buffers->open($path, "before\n");
+        $this->buffers->setActive($path);
+        $this->editor->showDocument($path, $buffer->document); // documentText() reads the widget's
+
+        // Not the active file when the run started: nothing to apply into.
+        $plugin->callApplyFormatted($api, $path, before: null);
+        $this->assertSame("before\n", $this->buffers->active()?->document->getText());
+
+        // Started on another file, and that file is not the active one now.
+        $other = $this->project->path('b.php');
+        file_put_contents($other, data: "formatted\n");
+        $plugin->callApplyFormatted($api, $other, before: "before\n"); // started elsewhere
+        $this->assertSame("before\n", $this->buffers->active()?->document->getText(), 'the active buffer is not the one that was formatted');
+
+        // Unchanged output: no edit, so no undo entry to step through.
+        $plugin->callApplyFormatted($api, $path, before: "formatted\n");
+        $this->assertSame("before\n", $this->buffers->active()?->document->getText());
+
+        // The real path.
+        $plugin->callApplyFormatted($api, $path, before: "before\n");
+        $this->assertSame("formatted\n", $this->buffers->active()?->document->getText());
+    }
+
+    public function testTextBeforeIsNullWhenTheRunIsNotOnTheActiveBuffer(): void
+    {
+        $api = $this->api();
+        $plugin = $this->plugin();
+        $path = $this->project->path('a.php');
+        $buffer = $this->buffers->open($path, "text\n");
+        $this->buffers->setActive($path);
+        $this->editor->showDocument($path, $buffer->document);
+
+        $this->assertNull($plugin->callTextBefore($api, $this->project->path('elsewhere.php')));
+        $this->assertSame("text\n", $plugin->callTextBefore($api, $path));
     }
 }
