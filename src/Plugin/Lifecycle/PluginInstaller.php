@@ -31,6 +31,16 @@ use Symfony\Component\Process\ExecutableFinder;
 #[Autoconfigure(constructor: 'create')]
 final class PluginInstaller
 {
+    /**
+     * Written inside a vendor tree Porta's own composer run created, and the
+     * only thing that authorises deleting one again.
+     *
+     * Without it, disabling a plugin that ships or commits its `vendor/` would
+     * delete tracked files on a single keypress — and a plugin directory is
+     * the user's, not ours.
+     */
+    public const string MARKER = 'vendor/.porta-installed';
+
     /** Single-flight: the clone in progress, if any. */
     private ?AsyncProcess $running = null;
 
@@ -232,8 +242,16 @@ final class PluginInstaller
         // The slot is cleared BEFORE the callback runs, with no loop turn in
         // between, so a caller draining a queue can start the next install from
         // inside it and never see Busy.
-        $started = $this->running->start(function (int $code) use ($onExit): void {
+        $started = $this->running->start(function (int $code) use ($pluginDir, $onExit): void {
             $this->running = null;
+            // This tree is now ours to delete again. Written only on success:
+            // a half-installed vendor is not one we should later claim we
+            // made. An unwritable directory just means we never claim it —
+            // the plugin works either way, and the next disable leaves the
+            // tree standing rather than deleting what it cannot prove is ours.
+            if (0 === $code && is_dir($pluginDir.'/vendor')) {
+                file_put_contents($pluginDir.'/'.self::MARKER, data: "Porta installed this directory; disabling the plugin removes it.\n");
+            }
             $onExit($code);
         });
         if (!$started) {
@@ -247,6 +265,38 @@ final class PluginInstaller
         }
 
         return DependencyInstall::Started;
+    }
+
+    /**
+     * Delete the vendor tree Porta installed in $pluginDir.
+     *
+     * Only ours: the marker {@see MARKER} is what distinguishes a tree this
+     * class created from one the plugin shipped, committed, or built by hand.
+     * `composer.lock` is deliberately left behind — Porta did not write it, a
+     * committed one would show up as a dirty `git status` after a checkbox,
+     * and keeping it makes the next install resolve to the same versions.
+     *
+     * Synchronous, like the whole-directory {@see remove()} on the same page:
+     * a deferred delete would race a re-enable, and ordering the two is worth
+     * more than the stutter.
+     */
+    public function removeDependencies(string $pluginDir): DependencyRemoval
+    {
+        if (!is_file($pluginDir.'/'.self::MARKER)) {
+            return DependencyRemoval::NotOurs;
+        }
+        if (null !== $this->running) {
+            // Deleting a tree composer is writing into leaves a half-vendor
+            // that needsInstall() would then call complete.
+            return DependencyRemoval::Busy;
+        }
+        try {
+            new Filesystem()->remove($pluginDir.'/vendor');
+        } catch (IOExceptionInterface) {
+            return DependencyRemoval::Failed;
+        }
+
+        return DependencyRemoval::Removed;
     }
 
     /** Delete an installed plugin's directory; a translated error, or null on success. */

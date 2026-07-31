@@ -2190,6 +2190,14 @@
         <source>Plugin "%name%" enabled, but composer install failed (exit code %code%)</source>
         <target>Extension « %name% » activée, mais composer install a échoué (code de sortie %code%)</target>
       </trans-unit>
+      <trans-unit id="550">
+        <source>Cannot remove "%name%" dependencies now — an install is running</source>
+        <target>Impossible de supprimer les dépendances de « %name% » maintenant — une installation est en cours</target>
+      </trans-unit>
+      <trans-unit id="551">
+        <source>Disabled "%name%", but its dependencies could not be removed</source>
+        <target>« %name% » désactivée, mais ses dépendances n'ont pas pu être supprimées</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

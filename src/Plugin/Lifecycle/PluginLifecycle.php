@@ -152,9 +152,38 @@ final class PluginLifecycle implements PluginLifecycleOps
             $this->plugins->deactivate($target, $this->commands); // no shadow fallback: the NAME is off
             $this->reconfigureLspIf($wasProvider);
         }
+        // AFTER the deactivate loop, never before: deleting first could pull a
+        // file out from under the shadow-fallback reload deactivate() does.
+        foreach ([$name, ...$dependents] as $target) {
+            $this->removeDependenciesOf($target);
+        }
         $this->notifier->flash($this->translator->trans('Plugin "%name%" disabled', ['%name%' => $name]));
         $this->flashCompanions('Also disabled: %names%', $dependents);
         $this->afterToggle();
+    }
+
+    /**
+     * Give back the disk the plugin's packages took — but only a tree Porta
+     * installed, and only when nothing is being installed right now.
+     *
+     * Success is silent: the user asked to disable a plugin, not to hear about
+     * its directories. The two failures speak because they leave the disk in a
+     * state the next enable will behave differently in.
+     */
+    private function removeDependenciesOf(string $target): void
+    {
+        $dir = $this->installedDir($target);
+        if (null === $dir) {
+            return;
+        }
+        $message = match ($this->installer->removeDependencies($dir)) {
+            DependencyRemoval::Busy => 'Cannot remove "%name%" dependencies now — an install is running',
+            DependencyRemoval::Failed => 'Disabled "%name%", but its dependencies could not be removed',
+            default => null,
+        };
+        if (null !== $message) {
+            $this->notifier->flash($this->translator->trans($message, ['%name%' => $target]), seconds: 5.0);
+        }
     }
 
     /**

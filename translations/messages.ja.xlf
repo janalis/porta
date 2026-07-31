@@ -2190,6 +2190,14 @@
         <source>Plugin "%name%" enabled, but composer install failed (exit code %code%)</source>
         <target>プラグイン「%name%」を有効にしましたが、composer install に失敗しました (終了コード %code%)</target>
       </trans-unit>
+      <trans-unit id="550">
+        <source>Cannot remove "%name%" dependencies now — an install is running</source>
+        <target>インストール実行中のため、「%name%」の依存関係を今は削除できません</target>
+      </trans-unit>
+      <trans-unit id="551">
+        <source>Disabled "%name%", but its dependencies could not be removed</source>
+        <target>「%name%」を無効にしましたが、依存関係を削除できませんでした</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

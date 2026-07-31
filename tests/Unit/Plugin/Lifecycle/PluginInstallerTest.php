@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Plugin\Lifecycle;
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\DependencyInstall;
+use Porta\Plugin\Lifecycle\DependencyRemoval;
 use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
@@ -415,5 +416,99 @@ final class PluginInstallerTest extends TestCase
             DependencyInstall::NotNeeded,
             $installer->installDependencies($this->pluginDir('nodeps', '{}'), static fn (int $exit) => null),
         );
+    }
+
+    public function testASuccessfulInstallMarksTheTreeAsOurs(): void
+    {
+        // The marker is the only thing that authorises deleting a vendor tree
+        // later, so it is written on success and only on success: a
+        // half-installed tree is not one we should claim we made.
+        $installer = $this->installer(composer: $this->composerStub(0));
+        $dir = $this->pluginDir('needy', '{"require":{"vend/lib":"^1.0"}}');
+
+        $code = null;
+        $installer->installDependencies($dir, static function (int $exit) use (&$code): void {
+            $code = $exit;
+        });
+        $this->await(static function () use (&$code): bool {
+            return null !== $code;
+        }, what: "composer's exit");
+
+        $this->assertFileExists($dir.'/'.PluginInstaller::MARKER);
+        $this->assertSame(DependencyRemoval::Removed, $installer->removeDependencies($dir));
+        $this->assertDirectoryDoesNotExist($dir.'/vendor');
+    }
+
+    public function testAFailedInstallLeavesNoClaimOnTheTree(): void
+    {
+        $installer = $this->installer(composer: $this->composerStub(3));
+        $dir = $this->pluginDir('flaky', '{"require":{"vend/lib":"^1.0"}}');
+
+        $code = null;
+        $installer->installDependencies($dir, static function (int $exit) use (&$code): void {
+            $code = $exit;
+        });
+        $this->await(static function () use (&$code): bool {
+            return null !== $code;
+        }, what: "composer's exit");
+
+        $this->assertFileDoesNotExist($dir.'/'.PluginInstaller::MARKER);
+        $this->assertSame(DependencyRemoval::NotOurs, $installer->removeDependencies($dir), 'we did not finish it, so we do not delete it');
+        $this->assertDirectoryExists($dir.'/vendor', 'and what composer did write stays');
+    }
+
+    public function testAVendorTreeThePluginShippedIsNeverRemoved(): void
+    {
+        // The case the marker exists for: a plugin that commits its vendor/
+        // must not lose tracked files to a checkbox.
+        $installer = $this->installer();
+        $dir = $this->pluginDir('shipped', '{"require":{"vend/lib":"^1.0"}}');
+        mkdir($dir.'/vendor/vend', permissions: 0o777, recursive: true);
+        file_put_contents($dir.'/vendor/vend/Thing.php', data: "<?php\n");
+
+        $this->assertSame(DependencyRemoval::NotOurs, $installer->removeDependencies($dir));
+        $this->assertFileExists($dir.'/vendor/vend/Thing.php');
+
+        $this->assertSame(
+            DependencyRemoval::NotOurs,
+            $installer->removeDependencies($this->pluginDir('bare', '{}')),
+            'and no vendor at all is not a failure either',
+        );
+    }
+
+    public function testRemovingDependenciesIsRefusedWhileComposerRuns(): void
+    {
+        // Deleting a tree composer is writing into leaves a half-vendor that
+        // needsInstall() would then call complete.
+        $installer = $this->installer(git: $this->git(), composer: $this->composerStub(0));
+        $dir = $this->pluginDir('marked', '{"require":{"vend/lib":"^1.0"}}');
+        mkdir($dir.'/vendor', permissions: 0o777, recursive: true);
+        file_put_contents($dir.'/'.PluginInstaller::MARKER, data: "x\n");
+
+        $installer->install('file://'.$this->repo(Presence::With), 'project', static fn (?string $error, ?string $file) => null);
+
+        $this->assertSame(DependencyRemoval::Busy, $installer->removeDependencies($dir));
+        $this->assertDirectoryExists($dir.'/vendor');
+    }
+
+    public function testAVendorTreeThatWillNotDeleteIsReportedNotSwallowed(): void
+    {
+        if (0 === posix_geteuid()) {
+            $this->markTestSkipped('root deletes anything');
+        }
+        $installer = $this->installer();
+        $dir = $this->pluginDir('stuck', '{"require":{"vend/lib":"^1.0"}}');
+        mkdir($dir.'/vendor', permissions: 0o777, recursive: true);
+        file_put_contents($dir.'/'.PluginInstaller::MARKER, data: "x\n");
+        // No write bit on the PLUGIN directory, so its `vendor` entry cannot be
+        // unlinked however writable the tree below it is.
+        chmod($dir, permissions: 0o555);
+
+        try {
+            $this->assertSame(DependencyRemoval::Failed, $installer->removeDependencies($dir));
+            $this->assertDirectoryExists($dir.'/vendor');
+        } finally {
+            chmod($dir, permissions: 0o777);
+        }
     }
 }

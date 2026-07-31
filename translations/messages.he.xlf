@@ -2190,6 +2190,14 @@
         <source>Plugin "%name%" enabled, but composer install failed (exit code %code%)</source>
         <target>התוסף "%name%" הופעל, אך composer install נכשל (קוד יציאה %code%)</target>
       </trans-unit>
+      <trans-unit id="550">
+        <source>Cannot remove "%name%" dependencies now — an install is running</source>
+        <target>לא ניתן להסיר כעת את התלויות של "%name%" — התקנה פועלת</target>
+      </trans-unit>
+      <trans-unit id="551">
+        <source>Disabled "%name%", but its dependencies could not be removed</source>
+        <target>"%name%" הושבת, אך לא ניתן היה להסיר את התלויות שלו</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

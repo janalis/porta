@@ -719,6 +719,129 @@ final class IdeEmbeddedPluginsTest extends TestCase
 
                     $this->assertContains('Cannot install "needy" dependencies now — another install is already running', Toasts::all($ide));
                     $this->assertNotContains('Needy Run', array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label'));
+
+                    // Let the install that held the slot finish, so the test
+                    // does not stop the loop on an armed process watcher.
+                    $this->await(static fn (): bool => is_dir($project->path('.porta/plugins/busy/vendor')), what: "the other plugin's install");
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testDisablingRemovesTheDependenciesPortaInstalled(): void
+    {
+        // The symmetry the toggle promises: what enabling put on disk, disabling
+        // takes back. It costs a reinstall to turn it on again — that is the
+        // trade, and it only applies to trees Porta made.
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $this->needyPlugin($project, 'needy');
+        $project->write('.porta.json', (string) json_encode(['disabledPlugins' => ['needy']]));
+        putenv('PATH='.$this->fakeComposerPath($project));
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $lifecycle = Services::resolve($ide, PluginLifecycle::class);
+                    $vendor = $project->path('.porta/plugins/needy/vendor');
+
+                    $lifecycle->enable('needy');
+                    // The marker, not the directory: composer creates vendor/
+                    // while it runs and the marker lands with its exit code, so
+                    // awaiting the directory would race the claim.
+                    $this->await(static fn (): bool => is_file($vendor.'/.porta-installed'), what: 'the install to be marked ours');
+
+                    $lifecycle->disable('needy');
+                    $this->assertDirectoryDoesNotExist($vendor, 'and taken back');
+                    $this->assertFileExists($project->path('.porta/plugins/needy/composer.json'), 'the plugin itself stands');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAVendorTreeThePluginShippedSurvivesADisable(): void
+    {
+        // Porta only deletes what Porta wrote. A plugin that commits its
+        // vendor/ would otherwise lose tracked files to a checkbox.
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $this->projectPlugin($project, 'shipped');
+        $vendor = $project->path('.porta/plugins/shipped/vendor');
+        mkdir($vendor.'/vend', permissions: 0o777, recursive: true);
+        file_put_contents($vendor.'/vend/Thing.php', data: "<?php\n");
+        putenv('PATH=/nonexistent');
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($vendor): void {
+                    Services::resolve($ide, PluginLifecycle::class)->disable('shipped');
+
+                    $this->assertFileExists($vendor.'/vend/Thing.php', 'no marker, no deletion');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testRemovalIsDeferredToNobodyWhenAnInstallIsRunning(): void
+    {
+        // Deleting a tree while composer works would leave a half-vendor that
+        // the next boot reads as complete. Refused, and said out loud, because
+        // the disk is now in a state the next enable behaves differently in.
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $this->needyPlugin($project, 'needy');
+        $this->needyPlugin($project, 'busy');
+        $project->write('.porta.json', (string) json_encode(['disabledPlugins' => ['needy', 'busy']]));
+        putenv('PATH='.$this->fakeComposerPath($project));
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $lifecycle = Services::resolve($ide, PluginLifecycle::class);
+                    $vendor = $project->path('.porta/plugins/needy/vendor');
+
+                    $lifecycle->enable('needy');
+                    $this->await(static fn (): bool => is_file($vendor.'/.porta-installed'), what: "needy's install");
+
+                    $lifecycle->enable('busy'); // takes the slot
+                    $lifecycle->disable('needy'); // …so this cannot delete
+
+                    $this->assertContains('Cannot remove "needy" dependencies now — an install is running', Toasts::all($ide));
+                    $this->assertDirectoryExists($vendor, 'left intact rather than half-deleted');
+
+                    $this->await(static fn (): bool => is_dir($project->path('.porta/plugins/busy/vendor')), what: 'the other install');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testDisablingSomethingNotInstalledAnywhereIsHarmless(): void
+    {
+        // A name from a config file that no directory answers to: nothing to
+        // deactivate, nothing to delete, and the choice still records.
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        putenv('PATH=/nonexistent');
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    Services::resolve($ide, PluginLifecycle::class)->disable('ghost');
+
+                    $this->assertContains('Plugin "ghost" disabled', Toasts::all($ide));
+                    $this->assertSame(['ghost'], \Porta\Config\IdeConfig::load($project->dir)->disabledPlugins);
                 },
             ],
         );
