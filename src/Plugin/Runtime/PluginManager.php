@@ -7,6 +7,7 @@ namespace Porta\Plugin\Runtime;
 use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
 use Porta\Config\RebindableActionSource;
+use Porta\Debug\DebugAdapterProvider;
 use Porta\Editor\EditorPaneSource;
 use Porta\Editor\ViewerProviderSource;
 use Porta\Highlight\CallableHighlightProvider;
@@ -29,6 +30,7 @@ use Porta\Workbench\StatusSegmentSource;
  * {@see runtime()} gate.
  */
 final class PluginManager implements
+    DebugAdapterProvider,
     DockToolSource,
     EditorPaneSource,
     LanguageServerProvider,
@@ -62,6 +64,8 @@ final class PluginManager implements
     private array $listTools = [];
     /** @var list<array{plugin: string, segment: \Closure(): (string|null)}> committed status-bar segments, in load order */
     private array $statusSegments = [];
+    /** @var list<array{plugin: string, languageId: string, resolve: \Closure(): (list<string>|null)}> committed debug adapters, in load order */
+    private array $debugAdapters = [];
     /** @var list<string> */
     private array $warnings = [];
     /** @var array<string, true> loaded plugin names */
@@ -148,6 +152,9 @@ final class PluginManager implements
         }
         foreach ($api->bufferedStatusSegments() as $segment) {
             $this->statusSegments[] = $segment;
+        }
+        foreach ($api->bufferedDebugAdapters() as $adapter) {
+            $this->debugAdapters[] = $adapter;
         }
         $this->settings->registerFor($name, $api->bufferedSettings());
     }
@@ -240,6 +247,7 @@ final class PluginManager implements
         $this->actions = array_values(array_filter($this->actions, static fn (array $action): bool => $name !== $action['plugin']));
         $this->listTools = array_values(array_filter($this->listTools, static fn (array $tool): bool => $name !== $tool['plugin']));
         $this->statusSegments = array_values(array_filter($this->statusSegments, static fn (array $segment): bool => $name !== $segment['plugin']));
+        $this->debugAdapters = array_values(array_filter($this->debugAdapters, static fn (array $adapter): bool => $name !== $adapter['plugin']));
         $this->registered = \count($this->commands);
 
         unset($this->reportedWhens[$name], $this->reportedHighlighters[$name], $this->reportedViewers[$name], $this->reportedSegments[$name]);
@@ -388,6 +396,36 @@ final class PluginManager implements
     public function panes(): array
     {
         return $this->panes;
+    }
+
+    /**
+     * The plugin-provided debug adapters, resolved now — the
+     * {@see languageServers()} shape, including its first-provider-wins rule
+     * and its "a null resolve means not installed" convention.
+     *
+     * @return array<string, list<string>>
+     */
+    public function debugAdapters(): array
+    {
+        $adapters = [];
+        foreach ($this->debugAdapters as $adapter) {
+            if (array_key_exists($adapter['languageId'], $adapters)) {
+                continue; // an earlier plugin already claims this language
+            }
+            try {
+                $command = $adapter['resolve']();
+            } catch (\Throwable $error) {
+                $this->reportFailure($adapter['plugin'], $error);
+
+                continue;
+            }
+            if (null === $command || [] === $command) {
+                continue; // the adapter's binary is not available
+            }
+            $adapters[$adapter['languageId']] = array_values($command);
+        }
+
+        return $adapters;
     }
 
     /**

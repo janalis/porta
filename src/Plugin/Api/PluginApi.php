@@ -72,6 +72,8 @@ final class PluginApi
     private readonly PluginBuffer $listTools;
     /** @var PluginBuffer<array{plugin: string, segment: \Closure(): (string|null)}> */
     private readonly PluginBuffer $statusSegments;
+    /** @var PluginBuffer<array{plugin: string, languageId: string, resolve: \Closure(): (list<string>|null)}> */
+    private readonly PluginBuffer $debugAdapters;
     /** @var array<string, true> bare ids, so showList() can reject one this plugin never registered */
     private array $listToolIds = [];
 
@@ -91,6 +93,7 @@ final class PluginApi
         $this->actions = new PluginBuffer();
         $this->listTools = new PluginBuffer();
         $this->statusSegments = new PluginBuffer();
+        $this->debugAdapters = new PluginBuffer();
     }
 
     /**
@@ -418,6 +421,26 @@ final class PluginApi
             'rerun' => $rerun,
             'activate' => $activate,
         ]);
+    }
+
+    /**
+     * Provide the DEBUG ADAPTER for a language — the DAP counterpart of
+     * {@see registerLanguageServer()}, and it works the same way: the resolver
+     * is called when a session starts, so it can read this plugin's `binary`
+     * setting and return null while the adapter is not installed yet.
+     *
+     * Consulted BELOW `.porta.json`'s `languages.<id>.debug`: a user who named
+     * an adapter by hand keeps it. Returning the argv is the whole contract —
+     * launch configuration stays the user's, because it is theirs to tune.
+     *
+     * @param \Closure(): (list<string>|null) $resolveCommand
+     */
+    public function registerDebugAdapter(string $languageId, \Closure $resolveCommand): void
+    {
+        if (1 !== preg_match(self::ID_PATTERN, $languageId)) {
+            throw new PluginException(\sprintf('Invalid language id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $languageId));
+        }
+        $this->debugAdapters->add(['plugin' => $this->pluginName, 'languageId' => $languageId, 'resolve' => $resolveCommand]);
     }
 
     /**
@@ -838,5 +861,11 @@ final class PluginApi
     public function bufferedStatusSegments(): array
     {
         return $this->statusSegments->all();
+    }
+
+    /** @return list<array{plugin: string, languageId: string, resolve: \Closure(): (list<string>|null)}> */
+    public function bufferedDebugAdapters(): array
+    {
+        return $this->debugAdapters->all();
     }
 }

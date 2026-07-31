@@ -8,8 +8,14 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * The per-language debug-adapter registry, seeded from .porta.json's
- * `languages.<id>.debug` blocks and updated live by the settings screen.
- * Purely config-driven in v1 — no auto-detection (the seam for it is here).
+ * `languages.<id>.debug` blocks and updated live by the settings screen, with
+ * plugin-contributed adapters ({@see DebugAdapterProvider}) filling the
+ * languages that block does not name.
+ *
+ * Precedence is the user first, always: a hand-configured adapter is never
+ * shadowed by a plugin's, and clearing the setting hands the language back to
+ * whichever plugin claims it. Auto-DETECTION is still out — a plugin declaring
+ * "I can debug PHP" is a claim, not a guess.
  */
 final class DebugAdapters
 {
@@ -19,8 +25,11 @@ final class DebugAdapters
     /**
      * @param array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}> $languages IdeConfig's per-language overrides
      */
-    public function __construct(#[Autowire('%env(json:PORTA_LANGUAGES)%')] array $languages)
-    {
+    public function __construct(
+        #[Autowire('%env(json:PORTA_LANGUAGES)%')]
+        array $languages,
+        private readonly ?DebugAdapterProvider $plugins = null,
+    ) {
         foreach ($languages as $languageId => $entry) {
             $debug = $entry['debug'] ?? [];
             if (($debug['adapter'] ?? null) !== null) {
@@ -31,10 +40,19 @@ final class DebugAdapters
         }
     }
 
-    /** The adapter configured for a language, or null when there is none. */
+    /**
+     * The adapter for a language: the user's configuration first, then a
+     * plugin's, then none.
+     */
     public function adapterFor(string $languageId): ?DebugConfig
     {
-        return $this->configs[$languageId] ?? null;
+        $configured = $this->configs[$languageId] ?? null;
+        if (null !== $configured) {
+            return $configured;
+        }
+        $argv = $this->plugins?->debugAdapters()[$languageId] ?? null;
+
+        return null === $argv || [] === $argv ? null : new DebugConfig($argv, [], []);
     }
 
     /** The configured adapter command as one string ('' when unset), for the settings row. */

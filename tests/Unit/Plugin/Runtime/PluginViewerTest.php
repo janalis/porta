@@ -300,4 +300,34 @@ final class PluginViewerTest extends TestCase
         $manager->deactivate('demo', new CommandRegistry());
         $this->assertSame([], $manager->statusSegments(), 'a removed plugin takes its segment with it');
     }
+
+    public function testDebugAdaptersResolveLikeLanguageServersDo(): void
+    {
+        $manager = $this->manager();
+        $api = $this->api($manager, 'php-debug');
+        $api->registerDebugAdapter('php', static fn (): array => ['php', '-dxdebug.mode=debug', 'adapter']);
+        $api->registerDebugAdapter('rust', static fn (): ?array => null); // binary not installed
+        $api->registerDebugAdapter('go', static fn (): array => []); // likewise, spelled the other way
+        $api->registerDebugAdapter('ruby', static fn (): array => throw new \RuntimeException('resolver exploded'));
+        $manager->commit($api);
+
+        $second = $this->api($manager, 'other-debug');
+        $second->registerDebugAdapter('php', static fn (): array => ['mine', 'instead']);
+        $manager->commit($second);
+
+        $this->assertSame(['php' => ['php', '-dxdebug.mode=debug', 'adapter']], $manager->debugAdapters(), 'unavailable and throwing resolvers contribute nothing; first plugin wins the language');
+        $this->assertCount(1, $manager->warnings());
+
+        $manager->deactivate('php-debug', new CommandRegistry());
+        $this->assertSame(['php' => ['mine', 'instead']], $manager->debugAdapters(), 'removing the first hands the language to the next');
+    }
+
+    public function testADebugAdaptersLanguageIdIsValidated(): void
+    {
+        $api = $this->api($this->manager(), 'p');
+
+        $this->expectException(PluginException::class);
+        $this->expectExceptionMessageMatches('/Invalid language id/');
+        $api->registerDebugAdapter('BAD ID!', static fn (): array => ['x']);
+    }
 }

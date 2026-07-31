@@ -179,6 +179,7 @@ final class ArchitectureCheckCommand extends Command
         'Overlay>Workbench',
         'Plugin>Config',
         'Plugin>Container',
+        'Plugin>Debug',
         'Plugin>Editor',
         'Plugin>Event',
         'Plugin>Highlight',
