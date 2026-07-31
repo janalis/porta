@@ -81,4 +81,27 @@ final class PluginEventsTest extends TestCase
         $this->expectExceptionMessage('unknown event "fileClosed"');
         new PluginEvents()->subscribe('demo', 'fileClosed', static function (): void {});
     }
+
+    public function testTheLifecycleMomentsAreNotBusEventsAndCarryTheProjectRoot(): void
+    {
+        // ready/shutdown are called by Ide directly — "the IDE is up" is a
+        // position in run(), not something dispatched — but they ride the same
+        // subscriber map, so a removed plugin loses them like any other hook.
+        $events = new PluginEvents();
+        $seen = [];
+        $events->subscribe('demo', 'ready', static function (string $root) use (&$seen): void {
+            $seen[] = 'ready:'.$root;
+        });
+        $events->subscribe('demo', 'shutdown', static function (string $root) use (&$seen): void {
+            $seen[] = 'shutdown:'.$root;
+        });
+
+        $events->ready('/p');
+        $events->shutdown('/p');
+        $this->assertSame(['ready:/p', 'shutdown:/p'], $seen);
+
+        $events->removeFor('demo');
+        $events->ready('/p');
+        $this->assertSame(['ready:/p', 'shutdown:/p'], $seen, 'a removed plugin hears nothing');
+    }
 }

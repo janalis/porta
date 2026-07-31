@@ -221,4 +221,56 @@ final class IdePluginTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    public function testReadyFiresBeforeTheFirstFileOpenedAndShutdownLast(): void
+    {
+        // The ordering IS the contract: a plugin that sets something up in
+        // onReady must be able to rely on it being there when the first
+        // fileOpened arrives, rather than racing the initial open. The log is
+        // written from onShutdown, which also proves that hook runs at all —
+        // and that it can still reach the filesystem while core tears down.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            'a.php' => "<?php\n",
+            '.porta/plugins/lifecycle/plugin.php' => <<<'PHP'
+                <?php
+                use Porta\Plugin\Api\PluginApi;
+                use Porta\Plugin\Api\PortaPlugin;
+
+                return new class implements PortaPlugin {
+                    /** @var list<string> */
+                    private array $order = [];
+
+                    public function name(): string
+                    {
+                        return 'lifecycle';
+                    }
+
+                    public function activate(PluginApi $api): void
+                    {
+                        $this->order[] = 'activate';
+                        $api->onReady(function (string $root): void {
+                            $this->order[] = 'ready';
+                        });
+                        $api->onFileOpened(function (string $path): void {
+                            $this->order[] = 'opened:'.basename($path);
+                        });
+                        $api->onShutdown(function (string $root): void {
+                            file_put_contents($root.'/lifecycle.log', implode(',', [...$this->order, 'shutdown']));
+                        });
+                    }
+                };
+                PHP,
+        ]);
+
+        $this->runIde($project, $project->path('a.php'), [200 => static function ($tui): void {
+            $tui->tick();
+        }]);
+
+        $this->assertSame(
+            'activate,ready,opened:a.php,shutdown',
+            (string) file_get_contents($project->path('lifecycle.log')),
+            'ready lands after activate and before the first open; shutdown is last',
+        );
+    }
 }

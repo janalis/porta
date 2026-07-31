@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Runtime;
 
+use Porta\Container\AsIdeService;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
@@ -12,7 +13,12 @@ use Porta\Plugin\Api\PluginException;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
- * The bridge from the app event bus to the plugin hook API. Plugin listeners
+ * The bridge from the app event bus to the plugin hook API, plus the two
+ * LIFECYCLE moments that are not bus events at all — `ready` and `shutdown`
+ * are called by {@see \Porta\Ide} directly, because "the IDE is up" and "the
+ * IDE is going down" are positions in run(), not something dispatched.
+ *
+ * The rest of this class is the bridge proper. Plugin listeners
  * are pre-wrapped by {@see PluginManager} (a throwing plugin never propagates)
  * and keyed by plugin so a live-removed plugin's hooks can be dropped
  * ({@see removeFor}). The bridge runs at priority -100 — third-party code
@@ -21,9 +27,10 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  * buffer (config re-apply, focus churn) stays silent for plugins while core
  * listeners still see every show.
  */
+#[AsIdeService]
 final class PluginEvents
 {
-    public const array EVENTS = ['fileOpened', 'fileSaved', 'bufferSwitched', 'themeChanged'];
+    public const array EVENTS = ['fileOpened', 'fileSaved', 'bufferSwitched', 'themeChanged', 'ready', 'shutdown'];
 
     /** @var array<string, array<string, list<\Closure(string): void>>> event => plugin => listeners */
     private array $listeners = [];
@@ -79,6 +86,27 @@ final class PluginEvents
     public function onThemeChanged(ThemeChanged $event): void
     {
         $this->emit('themeChanged', $event->theme);
+    }
+
+    /**
+     * The IDE is up: layout applied, every service wired, the event loop about
+     * to run — and no buffer opened yet, so a plugin's setup lands before the
+     * first `fileOpened` rather than racing it.
+     */
+    public function ready(string $rootDir): void
+    {
+        $this->emit('ready', $rootDir);
+    }
+
+    /**
+     * The IDE is going down. Called FIRST in the teardown, while the services a
+     * plugin might need are still alive — but the event loop has already
+     * stopped, so a hook must do its work synchronously: anything it schedules
+     * will never run.
+     */
+    public function shutdown(string $rootDir): void
+    {
+        $this->emit('shutdown', $rootDir);
     }
 
     private function emit(string $event, string $path): void

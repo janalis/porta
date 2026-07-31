@@ -566,6 +566,33 @@ final class PluginApi
         return SettingsRowKind::from($descriptor['kind'])->coerce($raw, $descriptor['default'], $descriptor['options'] ?? []);
     }
 
+    /**
+     * Run $listener once the IDE is up — layout applied, services wired, no
+     * buffer opened yet, so setup lands before the first `onFileOpened` rather
+     * than racing it. It receives the project root, matching the other hooks'
+     * signature; a closure taking no argument is fine.
+     *
+     * @param \Closure(string): void $listener
+     */
+    public function onReady(\Closure $listener): void
+    {
+        $this->hooks[] = ['ready', $listener];
+    }
+
+    /**
+     * Run $listener as the IDE shuts down, before core tears its services down.
+     *
+     * The event loop has ALREADY stopped by then, so the listener must finish
+     * synchronously — a timer or subprocess it starts will never run.
+     * Persisting something is what this is for.
+     *
+     * @param \Closure(string): void $listener
+     */
+    public function onShutdown(\Closure $listener): void
+    {
+        $this->hooks[] = ['shutdown', $listener];
+    }
+
     /** @param \Closure(string): void $listener receives the absolute path */
     public function onFileOpened(\Closure $listener): void
     {
