@@ -20,6 +20,15 @@ enum MenuSurface
     /** The trailing "Plugins" menu in the menu bar — the default, and where every item went before this existed. */
     case Plugins;
 
-    /** The editor's right-click menu, after core's items. */
+    /**
+     * The editor's right-click menu, after core's items.
+     *
+     * Reachable only while the CODE editor holds the pane: the router resolves
+     * this surface from the editor widget's rect, and a viewer pane detaches
+     * that widget. So a command scoped to a viewer tab (a graph export, an
+     * image action) put here would be gated on exactly the state that hides it
+     * — measured before graph-viewer's exports were moved, which is why they
+     * stayed in the Plugins menu.
+     */
     case EditorContext;
 }
