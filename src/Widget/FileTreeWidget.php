@@ -6,6 +6,7 @@ namespace Porta\Widget;
 
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
+use Porta\Event\TreeFileActivated;
 use Porta\Layout\ResizableSidebar;
 use Porta\Support\AnsiText;
 use Porta\Tree\FileTreeNode;
@@ -25,6 +26,7 @@ use Porta\Widget\Support\PanelWidth;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Widget\Support\WheelScrollable;
 use Psr\Clock\ClockInterface;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -79,9 +81,6 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      */
     private const int POLL_GRACE_SECONDS = 2;
 
-    /** @var (callable(string): void)|null */
-    private $onOpenFile = null;
-
     private readonly ClockInterface $clock;
 
     public function __construct(
@@ -89,6 +88,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         ?ClockInterface $clock = null,
         int $width = 30,
         ?Styles $styles = null,
+        private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->width = $width;
         $this->clock = $clock ?? new NativeClock();
@@ -123,13 +123,6 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     public function maxRatio(): float
     {
         return 0.6;
-    }
-
-    public function onOpenFile(callable $callback): self
-    {
-        $this->onOpenFile = $callback;
-
-        return $this;
     }
 
     /**
@@ -252,9 +245,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
                 return;
             }
-            if (null !== $this->onOpenFile) {
-                ($this->onOpenFile)($node->path);
-            }
+            $this->events?->dispatch(new TreeFileActivated($node->path));
 
             return;
         }
@@ -282,9 +273,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
             return;
         }
-        if (null !== $this->onOpenFile) {
-            ($this->onOpenFile)($node->path);
-        }
+        $this->events?->dispatch(new TreeFileActivated($node->path));
         $this->invalidate();
     }
 

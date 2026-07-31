@@ -12,6 +12,7 @@ use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
 use Porta\Event\DiagnosticsChanged;
+use Porta\Event\TreeFileActivated;
 use Porta\I18n\Translator;
 use Porta\Lsp\BufferReopener;
 use Porta\Lsp\FormatOnSave;
@@ -23,6 +24,7 @@ use Porta\Widget\FileTreeWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Workbench\Notifier;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Tui\Tui;
@@ -74,6 +76,16 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         private readonly ViewerProviderSource $viewers,
         private readonly EditorPanes $panes,
     ) {}
+
+    /**
+     * The project tree's Enter/click. Focus moves to the editor, which is what
+     * "I picked this file" means from a list you were navigating.
+     */
+    #[AsEventListener]
+    public function onTreeFileActivated(TreeFileActivated $event): void
+    {
+        $this->openFile($event->path, focus: OpenFocus::Editor);
+    }
 
     public function openFile(string $path, OpenFocus $focus = OpenFocus::Keep, OpenAs $as = OpenAs::Viewer): void
     {

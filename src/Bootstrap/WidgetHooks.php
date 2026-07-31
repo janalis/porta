@@ -6,8 +6,6 @@ namespace Porta\Bootstrap;
 
 use Porta\Container\AsIdeService;
 use Porta\Editor\BreadcrumbTrailProvider;
-use Porta\Editor\FileOpener;
-use Porta\Editor\OpenFocus;
 use Porta\Help\HelpViewerActions;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Run\RunController;
@@ -15,7 +13,6 @@ use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\EditorCallbacks;
-use Porta\Widget\FileTreeWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\StatusBarWidget;
@@ -41,8 +38,6 @@ final class WidgetHooks
 {
     public function __construct(
         private readonly Tui $tui,
-        private readonly FileTreeWidget $tree,
-        private readonly FileOpener $files,
         private readonly CodeEditorWidget $editor,
         private readonly EditorCallbacks $editorCallbacks,
         private readonly HelpViewerWidget $helpViewer,
@@ -66,8 +61,6 @@ final class WidgetHooks
 
     public function wire(): void
     {
-        $this->tree->onOpenFile(fn (string $path) => $this->files->openFile($path, focus: OpenFocus::Editor));
-
         $this->editor->setCallbacks($this->editorCallbacks);
         $this->helpViewer->setDocsRoot($this->docsDir);
         $this->helpViewer->setHandler($this->helpViewerActions);

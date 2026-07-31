@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Event\TreeFileActivated;
 use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\FileTreeWidget;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -149,11 +151,12 @@ final class FileTreeWidgetTest extends TestCase
             'a.php' => "<?php\n",
             'sub/b.php' => "<?php\n",
         ]);
-        $tree = new FileTreeWidget($project->dir);
+        $events = new EventDispatcher();
+        $tree = new FileTreeWidget($project->dir, events: $events);
         $tree->setFocused(true);
         $opened = null;
-        $tree->onOpenFile(static function (string $path) use (&$opened): void {
-            $opened = $path;
+        $events->addListener(TreeFileActivated::class, static function (TreeFileActivated $event) use (&$opened): void {
+            $opened = $event->path;
         });
         $context = new RenderContext(30, 10);
 
@@ -264,11 +267,12 @@ final class FileTreeWidgetTest extends TestCase
     public function testClickRowSelectsOpensAndTogglesDirectories(): void
     {
         $project = new TempProject(['sub/b.php' => "<?php\n", 'a.php' => "<?php\n"]);
-        $tree = new FileTreeWidget($project->dir);
+        $events = new EventDispatcher();
+        $tree = new FileTreeWidget($project->dir, events: $events);
         $tree->setFocused(true);
         $opened = null;
-        $tree->onOpenFile(static function (string $p) use (&$opened): void {
-            $opened = $p;
+        $events->addListener(TreeFileActivated::class, static function (TreeFileActivated $event) use (&$opened): void {
+            $opened = $event->path;
         });
         $context = new RenderContext(30, 10);
         $tree->render($context);
@@ -307,7 +311,8 @@ final class FileTreeWidgetTest extends TestCase
     public function testAccessorsAndHooks(): void
     {
         $project = new TempProject(['a.php' => '', 'b.php' => '']);
-        $tree = new FileTreeWidget($project->dir, width: 25);
+        $events = new EventDispatcher();
+        $tree = new FileTreeWidget($project->dir, width: 25, events: $events);
 
         $this->assertTrue($tree->isVerticallyExpanded());
         $this->assertSame($tree, $tree->expandVertically(false), 'always fills its pane');
@@ -323,8 +328,8 @@ final class FileTreeWidgetTest extends TestCase
         $tree->handleInput("\x1b[B");
         $tree->handleInput("\x1b[A");
         $opened = null;
-        $tree->onOpenFile(static function (string $p) use (&$opened): void {
-            $opened = $p;
+        $events->addListener(TreeFileActivated::class, static function (TreeFileActivated $event) use (&$opened): void {
+            $opened = $event->path;
         });
         $tree->handleInput("\r");
         $this->assertStringEndsWith('a.php', (string) $opened, 'up-arrow returned to the first file');
