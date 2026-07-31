@@ -74,6 +74,17 @@ final class PluginLoader
         $manifests = [];
         foreach ($this->discover() as $file) {
             $manifest = PluginManifest::beside($file);
+            if ($manifest->needsInstall()) {
+                // Declining it here rather than letting it fatal later: its
+                // dependents are skipped by name too, because it never enters
+                // the order.
+                $manager->addWarning(\sprintf('Plugin "%s" needs its dependencies installed — run composer install in %s', $manifest->name, $manifest->directory));
+
+                continue;
+            }
+            foreach ($manifest->shadowedPackages() as $package) {
+                $manager->addWarning(\sprintf('Plugin "%s" vendors %s, which Porta ships — Porta\'s copy is used', $manifest->name, $package));
+            }
             PluginAutoloader::register($manifest);
             $manifests[] = $manifest;
         }

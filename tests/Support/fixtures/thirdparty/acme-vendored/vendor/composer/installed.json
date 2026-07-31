@@ -1,0 +1,6 @@
+{
+    "packages": [
+        { "name": "vend/lib", "version": "1.0.0" },
+        { "name": "symfony/clock", "version": "1.0.0" }
+    ]
+}

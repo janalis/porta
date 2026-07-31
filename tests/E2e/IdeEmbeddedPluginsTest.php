@@ -347,6 +347,37 @@ final class IdeEmbeddedPluginsTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testAThirdPartyPluginUsesAPackageItVendoredWithComposer(): void
+    {
+        // The whole strand end to end: the fixture ships composer.json + a
+        // vendor/ with composer's generated maps, and its own class calls into
+        // the vendored package. Nothing requires composer's autoloader — doing
+        // so would PREPEND the plugin's loader and let it take over Porta's own
+        // dependencies process-wide.
+        $fixture = \dirname(__DIR__).'/Support/fixtures/thirdparty/acme-vendored';
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        mkdir($project->path('.porta/plugins'), permissions: 0o777, recursive: true);
+        symlink($fixture, $project->path('.porta/plugins/acme-vendored'));
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                100 => function ($tui, $terminal, $ide): void {
+                    $commands = Services::resolve($ide, CommandRegistry::class);
+                    $this->assertContains('Acme: Greet', array_column($commands->paletteCommands(), 'label'), 'the plugin loaded');
+                    $commands->run('acme-vendored:greet');
+                    $this->await(
+                        static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'acme psr4-ok classmap-ok'),
+                        what: 'both halves of the vendored map',
+                    );
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     /** A project plugin directory: an entry file, and a manifest when $requires is given. */
     private function projectPlugin(TempProject $project, string $name, array $requires = []): void
     {

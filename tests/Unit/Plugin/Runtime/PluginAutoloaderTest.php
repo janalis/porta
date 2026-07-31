@@ -12,8 +12,11 @@ use Porta\Tests\Support\Probe;
 /** Classes shipped by a plugin, from a directory composer knows nothing about. */
 final class PluginAutoloaderTest extends TestCase
 {
-    /** @var array<string, string> */
+    /** @var array<string, list<string>> */
     private array $prefixes = [];
+
+    /** @var array<string, string> */
+    private array $classes = [];
 
     protected function setUp(): void
     {
@@ -24,12 +27,22 @@ final class PluginAutoloaderTest extends TestCase
         // extra (identical, inert) autoloader on the stack per test — the price
         // of covering that branch, since the bootstrap always takes it first.
         $this->prefixes = self::registered();
+        /** @var array<string, string> $classes */
+        $classes = Probe::getStatic(PluginAutoloader::class, 'classes');
+        $this->classes = $classes;
         Probe::setStatic(PluginAutoloader::class, 'prefixes', []);
+        Probe::setStatic(PluginAutoloader::class, 'classes', []);
+        // …and the flag, so each test re-takes the first-registration branch.
+        // The price is one extra (identical, inert) loader on the stack per
+        // test, which is the same price the empty map used to cost.
+        Probe::setStatic(PluginAutoloader::class, 'registered', false);
     }
 
     protected function tearDown(): void
     {
         Probe::setStatic(PluginAutoloader::class, 'prefixes', $this->prefixes);
+        Probe::setStatic(PluginAutoloader::class, 'classes', $this->classes);
+        Probe::setStatic(PluginAutoloader::class, 'registered', true);
     }
 
     private static function fixture(): string
@@ -37,11 +50,16 @@ final class PluginAutoloaderTest extends TestCase
         return \dirname(__DIR__, levels: 3).'/Support/fixtures/thirdparty/acme-tools/plugin.php';
     }
 
-    /** @return array<string, string> */
+    /** @return array<string, list<string>> */
     private static function registered(): array
     {
-        /** @var array<string, string> */
+        /** @var array<string, list<string>> */
         return Probe::getStatic(PluginAutoloader::class, 'prefixes');
+    }
+
+    private static function vendored(): string
+    {
+        return \dirname(__DIR__, levels: 3).'/Support/fixtures/thirdparty/acme-vendored/plugin.php';
     }
 
     public function testAPluginsOwnClassResolves(): void
@@ -69,5 +87,61 @@ final class PluginAutoloaderTest extends TestCase
         // which is the useful message.
         $this->assertFalse(class_exists('Acme\\Tools\\Missing'));
         $this->assertFalse(class_exists('Someone\\Else\\Thing'));
+    }
+
+    public function testAVendoredPackageResolvesThroughPortasOwnLoader(): void
+    {
+        // The point of the whole arrangement: composer's generated maps are
+        // READ, its autoloader is never RUN — so the package resolves without
+        // a second registered loader anywhere near the front of the stack.
+        PluginAutoloader::register(PluginManifest::beside(self::vendored()));
+
+        $this->assertArrayHasKey('Vend\\Lib\\', self::registered(), 'the PSR-4 map was adopted');
+        $this->assertSame('psr4-ok', \Vend\Lib\Helper::text());
+        $this->assertSame('classmap-ok', \Vend\Mapped\Thing::text(), 'and the classmap half too');
+        $this->assertSame('acme psr4-ok classmap-ok', \Acme\Vendored\Greeter::greet(), "the plugin's own class reaches both");
+    }
+
+    public function testPortasCopyOfAPackageWinsOverAPluginsVendoredOne(): void
+    {
+        // The fixture's map points symfony/clock at a directory that does not
+        // exist. If our loader could ever be consulted first for it, this class
+        // would fail to load; composer's loader is prepended at boot, so it
+        // answers before we are asked.
+        PluginAutoloader::register(PluginManifest::beside(self::vendored()));
+
+        $this->assertTrue(class_exists(\Symfony\Component\Clock\NativeClock::class));
+        $reflection = new \ReflectionClass(\Symfony\Component\Clock\NativeClock::class);
+        $this->assertStringContainsString('/vendor/symfony/clock/', (string) $reflection->getFileName(), "Porta's copy, not the plugin's");
+    }
+
+    public function testTheSamePrefixFromTwoPluginsKeepsBothDirectories(): void
+    {
+        PluginAutoloader::register(PluginManifest::beside(self::vendored()));
+        PluginAutoloader::register(new PluginManifest('other', \dirname(self::vendored()), 'Vend\\Lib', 'src'));
+
+        $this->assertCount(2, self::registered()['Vend\\Lib\\'] ?? [], 'both directories are searched');
+
+        // And registering the identical directory again does not grow it.
+        PluginAutoloader::register(new PluginManifest('other', \dirname(self::vendored()), 'Vend\\Lib', 'src'));
+        $this->assertCount(2, self::registered()['Vend\\Lib\\'] ?? []);
+    }
+
+    public function testAMapShapeComposerNeverEmitsIsIgnoredEntryByEntry(): void
+    {
+        // Not defensiveness for its own sake: these files are generated by a
+        // tool version we do not control, and one surprising entry must not
+        // cost the plugin every OTHER entry beside it.
+        $fixture = \dirname(self::vendored(), levels: 2).'/acme-malformed/plugin.php';
+        PluginAutoloader::register(PluginManifest::beside($fixture));
+
+        $registered = self::registered();
+        $this->assertArrayNotHasKey('Bad\\Dirs\\', $registered, 'a non-string directory is not a directory');
+        $this->assertSame(['one-directory-not-a-list'], $registered['Bare\\String\\'] ?? [], 'a bare string is read as a one-entry list');
+        $this->assertCount(1, $registered, 'and the numeric key claimed no prefix');
+
+        /** @var array<string, string> $classes */
+        $classes = Probe::getStatic(PluginAutoloader::class, 'classes');
+        $this->assertSame([], $classes, 'neither malformed classmap row was adopted');
     }
 }

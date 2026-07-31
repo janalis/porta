@@ -1,0 +1,1 @@
+{ "name": "acme/needs-install", "require": { "vend/lib": "^1.0" } }

@@ -112,6 +112,11 @@ final class CoverageCheckCommand extends Command
      * executable statements are skipped (they cannot be under-covered), as are
      * files outside $only when a scope is given.
      *
+     * Anything under a `vendor/` directory is skipped outright: a plugin may
+     * ship its composer dependencies beside its own code, and the plugin pass
+     * scopes by the `/plugins/` path prefix, which would otherwise pull a
+     * third party's uncovered lines into our 100% gate.
+     *
      * @return list<array{name: string, covered: int, statements: int}>
      */
     private function rows(\SimpleXMLElement $xml, ?string $only = null): array
@@ -121,11 +126,12 @@ final class CoverageCheckCommand extends Command
         foreach (\is_array($files) ? $files : [] as $file) {
             $metrics = self::element($file, 'metrics');
             $statements = self::number($metrics, 'statements');
-            if (0 === $statements || null !== $only && !str_contains((string) $file['name'], needle: $only)) {
+            $path = (string) $file['name'];
+            if (0 === $statements || str_contains($path, needle: '/vendor/') || null !== $only && !str_contains($path, needle: $only)) {
                 continue;
             }
             $rows[] = [
-                'name' => self::displayName((string) $file['name']),
+                'name' => self::displayName($path),
                 'covered' => self::number($metrics, 'coveredstatements'),
                 'statements' => $statements,
             ];

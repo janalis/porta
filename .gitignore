@@ -2,6 +2,9 @@
 /.porta/
 /coverage/
 /vendor/
+# A plugin may vendor its own composer dependencies; they are the plugin's to
+# install, not ours to commit, lint or cover.
+plugins/*/vendor/
 .porta.json
 # Project Architecture writes here now that its output directory defaults to
 # the project root, and Graph: Export SVG/PNG lands beside it.

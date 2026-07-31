@@ -1,0 +1,1 @@
+{ "name": "acme/vendored", "require": { "vend/lib": "^1.0" } }

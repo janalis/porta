@@ -19,6 +19,21 @@ php-version = "8.4"
 # leaving it out would make plugins/ the place to put code you did not want
 # graded.
 paths = ["src", "tests", "plugins"]
+# …but a VENDOR directory inside one of them is not code this project ships.
+# Excluding it HERE, at the source level, drops it from the formatter, the
+# linter and the analyzer at once — the per-tool excludes below cannot do that
+# (and the formatter has no exclude list of its own, so a vendored file would
+# be REWRITTEN by `composer format`).
+#
+# Literal paths only: `plugins/*/vendor`, `plugins/*/vendor/**`, `**/vendor`
+# and `**/vendor/**` were each measured against a real vendored file and none
+# matched. So a bundled plugin that vendors adds its own line here, and
+# tests/Unit/Plugin/Runtime/BundledPluginVendorTest fails until it does.
+#
+# The entry below is the third-party-plugin fixture, which ships composer's
+# generated maps VERBATIM — `array(…)`, no strict_types — because their exact
+# shape is what it exists to prove we can read.
+excludes = ["tests/Support/fixtures/thirdparty/acme-vendored/vendor", "tests/Support/fixtures/thirdparty/acme-malformed/vendor"]
 # Analyzed for type information but never reported on, so the analyzer knows the
 # types of third-party classes (symfony/tui, PHPUnit, …) instead of treating
 # everything from them as `mixed`.

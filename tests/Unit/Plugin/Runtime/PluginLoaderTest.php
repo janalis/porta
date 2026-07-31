@@ -205,4 +205,46 @@ final class PluginLoaderTest extends TestCase
             };
             PHP;
     }
+
+    public function testAPluginThatHasNotInstalledItsDependenciesIsDeclinedByName(): void
+    {
+        // A composer.json with no vendor/ beside it: its classes would load and
+        // then fatal on the first vendored symbol, far from the cause. Its
+        // dependents go with it, because it never enters the order.
+        $project = new TempProject([
+            '.porta/plugins/needy/composer.json' => '{"require":{"vend/lib":"^1.0"}}',
+            '.porta/plugins/needy/plugin.php' => $this->pluginSource('needy'),
+            '.porta/plugins/dependent/plugin.json' => '{"requires":["needy"]}',
+            '.porta/plugins/dependent/plugin.php' => $this->pluginSource('dependent'),
+            '.porta/plugins/unrelated/plugin.php' => $this->pluginSource('unrelated'),
+        ]);
+
+        $manager = $this->load($project);
+
+        $this->assertFalse($manager->hasPlugin('needy'));
+        $this->assertFalse($manager->hasPlugin('dependent'), 'the skip propagates');
+        $this->assertTrue($manager->hasPlugin('unrelated'), 'and stops there');
+        $warnings = implode(' | ', $manager->warnings());
+        $this->assertStringContainsString('Plugin "needy" needs its dependencies installed', $warnings);
+        $this->assertStringContainsString('composer install', $warnings, 'and says what to do about it');
+    }
+
+    public function testVendoringAPackagePortaShipsIsNamedAtBoot(): void
+    {
+        // Porta's loader is ahead of the plugin map, so the plugin's copy is
+        // never reached. Silently getting a different major than you pinned
+        // surfaces as a TypeError in some unrelated pass; this is the pointer.
+        $project = new TempProject([
+            '.porta/plugins/shadowy/composer.json' => '{"require":{"symfony/clock":"^1.0"}}',
+            '.porta/plugins/shadowy/vendor/composer/installed.json' => '{"packages":[{"name":"symfony/clock"},{"name":"vend/lib"}]}',
+            '.porta/plugins/shadowy/plugin.php' => $this->pluginSource('shadowy'),
+        ]);
+
+        $manager = $this->load($project);
+
+        $this->assertTrue($manager->hasPlugin('shadowy'), 'it still loads — this is a warning, not a refusal');
+        $warnings = implode(' | ', $manager->warnings());
+        $this->assertStringContainsString('Plugin "shadowy" vendors symfony/clock, which Porta ships', $warnings);
+        $this->assertStringNotContainsString('vend/lib', $warnings, 'a package Porta does not ship is not its business');
+    }
 }

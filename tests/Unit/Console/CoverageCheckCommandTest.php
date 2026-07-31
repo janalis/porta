@@ -146,4 +146,27 @@ final class CoverageCheckCommandTest extends TestCase
         $this->assertSame('coverage/clover.xml', $definition->getArgument('clover')->getDefault());
         $this->assertSame('100', $definition->getArgument('threshold')->getDefault());
     }
+
+    public function testAPluginsVendoredCodeIsNotACoverageSubject(): void
+    {
+        // A plugin may ship its composer dependencies beside its own code, and
+        // the plugin pass scopes by the `/plugins/` prefix — without the vendor
+        // skip a third party's uncovered lines would fail our own gate.
+        $project = new TempProject(['clover.xml' => $this->clover(
+            [
+                '/p/plugins/demo/src/Tool.php' => [5, 5],
+                '/p/plugins/demo/vendor/vend/lib/src/Helper.php' => [1, 40],
+            ],
+            totalCovered: 6,
+            totalStatements: 45,
+        )]);
+
+        $tester = $this->tester();
+        $status = $tester->execute(['clover' => $project->path('clover.xml'), 'threshold' => '100', '--only' => '/plugins/']);
+        $display = $tester->getDisplay();
+
+        $this->assertSame(Command::SUCCESS, $status, $display);
+        $this->assertStringNotContainsString('Helper.php', $display, 'the vendored file is not ours to cover');
+        $this->assertStringContainsString('demo/src/Tool.php', $display);
+    }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Runtime;
 
+use Composer\InstalledVersions;
+
 /**
  * What a plugin declares about ITSELF, in an optional `plugin.json` beside its
  * `plugin.php`:
@@ -46,6 +48,65 @@ final readonly class PluginManifest
         $dir = $this->directory.'/'.trim($this->autoload, characters: '/');
 
         return is_dir($dir) ? $dir : null;
+    }
+
+    /**
+     * The plugin's own composer vendor directory, or null when it has none.
+     *
+     * Only the generated MAPS under it are ever read
+     * ({@see PluginAutoloader}) — composer's autoloader is not run.
+     */
+    public function vendorDir(): ?string
+    {
+        $dir = $this->directory.'/vendor';
+
+        return is_dir($dir) ? $dir : null;
+    }
+
+    /**
+     * The names of vendored packages Porta itself ships.
+     *
+     * Each one is a package whose plugin copy will NEVER be used — Porta's
+     * loader is ahead of the plugin map — so a plugin pinning a different major
+     * of it gets Porta's version instead, and the symptom is a TypeError deep
+     * in a render pass with nothing pointing at the cause. Naming them at boot
+     * is the cheapest way to make that diagnosable.
+     *
+     * @return list<string>
+     */
+    public function shadowedPackages(): array
+    {
+        $vendorDir = $this->vendorDir();
+        $path = null === $vendorDir ? null : $vendorDir.'/composer/installed.json';
+        /** @var array<array-key, mixed>|scalar|null $data */
+        $data = null !== $path && is_file($path) ? json_decode((string) file_get_contents($path), associative: true) : null;
+        $packages = \is_array($data) && \is_array($data['packages'] ?? null) ? $data['packages'] : [];
+
+        $ours = array_fill_keys(InstalledVersions::getInstalledPackages(), value: true);
+        $shadowed = [];
+        /** @var mixed $package */
+        foreach ($packages as $package) {
+            /** @var mixed $name */
+            $name = \is_array($package) ? $package['name'] ?? null : null;
+            if (\is_string($name) && \array_key_exists($name, $ours)) {
+                $shadowed[] = $name;
+            }
+        }
+
+        return $shadowed;
+    }
+
+    /**
+     * Whether the plugin declares composer dependencies it has not installed.
+     *
+     * A `composer.json` with no `vendor/` beside it means the plugin's classes
+     * would load and then fatal on the first vendored symbol, somewhere far
+     * from the cause. Better to decline it by name at boot, the way a missing
+     * `requires` entry is declined.
+     */
+    public function needsInstall(): bool
+    {
+        return is_file($this->directory.'/composer.json') && null === $this->vendorDir();
     }
 
     /**
