@@ -440,4 +440,30 @@ final class IdeEmbeddedPluginsTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    public function testEnablingSomethingNotInstalledSaysSoRatherThanClaimingSuccess(): void
+    {
+        // The first-run screen and the plugins page both offer to enable a
+        // recommended plugin. If it is not installed, the choice is still worth
+        // persisting — install it later and it comes up on — but reporting
+        // "enabled" for a load that never happened is a report of something
+        // that did not occur.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                100 => function ($tui, $terminal, $ide): void {
+                    Services::resolve($ide, PluginLifecycle::class)->enable('not-installed-anywhere');
+
+                    $this->assertContains('Plugin "not-installed-anywhere" is not installed', Toasts::all($ide));
+                    $this->assertNotContains('Plugin "not-installed-anywhere" enabled', Toasts::all($ide));
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
 }

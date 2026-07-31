@@ -7,7 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
-use Porta\Settings\SettingsHighlightController;
+use Porta\Config\RecommendedPlugins;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
@@ -75,7 +75,7 @@ final class HighlightingSettingsTest extends TestCase
 
                 $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                 $this->assertStringContainsString('No highlighting engine is enabled', $screen);
-                $this->assertStringContainsString('Enable '.SettingsHighlightController::BUNDLED_ENGINE, $screen);
+                $this->assertStringContainsString('Enable '.RecommendedPlugins::HIGHLIGHTER, $screen);
             },
             200 => function ($tui, $terminal) use ($project): void {
                 // Swapping the content pane detaches the focused widget, which
@@ -87,7 +87,7 @@ final class HighlightingSettingsTest extends TestCase
 
                 $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
                 $this->assertSame(
-                    [...IdeConfig::DEFAULT_ENABLED_PLUGINS, SettingsHighlightController::BUNDLED_ENGINE],
+                    [...IdeConfig::DEFAULT_ENABLED_PLUGINS, RecommendedPlugins::HIGHLIGHTER],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
                     'the choice persisted (the absent-key default materialized first)',
                 );
@@ -96,7 +96,7 @@ final class HighlightingSettingsTest extends TestCase
                 // be asserted from it — that is covered by the controller's unit
                 // test. The status flash is unambiguous evidence it took effect.
                 $this->assertStringContainsString(
-                    'Plugin "'.SettingsHighlightController::BUNDLED_ENGINE.'" enabled',
+                    'Plugin "'.RecommendedPlugins::HIGHLIGHTER.'" enabled',
                     AnsiUtils::stripAnsiCodes($terminal->getOutput()),
                 );
             },

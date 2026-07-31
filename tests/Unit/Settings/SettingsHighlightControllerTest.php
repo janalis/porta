@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
+use Porta\Config\RecommendedPlugins;
 use Porta\Highlight\CallableHighlightProvider;
 use Porta\Highlight\HighlightPreferences;
 use Porta\Highlight\HighlightRegistry;
@@ -89,7 +90,7 @@ final class SettingsHighlightControllerTest extends TestCase
      */
     public function testOffersToEnableTheBundledEngineWhenNothingHighlights(): void
     {
-        $this->lifecycle->names = [SettingsHighlightController::BUNDLED_ENGINE];
+        $this->lifecycle->names = [RecommendedPlugins::HIGHLIGHTER];
 
         $rows = $this->controller()->rows();
 
@@ -99,17 +100,17 @@ final class SettingsHighlightControllerTest extends TestCase
 
     public function testActuatingTheOfferEnablesThePluginLive(): void
     {
-        $this->lifecycle->names = [SettingsHighlightController::BUNDLED_ENGINE];
+        $this->lifecycle->names = [RecommendedPlugins::HIGHLIGHTER];
 
         $this->controller()->change(SettingsHighlightController::ENABLE_KEY, '');
 
-        $this->assertSame([[SettingsHighlightController::BUNDLED_ENGINE, true]], $this->lifecycle->toggled);
+        $this->assertSame([[RecommendedPlugins::HIGHLIGHTER, true]], $this->lifecycle->toggled);
     }
 
     /** Once an engine is loaded the offer is gone — there is nothing to enable. */
     public function testTheOfferDisappearsOnceAnEngineIsAvailable(): void
     {
-        $this->lifecycle->names = [SettingsHighlightController::BUNDLED_ENGINE];
+        $this->lifecycle->names = [RecommendedPlugins::HIGHLIGHTER];
 
         $rows = $this->controller([$this->provider('tempest', ['*'])])->rows();
 

@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Porta\Onboarding;
 
 use Porta\Config\CommandRegistry;
+use Porta\Config\RecommendedPlugins;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\PluginEnablement;
-use Porta\Settings\SettingsHighlightController;
 
 /**
  * The setup steps the Welcome screen offers.
@@ -24,28 +24,6 @@ use Porta\Settings\SettingsHighlightController;
  */
 final class WelcomeSteps
 {
-    /**
-     * The bundled plugin providing a PHP language server. Named for the same
-     * reason {@see SettingsHighlightController::BUNDLED_ENGINE} is: a bundled
-     * plugin's capabilities are unknowable without loading it, so "which one
-     * serves PHP?" has no general answer.
-     */
-    public const string PHP_LANGUAGE_SERVER = 'phpantom';
-
-    /** The bundled formatter plugin — same naming rationale as {@see self::PHP_LANGUAGE_SERVER}. */
-    public const string CODE_STYLE_FIXER = 'php-cs-fixer';
-
-    /** The bundled linter plugin — one lint step keeps this screen a signpost; the others stay in Settings → Plugins. */
-    public const string STATIC_ANALYSIS = 'phpstan';
-
-    /**
-     * The bundled plugin serving both tool steps when the project ships mago
-     * ({@see MagoDetector}). The steps then *target* mago: an already-enabled
-     * php-cs-fixer or phpstan does not satisfy them, because the step's offer
-     * is "enable the recommended tool", not "have any tool".
-     */
-    public const string MAGO = 'mago';
-
     public function __construct(
         private readonly Translator $translator,
         private readonly SyntaxHighlightProviderSource $highlighters,
@@ -60,29 +38,29 @@ final class WelcomeSteps
         // Re-detected on every open (steps are rebuilt each time), so a
         // `composer require` mid-session is picked up by the next open.
         $installed = $this->mago->installed();
-        $fixer = $installed ? self::MAGO : self::CODE_STYLE_FIXER;
-        $analyzer = $installed ? self::MAGO : self::STATIC_ANALYSIS;
+        $fixer = $installed ? RecommendedPlugins::BOTH_TOOLS : RecommendedPlugins::FORMATTER;
+        $analyzer = $installed ? RecommendedPlugins::BOTH_TOOLS : RecommendedPlugins::ANALYZER;
 
         return [
             new WelcomeStep(
                 $this->translator->trans('Syntax highlighting'),
                 $this->translator->trans('Colours your code; off until enabled'),
-                $this->translator->trans('Enable %name%', ['%name%' => SettingsHighlightController::BUNDLED_ENGINE]),
+                $this->translator->trans('Enable %name%', ['%name%' => RecommendedPlugins::HIGHLIGHTER]),
                 // Asking the source directly is one call; going through the
                 // registry would mean probing every grammar against every
                 // provider, because its fallback always claims a language.
                 fn (): bool => [] !== $this->highlighters->highlightProviders(),
                 function (): void {
-                    $this->lifecycle->enable(SettingsHighlightController::BUNDLED_ENGINE);
+                    $this->lifecycle->enable(RecommendedPlugins::HIGHLIGHTER);
                 },
             ),
             new WelcomeStep(
                 $this->translator->trans('PHP language server'),
                 $this->translator->trans('Completion, go-to-definition and diagnostics'),
-                $this->translator->trans('Enable %name%', ['%name%' => self::PHP_LANGUAGE_SERVER]),
-                fn (): bool => $this->isEnabled(self::PHP_LANGUAGE_SERVER),
+                $this->translator->trans('Enable %name%', ['%name%' => RecommendedPlugins::LANGUAGE_SERVER]),
+                fn (): bool => $this->isEnabled(RecommendedPlugins::LANGUAGE_SERVER),
                 function (): void {
-                    $this->lifecycle->enable(self::PHP_LANGUAGE_SERVER);
+                    $this->lifecycle->enable(RecommendedPlugins::LANGUAGE_SERVER);
                 },
             ),
             // Enable-only: the plugin's format-on-save toggle stays where it

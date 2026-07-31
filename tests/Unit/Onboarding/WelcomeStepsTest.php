@@ -6,13 +6,13 @@ namespace Porta\Tests\Unit\Onboarding;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Config\RecommendedPlugins;
 use Porta\Highlight\NoHighlightPlugins;
 use Porta\Highlight\SyntaxHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\I18n\Translator;
 use Porta\Onboarding\MagoDetector;
 use Porta\Onboarding\WelcomeSteps;
-use Porta\Settings\SettingsHighlightController;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\TempProject;
 
@@ -116,7 +116,7 @@ final class WelcomeStepsTest extends TestCase
     {
         $this->steps()->all()[0]->run();
 
-        $this->assertSame([[SettingsHighlightController::BUNDLED_ENGINE, true]], $this->lifecycle->toggled);
+        $this->assertSame([[RecommendedPlugins::HIGHLIGHTER, true]], $this->lifecycle->toggled);
     }
 
     /**
@@ -134,7 +134,7 @@ final class WelcomeStepsTest extends TestCase
 
     public function testThePluginStepsAreDoneWhenTheirPluginsAreListedAndNotDisabled(): void
     {
-        $this->lifecycle->names = [WelcomeSteps::PHP_LANGUAGE_SERVER, WelcomeSteps::CODE_STYLE_FIXER, WelcomeSteps::STATIC_ANALYSIS];
+        $this->lifecycle->names = [RecommendedPlugins::LANGUAGE_SERVER, RecommendedPlugins::FORMATTER, RecommendedPlugins::ANALYZER];
         $steps = $this->steps()->all();
 
         $this->assertTrue($steps[1]->isDone());
@@ -145,8 +145,8 @@ final class WelcomeStepsTest extends TestCase
     /** A listed-but-disabled plugin is not serving anything, so the step stands. */
     public function testAPluginStepIsPendingWhenItsPluginIsDisabled(): void
     {
-        $this->lifecycle->names = [WelcomeSteps::PHP_LANGUAGE_SERVER];
-        $this->lifecycle->disabledNames = [WelcomeSteps::PHP_LANGUAGE_SERVER];
+        $this->lifecycle->names = [RecommendedPlugins::LANGUAGE_SERVER];
+        $this->lifecycle->disabledNames = [RecommendedPlugins::LANGUAGE_SERVER];
 
         $this->assertFalse($this->steps()->all()[1]->isDone());
     }
@@ -155,21 +155,21 @@ final class WelcomeStepsTest extends TestCase
     {
         $this->steps()->all()[1]->run();
 
-        $this->assertSame([[WelcomeSteps::PHP_LANGUAGE_SERVER, true]], $this->lifecycle->toggled);
+        $this->assertSame([[RecommendedPlugins::LANGUAGE_SERVER, true]], $this->lifecycle->toggled);
     }
 
     public function testRunningTheCodeStyleStepEnablesItsPlugin(): void
     {
         $this->steps()->all()[2]->run();
 
-        $this->assertSame([[WelcomeSteps::CODE_STYLE_FIXER, true]], $this->lifecycle->toggled);
+        $this->assertSame([[RecommendedPlugins::FORMATTER, true]], $this->lifecycle->toggled);
     }
 
     public function testRunningTheStaticAnalysisStepEnablesItsPlugin(): void
     {
         $this->steps()->all()[3]->run();
 
-        $this->assertSame([[WelcomeSteps::STATIC_ANALYSIS, true]], $this->lifecycle->toggled);
+        $this->assertSame([[RecommendedPlugins::ANALYZER, true]], $this->lifecycle->toggled);
     }
 
     /** The details name the tool a step will enable, so the offer is explicit. */
@@ -177,8 +177,8 @@ final class WelcomeStepsTest extends TestCase
     {
         $steps = $this->steps()->all();
 
-        $this->assertStringContainsString(WelcomeSteps::CODE_STYLE_FIXER, $steps[2]->detail);
-        $this->assertStringContainsString(WelcomeSteps::STATIC_ANALYSIS, $steps[3]->detail);
+        $this->assertStringContainsString(RecommendedPlugins::FORMATTER, $steps[2]->detail);
+        $this->assertStringContainsString(RecommendedPlugins::ANALYZER, $steps[3]->detail);
     }
 
     /** A project shipping mago gets it as both the fixer and the analyzer. */
@@ -189,8 +189,8 @@ final class WelcomeStepsTest extends TestCase
 
         $this->assertSame('Enable mago', $steps[2]->actionLabel);
         $this->assertSame('Enable mago', $steps[3]->actionLabel);
-        $this->assertStringContainsString(WelcomeSteps::MAGO, $steps[2]->detail);
-        $this->assertStringContainsString(WelcomeSteps::MAGO, $steps[3]->detail);
+        $this->assertStringContainsString(RecommendedPlugins::BOTH_TOOLS, $steps[2]->detail);
+        $this->assertStringContainsString(RecommendedPlugins::BOTH_TOOLS, $steps[3]->detail);
     }
 
     public function testRunningEitherToolStepWithMagoEnablesTheMagoPlugin(): void
@@ -202,8 +202,8 @@ final class WelcomeStepsTest extends TestCase
 
         $this->assertSame(
             [
-                [WelcomeSteps::MAGO, true],
-                [WelcomeSteps::MAGO, true],
+                [RecommendedPlugins::BOTH_TOOLS, true],
+                [RecommendedPlugins::BOTH_TOOLS, true],
             ],
             $this->lifecycle->toggled,
         );
@@ -213,7 +213,7 @@ final class WelcomeStepsTest extends TestCase
     public function testEnablingMagoCompletesBothToolSteps(): void
     {
         $this->withMago();
-        $this->lifecycle->names = [WelcomeSteps::MAGO];
+        $this->lifecycle->names = [RecommendedPlugins::BOTH_TOOLS];
         $steps = $this->steps()->all();
 
         $this->assertTrue($steps[2]->isDone());
@@ -227,7 +227,7 @@ final class WelcomeStepsTest extends TestCase
     public function testOtherToolsDoNotSatisfyMagoTargetedSteps(): void
     {
         $this->withMago();
-        $this->lifecycle->names = [WelcomeSteps::CODE_STYLE_FIXER, WelcomeSteps::STATIC_ANALYSIS];
+        $this->lifecycle->names = [RecommendedPlugins::FORMATTER, RecommendedPlugins::ANALYZER];
         $steps = $this->steps()->all();
 
         $this->assertFalse($steps[2]->isDone());

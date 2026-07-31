@@ -165,7 +165,6 @@ final class ArchitectureCheckCommand extends Command
         'Onboarding>Container',
         'Onboarding>Highlight',
         'Onboarding>Plugin',
-        'Onboarding>Settings',
         'Onboarding>Support',
         'Overlay>Container',
         'Overlay>Editor',

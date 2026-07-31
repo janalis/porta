@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Overlay\Presenter;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Config\RecommendedPlugins;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\Event\ThemeChanged;
@@ -20,7 +21,6 @@ use Porta\Onboarding\WelcomeSteps;
 use Porta\Overlay\Presenter\OverlayDelivery;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\State\MenuOverlayPanes;
-use Porta\Settings\SettingsHighlightController;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\RendersRoot;
 use Porta\Tests\Support\TestOverlayPane;
@@ -213,7 +213,7 @@ final class WelcomeModalControllerTest extends TestCase
         $controller->handleKey("\r");
 
         $this->assertSame(
-            [[SettingsHighlightController::BUNDLED_ENGINE, true]],
+            [[RecommendedPlugins::HIGHLIGHTER, true]],
             $lifecycle->toggled,
             'the first step delegated to the lifecycle',
         );
@@ -235,7 +235,7 @@ final class WelcomeModalControllerTest extends TestCase
         $controller->handleKey("\r");
 
         $this->assertSame(
-            [[SettingsHighlightController::BUNDLED_ENGINE, true]],
+            [[RecommendedPlugins::HIGHLIGHTER, true]],
             $lifecycle->toggled,
             'Enter ran the first step again, not the parked one',
         );
@@ -251,7 +251,7 @@ final class WelcomeModalControllerTest extends TestCase
         $controller->handleKey("\r");
 
         $this->assertSame(
-            [[WelcomeSteps::PHP_LANGUAGE_SERVER, true]],
+            [[RecommendedPlugins::LANGUAGE_SERVER, true]],
             $lifecycle->toggled,
             'the selection skipped the done highlighting step',
         );
@@ -269,7 +269,7 @@ final class WelcomeModalControllerTest extends TestCase
         $controller->handleKey("\r");
 
         $this->assertSame(
-            [[WelcomeSteps::PHP_LANGUAGE_SERVER, true]],
+            [[RecommendedPlugins::LANGUAGE_SERVER, true]],
             $lifecycle->toggled,
             'the selection stayed where the user put it',
         );
@@ -395,7 +395,7 @@ final class WelcomeModalControllerTest extends TestCase
         // 5-6, spacer 7, second card 8-9 — the window is ≥ HERO_MIN_ROWS).
         $this->assertTrue($controller->clickAt($region->top + 8, $region->col + 4));
         $controller->handleKey("\r");
-        $this->assertSame([[WelcomeSteps::PHP_LANGUAGE_SERVER, true]], $lifecycle->toggled, 'the click selected the second card');
+        $this->assertSame([[RecommendedPlugins::LANGUAGE_SERVER, true]], $lifecycle->toggled, 'the click selected the second card');
 
         $this->assertTrue($controller->clickAt(0, 0), 'an outside click is swallowed');
         $this->assertTrue($controller->isOpen(), 'and does not dismiss');

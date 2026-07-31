@@ -6,6 +6,7 @@ namespace Porta\Settings;
 
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
+use Porta\Config\RecommendedPlugins;
 use Porta\Highlight\HighlightRegistry;
 use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\PluginEnablement;
@@ -38,15 +39,6 @@ final class SettingsHighlightController
     /** Row key for the "enable the shipped engine" offer. */
     public const string ENABLE_KEY = 'enableBundledEngine';
 
-    /**
-     * The highlighting engine Porta ships, named here because it is the only
-     * one that can be named: a bundled plugin's capabilities are unknowable
-     * without loading it, so "which bundled plugin highlights?" has no general
-     * answer. Bundled plugins are opt-in, so a fresh project renders uncoloured
-     * until this is enabled — the offer row below is the signpost.
-     */
-    public const string BUNDLED_ENGINE = 'tempest';
-
     public function __construct(
         private readonly HighlightRegistry $registry,
         private readonly Translator $translator,
@@ -66,7 +58,7 @@ final class SettingsHighlightController
                 key: self::ENABLE_KEY,
                 label: $this->translator->trans('No highlighting engine is enabled'),
                 kind: SettingsRowKind::Action,
-                value: $this->translator->trans('Enable %name%', ['%name%' => self::BUNDLED_ENGINE]),
+                value: $this->translator->trans('Enable %name%', ['%name%' => RecommendedPlugins::HIGHLIGHTER]),
                 restart: false,
                 hint: $this->translator->trans('Bundled plugins are opt-in; applies to files opened afterwards'),
             );
@@ -110,7 +102,7 @@ final class SettingsHighlightController
     public function change(string $key, string $value): void
     {
         if (self::ENABLE_KEY === $key) {
-            $this->lifecycle?->enable(self::BUNDLED_ENGINE);
+            $this->lifecycle?->enable(RecommendedPlugins::HIGHLIGHTER);
 
             return;
         }
@@ -132,7 +124,7 @@ final class SettingsHighlightController
             return false;
         }
 
-        return \in_array(self::BUNDLED_ENGINE, $this->lifecycle->listedNames(), strict: true);
+        return \in_array(RecommendedPlugins::HIGHLIGHTER, $this->lifecycle->listedNames(), strict: true);
     }
 
     /**

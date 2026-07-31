@@ -169,17 +169,25 @@ final class PluginLifecycle implements PluginLifecycleOps
         // Only here, never at boot: a startup that silently re-enables what the
         // user switched off is a worse surprise than a message.
         $required = $this->missingRequirementsOf($name);
+        $activated = false;
         foreach ([...$required, $name] as $target) {
             $this->persistEnabledChoice($target);
-            $this->activateInstalledCopy($target);
+            $activated = $this->activateInstalledCopy($target) || $activated;
         }
-        $this->notifier->flash($this->translator->trans('Plugin "%name%" enabled', ['%name%' => $name]));
+        // The choice is persisted either way — install the plugin later and it
+        // comes up enabled — but saying "enabled" when nothing loaded is a
+        // report of something that did not happen.
+        $this->notifier->flash(
+            $activated
+                ? $this->translator->trans('Plugin "%name%" enabled', ['%name%' => $name])
+                : $this->translator->trans('Plugin "%name%" is not installed', ['%name%' => $name]),
+        );
         $this->flashCompanions('Also enabled: %names%', $required);
         $this->afterToggle();
     }
 
-    /** Load the highest-precedence installed copy of one plugin, reporting a failure. */
-    private function activateInstalledCopy(string $name): void
+    /** Load the highest-precedence installed copy of one plugin, reporting a failure. False when there is no copy to load. */
+    private function activateInstalledCopy(string $name): bool
     {
         foreach ($this->installer->installed() as $candidate) {
             if ($candidate['name'] !== $name) {
@@ -190,13 +198,15 @@ final class PluginLifecycle implements PluginLifecycleOps
             if (null !== $error) {
                 $this->notifier->error($error);
 
-                return;
+                return false;
             }
             $this->plugins->registerCommands($this->commands);
             $this->reconfigureLspIf($this->plugins->providesLanguageServer($name));
 
-            return;
+            return true;
         }
+
+        return false;
     }
 
     /**
