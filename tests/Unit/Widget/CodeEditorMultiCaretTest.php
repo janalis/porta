@@ -454,4 +454,21 @@ final class CodeEditorMultiCaretTest extends TestCase
         $this->assertCount(1, $carets, 'the line is still there');
         $this->assertSame(2, $carets[0]->col, 'clamped to the shorter line');
     }
+
+    public function testTheAliveFilterFollowsBothTheDocumentAndTheCaretSet(): void
+    {
+        // The filter is memoised because it runs several times a frame, so the
+        // memo has to see BOTH kinds of change: the document moving under the
+        // carets, and the caret set itself moving.
+        $editor = $this->editor("aaaa\nbbbb\ncccc\n");
+        $editor->getDocument()->setCursor(1, 4);
+        $editor->handleInput("\x1b[1;7B"); // an extra at line 1, column 4
+        $this->assertSame(4, EditorState::multiCaret($editor)->carets()[0]->col);
+
+        $editor->getDocument()->replaceAll("aaaa\nbb\ncccc\n"); // same lines, shorter line 1
+        $this->assertSame(2, EditorState::multiCaret($editor)->carets()[0]->col, 'the document changed under a cached answer');
+
+        $editor->handleInput("\x1b[1;7B"); // a second extra, same document
+        $this->assertCount(2, EditorState::multiCaret($editor)->carets(), 'and the caret set changed without it');
+    }
 }

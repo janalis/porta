@@ -58,6 +58,13 @@ final class MultiCaret
      */
     private array $extraCarets = [];
 
+    /** @var list<Caret> the last {@see alive()} result… */
+    private array $aliveCache = [];
+    /** …the document version it was computed for (-1 = never)… */
+    private int $aliveVersion = -1;
+    /** @var list<Caret> …and the extras it was computed from. */
+    private array $aliveFor = [];
+
     /**
      * @param \Closure(): void $onInvalidate request a redraw
      * @param \Closure(): void $onChange     announce a buffer edit
@@ -99,6 +106,15 @@ final class MultiCaret
      */
     private function alive(): array
     {
+        // Memoised per document version AND per extras array: this runs several
+        // times a frame, and a column selection can be a thousand carets — the
+        // filter is cheap per caret but not free, and a render must not pay for
+        // it once per read.
+        $version = $this->document->getVersion();
+        if ($this->aliveVersion === $version && $this->aliveFor === $this->extraCarets) {
+            return $this->aliveCache;
+        }
+
         $lines = $this->document->getLineCount();
         $kept = [];
         foreach ($this->extraCarets as $caret) {
@@ -112,6 +128,10 @@ final class MultiCaret
                     ? $caret
                     : new Caret($caret->line, $col, $caret->anchorLine, $anchorCol);
         }
+
+        $this->aliveVersion = $version;
+        $this->aliveFor = $this->extraCarets;
+        $this->aliveCache = $kept;
 
         return $kept;
     }
