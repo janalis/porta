@@ -39,6 +39,20 @@ final class PluginManifestTest extends TestCase
         return $dir.'/plugin.php';
     }
 
+    /** A plugin whose composer.json is $json; $with names the extra directories to create beside it. */
+    private function composerPlugin(TempProject $project, string $name, string $json, string ...$with): PluginManifest
+    {
+        $dir = $project->path('plugins/'.$name);
+        mkdir($dir, permissions: 0o777, recursive: true);
+        foreach ($with as $extra) {
+            mkdir($dir.'/'.$extra, permissions: 0o777, recursive: true);
+        }
+        file_put_contents($dir.'/plugin.php', data: "<?php\n");
+        file_put_contents($dir.'/composer.json', data: $json);
+
+        return PluginManifest::beside($dir.'/plugin.php');
+    }
+
     public function testAPluginWithNoManifestShipsNothingAndRequiresNothing(): void
     {
         $project = new TempProject();
@@ -80,5 +94,59 @@ final class PluginManifestTest extends TestCase
             $this->assertNull($manifest->namespace, $json);
             $this->assertSame('{"requires": [1, "", "ok"]}' === $json ? ['ok'] : [], $manifest->requires, $json);
         }
+    }
+
+    public function testOnlyAnInstallABLERequirementMeansTheresSomethingToInstall(): void
+    {
+        // The discriminator is composer's own: every installable package is
+        // `vendor/name`, and no platform requirement has a slash. Getting this
+        // wrong declines every plugin whose composer.json says `php: >=8.4` —
+        // which is the whole bundled set.
+        $project = new TempProject();
+
+        $this->assertFalse($this->composerPlugin($project, 'nothing', '{}')->needsInstall(), 'no require at all');
+        $this->assertFalse($this->composerPlugin($project, 'empty', '{"require":{}}')->needsInstall());
+        $this->assertFalse($this->composerPlugin($project, 'notanobject', '{"require":"nope"}')->needsInstall());
+        $this->assertFalse(
+            $this->composerPlugin($project, 'platform', '{"require":{"php":">=8.4","ext-gd":"*","composer-runtime-api":"^2"}}')->needsInstall(),
+            'platform requirements install nothing',
+        );
+        $this->assertFalse(
+            $this->composerPlugin($project, 'devonly', '{"require-dev":{"phpunit/phpunit":"^11"}}')->needsInstall(),
+            'the installer runs --no-dev, so a dev requirement is a refusal nothing could satisfy',
+        );
+
+        $real = $this->composerPlugin($project, 'real', '{"require":{"php":">=8.4","vend/lib":"^1.0"}}');
+        $this->assertSame(['vend/lib'], $real->packages, 'the platform half is not a package');
+        $this->assertTrue($real->needsInstall());
+        $this->assertFalse(
+            $this->composerPlugin($project, 'vendored', '{"require":{"vend/lib":"^1.0"}}', 'vendor')->needsInstall(),
+            'already installed',
+        );
+    }
+
+    public function testADeclaredClassmapOrFilesAsksForADumpToo(): void
+    {
+        // Porta reads a plugin's own psr-4 and nothing else — classmap and
+        // files exist only in composer's dumped maps, so declaring one without
+        // a vendor/ means those classes would never resolve.
+        $project = new TempProject();
+
+        $this->assertTrue($this->composerPlugin($project, 'cm', '{"autoload":{"classmap":["lib/"]}}')->needsInstall());
+        $this->assertTrue($this->composerPlugin($project, 'fi', '{"autoload":{"files":["helpers.php"]}}')->needsInstall());
+        $this->assertFalse($this->composerPlugin($project, 'dumped', '{"autoload":{"classmap":["lib/"]}}', 'vendor')->needsInstall());
+        $this->assertFalse($this->composerPlugin($project, 'psr4only', '{"autoload":{"psr-4":{"A\\\\":"src/"}}}')->needsInstall(), 'psr-4 needs no dump');
+        $this->assertFalse($this->composerPlugin($project, 'emptycm', '{"autoload":{"classmap":[]}}')->needsInstall());
+        $this->assertFalse($this->composerPlugin($project, 'noautoload', '{"autoload":"nope"}')->needsInstall());
+    }
+
+    public function testAMalformedComposerJsonAsksForNothing(): void
+    {
+        // Same doctrine as a malformed plugin.json: degrade, never decline. A
+        // typo must not make a plugin vanish behind a message about installing.
+        $project = new TempProject();
+
+        $this->assertFalse($this->composerPlugin($project, 'junk', 'not json at all')->needsInstall());
+        $this->assertFalse($this->composerPlugin($project, 'scalar', '"a string"')->needsInstall());
     }
 }

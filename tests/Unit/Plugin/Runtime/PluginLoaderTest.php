@@ -229,6 +229,38 @@ final class PluginLoaderTest extends TestCase
         $this->assertStringContainsString('composer install', $warnings, 'and says what to do about it');
     }
 
+    public function testAPluginOwedOnlyItsAutoloadDumpIsToldThatInstead(): void
+    {
+        // Same refusal, different reason: nothing is missing from vendor/, the
+        // maps that would carry a classmap were simply never dumped. Saying
+        // "needs its dependencies installed" to a plugin with no dependencies
+        // sends the reader looking for something that is not there.
+        $project = new TempProject([
+            '.porta/plugins/undumped/composer.json' => '{"autoload":{"classmap":["lib/"]}}',
+            '.porta/plugins/undumped/plugin.php' => $this->pluginSource('undumped'),
+        ]);
+
+        $manager = $this->load($project);
+
+        $this->assertFalse($manager->hasPlugin('undumped'));
+        $this->assertStringContainsString('Plugin "undumped" declares autoload maps it has not dumped', implode(' | ', $manager->warnings()));
+    }
+
+    public function testAPlatformOnlyRequirementIsNotAnUninstalledDependency(): void
+    {
+        // The trap this predicate exists to avoid: every plugin is about to
+        // have a composer.json, and most will declare only `php`.
+        $project = new TempProject([
+            '.porta/plugins/modern/composer.json' => '{"require":{"php":">=8.4"}}',
+            '.porta/plugins/modern/plugin.php' => $this->pluginSource('modern'),
+        ]);
+
+        $manager = $this->load($project);
+
+        $this->assertTrue($manager->hasPlugin('modern'), 'it loads');
+        $this->assertSame([], $manager->warnings(), 'and is not warned about');
+    }
+
     public function testVendoringAPackagePortaShipsIsNamedAtBoot(): void
     {
         // Porta's loader is ahead of the plugin map, so the plugin's copy is

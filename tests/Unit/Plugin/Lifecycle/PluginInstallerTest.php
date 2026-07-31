@@ -301,15 +301,31 @@ final class PluginInstallerTest extends TestCase
 
     public function testAPluginThatShippedItsVendorIsNotReinstalled(): void
     {
-        // A copied source that already has vendor/ (or none at all) skips the
-        // step entirely — no subprocess, so an install stays synchronous.
+        // A copied source that already has vendor/ skips the step entirely — no
+        // subprocess, so an install stays synchronous. It must declare a REAL
+        // package, or the predicate answers no on the requirement alone and the
+        // vendor/ half of this test proves nothing.
         $source = $this->sourceDir('prevendored');
-        file_put_contents($source.'/composer.json', data: '{}');
+        file_put_contents($source.'/composer.json', data: '{"require":{"vend/lib":"^1.0"}}');
         mkdir($source.'/vendor', permissions: 0o777, recursive: true);
 
         [$error, $file] = $this->install($this->installer(composer: '/nonexistent/composer'), $source);
 
         $this->assertNull($error, 'composer was never needed');
         $this->assertSame($this->project->dir.'/.porta/plugins/prevendored/plugin.php', $file);
+    }
+
+    public function testAPluginWhoseOnlyRequirementIsThePlatformNeedsNoInstall(): void
+    {
+        // composer.json is on its way to being every plugin's manifest, so
+        // "has a composer.json" cannot mean "owes an install" — shelling out
+        // for `php: >=8.4` would be a subprocess to answer no.
+        $source = $this->sourceDir('platform');
+        file_put_contents($source.'/composer.json', data: '{"require":{"php":">=8.4"}}');
+
+        [$error, $file] = $this->install($this->installer(composer: '/nonexistent/composer'), $source);
+
+        $this->assertNull($error, 'composer was never needed');
+        $this->assertSame($this->project->dir.'/.porta/plugins/platform/plugin.php', $file);
     }
 }

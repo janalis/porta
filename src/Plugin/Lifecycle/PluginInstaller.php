@@ -6,6 +6,7 @@ namespace Porta\Plugin\Lifecycle;
 
 use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginLoader;
+use Porta\Plugin\Runtime\PluginManifest;
 use Porta\Support\AsyncProcess;
 use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\Filesystem\Exception\IOException;
@@ -174,7 +175,11 @@ final class PluginInstaller
     private function installDependencies(string $dest, \Closure $onDone): void
     {
         $pluginFile = $dest.'/plugin.php';
-        if (!is_file($dest.'/composer.json') || is_dir($dest.'/vendor')) {
+        // The SAME predicate the loader declines a plugin with, so the two can
+        // never disagree about whether an install is owed: a composer.json
+        // whose only requirement is `php` asks for nothing, and shelling out
+        // for it would be a subprocess to answer no.
+        if (!PluginManifest::beside($pluginFile)->needsInstall()) {
             $onDone(null, $pluginFile);
 
             return;

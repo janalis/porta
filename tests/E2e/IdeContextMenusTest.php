@@ -50,7 +50,11 @@ final class IdeContextMenusTest extends TestCase
             [
                 200 => function ($tui, $terminal, $ide): void {
                     // Right-press col 25, row 1: the 22-wide menu spills past the
-                    // sidebar (tree cols 0–29) into the editor (col 31+).
+                    // sidebar (tree cols 0–29) into the editor (col 31+). Force
+                    // a frame first: right-click routing reads the renderer's
+                    // rects and the tree's rendered rows, and with no file open
+                    // there is nothing else to have caused a paint yet.
+                    $this->frame($tui);
                     $tui->handleInput("\x1b[<2;26;3M");
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'context menu opened');
 

@@ -30,6 +30,8 @@ final readonly class PluginManifest
      * @param ?string $namespace the PSR-4 prefix its classes live under, when it ships any
      * @param string  $autoload  the directory that prefix maps to, relative to the plugin
      * @param list<string> $requires plugin names that must load, and load FIRST
+     * @param list<string> $packages the INSTALLABLE composer packages it requires — `vendor/name`, never a platform requirement
+     * @param bool $dumpsAutoload whether its composer.json declares an autoload mode only a dump can satisfy
      */
     public function __construct(
         public string $name,
@@ -37,6 +39,8 @@ final readonly class PluginManifest
         public ?string $namespace = null,
         public string $autoload = 'src',
         public array $requires = [],
+        public array $packages = [],
+        public bool $dumpsAutoload = false,
     ) {}
 
     /** The absolute directory $namespace maps to, or null when the plugin ships no classes. */
@@ -97,16 +101,20 @@ final readonly class PluginManifest
     }
 
     /**
-     * Whether the plugin declares composer dependencies it has not installed.
+     * Whether the plugin declares something an install would produce, and has
+     * not installed it. Such a plugin's classes would load and then fatal on
+     * the first missing symbol, somewhere far from the cause, so it is declined
+     * by name at boot the way a missing `requires` entry is.
      *
-     * A `composer.json` with no `vendor/` beside it means the plugin's classes
-     * would load and then fatal on the first vendored symbol, somewhere far
-     * from the cause. Better to decline it by name at boot, the way a missing
-     * `requires` entry is declined.
+     * "Declares something" is deliberately narrower than "has a composer.json".
+     * A PLATFORM requirement (`php`, `ext-*`, `composer-runtime-api`) installs
+     * nothing, so a plugin whose composer.json says only `php: >=8.4` has
+     * nothing missing — which matters because that file is on its way to being
+     * every plugin's manifest, not just a vendoring one's.
      */
     public function needsInstall(): bool
     {
-        return is_file($this->directory.'/composer.json') && null === $this->vendorDir();
+        return ([] !== $this->packages || $this->dumpsAutoload) && null === $this->vendorDir();
     }
 
     /**
@@ -123,7 +131,10 @@ final readonly class PluginManifest
         /** @var array<array-key, mixed>|scalar|null $data */
         $data = is_file($path) ? json_decode((string) file_get_contents($path), associative: true) : null;
         if (!\is_array($data)) {
-            return new self($name, $directory);
+            // No plugin.json, or an unreadable one — but its composer.json is a
+            // separate file with a separate question to answer, so it is read
+            // either way.
+            return new self($name, $directory, ...self::composerFacts($directory));
         }
 
         $namespace = \is_string($data['namespace'] ?? null) ? trim($data['namespace'], characters: '\\') : null;
@@ -137,6 +148,59 @@ final readonly class PluginManifest
             $requires[] = $required;
         }
 
-        return new self($name, $directory, '' === $namespace ? null : $namespace, $autoload, $requires);
+        return new self($name, $directory, '' === $namespace ? null : $namespace, $autoload, $requires, ...self::composerFacts($directory));
+    }
+
+    /**
+     * What the plugin's own `composer.json` says about installing it.
+     *
+     * @return array{packages: list<string>, dumpsAutoload: bool}
+     */
+    private static function composerFacts(string $directory): array
+    {
+        $path = $directory.'/composer.json';
+        /** @var array<array-key, mixed>|scalar|null $data */
+        $data = is_file($path) ? json_decode((string) file_get_contents($path), associative: true) : null;
+        if (!\is_array($data)) {
+            return ['packages' => [], 'dumpsAutoload' => false];
+        }
+        $autoload = \is_array($data['autoload'] ?? null) ? $data['autoload'] : [];
+
+        return [
+            'packages' => self::packages($data),
+            // `classmap` and `files` are dumped, never read from the manifest:
+            // Porta reads a plugin's own psr-4 and nothing else, and everything
+            // else through composer's generated maps. Declaring one is
+            // therefore a request for an install, even with no dependencies.
+            'dumpsAutoload' => [] !== ($autoload['classmap'] ?? []) || [] !== ($autoload['files'] ?? []),
+        ];
+    }
+
+    /**
+     * The INSTALLABLE packages in `require`: every requirement whose name
+     * contains a `/`.
+     *
+     * That is composer's own discriminator, not an approximation — no platform
+     * requirement has one (`php`, `php-64bit`, `ext-*`, `lib-*`, `composer`,
+     * `composer-plugin-api`, `composer-runtime-api`), so the rule stays right
+     * when composer invents another. `require-dev` is excluded because the
+     * installer runs `--no-dev`: a dev requirement installs nothing, so
+     * declining the plugin over one would be a refusal nothing can satisfy.
+     *
+     * @param array<array-key, mixed> $data
+     *
+     * @return list<string>
+     */
+    private static function packages(array $data): array
+    {
+        $packages = [];
+        foreach (array_keys(\is_array($data['require'] ?? null) ? $data['require'] : []) as $package) {
+            if (!\is_string($package) || !str_contains($package, needle: '/')) {
+                continue;
+            }
+            $packages[] = $package;
+        }
+
+        return $packages;
     }
 }

@@ -77,8 +77,16 @@ final class PluginLoader
             if ($manifest->needsInstall()) {
                 // Declining it here rather than letting it fatal later: its
                 // dependents are skipped by name too, because it never enters
-                // the order.
-                $manager->addWarning(\sprintf('Plugin "%s" needs its dependencies installed — run composer install in %s', $manifest->name, $manifest->directory));
+                // the order. Two wordings, because a plugin can be missing its
+                // dependencies OR merely its dumped autoload maps, and one
+                // message covering both would be untrue for one of them.
+                $manager->addWarning(\sprintf(
+                    [] === $manifest->packages
+                        ? 'Plugin "%s" declares autoload maps it has not dumped — run composer install in %s'
+                        : 'Plugin "%s" needs its dependencies installed — run composer install in %s',
+                    $manifest->name,
+                    $manifest->directory,
+                ));
 
                 continue;
             }
