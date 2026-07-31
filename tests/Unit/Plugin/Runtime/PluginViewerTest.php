@@ -273,4 +273,31 @@ final class PluginViewerTest extends TestCase
         $this->expectExceptionMessageMatches('/Duplicate command id "ide_todo"/');
         $twice->adoptCommand('ide_todo', static function (): void {});
     }
+
+    public function testStatusSegmentsAreEvaluatedGuardedAndReportedOnce(): void
+    {
+        // This is pulled once per RENDER, which is what shapes the contract: a
+        // throwing closure must not kill the loop and must not flash on every
+        // frame, and an empty segment must not reserve space in the bar.
+        $manager = $this->manager();
+        $api = $this->api($manager, 'demo');
+        $state = 'building';
+        $api->registerStatusSegment(static function () use (&$state): ?string {
+            return $state;
+        });
+        $api->registerStatusSegment(static fn (): ?string => null);
+        $api->registerStatusSegment(static fn (): string => '');
+        $api->registerStatusSegment(static fn (): string => throw new \RuntimeException('segment exploded'));
+        $manager->commit($api);
+
+        $this->assertSame(['building'], $manager->statusSegments(), 'null and empty contribute nothing');
+        $this->assertCount(1, $manager->warnings(), 'the throwing one was reported');
+
+        $state = 'done';
+        $this->assertSame(['done'], $manager->statusSegments(), 'the closure is re-evaluated, not memoised');
+        $this->assertCount(1, $manager->warnings(), 'and the same fault is not reported again');
+
+        $manager->deactivate('demo', new CommandRegistry());
+        $this->assertSame([], $manager->statusSegments(), 'a removed plugin takes its segment with it');
+    }
 }

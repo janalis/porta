@@ -70,6 +70,8 @@ final class PluginApi
     private readonly PluginBuffer $actions;
     /** @var PluginBuffer<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}> */
     private readonly PluginBuffer $listTools;
+    /** @var PluginBuffer<array{plugin: string, segment: \Closure(): (string|null)}> */
+    private readonly PluginBuffer $statusSegments;
     /** @var array<string, true> bare ids, so showList() can reject one this plugin never registered */
     private array $listToolIds = [];
 
@@ -88,6 +90,7 @@ final class PluginApi
         $this->panes = new PluginBuffer();
         $this->actions = new PluginBuffer();
         $this->listTools = new PluginBuffer();
+        $this->statusSegments = new PluginBuffer();
     }
 
     /**
@@ -415,6 +418,22 @@ final class PluginApi
             'rerun' => $rerun,
             'activate' => $activate,
         ]);
+    }
+
+    /**
+     * Contribute a STATUS-BAR SEGMENT: ambient state, shown at the left of the
+     * bar beside the debugger's and before the git branch.
+     *
+     * Pulled once per RENDER, so the closure must be cheap and must never
+     * block — cache whatever it reports and return the cached value. Return
+     * null (or '') to show nothing, which is the normal state most of the time.
+     * A throwing closure reads as nothing and is reported once.
+     *
+     * @param \Closure(): (string|null) $segment
+     */
+    public function registerStatusSegment(\Closure $segment): void
+    {
+        $this->statusSegments->add(['plugin' => $this->pluginName, 'segment' => $segment]);
     }
 
     /**
@@ -780,5 +799,11 @@ final class PluginApi
     public function bufferedListTools(): array
     {
         return $this->listTools->all();
+    }
+
+    /** @return list<array{plugin: string, segment: \Closure(): (string|null)}> */
+    public function bufferedStatusSegments(): array
+    {
+        return $this->statusSegments->all();
     }
 }

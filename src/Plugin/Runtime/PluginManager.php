@@ -17,6 +17,7 @@ use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
 use Porta\Search\TokenSpanProvider;
 use Porta\Workbench\Dock\DockToolSource;
+use Porta\Workbench\StatusSegmentSource;
 
 /**
  * The committed plugin state: commands, default keys, menu entries, hook
@@ -27,7 +28,15 @@ use Porta\Workbench\Dock\DockToolSource;
  * an action method used before that (i.e. during activate()) hits the
  * {@see runtime()} gate.
  */
-final class PluginManager implements DockToolSource, EditorPaneSource, LanguageServerProvider, RebindableActionSource, SyntaxHighlightProviderSource, TokenSpanProvider, ViewerProviderSource
+final class PluginManager implements
+    DockToolSource,
+    EditorPaneSource,
+    LanguageServerProvider,
+    RebindableActionSource,
+    StatusSegmentSource,
+    SyntaxHighlightProviderSource,
+    TokenSpanProvider,
+    ViewerProviderSource
 {
     /** @var list<array{plugin: string, id: string, label: string, handler: \Closure(): void, keys: list<string>}> */
     private array $commands = [];
@@ -51,6 +60,8 @@ final class PluginManager implements DockToolSource, EditorPaneSource, LanguageS
     private array $actions = [];
     /** @var list<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}> committed dock list tools, in load order */
     private array $listTools = [];
+    /** @var list<array{plugin: string, segment: \Closure(): (string|null)}> committed status-bar segments, in load order */
+    private array $statusSegments = [];
     /** @var list<string> */
     private array $warnings = [];
     /** @var array<string, true> loaded plugin names */
@@ -59,6 +70,8 @@ final class PluginManager implements DockToolSource, EditorPaneSource, LanguageS
     private int $registered = 0;
     /** @var array<string, true> plugins whose menu-enabled closure already reported a throw */
     private array $reportedWhens = [];
+    /** @var array<string, true> plugins whose status-segment closure has already thrown — this runs every render */
+    private array $reportedSegments = [];
     /** @var array<string, true> plugins whose highlighting backend already reported a throw */
     private array $reportedHighlighters = [];
     /** @var array<string, true> plugins whose viewer claim already reported a throw */
@@ -132,6 +145,9 @@ final class PluginManager implements DockToolSource, EditorPaneSource, LanguageS
         }
         foreach ($api->bufferedListTools() as $tool) {
             $this->listTools[] = $tool;
+        }
+        foreach ($api->bufferedStatusSegments() as $segment) {
+            $this->statusSegments[] = $segment;
         }
         $this->settings->registerFor($name, $api->bufferedSettings());
     }
@@ -223,9 +239,10 @@ final class PluginManager implements DockToolSource, EditorPaneSource, LanguageS
         $this->panes = array_values(array_filter($this->panes, static fn (array $pane): bool => $name !== $pane['plugin']));
         $this->actions = array_values(array_filter($this->actions, static fn (array $action): bool => $name !== $action['plugin']));
         $this->listTools = array_values(array_filter($this->listTools, static fn (array $tool): bool => $name !== $tool['plugin']));
+        $this->statusSegments = array_values(array_filter($this->statusSegments, static fn (array $segment): bool => $name !== $segment['plugin']));
         $this->registered = \count($this->commands);
 
-        unset($this->reportedWhens[$name], $this->reportedHighlighters[$name], $this->reportedViewers[$name]);
+        unset($this->reportedWhens[$name], $this->reportedHighlighters[$name], $this->reportedViewers[$name], $this->reportedSegments[$name]);
         $registry->remove($removed);
         $this->events->removeFor($name);
         $this->settings->removeFor($name);
@@ -371,6 +388,35 @@ final class PluginManager implements DockToolSource, EditorPaneSource, LanguageS
     public function panes(): array
     {
         return $this->panes;
+    }
+
+    /**
+     * The plugins' status-bar segments, evaluated now — this is pulled once per
+     * render, so a throwing closure reads as nothing and reports at most once
+     * per plugin (the {@see wrapWhen()} reasoning, for the same reason).
+     *
+     * @return list<string>
+     */
+    public function statusSegments(): array
+    {
+        $segments = [];
+        foreach ($this->statusSegments as $entry) {
+            try {
+                $text = $entry['segment']();
+            } catch (\Throwable $error) {
+                if (!array_key_exists($entry['plugin'], $this->reportedSegments)) {
+                    $this->reportedSegments[$entry['plugin']] = true;
+                    $this->reportFailure($entry['plugin'], $error);
+                }
+
+                continue;
+            }
+            if (null !== $text && '' !== $text) {
+                $segments[] = $text;
+            }
+        }
+
+        return $segments;
     }
 
     /**

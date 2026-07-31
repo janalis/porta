@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Workbench;
 
-use Porta\Debug\DebugController;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\Git\GitRefresher;
@@ -16,6 +15,7 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -30,7 +30,9 @@ final class StatusBarProvider
         private readonly CodeEditorWidget $editor,
         private readonly EditorPanes $panes,
         private readonly GitRefresher $gitRefresher,
-        private readonly DebugController $debug,
+        /** @var iterable<StatusSegment> ambient-state contributors, core's first (see StatusSegment) */
+        #[AutowireIterator('porta.status_segment')]
+        private readonly iterable $segmentSources,
         private readonly LspSessionPool $lsp,
         private readonly Styles $styles,
         private readonly Translator $translator,
@@ -58,16 +60,23 @@ final class StatusBarProvider
             default => ProjectPaths::relative($this->rootDir, $path).($doc->isDirty() ? ' '.Glyphs::DIRTY : ''),
         };
 
-        // Build the left prefix in visual order — [debug] [branch] — so the
-        // branch's column offset already accounts for a preceding debug segment
-        // (each part is independently exercised; their sum needs no third path).
+        // Build the left prefix in visual order — [contributed segments] [branch]
+        // — so the branch's column offset already accounts for whatever precedes
+        // it (each part is independently exercised; their sum needs no third
+        // path). The debugger is one contributor among them now, which is what
+        // takes Porta\Debug out of this file.
         $branchStart = null;
         $branchEnd = null;
         $prefix = '';
         $prefixWidth = 0;
-        if (null !== ($debugSegment = $this->debug->statusSegment())) {
-            $prefix .= $this->styles->of(Role::StatusDebug)->apply($debugSegment).'  ';
-            $prefixWidth += AnsiUtils::visibleWidth($debugSegment) + 2;
+        foreach ($this->segmentSources as $source) {
+            $segment = $source->statusSegment();
+            if (null === $segment || '' === $segment) {
+                continue;
+            }
+
+            $prefix .= $this->styles->of($source->statusRole())->apply($segment).'  ';
+            $prefixWidth += AnsiUtils::visibleWidth($segment) + 2;
         }
         if ($this->gitSettings->showBranch() && null !== ($branch = $this->gitRefresher->branch())) {
             $branchText = Glyphs::STATUS_BRANCH." {$branch}";

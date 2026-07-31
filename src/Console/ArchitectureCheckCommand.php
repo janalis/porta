@@ -255,7 +255,6 @@ final class ArchitectureCheckCommand extends Command
         'Widget>Workbench',
         'Workbench>Config',
         'Workbench>Container',
-        'Workbench>Debug',
         'Workbench>Editor',
         'Workbench>Event',
         'Workbench>Git',

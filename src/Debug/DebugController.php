@@ -11,6 +11,7 @@ use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Terminal\TerminalSessions;
 use Porta\Ui\Glyphs;
+use Porta\Ui\Role;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelCallbacks;
 use Porta\Widget\DebugPanelWidget;
@@ -18,7 +19,9 @@ use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockTab;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\StatusSegment;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -27,7 +30,8 @@ use Symfony\Component\Tui\Tui;
  * and the status bar, and carries the step/stop commands.
  */
 #[AsIdeService]
-final class DebugController implements DebugSessionObserver
+#[AsTaggedItem(priority: 200)]
+final class DebugController implements DebugSessionObserver, StatusSegment
 {
     private ?DapSession $session = null;
 
@@ -108,6 +112,12 @@ final class DebugController implements DebugSessionObserver
     public function isPaused(): bool
     {
         return null !== $this->session && DebugState::Paused === $this->session->state();
+    }
+
+    /** How the segment paints — the debugger's own role, unchanged by the seam. */
+    public function statusRole(): Role
+    {
+        return Role::StatusDebug;
     }
 
     /** The status-bar segment: '⏸ path:line' when paused, '▶ debug' while running, null when idle. */
