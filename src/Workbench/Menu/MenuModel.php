@@ -202,6 +202,12 @@ final class MenuModel
      * {@see PluginMenuSpec}s carrying an optional enabled-closure; core specs
      * stay plain strings.
      *
+     * A spec list writes its separators assuming every item around them
+     * survives, and one kind does not: an ADOPTABLE id whose bundled plugin is
+     * disabled is skipped below. `ide_local_history` sits between two dividers
+     * in the File menu, so skipping it would render them adjacent — hence a
+     * separator that follows a separator, or trails the list, is dropped.
+     *
      * @param list<string|PluginMenuSpec>       $specs
      * @param (\Closure(): ?WorkspaceView)|null $activeView
      *
@@ -227,9 +233,15 @@ final class MenuModel
             if (self::SEP !== $spec && str_starts_with($spec, 'i:') && ActionCatalog::isAdoptable(substr($spec, offset: 2)) && !$commands->has(substr($spec, offset: 2))) {
                 continue;
             }
+            if (self::SEP === $spec && ([] === $items || $items[\count($items) - 1]->separator)) {
+                continue; // see below: a skipped item must not leave its dividers doubled
+            }
             $items[] = self::SEP === $spec
                 ? MenuItem::separator()
                 : self::item($spec, $commands, $editor, $ideKeys, $translator, $activeView, $when);
+        }
+        while ([] !== $items && $items[\count($items) - 1]->separator) {
+            array_pop($items);
         }
 
         return $items;

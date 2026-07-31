@@ -370,4 +370,31 @@ final class MenuModelTest extends TestCase
             );
         }
     }
+
+    public function testSkippingAnItemDoesNotLeaveItsDividersDoubled(): void
+    {
+        // A spec list writes its separators assuming every item survives, and
+        // one kind does not: `ide_local_history` sits BETWEEN two dividers in
+        // the File menu, so skipping it (its plugin disabled) would render them
+        // adjacent. Driven through items() directly, since core's own DEFS have
+        // no adoptable id between separators until that move lands.
+        $commands = new CommandRegistry();
+        $editor = new CodeEditorWidget();
+        $ideKeys = new Keybindings();
+
+        $kinds = static fn (array $items): array => array_map(
+            static fn (MenuItem $item): string => $item->separator ? '---' : $item->label,
+            $items,
+        );
+
+        // 'ide_todo' is adoptable and unregistered here, so it is skipped.
+        $items = MenuModel::items([MenuModel::SEP, 'i:ide_todo', MenuModel::SEP, 'i:ide_settings'], $commands, $editor, $ideKeys, new Translator('en'));
+        $this->assertSame(['Settings…'], $kinds($items), 'a leading divider, the skipped item and its second divider all go');
+
+        $items = MenuModel::items(['i:ide_settings', MenuModel::SEP, 'i:ide_todo'], $commands, $editor, $ideKeys, new Translator('en'));
+        $this->assertSame(['Settings…'], $kinds($items), 'and a divider left trailing goes too');
+
+        $items = MenuModel::items(['i:ide_settings', MenuModel::SEP, 'i:ide_quit'], $commands, $editor, $ideKeys, new Translator('en'));
+        $this->assertSame(['Settings…', '---', 'Quit'], $kinds($items), 'a divider between two survivors stays');
+    }
 }
