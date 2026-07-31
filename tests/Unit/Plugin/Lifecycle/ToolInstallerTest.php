@@ -133,9 +133,20 @@ final class ToolInstallerTest extends TestCase
         $log = $this->project->dir.'/argv.log';
         $installer = new ToolInstaller($this->project->dir, ['cargo' => $this->fakeManager(0, $log, sleepSeconds: 1)]);
 
-        $first = $installer->install([['cargo', 'phpantom_lsp']], static function (): void {});
+        $done = false;
+        $first = $installer->install([['cargo', 'phpantom_lsp']], static function () use (&$done): void {
+            $done = true;
+        });
         $second = $installer->install([['cargo', 'phpantom_lsp']], static function (): void {});
         $this->assertSame(InstallOutcome::Started, $first);
         $this->assertSame(InstallOutcome::Busy, $second, 'a second install is rejected while one runs');
+
+        // Let the slow install finish before leaving. The point of the test is
+        // the state DURING it, but walking out mid-flight leaves a watcher
+        // armed on a stream whose process is about to be reaped — the leak
+        // LoopIsolationExtension reports, and the next test inherits.
+        $this->await(static function () use (&$done): bool {
+            return $done;
+        }, what: 'the in-flight install to finish');
     }
 }

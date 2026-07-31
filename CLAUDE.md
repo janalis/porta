@@ -1298,9 +1298,18 @@ flaky shapes are all on the fixed-clock side, and each has a named cure:
   success, so a real failure fails fast with its own message instead of a bare timeout.
 - **`pump()` only for genuine negatives** (proving something did NOT happen).
 - **The event loop is process-global per paratest worker**; `tests/Support/LoopIsolationExtension`
-  (phpunit.xml `<extensions>`) swaps in a fresh driver after EVERY test and reports leaked
-  identifiers to STDERR as `[loop-leak]` (report-only; escalate to a failure once the suite has
-  run leak-clean for a while — the recorded follow-up).
+  (phpunit.xml `<extensions>`) isolates after EVERY test and reports leaked identifiers as
+  `[loop-leak]` (report-only; escalate to a failure once the suite runs leak-clean — the recorded
+  follow-up). It isolates by ONE OF TWO routes: a fresh driver where possible (which also resets
+  the suspension WeakMap), else — `setDriver()` refuses while the driver still considers itself
+  running, which a Tui that parked a suspension leaves it doing for HUNDREDS of E2e tests —
+  cancelling each leaked identifier by hand. It used to skip isolation there silently, which is
+  how a serial suite accumulated ~31 watchers per test; the fallback took a full serial run from
+  2448 leak lines to 53.
+- **Both leak reports are invisible under `composer test`** — measured: paratest swallows worker
+  STDERR, so an unconditional write from an extension never reaches the log. `composer test:serial`
+  is the only way to read them (raise `COMPOSER_PROCESS_TIMEOUT`; the serial suite outruns the
+  300s default). Any claim that "the suite is leak-clean" has to come from a serial run.
 - **So is the ENVIRONMENT**, and its leaks are nastier because the symptom lands in another file:
   a test that leaves `PATH=/nonexistent` behind makes the next test's `#!/usr/bin/env php` stub
   fail with `env: php: No such file or directory`, and a leaked `PORTA_HOME` silently uncolours a

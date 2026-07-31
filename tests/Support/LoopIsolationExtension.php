@@ -28,10 +28,21 @@ use Revolt\EventLoop\Driver\StreamSelectDriver;
  * After every test (Finished, plus the two Preparation* ends a setUp-abort
  * takes instead) this reports any leaked identifiers to STDERR as
  * `[loop-leak]` — visibility only, never a failure, until the suite runs
- * leak-clean — and ALWAYS swaps in a fresh driver: a swap also resets the
- * suspension WeakMap, curing pending-state corruption that leaves zero
- * identifiers behind. Swapping is safe here (the only setDriver guard is
- * isRunning(), false between tests) and cheap (one StreamSelectDriver).
+ * leak-clean — and then isolates, by one of two routes.
+ *
+ * The cheap route is a fresh driver: a swap also resets the suspension WeakMap,
+ * curing pending-state corruption that leaves zero identifiers behind. But
+ * `setDriver()` refuses while the driver considers itself running, and that is
+ * NOT rare — a full E2e suite hits it for hundreds of tests, because a Tui that
+ * parked a suspension leaves the driver running after `run()` returns. This
+ * class used to skip isolation entirely there, silently, which is how a serial
+ * suite accumulated watchers across tests. The fallback cancels each leaked
+ * identifier by hand: same outcome for the next test, without the WeakMap
+ * reset.
+ *
+ * **The report is invisible under `composer test`**: paratest swallows worker
+ * STDERR (measured — an unconditional write from here never reaches the log).
+ * Use `composer test:serial` to read it.
  */
 final class LoopIsolationExtension implements Extension
 {
@@ -66,6 +77,18 @@ final class LoopIsolationExtension implements Extension
         }
         if (!EventLoop::getDriver()->isRunning()) {
             EventLoop::setDriver(new StreamSelectDriver());
+
+            return;
+        }
+        // The swap is impossible while the driver still considers itself
+        // running — which is NOT the rare case this class used to assume: a
+        // full E2e suite hits it for hundreds of tests, because a Tui that
+        // parked a suspension leaves the driver running after run() returns.
+        // Isolation cannot be skipped there just because the cheap route is
+        // closed, so cancel what leaked instead. Same outcome, one watcher at
+        // a time.
+        foreach ($leaked as $identifier) {
+            EventLoop::cancel($identifier);
         }
     }
 }

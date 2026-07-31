@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\PreservesShell;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
@@ -26,6 +27,7 @@ final class IdeTerminalRunTest extends TestCase
 {
     use ClearsPortaLsp;
     use PreservesPath;
+    use PreservesShell;
     use RunsIde;
     use ScreenReads;
 

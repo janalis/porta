@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Run\RunController;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\PreservesShell;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
@@ -23,12 +24,8 @@ use Symfony\Component\Tui\Render\Renderer;
 final class IdeTerminalTest extends TestCase
 {
     use PreservesPath;
+    use PreservesShell;
     use RunsIde;
-
-    protected function tearDown(): void
-    {
-        putenv('SHELL');
-    }
 
     /** @return list<\Porta\Terminal\TerminalSession> */
     private function sessions(mixed $ide): array
