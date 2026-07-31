@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Porta\Search;
 
 use Porta\Editor\BufferManager;
+use Porta\Editor\DocumentReplacer;
 use Porta\History\SearchHistoryStore;
 use Porta\History\SearchPrefsStore;
 use Porta\History\SearchScopeStore;
 use Porta\I18n\Translator;
-use Porta\Lsp\LspSessionPool;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\ScopeKind;
 use Porta\Widget\CodeEditorWidget;
@@ -57,7 +57,7 @@ final class ProjectSearchController
         private readonly Translator $translator,
         private readonly BufferManager $buffers,
         private readonly string $rootDir,
-        private readonly LspSessionPool $lsp,
+        private readonly DocumentReplacer $replacer,
         private readonly SearchHistoryStore $history,
         private readonly SearchPrefsStore $prefs,
         private readonly SearchScopeResolver $scopes,
@@ -337,12 +337,7 @@ final class ProjectSearchController
             if (null !== $buffer) {
                 $old = $buffer->document->getText();
                 $new = $this->replaceLines($old, $lineIndices, $replacement);
-                if ($new !== $old) {
-                    $buffer->document->replaceAll($new);
-                    if ($buffer === $this->buffers->active()) {
-                        $this->editor->invalidate();
-                    }
-                    $this->lsp->notifyFullChange($buffer->path, $buffer->document);
+                if ($this->replacer->replace($buffer, $new)) {
                     ++$touched;
                 }
 
@@ -378,12 +373,7 @@ final class ProjectSearchController
             if (null !== $buffer) {
                 $old = $buffer->document->getText();
                 $new = $this->projectSearch->applyReplacement($old, $this->lastSearchQuery, $replacement, $this->searchOptions);
-                if ($new !== $old) {
-                    $buffer->document->replaceAll($new);
-                    if ($buffer === $this->buffers->active()) {
-                        $this->editor->invalidate();
-                    }
-                    $this->lsp->notifyFullChange($buffer->path, $buffer->document);
+                if ($this->replacer->replace($buffer, $new)) {
                     ++$touched;
                 }
 

@@ -52,7 +52,7 @@ final class ProjectSearchControllerTest extends TestCase
             new \Porta\I18n\Translator('en'),
             $buffers,
             $rootDir,
-            new \Porta\Lsp\LspSessionPool($rootDir, new \Porta\Tests\Support\FixedActiveFile(), new \Porta\I18n\Translator('en')),
+            new \Porta\Editor\DocumentReplacer($buffers, $this->editor, new \Porta\Lsp\LspSessionPool($rootDir, new \Porta\Tests\Support\FixedActiveFile(), new \Porta\I18n\Translator('en'))),
             new \Porta\History\SearchHistoryStore($rootDir),
             new \Porta\History\SearchPrefsStore($rootDir),
             new \Porta\Search\SearchScopeResolver($buffers, $this->editor, $rootDir),
