@@ -8,7 +8,18 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\LayoutStore;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
+use Porta\Event\GitChangeDiscarded;
+use Porta\Event\GitChangeSelected;
+use Porta\Event\GitChangeStageToggled;
+use Porta\Event\GitCommitFileSelected;
+use Porta\Event\GitCommitSelected;
 use Porta\Event\GitCommitted;
+use Porta\Event\GitDiffContextCycled;
+use Porta\Event\GitDiffLayoutToggled;
+use Porta\Event\GitDiffLinesStaged;
+use Porta\Event\GitDiffTextCopied;
+use Porta\Event\GitDiffWhitespaceToggled;
+use Porta\Event\GitHistoryEndReached;
 use Porta\Event\GitRemoteCompleted;
 use Porta\Event\GitRemoteRequested;
 use Porta\Event\GitViewModeRequested;
@@ -123,7 +134,7 @@ final class GitViewControllerTest extends TestCase
 
         $dispatcher = new EventDispatcher();
         $this->changes = new ChangesListWidget(new Translator('en'), events: $dispatcher);
-        $this->diffView = new DiffViewWidget(new Translator('en'));
+        $this->diffView = new DiffViewWidget(new Translator('en'), events: $dispatcher);
         $this->commitBox = new CommitBoxWidget(new Translator('en'));
         $this->history = new HistoryListWidget(new Translator('en'), events: $dispatcher);
         $this->history->setId('git-history');
@@ -202,6 +213,17 @@ final class GitViewControllerTest extends TestCase
         // wires the same two by hand.
         $dispatcher->addListener(GitViewModeRequested::class, $controller->onViewModeRequested(...));
         $dispatcher->addListener(GitRemoteRequested::class, $controller->onRemoteRequested(...));
+        $dispatcher->addListener(GitChangeSelected::class, $controller->onChangeSelected(...));
+        $dispatcher->addListener(GitChangeStageToggled::class, $controller->onChangeStageToggled(...));
+        $dispatcher->addListener(GitChangeDiscarded::class, $controller->onChangeDiscarded(...));
+        $dispatcher->addListener(GitCommitSelected::class, $controller->onCommitSelected(...));
+        $dispatcher->addListener(GitCommitFileSelected::class, $controller->onCommitFileSelected(...));
+        $dispatcher->addListener(GitHistoryEndReached::class, $controller->onHistoryEndReached(...));
+        $dispatcher->addListener(GitDiffLinesStaged::class, $controller->onDiffLinesStaged(...));
+        $dispatcher->addListener(GitDiffContextCycled::class, $controller->onDiffContextCycled(...));
+        $dispatcher->addListener(GitDiffLayoutToggled::class, $controller->onDiffLayoutToggled(...));
+        $dispatcher->addListener(GitDiffWhitespaceToggled::class, $controller->onDiffWhitespaceToggled(...));
+        $dispatcher->addListener(GitDiffTextCopied::class, $controller->onDiffTextCopied(...));
 
         return $this->controller = $controller;
     }

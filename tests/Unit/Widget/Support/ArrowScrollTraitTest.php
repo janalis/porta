@@ -7,11 +7,12 @@ namespace Porta\Tests\Unit\Widget\Support;
 use PHPUnit\Framework\TestCase;
 use Porta\Git\ChangeEntry;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\GitWidgetEvents;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\FileTreeWidget;
-use Porta\Widget\Git\ChangesListCallbacks;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Render\RenderContext;
 
 /**
@@ -26,10 +27,11 @@ final class ArrowScrollTraitTest extends TestCase
     public function testScrollingTheChangesListReloadsTheDiffJustLikeTheArrowKeys(): void
     {
         $selected = [];
-        $list = new ChangesListWidget(new Translator('en'));
-        $list->setCallbacks(new ChangesListCallbacks(onSelect: static function (ChangeEntry $entry) use (&$selected): void {
+        $events = new EventDispatcher();
+        $list = new ChangesListWidget(new Translator('en'), events: $events);
+        GitWidgetEvents::wire($events, onSelect: static function (ChangeEntry $entry) use (&$selected): void {
             $selected[] = $entry->path;
-        }));
+        });
         $list->setEntries([
             new ChangeEntry('a.php', ' ', 'M'),
             new ChangeEntry('b.php', ' ', 'M'),

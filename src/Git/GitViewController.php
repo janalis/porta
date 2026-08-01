@@ -6,7 +6,18 @@ namespace Porta\Git;
 
 use Porta\Container\AsEager;
 use Porta\Container\LayoutSlot;
+use Porta\Event\GitChangeDiscarded;
+use Porta\Event\GitChangeSelected;
+use Porta\Event\GitChangeStageToggled;
+use Porta\Event\GitCommitFileSelected;
+use Porta\Event\GitCommitSelected;
 use Porta\Event\GitCommitted;
+use Porta\Event\GitDiffContextCycled;
+use Porta\Event\GitDiffLayoutToggled;
+use Porta\Event\GitDiffLinesStaged;
+use Porta\Event\GitDiffTextCopied;
+use Porta\Event\GitDiffWhitespaceToggled;
+use Porta\Event\GitHistoryEndReached;
 use Porta\Event\GitRemoteCompleted;
 use Porta\Event\GitRemoteRequested;
 use Porta\Event\GitViewModeRequested;
@@ -16,9 +27,6 @@ use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\LayoutController;
 use Porta\Support\Clipboard;
 use Porta\Support\ProjectPaths;
-use Porta\Widget\Git\ChangesListCallbacks;
-use Porta\Widget\Git\DiffViewCallbacks;
-use Porta\Widget\Git\HistoryListCallbacks;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\FullScreenView;
@@ -96,25 +104,8 @@ final class GitViewController implements FullScreenView
         $exit = $this->close(...);
         $next = $this->focusNext(...);
 
-        $this->panes->changes->setCallbacks(new ChangesListCallbacks(
-            onSelect: $this->loadDiff(...),
-            onToggleStage: $this->toggleStage(...),
-            onDiscard: $this->discard(...),
-        ));
         $this->panes->changes->onFocusNext($next)->onExit($exit);
-        $this->panes->history->setCallbacks(new HistoryListCallbacks(
-            onSelectCommit: $this->loadCommitFiles(...),
-            onSelectFile: $this->loadCommitFileDiff(...),
-            onLoadMore: $this->loadMoreHistory(...),
-        ));
         $this->panes->history->onFocusNext($next)->onExit($exit);
-        $this->panes->diffView->setCallbacks(new DiffViewCallbacks(
-            onStageSelection: $this->stageSelection(...),
-            onCycleContext: $this->cycleContext(...),
-            onLayoutToggle: $this->persistDiffPrefs(...),
-            onToggleWhitespace: $this->toggleWhitespace(...),
-            onCopy: $this->copyDiffText(...),
-        ));
         $this->panes->diffView->onFocusNext($next)->onExit($exit);
         $this->panes
             ->commitBox
@@ -450,6 +441,72 @@ final class GitViewController implements FullScreenView
      * After a fetch/pull/push: the history tab shows stale commits — reload
      * page 0 (the changes list self-heals via its poll).
      */
+    #[AsEventListener]
+    public function onChangeSelected(GitChangeSelected $event): void
+    {
+        $this->loadDiff($event->entry);
+    }
+
+    #[AsEventListener]
+    public function onChangeStageToggled(GitChangeStageToggled $event): void
+    {
+        $this->toggleStage($event->entry);
+    }
+
+    #[AsEventListener]
+    public function onChangeDiscarded(GitChangeDiscarded $event): void
+    {
+        $this->discard($event->entry);
+    }
+
+    #[AsEventListener]
+    public function onCommitSelected(GitCommitSelected $event): void
+    {
+        $this->loadCommitFiles($event->commit);
+    }
+
+    #[AsEventListener]
+    public function onCommitFileSelected(GitCommitFileSelected $event): void
+    {
+        $this->loadCommitFileDiff($event->commit, $event->path);
+    }
+
+    #[AsEventListener]
+    public function onHistoryEndReached(GitHistoryEndReached $event): void
+    {
+        $this->loadMoreHistory();
+    }
+
+    #[AsEventListener]
+    public function onDiffLinesStaged(GitDiffLinesStaged $event): void
+    {
+        $this->stageSelection($event->selection);
+    }
+
+    #[AsEventListener]
+    public function onDiffContextCycled(GitDiffContextCycled $event): void
+    {
+        $this->cycleContext();
+    }
+
+    #[AsEventListener]
+    public function onDiffLayoutToggled(GitDiffLayoutToggled $event): void
+    {
+        $this->persistDiffPrefs();
+    }
+
+    #[AsEventListener]
+    public function onDiffWhitespaceToggled(GitDiffWhitespaceToggled $event): void
+    {
+        $this->toggleWhitespace();
+    }
+
+    #[AsEventListener]
+    public function onDiffTextCopied(GitDiffTextCopied $event): void
+    {
+        $this->copyDiffText($event->text);
+    }
+
     /** fetch / pull / push, from either git list pane. */
     #[AsEventListener]
     public function onRemoteRequested(GitRemoteRequested $event): void

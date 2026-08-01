@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Porta\Widget\Git;
 
 use Porta\Container\AsWidget;
+use Porta\Event\GitChangeDiscarded;
+use Porta\Event\GitChangeSelected;
+use Porta\Event\GitChangeStageToggled;
 use Porta\Event\GitViewModeRequested;
 use Porta\Git\ChangeEntry;
 use Porta\Git\GitViewMode;
@@ -71,8 +74,6 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     /** Index of the entry an inline discard confirmation is armed for, or null. */
     private ?int $confirmDiscard = null;
 
-    private ChangesListCallbacks $callbacks;
-
     public function __construct(
         private readonly Translator $translator,
         int $width = 44,
@@ -83,13 +84,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         $this->width = $width;
         $this->initStyles($styles);
         $this->list = new ListSelection();
-        $this->callbacks = new ChangesListCallbacks(); // a bare widget fires nothing
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
-    }
-
-    public function setCallbacks(ChangesListCallbacks $callbacks): void
-    {
-        $this->callbacks = $callbacks;
     }
 
     /**
@@ -137,8 +132,8 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         if (null !== $this->confirmDiscard) {
             $entry = $this->entries[$this->confirmDiscard] ?? null;
             $this->confirmDiscard = null;
-            if (('y' === $data || 'Y' === $data) && null !== $entry && null !== $this->callbacks->onDiscard) {
-                ($this->callbacks->onDiscard)($entry);
+            if (('y' === $data || 'Y' === $data) && null !== $entry) {
+                $this->events?->dispatch(new GitChangeDiscarded($entry));
             }
             $this->invalidate();
 
@@ -155,8 +150,8 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             return;
         }
         if ($kb->matches($data, 'toggle_stage')) {
-            if (null !== ($entry = $this->selectedEntry()) && null !== $this->callbacks->onToggleStage) {
-                ($this->callbacks->onToggleStage)($entry);
+            if (null !== ($entry = $this->selectedEntry())) {
+                $this->events?->dispatch(new GitChangeStageToggled($entry));
             }
 
             return;
@@ -191,8 +186,8 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     /** Context-menu trigger: toggle the selected entry's staging (same path as Space). */
     public function toggleStageSelected(): void
     {
-        if (null !== ($entry = $this->selectedEntry()) && null !== $this->callbacks->onToggleStage) {
-            ($this->callbacks->onToggleStage)($entry);
+        if (null !== ($entry = $this->selectedEntry())) {
+            $this->events?->dispatch(new GitChangeStageToggled($entry));
             $this->invalidate();
         }
     }
@@ -227,8 +222,8 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         }
         $this->list->select($index);
         $entry = $this->entries[$index];
-        if ($relCol <= 3 && null !== $this->callbacks->onToggleStage) {
-            ($this->callbacks->onToggleStage)($entry);
+        if ($relCol <= 3) {
+            $this->events?->dispatch(new GitChangeStageToggled($entry));
             $this->invalidate();
 
             return;
@@ -254,8 +249,8 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
 
     private function fireSelect(): void
     {
-        if (null !== ($entry = $this->selectedEntry()) && null !== $this->callbacks->onSelect) {
-            ($this->callbacks->onSelect)($entry);
+        if (null !== ($entry = $this->selectedEntry())) {
+            $this->events?->dispatch(new GitChangeSelected($entry));
         }
     }
 

@@ -11,8 +11,8 @@ use Porta\Git\GitRemoteOperation;
 use Porta\Git\LogEntry;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\AttachedStyles;
+use Porta\Tests\Support\GitWidgetEvents;
 use Porta\Tests\Support\RendersWidget;
-use Porta\Widget\Git\HistoryListCallbacks;
 use Porta\Widget\Git\HistoryListWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -57,16 +57,18 @@ final class HistoryListWidgetTest extends TestCase
 
     public function testCommitNavigationFiresAndEnterSwitchesToFiles(): void
     {
-        $widget = $this->widget();
+        $bus = new EventDispatcher();
+        $widget = $this->widget($bus);
         $events = [];
-        $widget->setCallbacks(new HistoryListCallbacks(
+        GitWidgetEvents::wire(
+            $bus,
             onSelectCommit: static function (LogEntry $c) use (&$events): void {
                 $events[] = 'commit:'.$c->shortSha;
             },
             onSelectFile: static function (LogEntry $c, string $path) use (&$events): void {
                 $events[] = 'file:'.$path;
             },
-        ));
+        );
 
         $widget->handleInput("\x1b[B"); // second commit
         $widget->handleInput("\r"); // into the file list
@@ -78,17 +80,19 @@ final class HistoryListWidgetTest extends TestCase
 
     public function testHoverTintsCommitAndFileRowsWithoutSelecting(): void
     {
-        $widget = $this->widget();
+        $events = new EventDispatcher();
+        $widget = $this->widget($events);
         $widget->render(new RenderContext(44, 16)); // commitRowCount = 6, Files header row 7
         $fired = 0;
-        $widget->setCallbacks(new HistoryListCallbacks(
+        GitWidgetEvents::wire(
+            $events,
             onSelectCommit: static function () use (&$fired): void {
                 ++$fired;
             },
             onSelectFile: static function () use (&$fired): void {
                 ++$fired;
             },
-        ));
+        );
 
         $this->assertTrue($widget->hoverRow(2), 'second commit row tints');
         $this->assertFalse($widget->hoverRow(2), 'same row: no repaint');
@@ -120,16 +124,18 @@ final class HistoryListWidgetTest extends TestCase
 
     public function testClickRoutesToCommitOrFileRows(): void
     {
-        $widget = $this->widget();
+        $bus = new EventDispatcher();
+        $widget = $this->widget($bus);
         $events = [];
-        $widget->setCallbacks(new HistoryListCallbacks(
+        GitWidgetEvents::wire(
+            $bus,
             onSelectCommit: static function (LogEntry $c) use (&$events): void {
                 $events[] = 'commit:'.$c->shortSha;
             },
             onSelectFile: static function (LogEntry $c, string $path) use (&$events): void {
                 $events[] = 'file:'.$path;
             },
-        ));
+        );
         $widget->render(new RenderContext(44, 16)); // teach it its height
 
         $widget->handleClick(2); // second commit row
@@ -174,7 +180,8 @@ final class HistoryListWidgetTest extends TestCase
 
     public function testLoadMoreFiresOnceAtTheBottomAndAppendPreservesSelection(): void
     {
-        $widget = new HistoryListWidget(new Translator('en'));
+        $events = new EventDispatcher();
+        $widget = new HistoryListWidget(new Translator('en'), events: $events);
         $widget->setFocused(true);
         $widget->setCommits([
             new LogEntry('s1', 'aaa111', 'A', 1_700_000_300, 'one'),
@@ -183,11 +190,9 @@ final class HistoryListWidgetTest extends TestCase
         ]);
         $loads = 0;
         $widget->markHasMore();
-        $widget->setCallbacks(new HistoryListCallbacks(
-            onLoadMore: static function () use (&$loads): void {
-                ++$loads;
-            },
-        ));
+        GitWidgetEvents::wire($events, onLoadMore: static function () use (&$loads): void {
+            ++$loads;
+        });
 
         $widget->handleInput("\x1b[B");
         $this->assertSame(0, $loads, 'mid-list navigation never loads');

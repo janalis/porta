@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Porta\Widget\Git;
 
 use Porta\Container\AsWidget;
+use Porta\Event\GitCommitFileSelected;
+use Porta\Event\GitCommitSelected;
+use Porta\Event\GitHistoryEndReached;
 use Porta\Event\GitViewModeRequested;
 use Porta\Git\GitViewMode;
 use Porta\Git\LogEntry;
@@ -66,8 +69,6 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     private ?int $hoveredFile = null;
     private int $lastRows = 12;
 
-    private HistoryListCallbacks $callbacks;
-
     /** Whether an older page exists past the loaded commits. */
     private bool $hasMore = false;
     /** Latch: one load-more in flight at a time. */
@@ -85,12 +86,6 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
         $this->initStyles($styles);
         $this->commitList = new ListSelection();
         $this->fileList = new ListSelection();
-        $this->callbacks = new HistoryListCallbacks(); // a bare widget fires nothing
-    }
-
-    public function setCallbacks(HistoryListCallbacks $callbacks): void
-    {
-        $this->callbacks = $callbacks;
     }
 
     /** @param list<LogEntry> $commits */
@@ -197,9 +192,9 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
             $this->fireSelectCommit();
             // Hitting the bottom of the loaded page pulls the next one in
             // (keyboard and wheel — GitMouseRouter translates scroll to keys).
-            if ($this->hasMore && !$this->loadingMore && null !== $this->callbacks->onLoadMore && $this->commitList->selected() === (\count($this->commits) - 1)) {
+            if ($this->hasMore && !$this->loadingMore && $this->commitList->selected() === (\count($this->commits) - 1)) {
                 $this->loadingMore = true;
-                ($this->callbacks->onLoadMore)();
+                $this->events?->dispatch(new GitHistoryEndReached());
             }
             $this->invalidate();
         }
@@ -294,8 +289,8 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
 
     private function fireSelectCommit(): void
     {
-        if (null !== ($commit = $this->selectedCommit()) && null !== $this->callbacks->onSelectCommit) {
-            ($this->callbacks->onSelectCommit)($commit);
+        if (null !== ($commit = $this->selectedCommit())) {
+            $this->events?->dispatch(new GitCommitSelected($commit));
         }
     }
 
@@ -303,8 +298,8 @@ final class HistoryListWidget extends AbstractWidget implements FocusableInterfa
     {
         $commit = $this->selectedCommit();
         $file = $this->files[$this->fileList->selected()] ?? null;
-        if (null !== $commit && null !== $file && null !== $this->callbacks->onSelectFile) {
-            ($this->callbacks->onSelectFile)($commit, $file['path']);
+        if (null !== $commit && null !== $file) {
+            $this->events?->dispatch(new GitCommitFileSelected($commit, $file['path']));
         }
     }
 

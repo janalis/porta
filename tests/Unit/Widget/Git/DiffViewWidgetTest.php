@@ -7,9 +7,10 @@ namespace Porta\Tests\Unit\Widget\Git;
 use PHPUnit\Framework\TestCase;
 use Porta\Git\DiffDocument;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\GitWidgetEvents;
 use Porta\Tests\Support\Probe;
-use Porta\Widget\Git\DiffViewCallbacks;
 use Porta\Widget\Git\DiffViewWidget;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -29,9 +30,9 @@ final class DiffViewWidgetTest extends TestCase
         +tail!
         DIFF;
 
-    private function widget(): DiffViewWidget
+    private function widget(?EventDispatcher $events = null): DiffViewWidget
     {
-        $widget = new DiffViewWidget(new Translator('en'));
+        $widget = new DiffViewWidget(new Translator('en'), events: $events);
         $widget->setDocument(DiffDocument::parse(self::RAW), 'src/demo.php');
 
         return $widget;
@@ -117,14 +118,13 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testSpaceOnAHunkHeaderSelectsTheWholeHunk(): void
     {
-        $widget = $this->widget();
+        $events = new EventDispatcher();
+        $widget = $this->widget($events);
         $widget->setFocused(true);
         $captured = null;
-        $widget->setCallbacks(new DiffViewCallbacks(
-            onStageSelection: static function (array $selected) use (&$captured): void {
-                $captured = $selected;
-            },
-        ));
+        GitWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
+            $captured = $selected;
+        });
         $widget->handleInput(' '); // cursor starts on hunk 0's header
 
         $this->assertSame([0 => [0 => true, 1 => true, 2 => true, 3 => true]], $captured);
@@ -132,14 +132,13 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testSpaceOnALineSelectsJustThatLine(): void
     {
-        $widget = $this->widget();
+        $events = new EventDispatcher();
+        $widget = $this->widget($events);
         $widget->setFocused(true);
         $captured = null;
-        $widget->setCallbacks(new DiffViewCallbacks(
-            onStageSelection: static function (array $selected) use (&$captured): void {
-                $captured = $selected;
-            },
-        ));
+        GitWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
+            $captured = $selected;
+        });
         $widget->handleInput("\x1b[B"); // rows: header, ctx, -old, +new...
         $widget->handleInput("\x1b[B");
         $widget->handleInput(' '); // on '-$old = 2;' (hunk 0, line 1)
@@ -149,14 +148,13 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testRangeAnchorSelectsTheSpanAndClears(): void
     {
-        $widget = $this->widget();
+        $events = new EventDispatcher();
+        $widget = $this->widget($events);
         $widget->setFocused(true);
         $captured = null;
-        $widget->setCallbacks(new DiffViewCallbacks(
-            onStageSelection: static function (array $selected) use (&$captured): void {
-                $captured = $selected;
-            },
-        ));
+        GitWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
+            $captured = $selected;
+        });
         $widget->handleInput("\x1b[B");
         $widget->handleInput("\x1b[B"); // on the deletion row
         $widget->handleInput('v'); // arm the anchor
@@ -173,20 +171,19 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testCursorUpAndEmptyDocumentMovesAreSafe(): void
     {
-        $widget = $this->widget();
+        $events = new EventDispatcher();
+        $widget = $this->widget($events);
         $widget->setFocused(true);
         $widget->handleInput("\x1b[B");
         $widget->handleInput("\x1b[A"); // back to the top
         $captured = null;
-        $widget->setCallbacks(new DiffViewCallbacks(
-            onStageSelection: static function (array $selected) use (&$captured): void {
-                $captured = $selected;
-            },
-        ));
+        GitWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
+            $captured = $selected;
+        });
         $widget->handleInput(' ');
         $this->assertArrayHasKey(0, (array) $captured, 'cursor is back on hunk 0');
 
-        $empty = new DiffViewWidget(new Translator('en'));
+        $empty = new DiffViewWidget(new Translator('en'), events: $events);
         $empty->setDocument(null, null);
         $empty->setFocused(true);
         $empty->handleInput("\x1b[B"); // no rows: consumed, no crash
@@ -209,15 +206,14 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testReadOnlyIgnoresStagingKeys(): void
     {
-        $widget = $this->widget();
+        $events = new EventDispatcher();
+        $widget = $this->widget($events);
         $widget->setFocused(true);
         $widget->makeReadOnly();
         $fired = false;
-        $widget->setCallbacks(new DiffViewCallbacks(
-            onStageSelection: static function () use (&$fired): void {
-                $fired = true;
-            },
-        ));
+        GitWidgetEvents::wire($events, onStageSelection: static function () use (&$fired): void {
+            $fired = true;
+        });
         $widget->handleInput('v');
         $widget->handleInput(' ');
         $this->assertFalse($fired);
@@ -225,7 +221,8 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testSamePathReloadKeepsTheCursor(): void
     {
-        $widget = $this->widget();
+        $events = new EventDispatcher();
+        $widget = $this->widget($events);
         $widget->setFocused(true);
         $this->plainLines($widget, 80, 12);
         $widget->handleInput("\x1b[B");
@@ -235,11 +232,9 @@ final class DiffViewWidgetTest extends TestCase
         // Reload the SAME path with a shorter diff: cursor clamps, not resets.
         $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-a\n+b\n"), 'src/demo.php');
         $captured = null;
-        $widget->setCallbacks(new DiffViewCallbacks(
-            onStageSelection: static function (array $selected) use (&$captured): void {
-                $captured = $selected;
-            },
-        ));
+        GitWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
+            $captured = $selected;
+        });
         $widget->handleInput(' ');
         $this->assertSame([0 => [1 => true]], $captured, 'cursor clamped to the last row (+b)');
 
@@ -323,15 +318,14 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testSplitStagingSelectsThePairAndRangesUnionBothSides(): void
     {
-        $widget = $this->widget();
+        $events = new EventDispatcher();
+        $widget = $this->widget($events);
         $widget->setFocused(true);
         $widget->handleInput('s');
         $captured = null;
-        $widget->setCallbacks(new DiffViewCallbacks(
-            onStageSelection: static function (array $selected) use (&$captured): void {
-                $captured = $selected;
-            },
-        ));
+        GitWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
+            $captured = $selected;
+        });
         // Split rows: header, ctx pair, (-old|+new), (blank|+extra), header, pair.
         $widget->handleInput("\x1b[B");
         $widget->handleInput("\x1b[B");
@@ -346,13 +340,12 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testToolbarTagTogglesByClickAndFiresThePersistenceHook(): void
     {
-        $widget = $this->widget();
+        $events = new EventDispatcher();
+        $widget = $this->widget($events);
         $toggles = [];
-        $widget->setCallbacks(new DiffViewCallbacks(
-            onLayoutToggle: static function () use (&$toggles, $widget): void {
-                $toggles[] = $widget->isSplit();
-            },
-        ));
+        GitWidgetEvents::wire($events, onLayoutToggle: static function () use (&$toggles, $widget): void {
+            $toggles[] = $widget->isSplit();
+        });
         $raw = $widget->render(new RenderContext(80, 12));
         $this->assertStringNotContainsString("\x1b[48;5;31m", $raw[0], 'inactive tag renders dim');
 
@@ -373,15 +366,14 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testBodyClickMovesTheCursor(): void
     {
-        $widget = $this->widget();
+        $events = new EventDispatcher();
+        $widget = $this->widget($events);
         $widget->setFocused(true);
         $this->plainLines($widget); // teach the viewport
         $captured = null;
-        $widget->setCallbacks(new DiffViewCallbacks(
-            onStageSelection: static function (array $selected) use (&$captured): void {
-                $captured = $selected;
-            },
-        ));
+        GitWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
+            $captured = $selected;
+        });
         $widget->handleClick(3, 10); // row 3 = the deletion (hunk 0 line 1)
         $widget->handleInput(' ');
         $this->assertSame([0 => [1 => true]], $captured);
@@ -390,7 +382,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->handleInput(' ');
         $this->assertSame([1 => [1 => true]], $captured, 'clamped to the final +tail! row');
 
-        $empty = new DiffViewWidget(new Translator('en'));
+        $empty = new DiffViewWidget(new Translator('en'), events: $events);
         $empty->setDocument(null, null);
         $empty->handleClick(2, 2); // no rows: a safe no-op
         $this->assertFalse($empty->isSplit());
@@ -398,7 +390,8 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testReadOnlyStillAllowsTheLayoutToggle(): void
     {
-        $widget = $this->widget();
+        $events = new EventDispatcher();
+        $widget = $this->widget($events);
         $widget->setFocused(true);
         $widget->makeReadOnly();
         $widget->handleInput('s');
@@ -406,11 +399,9 @@ final class DiffViewWidgetTest extends TestCase
 
         // setSplit applies a preference silently (no hook fire).
         $fired = false;
-        $widget->setCallbacks(new DiffViewCallbacks(
-            onLayoutToggle: static function () use (&$fired): void {
-                $fired = true;
-            },
-        ));
+        GitWidgetEvents::wire($events, onLayoutToggle: static function () use (&$fired): void {
+            $fired = true;
+        });
         $widget->useUnifiedView();
         $this->assertFalse($widget->isSplit());
         $widget->useUnifiedView(); // idempotent
@@ -419,13 +410,12 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testWhitespaceTagFiresTheHookAndMirrorsTheState(): void
     {
-        $widget = $this->widget();
+        $events = new EventDispatcher();
+        $widget = $this->widget($events);
         $fired = 0;
-        $widget->setCallbacks(new DiffViewCallbacks(
-            onToggleWhitespace: static function () use (&$fired): void {
-                ++$fired;
-            },
-        ));
+        GitWidgetEvents::wire($events, onToggleWhitespace: static function () use (&$fired): void {
+            ++$fired;
+        });
         $widget->render(new RenderContext(80, 12));
 
         // ' W hide-ws ' spans cols 67-78 at 80 cols.
@@ -539,14 +529,13 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testCtrlCCopiesTheCursorRowRangesAndHunks(): void
     {
-        $widget = $this->widget();
+        $events = new EventDispatcher();
+        $widget = $this->widget($events);
         $widget->setFocused(true);
         $copies = [];
-        $widget->setCallbacks(new DiffViewCallbacks(
-            onCopy: static function (string $text) use (&$copies): void {
-                $copies[] = $text;
-            },
-        ));
+        GitWidgetEvents::wire($events, onCopy: static function (string $text) use (&$copies): void {
+            $copies[] = $text;
+        });
         // Cursor on the hunk header: the whole hunk's plain text.
         $widget->handleInput("\x03");
         $this->assertSame(["\$keep = 1;\n\$old = 2;\n\$new = 2;\n\$extra = 3;\n"], $copies);
@@ -568,22 +557,19 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testCopySkipsNoNewlineMarkersAndWorksSplitAndReadOnly(): void
     {
-        $widget = new DiffViewWidget(new Translator('en'));
+        $events = new EventDispatcher();
+        $widget = new DiffViewWidget(new Translator('en'), events: $events);
         $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-old\n\\ No newline at end of file\n+new\n"), 'x.txt');
         $widget->setFocused(true);
         $widget->makeReadOnly(); // history diffs can select + copy...
         $staged = false;
-        $widget->setCallbacks(new DiffViewCallbacks(
-            onStageSelection: static function () use (&$staged): void {
-                $staged = true;
-            },
-        ));
+        GitWidgetEvents::wire($events, onStageSelection: static function () use (&$staged): void {
+            $staged = true;
+        });
         $copies = [];
-        $widget->setCallbacks(new DiffViewCallbacks(
-            onCopy: static function (string $text) use (&$copies): void {
-                $copies[] = $text;
-            },
-        ));
+        GitWidgetEvents::wire($events, onCopy: static function (string $text) use (&$copies): void {
+            $copies[] = $text;
+        });
         $widget->useSplitView(); // the -old/\-marker rows precede the +new pair
         $widget->handleInput("\x1b[B"); // first pair row (-old | blank)
         $widget->handleInput('v'); // allowed while read-only now
@@ -594,30 +580,27 @@ final class DiffViewWidgetTest extends TestCase
         $widget->handleInput("\x03");
         $this->assertSame(["old\nnew\n"], $copies, 'both sides, marker line skipped, still read-only');
 
-        $empty = new DiffViewWidget(new Translator('en'));
+        $empty = new DiffViewWidget(new Translator('en'), events: $events);
         $empty->setDocument(null, null);
-        $empty->setCallbacks(new DiffViewCallbacks(
-            onCopy: static function () use (&$copies): void {
-                $copies[] = 'never';
-            },
-        ));
+        GitWidgetEvents::wire($events, onCopy: static function () use (&$copies): void {
+            $copies[] = 'never';
+        });
         $empty->handleInput("\x03");
         $this->assertCount(1, $copies, 'no document: nothing fires');
     }
 
     public function testDragSelectsCharsAcrossRowsAndAClickClearsIt(): void
     {
+        $events = new EventDispatcher();
         // Rows: title, hunk, ' $keep = 1;', '-$old = 2;', '+$new = 2;'...
         // Text columns start at widget col 12 (gutter 11 + marker).
-        $widget = $this->widget();
+        $widget = $this->widget($events);
         $widget->setFocused(true);
         $this->plainLines($widget); // teach the viewport geometry
         $copies = [];
-        $widget->setCallbacks(new DiffViewCallbacks(
-            onCopy: static function (string $text) use (&$copies): void {
-                $copies[] = $text;
-            },
-        ));
+        GitWidgetEvents::wire($events, onCopy: static function (string $text) use (&$copies): void {
+            $copies[] = $text;
+        });
         // Press mid '-$old = 2;' (text col 1 = 'old = 2;') and drag to the
         // next row's text col 4: tail of the old line + head of the new one.
         $widget->handleClick(3, 13);
@@ -648,7 +631,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->handleInput("\x03");
         $this->assertSame("extra = 3;\ntail", $copies[3], 'hunk header skipped mid-selection');
 
-        $empty = new DiffViewWidget(new Translator('en'));
+        $empty = new DiffViewWidget(new Translator('en'), events: $events);
         $empty->setDocument(null, null);
         $empty->dragSelectTo(3, 5); // no rows / no press: a safe no-op
         $this->assertFalse($empty->isSplit());
@@ -656,17 +639,16 @@ final class DiffViewWidgetTest extends TestCase
 
     public function testSplitDragBindsToItsHalf(): void
     {
-        $widget = new DiffViewWidget(new Translator('en'));
+        $events = new EventDispatcher();
+        $widget = new DiffViewWidget(new Translator('en'), events: $events);
         $widget->setDocument(DiffDocument::parse("@@ -1,2 +1,2 @@\n-oldA\n-oldB\n+newA\n+newB\n"), 'x.txt');
         $widget->useSplitView();
         $widget->setFocused(true);
         $widget->render(new RenderContext(80, 6)); // leftW = 39: right half text starts at col 46
         $copies = [];
-        $widget->setCallbacks(new DiffViewCallbacks(
-            onCopy: static function (string $text) use (&$copies): void {
-                $copies[] = $text;
-            },
-        ));
+        GitWidgetEvents::wire($events, onCopy: static function (string $text) use (&$copies): void {
+            $copies[] = $text;
+        });
         // Press in the RIGHT half (col 46 = new-side text col 0) and drag down
         // past the divider into the left half: the selection stays on the new
         // side, the out-of-half column clamps to its start.
@@ -687,11 +669,9 @@ final class DiffViewWidgetTest extends TestCase
 
         // Staging Space is unaffected by a char selection (no v anchor armed).
         $staged = null;
-        $widget->setCallbacks(new DiffViewCallbacks(
-            onStageSelection: static function (array $sel) use (&$staged): void {
-                $staged = $sel;
-            },
-        ));
+        GitWidgetEvents::wire($events, onStageSelection: static function (array $sel) use (&$staged): void {
+            $staged = $sel;
+        });
         $widget->handleClick(2, 6);
         $widget->dragSelectTo(3, 8);
         $widget->makeEditable();

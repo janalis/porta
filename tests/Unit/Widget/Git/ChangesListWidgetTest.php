@@ -10,9 +10,9 @@ use Porta\Event\GitViewModeRequested;
 use Porta\Git\ChangeEntry;
 use Porta\Git\GitRemoteOperation;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\GitWidgetEvents;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
-use Porta\Widget\Git\ChangesListCallbacks;
 use Porta\Widget\Git\ChangesListWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -57,15 +57,14 @@ final class ChangesListWidgetTest extends TestCase
 
     public function testNavigationFiresOnSelect(): void
     {
-        $widget = new ChangesListWidget(new Translator('en'));
+        $events = new EventDispatcher();
+        $widget = new ChangesListWidget(new Translator('en'), events: $events);
         $widget->setFocused(true);
         $widget->setEntries($this->entries());
         $selected = [];
-        $widget->setCallbacks(new ChangesListCallbacks(
-            onSelect: static function (ChangeEntry $entry) use (&$selected): void {
-                $selected[] = $entry->path;
-            },
-        ));
+        GitWidgetEvents::wire($events, onSelect: static function (ChangeEntry $entry) use (&$selected): void {
+            $selected[] = $entry->path;
+        });
 
         $widget->handleInput("\x1b[B"); // down
         $widget->handleInput("\x1b[B");
@@ -76,15 +75,14 @@ final class ChangesListWidgetTest extends TestCase
 
     public function testSpaceTogglesStagingOnTheSelectedEntry(): void
     {
-        $widget = new ChangesListWidget(new Translator('en'));
+        $events = new EventDispatcher();
+        $widget = new ChangesListWidget(new Translator('en'), events: $events);
         $widget->setFocused(true);
         $widget->setEntries($this->entries());
         $toggled = null;
-        $widget->setCallbacks(new ChangesListCallbacks(
-            onToggleStage: static function (ChangeEntry $entry) use (&$toggled): void {
-                $toggled = $entry->path;
-            },
-        ));
+        GitWidgetEvents::wire($events, onToggleStage: static function (ChangeEntry $entry) use (&$toggled): void {
+            $toggled = $entry->path;
+        });
 
         $widget->handleInput(' ');
 
@@ -93,15 +91,14 @@ final class ChangesListWidgetTest extends TestCase
 
     public function testDiscardNeedsInlineConfirmation(): void
     {
-        $widget = new ChangesListWidget(new Translator('en'));
+        $events = new EventDispatcher();
+        $widget = new ChangesListWidget(new Translator('en'), events: $events);
         $widget->setFocused(true);
         $widget->setEntries($this->entries());
         $discarded = null;
-        $widget->setCallbacks(new ChangesListCallbacks(
-            onDiscard: static function (ChangeEntry $entry) use (&$discarded): void {
-                $discarded = $entry->path;
-            },
-        ));
+        GitWidgetEvents::wire($events, onDiscard: static function (ChangeEntry $entry) use (&$discarded): void {
+            $discarded = $entry->path;
+        });
 
         $widget->handleInput('d');
         $this->assertStringContainsString('Discard changes?', $this->plain($widget->render(new RenderContext(44, 8))));
@@ -126,14 +123,15 @@ final class ChangesListWidgetTest extends TestCase
         $events->addListener(GitViewModeRequested::class, static function (GitViewModeRequested $event) use (&$history): void {
             ++$history;
         });
-        $widget->setCallbacks(new ChangesListCallbacks(
+        GitWidgetEvents::wire(
+            $events,
             onSelect: static function (ChangeEntry $entry) use (&$selected): void {
                 $selected[] = $entry->path;
             },
             onToggleStage: static function (ChangeEntry $entry) use (&$toggled): void {
                 $toggled[] = $entry->path;
             },
-        ));
+        );
         $widget->render(new RenderContext(60, 8));
 
         $this->assertNull($widget->selectRowAt(0), 'the header row is no entry');
@@ -174,18 +172,20 @@ final class ChangesListWidgetTest extends TestCase
 
     public function testClickTogglesInTheCheckboxColumnAndSelectsElsewhere(): void
     {
-        $widget = new ChangesListWidget(new Translator('en'));
+        $events = new EventDispatcher();
+        $widget = new ChangesListWidget(new Translator('en'), events: $events);
         $widget->setEntries($this->entries());
         $toggled = null;
         $selected = null;
-        $widget->setCallbacks(new ChangesListCallbacks(
+        GitWidgetEvents::wire(
+            $events,
             onToggleStage: static function (ChangeEntry $entry) use (&$toggled): void {
                 $toggled = $entry->path;
             },
             onSelect: static function (ChangeEntry $entry) use (&$selected): void {
                 $selected = $entry->path;
             },
-        ));
+        );
 
         $widget->handleClick(2, 2); // row of src/b.php, inside [x]
         $this->assertSame('src/b.php', $toggled);
@@ -200,14 +200,13 @@ final class ChangesListWidgetTest extends TestCase
 
     public function testHoverTintsWithoutTouchingSelectionOrFiringSelect(): void
     {
-        $widget = new ChangesListWidget(new Translator('en'));
+        $events = new EventDispatcher();
+        $widget = new ChangesListWidget(new Translator('en'), events: $events);
         $widget->setEntries($this->entries());
         $selectFired = 0;
-        $widget->setCallbacks(new ChangesListCallbacks(
-            onSelect: static function () use (&$selectFired): void {
-                ++$selectFired;
-            },
-        ));
+        GitWidgetEvents::wire($events, onSelect: static function () use (&$selectFired): void {
+            ++$selectFired;
+        });
 
         $this->assertTrue($widget->hoverRow(2));
         $this->assertFalse($widget->hoverRow(2), 'same row: no repaint needed');

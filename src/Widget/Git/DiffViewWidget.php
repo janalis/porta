@@ -5,6 +5,11 @@ declare(strict_types=1);
 namespace Porta\Widget\Git;
 
 use Porta\Container\AsWidget;
+use Porta\Event\GitDiffContextCycled;
+use Porta\Event\GitDiffLayoutToggled;
+use Porta\Event\GitDiffLinesStaged;
+use Porta\Event\GitDiffTextCopied;
+use Porta\Event\GitDiffWhitespaceToggled;
 use Porta\Git\DiffDocument;
 use Porta\Git\DiffRowKind;
 use Porta\Highlight\CodeHighlighter;
@@ -25,6 +30,7 @@ use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\OptionTagState;
 use Porta\Widget\Support\StylesDefault;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Style\Style;
@@ -92,16 +98,15 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private int $highlightVersion = 0;
 
     /** Outbound hooks into the git view; replaced wholesale by wiring/tests. */
-    private DiffViewCallbacks $callbacks;
 
     public function __construct(
         private readonly Translator $translator,
         ?Styles $styles = null,
         ?TerminalTheme $syntaxTheme = null,
+        private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->initStyles($styles);
         $this->buttonZones = new ClickZones();
-        $this->callbacks = new DiffViewCallbacks(); // a bare diff view fires nothing
         $theme = $syntaxTheme ?? new DarkTerminalTheme();
         // Diff hunks are non-contiguous lines from different files: always the
         // built-in engine, never a plugin's.
@@ -109,11 +114,6 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     }
 
     /** Install the git view's outbound hooks (see {@see DiffViewCallbacks}). */
-    public function setCallbacks(DiffViewCallbacks $callbacks): void
-    {
-        $this->callbacks = $callbacks;
-    }
-
     /** Reflect the controller's hide-whitespace state on the toolbar tag. */
     public function hideWhitespace(): void
     {
@@ -159,9 +159,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     {
         $this->split = !$this->split;
         $this->rebuildRows();
-        if (null !== $this->callbacks->onLayoutToggle) {
-            ($this->callbacks->onLayoutToggle)();
-        }
+        $this->events?->dispatch(new GitDiffLayoutToggled());
     }
 
     /** Rebuild the render rows for the current mode, keeping cursor/scroll sane. */
@@ -336,8 +334,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             return;
         }
         if ($kb->matches($data, 'cycle_context')) {
-            if (!$this->readOnly && [] !== $this->rows && null !== $this->callbacks->onCycleContext) {
-                ($this->callbacks->onCycleContext)();
+            if (!$this->readOnly && [] !== $this->rows) {
+                $this->events?->dispatch(new GitDiffContextCycled());
             }
 
             return;
@@ -348,9 +346,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             return;
         }
         if ($kb->matches($data, 'toggle_whitespace')) {
-            if (null !== $this->callbacks->onToggleWhitespace) {
-                ($this->callbacks->onToggleWhitespace)(); // allowed in read-only mode too
-            }
+            $this->events?->dispatch(new GitDiffWhitespaceToggled()); // allowed in read-only mode too
 
             return;
         }
@@ -434,8 +430,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
 
             return;
         }
-        if ('whitespace' === $name && null !== $this->callbacks->onToggleWhitespace) {
-            ($this->callbacks->onToggleWhitespace)();
+        if ('whitespace' === $name) {
+            $this->events?->dispatch(new GitDiffWhitespaceToggled());
         }
     }
 
@@ -463,11 +459,11 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
      */
     private function fireStageSelection(): void
     {
-        if ($this->readOnly || null === $this->callbacks->onStageSelection || !\array_key_exists($this->cursor, $this->rows)) {
+        if ($this->readOnly || !\array_key_exists($this->cursor, $this->rows)) {
             return;
         }
 
-        ($this->callbacks->onStageSelection)($this->collectSelection());
+        $this->events?->dispatch(new GitDiffLinesStaged($this->collectSelection()));
     }
 
     /**
@@ -478,8 +474,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private function fireCopy(): void
     {
         $document = $this->document;
-        $onCopy = $this->callbacks->onCopy;
-        if (null === $onCopy || null === $document || !\array_key_exists($this->cursor, $this->rows)) {
+        if (null === $document || !\array_key_exists($this->cursor, $this->rows)) {
             return;
         }
 
@@ -491,7 +486,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             $this->charSel = null;
             $this->invalidate();
             if ('' !== $text) {
-                $onCopy($text);
+                $this->events?->dispatch(new GitDiffTextCopied($text));
             }
 
             return;
@@ -509,7 +504,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             }
         }
         if ([] !== $texts) {
-            $onCopy(implode("\n", $texts)."\n");
+            $this->events?->dispatch(new GitDiffTextCopied(implode("\n", $texts)."\n"));
         }
     }
 
