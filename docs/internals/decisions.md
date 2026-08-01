@@ -104,6 +104,42 @@ Blame did move, and its shape is the test for any future slice: it owns nothing
 of the workbench and dispatches no events. See
 [plugin-system.md](plugin-system.md).
 
+**Moving the debugger's session half to a plugin — rejected.** The split looked
+clean from outside: breakpoints are an editor concept (a marked line, clicked
+into a gutter, persisted) and a DAP session is a subprocess, a protocol and a
+variables tree, so drawing the line there keeps the gutter decorations and the
+gutter click in core beside the store they read — and avoids the two
+one-consumer seams a naive extraction needs.
+
+Measured against `DebugController`, it does not hold. The line does not remove
+the one-consumer seam; it **relocates** it. The plugin must still tell core
+where the debuggee stopped (core paints the band and reveals the file), and
+must still read the breakpoint list when it launches. Those are two new seams
+with one consumer each — the same shape, on the other side of the boundary.
+
+A third blocker is worse because it is user-visible. `Command/DebugCommands`
+carries **nine `when:` gates** reading session state, and their job is to let
+F7/F8/F9 fall through to widget bindings while no session runs.
+`PluginApi::registerCommand()` has no `when` parameter at all, so those keys
+would be swallowed unconditionally once the commands became a plugin's. Adding
+`when` to the plugin command API is defensible in general, but it is needed
+*because* of this move, which is the test failing.
+
+And `registerDebugAdapter` inverts. `Debug/DebugAdapters` consumes
+`Debug/DebugAdapterProvider`, implemented by `PluginManager`, which is how a
+THIRD-PARTY plugin supplies an adapter for its language. A plugin-owned
+debugger would have to read another plugin's registrations, and a plugin
+receives `PluginApi`, never `PluginManager`.
+
+*Re-opens on:* a second consumer appearing for either the stopped-line report or
+the breakpoint read, or `when` gates being wanted by a plugin for an unrelated
+reason. Not on effort.
+
+What the round kept is `Workbench/Dock/DockPanels` — the single-tab panel
+registry — which needed no move to justify it: the terminal and results panels
+own whole tab families, the debug panel owns one tab, and one-tab-one-entry is
+the only shape a contributor could have. Core registers through it.
+
 **`Layout/ViewRegion` — rejected on arithmetic.** Collapsing git's and settings'
 sidebar/separator/area triples deletes ~36 lines and adds ~45. The five
 `porta.widget.*` getter services do not disappear; they would call
