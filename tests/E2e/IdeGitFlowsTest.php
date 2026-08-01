@@ -166,7 +166,6 @@ final class IdeGitFlowsTest extends TestCase
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Committed: my commit'), what: 'the async commit to flash');
                     $palette($tui, label: 'Git: Undo');
                 },
-                1750 => function ($tui, $terminal) use ($palette): void {},
                 2100 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Last commit undone'), what: 'the undo to flash');
                     $this->awaitGit($ide);
