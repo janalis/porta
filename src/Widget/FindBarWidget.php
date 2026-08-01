@@ -10,6 +10,7 @@ use Porta\Container\AsWidget;
 use Porta\Editor\Document;
 use Porta\Editor\FindMode;
 use Porta\Editor\SelectionMode;
+use Porta\Event\FindQueryUpdated;
 use Porta\I18n\Translator;
 use Porta\Search\CaseMode;
 use Porta\Search\FindTarget;
@@ -28,6 +29,7 @@ use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\MatchJump;
 use Porta\Widget\Support\OptionTagState;
 use Porta\Widget\Support\StylesDefault;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -74,13 +76,11 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
 
     private ?FindTarget $target = null;
 
-    /** @var (callable(): void)|null called when matches/current change */
-    private $onUpdate = null;
-
     public function __construct(
         private readonly Translator $translator,
         ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
+        private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->initStyles($styles);
         $this->query = new TextField(style: $cursorStyle);
@@ -107,13 +107,6 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $this->matches = [];
         $this->currentIndex = -1;
         $this->notifyUpdate();
-    }
-
-    public function onUpdate(callable $callback): self
-    {
-        $this->onUpdate = $callback;
-
-        return $this;
     }
 
     /**
@@ -507,9 +500,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         // highlight or docs-viewer highlight); an empty map — on close/reset —
         // clears them. The callback only repaints.
         $this->target?->showSearchMatches($this->getMatchesByLine());
-        if (null !== $this->onUpdate) {
-            ($this->onUpdate)();
-        }
+        $this->events?->dispatch(new FindQueryUpdated());
     }
 
     /** Display columns of the right-aligned option-tag strip (both tags are glyph + 2). */

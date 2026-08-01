@@ -7,6 +7,9 @@ namespace Porta\Widget;
 use Porta\Container\AsChromeRoot;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
+use Porta\Event\ResultRowActivated;
+use Porta\Event\ResultsExportRequested;
+use Porta\Event\ResultsRerunRequested;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
@@ -31,6 +34,7 @@ use Porta\Widget\Support\ResultLayout;
 use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Widget\Support\ResultsViewState;
 use Porta\Widget\Support\StylesDefault;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -73,39 +77,23 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     /** @var list<DisplayRow> the flattened rows actually rendered/navigated */
     private array $displayRows = [];
 
-    /** @var (callable(): void)|null re-run the current search (F5) */
-    private $onRerun = null;
-    /** @var (callable(string, int): void)|null */
-    private $onJump = null;
-    /** @var (callable(): void)|null export the current results to a file (Alt+X) */
-    private $onExport = null;
     /** @var (\Closure(string, int): list<array{line: int, text: string}>)|null neighbouring source lines around a match (path, line) => lines */
     private $contextProvider = null;
 
     private readonly Translator $translator;
 
-    public function __construct(?Styles $styles = null, ?CursorStyle $cursorStyle = null, ?Translator $translator = null)
-    {
+    public function __construct(
+        ?Styles $styles = null,
+        ?CursorStyle $cursorStyle = null,
+        ?Translator $translator = null,
+        private readonly ?EventDispatcherInterface $events = null,
+    ) {
         $this->initStyles($styles);
         $this->translator = $translator ?? new Translator('en');
         $this->list = new ListSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
         $this->filter = new TextField(style: $cursorStyle);
         $this->visibleRows = 10;
-    }
-
-    public function onRerun(callable $callback): self
-    {
-        $this->onRerun = $callback;
-
-        return $this;
-    }
-
-    public function onExport(callable $callback): self
-    {
-        $this->onExport = $callback;
-
-        return $this;
     }
 
     /**
@@ -117,13 +105,6 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     public function setContextProvider(\Closure $provider): void
     {
         $this->contextProvider = $provider;
-    }
-
-    public function onJump(callable $callback): self
-    {
-        $this->onJump = $callback;
-
-        return $this;
     }
 
     /** The tool title shown on the dock strip's Results tab. */
@@ -388,9 +369,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
             return;
         }
         if ($this->grouped && $kb->matches($data, 'export')) {
-            if (null !== $this->onExport) {
-                ($this->onExport)();
-            }
+            $this->events?->dispatch(new ResultsExportRequested());
 
             return;
         }
@@ -400,9 +379,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
             return;
         }
         if ($kb->matches($data, 'rerun')) {
-            if (null !== $this->onRerun) {
-                ($this->onRerun)();
-            }
+            $this->events?->dispatch(new ResultsRerunRequested());
 
             return;
         }
@@ -453,9 +430,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
             return; // context rows are inert
         }
         $result = $this->results[$row->matchIndex];
-        if (null !== $this->onJump) {
-            ($this->onJump)($result['path'], $result['line']);
-        }
+        $this->events?->dispatch(new ResultRowActivated($result['path'], $result['line']));
     }
 
     /** Alt+. on a match row toggles the neighbouring source lines shown beneath it. */

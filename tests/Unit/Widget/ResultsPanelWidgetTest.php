@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Event\ResultRowActivated;
+use Porta\Event\ResultsExportRequested;
+use Porta\Event\ResultsRerunRequested;
 use Porta\Tests\Support\AttachedStyles;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Support\ResultsPanelFields;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Style\CursorShape;
@@ -63,9 +67,11 @@ final class ResultsPanelWidgetTest extends TestCase
 
     public function testJumpOnSelectedResultNotifiesAndStaysOpen(): void
     {
-        $panel = new ResultsPanelWidget();
+        $events = new EventDispatcher();
+        $panel = new ResultsPanelWidget(events: $events);
         $jumped = null;
-        $panel->onJump(static function (string $path, int $line) use (&$jumped): void {
+        $events->addListener(ResultRowActivated::class, static function (ResultRowActivated $event) use (&$jumped): void {
+            [$path, $line] = [$event->relativePath, $event->line];
             $jumped = [$path, $line];
         });
         $panel->open('Usages', ResultsPanelFields::resultsOnly());
@@ -80,9 +86,10 @@ final class ResultsPanelWidgetTest extends TestCase
 
     public function testJumpWithNoResultsIsNoOp(): void
     {
-        $panel = new ResultsPanelWidget();
+        $events = new EventDispatcher();
+        $panel = new ResultsPanelWidget(events: $events);
         $jumped = false;
-        $panel->onJump(static function () use (&$jumped): void {
+        $events->addListener(ResultRowActivated::class, static function () use (&$jumped): void {
             $jumped = true;
         });
         $panel->open('Usages', ResultsPanelFields::resultsOnly());
@@ -218,9 +225,11 @@ final class ResultsPanelWidgetTest extends TestCase
 
     public function testClickResultRowSelectsAndJumps(): void
     {
-        $panel = new ResultsPanelWidget();
+        $events = new EventDispatcher();
+        $panel = new ResultsPanelWidget(events: $events);
         $jumped = null;
-        $panel->onJump(static function (string $path, int $line) use (&$jumped): void {
+        $events->addListener(ResultRowActivated::class, static function (ResultRowActivated $event) use (&$jumped): void {
+            [$path, $line] = [$event->relativePath, $event->line];
             $jumped = [$path, $line];
         });
         $panel->open('Usages', ResultsPanelFields::resultsOnly());
@@ -234,9 +243,10 @@ final class ResultsPanelWidgetTest extends TestCase
 
     public function testClickHeaderAndBelowResultsAreNoOps(): void
     {
-        $panel = new ResultsPanelWidget();
+        $events = new EventDispatcher();
+        $panel = new ResultsPanelWidget(events: $events);
         $jumped = false;
-        $panel->onJump(static function () use (&$jumped): void {
+        $events->addListener(ResultRowActivated::class, static function () use (&$jumped): void {
             $jumped = true;
         });
         $panel->open('Usages', ResultsPanelFields::resultsOnly());
@@ -324,9 +334,10 @@ final class ResultsPanelWidgetTest extends TestCase
 
     public function testRerunKeyFiresTheCallback(): void
     {
-        $panel = new ResultsPanelWidget();
+        $events = new EventDispatcher();
+        $panel = new ResultsPanelWidget(events: $events);
         $reran = 0;
-        $panel->onRerun(static function () use (&$reran): void {
+        $events->addListener(ResultsRerunRequested::class, static function () use (&$reran): void {
             ++$reran;
         });
         $panel->open('Find in Project', ResultsPanelFields::searchResults());
@@ -337,10 +348,11 @@ final class ResultsPanelWidgetTest extends TestCase
 
     public function testExportKeyFiresTheCallback(): void
     {
-        $panel = new ResultsPanelWidget();
+        $events = new EventDispatcher();
+        $panel = new ResultsPanelWidget(events: $events);
         $panel->setFocused(true);
         $exported = 0;
-        $panel->onExport(static function () use (&$exported): void {
+        $events->addListener(ResultsExportRequested::class, static function () use (&$exported): void {
             ++$exported;
         });
         $panel->open('Find in Project', ResultsPanelFields::searchResults());
@@ -396,10 +408,12 @@ final class ResultsPanelWidgetTest extends TestCase
 
     public function testGroupedEnterOnThePreselectedMatchJumps(): void
     {
-        $panel = new ResultsPanelWidget();
+        $events = new EventDispatcher();
+        $panel = new ResultsPanelWidget(events: $events);
         $panel->setFocused(true);
         $jumped = null;
-        $panel->onJump(static function (string $path, int $line) use (&$jumped): void {
+        $events->addListener(ResultRowActivated::class, static function (ResultRowActivated $event) use (&$jumped): void {
+            [$path, $line] = [$event->relativePath, $event->line];
             $jumped = [$path, $line];
         });
         $panel->open('Find in Project', ResultsPanelFields::searchResults());
@@ -614,7 +628,8 @@ final class ResultsPanelWidgetTest extends TestCase
 
     public function testRestoreRelocatesTheSelectionAfterRowsChangedWhileParked(): void
     {
-        $panel = new ResultsPanelWidget();
+        $events = new EventDispatcher();
+        $panel = new ResultsPanelWidget(events: $events);
         $panel->open('Find in Project', ResultsPanelFields::searchResults());
         $panel->setResults($this->groupedResults());
         $panel->handleInput("\x1b[B");
@@ -632,7 +647,8 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->restoreViewState($state);
 
         $jumped = null;
-        $panel->onJump(static function (string $path, int $line) use (&$jumped): void {
+        $events->addListener(ResultRowActivated::class, static function (ResultRowActivated $event) use (&$jumped): void {
+            [$path, $line] = [$event->relativePath, $event->line];
             $jumped = [$path, $line];
         });
         $panel->handleInput("\r");
@@ -739,7 +755,8 @@ final class ResultsPanelWidgetTest extends TestCase
 
     public function testRefreshResultsClampsWhenTheSelectedIdentityVanished(): void
     {
-        $panel = new ResultsPanelWidget();
+        $events = new EventDispatcher();
+        $panel = new ResultsPanelWidget(events: $events);
         $panel->open('Problems', ResultsPanelFields::searchResults());
         $panel->setResults($this->groupedResults());
         $panel->handleInput("\x1b[B");
@@ -748,7 +765,8 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $panel->refreshResults([['path' => 'src/C.php', 'line' => 5, 'text' => 'only one left', 'ranges' => []]]);
         $jumped = null;
-        $panel->onJump(static function (string $path, int $line) use (&$jumped): void {
+        $events->addListener(ResultRowActivated::class, static function (ResultRowActivated $event) use (&$jumped): void {
+            [$path, $line] = [$event->relativePath, $event->line];
             $jumped = [$path, $line];
         });
         $panel->handleInput("\r");

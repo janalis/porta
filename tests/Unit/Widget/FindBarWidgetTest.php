@@ -7,9 +7,11 @@ namespace Porta\Tests\Unit\Widget;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
 use Porta\Editor\FindMode;
+use Porta\Event\FindQueryUpdated;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\FakeFindTarget;
 use Porta\Widget\FindBarWidget;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Style\CursorShape;
@@ -33,11 +35,12 @@ final class FindBarWidgetTest extends TestCase
 
     public function testIncrementalSmartCaseSearch(): void
     {
+        $events = new EventDispatcher();
         $doc = new Document("Foo bar\nfoo BAR\nbaz\n");
-        $bar = new FindBarWidget(new Translator('en'));
+        $bar = new FindBarWidget(new Translator('en'), events: $events);
         $bar->setFocused(true);
         $updates = 0;
-        $bar->onUpdate(static function () use (&$updates): void {
+        $events->addListener(FindQueryUpdated::class, static function () use (&$updates): void {
             ++$updates;
         });
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
