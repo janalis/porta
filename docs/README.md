@@ -30,3 +30,5 @@ layout. Switch under **Settings → General → Language**.
 | Guide | Contents |
 | --- | --- |
 | [Architecture](architecture.md) | Event loop, DI composition root, rendering, subsystems, tests and quality gates |
+| [Events](events.md) | The event bus: facts vs commands, listener priority, adding an event, the gates |
+| [Troubleshooting](troubleshooting.md) | Common failures and what they mean |

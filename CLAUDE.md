@@ -143,7 +143,7 @@ dangling reference; grep the old namespace to prove zero. Membership rules:
 - **`Plugin/`** — three tiers, one rule each: **`Api/`** is the surface a plugin file compiles
   against (`PortaPlugin`, `PluginApi`, `PluginException`, `PluginBuffer`, and the abstract
   bases); **`Runtime/`** is what the IDE runs (`PluginLoader`, `PluginManager`, `PluginHost`,
-  `PluginRuntime`, `PluginEvents`, `PluginSettings`, `PluginMenuSpec`, and the round-24 trio
+  `PluginRuntime`, `PluginSettings`, `PluginMenuSpec`, and the round-24 trio
   `PluginManifest`/`PluginAutoloader`/`PluginOrder` — what a plugin declares about itself, how
   its own classes resolve, and what may load at all); **`Lifecycle/`** is
   enabling, disabling and acquiring (`PluginLifecycle`, `PluginEnablement`,
@@ -505,12 +505,26 @@ must be exactly `event_dispatcher`). Typed domain events live in `src/Event/`: t
 lifecycle (`BufferOpened`/`BufferSwitched`/`BufferSaved`, emitted by `BufferService`),
 `GitCommitted`, `DebugStatusChanged`/`LspStatusChanged` (status-bar refresh), and the live-setting
 events (`ThemeChanged`/`LocaleChanged`/`CursorShapeChanged`/`TabBarPositionChanged`, dispatched by
-`Settings/LiveSettingsApplier`). Emitters autowire the **PSR** interface; the component-interface
-alias exists as the wiring test's seam for runtime `addListener` — no src consumer imports it
-(the old claim that `Ide` did was stale; its menu-rebuild/RTL listeners are the compiled
-`MenuLayoutRefreshListener`).
-Priorities are contractual: plugin bridge (`PluginEvents`) and the chrome sweep
-(`Workbench/ChromeRefreshListener`) run at **-100**, after core listeners.
+`Settings/LiveSettingsApplier`). Emitters autowire the **PSR** interface; the component
+interface is for the two consumers that need more than dispatching — `PluginManager` adds and
+removes plugin listeners at runtime, and `Ide` resolves it through the locator key to dispatch
+`IdeReady`/`IdeShuttingDown`.
+**Priorities are the four rungs of `Container/ListenerPriority`** — `CORE` 0, `PLUGIN` -100,
+`CHROME_SWEEP` -100 (sharing PLUGIN's rung deliberately: neither depends on the other),
+`CACHE_DROP` -200 (below plugins on purpose, so a backend that bakes theme colours rebuilds before
+the caches holding its old output are dropped). It lives in `Container` and not `Event` because
+both event gate tests glob `src/Event/*.php` and would demand a listener for it — and because
+`#[AsEager]`/`#[AsTaggedItem]`'s unrelated 100–700 CONSTRUCTION scale lives there too, so the
+warning about the two vocabularies sits next to both.
+**Event names carry the fact/command distinction**: a FACT is true at the moment it is dispatched
+(`BufferSaved` — the write happened), a COMMAND becomes true only if a listener acts
+(`DockTabCloseRequested` — the tab is still open) and takes the `…Requested` suffix. The rule
+decides the borderline cases: `DockToolClosed` dispatches AFTER `tools->close()` so it is a fact,
+while `DockTabMoveRequested` fires from a drag-drop the dock has not performed. A command has
+**exactly one** listener, gated by
+`EventListenerWiringTest::testACommandEventHasExactlyOnePerformer` — two performers would race —
+and the assertion is one-directional on purpose, since a fact may have any number. The
+contributor-facing write-up is `docs/events.md`.
 
 **Git.** `Git/GitProcessRunner` owns the only mutable state in the layer — the in-flight process
 map — so `Git/GitInfo`'s thirty-odd porcelain verbs are stateless argv-builders over it.
@@ -1270,9 +1284,9 @@ consumer guards by extension). Every bundled plugin surfaces its commands as Plu
 and its knobs as plugin settings (the viewers deliberately carry no menu — nothing to invoke). Action methods (flash/editor access/openFile) resolve services
 lazily via `Plugin/Runtime/PluginRuntime` (wired late in the ctor) and throw during `activate()`. Every
 plugin handler and hook is wrapped in try/catch → status-bar flash, so a faulting plugin never
-kills the loop. Hooks (`fileOpened`/`fileSaved`/`bufferSwitched`/`themeChanged`) fan out from
-`Plugin/Runtime/PluginEvents`, which is a `#[AsEventListener(priority: -100)]` bridge on the app event
-bus: `BufferService` dispatches typed `Event/BufferOpened`/`BufferSwitched`/`BufferSaved`
+kills the loop. Hooks (`fileOpened`/`fileSaved`/`bufferSwitched`/`themeChanged`) are plugin closures registered as
+REAL dispatcher listeners at `ListenerPriority::PLUGIN` (round 30 deleted the `PluginEvents` bridge
+that fanned them out by hand): `BufferService` dispatches typed `Event/BufferOpened`/`BufferSwitched`/`BufferSaved`
 events (symfony/event-dispatcher, wired kernel-less in `config/services.php` — the
 `event_dispatcher` service id is mandatory for `RegisterListenersPass`), core listeners
 (git marks, debug decorations, LSP save/inlay) react at priority 0, and the plugin bridge
@@ -1325,7 +1339,7 @@ seam is what deleted the `Workbench>Debug` edge. `pick()`/`prompt()` delegate to
 start, null = not installed, first plugin wins the language) and is consulted BELOW
 `.porta.json`'s `languages.<id>.debug`, so a hand-configured adapter is never shadowed. The hook
 list is six now: `onReady`/`onShutdown` are NOT bus events — "the IDE is up" and "going down" are
-positions in `run()`, so `Ide` calls `Plugin/Runtime/PluginEvents` directly. `ready` fires after
+positions in `run()` — dispatched there as `Event/IdeReady` and `Event/IdeShuttingDown`. `ready` fires after
 `applyLayout()` and before the initial file opens (a plugin's setup lands ahead of its own
 `fileOpened`); `shutdown` fires FIRST in the teardown, while services are alive but the loop has
 already stopped — so a hook must finish synchronously, and anything it schedules never runs.
@@ -1404,7 +1418,7 @@ on `PluginEnablement` and cycle): **live activation** —
 `Workbench/Menu/MenuRebuilder::rebuild` — and **live
 deactivation** on removal/disable: `PluginManager::deactivate` filters its state, resets the
 watermark to the filtered count (safe: everything is registered before any deactivate),
-`CommandRegistry::remove` kills palette + key dispatch, `PluginEvents::removeFor` (listeners
+`CommandRegistry::remove` kills palette + key dispatch, `PluginManager`'s `removeListener` sweep (listeners
 are keyed per plugin) drops hooks; removing a shadowing copy reactivates the next copy down.
 Default keys apply LIVE too (round 10): `Config/LiveKeybindings` — the `Styles::switchTo`
 holder pattern — wraps the boot map; `PluginLifecycle` calls `rebuild()` (always BEFORE the

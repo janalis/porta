@@ -29,6 +29,15 @@ House rules: **final classes and constructor injection everywhere**; no
 service reaches for a global. Never mark a container definition
 `lazy: true` (proxying breaks `final` classes).
 
+## Events
+
+Subsystems talk over one `symfony/event-dispatcher` bus — about fifty
+`final readonly` classes in `src/Event/`, with listeners compiled from
+`#[AsEventListener]` attributes rather than registered at runtime. Event names
+distinguish facts (`BufferSaved`, true when dispatched) from commands
+(`DockTabCloseRequested`, true only if a listener acts), and four named
+priority rungs order the reactions. See [Events](events.md).
+
 ## Event loop
 
 `revolt/event-loop` drives both the symfony/tui render/input loop and all
