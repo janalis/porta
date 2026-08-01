@@ -1249,6 +1249,62 @@ exactly the ones that are OFF, so they have not loaded and cannot announce thems
 produce are ones already ticked. `Config` rather than `Onboarding` because two namespaces consume
 it and the arch gate settled the direction.
 
+**Extracting git to a bundled plugin was measured and REJECTED (round 32).** The four features
+that moved out before it each fitted a seam that already existed; git fits none of the nine
+surfaces it uses. It has **no partial form**: a core `GitViewController` cannot take plugin-owned
+services (discovery globs `src/*` and the container is compiled and dumped before any plugin PHP
+runs), and core importing plugin classes is forbidden by `composer arch` *and* fatal at runtime
+when the plugin is disabled — so it is all ~5,600 lines or none. Six of the seven seams it needs
+would be permanent one-consumer abstractions; the full-screen-view seam alone wants an 8-member
+services DTO, double the widest existing one, and `WorkspaceView` is a closed enum whose
+exhaustive `ownsMainArea()` match is the documented reason Welcome's floating nature is
+declarative. **Git keeps a foot in core either way** — `Role::Git{Added,Modified,Deleted}` plus
+three themes (pinned by `ThemeLockTest`), `Glyphs::GIT_*`, `EditorDisplayOptions::$gitGutter`,
+`Buffer::$gitMarks`, `EditorRowAssembler::gitCell()`, `MenuModel::MENUS['Git']` and fifteen
+command ids — so the move buys namespace deletion, not separation. Two expected wins are not on
+offer: `ALLOWED_SCCS[0]` survives without `GitViewController` (the other six members still form a
+cycle), and git was already inert without a repository. Two user-visible regressions have no cheap
+cure: an explicit `enabledPlugins` list (even `[]`) replaces the default, so every user who ever
+customised it loses git on upgrade, and every git setting moves to `plugins.git.*`. And **plugins
+cannot dispatch** — 13 of the 15 `Git*` events are widget-dispatched, so the move would undo round
+30 and drop them out of the wiring gate's reach. Version control is a product feature of this IDE,
+not an integration. What was done instead: git degrades at the CHROME level (below), and two
+inbound edges were cut.
+
+**Two decoupling refactors were measured in the same round and also REJECTED — do not re-propose
+them without new numbers.** `Layout/ViewRegion` (collapsing git's and settings'
+sidebar/separator/area triples into one shape) deletes ~36 lines and adds ~45: the five
+`porta.widget.*` getter services do NOT disappear — they would call `region('git')->area()`
+instead of `gitArea()`, and deleting them means editing the four `#[LayoutSlot]` consumers —
+`LayoutController` saves ~2 lines because round 7 already extracted `SidebarResizeState`, and the
+two regions are not even the same shape (git's sidebar `gitLeft` is `WorkspaceLayout`'s, settings'
+`settingsNav` is injected into `PaneLayout`). **Clickable status segments** — giving
+`Workbench/StatusSegment` a `statusCommands()` so the git branch stops being `StatusBarProvider`'s
+one special case — changes `registerStatusSegment`'s PLUGIN-FACING signature for a capability
+nothing has asked for, and the branch's right-click menu forces the issue: `newBranch()` and
+`deleteBranch()` have no registered command ids (only `git_branches` does), so two new palette
+commands would have to exist to serve a refactor. The branch cell keeps its `branchStart`/
+`branchEnd` pair and its hand-built `MenuItem` list, which is the same call `MenuSurface`'s
+docblock already records for the git-row and dock-strip menus.
+
+**Git degrades at the chrome level, not just the data level (round 32).** `GitProcessRunner` has
+TWO predicates and they mean different things: `isAvailable()` is binary-and-repository (the old
+one, still what every verb rides), `isRepository()` is repository alone. Outside a repository the
+fifteen git verbs and `ide_git` are **not registered** — `when` could not do this, since it gates
+KEY dispatch only and leaves the palette and menus running a handler that can only flash — and
+`MenuModel::build()` takes a `groupVisible` predicate, keyed by the UNTRANSLATED title, that drops
+git's whole group. Widening the narrow "skip an unregistered `i:` id" rule instead was tried and
+reverted: it couples menu STRUCTURE to registration, and nine `MenuModelTest` fixtures that assert
+the DEFS shape against an empty registry then produce no menus at all. Inside a repository with no
+`git` binary the chrome all STAYS and says so when run — hiding it there would leave a user
+plainly inside a repository with no way to learn why git vanished. The Settings → Version control
+→ Git page is deliberately NOT hidden either: its rows are `gitPath` (the knob you need precisely
+when git is missing) plus preferences that persist and apply the moment a repo appears.
+Repository presence is fixed at boot, so `git init` in a running IDE needs a restart to light the
+chrome up. Note the availability flag is `file_exists($rootDir.'/.git')`, not `is_dir` — in a
+linked worktree and in a submodule that path is a FILE, and `is_dir` had left the entire feature
+silently inert in both.
+
 **Plugin coverage runs a SECOND, SERIAL pass, and the reason is upstream.** `composer
 coverage:check` = the parallel run over `src` (100%) **plus** `composer coverage:plugins` (serial
 phpunit, `--testsuite Plugins`, `--coverage-filter plugins`, graded with the checker's new
