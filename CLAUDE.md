@@ -47,9 +47,12 @@ Run gate commands capturing output rather than piping to a pager, e.g.
   `composer coverage:plugins` over `plugins/` (see the Plugins note for why the plugin half
   cannot ride the parallel run) — so plugin code must be covered by the plugin's OWN tests.
 - `composer analyze` — mago reports **zero** issues, warnings, or help messages.
-- `composer lint` — **zero** findings. The `[linter.rules]` section of `mago.toml` disables
-  the rules that conflict with house style (with rationale comments); everything else
-  applies at full strength.
+- `composer lint` — **exit 0**, which is NOT zero findings: the metric rules report at two
+  severities, and only the error-level ones (cyclomatic, too-many-*, excessive-parameter-list,
+  kan-defect) flip the exit code. A standing tail of warning/help findings is expected; what the
+  gate forbids is a NEW one, so compare against the previous run rather than reading the count.
+  `[linter.rules]` disables nothing — every rule runs, calibrated to this codebase's maxima;
+  `excludes` drops PATHS (the mock LSP/DAP scripts, which are procedural by design).
 - `composer arch` — the **architecture ratchet** (`src/Console/ArchitectureCheckCommand`): the
   exact namespace import graph, class-level acyclicity (two documented SCCs allowed),
   and the E2e suite-size bound. It fails on drift in EITHER direction — a new edge needs
@@ -711,7 +714,7 @@ ENCODES the requested dpi — 10 px per 72 — which is how a test tells one zoo
 another's; `fake-plantuml` does the same at 96) + `FakeLayoutEngine` (`nextPng`/`renderDpis`) and `FakeScheduler` for widget tests;
 two real-binary smoke tests sit behind `GraphvizBinary::skipWithoutDot`, the bitmap one skipping
 itself with dot's own message when the local build cannot do PNG. The graph feature re-pinned
-two ratchets (MouseRouter cyclomatic 145, WidgetHooks params 25 — the drag-pan routing and the
+two ratchets (MouseRouter cyclomatic 145, WidgetHooks params 22 — the drag-pan routing and the
 handler wiring, rationale in mago.toml).
 
 **Rendering pipeline (`symfony/tui`).** Widgets (`src/Widget/**`) render to `string[]` lines
