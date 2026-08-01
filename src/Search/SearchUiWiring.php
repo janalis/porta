@@ -7,6 +7,7 @@ namespace Porta\Search;
 use Porta\Container\AsIdeService;
 use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
+use Porta\Event\FindQueryUpdated;
 use Porta\Event\ResultRowActivated;
 use Porta\Event\ResultsExportRequested;
 use Porta\Event\ResultsRerunRequested;
@@ -86,6 +87,19 @@ final class SearchUiWiring
         $this->resultsPanel->onClose(function (): void {
             $this->panels->focusEditor();
         });
+    }
+
+    /**
+     * The find bar's query or options changed.
+     *
+     * Only a repaint: the match mirror lives on the bar's own FindTarget (the
+     * editor's highlight, or the docs pane's), so there is nothing to
+     * recompute here.
+     */
+    #[AsEventListener]
+    public function onFindQueryUpdated(FindQueryUpdated $event): void
+    {
+        $this->tui->requestRender();
     }
 
     /**

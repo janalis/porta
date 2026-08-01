@@ -235,4 +235,37 @@ final class EventListenerWiringTest extends TestCase
             $this->assertSame([], $dispatcher->getListeners($event), $event.' is observed, not reacted to');
         }
     }
+
+    public function testEveryEventCoreDispatchesHasSomewhereToLand(): void
+    {
+        // The failure this exists for: a listener is COMPILED from an
+        // attribute, so forgetting one does not break a build or throw — the
+        // reaction simply never happens, and the suite only notices if some
+        // test happened to cover that path. Thirty-odd events arrived in one
+        // round; this is what makes the thirty-first safe.
+        //
+        // An event may legitimately have no compiled listener when it exists
+        // for OBSERVERS — plugins register at runtime — so those are pinned by
+        // name rather than waved through by category.
+        $observedOnlyAtRuntime = [
+            'ActiveBufferChanged', // plugins' onBufferSwitched
+            'IdeReady',
+            'IdeShuttingDown',
+        ];
+
+        $dispatcher = $this->dispatcher();
+        $unheard = [];
+        foreach (glob(\dirname(__DIR__, levels: 3).'/src/Event/*.php') as $file) {
+            $name = basename($file, suffix: '.php');
+            $class = 'Porta\\Event\\'.$name;
+            if (!class_exists($class) || \in_array($name, $observedOnlyAtRuntime, strict: true)) {
+                continue;
+            }
+            if ([] === $dispatcher->getListeners($class)) {
+                $unheard[] = $name;
+            }
+        }
+
+        $this->assertSame([], $unheard, 'dispatched into silence — a missing #[AsEventListener], or an event nobody needs');
+    }
 }
