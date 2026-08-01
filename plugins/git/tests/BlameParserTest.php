@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Git;
+namespace Porta\GitPlugin\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Git\BlameParser;
+use Porta\GitPlugin\BlameParser;
 
 final class BlameParserTest extends TestCase
 {
@@ -58,5 +58,16 @@ final class BlameParserTest extends TestCase
     {
         $this->assertSame([], BlameParser::parse(''));
         $this->assertSame([], BlameParser::parse("author Orphan\nnot-a-header line\n"), 'metadata before any header is dropped');
+    }
+
+    public function testParseLineReadsASingleLinePorcelainBlock(): void
+    {
+        $porcelain = "abc12345def67890abc12345def67890abc12345 1 1 1\nauthor Alice\nsummary Fix the thing\n\tcode();\n";
+        $entry = BlameParser::parseLine($porcelain);
+
+        $this->assertSame('abc12345', $entry['sha'] ?? null, 'the sha is shortened');
+        $this->assertSame('Alice', $entry['author'] ?? null);
+        $this->assertSame('Fix the thing', $entry['summary'] ?? null);
+        $this->assertNull(BlameParser::parseLine(''), 'no blame output -> null');
     }
 }

@@ -629,10 +629,7 @@ final class GitInfoStatusTest extends TestCase
         $git->stashList(static function (array $list) use (&$calls): void {
             $calls['list'] = $list;
         });
-        $git->blameFile($plain->path('a.txt'), static function (array $lines) use (&$calls): void {
-            $calls['blame'] = $lines;
-        });
-        $this->assertSame(['push' => [false, ''], 'list' => [], 'blame' => []], $calls, 'unavailable short-circuits synchronously');
+        $this->assertSame(['push' => [false, ''], 'list' => []], $calls, 'unavailable short-circuits synchronously');
     }
 
     public function testLogWithAPathFilterComposesWithSkip(): void
@@ -671,32 +668,5 @@ final class GitInfoStatusTest extends TestCase
             return null !== $commits;
         });
         $this->assertSame(['touch-a-1'], array_map(static fn ($e) => $e->subject, $commits), 'skip pages within the filter');
-    }
-
-    public function testBlameFileCommittedDirtyAndUntracked(): void
-    {
-        $git = $this->repo($project, ['a.txt' => "one\ntwo\n"]);
-        file_put_contents($project->path('a.txt'), data: "one\ntwo\nthree\n"); // a dirty extra line
-
-        $lines = null;
-        $git->blameFile($project->path('a.txt'), static function (array $result) use (&$lines): void {
-            $lines = $result;
-        });
-        $this->await(static function () use (&$lines): bool {
-            return null !== $lines;
-        });
-        $this->assertCount(3, $lines);
-        $this->assertSame('tester', $lines[0]['author']);
-        $this->assertNotSame('', $lines[0]['date']);
-        $this->assertSame('Not Committed Yet', $lines[2]['author'], 'the dirty line is uncommitted');
-
-        $untracked = null;
-        $git->blameFile($project->path('nope.txt'), static function (array $result) use (&$untracked): void {
-            $untracked = $result;
-        });
-        $this->await(static function () use (&$untracked): bool {
-            return null !== $untracked;
-        });
-        $this->assertSame([], $untracked, 'blame on a missing file degrades to empty');
     }
 }

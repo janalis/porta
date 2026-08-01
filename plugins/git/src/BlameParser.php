@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Git;
+namespace Porta\GitPlugin;
 
 /**
  * Parses whole-file `git blame --line-porcelain` output into per-line

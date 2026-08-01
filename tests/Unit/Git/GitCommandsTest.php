@@ -119,42 +119,6 @@ final class GitCommandsTest extends TestCase
         $this->assertStringContainsString('Git not available', $this->statusRow($this->statusBar));
     }
 
-    public function testBlameLineReportsTheCommitThatTouchedIt(): void
-    {
-        $commands = $this->commands(['a.txt' => "one\ntwo\n"]);
-        $this->openInEditor('a.txt', "one\ntwo\n");
-
-        $commands->blameLine();
-        $this->pump();
-
-        // The init commit authored both lines: sha + author + summary.
-        $this->assertStringContainsString('init', $this->statusRow($this->statusBar));
-    }
-
-    public function testBlameLineWithNoOpenFileReportsUnavailable(): void
-    {
-        $commands = $this->commands(['a.txt' => "one\n"]);
-
-        $commands->blameLine();
-        $this->pump();
-
-        $this->assertStringContainsString('Git not available', $this->statusRow($this->statusBar));
-    }
-
-    public function testBlameLineReportsWhenTheLineHasNoCommittedBlame(): void
-    {
-        // The committed file is one line; the editor's cursor is on a line
-        // beyond it, so `git blame -L` finds nothing to attribute.
-        $commands = $this->commands(['a.txt' => "one\n"]);
-        $this->openInEditor('a.txt', "one\ntwo\nthree\nfour\nfive\nsix\n");
-        $this->editor->getDocument()->setCursor(5, 0);
-
-        $commands->blameLine();
-        $this->pump();
-
-        $this->assertStringContainsString('No blame for this line', $this->statusRow($this->statusBar));
-    }
-
     /**
      * Every action refuses outside a repository, through the same guard.
      *
@@ -163,7 +127,6 @@ final class GitCommandsTest extends TestCase
     public static function outsideARepo(): iterable
     {
         yield 'stage' => [static fn (GitCommands $c) => $c->stageCurrent()];
-        yield 'blame' => [static fn (GitCommands $c) => $c->blameLine()];
         yield 'stash' => [static fn (GitCommands $c) => $c->stash()];
         yield 'stashPop' => [static fn (GitCommands $c) => $c->stashPop()];
         yield 'stashes' => [static fn (GitCommands $c) => $c->stashes()];

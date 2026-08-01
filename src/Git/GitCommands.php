@@ -16,7 +16,7 @@ use Symfony\Component\Tui\Tui;
 
 /**
  * The git actions invoked from the editor/command palette — stage the current
- * file, commit, and blame the caret line. Each is a thin orchestration of the
+ * file and commit. Each is a thin orchestration of the
  * async {@see GitInfo} client plus a status flash and a redraw; keeping them
  * here leaves the IDE coordinator out of the git-command business. The full
  * changes/diff experience lives in {@see GitViewController}.
@@ -76,27 +76,6 @@ final class GitCommands
                 $this->refresher->refreshActiveMarks();
             });
         });
-    }
-
-    public function blameLine(): void
-    {
-        $path = $this->editor->getFilePath();
-        if (null === $path || !$this->git->isAvailable()) {
-            $this->unavailable();
-
-            return;
-        }
-        $this->git->blameLine(
-            $path,
-            $this->editor->getDocument()->getCursorLine(),
-            /** @param array{sha: string, author: string, summary: string}|null $blame */ function (?array $blame): void {
-                $this->notifier->flash(
-                    null === $blame
-                        ? $this->translator->trans('No blame for this line')
-                        : \sprintf('%s  %s: %s', $blame['sha'], $blame['author'], $blame['summary']),
-                );
-            },
-        );
     }
 
     /** Stash the working tree; git's own stdout line is the flash (covers the clean-tree case). */

@@ -135,6 +135,12 @@ final class ActionCatalog
         'ide_command_palette' => ['label' => 'Find Action', 'keys' => ['ctrl+shift+a']],
         'ide_search_everywhere' => ['label' => 'Search Everywhere', 'keys' => ['ctrl+shift+e']],
         'ide_local_history' => ['label' => 'Show Local History', 'keys' => ['ctrl+alt+h'], 'adoptable' => true], // implemented by the bundled local-history plugin
+        // Keyless on purpose: neither had a default binding when core
+        // implemented them, and the move is not the moment to invent one.
+        // They are named here so the Git menu's item and the keymap page
+        // survive the plugin owning the implementation.
+        'git_blame' => ['label' => 'Git: Blame Current Line', 'adoptable' => true], // implemented by the bundled git plugin
+        'git_toggle_blame' => ['label' => 'Git: Toggle Blame Annotations', 'adoptable' => true], // implemented by the bundled git plugin
         'ide_terminal' => ['label' => 'Open Terminal', 'keys' => ['ctrl+`', 'alt+f12']],
         'ide_terminal_new' => ['label' => 'New Terminal Session', 'keys' => ['ctrl+shift+`', 'alt+f11']],
         'dock_next_panel' => ['label' => 'Next Dock Panel', 'keys' => ['alt+page_down']],

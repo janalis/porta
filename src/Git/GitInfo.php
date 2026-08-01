@@ -387,27 +387,6 @@ final class GitInfo
         $this->runner->run(['show', '--no-color', '--format=', ...(WhitespaceMode::Hidden === $whitespace ? ['-w'] : []), $sha, '--', $relPath], $onDone);
     }
 
-    /**
-     * Blame a single line (1-based externally, 0-based $line here).
-     *
-     * @param callable(array{sha: string, author: string, summary: string}|null): void $onDone
-     */
-    public function blameLine(string $absPath, int $line, callable $onDone): void
-    {
-        $n = $line + 1;
-        $this->runner->run(['blame', '-L', $n.','.$n, '--line-porcelain', '--', $absPath], static fn (string $out) => $onDone(BlameParser::parseLine($out)));
-    }
-
-    /**
-     * Blame every line of a file at once, for the annotation overlay.
-     *
-     * @param callable(array<int, array{sha: string, author: string, date: string}>): void $onDone 0-based line => entry; [] when untracked or blame fails
-     */
-    public function blameFile(string $absPath, callable $onDone): void
-    {
-        $this->runner->runStatus(['blame', '--line-porcelain', '--', $absPath], static fn (int $code, string $out) => $onDone(0 !== $code ? [] : BlameParser::parse($out)));
-    }
-
     public function cancelAll(): void
     {
         $this->runner->cancelAll();

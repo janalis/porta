@@ -66,6 +66,14 @@ final class ActionCatalogTest extends TestCase
                 continue; // bound by a viewer plugin's pane; each is pinned in its own suite
             }
             if (!array_key_exists('keys', $spec)) {
+                // An ADOPTABLE id needs no binding at all: core names the verb,
+                // a plugin implements it, and it is reached from the palette and
+                // its menu item. The rule below asks whether a keyless action is
+                // INVOCABLE, and for those the answer is yes without a key.
+                if (ActionCatalog::isAdoptable($id)) {
+                    $this->assertArrayNotHasKey($id, $widgetBound, "adoptable action '{$id}' must not also be widget-bound");
+                    continue;
+                }
                 $this->assertArrayHasKey($id, $widgetBound, "action '{$id}' has no default binding anywhere");
                 continue;
             }

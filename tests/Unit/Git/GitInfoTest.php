@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Git;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Git\BlameParser;
 use Porta\Git\GitInfo;
 use Porta\Git\GitSettings;
 use Porta\Git\HunkParser;
@@ -95,12 +94,6 @@ final class GitInfoTest extends TestCase
             $committed = $ok->isOk();
         });
         $this->assertFalse($committed);
-
-        $blame = 'unset';
-        $git->blameLine($project->path('a.txt'), 0, static function (?array $b) use (&$blame): void {
-            $blame = $b;
-        });
-        $this->assertNull($blame);
     }
 
     public function testALinkedWorktreeIsARepository(): void
@@ -131,17 +124,7 @@ final class GitInfoTest extends TestCase
         $this->assertNotNull($branch, 'and answers about it');
     }
 
-    public function testParseBlameLine(): void
-    {
-        $porcelain = "0123456789abcdef0123456789abcdef01234567 1 1 1\nauthor Jane Dev\nauthor-mail <jane@example.com>\nsummary Add the thing\n\tcode line\n";
-        $this->assertSame(
-            ['sha' => '01234567', 'author' => 'Jane Dev', 'summary' => 'Add the thing'],
-            BlameParser::parseLine($porcelain),
-        );
-        $this->assertNull(BlameParser::parseLine(''), 'no blame output -> null');
-    }
-
-    public function testStageCommitAndBlameAgainstRealRepository(): void
+    public function testStageAndCommitAgainstRealRepository(): void
     {
         if (null === $this->whichGit()) {
             self::markTestSkipped('git binary not available');
@@ -174,20 +157,6 @@ final class GitInfoTest extends TestCase
             return null !== $committed;
         });
         $this->assertTrue($committed, 'git commit succeeded');
-
-        // Blame the committed second line.
-        $blame = 'pending';
-        $git->blameLine($project->path('a.txt'), 1, static function (?array $b) use (&$blame): void {
-            $blame = $b;
-        });
-        $this->await(static function () use (&$blame): bool {
-            return 'pending' !== $blame;
-        });
-        $this->assertNotNull($blame);
-        $this->assertSame('tester', $blame['author']);
-        $this->assertSame('add second line', $blame['summary']);
-
-        $git->cancelAll();
     }
 
     public function testIsBusyTracksInFlightOperations(): void

@@ -50,6 +50,7 @@ final class IdeContainerFactory
         $_ENV['PORTA_LSP_DISABLED'] = LspMode::Disabled === $lsp ? '1' : '0';
         $_ENV['PORTA_DOCS_DIR'] = $docsDir;
         $_ENV['PORTA_GIT_PATH'] = (string) ($config->settings['gitPath'] ?? ''); // '' → auto-discover
+        $_ENV['PORTA_GIT_BLAME_DEFAULT'] = $config->settings['gitBlameDefault'] ?? false ? '1' : '0'; // read by the bundled git plugin
         $_ENV['PORTA_DOT_PATH'] = (string) ($config->settings['dotPath'] ?? ''); // '' → auto-discover
         $_ENV['PORTA_GRAPH_RENDER'] = (string) ($config->settings['graphRender'] ?? 'bitmap');
         $_ENV['PORTA_SVG_CONVERTER'] = (string) ($config->settings['svgConverter'] ?? ''); // '' → auto-discover

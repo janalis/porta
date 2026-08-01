@@ -51,7 +51,7 @@ includes = ["vendor"]
 # and `plugins/**/tests` were both tried and match nothing). A plugin that
 # grows a tests/ directory adds its line here; forgetting shows up immediately
 # as analyzer errors about test-only idioms.
-excludes = ["tests", "plugins/graph-viewer/tests", "plugins/image-viewer/tests", "plugins/todo/tests", "plugins/local-history/tests"]
+excludes = ["tests", "plugins/graph-viewer/tests", "plugins/image-viewer/tests", "plugins/todo/tests", "plugins/local-history/tests", "plugins/git/tests"]
 
 [formatter]
 # Never re-wrap: keep the author's line breaks, like php-cs-fixer does.

@@ -110,6 +110,8 @@ final class ArchitectureCheckCommand extends Command
         // paints with the image viewer's rasterizer, which is why its manifest
         // declares `requires: ["image-viewer"]` — the dependency mechanism's
         // first real use.
+        'GitPlugin>Git',
+        'GitPlugin>Plugin',
         'GraphViewer>ImageViewer',
         'GraphViewer>Support',
         'GraphViewer>Ui',

@@ -120,7 +120,7 @@ final class IdeGitFlowsTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    public function testGitStageCommitBlameViaPalette(): void
+    public function testGitStageAndCommitViaPalette(): void
     {
         if (!$this->gitAvailable()) {
             $this->markTestSkipped('git binary not available');
@@ -164,13 +164,9 @@ final class IdeGitFlowsTest extends TestCase
                 },
                 1450 => function ($tui, $terminal) use ($palette): void {
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Committed: my commit'), what: 'the async commit to flash');
-                    $tui->getById('editor')->getDocument()->setCursor(1, 0);
-                    $palette($tui, label: 'Git: Blame');
-                },
-                1750 => function ($tui, $terminal) use ($palette): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'tester'), what: 'blame to flash the author');
                     $palette($tui, label: 'Git: Undo');
                 },
+                1750 => function ($tui, $terminal) use ($palette): void {},
                 2100 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Last commit undone'), what: 'the undo to flash');
                     $this->awaitGit($ide);
@@ -180,43 +176,6 @@ final class IdeGitFlowsTest extends TestCase
         );
 
         $this->addToAssertionCount(1); // the throwing awaits above are the assertions
-    }
-
-    public function testGitBlameBeyondFileFlashesNoBlame(): void
-    {
-        if (!$this->gitAvailable()) {
-            $this->markTestSkipped('git binary not available');
-        }
-
-        $project = new TempProject([]);
-        $project->initGit(name: 'tester', email: 't@t');
-        $project->write('src/A.php', "<?php\n"); // one line on disk
-        $project->git('add', '-A');
-        $project->git('commit', '-qm', 'init');
-
-        $terminal = $this->runIde(
-            $project,
-            $project->path('src/A.php'),
-            [
-                400 => static function ($tui): void {
-                    // Grow the buffer (unsaved) and blame a line past the on-disk file,
-                    // which git rejects -> empty output -> "No blame".
-                    $doc = $tui->getById('editor')->getDocument();
-                    $doc->setCursor(1, 0);
-                    $doc->insert("\n\n\n\n\n");
-                    $doc->setCursor(4, 0);
-                    $tui->handleInput("\x1b[97;6u");
-                    foreach (str_split('Git: Blame') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                    $tui->handleInput("\r");
-                },
-                700 => function ($tui, $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'No blame for this line');
-                    $this->assertStringContainsString('No blame for this line', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                },
-            ],
-        );
     }
 
     /** @return list<\Porta\Workbench\Menu\Menu> */
@@ -241,7 +200,7 @@ final class IdeGitFlowsTest extends TestCase
                     $labels = array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label');
                     // 'Git: Changes' is ide_git, registered by ViewCommands rather
                     // than the git provider — a separate gate, so a separate case.
-                    foreach (['Git: Stage Current File', 'Git: Commit…', 'Git: Blame Current Line', 'Git: Branches…', 'Git: Stashes…', 'Git: File History', 'Git: Changes'] as $gone) {
+                    foreach (['Git: Stage Current File', 'Git: Commit…', 'Git: Branches…', 'Git: Stashes…', 'Git: File History', 'Git: Changes'] as $gone) { // blame is the git plugin's; its own suite covers it
                         $this->assertNotContains($gone, $labels, $gone.' is not offered outside a repository');
                     }
                     $this->assertNotContains('Git', $this->menuTitles($tui), 'and the Git menu is not built');
@@ -297,7 +256,7 @@ final class IdeGitFlowsTest extends TestCase
             [
                 300 => function ($tui, $terminal, $ide): void {
                     $labels = array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label');
-                    $this->assertSame('Git: Toggle Blame Annotations', $labels[array_key_last($labels)], 'the git group registers last');
+                    $this->assertSame('Git: File History', $labels[array_key_last($labels)], 'the git group registers last');
                     $this->assertContains('Git', $this->menuTitles($tui), 'and its menu is built');
                 },
             ],
@@ -914,10 +873,10 @@ final class IdeGitFlowsTest extends TestCase
         );
     }
 
-    public function testStashBlameAndFileHistoryFlows(): void
+    public function testStashFlows(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n\$x = 1;\n"]);
-        // A deterministic 'tester' identity — blame below asserts on the name.
+        // A deterministic 'tester' identity for the log assertions below.
         $project->initGit(name: 'tester', email: 't@t');
         $project->commitAll('init');
         // A second commit not touching A.php: file history must hide it.
@@ -1035,16 +994,40 @@ final class IdeGitFlowsTest extends TestCase
                     $terminal->clearOutput();
                     $palette($tui, label: 'Git: Stashes…');
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No stashes'), timeout: 8.0, what: 'the empty-stash flash');
-
-                    // Blame annotations on, then off.
-                    $editorScreen = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))));
-                    $palette($tui, label: 'Git: Toggle Blame Annotations');
-                    $this->await(static fn (): bool => str_contains($editorScreen(), 'tester'), timeout: 8.0, what: 'blame annotations to load');
-                    $palette($tui, label: 'Git: Toggle Blame Annotations');
-                    $this->assertStringNotContainsString('tester', $editorScreen(), 'annotations cleared');
                 },
-                1500 => function ($tui, $terminal) use ($palette): void {
-                    // File history: the git view opens filtered to the open file.
+            ],
+        );
+    }
+
+    public function testFileHistoryOpensTheViewFilteredToTheOpenFile(): void
+    {
+        // Its own fixture and its own session. It used to ride the tail of the
+        // stash test, where the only thing pumping the loop between the last
+        // stash await and this assertion was an unrelated blame await — so
+        // removing blame broke it, which means it was never really awaiting the
+        // history load at all.
+        $this->skipWithoutGit();
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $project->initGit(name: 'tester', email: 't@t');
+        $project->commitAll('init');
+        $project->write('other.txt', '');
+        $project->git('add', '-A');
+        $project->git('commit', '-qm', 'other');
+
+        $palette = static function ($tui, string $label): void {
+            $tui->handleInput("\x1b[97;6u");
+            foreach (str_split($label) as $ch) {
+                $tui->handleInput($ch);
+            }
+            $tui->handleInput("\r");
+        };
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                400 => function ($tui, $terminal, $ide) use ($palette): void {
+                    $this->awaitGit($ide);
                     $terminal->clearOutput();
                     $palette($tui, label: 'Git: File History');
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'History — src/A.php (1)'), timeout: 8.0, what: 'the file-history view');
@@ -1054,5 +1037,7 @@ final class IdeGitFlowsTest extends TestCase
                 },
             ],
         );
+
+        $this->addToAssertionCount(1);
     }
 }
