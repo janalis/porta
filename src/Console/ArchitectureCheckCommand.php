@@ -120,6 +120,7 @@ final class ArchitectureCheckCommand extends Command
         'Help>Ui',
         'Help>Widget',
         'Help>Workbench',
+        'Highlight>Container',
         'Highlight>Editor',
         'Highlight>Event',
         'Highlight>Support',

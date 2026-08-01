@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use Porta\Container\ListenerPriority;
 use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferSwitched;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -36,7 +37,7 @@ final class ActiveBufferTracker
         private readonly EventDispatcherInterface $events,
     ) {}
 
-    #[AsEventListener(priority: -100)]
+    #[AsEventListener(priority: ListenerPriority::CHROME_SWEEP)]
     public function onBufferSwitched(BufferSwitched $event): void
     {
         if ($event->buffer->path === $this->lastShownPath) {

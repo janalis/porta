@@ -123,14 +123,14 @@ final class EventListenerWiringTest extends TestCase
         // precisely how it manages to run before anything watching the event it
         // derives.
         //
-        // STRICTLY below, not at: the chrome sweep also sits at -100, and has
-        // since before plugins were dispatcher listeners. Neither depends on
-        // the other, so sharing the bucket is the pre-existing truth rather
-        // than a regression to assert away.
+        // STRICTLY below, not at: ListenerPriority::CHROME_SWEEP shares
+        // PLUGIN's rung, which the ladder now says out loud — neither depends
+        // on the other, so their relative order is registration order and
+        // nothing reads it.
         //
-        // One documented exception: HighlightThemeListener at -200, so a
-        // backend that bakes theme colours rebuilds BEFORE the caches it feeds
-        // are dropped.
+        // One documented exception: ListenerPriority::CACHE_DROP, so a backend
+        // that bakes theme colours rebuilds BEFORE the caches it feeds are
+        // dropped.
         $dispatcher = $this->dispatcher();
         $allowed = [ThemeChanged::class => HighlightThemeListener::class];
 

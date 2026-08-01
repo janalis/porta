@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Highlight;
 
+use Porta\Container\ListenerPriority;
 use Porta\Editor\BufferManager;
 use Porta\Event\ThemeChanged;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -28,7 +29,7 @@ final class HighlightThemeListener
         private readonly BufferManager $buffers,
     ) {}
 
-    #[AsEventListener(priority: -200)]
+    #[AsEventListener(priority: ListenerPriority::CACHE_DROP)]
     public function onThemeChanged(ThemeChanged $event): void
     {
         foreach ($this->buffers->all() as $buffer) {

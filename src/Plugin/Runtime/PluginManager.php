@@ -7,6 +7,7 @@ namespace Porta\Plugin\Runtime;
 use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
 use Porta\Config\RebindableActionSource;
+use Porta\Container\ListenerPriority;
 use Porta\Debug\DebugAdapterProvider;
 use Porta\Editor\EditorPaneSource;
 use Porta\Editor\ViewerProviderSource;
@@ -106,7 +107,7 @@ final class PluginManager implements
      * so a plugin that bakes theme colours rebuilds before the caches it feeds
      * are dropped.
      */
-    public const int PLUGIN_PRIORITY = -100;
+    public const int PLUGIN_PRIORITY = ListenerPriority::PLUGIN;
 
     public function __construct(
         private readonly EventDispatcherInterface $events,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Workbench;
 
+use Porta\Container\ListenerPriority;
 use Porta\Event\CursorShapeChanged;
 use Porta\Event\LocaleChanged;
 use Porta\Event\TabBarPositionChanged;
@@ -25,7 +26,7 @@ final class ChromeRefreshListener
         private readonly Tui $tui,
     ) {}
 
-    #[AsEventListener(priority: -100)]
+    #[AsEventListener(priority: ListenerPriority::CHROME_SWEEP)]
     public function onSettingApplied(ThemeChanged|LocaleChanged|CursorShapeChanged|TabBarPositionChanged $event): void
     {
         $this->chrome->invalidateAll();
