@@ -103,6 +103,34 @@ final class GitInfoTest extends TestCase
         $this->assertNull($blame);
     }
 
+    public function testALinkedWorktreeIsARepository(): void
+    {
+        // .git is a FILE there (`gitdir: …`), and an is_dir check made the whole
+        // git feature silently inert in every worktree and submodule.
+        $this->skipWithoutGit();
+        $project = new TempProject([]);
+        $this->gitInit($project);
+        $project->write('a.txt', "one\n");
+        $this->gitCommit($project, 'a.txt');
+
+        $linked = $project->path('linked');
+        $project->git('worktree', 'add', '-q', $linked);
+        $this->assertFileExists($linked.'/.git');
+        $this->assertDirectoryDoesNotExist($linked.'/.git', 'a linked worktree points at its git dir with a file');
+
+        $git = new GitInfo($linked);
+        $this->assertTrue($git->isAvailable(), 'git works in a linked worktree');
+
+        $branch = 'pending';
+        $git->branch(static function (?string $b) use (&$branch): void {
+            $branch = $b;
+        });
+        $this->await(static function () use (&$branch): bool {
+            return 'pending' !== $branch;
+        });
+        $this->assertNotNull($branch, 'and answers about it');
+    }
+
     public function testParseBlameLine(): void
     {
         $porcelain = "0123456789abcdef0123456789abcdef01234567 1 1 1\nauthor Jane Dev\nauthor-mail <jane@example.com>\nsummary Add the thing\n\tcode line\n";

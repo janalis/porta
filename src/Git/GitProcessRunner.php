@@ -31,7 +31,10 @@ final class GitProcessRunner
         ?string $gitPath = null,
     ) {
         $this->git = self::findGit($gitPath);
-        $this->available = null !== $this->git && is_dir($rootDir.'/.git');
+        // file_exists, not is_dir: a linked worktree's and a submodule's .git is a
+        // FILE holding `gitdir: …`. is_dir left the whole feature silently dead
+        // in both — git ran nowhere and the view said "not a repository".
+        $this->available = null !== $this->git && file_exists($rootDir.'/.git');
     }
 
     /**
