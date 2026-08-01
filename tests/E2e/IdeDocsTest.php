@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferManager;
+use Porta\Editor\BufferService;
 use Porta\History\SessionRestorer;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
@@ -283,6 +284,23 @@ final class IdeDocsTest extends TestCase
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Porta documentation', $screen);
                     $this->assertStringNotContainsString('# Porta documentation', $screen, 'rendered, not source');
+                },
+                600 => function ($tui, $terminal, $ide): void {
+                    // A page in the internals SUBDIRECTORY renders. Those pages
+                    // are reachable only through a folder README, which is also
+                    // what gives the header its folder crumb — a flat browser
+                    // would leave the whole section unreachable.
+                    $docs = \dirname(__DIR__, levels: 2).'/docs';
+                    $buffers = Services::resolve($ide, BufferService::class);
+                    \assert($buffers instanceof BufferService, description: 'the IDE exposes a BufferService');
+
+                    $buffers->showHelpPage($docs.'/internals/README.md');
+                    $this->awaitPainted($tui, $terminal, 'Settled questions');
+
+                    $buffers->showHelpPage($docs.'/internals/decisions.md');
+                    $this->awaitPainted($tui, $terminal, 'measured and rejected');
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringNotContainsString('# Settled questions', $screen, 'rendered, not source');
                 },
             ],
         );
