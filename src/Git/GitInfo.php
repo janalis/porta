@@ -43,12 +43,6 @@ final class GitInfo
      */
     public function branch(callable $onDone): void
     {
-        if (!$this->runner->isAvailable()) {
-            $onDone(null);
-
-            return;
-        }
-
         $this->runner->run(['rev-parse', '--abbrev-ref', 'HEAD'], static function (string $out) use ($onDone): void {
             $branch = trim($out);
             $onDone('' === $branch || 'HEAD' === $branch ? null : $branch);
@@ -62,12 +56,6 @@ final class GitInfo
      */
     public function diff(string $absPath, callable $onDone): void
     {
-        if (!$this->runner->isAvailable()) {
-            $onDone([]);
-
-            return;
-        }
-
         $this->runner->run(['diff', '--no-color', '--unified=0', 'HEAD', '--', $absPath], static function (string $out) use ($onDone): void {
             $onDone(HunkParser::parse($out));
         });
@@ -82,12 +70,6 @@ final class GitInfo
      */
     public function status(callable $onDone): void
     {
-        if (!$this->runner->isAvailable()) {
-            $empty = '';
-            $onDone([], $empty);
-
-            return;
-        }
         $this->runner->run(['status', '--porcelain=v1', '-z', '--untracked-files=all'], static fn (string $out) => $onDone(StatusParser::parse($out), $out));
     }
 
@@ -100,11 +82,6 @@ final class GitInfo
      */
     public function cachedFileDiff(string $absPath, callable $onDone, ?int $context = null, WhitespaceMode $whitespace = WhitespaceMode::Shown): void
     {
-        if (!$this->runner->isAvailable()) {
-            $onDone('');
-
-            return;
-        }
         $this->runner->run(['diff', '--no-color', '--cached', ...(null === $context ? [] : ['-U'.$context]), ...(WhitespaceMode::Hidden === $whitespace ? ['-w'] : []), '--', $absPath], $onDone);
     }
 
@@ -117,11 +94,6 @@ final class GitInfo
      */
     public function worktreeFileDiff(string $absPath, callable $onDone, ?int $context = null, WhitespaceMode $whitespace = WhitespaceMode::Shown): void
     {
-        if (!$this->runner->isAvailable()) {
-            $onDone('');
-
-            return;
-        }
         $this->runner->run(['diff', '--no-color', ...(null === $context ? [] : ['-U'.$context]), ...(WhitespaceMode::Hidden === $whitespace ? ['-w'] : []), '--', $absPath], $onDone);
     }
 
@@ -133,11 +105,6 @@ final class GitInfo
      */
     public function untrackedFileDiff(string $absPath, callable $onDone): void
     {
-        if (!$this->runner->isAvailable()) {
-            $onDone('');
-
-            return;
-        }
         $this->runner->runStatus(['diff', '--no-color', '--no-index', '--', '/dev/null', $absPath], static fn (int $code, string $out) => $onDone($out));
     }
 
@@ -148,11 +115,6 @@ final class GitInfo
      */
     public function unstageFile(string $absPath, callable $onDone): void
     {
-        if (!$this->runner->isAvailable()) {
-            $onDone(Outcome::Failed);
-
-            return;
-        }
         $this->runner->runStatus(['restore', '--staged', '--', $absPath], static fn (int $code) => $onDone(Outcome::of(0 === $code)));
     }
 
@@ -164,11 +126,6 @@ final class GitInfo
      */
     public function discardFile(string $absPath, callable $onDone): void
     {
-        if (!$this->runner->isAvailable()) {
-            $onDone(Outcome::Failed);
-
-            return;
-        }
         $this->runner->runStatus(['restore', '--', $absPath], static fn (int $code) => $onDone(Outcome::of(0 === $code)));
     }
 
@@ -180,11 +137,6 @@ final class GitInfo
      */
     public function applyCached(string $patch, callable $onDone): void
     {
-        if (!$this->runner->isAvailable()) {
-            $onDone(Outcome::Failed);
-
-            return;
-        }
         $this->runner->runStatus(['apply', '--cached', '--whitespace=nowarn', '-'], static fn (int $code) => $onDone(Outcome::of(0 === $code)), stdin: $patch);
     }
 
@@ -195,11 +147,6 @@ final class GitInfo
      */
     public function stage(string $absPath, callable $onDone): void
     {
-        if (!$this->runner->isAvailable()) {
-            $onDone(Outcome::Failed);
-
-            return;
-        }
         $this->runner->runStatus(['add', '--', $absPath], static fn (int $code) => $onDone(Outcome::of(0 === $code)));
     }
 
@@ -211,12 +158,6 @@ final class GitInfo
      */
     public function commit(string $message, callable $onDone, CommitMode $mode = CommitMode::Fresh): void
     {
-        if (!$this->runner->isAvailable()) {
-            $empty = '';
-            $onDone(Outcome::Failed, $empty);
-
-            return;
-        }
         $head = CommitMode::Amend === $mode ? ['commit', '--amend'] : ['commit'];
         $args = [...$head, ...$this->commitFlags(), '-m', $message];
         $this->runner->runStatus($args, static fn (int $code, string $out) => $onDone(Outcome::of(0 === $code), trim($out)));
@@ -229,11 +170,6 @@ final class GitInfo
      */
     public function lastCommitMessage(callable $onDone): void
     {
-        if (!$this->runner->isAvailable()) {
-            $onDone('');
-
-            return;
-        }
         $this->runner->run(['log', '-1', '--format=%B'], static fn (string $out) => $onDone(trim($out)));
     }
 
@@ -245,11 +181,6 @@ final class GitInfo
      */
     public function undoLastCommit(callable $onDone): void
     {
-        if (!$this->runner->isAvailable()) {
-            $onDone(Outcome::Failed);
-
-            return;
-        }
         $this->runner->runStatus(['rev-parse', '--verify', 'HEAD~1'], function (int $code) use ($onDone): void {
             if (0 !== $code) {
                 $onDone(Outcome::Failed); // the root commit cannot be undone onto a parent
@@ -270,11 +201,6 @@ final class GitInfo
      */
     public function log(int $limit, callable $onDone, int $skip = 0, ?string $path = null): void
     {
-        if (!$this->runner->isAvailable()) {
-            $onDone([]);
-
-            return;
-        }
         $args = ['log', '-z', '-n', (string) $limit, '--format=%H%x1f%h%x1f%an%x1f%at%x1f%s'];
         if ($skip > 0) {
             $args[] = '--skip';
@@ -296,12 +222,6 @@ final class GitInfo
      */
     public function stashPush(callable $onDone): void
     {
-        if (!$this->runner->isAvailable()) {
-            $empty = '';
-            $onDone(Outcome::Failed, $empty);
-
-            return;
-        }
         $this->runner->runStatus(['stash', 'push'], static function (int $code, string $out) use ($onDone): void {
             // @mago-expect lint:no-literal-password -- strtok's token: is a newline delimiter, not a credential
             $firstLine = strtok(trim($out), token: "\n");
@@ -339,11 +259,6 @@ final class GitInfo
      */
     public function stashList(callable $onDone): void
     {
-        if (!$this->runner->isAvailable()) {
-            $onDone([]);
-
-            return;
-        }
         $this->runner->run(['stash', 'list', '-z', '--format=%gd%x1f%at%x1f%gs'], static fn (string $out) => $onDone(LogParser::parseStashList($out)));
     }
 
@@ -354,11 +269,6 @@ final class GitInfo
      */
     public function branches(callable $onDone): void
     {
-        if (!$this->runner->isAvailable()) {
-            $onDone([]);
-
-            return;
-        }
         $this->runner->run(['branch', '--all', '--sort=-committerdate', '--format=%(refname)%09%(HEAD)'], static fn (string $out) => $onDone(BranchParser::parse($out)));
     }
 
@@ -458,11 +368,6 @@ final class GitInfo
      */
     public function commitFiles(string $sha, callable $onDone): void
     {
-        if (!$this->runner->isAvailable()) {
-            $onDone([]);
-
-            return;
-        }
         $this->runner->run(['show', '-z', '--name-status', '--format=', $sha], static fn (string $out) => $onDone(LogParser::parseNameStatus($out)));
     }
 
@@ -474,11 +379,6 @@ final class GitInfo
      */
     public function commitFileDiff(string $sha, string $relPath, callable $onDone, WhitespaceMode $whitespace = WhitespaceMode::Shown): void
     {
-        if (!$this->runner->isAvailable()) {
-            $onDone('');
-
-            return;
-        }
         $this->runner->run(['show', '--no-color', '--format=', ...(WhitespaceMode::Hidden === $whitespace ? ['-w'] : []), $sha, '--', $relPath], $onDone);
     }
 
@@ -489,11 +389,6 @@ final class GitInfo
      */
     public function blameLine(string $absPath, int $line, callable $onDone): void
     {
-        if (!$this->runner->isAvailable()) {
-            $onDone(null);
-
-            return;
-        }
         $n = $line + 1;
         $this->runner->run(['blame', '-L', $n.','.$n, '--line-porcelain', '--', $absPath], static fn (string $out) => $onDone(BlameParser::parseLine($out)));
     }
@@ -505,11 +400,6 @@ final class GitInfo
      */
     public function blameFile(string $absPath, callable $onDone): void
     {
-        if (!$this->runner->isAvailable()) {
-            $onDone([]);
-
-            return;
-        }
         $this->runner->runStatus(['blame', '--line-porcelain', '--', $absPath], static fn (int $code, string $out) => $onDone(0 !== $code ? [] : BlameParser::parse($out)));
     }
 

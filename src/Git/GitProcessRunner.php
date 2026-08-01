@@ -73,6 +73,16 @@ final class GitProcessRunner
      */
     public function runStatus(array $args, callable $onDone, ?string $stdin = null): void
     {
+        // No git, or no repository: answer as a failed run with no output. Every
+        // caller already handles that shape — the Outcome verbs read the code,
+        // and every parser returns its empty value for an empty string — so this
+        // is the whole availability rule, in the one place that knows it.
+        if (!$this->available) {
+            $empty = '';
+            $onDone(1, $empty);
+
+            return;
+        }
         /** @var list<string> $command */
         // --no-optional-locks: the porcelain readers (status/diff) must never
         // take the opportunistic index lock — under load it collides with a
