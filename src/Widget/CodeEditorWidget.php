@@ -34,6 +34,7 @@ use Porta\Editor\EditorViewOptions;
 use Porta\Editor\EditorViewport;
 use Porta\Editor\FoldModel;
 use Porta\Editor\IndentKind;
+use Porta\Editor\LineAnnotationSink;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\ModalHost;
 use Porta\Editor\MultiCaret;
@@ -97,6 +98,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     EditorTextAccess,
     EditorViewOptions,
     FocusableInterface,
+    LineAnnotationSink,
     LtrPane,
     MenuOverlayHost,
     ModalHost,

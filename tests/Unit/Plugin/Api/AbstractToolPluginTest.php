@@ -131,6 +131,7 @@ final class AbstractToolPluginTest extends TestCase
             new RecordingFileOpener(),
             $tui,
             new RecordingDiagnosticsSink(),
+            $this->editor,
             $this->buffers,
             TestDockTools::controller(),
             TestDockTools::replacer($this->buffers),

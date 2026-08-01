@@ -941,6 +941,25 @@ final class PluginApi
         $runtime->tui->requestRender();
     }
 
+    /**
+     * Show a dim trailing note after each of the ACTIVE document's lines — the
+     * slot `git blame` uses. The map replaces whatever was showing, so an empty
+     * array clears it.
+     *
+     * Unlike {@see setDiagnostics} this takes no path: annotations belong to
+     * whatever the editor is showing, and the widget drops them on every
+     * document show. A plugin that wants them to survive a buffer switch
+     * re-publishes from {@see onBufferSwitched}.
+     *
+     * @param array<int, string> $byLine 0-based line => the text shown after it
+     */
+    public function setLineAnnotations(array $byLine): void
+    {
+        $runtime = $this->manager->runtime();
+        $runtime->annotations->setLineAnnotations($byLine);
+        $runtime->tui->requestRender();
+    }
+
     // --- Loader/manager plumbing ---------------------------------------------
 
     public function pluginName(): string

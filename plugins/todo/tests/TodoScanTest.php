@@ -63,6 +63,7 @@ final class TodoScanTest extends TestCase
             new RecordingFileOpener(),
             $tui,
             new RecordingDiagnosticsSink(),
+            new CodeEditorWidget(),
             new \Porta\Editor\BufferManager(),
             new DockToolController($manager, $this->dock, $project->dir),
             TestDockTools::replacer(),

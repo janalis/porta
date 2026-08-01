@@ -59,6 +59,7 @@ final class PluginManagerTest extends TestCase
                 new RecordingFileOpener(),
                 $tui,
                 new RecordingDiagnosticsSink(),
+                new CodeEditorWidget(),
                 new BufferManager(),
                 TestDockTools::controller(),
                 TestDockTools::replacer(),

@@ -70,6 +70,7 @@ final class PluginApiTest extends TestCase
                     $this->files,
                     $tui,
                     $this->diagnostics,
+                    $this->editor,
                     $this->buffers,
                     TestDockTools::controller(),
                     TestDockTools::replacer($this->buffers),
@@ -223,6 +224,7 @@ final class PluginApiTest extends TestCase
             static fn () => $api->openFile('/x'),
             static fn () => $api->jumpTo(0),
             static fn () => $api->setDiagnostics('/x', []),
+            static fn () => $api->setLineAnnotations([]),
             static fn () => $api->changeSetting('flag', true),
             static fn () => $api->showList('todo'),
             static fn () => $api->updateList('todo', []),
@@ -254,6 +256,7 @@ final class PluginApiTest extends TestCase
                 new RecordingFileOpener(),
                 $tui,
                 new RecordingDiagnosticsSink(),
+                new CodeEditorWidget(),
                 new BufferManager(),
                 TestDockTools::controller(),
                 TestDockTools::replacer(),
@@ -309,6 +312,21 @@ final class PluginApiTest extends TestCase
         $this->assertSame([['path' => '/p/b.php', 'focus' => true]], $this->files->opened);
     }
 
+    public function testSetLineAnnotationsReachesTheEditorAndClearsWithAnEmptyMap(): void
+    {
+        $api = $this->api();
+
+        $api->setLineAnnotations([0 => 'abc123 alice 2026-01-01']);
+        $this->assertSame(
+            [0 => 'abc123 alice 2026-01-01'],
+            Probe::get($this->editor, 'decorations')->lineAnnotations(),
+            'the annotations reached the active editor',
+        );
+
+        $api->setLineAnnotations([]);
+        $this->assertSame([], Probe::get($this->editor, 'decorations')->lineAnnotations(), 'an empty map clears them');
+    }
+
     public function testSetDiagnosticsNormalizesIntoTheByLineShape(): void
     {
         $api = $this->api();
@@ -361,6 +379,7 @@ final class PluginApiTest extends TestCase
             new RecordingFileOpener(),
             $tui,
             new RecordingDiagnosticsSink(),
+            new CodeEditorWidget(),
             new BufferManager(),
             new DockToolController($manager, $dock, '/p'), // the manager IS the source
             TestDockTools::replacer(),

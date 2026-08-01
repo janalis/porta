@@ -96,6 +96,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
             new RecordingFileOpener(),
             $tui,
             new RecordingDiagnosticsSink(),
+            new CodeEditorWidget(),
             new BufferManager(),
             TestDockTools::controller(),
             TestDockTools::replacer(),

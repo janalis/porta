@@ -10,6 +10,7 @@ use Porta\Editor\DiagnosticsSink;
 use Porta\Editor\DocumentReplacer;
 use Porta\Editor\EditorTextAccess;
 use Porta\Editor\FileOpener;
+use Porta\Editor\LineAnnotationSink;
 use Porta\Editor\ModalHost;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
@@ -34,6 +35,7 @@ final readonly class PluginRuntime
         public FileOpener $files,
         public Tui $tui,
         public DiagnosticsSink $diagnostics,
+        public LineAnnotationSink $annotations,
         public BufferManager $buffers,
         public DockToolController $dockTools,
         public DocumentReplacer $documents,

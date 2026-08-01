@@ -109,6 +109,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
             new RecordingFileOpener(),
             $tui,
             $this->sink,
+            new CodeEditorWidget(),
             $this->buffers,
             TestDockTools::controller(),
             TestDockTools::replacer(),
