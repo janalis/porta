@@ -7,8 +7,8 @@ namespace Porta\Widget;
 use Porta\Container\AsChromeRoot;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
-use Porta\Event\TerminalSessionClosed;
-use Porta\Event\TerminalSessionCycled;
+use Porta\Event\TerminalSessionCloseRequested;
+use Porta\Event\TerminalSessionCycleRequested;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
@@ -174,7 +174,7 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
             return;
         }
         if ($kb->matches($data, 'terminal_close_session')) {
-            $this->events?->dispatch(new TerminalSessionClosed(-1)); // -1 = the active session
+            $this->events?->dispatch(new TerminalSessionCloseRequested(-1)); // -1 = the active session
 
             return;
         }
@@ -224,7 +224,7 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
 
     private function cycle(int $delta): void
     {
-        $this->events?->dispatch(new TerminalSessionCycled($delta));
+        $this->events?->dispatch(new TerminalSessionCycleRequested($delta));
     }
 
     /** @return array<string, string[]> */

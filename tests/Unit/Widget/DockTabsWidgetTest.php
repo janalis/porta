@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Event\DockTabClosed;
-use Porta\Event\DockTabMoved;
-use Porta\Event\DockTabSelected;
+use Porta\Event\DockTabActivationRequested;
+use Porta\Event\DockTabCloseRequested;
+use Porta\Event\DockTabMoveRequested;
 use Porta\Ui\Glyphs;
 use Porta\Widget\DockTabsWidget;
 use Porta\Workbench\Dock\DockTab;
@@ -63,10 +63,10 @@ final class DockTabsWidgetTest extends TestCase
             ['tab' => DockTab::Terminal, 'label' => 'Terminal', 'active' => true, 'key' => '', 'status' => ''],
             ['tab' => DockTab::Debug, 'label' => 'Debug', 'active' => false, 'key' => '', 'status' => ''],
         ], $events);
-        $events->addListener(DockTabSelected::class, static function (DockTabSelected $event) use (&$selected): void {
+        $events->addListener(DockTabActivationRequested::class, static function (DockTabActivationRequested $event) use (&$selected): void {
             $selected[] = [$event->tab, $event->key];
         });
-        $events->addListener(DockTabClosed::class, static function (DockTabClosed $event) use (&$closed): void {
+        $events->addListener(DockTabCloseRequested::class, static function (DockTabCloseRequested $event) use (&$closed): void {
             $closed[] = [$event->tab, $event->key];
         });
         $bar->render(new RenderContext(80, 1));
@@ -152,7 +152,7 @@ final class DockTabsWidgetTest extends TestCase
         $this->assertStringNotContainsString('search-00', $plain, 'leading tabs drop first');
         // The hit map follows the window: clicking column 2 hits the first VISIBLE tab.
         $selected = [];
-        $events->addListener(DockTabSelected::class, static function (DockTabSelected $event) use (&$selected): void {
+        $events->addListener(DockTabActivationRequested::class, static function (DockTabActivationRequested $event) use (&$selected): void {
             $selected[] = $event->key;
         });
         $this->assertTrue($bar->handleTabClick(2));
@@ -183,7 +183,7 @@ final class DockTabsWidgetTest extends TestCase
         $this->assertNull($bar->dragSourceAt((int) mb_strpos($plain, needle: '×', offset: $problems)), 'a close press must not arm one');
 
         $moves = [];
-        $events->addListener(DockTabMoved::class, static function (DockTabMoved $event) use (&$moves): void {
+        $events->addListener(DockTabMoveRequested::class, static function (DockTabMoveRequested $event) use (&$moves): void {
             $moves[] = [$event->family, $event->from, $event->to];
         });
         $bar->moveTab(DockTab::Results, 0, 1);

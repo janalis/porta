@@ -11,7 +11,7 @@ use Porta\Workbench\Dock\DockTab;
  * sessions among sessions, tools among tools. Cross-family endpoints never
  * reach here; the strip resolves them to a no-op first.
  */
-final readonly class DockTabMoved
+final readonly class DockTabMoveRequested
 {
     public function __construct(
         public DockTab $family,

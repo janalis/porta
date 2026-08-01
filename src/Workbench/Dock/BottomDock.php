@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Porta\Workbench\Dock;
 
 use Porta\Container\AsIdeService;
-use Porta\Event\DockTabClosed;
-use Porta\Event\DockTabMoved;
-use Porta\Event\DockTabSelected;
+use Porta\Event\DockTabActivationRequested;
+use Porta\Event\DockTabCloseRequested;
+use Porta\Event\DockTabMoveRequested;
 use Porta\Event\DockToolBound;
 use Porta\Event\DockToolClosed;
 use Porta\Event\TerminalRevealRequested;
-use Porta\Event\TerminalSessionClosed;
+use Porta\Event\TerminalSessionCloseRequested;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
 use Porta\Ui\Glyphs;
@@ -78,13 +78,13 @@ final class BottomDock
     ) {}
 
     #[AsEventListener]
-    public function onTabSelected(DockTabSelected $event): void
+    public function onTabSelected(DockTabActivationRequested $event): void
     {
         $this->reveal($event->tab, $event->key);
     }
 
     #[AsEventListener]
-    public function onTabClosed(DockTabClosed $event): void
+    public function onTabClosed(DockTabCloseRequested $event): void
     {
         $this->closeTab($event->tab, $event->key);
     }
@@ -94,7 +94,7 @@ final class BottomDock
      * themselves, tool tabs among themselves (Debug is a single tab).
      */
     #[AsEventListener]
-    public function onTabMoved(DockTabMoved $event): void
+    public function onTabMoved(DockTabMoveRequested $event): void
     {
         match ($event->family) {
             DockTab::Terminal => $this->sessions->move($event->from, $event->to),
@@ -260,7 +260,7 @@ final class BottomDock
                     continue;
                 }
 
-                $this->events?->dispatch(new TerminalSessionClosed($index));
+                $this->events?->dispatch(new TerminalSessionCloseRequested($index));
                 break;
             }
 

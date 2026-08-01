@@ -10,7 +10,7 @@ use Porta\Container\AsWidget;
 use Porta\Debug\DebugState;
 use Porta\Event\DebugFrameSelected;
 use Porta\Event\DebugVariableEditRequested;
-use Porta\Event\DebugWatchRemoved;
+use Porta\Event\DebugWatchRemovalRequested;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
@@ -228,7 +228,7 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
         if ($kb->matches($data, 'remove_watch')) {
             $row = $this->rows[$this->list->selected()] ?? null;
             if (null !== $row && DebugRowKind::Watch === $row->kind) {
-                $this->events?->dispatch(new DebugWatchRemoved($row->watchIndex));
+                $this->events?->dispatch(new DebugWatchRemovalRequested($row->watchIndex));
             }
         }
     }

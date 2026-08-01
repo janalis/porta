@@ -268,4 +268,31 @@ final class EventListenerWiringTest extends TestCase
 
         $this->assertSame([], $unheard, 'dispatched into silence — a missing #[AsEventListener], or an event nobody needs');
     }
+
+    public function testACommandEventHasExactlyOnePerformer(): void
+    {
+        // The naming rule, made enforceable. An event is a FACT when it is true
+        // at the moment it is dispatched (BufferSaved — the write happened) and
+        // a COMMAND when it becomes true only if a listener acts
+        // (DockTabCloseRequested — the tab is still open). Commands carry the
+        // `…Requested` suffix.
+        //
+        // A command with two performers is a design error: two listeners would
+        // both close the tab, or race to. A fact may have any number, which is
+        // the whole point of the bus — so the assertion is deliberately
+        // one-directional.
+        $dispatcher = $this->dispatcher();
+
+        foreach (glob(\dirname(__DIR__, levels: 3).'/src/Event/*Requested.php') as $file) {
+            $class = 'Porta\\Event\\'.basename($file, suffix: '.php');
+            if (!class_exists($class)) {
+                continue;
+            }
+            $this->assertCount(
+                1,
+                $dispatcher->getListeners($class),
+                $class.': a command names one thing to do, so exactly one listener may do it',
+            );
+        }
+    }
 }

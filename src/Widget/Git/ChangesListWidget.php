@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Porta\Widget\Git;
 
 use Porta\Container\AsWidget;
-use Porta\Event\GitChangeDiscarded;
+use Porta\Event\GitChangeDiscardRequested;
 use Porta\Event\GitChangeSelected;
-use Porta\Event\GitChangeStageToggled;
+use Porta\Event\GitChangeStageToggleRequested;
 use Porta\Event\GitViewModeRequested;
 use Porta\Git\ChangeEntry;
 use Porta\Git\GitViewMode;
@@ -133,7 +133,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
             $entry = $this->entries[$this->confirmDiscard] ?? null;
             $this->confirmDiscard = null;
             if (('y' === $data || 'Y' === $data) && null !== $entry) {
-                $this->events?->dispatch(new GitChangeDiscarded($entry));
+                $this->events?->dispatch(new GitChangeDiscardRequested($entry));
             }
             $this->invalidate();
 
@@ -151,7 +151,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         }
         if ($kb->matches($data, 'toggle_stage')) {
             if (null !== ($entry = $this->selectedEntry())) {
-                $this->events?->dispatch(new GitChangeStageToggled($entry));
+                $this->events?->dispatch(new GitChangeStageToggleRequested($entry));
             }
 
             return;
@@ -187,7 +187,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     public function toggleStageSelected(): void
     {
         if (null !== ($entry = $this->selectedEntry())) {
-            $this->events?->dispatch(new GitChangeStageToggled($entry));
+            $this->events?->dispatch(new GitChangeStageToggleRequested($entry));
             $this->invalidate();
         }
     }
@@ -223,7 +223,7 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         $this->list->select($index);
         $entry = $this->entries[$index];
         if ($relCol <= 3) {
-            $this->events?->dispatch(new GitChangeStageToggled($entry));
+            $this->events?->dispatch(new GitChangeStageToggleRequested($entry));
             $this->invalidate();
 
             return;

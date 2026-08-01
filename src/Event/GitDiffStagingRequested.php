@@ -13,7 +13,7 @@ namespace Porta\Event;
  *
  * @phpstan-type Selection array<int, array<int, true>>
  */
-final readonly class GitDiffLinesStaged
+final readonly class GitDiffStagingRequested
 {
     /** @param array<int, array<int, true>> $selection */
     public function __construct(

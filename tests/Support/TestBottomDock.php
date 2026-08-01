@@ -6,9 +6,9 @@ namespace Porta\Tests\Support;
 
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
-use Porta\Event\DockTabClosed;
-use Porta\Event\DockTabMoved;
-use Porta\Event\DockTabSelected;
+use Porta\Event\DockTabActivationRequested;
+use Porta\Event\DockTabCloseRequested;
+use Porta\Event\DockTabMoveRequested;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\FakeRasterizer;
@@ -62,9 +62,9 @@ final class TestBottomDock
         if ($events instanceof EventDispatcher) {
             // What the container compiles from #[AsEventListener]; a test rig
             // wires the same three by hand.
-            $events->addListener(DockTabSelected::class, $dock->onTabSelected(...));
-            $events->addListener(DockTabClosed::class, $dock->onTabClosed(...));
-            $events->addListener(DockTabMoved::class, $dock->onTabMoved(...));
+            $events->addListener(DockTabActivationRequested::class, $dock->onTabSelected(...));
+            $events->addListener(DockTabCloseRequested::class, $dock->onTabClosed(...));
+            $events->addListener(DockTabMoveRequested::class, $dock->onTabMoved(...));
         }
 
         return $dock;

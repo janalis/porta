@@ -9,7 +9,7 @@ use Porta\Editor\FileOpener;
 use Porta\Event\DebugFrameSelected;
 use Porta\Event\DebugStatusChanged;
 use Porta\Event\DebugVariableEditRequested;
-use Porta\Event\DebugWatchRemoved;
+use Porta\Event\DebugWatchRemovalRequested;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Terminal\TerminalSessions;
@@ -457,7 +457,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
     }
 
     #[AsEventListener]
-    public function onWatchRemoved(DebugWatchRemoved $event): void
+    public function onWatchRemoved(DebugWatchRemovalRequested $event): void
     {
         $this->watches->remove($event->index);
         $this->panel->setWatches($this->watches->all());

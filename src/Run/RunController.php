@@ -6,8 +6,8 @@ namespace Porta\Run;
 
 use Porta\Container\AsIdeService;
 use Porta\Event\TerminalRevealRequested;
-use Porta\Event\TerminalSessionClosed;
-use Porta\Event\TerminalSessionCycled;
+use Porta\Event\TerminalSessionCloseRequested;
+use Porta\Event\TerminalSessionCycleRequested;
 use Porta\I18n\Translator;
 use Porta\Terminal\PtyProcess;
 use Porta\Terminal\TerminalKeyEncoder;
@@ -181,7 +181,7 @@ final class RunController
 
     /** Cycle to the next (+1) or previous (-1) session tab. */
     #[AsEventListener]
-    public function onSessionCycled(TerminalSessionCycled $event): void
+    public function onSessionCycled(TerminalSessionCycleRequested $event): void
     {
         $this->cycleSession($event->delta);
     }
@@ -195,7 +195,7 @@ final class RunController
 
     /** Close a session tab ($index, or -1 for the active one); closes the panel when the last goes. */
     #[AsEventListener]
-    public function onSessionClosed(TerminalSessionClosed $event): void
+    public function onSessionClosed(TerminalSessionCloseRequested $event): void
     {
         $this->closeSession($event->index);
     }

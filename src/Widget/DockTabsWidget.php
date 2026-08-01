@@ -7,9 +7,9 @@ namespace Porta\Widget;
 use Porta\Container\AsChromeRoot;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
-use Porta\Event\DockTabClosed;
-use Porta\Event\DockTabMoved;
-use Porta\Event\DockTabSelected;
+use Porta\Event\DockTabActivationRequested;
+use Porta\Event\DockTabCloseRequested;
+use Porta\Event\DockTabMoveRequested;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\LtrPane;
@@ -76,7 +76,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
     /** A drag over the strip crossed same-family tabs: ask the dock to reorder that model. */
     public function moveTab(DockTab $family, int $from, int $to): void
     {
-        $this->events?->dispatch(new DockTabMoved($family, $from, $to));
+        $this->events?->dispatch(new DockTabMoveRequested($family, $from, $to));
     }
 
     /** Repaint whenever the alive tabs / labels / active tool change. */
@@ -227,7 +227,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
                 continue;
             }
 
-            $this->events?->dispatch(new DockTabClosed($entry['tab'], $entry['key']));
+            $this->events?->dispatch(new DockTabCloseRequested($entry['tab'], $entry['key']));
 
             return true;
         }
@@ -236,7 +236,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
                 continue;
             }
 
-            $this->events?->dispatch(new DockTabSelected($entry['tab'], $entry['key']));
+            $this->events?->dispatch(new DockTabActivationRequested($entry['tab'], $entry['key']));
 
             return true;
         }

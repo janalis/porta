@@ -20,7 +20,7 @@ use Porta\Editor\OpenFocus;
 use Porta\Event\DebugFrameSelected;
 use Porta\Event\DebugStatusChanged;
 use Porta\Event\DebugVariableEditRequested;
-use Porta\Event\DebugWatchRemoved;
+use Porta\Event\DebugWatchRemovalRequested;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\EditorState;
@@ -118,7 +118,7 @@ final class DebugControllerTest extends TestCase
         // Compiled from #[AsEventListener] in the container.
         $dispatcher->addListener(DebugFrameSelected::class, $controller->onFrameSelected(...));
         $dispatcher->addListener(DebugVariableEditRequested::class, $controller->onVariableEditRequested(...));
-        $dispatcher->addListener(DebugWatchRemoved::class, $controller->onWatchRemoved(...));
+        $dispatcher->addListener(DebugWatchRemovalRequested::class, $controller->onWatchRemoved(...));
 
         return $controller;
     }

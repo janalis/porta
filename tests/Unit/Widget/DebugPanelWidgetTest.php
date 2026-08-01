@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Debug\DebugState;
 use Porta\Event\DebugFrameSelected;
 use Porta\Event\DebugVariableEditRequested;
-use Porta\Event\DebugWatchRemoved;
+use Porta\Event\DebugWatchRemovalRequested;
 use Porta\Tests\Support\Probe;
 use Porta\Widget\DebugPanelCallbacks;
 use Porta\Widget\DebugPanelWidget;
@@ -268,7 +268,7 @@ final class DebugPanelWidgetTest extends TestCase
         $panel->setWatchResult(0, 'array(2)', 2000);
         $expanded = [];
         $removed = [];
-        $events->addListener(DebugWatchRemoved::class, static function (DebugWatchRemoved $event) use (&$removed): void {
+        $events->addListener(DebugWatchRemovalRequested::class, static function (DebugWatchRemovalRequested $event) use (&$removed): void {
             $removed[] = $event->index;
         });
         $panel->setCallbacks(new DebugPanelCallbacks(

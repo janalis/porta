@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Porta\Widget\Git;
 
 use Porta\Container\AsWidget;
-use Porta\Event\GitDiffContextCycled;
+use Porta\Event\GitDiffContextCycleRequested;
+use Porta\Event\GitDiffCopyRequested;
 use Porta\Event\GitDiffLayoutToggled;
-use Porta\Event\GitDiffLinesStaged;
-use Porta\Event\GitDiffTextCopied;
-use Porta\Event\GitDiffWhitespaceToggled;
+use Porta\Event\GitDiffStagingRequested;
+use Porta\Event\GitDiffWhitespaceToggleRequested;
 use Porta\Git\DiffDocument;
 use Porta\Git\DiffRowKind;
 use Porta\Highlight\CodeHighlighter;
@@ -335,7 +335,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         }
         if ($kb->matches($data, 'cycle_context')) {
             if (!$this->readOnly && [] !== $this->rows) {
-                $this->events?->dispatch(new GitDiffContextCycled());
+                $this->events?->dispatch(new GitDiffContextCycleRequested());
             }
 
             return;
@@ -346,7 +346,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             return;
         }
         if ($kb->matches($data, 'toggle_whitespace')) {
-            $this->events?->dispatch(new GitDiffWhitespaceToggled()); // allowed in read-only mode too
+            $this->events?->dispatch(new GitDiffWhitespaceToggleRequested()); // allowed in read-only mode too
 
             return;
         }
@@ -431,7 +431,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             return;
         }
         if ('whitespace' === $name) {
-            $this->events?->dispatch(new GitDiffWhitespaceToggled());
+            $this->events?->dispatch(new GitDiffWhitespaceToggleRequested());
         }
     }
 
@@ -463,7 +463,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             return;
         }
 
-        $this->events?->dispatch(new GitDiffLinesStaged($this->collectSelection()));
+        $this->events?->dispatch(new GitDiffStagingRequested($this->collectSelection()));
     }
 
     /**
@@ -486,7 +486,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             $this->charSel = null;
             $this->invalidate();
             if ('' !== $text) {
-                $this->events?->dispatch(new GitDiffTextCopied($text));
+                $this->events?->dispatch(new GitDiffCopyRequested($text));
             }
 
             return;
@@ -504,7 +504,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             }
         }
         if ([] !== $texts) {
-            $this->events?->dispatch(new GitDiffTextCopied(implode("\n", $texts)."\n"));
+            $this->events?->dispatch(new GitDiffCopyRequested(implode("\n", $texts)."\n"));
         }
     }
 

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Event\TerminalSessionClosed;
-use Porta\Event\TerminalSessionCycled;
+use Porta\Event\TerminalSessionCloseRequested;
+use Porta\Event\TerminalSessionCycleRequested;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Tests\Support\Probe;
 use Porta\Widget\TerminalPanelWidget;
@@ -224,10 +224,10 @@ final class TerminalPanelWidgetTest extends TestCase
         $panel->onInputForward(static function (string $d) use (&$forwarded): void {
             $forwarded .= $d;
         });
-        $events->addListener(TerminalSessionCycled::class, static function (TerminalSessionCycled $event) use (&$cycled): void {
+        $events->addListener(TerminalSessionCycleRequested::class, static function (TerminalSessionCycleRequested $event) use (&$cycled): void {
             $cycled[] = $event->delta;
         });
-        $events->addListener(TerminalSessionClosed::class, static function (TerminalSessionClosed $event) use (&$closed): void {
+        $events->addListener(TerminalSessionCloseRequested::class, static function (TerminalSessionCloseRequested $event) use (&$closed): void {
             $closed = $event->index;
         });
 

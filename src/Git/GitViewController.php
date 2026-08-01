@@ -6,17 +6,17 @@ namespace Porta\Git;
 
 use Porta\Container\AsEager;
 use Porta\Container\LayoutSlot;
-use Porta\Event\GitChangeDiscarded;
+use Porta\Event\GitChangeDiscardRequested;
 use Porta\Event\GitChangeSelected;
-use Porta\Event\GitChangeStageToggled;
+use Porta\Event\GitChangeStageToggleRequested;
 use Porta\Event\GitCommitFileSelected;
 use Porta\Event\GitCommitSelected;
 use Porta\Event\GitCommitted;
-use Porta\Event\GitDiffContextCycled;
+use Porta\Event\GitDiffContextCycleRequested;
+use Porta\Event\GitDiffCopyRequested;
 use Porta\Event\GitDiffLayoutToggled;
-use Porta\Event\GitDiffLinesStaged;
-use Porta\Event\GitDiffTextCopied;
-use Porta\Event\GitDiffWhitespaceToggled;
+use Porta\Event\GitDiffStagingRequested;
+use Porta\Event\GitDiffWhitespaceToggleRequested;
 use Porta\Event\GitHistoryEndReached;
 use Porta\Event\GitRemoteCompleted;
 use Porta\Event\GitRemoteRequested;
@@ -448,13 +448,13 @@ final class GitViewController implements FullScreenView
     }
 
     #[AsEventListener]
-    public function onChangeStageToggled(GitChangeStageToggled $event): void
+    public function onChangeStageToggled(GitChangeStageToggleRequested $event): void
     {
         $this->toggleStage($event->entry);
     }
 
     #[AsEventListener]
-    public function onChangeDiscarded(GitChangeDiscarded $event): void
+    public function onChangeDiscarded(GitChangeDiscardRequested $event): void
     {
         $this->discard($event->entry);
     }
@@ -478,13 +478,13 @@ final class GitViewController implements FullScreenView
     }
 
     #[AsEventListener]
-    public function onDiffLinesStaged(GitDiffLinesStaged $event): void
+    public function onDiffLinesStaged(GitDiffStagingRequested $event): void
     {
         $this->stageSelection($event->selection);
     }
 
     #[AsEventListener]
-    public function onDiffContextCycled(GitDiffContextCycled $event): void
+    public function onDiffContextCycled(GitDiffContextCycleRequested $event): void
     {
         $this->cycleContext();
     }
@@ -496,13 +496,13 @@ final class GitViewController implements FullScreenView
     }
 
     #[AsEventListener]
-    public function onDiffWhitespaceToggled(GitDiffWhitespaceToggled $event): void
+    public function onDiffWhitespaceToggled(GitDiffWhitespaceToggleRequested $event): void
     {
         $this->toggleWhitespace();
     }
 
     #[AsEventListener]
-    public function onDiffTextCopied(GitDiffTextCopied $event): void
+    public function onDiffTextCopied(GitDiffCopyRequested $event): void
     {
         $this->copyDiffText($event->text);
     }

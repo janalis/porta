@@ -11,7 +11,7 @@ namespace Porta\Event;
  * `-1` means "whichever session is active", which is the panel's own key path:
  * it knows a close was asked for, not which index that is.
  */
-final readonly class TerminalSessionClosed
+final readonly class TerminalSessionCloseRequested
 {
     public function __construct(
         public int $index,

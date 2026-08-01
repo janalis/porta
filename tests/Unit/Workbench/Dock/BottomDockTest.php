@@ -9,7 +9,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\Event\DockToolClosed;
 use Porta\Event\TerminalRevealRequested;
-use Porta\Event\TerminalSessionClosed;
+use Porta\Event\TerminalSessionCloseRequested;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\Probe;
@@ -326,7 +326,7 @@ final class BottomDockTest extends TestCase
 
         $dock->closeTab(DockTab::Terminal, 'shell:1'); // no close hook wired: a no-op
         $closed = [];
-        $events->addListener(TerminalSessionClosed::class, static function (TerminalSessionClosed $event) use (&$closed): void {
+        $events->addListener(TerminalSessionCloseRequested::class, static function (TerminalSessionCloseRequested $event) use (&$closed): void {
             $closed[] = $event->index;
         });
         $dock->closeTab(DockTab::Terminal, 'shell:1');
