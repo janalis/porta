@@ -97,7 +97,7 @@ final class ContextMenuBuilder
      *
      * @return list<MenuItem>
      */
-    public function dockTabItems(DockTab $tab, string $key): array
+    public function dockTabItems(?DockTab $tab, string $key): array
     {
         if (DockTab::Terminal === $tab) {
             return [

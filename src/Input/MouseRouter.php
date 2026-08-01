@@ -55,7 +55,7 @@ final class MouseRouter
     /** True while a left-drag started on a tab is reordering it; $tabDragPath is the dragged buffer. */
     private bool $tabDragging = false;
 
-    /** @var array{tab: DockTab, index: int}|null the dock-strip tab being drag-reordered */
+    /** @var array{tab: ?DockTab, index: int}|null the dock-strip tab being drag-reordered */
     private ?array $dockTabDrag = null;
 
     /** @var array{row: int, col: int, moved: bool}|null a left-drag panning the graph viewer (release without motion = select) */

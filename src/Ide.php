@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta;
 
+use Porta\Bootstrap\CoreDockPanels;
 use Porta\Bootstrap\CorePanes;
 use Porta\Bootstrap\EagerServices;
 use Porta\Bootstrap\StartupWiring;
@@ -208,6 +209,9 @@ final class Ide
         // rather than being replaced by it.
         $this->service(CorePanes::class)->register();
         $this->service(PaneRegistrar::class)->register();
+        // Before WidgetHooks: BottomDock::wire() installs a dismiss hook on
+        // every registered panel, so the registry has to be populated first.
+        $this->service(CoreDockPanels::class)->register();
         $this->service(CommandRegistryPopulator::class)->populate();
         $this->service(WidgetHooks::class)->wire();
         $this->menuRebuilder->rebuild();

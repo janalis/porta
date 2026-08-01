@@ -10,7 +10,7 @@ use Porta\Workbench\Dock\DockTab;
 final readonly class DockTabCloseRequested
 {
     public function __construct(
-        public DockTab $tab,
+        public ?DockTab $tab,
         public string $key,
     ) {}
 }

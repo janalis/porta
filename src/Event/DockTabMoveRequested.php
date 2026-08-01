@@ -14,7 +14,7 @@ use Porta\Workbench\Dock\DockTab;
 final readonly class DockTabMoveRequested
 {
     public function __construct(
-        public DockTab $family,
+        public ?DockTab $family,
         public int $from,
         public int $to,
     ) {}

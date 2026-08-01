@@ -19,6 +19,8 @@ use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\Dock\DockPanels;
+use Porta\Workbench\Dock\DockTab;
 use Porta\Workbench\Dock\DockToolTabs;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\Notifier;
@@ -40,15 +42,28 @@ final class TestBottomDock
         ?DockToolTabs $tools = null,
         ?EventDispatcherInterface $events = null,
     ): BottomDock {
+        // The registry the container populates through Bootstrap/CoreDockPanels.
+        $panels = new DockPanels();
+        $translator = new Translator('en');
+        $panels->register(
+            $debug,
+            'debug',
+            static function () use ($debug, $translator): string {
+                $title = $debug->getTitle();
+
+                return $translator->trans('Debug').('' === $title ? '' : ': '.$title);
+            },
+            DockTab::Debug,
+        );
+
         $dock = new BottomDock(
             $tui,
             $terminal,
             $results,
-            $debug,
+            $panels,
             $dockTabs ?? new DockTabsWidget(events: $events),
             $tools ?? new DockToolTabs(),
             $sessions ?? new TerminalSessions(),
-            new Translator('en'),
             new Notifier(new StatusBarWidget(), $tui),
             $editorArea ?? new EditorArea(
                 new BufferManager(),

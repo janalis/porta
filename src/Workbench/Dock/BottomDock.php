@@ -12,10 +12,8 @@ use Porta\Event\DockToolBound;
 use Porta\Event\DockToolClosed;
 use Porta\Event\TerminalRevealRequested;
 use Porta\Event\TerminalSessionCloseRequested;
-use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
 use Porta\Ui\Glyphs;
-use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockPanelWidget;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\OverlayWidget;
@@ -67,11 +65,10 @@ final class BottomDock
         private readonly Tui $tui,
         private readonly TerminalPanelWidget $terminalPanel,
         private readonly ResultsPanelWidget $resultsPanel,
-        private readonly DebugPanelWidget $debugPanel,
+        private readonly DockPanels $panelRegistry,
         private readonly DockTabsWidget $dockTabs,
         private readonly DockToolTabs $tools,
         private readonly TerminalSessions $sessions,
-        private readonly Translator $translator,
         private readonly Notifier $notifier,
         private readonly EditorArea $editorArea,
         private readonly ?EventDispatcherInterface $events = null,
@@ -99,7 +96,8 @@ final class BottomDock
         match ($event->family) {
             DockTab::Terminal => $this->sessions->move($event->from, $event->to),
             DockTab::Results => $this->tools->move($event->from, $event->to),
-            DockTab::Debug => null,
+            // A single-tab panel has nothing to reorder within.
+            DockTab::Debug, null => null,
         };
     }
 
@@ -112,8 +110,10 @@ final class BottomDock
         }
         // Esc is a soft hide — the tool stays alive one tab away.
         $this->terminalPanel->onDismiss($this->hide(...));
-        $this->debugPanel->onDismiss($this->hide(...));
         $this->resultsPanel->onDismiss($this->hide(...));
+        foreach ($this->panelRegistry->all() as $entry) {
+            $entry['panel']->onDismiss($this->hide(...));
+        }
         $this->dockTabs->setProvider($this->aliveTabs(...));
     }
 
@@ -124,7 +124,7 @@ final class BottomDock
      * entry on display carries a status. Empty (the strip disappears) while
      * the dock is hidden.
      *
-     * @return list<array{tab: DockTab, key: string, label: string, active: bool, status: string}>
+     * @return list<array{tab: ?DockTab, key: string, label: string, active: bool, status: string}>
      */
     public function aliveTabs(): array
     {
@@ -157,14 +157,16 @@ final class BottomDock
                 'status' => $active ? $this->resultsPanel->statusText() : '',
             ];
         }
-        if ($this->debugPanel->isOpen()) {
-            $title = $this->debugPanel->getTitle();
+        foreach ($this->panelRegistry->all() as $entry) {
+            if (!$entry['panel']->isOpen()) {
+                continue;
+            }
             $tabs[] = [
-                'tab' => DockTab::Debug,
-                'key' => '',
-                'label' => $this->translator->trans('Debug').('' === $title ? '' : ': '.$title),
-                'active' => $visible === $this->debugPanel,
-                'status' => $this->debugPanel->statusText(),
+                'tab' => $entry['tab'],
+                'key' => $entry['id'],
+                'label' => $entry['label'](),
+                'active' => $visible === $entry['panel'],
+                'status' => $entry['panel']->statusText(),
             ];
         }
 
@@ -178,7 +180,7 @@ final class BottomDock
     }
 
     /** Bring a tab into the dock slot and focus it ($key: a tool tab's id / a session id, '' = the active one). */
-    public function reveal(DockTab $tab, string $key = ''): void
+    public function reveal(?DockTab $tab, string $key = ''): void
     {
         if (DockTab::Terminal === $tab) {
             // Activate the clicked session, then re-open through the
@@ -205,17 +207,18 @@ final class BottomDock
 
             return;
         }
-        if (!$this->debugPanel->isOpen()) {
+        $panel = $this->panelRegistry->find($tab, $key);
+        if (null === $panel || !$panel->isOpen()) {
             return;
         }
-        if ($this->debugPanel->isVisible()) {
-            $this->focusPanel($this->debugPanel);
+        if ($panel->isVisible()) {
+            $this->focusPanel($panel);
 
             return;
         }
-        $this->activate($this->debugPanel);
-        $this->debugPanel->reveal();
-        $this->focusPanel($this->debugPanel);
+        $this->activate($panel);
+        $panel->reveal();
+        $this->focusPanel($panel);
     }
 
     /** Hide the whole dock (Esc / toggling the visible tool off); every tab stays alive. */
@@ -252,7 +255,7 @@ final class BottomDock
     }
 
     /** The strip's ×: close the tab for real — a session tab stops its process too. */
-    public function closeTab(DockTab $tab, string $key = ''): void
+    public function closeTab(?DockTab $tab, string $key = ''): void
     {
         if (DockTab::Terminal === $tab) {
             foreach ($this->sessions->all() as $index => $session) {
@@ -266,8 +269,8 @@ final class BottomDock
 
             return;
         }
-        if (DockTab::Debug === $tab) {
-            $this->debugPanel->close();
+        if (DockTab::Results !== $tab) {
+            $this->panelRegistry->find($tab, $key)?->close();
 
             return;
         }
@@ -465,7 +468,7 @@ final class BottomDock
     /** @return list<DockPanelWidget> */
     private function panels(): array
     {
-        return [$this->terminalPanel, $this->resultsPanel, $this->debugPanel];
+        return [$this->terminalPanel, $this->resultsPanel, ...array_map(static fn (array $e): DockPanelWidget => $e['panel'], $this->panelRegistry->all())];
     }
 
     /** A panel opened (or re-opened): it takes the dock slot; the others park behind it. */

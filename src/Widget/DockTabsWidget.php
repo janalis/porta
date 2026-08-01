@@ -46,7 +46,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
     use ColumnHover;
     use MenuOverlayHostTrait;
 
-    /** @use ProviderFingerprint<list<array{tab: DockTab, key: string, label: string, active: bool, status: string}>> */
+    /** @use ProviderFingerprint<list<array{tab: ?DockTab, key: string, label: string, active: bool, status: string}>> */
     use ProviderFingerprint;
     use StripScroll;
     use StylesDefault;
@@ -60,7 +60,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
      */
     private bool $grabHovered = false;
 
-    /** @var list<array{tab: DockTab, key: string, index: int, start: int, width: int, closeStart: int, closeWidth: int}> the last strip's hit map */
+    /** @var list<array{tab: ?DockTab, key: string, index: int, start: int, width: int, closeStart: int, closeWidth: int}> the last strip's hit map */
     private array $lastTabLayout = [];
 
     /** The active index the strip window last followed, so a manual scroll survives parked frames. */
@@ -74,7 +74,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
     }
 
     /** A drag over the strip crossed same-family tabs: ask the dock to reorder that model. */
-    public function moveTab(DockTab $family, int $from, int $to): void
+    public function moveTab(?DockTab $family, int $from, int $to): void
     {
         $this->events?->dispatch(new DockTabMoveRequested($family, $from, $to));
     }
@@ -85,26 +85,38 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
         if (null === $this->provider) {
             return;
         }
-        $tabs = array_map(static fn (array $tab): array => [$tab['tab']->name, $tab['key'], $tab['label'], $tab['active'], $tab['status']], ($this->provider)());
+        $tabs = array_map(static fn (array $tab): array => [self::family($tab['tab'], $tab['key']), $tab['key'], $tab['label'], $tab['active'], $tab['status']], ($this->provider)());
         $this->refreshFingerprint($tabs);
     }
 
     /**
-     * The family + family-relative index (counting only same-DockTab entries)
+     * A strip entry's drag family. A contributed panel has a null DockTab and
+     * is its OWN family, keyed by its id — so a drag can never carry it into
+     * the session or tool families, which is the same thing the null buys in
+     * the registry.
+     *
+     */
+    private static function family(?DockTab $tab, string $key): string
+    {
+        return $tab->name ?? 'panel:'.$key;
+    }
+
+    /**
+     * The family + family-relative index (counting only same-family entries)
      * whose tab body covers $col, or null on the empty tail. Drags reorder
      * within one family — a cross-family or tail endpoint is ignored.
      *
-     * @return array{tab: DockTab, index: int}|null
+     * @return array{tab: ?DockTab, index: int}|null
      */
     public function familyIndexAt(int $col): ?array
     {
         $counts = [];
         foreach ($this->lastTabLayout as $entry) {
-            $index = $counts[$entry['tab']->name] ?? 0;
+            $index = $counts[self::family($entry['tab'], $entry['key'])] ?? 0;
             if ($col >= $entry['start'] && $col < ($entry['start'] + $entry['width'])) {
                 return ['tab' => $entry['tab'], 'index' => $index];
             }
-            $counts[$entry['tab']->name] = $index + 1;
+            $counts[self::family($entry['tab'], $entry['key'])] = $index + 1;
         }
 
         return null;
@@ -113,7 +125,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
     /**
      * A drag SOURCE: the family position at $col excluding its close ×, or null.
      *
-     * @return array{tab: DockTab, index: int}|null
+     * @return array{tab: ?DockTab, index: int}|null
      */
     public function dragSourceAt(int $col): ?array
     {
@@ -130,7 +142,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
      * The dock identity of the tab whose body covers $col, or null on the
      * empty tail — the right-click context-menu lookup.
      *
-     * @return array{tab: DockTab, key: string}|null
+     * @return array{tab: ?DockTab, key: string}|null
      */
     public function tabAt(int $col): ?array
     {
@@ -272,7 +284,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
                 static fn (array $tab): array => [
                     'label' => $tab['label'],
                     'active' => $tab['active'],
-                    'family' => $tab['tab']->name,
+                    'family' => self::family($tab['tab'], $tab['key']),
                 ],
                 $tabs,
             ),
