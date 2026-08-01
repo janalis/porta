@@ -82,8 +82,8 @@ classlike-brace-style = "always_next_line"
 sort-uses = true
 
 [linter]
-# `composer lint` is a required gate (see CLAUDE.md). The rules below are
-# disabled deliberately; everything else runs at full strength on new code.
+# `composer lint` is a required gate. The paths below are EXCLUDED
+# deliberately — no rule is disabled; everything runs at full strength.
 # The mock LSP/DAP servers are standalone procedural scripts, not codebase
 # code — they keep their script idioms (camelCase helpers, `global`).
 excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demanding-lsp-server.php", "tests/Support/incremental-lsp-server.php", "tests/Support/mock-lsp-server.php", "tests/Support/command-lsp-server.php", "tests/Support/mock-dap-adapter.php"]
@@ -142,7 +142,7 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 # The src pins are deliberate structure: WidgetHooks is a wiring step,
 # MouseRouter's route() guard order is behaviour, and CodeEditorWidget /
 # FindInFilesModal / DiffViewWidget carry measured-and-rejected extraction
-# candidates (see CLAUDE.md; DiffViewWidget's was actually measured in round
+# candidates (see docs/internals/decisions.md; DiffViewWidget's was measured in round
 # 6 — 0/8 and 2/10 exclusive, worse than any prior rejection — so this
 # sentence is no longer an assertion ahead of its evidence). None can drop
 # without a decision that was considered and declined. Round 6 re-probed

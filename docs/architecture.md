@@ -9,25 +9,32 @@ single [Revolt](https://revolt.run) event loop.
 
 `Ide` (`src/Ide.php`) is the coordinator, sitting over a Symfony DI
 container. Its constructor builds a `ContainerBuilder` via
-`Container/IdeContainerFactory` (the runtime `rootDir` and locale become
-container parameters, so the container is compiled fresh per boot), then
-delegates to named `build*` steps — `buildEditorArea`, `buildSidePanels`,
-`buildGitView`, `buildSettingsWidgets`, `buildLayoutAndOverlay` — so it
-reads top-to-bottom as a composition root.
+`Container/IdeContainerFactory`, then delegates to named `build*` steps —
+`buildEditorArea`, `buildGitView`, `buildSettingsWidgets`,
+`buildLayoutAndOverlay` — so it reads top-to-bottom as a composition root.
+
+The compiled container is **dumped and cached across boots**. Per-boot values
+such as the project root and locale travel through the environment and resolve
+at runtime through `%env()%` placeholders, so one dump serves every project the
+IDE opens.
 
 The container (`config/services.php`, deliberately outside `src/` so the
 wiring stays off the coverage gate) autoregisters every service and
 singleton widget from `src/`. What the container cannot express stays
 hand-built in the matching `build*` step: the composite `ContainerWidget`
 tree, `setProvider(...)` closures, RTL pane ordering, per-buffer runtime
-objects, and the ~100 `$this`-closures that wire widgets to `Ide`'s
-orchestration methods. Three objects are handed to the container as
-synthetic services after `Ide` constructs them: `Renderer`, `Tui`, and
-`LspSessionPool`.
+objects, and the `$this`-closures that wire widgets to `Ide`'s orchestration
+methods. Four objects are handed to the container as synthetic services after
+`Ide` constructs them: `Renderer`, `Tui`, `BidiTui` and `IdeConfig`.
 
 House rules: **final classes and constructor injection everywhere**; no
-service reaches for a global. Never mark a container definition
-`lazy: true` (proxying breaks `final` classes).
+service reaches for a global. Never mark a container definition `lazy: true` —
+it is pure overhead for shared app-lifetime services. (The older reason,
+"proxying breaks `final` classes", is obsolete: PHP 8.4 native lazy objects do
+not subclass.)
+
+The attributes, the tagged iterators and the rules for `config/services.php`
+are in [internals/container.md](internals/container.md).
 
 ## Events
 
@@ -89,7 +96,7 @@ so JS and TS share one server process. Feature controllers
 ## Debugger (DAP)
 
 `Debug/DapClient` speaks the Debug Adapter Protocol over a child process's
-stdio (message framing shared with LSP via `Support/JsonRpcFramer`);
+stdio (the whole wire layer shared with LSP via `Support/JsonRpcTransport`);
 `Debug/DapSession` is one launch's order-agnostic state machine (0-based
 lines internally, 1-based on the wire). `Debug/DebugController` owns the
 breakpoint store, the editor decorations (gutter `●`, stopped-line band),
@@ -164,3 +171,10 @@ composer format            # mago formatter
 paratest workers serialize coverage with paths relative to their own longest
 common directory and the merge keeps only the first worker's, so a worker that
 covered a file outside `src/` loses all of its data.
+
+## Going deeper
+
+This page is a tour. [internals/](internals/README.md) is the reference:
+the gates in detail, namespace membership, the container, each subsystem, the
+plugin runtime, the testing doctrine, and the questions that have already been
+measured and settled.

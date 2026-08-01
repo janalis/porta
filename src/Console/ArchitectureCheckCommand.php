@@ -280,7 +280,7 @@ final class ArchitectureCheckCommand extends Command
     /**
      * Multi-member SCCs the audit measured and accepted, each a sorted member
      * list. #1 is the WorkspaceViews registry: closed only by its attach*()
-     * setter fields; construction stays a DAG (CLAUDE.md, round 6). #2 is
+     * setter fields; construction stays a DAG (docs/internals/decisions.md). #2 is
      * degenerate: IdeContainerFactory reads Ide::VERSION as a cache-key salt —
      * a constant, not a collaboration.
      */
@@ -498,7 +498,7 @@ final class ArchitectureCheckCommand extends Command
             if (\in_array($scc, $this->allowedSccs, strict: true)) {
                 continue;
             }
-            $failures[] = 'classes: new circular dependency — '.implode(' <-> ', $scc).' (re-opening acyclicity needs the CLAUDE.md bar: new evidence, recorded)';
+            $failures[] = 'classes: new circular dependency — '.implode(' <-> ', $scc).' (re-opening acyclicity needs new evidence, recorded in docs/internals/decisions.md)';
         }
         foreach ($this->allowedSccs as $allowed) {
             if (\in_array($allowed, $sccs, strict: true)) {
