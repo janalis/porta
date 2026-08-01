@@ -7,7 +7,6 @@ namespace Porta\Layout;
 use Porta\Config\LayoutPrefs;
 use Porta\Config\LayoutStore;
 use Porta\Container\AsIdeService;
-use Porta\Git\WhitespaceMode;
 use Porta\I18n\Translator;
 use Porta\Input\MouseEvent;
 use Porta\Support\IntMath;
@@ -325,20 +324,25 @@ final class LayoutController
     /**
      * The persisted git-diff display toggles (side-by-side, hide whitespace).
      *
-     * @return array{layout: DiffLayout, whitespace: WhitespaceMode}
+     * Whitespace is a bool here, not Git's WhitespaceMode: this class stores a
+     * bool, its only caller stores a bool, and the enum existed solely to be
+     * built at one boundary and unwrapped at the other. DiffLayout stays — that
+     * one is Layout's own.
+     *
+     * @return array{layout: DiffLayout, hideWhitespace: bool}
      */
     public function gitDiffPrefs(): array
     {
         return [
             'layout' => $this->gitDiffSplit ? DiffLayout::Split : DiffLayout::Unified,
-            'whitespace' => $this->gitDiffHideWhitespace ? WhitespaceMode::Hidden : WhitespaceMode::Shown,
+            'hideWhitespace' => $this->gitDiffHideWhitespace,
         ];
     }
 
-    public function setGitDiffPrefs(DiffLayout $layout, WhitespaceMode $whitespace): void
+    public function setGitDiffPrefs(DiffLayout $layout, bool $hideWhitespace): void
     {
         $this->gitDiffSplit = DiffLayout::Split === $layout;
-        $this->gitDiffHideWhitespace = WhitespaceMode::Hidden === $whitespace;
+        $this->gitDiffHideWhitespace = $hideWhitespace;
         $this->persistLayout();
     }
 

@@ -157,7 +157,7 @@ final class GitViewController implements FullScreenView
         $this->contextStep = 0;
         $prefs = $this->layout->gitDiffPrefs();
         DiffLayout::Split === $prefs['layout'] ? $this->panes->diffView->useSplitView() : $this->panes->diffView->useUnifiedView();
-        $this->hideWhitespace = WhitespaceMode::Hidden === $prefs['whitespace'];
+        $this->hideWhitespace = $prefs['hideWhitespace'];
         $this->hideWhitespace ? $this->panes->diffView->hideWhitespace() : $this->panes->diffView->showWhitespace();
         $this->refresh();
         $interval = (float) ($this->gitSettings?->refreshInterval() ?? 2);
@@ -264,7 +264,7 @@ final class GitViewController implements FullScreenView
     {
         $this->layout->setGitDiffPrefs(
             $this->panes->diffView->isSplit() ? DiffLayout::Split : DiffLayout::Unified,
-            $this->hideWhitespace ? WhitespaceMode::Hidden : WhitespaceMode::Shown,
+            $this->hideWhitespace,
         );
     }
 

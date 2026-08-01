@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
-use Porta\Git\GitRefresher;
+use Porta\Event\BufferReloaded;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\Notifier;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -29,7 +30,7 @@ final class FilesystemReconciler
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly LspSessionPool $lsp,
-        private readonly GitRefresher $gitRefresher,
+        private readonly EventDispatcherInterface $events,
         private readonly string $rootDir,
     ) {}
 
@@ -112,7 +113,7 @@ final class FilesystemReconciler
         $buffer->document->replaceAll($content);
         $buffer->document->markSaved();
         $this->lsp->notifyFullChange($buffer->path, $buffer->document); // no-op when no server is running
-        $this->gitRefresher->refreshMarks($buffer);
+        $this->events->dispatch(new BufferReloaded($buffer));
         $this->notifier->flash($this->translator->trans('Reloaded %file%', ['%file%' => $this->relativePath($buffer->path)]));
     }
 

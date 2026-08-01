@@ -9,6 +9,7 @@ use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorDecorationSink;
 use Porta\Event\BufferOpened;
+use Porta\Event\BufferReloaded;
 use Porta\Event\BufferSaved;
 use Porta\Event\GitCommitted;
 use Porta\Event\GitRemoteCompleted;
@@ -83,6 +84,13 @@ final class GitRefresher
         if (!$event->buffer->isViewer()) {
             $this->refreshMarks($event->buffer);
         }
+    }
+
+    /** The poller replaced a clean buffer from disk: its marks are now stale. */
+    #[AsEventListener]
+    public function onBufferReloaded(BufferReloaded $event): void
+    {
+        $this->refreshMarks($event->buffer);
     }
 
     #[AsEventListener]

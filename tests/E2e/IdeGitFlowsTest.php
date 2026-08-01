@@ -252,6 +252,36 @@ final class IdeGitFlowsTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testADiskReloadRefreshesTheGutterMarks(): void
+    {
+        // The poller used to call GitRefresher directly; it dispatches
+        // BufferReloaded now. Nothing asserted the effect through EITHER
+        // spelling, so removing the call was invisible — this is the whole
+        // chain: external write → poll → reload → marks.
+        $this->skipWithoutGit();
+        $project = new TempProject(['a.txt' => "one\ntwo\n"]);
+        $project->initGit();
+        $project->commitAll('init');
+
+        $this->runIde(
+            $project,
+            $project->path('a.txt'),
+            [
+                300 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->assertSame([], Probe::get($tui->getById('editor'), 'decorations')->gitMarks(), 'committed and unmodified: no marks');
+
+                    $project->write('a.txt', "one\nCHANGED\n"); // external edit
+                    $ide->pollFilesystem();
+
+                    $this->await(static fn (): bool => [] !== Probe::get($tui->getById('editor'), 'decorations')->gitMarks(), what: 'the reload recomputed the marks');
+                    $this->assertArrayHasKey(1, Probe::get($tui->getById('editor'), 'decorations')->gitMarks(), 'the changed line is marked');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testInsideARepositoryTheGitVerbsRegisterLast(): void
     {
         // The other half of the palette-order contract: registration order IS

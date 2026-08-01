@@ -30,7 +30,6 @@ use Porta\Git\GitRemoteCommands;
 use Porta\Git\GitViewController;
 use Porta\Git\GitViewMode;
 use Porta\Git\RefreshMode;
-use Porta\Git\WhitespaceMode;
 use Porta\I18n\Translator;
 use Porta\Layout\DiffLayout;
 use Porta\Layout\EditorAreaPanes;
@@ -582,14 +581,14 @@ final class GitViewControllerTest extends TestCase
     public function testDiffPrefsApplyOnOpenAndPersistOnToggle(): void
     {
         $controller = $this->controller();
-        $this->layoutController->setGitDiffPrefs(DiffLayout::Split, WhitespaceMode::Shown);
+        $this->layoutController->setGitDiffPrefs(DiffLayout::Split, hideWhitespace: false);
         $controller->open();
         $this->await($controller->isOpen(...));
         $this->assertTrue($this->diffView->isSplit(), 'the persisted split preference applies on open');
 
         $this->diffView->setFocused(true);
         $this->diffView->handleInput('s'); // back to unified: persists
-        $this->assertSame(['layout' => DiffLayout::Unified, 'whitespace' => WhitespaceMode::Shown], $this->layoutController->gitDiffPrefs(), 'the unified toggle persisted');
+        $this->assertSame(['layout' => DiffLayout::Unified, 'hideWhitespace' => false], $this->layoutController->gitDiffPrefs(), 'the unified toggle persisted');
     }
 
     public function testCtrlCCopiesTheSelectedDiffLines(): void
@@ -623,7 +622,7 @@ final class GitViewControllerTest extends TestCase
         $this->await(fn (): bool => !str_contains($this->diffText(), '+  one'), what: 'the indent-only pair disappears');
         $this->assertStringContainsString('+two CHANGED', $this->diffText(), 'real changes survive');
         $this->assertStringContainsString('Whitespace changes hidden', $this->statusRow($this->statusBar));
-        $this->assertSame(['layout' => DiffLayout::Unified, 'whitespace' => WhitespaceMode::Hidden], $this->layoutController->gitDiffPrefs(), 'the preference persisted');
+        $this->assertSame(['layout' => DiffLayout::Unified, 'hideWhitespace' => true], $this->layoutController->gitDiffPrefs(), 'the preference persisted');
 
         // Staging is blocked while whitespace is hidden: a -w diff cannot
         // produce an appliable patch.
@@ -640,7 +639,7 @@ final class GitViewControllerTest extends TestCase
     public function testWhitespaceOnlyChangeShowsThePlaceholder(): void
     {
         $controller = $this->controller();
-        $this->layoutController->setGitDiffPrefs(DiffLayout::Unified, WhitespaceMode::Hidden); // persisted from a previous session
+        $this->layoutController->setGitDiffPrefs(DiffLayout::Unified, hideWhitespace: true); // persisted from a previous session
         $this->project->write('a.txt', "  one\ntwo\n"); // reindent only
         $controller->open();
 
