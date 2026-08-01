@@ -475,7 +475,14 @@ OPTIONAL TRAILING constructor argument on widgets (`$this->events?->dispatch(...
 `LspSessionPool` precedent) and putting it anywhere but last silently re-binds positional callers;
 a `*Callbacks` DTO that drops below three slots becomes a plain setter, EXCEPT
 `DebugPanelCallbacks`, whose one remaining slot is continuation-passing and keeps the name to say
-so. **Measured and left alone, with reasons — do not re-litigate**: `OverlayWidget::onOpen/onClose`
+so. **Collapsing `if (X && null !== $this->callbacks->onY)` to `if (X)` changes the UNWIRED case**,
+which is now only bare widgets in tests — audited across the round: the history list's
+`loadingMore` flag latches instead of staying clear, and a checkbox-column click stops falling
+through to select (which matches the documented intent better than the fallthrough did). Neither
+is reachable in production, where the dispatcher is always injected, but check the code AFTER the
+guard before collapsing one. The audit found exactly one real drop — `FindQueryUpdated` was
+dispatched with no listener, so the find bar stopped repainting on query change, caught by the
+gate below and not by any test. **Measured and left alone, with reasons — do not re-litigate**: `OverlayWidget::onOpen/onClose`
 (the base of ~8 overlays; dispatching there broadcasts every overlay open, and restricting it to
 dock panels needs a tab identity `DockPanelWidget` does not have — inventing one whose only
 consumer is an event payload is a model change, not a conversion); the menu bar / context menu
@@ -486,7 +493,11 @@ menu's spans); the seven `onFocusNext` (one trait, two live controllers, differe
 `onExpandVariable`, `onInputForward` (byte transport, one dispatch per keystroke) and the nine
 Search Everywhere slots (three controllers share ONE overlay widget, so the installed closure IS
 the identity). **Correction to the round's own plan**: `Bootstrap>Run` did NOT vanish — keeping the
-byte transport keeps `WidgetHooks` naming `RunController`.
+byte transport keeps `WidgetHooks` naming `RunController`. **The round's own gate** is
+`EventListenerWiringTest::testEveryEventCoreDispatchesHasSomewhereToLand`: a compiled listener
+cannot be forgotten loudly — no build breaks, nothing throws, the reaction simply never happens —
+so every `src/Event/` class must have a listener unless it is one of the three pinned as
+observed-only-at-runtime by plugins.
 
 **Events.** `symfony/event-dispatcher`, kernel-less: `config/services.php` registers the
 `#[AsEventListener]` attribute autoconfiguration and the `RegisterListenersPass` (the service id
