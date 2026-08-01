@@ -155,6 +155,11 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 # where it was, which is what a round that adds small classes should do. Round
 # 29 (composer.json as the plugin manifest, then dependencies following the
 # enabled state) re-bisected the six counting rules twice: unmoved both times.
+# Round 30 (hooks became dispatched events) re-bisected again after deleting
+# five *Callbacks DTOs and adding ~30 event classes: unmoved. Worth knowing
+# WHY that keeps happening — every floor is pinned by one big class each
+# (MouseRouter, CodeEditorWidget, Document…), and rounds that add small
+# classes cannot move a maximum.
 #
 # Re-bisect and lower again after the next structural change — AND after a mago
 # upgrade, which can change how a metric is counted without a line of code
