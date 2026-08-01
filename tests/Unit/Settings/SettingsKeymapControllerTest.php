@@ -12,6 +12,7 @@ use Porta\Config\KeybindingsFactory;
 use Porta\Config\KeyDispatch;
 use Porta\Config\LiveKeybindings;
 use Porta\Editor\EditorPanes;
+use Porta\Git\GitInfo;
 use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Plugin\Runtime\PluginManager;
@@ -58,6 +59,7 @@ final class SettingsKeymapControllerTest extends TestCase
             new Translator('en'),
             new WorkspaceViews(),
             new PluginManager(new EventDispatcher(), new PluginSettings($rootDir, [])),
+            new GitInfo($rootDir),
         );
 
         return new SettingsKeymapController(

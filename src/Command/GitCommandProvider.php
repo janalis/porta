@@ -8,6 +8,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
 use Porta\Git\BlameAnnotations;
 use Porta\Git\GitCommands;
+use Porta\Git\GitInfo;
 use Porta\Git\GitRemoteCommands;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
@@ -19,10 +20,22 @@ final class GitCommandProvider implements CommandProvider
         private readonly GitCommands $git,
         private readonly GitRemoteCommands $remote,
         private readonly BlameAnnotations $blame,
+        private readonly GitInfo $info,
     ) {}
 
     public function register(CommandRegistry $commands): void
     {
+        // Outside a repository these verbs have nothing to act on. `when` would
+        // not do: it gates KEY dispatch only, leaving the palette and the menus
+        // running a handler that can only flash. Not registering removes them
+        // from all three at once, and MenuRebuilder hides the group with them.
+        //
+        // Repository presence is fixed at boot, like the settings that carry a
+        // `restart` note: `git init` in a running IDE needs a restart to light
+        // the chrome up.
+        if (!$this->info->isRepository()) {
+            return;
+        }
         $commands
             ->add('git_stage', fn () => $this->git->stageCurrent(), label: 'Git: Stage Current File')
             ->add('git_commit', fn () => $this->git->commit(), label: 'Git: Commit…')

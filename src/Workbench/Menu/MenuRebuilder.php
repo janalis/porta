@@ -7,6 +7,7 @@ namespace Porta\Workbench\Menu;
 use Porta\Config\CommandRegistry;
 use Porta\Config\LiveKeybindings;
 use Porta\Container\AsIdeService;
+use Porta\Git\GitInfo;
 use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Widget\MenuBarWidget;
@@ -29,6 +30,7 @@ final class MenuRebuilder
         private readonly Translator $translator,
         private readonly WorkspaceViews $views,
         private readonly PluginManager $plugins,
+        private readonly GitInfo $git,
     ) {}
 
     public function rebuild(): void
@@ -40,6 +42,7 @@ final class MenuRebuilder
             $this->translator,
             fn (): ?WorkspaceView => $this->views->activeView(),
             $this->plugins->menuSpecs(MenuSurface::Plugins),
+            fn (string $title): bool => 'Git' !== $title || $this->git->isRepository(),
         ));
     }
 }

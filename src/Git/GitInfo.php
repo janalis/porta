@@ -38,6 +38,11 @@ final class GitInfo
         return $this->runner->isAvailable();
     }
 
+    public function isRepository(): bool
+    {
+        return $this->runner->isRepository();
+    }
+
     /**
      * @param callable(?string): void $onDone branch name, or null when detached/unavailable
      */

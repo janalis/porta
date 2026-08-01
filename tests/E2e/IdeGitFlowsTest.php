@@ -10,6 +10,7 @@ use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -218,39 +219,61 @@ final class IdeGitFlowsTest extends TestCase
         );
     }
 
-    public function testGitCommandsWithoutRepoFlash(): void
+    /** @return list<\Porta\Workbench\Menu\Menu> */
+    private function menuTitles($tui): array
     {
+        return array_column(Probe::get($tui->getById('menu'), 'menus'), 'title');
+    }
+
+    public function testWithoutARepositoryTheGitChromeIsAbsent(): void
+    {
+        // These verbs used to register everywhere and flash "Git not available"
+        // when run. Outside a repository they now do not exist: not in the
+        // palette, not on a key, and their menu group is not built — which is
+        // also why the menu bar here is one shorter than in a repo.
         $project = new TempProject(['src/A.php' => "<?php\n"]); // not a git repo
 
-        $palette = static function ($tui, string $label): void {
-            $tui->handleInput("\x1b[97;6u");
-            foreach (str_split($label) as $ch) {
-                $tui->handleInput($ch);
-            }
-            $tui->handleInput("\r");
-        };
-
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/A.php'),
             [
-                400 => static fn ($tui) => $palette($tui, label: 'Git: Stage'),
-                550 => static fn ($tui) => $palette($tui, label: 'Git: Commit'),
-                700 => static fn ($tui) => $palette($tui, label: 'Git: Blame'),
-                850 => static fn ($tui) => $palette($tui, label: 'Git: Undo'),
-                925 => static fn ($tui) => $palette($tui, label: 'Git: Branches'),
-                1000 => static fn ($tui) => $palette($tui, label: 'Git: Stash Pop'),
-                1075 => static fn ($tui) => $palette($tui, label: 'Git: Stashes'),
-                1150 => static fn ($tui) => $palette($tui, label: 'Git: File History'),
-                1225 => static function ($tui) use ($palette): void {
-                    $palette($tui, label: 'Git: Stash');
-                },
-                1300 => function ($tui, $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'Git not available');
-                    $this->assertStringContainsString('Git not available', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                300 => function ($tui, $terminal, $ide): void {
+                    $labels = array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label');
+                    // 'Git: Changes' is ide_git, registered by ViewCommands rather
+                    // than the git provider — a separate gate, so a separate case.
+                    foreach (['Git: Stage Current File', 'Git: Commit…', 'Git: Blame Current Line', 'Git: Branches…', 'Git: Stashes…', 'Git: File History', 'Git: Changes'] as $gone) {
+                        $this->assertNotContains($gone, $labels, $gone.' is not offered outside a repository');
+                    }
+                    $this->assertNotContains('Git', $this->menuTitles($tui), 'and the Git menu is not built');
                 },
             ],
         );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testInsideARepositoryTheGitVerbsRegisterLast(): void
+    {
+        // The other half of the palette-order contract: registration order IS
+        // display order, and git's provider has the lowest priority. Asserted
+        // here because it needs a repository; IdeHelpersTest owns the rest.
+        $this->skipWithoutGit();
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $project->initGit();
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    $labels = array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label');
+                    $this->assertSame('Git: Toggle Blame Annotations', $labels[array_key_last($labels)], 'the git group registers last');
+                    $this->assertContains('Git', $this->menuTitles($tui), 'and its menu is built');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
     }
 
     public function testGitBranchPickerSwitchesAndCreatesBranches(): void

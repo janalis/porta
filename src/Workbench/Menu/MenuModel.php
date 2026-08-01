@@ -146,6 +146,10 @@ final class MenuModel
     /**
      * @param (\Closure(): ?WorkspaceView)|null $activeView  while a view is active, only its {@see VIEW_SAFE} items stay enabled
      * @param list<PluginMenuSpec>              $pluginSpecs runtime plugin entries — a Plugins menu between Code and Run when non-empty
+     * @param (\Closure(string): bool)|null      $groupVisible hides a whole DEFS group; keyed by the UNTRANSLATED title, since
+     *                                                        that is the only place the key still exists. Git's group is hidden
+     *                                                        outside a repository, where none of its verbs is registered and
+     *                                                        every item would render dead.
      *
      * @return list<Menu>
      */
@@ -156,9 +160,13 @@ final class MenuModel
         Translator $translator,
         ?\Closure $activeView = null,
         array $pluginSpecs = [],
+        ?\Closure $groupVisible = null,
     ): array {
         $menus = [];
         foreach (self::DEFS as $title => $specs) {
+            if (null !== $groupVisible && !$groupVisible($title)) {
+                continue;
+            }
             $menus[] = new Menu($translator->trans($title), self::items($specs, $commands, $editor, $ideKeys, $translator, $activeView));
             if ('Code' === $title && [] !== $pluginSpecs) {
                 $menus[] = new Menu(

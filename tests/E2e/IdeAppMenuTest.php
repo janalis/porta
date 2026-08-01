@@ -49,9 +49,14 @@ final class IdeAppMenuTest extends TestCase
                 280 => function ($tui): void {
                     $crumb = AnsiUtils::stripAnsiCodes($tui->getById('breadcrumbs')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))[0]);
                     $this->assertStringContainsString('handle', $crumb, 'breadcrumb is visible');
-                    // Open View (a right-side title, cols 39-44): its dropdown
-                    // reaches down over the breadcrumb row's columns.
-                    $tui->handleInput("\x1b[<0;41;1M");
+                    // Open View: its dropdown reaches down over the breadcrumb
+                    // row's columns. The column is read from the rendered bar
+                    // rather than hard-coded — the menu set is not fixed (Git's
+                    // group is absent outside a repository, as here).
+                    $bar = AnsiUtils::stripAnsiCodes($tui->getById('menu')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))[0]);
+                    $view = mb_strpos($bar, needle: 'View');
+                    self::assertIsInt($view, 'the View menu is on the bar');
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;1M", $view + 2));
                 },
                 360 => function ($tui): void {
                     $this->assertTrue($tui->getById('menu')->isOpen());

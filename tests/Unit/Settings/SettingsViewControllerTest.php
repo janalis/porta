@@ -167,6 +167,7 @@ final class SettingsViewControllerTest extends TestCase
             new Translator('en'),
             new WorkspaceViews(),
             new PluginManager(new EventDispatcher(), $this->pluginSettings ?? new PluginSettings($this->project->dir, [])),
+            new GitInfo($this->project->dir),
         );
         $keymap = new SettingsKeymapController(
             new ActionRegistry($keysHost->manager()),

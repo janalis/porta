@@ -21,6 +21,7 @@ final class GitProcessRunner
 {
     private readonly ?string $git;
     private readonly bool $available;
+    private readonly bool $repository;
 
     /** @var array<int, AsyncProcess> in-flight processes */
     private array $running = [];
@@ -34,7 +35,8 @@ final class GitProcessRunner
         // file_exists, not is_dir: a linked worktree's and a submodule's .git is a
         // FILE holding `gitdir: …`. is_dir left the whole feature silently dead
         // in both — git ran nowhere and the view said "not a repository".
-        $this->available = null !== $this->git && file_exists($rootDir.'/.git');
+        $this->repository = file_exists($rootDir.'/.git');
+        $this->available = null !== $this->git && $this->repository;
     }
 
     /**
@@ -50,6 +52,21 @@ final class GitProcessRunner
     public function isAvailable(): bool
     {
         return $this->available;
+    }
+
+    /**
+     * Whether the project is a repository at all — deliberately NOT
+     * {@see isAvailable}, which also requires the binary.
+     *
+     * The two states want different chrome. Outside a repository the git verbs
+     * are noise and are not registered. INSIDE one with no `git` on PATH they
+     * stay, and answer with a flash saying so: hiding them there would leave a
+     * user who is plainly in a repository with no way to find out why git went
+     * missing.
+     */
+    public function isRepository(): bool
+    {
+        return $this->repository;
     }
 
     public function cancelAll(): void

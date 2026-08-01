@@ -349,10 +349,13 @@ final class IdeHelpersTest extends TestCase
         // The tagged providers register in #[AsTaggedItem] priority order:
         // registration order IS the palette display order — file commands
         // first, git commands last.
+        // This project is not a repository, so the git group registers nothing
+        // and the View group's last entry is the tail. The git half of the
+        // contract needs a repo fixture and is asserted in IdeGitFlowsTest.
         $this->assertSame('Debug Current File', $labels[0], 'the debug group has always led the palette');
-        $this->assertSame('Git: Toggle Blame Annotations', $labels[array_key_last($labels)]);
+        $this->assertSame('Documentation', $labels[array_key_last($labels)], 'view is the last group that registers here');
         $this->assertLessThan(array_search('Show Problems', $labels, strict: true), array_search('Save All', $labels, strict: true), 'file group precedes the search group');
-        $this->assertLessThan(array_search('Git: Stage Current File', $labels, strict: true), array_search('Documentation', $labels, strict: true), 'view group precedes the git group');
+        $this->assertNotContains('Git: Stage Current File', $labels, 'and git registers nothing outside a repository');
     }
 
     public function testEveryPaletteCommandRuns(): void

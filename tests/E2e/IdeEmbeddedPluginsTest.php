@@ -116,7 +116,9 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 100 => function ($tui, $terminal, $ide) use ($embedded): void {
                     $tui->tick();
                     $titles = array_column($this->menus($tui), 'title');
-                    $this->assertSame(['File', 'Edit', 'Navigate', 'Code', 'Plugins', 'Run', 'Git', 'View', 'Help'], $titles, 'the Plugins menu sits between Code and Run');
+                    // No Git: this project is not a repository, and git's group
+                    // is not built where none of its verbs is registered.
+                    $this->assertSame(['File', 'Edit', 'Navigate', 'Code', 'Plugins', 'Run', 'View', 'Help'], $titles, 'the Plugins menu sits between Code and Run');
                     $pluginsMenu = $this->menus($tui)[4];
                     $this->assertFalse($pluginsMenu->items[0]->enabled(), 'no binary configured → the entry is disabled');
 
