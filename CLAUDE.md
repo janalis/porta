@@ -480,9 +480,15 @@ which is now only bare widgets in tests — audited across the round: the histor
 `loadingMore` flag latches instead of staying clear, and a checkbox-column click stops falling
 through to select (which matches the documented intent better than the fallthrough did). Neither
 is reachable in production, where the dispatcher is always injected, but check the code AFTER the
-guard before collapsing one. The audit found exactly one real drop — `FindQueryUpdated` was
-dispatched with no listener, so the find bar stopped repainting on query change, caught by the
-gate below and not by any test. **Measured and left alone, with reasons — do not re-litigate**: `OverlayWidget::onOpen/onClose`
+guard before collapsing one. The audit found one event dispatched with no listener at
+all — `FindQueryUpdated` — which the gate below caught and no test did. **The behavioural claim
+first recorded here was wrong**, and mutation testing corrected it: every path that reaches
+`notifyUpdate()` already has a frame scheduled by someone else (a keystroke in the bar changes the
+render revision, so vendor `Tui::handleInput` requests one; both `open()` callers request one
+explicitly *and* call `setFocus`, which requests one too), so the restored listener is not
+load-bearing on any current path and the find bar never stopped repainting. It stays as the
+intrinsic-repaint spelling — the `Notifier::notify()` precedent — but nothing depends on it, which
+is why no test can guard it: three redundant paths mean no single mutation is distinguishable. **Measured and left alone, with reasons — do not re-litigate**: `OverlayWidget::onOpen/onClose`
 (the base of ~8 overlays; dispatching there broadcasts every overlay open, and restricting it to
 dock panels needs a tab identity `DockPanelWidget` does not have — inventing one whose only
 consumer is an event payload is a model change, not a conversion); the menu bar / context menu

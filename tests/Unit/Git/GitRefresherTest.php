@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
+use Porta\Event\GitCommitted;
 use Porta\Event\GitRemoteCompleted;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
@@ -21,6 +22,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Revolt\EventLoop;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -54,6 +56,23 @@ final class GitRefresherTest extends TestCase
         $this->editor = new CodeEditorWidget();
 
         return new GitRefresher(new GitInfo($this->project->dir), $this->buffers, $this->editor, new StatusBarWidget(), new Tui(terminal: new VirtualTerminal(columns: 80, rows: 10)), $gitSettings);
+    }
+
+    public function testACommitRefreshesTheBranchThroughTheBus(): void
+    {
+        // The refresh verbs are tested directly above and below; what is not
+        // tested anywhere is that a commit reaches them, which is the whole
+        // job of the listener.
+        $refresher = $this->refresher();
+        $events = new EventDispatcher();
+        $events->addListener(GitCommitted::class, $refresher->onGitCommitted(...));
+
+        $events->dispatch(new GitCommitted());
+
+        $this->await(static function () use (&$refresher): bool {
+            return null !== $refresher->branch();
+        }, what: 'the commit triggered the branch refresh');
+        $this->assertSame('trunk', $refresher->branch());
     }
 
     public function testRefreshBranchExposesTheBranchForTheStatusBar(): void

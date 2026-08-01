@@ -852,6 +852,36 @@ final class GitViewControllerTest extends TestCase
         $this->assertFalse(Probe::get($this->diffView, 'readOnly'), 'back on Changes, untouched by stale history data');
     }
 
+    public function testMovingTheHistorySelectionLoadsWhatItLandsOn(): void
+    {
+        // Both loaders are private and were reached only through Probe. The
+        // keyboard test above navigates and re-asserts the SAME patch, so it
+        // passes whether or not the reload happened; emptying either listener
+        // was invisible. This one makes every hop change what is on screen.
+        $controller = $this->controller();
+        file_put_contents($this->project->dir.'/a.txt', data: "one\ntwo\nthree\n");
+        $this->project->commitAll('add three');
+        $controller->open();
+        $this->changes->setFocused(true);
+        $this->changes->handleInput('2'); // History
+        $this->await(fn (): bool => 2 === $this->history->commitCount());
+        $this->await(fn (): bool => str_contains($this->diffText(), '+three'), what: 'the newest commit loads on arrival');
+
+        // Down to the init commit: only GitCommitSelected can load its files,
+        // and .gitignore sorts first, so its patch is what must appear.
+        $this->history->setFocused(true);
+        $this->history->handleInput("\x1b[B");
+        $this->await(fn (): bool => str_contains($this->diffText(), '+.porta/'), what: "the older commit's first file loads");
+        $this->assertStringContainsString('.gitignore', $this->historyText());
+
+        // Into that commit's file list and down to a.txt: only
+        // GitCommitFileSelected can swap the patch.
+        $this->history->handleInput("\r");
+        $this->history->handleInput("\x1b[B");
+        $this->await(fn (): bool => str_contains($this->diffText(), '+two'), what: 'selecting a file loads that file');
+        $this->assertStringNotContainsString('+.porta/', $this->diffText());
+    }
+
     private function historyText(): string
     {
         return implode("\n", array_map(\Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(...), $this->history->render(new RenderContext(44, 20))));
