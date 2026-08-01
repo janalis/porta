@@ -115,12 +115,13 @@ verbatim, and mouse clicks map visual→logical per pane before hit-testing.
 
 ## Plugins
 
-`Plugin/PluginLoader` discovers and activates plugin files at boot (and
-after a live install); `Plugin/PluginManager` holds the committed state and
-wraps every handler/hook in a catch-all; `Plugin/PluginApi` is the
-buffered, per-plugin registration surface; `Plugin/PluginRuntime` wires the
-live IDE seams late in construction; `Plugin/PluginInstaller` copies/clones
-plugin directories for the Settings → Plugins section. A plugin can also PROVIDE
+`Plugin/Runtime/PluginLoader` discovers and activates plugin files at boot
+(and after a live install); `Plugin/Runtime/PluginManager` holds the committed
+state, registers each plugin's listeners on the event bus, and wraps every
+handler and listener in a catch-all; `Plugin/Api/PluginApi` is the buffered,
+per-plugin registration surface; `Plugin/Runtime/PluginRuntime` wires the
+live IDE seams late in construction; `Plugin/Lifecycle/PluginInstaller`
+copies/clones plugin directories for the Settings → Plugins section. A plugin can also PROVIDE
 THE EDITOR PANE for the files it claims: `Editor/EditorPanes` is the registry,
 `Widget/EditorPaneWidget` the base a pane extends, and both bundled viewers are
 plugins that own their whole implementation — the image viewer, and the graph
