@@ -25,6 +25,8 @@ use Porta\Event\GitRemoteRequested;
 use Porta\Event\GitViewModeRequested;
 use Porta\Git\GitInfo;
 use Porta\Git\GitPanes;
+use Porta\Git\GitRemote;
+use Porta\Git\GitRemoteCommands;
 use Porta\Git\GitViewController;
 use Porta\Git\GitViewMode;
 use Porta\Git\RefreshMode;
@@ -117,6 +119,7 @@ final class GitViewControllerTest extends TestCase
     private int $committed = 0;
     private CodeEditorWidget $editor;
     private LayoutController $layoutController;
+    private EventDispatcher $dispatcher;
 
     private function controller(Presence $realRepo = Presence::With, int $historyPageSize = 200): GitViewController
     {
@@ -132,7 +135,8 @@ final class GitViewControllerTest extends TestCase
         }
         $this->git = new GitInfo($this->project->dir);
 
-        $dispatcher = new EventDispatcher();
+        $this->dispatcher = new EventDispatcher();
+        $dispatcher = $this->dispatcher;
         $this->changes = new ChangesListWidget(new Translator('en'), events: $dispatcher);
         $this->diffView = new DiffViewWidget(new Translator('en'), events: $dispatcher);
         $this->commitBox = new CommitBoxWidget(new Translator('en'));
@@ -170,6 +174,8 @@ final class GitViewControllerTest extends TestCase
             $this->tui,
         );
         $t = new Translator('en');
+        $views = new WorkspaceViews();
+        $notifier = new Notifier($this->statusBar, $this->tui);
         $this->layoutController = new LayoutController(
             new LayoutStore($this->project->dir),
             $this->tui,
@@ -190,7 +196,7 @@ final class GitViewControllerTest extends TestCase
             $this->gitLeft,
             $this->menuBar,
             $this->tui,
-            new Notifier($this->statusBar, $this->tui),
+            $notifier,
             $t,
             new class($editWidget) implements EditorAreaPanes {
                 public function __construct(
@@ -206,7 +212,11 @@ final class GitViewControllerTest extends TestCase
             $dispatcher,
             $this->layoutController,
             new Clipboard($this->tui),
-            new WorkspaceViews(),
+            $views,
+            // Wired, because the container wires it: with the nullable
+            // dependency left null the remote listener is a no-op, and a test
+            // of it can only assert that nothing threw.
+            new GitRemoteCommands(new GitRemote($this->project->dir), $notifier, $t, $dispatcher, $this->editor, $views, $this->tui),
             historyPageSize: $historyPageSize,
         );
         // The container compiles these from #[AsEventListener]; a unit test
@@ -1025,14 +1035,26 @@ final class GitViewControllerTest extends TestCase
     public function testARemoteKeyFromAPaneReachesTheRemoteCommands(): void
     {
         // The two git panes used to hold a closure each, both calling the same
-        // method. One event, one listener — and with no GitRemoteCommands
-        // wired (the nullable dependency) it is a no-op rather than a fatal.
+        // method; now they dispatch and one listener performs. The listener is
+        // a single delegating line, so the only assertion worth making is that
+        // the operation comes out the far end — which needs a real fetch, here
+        // against a repo whose origin is itself.
         $controller = $this->controller();
+        $this->project->git('remote', 'add', 'origin', $this->project->dir);
         $controller->open();
+
+        $completed = [];
+        $this->dispatcher->addListener(GitRemoteCompleted::class, static function (GitRemoteCompleted $event) use (&$completed): void {
+            $completed[] = $event;
+        });
 
         $this->changes->setFocused(true);
         $this->changes->handleInput('f'); // fetch
 
-        $this->addToAssertionCount(1); // reaching here IS the assertion: no throw
+        $this->await(static function () use (&$completed): bool {
+            return [] !== $completed;
+        });
+        $this->assertSame('fetch', $completed[0]->operation, 'the key press must reach GitRemoteCommands, not merely dispatch');
+        $this->assertTrue($completed[0]->ok);
     }
 }
