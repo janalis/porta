@@ -108,3 +108,37 @@ Plus, for the plugin-facing subset,
 `PluginObservableContractTest` pins which events are public API, requires
 their payloads to be scalars, and requires each to be named in
 [plugins.md](plugins.md).
+
+## What the gates do NOT check
+
+Neither gate proves a listener *does* anything. They prove one exists and that
+a command has exactly one — a listener whose body you delete still satisfies
+both.
+
+That is not hypothetical. In August 2026 every listener was mutation-tested by
+replacing its body with `return;` and running the suite; **five of forty**
+survived, each an untested seam where both halves had tests and the join
+between them did not. The recurring shapes, worth recognising in review:
+
+- **A `?Foo $x = null` dependency the test never passes.** `$this->x?->act()`
+  short-circuits, so the line is *covered* on every run while the call never
+  happens. Check the compiled container's resolved arguments before concluding
+  it is a live bug — in that case production wired it and only the test did not.
+- **A test asserting a negative.** "Stale results get dropped" stays green when
+  the loader never runs at all.
+- **A test that re-asserts the same value.** Navigating a list and checking the
+  same patch is still shown passes whether or not the reload happened.
+- **A subsystem tested only by booting in the target state.** The RTL suite
+  starts mirrored, so the listener handling a *live* locale switch was reached
+  by nothing.
+
+So: when you add a listener, delete its body and confirm a test goes red.
+Mutation-check the fix too — a replacement test can be satisfied by a different
+code path than the one you meant (one here was, because switching to the
+History tab auto-loads the newest commit by another route). For a multi-line
+listener, mutate each line alone.
+
+A survivor is not automatically a defect. `FindQueryUpdated`'s listener is one
+`requestRender()`, and three other mechanisms already schedule that frame, so
+no mutation of it is distinguishable. That is redundancy, not a gap — say so in
+the commit rather than inventing a test that cannot fail.

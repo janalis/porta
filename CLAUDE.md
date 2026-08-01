@@ -503,7 +503,11 @@ byte transport keeps `WidgetHooks` naming `RunController`. **The round's own gat
 `EventListenerWiringTest::testEveryEventCoreDispatchesHasSomewhereToLand`: a compiled listener
 cannot be forgotten loudly — no build breaks, nothing throws, the reaction simply never happens —
 so every `src/Event/` class must have a listener unless it is one of the three pinned as
-observed-only-at-runtime by plugins.
+observed-only-at-runtime by plugins. **Neither gate proves a listener DOES anything**, and a
+listener whose body you delete satisfies both: the August 2026 sweep mutated all forty and five
+survived as untested seams (the shapes, and why a survivor is not automatically a defect, are in
+`docs/events.md` under "What the gates do NOT check"). A new listener is mutation-checked or it
+is unguarded.
 
 **Events.** `symfony/event-dispatcher`, kernel-less: `config/services.php` registers the
 `#[AsEventListener]` attribute autoconfiguration and the `RegisterListenersPass` (the service id
