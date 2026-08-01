@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Settings\SettingsController;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
@@ -13,6 +14,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 
 /**
  * RTL locale mirroring: layout, per-pane row reordering, and
@@ -24,6 +26,41 @@ final class IdeRtlLocaleTest extends TestCase
     use ClearsPortaLsp;
     use PreservesPath;
     use RunsIde;
+
+    public function testSwitchingTheLocaleLiveRelabelsTheMenuAndMirrorsTheLayout(): void
+    {
+        // Every other test here BOOTS mirrored, so the listener that reacts to
+        // a live switch — one menu rebuild, one applyDirection — was reached by
+        // nothing: emptying it left the whole suite green.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui): void {
+                    $ids = array_map(static fn ($w) => $w->getId(), $tui->getById('main')->all());
+                    $this->assertSame(['tree', 'separator', 'editor-pane'], $ids, 'LTR at boot');
+                    $this->assertStringContainsString('File', AnsiUtils::stripAnsiCodes(implode('', $tui->getById('menu')->render(new RenderContext(120, 1)))));
+                },
+                400 => static function ($tui, $terminal, $ide): void {
+                    Services::resolve($ide, SettingsController::class)->changeSetting('language', 'he');
+                    $tui->tick();
+                },
+                600 => function ($tui): void {
+                    $ids = array_map(static fn ($w) => $w->getId(), $tui->getById('main')->all());
+                    $this->assertSame(['editor-pane', 'separator', 'tree'], $ids, 'applyDirection mirrored the panes');
+
+                    $menu = AnsiUtils::stripAnsiCodes(implode('', $tui->getById('menu')->render(new RenderContext(120, 1))));
+                    $this->assertStringContainsString('קובץ', $menu, 'the menu rebuilt in the new locale');
+                    $this->assertStringNotContainsString('File', $menu, 'and dropped the English labels');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
 
     public function testRtlLocaleMirrorsTheMainLayoutSidebarToTheRight(): void
     {
