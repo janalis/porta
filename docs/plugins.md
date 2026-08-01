@@ -587,6 +587,7 @@ Actions (from handlers/hooks):
 | `openFile(string $path)` | Open a file in the editor |
 | `jumpTo(int $line, int $column = 0)` | Move the caret (0-based) |
 | `setDiagnostics(string $path, array $diagnostics)` | Publish editor diagnostics; each item is `['line' => int (0-based), 'message' => string, 'severity' => 1–4 (optional, 1 = error), 'column' => int (optional)]`. An empty list clears. |
+| `setLineAnnotations(array $byLine)` | Show a dim trailing note after lines of the ACTIVE document — `[0-based line => string]`. An empty array clears. Takes no path: the editor drops annotations on every document show, so re-publish from `onBufferSwitched` to keep them. |
 | `projectRoot(): string` | The project root (also safe during `activate()`) |
 | `setting(string $key): bool\|int\|string` | The current value of a setting this plugin registered — the user's value coerced to the declared kind, or the default. Safe during `activate()`, but `registerSetting()` must run first. |
 | `changeSetting(string $key, bool\|int\|string $value)` | Persist a new value for a setting this plugin registered — coerced, kept live and written to `.porta.json`, exactly like a Settings-page edit. An action method (throws during `activate()`). |
@@ -595,6 +596,13 @@ Diagnostics published via `setDiagnostics` behave exactly like LSP
 diagnostics — inline end-of-line messages, the scroll-stripe, and the
 Problems panel — and the two sources replace each other per file (last
 writer wins).
+
+`setLineAnnotations` writes the slot `git blame` uses — one dim note after each
+line, in the active document only. It is the one editor decoration a plugin may
+write: gutter marks, breakpoints and the stopped-line band stay core's, because
+a plugin cannot invent the `Role` they paint with. The bundled `git` plugin's
+blame mode is the reference use; a coverage overlay or an inline test-result
+strip is the same shape.
 
 ### Applying an in-place formatter's output
 

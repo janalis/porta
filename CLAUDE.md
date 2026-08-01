@@ -300,9 +300,10 @@ change — re-selecting a setting you already have must not flash the pane), `Ed
 (the menu chain). the loader's native single-impl aliasing covers each with **zero** container config. A consumer
 whose methods span TWO roles takes **two params of the same widget** (each resolves through its
 own alias natively; tests hand in two narrow fakes): the local-history plugin's `HistoryTool`
-(`ActiveFileProvider` + `EditorInvalidator`), `Git/BlameAnnotations` (`ActiveFileProvider` +
-`EditorDecorationSink`), `Search/Everywhere/SearchEverywhereFactory` (`SearchOverlay` +
-`EditorTextAccess`). Consumers stay concrete **on purpose**, each noted at the site:
+(`ActiveFileProvider` + `EditorInvalidator`) and
+`Search/Everywhere/SearchEverywhereFactory` (`SearchOverlay` + `EditorTextAccess`). The third
+example was `Git/BlameAnnotations`, which round 32 moved into the bundled `git` plugin — a plugin
+reaches the same two roles through `PluginApi::activeFile()` and `setLineAnnotations()` instead. Consumers stay concrete **on purpose**, each noted at the site:
 `Lsp/AbstractLspController` (its three subclasses reach the inherited `$editor` for eleven
 methods), `Git/GitRemoteCommands`, `Editor/EditorFileActions` and `Run/RunController` (they also
 hand the widget to `setFocus()` / `EditorFindTarget`), `Input/EditorLayoutPanes` (the mouse
@@ -1271,6 +1272,23 @@ cannot dispatch** — 13 of the 15 `Git*` events are widget-dispatched, so the m
 not an integration. What was done instead: git degrades at the CHROME level (below), and two
 inbound edges were cut.
 
+**Blame is the one slice of git that DID move (round 32), and its shape is the test for any
+future one.** `plugins/git/` owns nothing of the workbench — no widget, no layout region, no
+full-screen view — and dispatches no events; it listens, reads one core setting, writes one editor
+decoration and flashes. Every one of those had a seam except the decoration, which is now
+`Editor/LineAnnotationSink` + `PluginApi::setLineAnnotations()` (narrow for `DiagnosticsSink`'s
+reason — `EditorDecorationSink` has eight setters a line-annotator has no business with — and
+justified without git: coverage overlays, inline test results). Both verbs keep core's BARE ids
+through `adoptCommand`, so "Blame Current Line" stays in the Git menu; that needed
+`git_blame`/`git_toggle_blame` added to `ActionCatalog` as `adoptable` **keyless**, and the rule
+that a keyless entry must be widget-bound was relaxed for adoptable ids — it asks whether an
+action is INVOCABLE, and an adopted one is, from the palette and its menu item. The namespace is
+`Porta\GitPlugin`, NOT `Porta\Git`: `composer arch` keys edges on the FQCN, so sharing core's
+prefix would merge the two halves in the graph and let a class-name collision resolve silently.
+The plugin news its OWN `GitProcessRunner` — core's is a container service and unreachable, and a
+second lane is right anyway, since a whole-file blame has no business queueing behind the view's
+status/diff traffic (`GitRemote`'s argument).
+
 **Two decoupling refactors were measured in the same round and also REJECTED — do not re-propose
 them without new numbers.** `Layout/ViewRegion` (collapsing git's and settings'
 sidebar/separator/area triples into one shape) deletes ~36 lines and adds ~45: the five
@@ -1367,9 +1385,10 @@ still after every *rebuild* listener, which is what its contract means. Plugin c
 `CommandRegistry` after core (core wins key collisions) and surface in the palette plus a
 trailing translated "Plugins" menu (`MenuModel::build`'s `$pluginSpecs`, grouped per plugin
 with separators). Prefer anonymous
-classes in plugin files — cross-plugin class redeclaration is an uncatchable fatal. TWELVE plugins
+classes in plugin files — cross-plugin class redeclaration is an uncatchable fatal. THIRTEEN plugins
 ship in this repo under `plugins/` (also: `tempest`, `chroma`, `phpantom`, `phpactor`, and the
-FOUR core features that moved out — `image-viewer`, `graph-viewer`, `todo`, `local-history`);
+FIVE core features that moved out — `image-viewer`, `graph-viewer`, `todo`, `local-history`,
+`git`);
 four are
 the complete reference patterns: `php-cs-fixer` (async process via
 `Support/AsyncProcess`, binary discovery via `PluginApi::projectRoot()`, persisted
