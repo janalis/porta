@@ -299,7 +299,7 @@ decoration setters), `EditorViewOptions` (the display toggles; the six flags the
 change — re-selecting a setting you already have must not flash the pane), `EditorIndentTarget`, `EditorKeymapProvider`, and `Workbench/Menu/EditorCommandTarget`
 (the menu chain). the loader's native single-impl aliasing covers each with **zero** container config. A consumer
 whose methods span TWO roles takes **two params of the same widget** (each resolves through its
-own alias natively; tests hand in two narrow fakes): `History/LocalHistoryController`
+own alias natively; tests hand in two narrow fakes): the local-history plugin's `HistoryTool`
 (`ActiveFileProvider` + `EditorInvalidator`), `Git/BlameAnnotations` (`ActiveFileProvider` +
 `EditorDecorationSink`), `Search/Everywhere/SearchEverywhereFactory` (`SearchOverlay` +
 `EditorTextAccess`). Consumers stay concrete **on purpose**, each noted at the site:
@@ -614,7 +614,7 @@ reorders it **within its family** (session tabs → `TerminalSessions::move`, to
 `RunController::closeSession`); ×ing a Search tab records its query/mask into history
 (`closeSearch`); the last tool × closes the panel (MRU reveal). All three panels share one height (`bottomPanelHeightPercent`
 → `BottomDock::setPanelRows`). A debugger stop auto-reveals the Debug tab (re-opened, watches
-reseeded, if ×'d). `Search/TodoScanner` (ide_todo, alt+8) greps `TODO|FIXME` case-sensitively
+reseeded, if ×'d). the todo plugin's `TodoScan` (ide_todo, alt+8) greps `TODO|FIXME` case-sensitively
 over the shared `ProjectSearch` engine (single slot — a scan and a find cancel each other,
 latest wins).
 
@@ -666,12 +666,12 @@ geometry it is about to be drawn with.
   and that is what the banner shows.
 - **`GraphViewer\Graph\GraphRenderMode`** (backed — it crosses `.porta.json`) picks the rendering: `Bitmap`
   or `Cells`, the `graphRender` core setting for the default and `v` (`graph_render_mode` in
-  `ActionCatalog`) to flip live. `Widget/Render/GraphRenderer`'s cell rendering is NOT a
+  `ActionCatalog`) to flip live. `Render/GraphRenderer`'s cell rendering is NOT a
   degraded mode — it draws labels as real terminal text, readable at pane sizes where the
   bitmap's own type is a few pixels tall — and it is what paints before the first bitmap
   arrives, when `dot` has no PNG support at all (a graphviz built without libgd, whose stderr
   becomes the banner), and whenever `Cells` is selected (in which mode NO bitmap is ever
-  requested). Selection stays layout-driven in both: `Widget/Render/GraphSelectionOverlay`
+  requested). Selection stays layout-driven in both: `Render/GraphSelectionOverlay`
   frames the selected node over the picture using the same `GraphCellGrid` transform
   `GraphRenderer::nodeAt()` inverts for clicks, so click and frame agree by construction.
 - The widget caches layouts per DOT hash (LRU 8 — tab switches and unchanged regenerations never
@@ -729,7 +729,7 @@ checkerboard's squares stay 8 SCREEN pixels instead of shrinking with the zoom.
 **The two VECTOR viewers share one arrangement**, because a graph and an SVG are the same kind of
 source — no resolution of their own until something picks one. Both hold the SOURCE (`Buffer::$graphDot`
 / `Buffer::$svg`, `isVector()`), ask an external renderer for pixels at the resolution the zoom
-needs (`dot -Tpng -Gdpi=` / `Image/SvgRasterizer` over `rsvg-convert -z` or ImageMagick
+needs (`dot -Tpng -Gdpi=` / `ImageViewer/SvgRasterizer` over `rsvg-convert -z` or ImageMagick
 `-density`, both async, stdin→stdout, one slot latest-wins), hold the previous bitmap on screen
 while it works, keep ONE bitmap at a time, and re-render through
 **`Support/DebouncedRequest`** (coalesce on the wanted value, cancel-and-re-arm, forget on reset —
@@ -793,11 +793,14 @@ floating feature lands one class in each:
   here. **`FindInFilesModal`'s layout methods deliberately do not** — they read ~40 of its fields, so
   moving them would need a 40-field VO or a back-reference to the modal; `OverlayHost`'s layouts were
   extractable only because they already took their state as parameters. Measure before assuming.
-- Outbound hooks travel as **one callbacks DTO**, not per-slot fluent setters:
-  `Widget/EditorCallbacks`, `Overlay/State/FindModalCallbacks`, `Widget/Git/DiffViewCallbacks`,
-  and (round 8, user-elected) `HistoryListCallbacks`/`ChangesListCallbacks`/`DebugPanelCallbacks`/
-  `TerminalPanelCallbacks`/`DockTabsCallbacks` — every ≥3-slot widget wires one `setCallbacks()`
-  call; a bare widget holds an empty DTO and fires nothing. `ResultsPanelWidget`'s four-slot bag
+- Outbound hooks travelled as **one callbacks DTO** — round 30 dissolved most of them into
+  dispatched events, and five are GONE (`DiffViewCallbacks`, `HistoryListCallbacks`,
+  `ChangesListCallbacks`, `TerminalPanelCallbacks`, `DockTabsCallbacks`). What survives is what
+  could not convert: `Widget/EditorCallbacks` (handler INTERFACES, never closures),
+  `Overlay/State/FindModalCallbacks` (its `previewReplacement` returns a string per rendered row,
+  so the DTO stands whole) and `Widget/DebugPanelCallbacks` (one slot left, continuation-passing —
+  it keeps the DTO name to say it is different). A bare widget holds an empty DTO and fires
+  nothing. `ResultsPanelWidget`'s four-slot bag
   is still left alone on purpose. The modal's former `BoxPosition`/`BoxSize`/`ScopeChoices` VOs
   were **reversed back into `FindInFilesModal` as plain fields** in the same round (single
   consumer each; the cleaned logic they introduced stayed) — a single-consumer VO needs a second

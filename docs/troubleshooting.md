@@ -26,7 +26,7 @@ being swallowed upstream — see the known vendor issues below.
   backlog passes 8 MiB the session is dropped like a crashed server.
 - **Latched synchronized output / lost mouse modes**: every ~30 s the exact
   mouse-reporting modes are re-asserted and any latched `?2026` synchronized
-  update is released (`Ui/TerminalStateRefresher`), so an interrupted frame
+  update is released (`Workbench/TerminalStateRefresher`), so an interrupted frame
   write or an external stop/resume self-heals within half a minute.
 - **Blocking terminal output** (the cause a captured freeze.log backtrace
   proved: the loop parked in `fwrite(STDOUT)` under terminal back-pressure —

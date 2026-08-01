@@ -62,7 +62,7 @@ the screen writer converts to a hardware cursor position.
 
 Single-sourced. `Config/ActionCatalog` is the descriptor table for every
 rebindable action (label + default keys). `Config/CommandRegistry` holds
-IDE-level commands (id → handler, key-bound?, in-palette?). `Ui/MenuModel`
+IDE-level commands (id → handler, key-bound?, in-palette?). `Workbench/Menu/MenuModel`
 builds the menu bar and context menus from these. Don't hand-maintain
 parallel keybinding/palette/menu lists — extend the catalog/registry.
 
