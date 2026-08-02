@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferService;
+use Porta\Editor\OpenFocus;
 use Porta\Ide;
 use Porta\Lsp\Uri;
 use Porta\Tests\Support\PreservesPath;
@@ -106,6 +107,20 @@ final class IdeDockToolsTest extends TestCase
                     // A file with no open buffer is a silent no-op, not a crash.
                     self::bufferService($ide)->applyChangeMarks($project->path('nope.php'), [0 => 'added']);
                     $this->assertSame([1 => 'modified'], $decorations->vcsMarks(), 'and nothing else moved');
+
+                    // The tab switch this test is named for. A subprocess that
+                    // answers late names the file it diffed, so the marks must
+                    // reach that BUFFER without touching the editor, which is
+                    // showing something else.
+                    self::bufferService($ide)->openFile($project->path('b.php'), OpenFocus::Editor);
+                    $this->assertSame([], $decorations->vcsMarks(), 'b.php has none of its own');
+
+                    self::bufferService($ide)->applyChangeMarks((string) realpath($project->path('a.php')), [0 => 'added', 1 => 'deleted']);
+                    $this->assertSame([], $decorations->vcsMarks(), 'a background answer does not paint over the file on screen');
+
+                    // And it was stored, not dropped: switching back replays it.
+                    self::bufferService($ide)->openFile($project->path('a.php'), OpenFocus::Editor);
+                    $this->assertSame([0 => 'added', 1 => 'deleted'], $decorations->vcsMarks(), 'the switch back replays what arrived while it was hidden');
                 },
             ],
         );
@@ -469,7 +484,7 @@ final class IdeDockToolsTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
-                    self::bufferService($ide)->openFile($project->path('b.php'), \Porta\Editor\OpenFocus::Keep);
+                    self::bufferService($ide)->openFile($project->path('b.php'), OpenFocus::Keep);
                     $tui->handleInput("\x1b6"); // alt+6 → a dock tool tab exists
                     $tui->tick();
                     $renderer = Services::resolve($ide, Renderer::class);
