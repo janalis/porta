@@ -104,9 +104,16 @@ final class EventListenerWiringTest extends TestCase
     {
         $dispatcher = $this->dispatcher();
 
-        foreach ([BufferOpened::class, BufferSaved::class, BufferSwitched::class] as $event) {
+        foreach ([BufferSaved::class, BufferSwitched::class] as $event) {
             $this->assertNotEmpty($dispatcher->getListeners($event), $event.' has compiled listeners');
         }
+
+        // BufferOpened deliberately has none. Its last core listener was the
+        // git refresher's change-mark hook, and marks are a plugin's job now —
+        // so the event survives as a plugin hook (onFileOpened) rather than as
+        // something core reacts to. Asserting it still had one would be
+        // asserting that the handover did not happen.
+        $this->assertSame([], $dispatcher->getListeners(BufferOpened::class), 'BufferOpened is a plugin hook now');
     }
 
     public function testNoCoreListenerSitsWhereAPluginWould(): void
@@ -251,6 +258,13 @@ final class EventListenerWiringTest extends TestCase
             'ActiveBufferChanged', // plugins' onBufferSwitched
             'IdeReady',
             'IdeShuttingDown',
+            // These three lost their last core listener when change marks
+            // became a version-control plugin's job. Core still dispatches
+            // them; the only reactions are registered at runtime, through
+            // onFileOpened, onFileReloaded and on(WorkingTreeChanged).
+            'BufferOpened',
+            'BufferReloaded',
+            'WorkingTreeChanged',
         ];
 
         $dispatcher = $this->dispatcher();

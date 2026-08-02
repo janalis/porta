@@ -15,7 +15,6 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\Event\SettingsSectionRequested;
 use Porta\Git\GitInfo;
-use Porta\Git\GitRefresher;
 use Porta\Git\GitSettings;
 use Porta\Highlight\ColorMode;
 use Porta\Highlight\HighlightPreferences;
@@ -215,7 +214,7 @@ final class SettingsViewControllerTest extends TestCase
             IdeConfig::DEFAULT_SETTINGS,
             $gitSettings,
             $editor,
-            new GitRefresher(new GitInfo($this->project->dir), new BufferManager(), $editor, $status, $this->tui, $gitSettings),
+            new EventDispatcher(),
             $status,
             $this->tui,
             $notifier,

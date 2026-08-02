@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Git;
 
+use Porta\Event\WorkingTreeChanged;
 use Porta\I18n\Translator;
 use Porta\Support\Clipboard;
 use Porta\Support\Outcome;
@@ -12,6 +13,7 @@ use Porta\Ui\Glyphs;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\WorkspaceViews;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -34,6 +36,7 @@ final class GitCommands
         private readonly string $rootDir,
         private readonly WorkspaceViews $views,
         private readonly Clipboard $clipboard,
+        private readonly EventDispatcherInterface $dispatcher,
     ) {}
 
     public function stageCurrent(): void
@@ -50,7 +53,7 @@ final class GitCommands
                     ? $this->translator->trans('Staged %path%', ['%path%' => ProjectPaths::relative($this->rootDir, $path)])
                     : $this->translator->trans('Stage failed'),
             );
-            $this->refresher->refreshActiveMarks();
+            $this->dispatcher->dispatch(new WorkingTreeChanged());
         });
     }
 
@@ -73,7 +76,7 @@ final class GitCommands
                         : $this->translator->trans('Commit failed (nothing staged?)'),
                 );
                 $this->refresher->refreshBranch();
-                $this->refresher->refreshActiveMarks();
+                $this->dispatcher->dispatch(new WorkingTreeChanged());
             });
         });
     }
@@ -89,7 +92,7 @@ final class GitCommands
         $this->git->stashPush(function (Outcome $ok, string $line): void {
             $this->notifier->flash($ok->isOk() ? $line : $this->translator->trans('Stash failed'), $ok->isOk() ? 3.0 : 6.0);
             if ($ok->isOk()) {
-                $this->refresher->refreshActiveMarks();
+                $this->dispatcher->dispatch(new WorkingTreeChanged());
             }
             $this->tui->requestRender();
         });
@@ -187,7 +190,7 @@ final class GitCommands
                     : $this->translator->trans('Nothing to undo'),
             );
             $this->refresher->refreshBranch();
-            $this->refresher->refreshActiveMarks();
+            $this->dispatcher->dispatch(new WorkingTreeChanged());
         });
     }
 
@@ -282,7 +285,7 @@ final class GitCommands
     {
         $this->notifier->flash($ok->isOk() ? $success : $error, $ok->isOk() ? 3.0 : 6.0);
         $this->refresher->refreshBranch();
-        $this->refresher->refreshActiveMarks();
+        $this->dispatcher->dispatch(new WorkingTreeChanged());
     }
 
     /** A conflicting pop/apply reports on stdout, not stderr — provide the message git doesn't. */
@@ -440,7 +443,7 @@ final class GitCommands
             // HEAD moved and files may have changed on disk; the filesystem
             // poll reconciles open buffers, these refresh the chrome now.
             $this->refresher->refreshBranch();
-            $this->refresher->refreshActiveMarks();
+            $this->dispatcher->dispatch(new WorkingTreeChanged());
         }
         $this->tui->requestRender();
     }

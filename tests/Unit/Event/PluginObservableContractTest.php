@@ -23,10 +23,12 @@ final class PluginObservableContractTest extends TestCase
     private const array OBSERVABLE = [
         'ActiveBufferChanged',
         'GitCommitted',
+        'GitRemoteCompleted',
         'IdeReady',
         'IdeShuttingDown',
         'LocaleChanged',
         'ThemeChanged',
+        'WorkingTreeChanged',
     ];
 
     /** @return list<class-string> */

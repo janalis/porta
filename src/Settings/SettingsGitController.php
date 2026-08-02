@@ -6,11 +6,12 @@ namespace Porta\Settings;
 
 use Porta\Config\PortaJsonWriter;
 use Porta\Editor\EditorViewOptions;
-use Porta\Git\GitRefresher;
+use Porta\Event\WorkingTreeChanged;
 use Porta\Git\GitSettings;
 use Porta\I18n\Translator;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Tui\Tui;
 
@@ -44,7 +45,7 @@ final class SettingsGitController
         private array $settings,
         private readonly GitSettings $gitSettings,
         private readonly EditorViewOptions $editor,
-        private readonly GitRefresher $gitRefresher,
+        private readonly EventDispatcherInterface $dispatcher,
         private readonly StatusBarWidget $statusBar,
         private readonly Tui $tui,
         private readonly Notifier $notifier,
@@ -123,7 +124,7 @@ final class SettingsGitController
         // @mago-expect lint:no-else-clause -- symmetric on/off branches converging on the shared requestRender() below
         if ($on) {
             $this->editor->enableVcsGutter();
-            $this->gitRefresher->refreshActiveMarks();
+            $this->dispatcher->dispatch(new WorkingTreeChanged());
         } else {
             $this->editor->disableVcsGutter();
         }

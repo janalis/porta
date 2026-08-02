@@ -210,36 +210,6 @@ final class IdeGitFlowsTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    public function testADiskReloadRefreshesTheGutterMarks(): void
-    {
-        // The poller used to call GitRefresher directly; it dispatches
-        // BufferReloaded now. Nothing asserted the effect through EITHER
-        // spelling, so removing the call was invisible — this is the whole
-        // chain: external write → poll → reload → marks.
-        $this->skipWithoutGit();
-        $project = new TempProject(['a.txt' => "one\ntwo\n"]);
-        $project->initGit();
-        $project->commitAll('init');
-
-        $this->runIde(
-            $project,
-            $project->path('a.txt'),
-            [
-                300 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->assertSame([], Probe::get($tui->getById('editor'), 'decorations')->vcsMarks(), 'committed and unmodified: no marks');
-
-                    $project->write('a.txt', "one\nCHANGED\n"); // external edit
-                    $ide->pollFilesystem();
-
-                    $this->await(static fn (): bool => [] !== Probe::get($tui->getById('editor'), 'decorations')->vcsMarks(), what: 'the reload recomputed the marks');
-                    $this->assertArrayHasKey(1, Probe::get($tui->getById('editor'), 'decorations')->vcsMarks(), 'the changed line is marked');
-                },
-            ],
-        );
-
-        $this->addToAssertionCount(1);
-    }
-
     public function testInsideARepositoryTheGitVerbsRegisterLast(): void
     {
         // The other half of the palette-order contract: registration order IS
@@ -421,7 +391,7 @@ final class IdeGitFlowsTest extends TestCase
         );
     }
 
-    public function testGitGutterMarksAndBranchInStatusBar(): void
+    public function testTheBranchResolvesIntoTheStatusBar(): void
     {
         if (!$this->gitAvailable()) {
             $this->markTestSkipped('git binary not available');
@@ -449,12 +419,10 @@ final class IdeGitFlowsTest extends TestCase
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     // Branch name in the status bar (default branch: main or master)
                     $this->assertMatchesRegularExpression('/\b(main|master)\b/', $screen);
+                    // The gutter MARKS are the git plugin's now and are
+                    // asserted in its own suite; the width contract the gutter
+                    // column imposes is still core's.
                     $editor = $tui->getById('editor');
-                    $joined = static fn (): string => implode('', $editor->render(new \Symfony\Component\Tui\Render\RenderContext(80, 10)));
-                    // Modified (blue ┆) on line 2, added (green ▎) on line 4
-                    $this->await(static fn (): bool => str_contains($joined(), "\x1b[38;5;75m┆"), what: 'the modified gutter mark to land');
-                    $this->assertStringContainsString("\x1b[38;5;114m▎", $joined(), 'added mark present');
-                    // Exact width contract still holds with the git strip
                     foreach ($editor->render(new \Symfony\Component\Tui\Render\RenderContext(80, 10)) as $line) {
                         $this->assertSame(80, AnsiUtils::visibleWidth($line));
                     }

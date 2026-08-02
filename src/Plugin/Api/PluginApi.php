@@ -8,6 +8,7 @@ use Porta\Config\ActionCatalog;
 use Porta\Editor\OpenFocus;
 use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferOpened;
+use Porta\Event\BufferReloaded;
 use Porta\Event\BufferSaved;
 use Porta\Event\IdeReady;
 use Porta\Event\IdeShuttingDown;
@@ -626,6 +627,22 @@ final class PluginApi
     public function onFileSaved(\Closure $listener): void
     {
         $this->listen(BufferSaved::class, static fn (BufferSaved $event) => $listener($event->buffer->path));
+    }
+
+    /**
+     * The poller replaced a clean buffer with what the file now holds on disk.
+     *
+     * Sugar over the internal {@see BufferReloaded}, which carries a mutable
+     * `Buffer` and so cannot be observable — the adapter hands the path only,
+     * exactly as {@see onFileOpened} and {@see onFileSaved} do. A producer of
+     * file-scoped state (change marks, coverage) wants this: the content moved
+     * without a save.
+     *
+     * @param \Closure(string): void $listener receives the absolute path
+     */
+    public function onFileReloaded(\Closure $listener): void
+    {
+        $this->listen(BufferReloaded::class, static fn (BufferReloaded $event) => $listener($event->buffer->path));
     }
 
     /**

@@ -37,11 +37,6 @@ use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Menu\MenuSurface;
 use Porta\Workbench\Notifier;
 use Symfony\Component\EventDispatcher\EventDispatcher;
-use Symfony\Component\Tui\Input\Keybindings;
-use Symfony\Component\Tui\Render\Renderer;
-use Symfony\Component\Tui\Style\StyleSheet;
-use Symfony\Component\Tui\Terminal\VirtualTerminal;
-use Symfony\Component\Tui\Tui;
 
 final class PluginApiTest extends TestCase
 {

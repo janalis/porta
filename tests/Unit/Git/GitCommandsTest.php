@@ -22,13 +22,8 @@ use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\WorkspaceViews;
 use Revolt\EventLoop;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Process\Process;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
-use Symfony\Component\Tui\Input\Keybindings;
-use Symfony\Component\Tui\Render\RenderContext;
-use Symfony\Component\Tui\Render\Renderer;
-use Symfony\Component\Tui\Style\StyleSheet;
-use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -46,6 +41,7 @@ final class GitCommandsTest extends TestCase
     use GitBinary;
     use StatusReads;
 
+    private EventDispatcher $events;
     private TempProject $project;
     private CodeEditorWidget $editor;
     private StatusBarWidget $statusBar;
@@ -590,7 +586,7 @@ final class GitCommandsTest extends TestCase
         $this->statusBar = new StatusBarWidget();
         $this->tui = TestTui::create(100, 24);
         $translator = new Translator('en');
-        $refresher = new GitRefresher($git, new \Porta\Editor\BufferManager(), $this->editor, $this->statusBar, $this->tui);
+        $refresher = new GitRefresher($git, $this->statusBar, $this->tui);
 
         return new GitCommands(
             $git,
@@ -602,6 +598,7 @@ final class GitCommandsTest extends TestCase
             $this->project->dir,
             new WorkspaceViews(),
             new Clipboard($this->tui),
+            $this->events = new EventDispatcher(),
         );
     }
 

@@ -6,9 +6,6 @@ namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
-use Porta\Editor\BufferManager;
-use Porta\Git\GitInfo;
-use Porta\Git\GitRefresher;
 use Porta\Git\GitSettings;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsGitController;
@@ -20,6 +17,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -44,13 +42,12 @@ final class SettingsGitControllerTest extends TestCase
         $this->editor = new CodeEditorWidget();
         $this->status = new StatusBarWidget();
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
-        $refresher = new GitRefresher(new GitInfo($rootDir), new BufferManager(), $this->editor, $this->status, $tui, $this->git);
 
         return new SettingsGitController(
             $settings + IdeConfig::DEFAULT_SETTINGS,
             $this->git,
             $this->editor,
-            $refresher,
+            new EventDispatcher(),
             $this->status,
             $tui,
             new Notifier($this->status, $tui),
