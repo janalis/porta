@@ -685,12 +685,20 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $lifecycle->enable('needy');
                     $lifecycle->disable('needy'); // before the subprocess can exit
 
+                    // Read the toasts HERE, not after the await below: their
+                    // lifetime is wall-clock, and waiting on a subprocess is
+                    // exactly long enough for the disable's own toast to age
+                    // out under the slower coverage run. That failure looked
+                    // like the disable never flashed.
+                    $flashed = Toasts::all($ide);
+                    $this->assertContains('Plugin "needy" disabled', $flashed);
+                    $this->assertNotContains('Plugin "needy" enabled', $flashed);
+
                     $this->await(static fn (): bool => is_dir($project->path('.porta/plugins/needy/vendor')), what: 'the install to finish anyway');
                     $this->pump(0.1); // let the exit callback land, proving it does nothing
 
                     $this->assertNotContains('Needy Run', array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label'), 'the late install did not resurrect it');
-                    $this->assertContains('Plugin "needy" disabled', Toasts::all($ide));
-                    $this->assertNotContains('Plugin "needy" enabled', Toasts::all($ide));
+                    $this->assertNotContains('Plugin "needy" enabled', Toasts::all($ide), 'and the late install flashed nothing');
                 },
             ],
         );
