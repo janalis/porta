@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Event\GitCommitted;
 use Porta\Event\GitRemoteCompleted;
+use Porta\Event\WorkingTreeChanged;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
 use Porta\Git\GitSettings;
@@ -84,6 +85,24 @@ final class GitRefresherTest extends TestCase
         $this->await(static function () use (&$refresher): bool {
             return null !== $refresher->branch();
         }, what: 'the remote completion triggered the branch refresh');
+        $this->assertSame('trunk', $refresher->branch());
+    }
+
+    public function testAWorkingTreeChangeRefreshesTheBranchThroughTheBus(): void
+    {
+        // The listener that makes a producer core knows nothing about keep the
+        // status bar honest: the git plugin's stash, stage and undo announce
+        // WorkingTreeChanged and core refreshes its own indicator. The plugin
+        // side proves the emit; without this, nothing proves anyone listens.
+        $refresher = $this->refresher();
+        $events = new EventDispatcher();
+        $events->addListener(WorkingTreeChanged::class, $refresher->onWorkingTreeChanged(...));
+
+        $events->dispatch(new WorkingTreeChanged());
+
+        $this->await(static function () use (&$refresher): bool {
+            return null !== $refresher->branch();
+        }, what: 'the working-tree announcement triggered the branch refresh');
         $this->assertSame('trunk', $refresher->branch());
     }
 

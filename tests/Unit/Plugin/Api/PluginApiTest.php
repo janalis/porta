@@ -9,6 +9,7 @@ use Porta\Config\IdeConfig;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\Event\BufferSaved;
+use Porta\Event\WorkingTreeChanged;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
@@ -224,6 +225,7 @@ final class PluginApiTest extends TestCase
             static fn () => $api->setDiagnostics('/x', []),
             static fn () => $api->setLineAnnotations([]),
             static fn () => $api->setChangeMarks('/x', []),
+            static fn () => $api->emit(new WorkingTreeChanged()),
             static fn () => $api->changeSetting('flag', true),
             static fn () => $api->showList('todo'),
             static fn () => $api->updateList('todo', []),
