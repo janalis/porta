@@ -81,31 +81,56 @@ construction remaining a DAG. Relocating the widget→domain-VO edges was measur
 and mostly rejected — for Git, Settings, Tree, Debug and Highlight that is the
 *correct* layering direction, views reading domain shapes.
 
-**Extracting git to a bundled plugin — REOPENED, by decision, with a design
-that answers half the objection.** The measurement that closed it stands and is
-worth keeping: git uses nine core surfaces with no plugin seam; it has no
-partial form, because a core `GitViewController` cannot take plugin-owned
-services and core importing plugin classes is both forbidden by `composer arch`
-and fatal at runtime when the plugin is disabled; and six of the seven seams it
-needs would have one consumer each.
+**Extracting git to a bundled plugin — reopened, pursued, and stopped at the
+view.** The programme ran and delivered most of what it was for; what it could
+not do is move the git VIEW, and that was measured rather than assumed.
 
-What reopened it is the second half of that finding. The objection was also
-that git keeps a foot in core regardless — `Role::Git*` plus three themes,
-`Glyphs::GIT_*`, `$gitGutter`, `$gitMarks`, `gitCell()` — so the move would buy
-namespace deletion rather than separation. Those are now **VCS-neutral**:
-`Role::Vcs*`, `Glyphs::VCS_*`, `$vcsGutter`, `$vcsMarks`, `vcsCell()`. They are
-core's own vocabulary for version control, which a second VCS could use, rather
-than git's name embedded in the theme lock. That is not a foot left behind.
+What landed, and stands on its own:
 
-The remaining cost is unchanged and is where the programme is gated: a
-contributed full-screen view needs a registry, a layout-region seam and pointer
-routing for a region core does not own, and the services DTO for it was
-measured at roughly eight members — double the widest existing one. If that
-seam turns into a superset nobody fits, the end state is a **core git view over
-a plugin-provided client**, which is coherent and keeps everything below it.
+- Core's decoration vocabulary is VCS-neutral — `Role::Vcs*` across three
+  themes, `Glyphs::VCS_*`, `$vcsMarks`, `$vcsGutter`, `vcsCell()`. Core no
+  longer names one version control system in its theme lock.
+- Change marks are a normal decoration layer with a plugin producer, through
+  `Editor/ChangeMarkSink` and `PluginApi::setChangeMarks()`. `Git>Editor`
+  vanished from the graph with them.
+- The bus is symmetric: `PluginApi::emit()` is the counterpart to `on()`, over
+  the same frozen marker, and the plugin never holds the dispatcher.
+- `Event/WorkingTreeChanged` — core refreshes its own branch indicator whenever
+  the tree moves, whoever moved it, instead of each mover remembering to ask.
+- Four verbs moved with their identity intact: `git_stash`, `git_stash_pop`,
+  `git_stage`, `git_undo_commit`.
 
-*Re-opens the rejection on:* the view seam failing its own arithmetic. The
-vocabulary change stands either way.
+**Where it stopped, with the numbers.** A contributed full-screen view needs
+three seams, and each failed its own bar:
+
+| Seam | Bar | Measured |
+| --- | --- | --- |
+| Services DTO | ~8 members | 12 |
+| Pointer routing | fits both consumers | 11-verb union, 5 git-only |
+| Layout region | net-negative | `ViewRegion`: −36/+45 |
+
+The DTO would hand a contributed view three layout slots, `MenuBarWidget`,
+`Tui`, `Notifier`, `EditorAreaPanes`, `EditorArea`, `LayoutController`,
+`Clipboard`, `WorkspaceViews` and live settings access — for one consumer.
+`GitMouseRouter` has ten public verbs to `SettingsMouseRouter`'s five, they
+share four, and `scrollVertical` differs in signature between them: a seam over
+both is the superset the `Clickable` rejection already named.
+
+**The end state is a core git VIEW over a plugin-provided CLIENT**, which is
+coherent: the view is one VCS's UI for its own index model, while marks, blame
+and the tree-mutating verbs are a producer core does not need to know.
+
+*Re-opens on:* the pointer union shrinking (if the git view's drag handling
+ever collapses into the shared shape), or a second consumer appearing for a
+contributed full-screen view. Not on effort — this was attempted, not
+estimated.
+
+**Still core's, and why**: `git_commit` needs the live-mutable sign/no-verify/
+signoff settings and a focused prompt; `branches` and `stashes` must close the
+view and take focus for their picker to be visible; the four remote verbs are
+called BACK from the view; `file_history` opens it. The settings migration is
+blocked by the same thing — the view reads those settings, so moving the keys
+to `plugins.git.*` would make core read a plugin's config.
 
 **`Layout/ViewRegion` — rejected on arithmetic.** Collapsing git's and settings'
 sidebar/separator/area triples deletes ~36 lines and adds ~45. The five
