@@ -13,7 +13,6 @@ use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
-use Revolt\EventLoop;
 
 final class PluginInstallerTest extends TestCase
 {
@@ -58,14 +57,13 @@ final class PluginInstallerTest extends TestCase
         $installer->install($source, $scope, static function (?string $error, ?string $file) use (&$result): void {
             $result = [$error, $file];
         });
-        $elapsed = 0.0;
-        while (null === $result && $elapsed < 5.0) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
-        $this->assertNotNull($result, 'the install callback fired');
+        // PumpsLoop's await, not a hand-rolled copy of it: twice the budget,
+        // and a named timeout instead of "null is not null" when a subprocess
+        // loses a scheduling race on a loaded machine.
+        $this->await(static function () use (&$result): bool {
+            return null !== $result;
+        }, what: 'the install callback');
+        $this->assertNotNull($result);
 
         return $result;
     }
@@ -166,13 +164,9 @@ final class PluginInstallerTest extends TestCase
         });
         $this->assertSame('Another install is already running', $second, 'single-flight while the clone runs');
 
-        $elapsed = 0.0;
-        while (null === $first && $elapsed < 5.0) {
-            $suspension = EventLoop::getSuspension();
-            EventLoop::delay(0.02, $suspension->resume(...));
-            $suspension->suspend();
-            $elapsed += 0.02;
-        }
+        $this->await(static function () use (&$first): bool {
+            return null !== $first;
+        }, what: 'the first install to finish');
         $this->assertSame([null, $this->project->dir.'/.porta/plugins/repo-plugin/plugin.php'], $first);
         $this->assertFileExists($this->project->dir.'/.porta/plugins/repo-plugin/plugin.php');
     }

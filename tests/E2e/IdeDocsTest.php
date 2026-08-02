@@ -196,12 +196,18 @@ final class IdeDocsTest extends TestCase
                     $this->assertStringContainsString('Opened https://example.com/x', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // The shim runs as an independent OS process — poll for its
                     // write instead of racing it at a fixed tick (blocking here
-                    // is fine: the shim needs no event-loop cooperation).
-                    $deadline = microtime(true) + 3.0;
-                    while (!str_contains((string) (is_file($captureFile) ? file_get_contents($captureFile) : false), 'https://example.com/x') && microtime(true) < $deadline) {
+                    // is fine: the shim needs no event-loop cooperation). The
+                    // budget matches PumpsLoop::await's 10s rather than being a
+                    // tighter number of its own: the flash above fires when the
+                    // shim is SPAWNED, so everything after it is a subprocess
+                    // waiting to be scheduled, and 3s was a race a loaded
+                    // machine lost.
+                    $written = static fn (): string => is_file($captureFile) ? (string) file_get_contents($captureFile) : '';
+                    $deadline = microtime(true) + 10.0;
+                    while (!str_contains($written(), 'https://example.com/x') && microtime(true) < $deadline) {
                         usleep(20_000);
                     }
-                    $this->assertStringContainsString('https://example.com/x', (string) file_get_contents($captureFile));
+                    $this->assertStringContainsString('https://example.com/x', $written(), 'the opener shim wrote the URL it was handed');
 
                     // Quit-time session excludes the help tab (asserted after the run).
                     Services::resolve($ide, SessionRestorer::class)
