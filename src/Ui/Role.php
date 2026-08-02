@@ -82,9 +82,9 @@ enum Role
     case Placeholder;
     case Inlay;
     case IndentGuide;
-    case GitAdded;
-    case GitModified;
-    case GitDeleted;
+    case VcsAdded;
+    case VcsModified;
+    case VcsDeleted;
     case InlayPopupBg;
     case InlayPopupFg;
     case CompletionHint;

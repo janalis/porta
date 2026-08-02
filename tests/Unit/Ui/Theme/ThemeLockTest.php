@@ -55,9 +55,9 @@ final class ThemeLockTest extends TestCase
         yield 'placeholder' => [Role::Placeholder, new Style(color: 238)];
         yield 'inlay' => [Role::Inlay, new Style(color: 243)];
         yield 'indent-guide' => [Role::IndentGuide, new Style(color: 238)];
-        yield 'git-added' => [Role::GitAdded, new Style(color: 114)];
-        yield 'git-modified' => [Role::GitModified, new Style(color: 75)];
-        yield 'git-deleted' => [Role::GitDeleted, new Style(color: 203)];
+        yield 'git-added' => [Role::VcsAdded, new Style(color: 114)];
+        yield 'git-modified' => [Role::VcsModified, new Style(color: 75)];
+        yield 'git-deleted' => [Role::VcsDeleted, new Style(color: 203)];
         yield 'inlay-popup-bg' => [Role::InlayPopupBg, new Style(background: 238)];
         yield 'inlay-popup-fg' => [Role::InlayPopupFg, new Style(color: 223)];
         yield 'completion-hint' => [Role::CompletionHint, new Style(color: 244)];
@@ -120,9 +120,9 @@ final class ThemeLockTest extends TestCase
         yield 'placeholder' => [Role::Placeholder, new Style(color: 250)];
         yield 'inlay' => [Role::Inlay, new Style(color: 245)];
         yield 'indent-guide' => [Role::IndentGuide, new Style(color: 250)];
-        yield 'git-added' => [Role::GitAdded, new Style(color: 28)];
-        yield 'git-modified' => [Role::GitModified, new Style(color: 25)];
-        yield 'git-deleted' => [Role::GitDeleted, new Style(color: 160)];
+        yield 'git-added' => [Role::VcsAdded, new Style(color: 28)];
+        yield 'git-modified' => [Role::VcsModified, new Style(color: 25)];
+        yield 'git-deleted' => [Role::VcsDeleted, new Style(color: 160)];
         yield 'inlay-popup-bg' => [Role::InlayPopupBg, new Style(background: 254)];
         yield 'inlay-popup-fg' => [Role::InlayPopupFg, new Style(color: 240)];
         yield 'completion-hint' => [Role::CompletionHint, new Style(color: 244)];

@@ -61,9 +61,9 @@ final class GitRefresher
             return;
         }
         $this->git->diff($buffer->path, function (array $marks) use ($buffer): void {
-            $buffer->gitMarks = $marks;
+            $buffer->vcsMarks = $marks;
             if ($buffer === $this->buffers->active()) {
-                $this->editor->setGitMarks($marks);
+                $this->editor->setVcsMarks($marks);
             }
             $this->tui->requestRender();
         });

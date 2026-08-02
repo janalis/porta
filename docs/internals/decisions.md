@@ -81,64 +81,31 @@ construction remaining a DAG. Relocating the widget→domain-VO edges was measur
 and mostly rejected — for Git, Settings, Tree, Debug and Highlight that is the
 *correct* layering direction, views reading domain shapes.
 
-**Extracting git to a bundled plugin — rejected.** Git uses nine core surfaces
-with no plugin seam. It has **no partial form**: a core `GitViewController`
-cannot take plugin-owned services (discovery globs `src/*`, and the container is
-compiled and dumped before any plugin PHP runs), and core importing plugin
-classes is forbidden by `composer arch` *and* fatal at runtime when the plugin is
-disabled. Six of the seven seams it needs would be permanent one-consumer
-abstractions; the full-screen-view seam alone wants an eight-member services
-DTO, double the widest existing one.
+**Extracting git to a bundled plugin — REOPENED, by decision, with a design
+that answers half the objection.** The measurement that closed it stands and is
+worth keeping: git uses nine core surfaces with no plugin seam; it has no
+partial form, because a core `GitViewController` cannot take plugin-owned
+services and core importing plugin classes is both forbidden by `composer arch`
+and fatal at runtime when the plugin is disabled; and six of the seven seams it
+needs would have one consumer each.
 
-Git keeps a foot in core either way — `Role::Git*` plus three themes under the
-theme lock, `Glyphs::GIT_*`, `$gitGutter`, `$gitMarks`, `gitCell()`,
-`MENUS['Git']`, fifteen command ids — so the move buys namespace deletion, not
-separation. Two expected wins are not on offer: the pinned SCC survives without
-`GitViewController`, and git was already inert without a repository. Two
-user-visible regressions have no cheap cure: an explicit `enabledPlugins` list
-(even `[]`) replaces the default, so anyone who customised it loses git on
-upgrade, and every git setting would move to `plugins.git.*`. And plugins cannot
-dispatch — 13 of the 15 `Git*` events are widget-dispatched.
+What reopened it is the second half of that finding. The objection was also
+that git keeps a foot in core regardless — `Role::Git*` plus three themes,
+`Glyphs::GIT_*`, `$gitGutter`, `$gitMarks`, `gitCell()` — so the move would buy
+namespace deletion rather than separation. Those are now **VCS-neutral**:
+`Role::Vcs*`, `Glyphs::VCS_*`, `$vcsGutter`, `$vcsMarks`, `vcsCell()`. They are
+core's own vocabulary for version control, which a second VCS could use, rather
+than git's name embedded in the theme lock. That is not a foot left behind.
 
-Blame did move, and its shape is the test for any future slice: it owns nothing
-of the workbench and dispatches no events. See
-[plugin-system.md](plugin-system.md).
+The remaining cost is unchanged and is where the programme is gated: a
+contributed full-screen view needs a registry, a layout-region seam and pointer
+routing for a region core does not own, and the services DTO for it was
+measured at roughly eight members — double the widest existing one. If that
+seam turns into a superset nobody fits, the end state is a **core git view over
+a plugin-provided client**, which is coherent and keeps everything below it.
 
-**Moving the debugger's session half to a plugin — rejected.** The split looked
-clean from outside: breakpoints are an editor concept (a marked line, clicked
-into a gutter, persisted) and a DAP session is a subprocess, a protocol and a
-variables tree, so drawing the line there keeps the gutter decorations and the
-gutter click in core beside the store they read — and avoids the two
-one-consumer seams a naive extraction needs.
-
-Measured against `DebugController`, it does not hold. The line does not remove
-the one-consumer seam; it **relocates** it. The plugin must still tell core
-where the debuggee stopped (core paints the band and reveals the file), and
-must still read the breakpoint list when it launches. Those are two new seams
-with one consumer each — the same shape, on the other side of the boundary.
-
-A third blocker is worse because it is user-visible. `Command/DebugCommands`
-carries **nine `when:` gates** reading session state, and their job is to let
-F7/F8/F9 fall through to widget bindings while no session runs.
-`PluginApi::registerCommand()` has no `when` parameter at all, so those keys
-would be swallowed unconditionally once the commands became a plugin's. Adding
-`when` to the plugin command API is defensible in general, but it is needed
-*because* of this move, which is the test failing.
-
-And `registerDebugAdapter` inverts. `Debug/DebugAdapters` consumes
-`Debug/DebugAdapterProvider`, implemented by `PluginManager`, which is how a
-THIRD-PARTY plugin supplies an adapter for its language. A plugin-owned
-debugger would have to read another plugin's registrations, and a plugin
-receives `PluginApi`, never `PluginManager`.
-
-*Re-opens on:* a second consumer appearing for either the stopped-line report or
-the breakpoint read, or `when` gates being wanted by a plugin for an unrelated
-reason. Not on effort.
-
-What the round kept is `Workbench/Dock/DockPanels` — the single-tab panel
-registry — which needed no move to justify it: the terminal and results panels
-own whole tab families, the debug panel owns one tab, and one-tab-one-entry is
-the only shape a contributor could have. Core registers through it.
+*Re-opens the rejection on:* the view seam failing its own arithmetic. The
+vocabulary change stands either way.
 
 **`Layout/ViewRegion` — rejected on arithmetic.** Collapsing git's and settings'
 sidebar/separator/area triples deletes ~36 lines and adds ~45. The five

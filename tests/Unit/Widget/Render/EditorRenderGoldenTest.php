@@ -170,7 +170,7 @@ final class EditorRenderGoldenTest extends TestCase
                 static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
-                    $e->setGitMarks([0 => 'modified', 2 => 'added', 4 => 'deleted']);
+                    $e->setVcsMarks([0 => 'modified', 2 => 'added', 4 => 'deleted']);
                 },
                 80,
                 10,

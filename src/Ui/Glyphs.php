@@ -116,9 +116,9 @@ final class Glyphs
 
     // Git.
     public const string BRANCH_CURRENT = '✓';
-    public const string GIT_ADDED = '▎';
-    public const string GIT_MODIFIED = '┆';
-    public const string GIT_DELETED = '▁';
+    public const string VCS_ADDED = '▎';
+    public const string VCS_MODIFIED = '┆';
+    public const string VCS_DELETED = '▁';
 
     // Toggles — bracketed so on/off reads without color.
     public const string CHECKBOX_ON = '[x]';
@@ -173,7 +173,7 @@ final class Glyphs
 
     // The 1-column left-half-block marking every row of the selected Welcome
     // card. The glyph, not the tint behind it, is the selection — it is what
-    // survives --no-ansi and the monochrome theme. Distinct from GIT_ADDED
+    // survives --no-ansi and the monochrome theme. Distinct from VCS_ADDED
     // (`▎`, editor gutter) and on a disjoint surface anyway.
     public const string CARD_ACCENT = '▌';
 

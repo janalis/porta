@@ -122,10 +122,10 @@ final class SettingsGitController
         $this->gitSettings->setGutterMarks($on);
         // @mago-expect lint:no-else-clause -- symmetric on/off branches converging on the shared requestRender() below
         if ($on) {
-            $this->editor->enableGitGutter();
+            $this->editor->enableVcsGutter();
             $this->gitRefresher->refreshActiveMarks();
         } else {
-            $this->editor->disableGitGutter();
+            $this->editor->disableVcsGutter();
         }
         $this->tui->requestRender();
     }

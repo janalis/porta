@@ -429,15 +429,15 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->display->setIndentGuides(false);
     }
 
-    public function enableGitGutter(): void
+    public function enableVcsGutter(): void
     {
         $this->display->setGitGutter(true);
     }
 
-    public function disableGitGutter(): void
+    public function disableVcsGutter(): void
     {
         if ($this->display->setGitGutter(false)) {
-            $this->setGitMarks([]); // drop stale marks so nothing lingers when the strip hides
+            $this->setVcsMarks([]); // drop stale marks so nothing lingers when the strip hides
         }
     }
 
@@ -545,9 +545,9 @@ final class CodeEditorWidget extends AbstractWidget implements
     /**
      * @param array<int, string> $byLine 0-based line => 'added'|'modified'|'deleted'
      */
-    public function setGitMarks(array $byLine): void
+    public function setVcsMarks(array $byLine): void
     {
-        $this->decorations->setGitMarks($byLine);
+        $this->decorations->setVcsMarks($byLine);
     }
 
     /**
@@ -1143,7 +1143,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             $this->decorations,
             $this->display->lineNumbers(),
             $this->display->indentGuides(),
-            $this->display->gitGutter(),
+            $this->display->vcsGutter(),
             $this->display->inlineDiagnostics(),
             $this->focused,
             $this->focused && !$this->findModal->isOpen() && !$this->overlayHost->anyOpen(), // an open modal owns the caret
@@ -1179,7 +1179,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     private function computeGeometry(int $columns, int $lineCount): EditorGeometry
     {
         $numberWidth = LineNumberMode::Off === $this->display->lineNumbers() ? 0 : max(3, \strlen((string) $lineCount));
-        $gutterWidth = ($this->display->gitGutter() ? 1 : 0) + $numberWidth + 2;
+        $gutterWidth = ($this->display->vcsGutter() ? 1 : 0) + $numberWidth + 2;
         $contentWidth = max(1, $columns - $gutterWidth - 1);
 
         return new EditorGeometry($numberWidth, $gutterWidth, $contentWidth, $gutterWidth + $contentWidth);

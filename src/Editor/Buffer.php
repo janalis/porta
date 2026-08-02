@@ -24,7 +24,7 @@ final class Buffer
     public ?ResolvedEditorConfig $editorConfig = null;
 
     /** @var array<int, string> 0-based line => 'added'|'modified'|'deleted' vs git HEAD */
-    public array $gitMarks = [];
+    public array $vcsMarks = [];
 
     /** Monotonic focus stamp maintained by the BufferManager. */
     public int $lastFocused = 0;

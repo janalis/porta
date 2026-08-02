@@ -26,7 +26,7 @@ interface EditorDecorationSink
     /**
      * @param array<int, string> $byLine 0-based line => 'added'|'modified'|'deleted'
      */
-    public function setGitMarks(array $byLine): void;
+    public function setVcsMarks(array $byLine): void;
 
     /**
      * @param array<int, string> $byLine 0-based line => trailing annotation (blame); [] clears

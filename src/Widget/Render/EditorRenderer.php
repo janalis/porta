@@ -158,12 +158,12 @@ final class EditorRenderer
     }
 
     /** One-cell git change indicator for the gutter's leftmost column — shape-distinct glyphs so the states read without color. */
-    public static function gitCell(?string $mark, Styles $styles): string
+    public static function vcsCell(?string $mark, Styles $styles): string
     {
         return match ($mark) {
-            'added' => $styles->of(Role::GitAdded)->apply(Glyphs::GIT_ADDED), // green solid bar
-            'modified' => $styles->of(Role::GitModified)->apply(Glyphs::GIT_MODIFIED), // blue dashed bar
-            'deleted' => $styles->of(Role::GitDeleted)->apply(Glyphs::GIT_DELETED), // red underline
+            'added' => $styles->of(Role::VcsAdded)->apply(Glyphs::VCS_ADDED), // green solid bar
+            'modified' => $styles->of(Role::VcsModified)->apply(Glyphs::VCS_MODIFIED), // blue dashed bar
+            'deleted' => $styles->of(Role::VcsDeleted)->apply(Glyphs::VCS_DELETED), // red underline
             default => ' ',
         };
     }

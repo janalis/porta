@@ -96,12 +96,12 @@ final class GitRefresherTest extends TestCase
 
         $refresher->refreshActiveMarks();
         $this->await(static function () use (&$buffer): bool {
-            return [] !== $buffer->gitMarks;
+            return [] !== $buffer->vcsMarks;
         }, what: 'the async diff resolved');
 
         $editorMarks = Probe::get($this->editor, 'decorations')
-            ->gitMarks();
-        $this->assertSame($buffer->gitMarks, $editorMarks, 'the active buffer pushed its marks into the editor gutter');
+            ->vcsMarks();
+        $this->assertSame($buffer->vcsMarks, $editorMarks, 'the active buffer pushed its marks into the editor gutter');
     }
 
     public function testGutterMarksDisabledSkipsTheDiff(): void
@@ -111,7 +111,7 @@ final class GitRefresherTest extends TestCase
         $buffer = $this->buffers->open($this->project->path('a.txt'), "one\nchanged\n");
 
         $refresher->refreshActiveMarks(); // gated off → no async diff is scheduled
-        $this->assertSame([], $buffer->gitMarks, 'no marks computed when the gutter is disabled');
+        $this->assertSame([], $buffer->vcsMarks, 'no marks computed when the gutter is disabled');
     }
 
     public function testImageBuffersAndMissingGitShortCircuit(): void
@@ -144,17 +144,17 @@ final class GitRefresherTest extends TestCase
 
         $refresher->onBufferOpened(new BufferOpened($buffer));
         $this->await(static function () use (&$buffer): bool {
-            return [] !== $buffer->gitMarks;
+            return [] !== $buffer->vcsMarks;
         }, what: 'the open listener diffed the text buffer');
 
         $help = $this->buffers->openPane($this->project->path('h.md'), 'help', '# hi');
         $refresher->onBufferOpened(new BufferOpened($help));
-        $this->assertSame([], $help->gitMarks, 'help tabs are never diffed');
+        $this->assertSame([], $help->vcsMarks, 'help tabs are never diffed');
 
-        $buffer->gitMarks = [];
+        $buffer->vcsMarks = [];
         $refresher->onBufferSaved(new BufferSaved($buffer));
         $this->await(static function () use (&$buffer, &$refresher): bool {
-            return [] !== $buffer->gitMarks && null !== $refresher->branch();
+            return [] !== $buffer->vcsMarks && null !== $refresher->branch();
         }, what: 'the save listener refreshed marks and branch');
     }
 
@@ -167,7 +167,7 @@ final class GitRefresherTest extends TestCase
 
         $refresher->onGitRemoteCompleted(new GitRemoteCompleted('pull', true));
         $this->await(static function () use (&$buffer, &$refresher): bool {
-            return [] !== $buffer->gitMarks && null !== $refresher->branch();
+            return [] !== $buffer->vcsMarks && null !== $refresher->branch();
         }, what: 'a completed remote op refreshed branch + active marks');
         $this->addToAssertionCount(1); // the throwing await above is the assertion
     }

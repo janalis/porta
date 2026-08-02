@@ -83,6 +83,7 @@ what would re-open it. Re-proposing one costs a round.
   locator; `classmap-authoritative` in `composer.json`.
 - The extraction audit — every candidate measured, the topic closed.
 - Namespace cycles — closed at class granularity.
-- Extracting git to a plugin; `Layout/ViewRegion`; clickable status segments.
+- `Layout/ViewRegion`; clickable status segments. (Extracting git was reopened
+  by decision — see `decisions.md` for the design and what re-closes it.)
 - `registerWelcomeStep()`; unifying the five plain-array plugin buffers.
 - Escalating `[loop-leak]` to a failure — refused on evidence.

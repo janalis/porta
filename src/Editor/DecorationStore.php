@@ -19,7 +19,7 @@ final class DecorationStore
     private array $searchMatches = [];
 
     /** @var array<int, string> 0-based line => 'added'|'modified'|'deleted' */
-    private array $gitMarks = [];
+    private array $vcsMarks = [];
 
     /** @var array<int, string> 0-based line => trailing annotation (blame) */
     private array $lineAnnotations = [];
@@ -80,16 +80,16 @@ final class DecorationStore
     }
 
     /** @param array<int, string> $byLine 0-based line => 'added'|'modified'|'deleted' */
-    public function setGitMarks(array $byLine): void
+    public function setVcsMarks(array $byLine): void
     {
-        $this->gitMarks = $byLine;
+        $this->vcsMarks = $byLine;
         ($this->invalidate)();
     }
 
     /** @return array<int, string> */
-    public function gitMarks(): array
+    public function vcsMarks(): array
     {
-        return $this->gitMarks;
+        return $this->vcsMarks;
     }
 
     /** @param array<int, string> $byLine 0-based line => trailing annotation (blame); [] clears */

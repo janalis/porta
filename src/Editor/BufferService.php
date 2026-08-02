@@ -312,7 +312,7 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
         }
         $this->swapEditorPaneTo($this->editor);
         $this->editor->showDocument($buffer->path, $buffer->document, $buffer->diagnostics, $buffer->highlighter, $buffer->editorConfig);
-        $this->editor->setGitMarks($buffer->gitMarks);
+        $this->editor->setVcsMarks($buffer->vcsMarks);
         $this->dispatcher->dispatch(new BufferSwitched($buffer));
         $this->tui->requestRender();
     }

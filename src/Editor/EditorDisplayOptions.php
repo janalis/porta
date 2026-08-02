@@ -24,7 +24,7 @@ final class EditorDisplayOptions
 {
     private bool $inlineDiagnostics = true;
     private LineNumberMode $lineNumbers = LineNumberMode::Absolute;
-    private bool $gitGutter = true;
+    private bool $vcsGutter = true;
     private bool $stickyScroll = true;
     private bool $indentGuides = true;
     private bool $autoPairs = true;
@@ -60,14 +60,14 @@ final class EditorDisplayOptions
         return true;
     }
 
-    public function gitGutter(): bool
+    public function vcsGutter(): bool
     {
-        return $this->gitGutter;
+        return $this->vcsGutter;
     }
 
     public function setGitGutter(bool $on): bool
     {
-        return $this->apply($this->gitGutter, $on);
+        return $this->apply($this->vcsGutter, $on);
     }
 
     public function stickyScroll(): bool

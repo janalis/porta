@@ -28,9 +28,9 @@ interface EditorViewOptions
 
     public function disableIndentGuides(): void;
 
-    public function enableGitGutter(): void;
+    public function enableVcsGutter(): void;
 
-    public function disableGitGutter(): void;
+    public function disableVcsGutter(): void;
 
     public function enableAutoPairs(): void;
 

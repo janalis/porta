@@ -226,13 +226,13 @@ final class IdeGitFlowsTest extends TestCase
             $project->path('a.txt'),
             [
                 300 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->assertSame([], Probe::get($tui->getById('editor'), 'decorations')->gitMarks(), 'committed and unmodified: no marks');
+                    $this->assertSame([], Probe::get($tui->getById('editor'), 'decorations')->vcsMarks(), 'committed and unmodified: no marks');
 
                     $project->write('a.txt', "one\nCHANGED\n"); // external edit
                     $ide->pollFilesystem();
 
-                    $this->await(static fn (): bool => [] !== Probe::get($tui->getById('editor'), 'decorations')->gitMarks(), what: 'the reload recomputed the marks');
-                    $this->assertArrayHasKey(1, Probe::get($tui->getById('editor'), 'decorations')->gitMarks(), 'the changed line is marked');
+                    $this->await(static fn (): bool => [] !== Probe::get($tui->getById('editor'), 'decorations')->vcsMarks(), what: 'the reload recomputed the marks');
+                    $this->assertArrayHasKey(1, Probe::get($tui->getById('editor'), 'decorations')->vcsMarks(), 'the changed line is marked');
                 },
             ],
         );

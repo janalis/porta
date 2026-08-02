@@ -110,15 +110,15 @@ final class SettingsGitControllerTest extends TestCase
     {
         $project = new TempProject([]);
         $controller = $this->controller($project->dir);
-        $this->assertTrue(EditorState::display($this->editor)->gitGutter());
+        $this->assertTrue(EditorState::display($this->editor)->vcsGutter());
 
         $controller->change('gitGutterMarks', false);
         $this->assertFalse($this->git->gutterMarks());
-        $this->assertFalse(EditorState::display($this->editor)->gitGutter());
+        $this->assertFalse(EditorState::display($this->editor)->vcsGutter());
 
         $controller->change('gitGutterMarks', true);
         $this->assertTrue($this->git->gutterMarks());
-        $this->assertTrue(EditorState::display($this->editor)->gitGutter());
+        $this->assertTrue(EditorState::display($this->editor)->vcsGutter());
     }
 
     public function testCommitBoolsAndBlameMutateTheHolder(): void
