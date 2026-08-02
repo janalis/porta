@@ -959,6 +959,26 @@ final class PluginApi
     }
 
     /**
+     * Put an event on Porta's bus.
+     *
+     * The symmetric half of {@see on()}: what a plugin may observe, it may
+     * also announce. The parameter is an INSTANCE rather than a class-string,
+     * so the {@see PluginObservable} marker is enforced by the type system and
+     * needs no runtime check — and the plugin never holds the dispatcher,
+     * which is what stops it reaching the internal events.
+     *
+     * Core listeners run first, at priority 0; other plugins hear it after.
+     * An action method, so it throws during `activate()` — nothing has been
+     * wired yet, and an event dispatched into a half-built IDE is a bug
+     * wearing a notification.
+     */
+    public function emit(PluginObservable $event): void
+    {
+        $this->manager->runtime(); // the same not-during-activate() gate the other actions carry
+        $this->manager->dispatch($event);
+    }
+
+    /**
      * Publish version-control change marks for a file — the gutter's
      * added/modified/deleted stripe. Keys are 0-based lines, values one of
      * `added`, `modified`, `deleted`; an empty array clears the file.

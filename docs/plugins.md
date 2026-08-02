@@ -213,6 +213,17 @@ $api->on(GitCommitted::class, function (GitCommitted $event) use ($api): void {
 });
 ```
 
+A plugin may also **announce** one, with the same set and the same marker:
+
+```php
+$api->emit(new WorkingTreeChanged());
+```
+
+`emit()` takes an event OBJECT, so the marker is enforced by the type system —
+and a plugin never holds the dispatcher, which is what keeps the internal
+events out of reach. Core listeners run first; other plugins hear it after.
+It is an action method, so it throws during `activate()`.
+
 Only these events are open to plugins. The rest of `Porta\Event` is internal
 and changes without notice — a marker interface, `PluginObservable`, is what
 says which is which, and naming an unmarked class throws rather than quietly

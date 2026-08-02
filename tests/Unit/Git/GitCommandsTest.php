@@ -123,8 +123,6 @@ final class GitCommandsTest extends TestCase
     public static function outsideARepo(): iterable
     {
         yield 'stage' => [static fn (GitCommands $c) => $c->stageCurrent()];
-        yield 'stash' => [static fn (GitCommands $c) => $c->stash()];
-        yield 'stashPop' => [static fn (GitCommands $c) => $c->stashPop()];
         yield 'stashes' => [static fn (GitCommands $c) => $c->stashes()];
         yield 'undo' => [static fn (GitCommands $c) => $c->undoLastCommit()];
         yield 'branchFromCommit' => [static fn (GitCommands $c) => $c->branchFromCommit(self::commitEntry('0000000000000000000000000000000000000000'))];
@@ -148,23 +146,6 @@ final class GitCommandsTest extends TestCase
         $this->pump();
 
         $this->assertStringContainsString('Git not available', $this->statusRow($this->statusBar));
-    }
-
-    public function testStashPushesTheWorkingTreeThenPopsItBack(): void
-    {
-        $commands = $this->commands(['a.txt' => "one\n"]);
-        $this->write('a.txt', "one\ndirty\n"); // a change to stash
-
-        // Pump on the on-disk effect, not the rendered flash: git reverts the
-        // tree before the process exits, so polling the file content itself is
-        // immune to a flash that renders a beat late under load.
-        $commands->stash();
-        $this->pump(fn (): bool => !str_contains($this->readFile('a.txt'), 'dirty'));
-        $this->assertStringNotContainsString('dirty', $this->readFile('a.txt'), 'the worktree change was stashed away');
-
-        $commands->stashPop();
-        $this->pump(fn (): bool => str_contains($this->readFile('a.txt'), 'dirty'));
-        $this->assertStringContainsString('dirty', $this->readFile('a.txt'), 'the stash came back');
     }
 
     public function testStashesFlashesWhenThereAreNone(): void

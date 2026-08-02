@@ -141,6 +141,8 @@ final class ActionCatalog
         // survive the plugin owning the implementation.
         'git_blame' => ['label' => 'Git: Blame Current Line', 'adoptable' => true], // implemented by the bundled git plugin
         'git_toggle_blame' => ['label' => 'Git: Toggle Blame Annotations', 'adoptable' => true], // implemented by the bundled git plugin
+        'git_stash' => ['label' => 'Git: Stash', 'adoptable' => true], // implemented by the bundled git plugin
+        'git_stash_pop' => ['label' => 'Git: Stash Pop', 'adoptable' => true], // implemented by the bundled git plugin
         'ide_terminal' => ['label' => 'Open Terminal', 'keys' => ['ctrl+`', 'alt+f12']],
         'ide_terminal_new' => ['label' => 'New Terminal Session', 'keys' => ['ctrl+shift+`', 'alt+f11']],
         'dock_next_panel' => ['label' => 'Next Dock Panel', 'keys' => ['alt+page_down']],

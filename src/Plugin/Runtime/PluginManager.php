@@ -11,6 +11,7 @@ use Porta\Container\ListenerPriority;
 use Porta\Debug\DebugAdapterProvider;
 use Porta\Editor\EditorPaneSource;
 use Porta\Editor\ViewerProviderSource;
+use Porta\Event\PluginObservable;
 use Porta\Highlight\CallableHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProviderSource;
@@ -386,6 +387,20 @@ final class PluginManager implements
     }
 
     /** The live IDE seams; guarded so activate()-time action calls fail as plugin errors. */
+    /**
+     * Put a plugin's event on the bus.
+     *
+     * The counterpart to the listener registration above, and deliberately a
+     * METHOD rather than a lent dispatcher: a plugin that held the dispatcher
+     * could reach every internal event, which is what the single-parameter
+     * listener wrapper exists to prevent. It hands over one event at a time,
+     * and the type says the event is one a plugin may also observe.
+     */
+    public function dispatch(PluginObservable $event): void
+    {
+        $this->events->dispatch($event);
+    }
+
     public function runtime(): PluginRuntime
     {
         return $this->runtime ?? throw new PluginException('IDE actions are unavailable during activate() — call them from a command handler or event hook');

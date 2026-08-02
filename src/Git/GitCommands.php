@@ -81,34 +81,6 @@ final class GitCommands
         });
     }
 
-    /** Stash the working tree; git's own stdout line is the flash (covers the clean-tree case). */
-    public function stash(): void
-    {
-        if (!$this->git->isAvailable()) {
-            $this->unavailable();
-
-            return;
-        }
-        $this->git->stashPush(function (Outcome $ok, string $line): void {
-            $this->notifier->flash($ok->isOk() ? $line : $this->translator->trans('Stash failed'), $ok->isOk() ? 3.0 : 6.0);
-            if ($ok->isOk()) {
-                $this->dispatcher->dispatch(new WorkingTreeChanged());
-            }
-            $this->tui->requestRender();
-        });
-    }
-
-    /** Pop the newest stash back onto the working tree. */
-    public function stashPop(): void
-    {
-        if (!$this->git->isAvailable()) {
-            $this->unavailable();
-
-            return;
-        }
-        $this->git->stashPop(null, fn (Outcome $ok, string $error) => $this->finishSwitch($ok, $this->stashError($error), $this->translator->trans('Stash popped')));
-    }
-
     /** The stash picker: pick a stash, then apply, pop or drop it. */
     public function stashes(): void
     {
