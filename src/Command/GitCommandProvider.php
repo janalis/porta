@@ -35,9 +35,7 @@ final class GitCommandProvider implements CommandProvider
             return;
         }
         $commands
-            ->add('git_stage', fn () => $this->git->stageCurrent(), label: 'Git: Stage Current File')
             ->add('git_commit', fn () => $this->git->commit(), label: 'Git: Commit…')
-            ->add('git_undo_commit', fn () => $this->git->undoLastCommit(), label: 'Git: Undo Last Commit')
             ->add('git_branches', fn () => $this->git->branches(), label: 'Git: Branches…')
             ->add('git_fetch', fn () => $this->remote->fetch(), label: 'Git: Fetch')
             ->add('git_pull', fn () => $this->remote->pull(), label: 'Git: Pull')

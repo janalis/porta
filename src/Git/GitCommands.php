@@ -8,7 +8,6 @@ use Porta\Event\WorkingTreeChanged;
 use Porta\I18n\Translator;
 use Porta\Support\Clipboard;
 use Porta\Support\Outcome;
-use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Workbench\Notifier;
@@ -33,29 +32,10 @@ final class GitCommands
         private readonly Tui $tui,
         private readonly Translator $translator,
         private readonly GitRefresher $refresher,
-        private readonly string $rootDir,
         private readonly WorkspaceViews $views,
         private readonly Clipboard $clipboard,
         private readonly EventDispatcherInterface $dispatcher,
     ) {}
-
-    public function stageCurrent(): void
-    {
-        $path = $this->editor->getFilePath();
-        if (null === $path || !$this->git->isAvailable()) {
-            $this->unavailable();
-
-            return;
-        }
-        $this->git->stage($path, function (Outcome $ok) use ($path): void {
-            $this->notifier->flash(
-                $ok->isOk()
-                    ? $this->translator->trans('Staged %path%', ['%path%' => ProjectPaths::relative($this->rootDir, $path)])
-                    : $this->translator->trans('Stage failed'),
-            );
-            $this->dispatcher->dispatch(new WorkingTreeChanged());
-        });
-    }
 
     public function commit(): void
     {
@@ -145,25 +125,6 @@ final class GitCommands
             return;
         }
         $this->views->openGitFileHistory($path);
-    }
-
-    /** Undo the last commit (soft reset), keeping its changes staged. */
-    public function undoLastCommit(): void
-    {
-        if (!$this->git->isAvailable()) {
-            $this->unavailable();
-
-            return;
-        }
-        $this->git->undoLastCommit(function (Outcome $ok): void {
-            $this->notifier->flash(
-                $ok->isOk()
-                    ? $this->translator->trans('Last commit undone (changes kept staged)')
-                    : $this->translator->trans('Nothing to undo'),
-            );
-            $this->refresher->refreshBranch();
-            $this->dispatcher->dispatch(new WorkingTreeChanged());
-        });
     }
 
     /** Copy a commit's full hash to the clipboard (the history context menu). */

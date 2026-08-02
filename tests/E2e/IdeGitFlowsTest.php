@@ -120,7 +120,7 @@ final class IdeGitFlowsTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    public function testGitStageAndCommitViaPalette(): void
+    public function testCommitViaThePaletteAsksForAMessage(): void
     {
         if (!$this->gitAvailable()) {
             $this->markTestSkipped('git binary not available');
@@ -145,9 +145,10 @@ final class IdeGitFlowsTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                400 => static fn ($tui) => $palette($tui, label: 'Git: Stage'),
-                650 => function ($tui, $terminal) use ($palette): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Staged src/A.php'), what: 'the async stage to flash');
+                // `git_stage` is the git plugin's now, so the index is staged
+                // with git directly — this test is about core's commit prompt.
+                400 => static function ($tui) use ($project, $palette): void {
+                    $project->git('add', '-A');
                     $palette($tui, label: 'Git: Commit'); // opens the message prompt
                 },
                 850 => static function ($tui): void {
@@ -162,14 +163,12 @@ final class IdeGitFlowsTest extends TestCase
                     }
                     $tui->handleInput("\r"); // commit
                 },
-                1450 => function ($tui, $terminal) use ($palette): void {
+                1450 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Committed: my commit'), what: 'the async commit to flash');
-                    $palette($tui, label: 'Git: Undo');
-                },
-                2100 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Last commit undone'), what: 'the undo to flash');
+                    // Undoing it is `git_undo_commit`, which the git plugin owns
+                    // now; its own suite covers that half.
                     $this->awaitGit($ide);
-                    $this->await(static fn (): bool => ['init'] === explode("\n", $project->git('log', '--format=%s')), what: 'the soft reset to remove "my commit"');
+                    $this->await(static fn (): bool => ['my commit', 'init'] === explode("\n", $project->git('log', '--format=%s')), what: 'the commit to land');
                 },
             ],
         );
@@ -199,7 +198,7 @@ final class IdeGitFlowsTest extends TestCase
                     $labels = array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label');
                     // 'Git: Changes' is ide_git, registered by ViewCommands rather
                     // than the git provider — a separate gate, so a separate case.
-                    foreach (['Git: Stage Current File', 'Git: Commit…', 'Git: Branches…', 'Git: Stashes…', 'Git: File History', 'Git: Changes'] as $gone) { // blame is the git plugin's; its own suite covers it
+                    foreach (['Git: Commit…', 'Git: Branches…', 'Git: Stashes…', 'Git: File History', 'Git: Changes'] as $gone) { // blame is the git plugin's; its own suite covers it
                         $this->assertNotContains($gone, $labels, $gone.' is not offered outside a repository');
                     }
                     $this->assertNotContains('Git', $this->menuTitles($tui), 'and the Git menu is not built');

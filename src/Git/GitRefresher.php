@@ -8,6 +8,7 @@ use Porta\Container\AsIdeService;
 use Porta\Event\BufferSaved;
 use Porta\Event\GitCommitted;
 use Porta\Event\GitRemoteCompleted;
+use Porta\Event\WorkingTreeChanged;
 use Porta\Widget\StatusBarWidget;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Tui;
@@ -61,6 +62,18 @@ final class GitRefresher
     {
         // A fetch updates the remote-tracking state the branch segment reflects;
         // a pull can move HEAD outright.
+        $this->refreshBranch();
+    }
+
+    /**
+     * Anything moved the working tree — a stash, a stage, an undo, and whoever
+     * did it. Core refreshes its own branch indicator rather than asking the
+     * mover to remember to, which is what lets a producer core knows nothing
+     * about keep the status bar honest.
+     */
+    #[AsEventListener]
+    public function onWorkingTreeChanged(WorkingTreeChanged $event): void
+    {
         $this->refreshBranch();
     }
 

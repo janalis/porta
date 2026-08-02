@@ -54,30 +54,6 @@ final class GitCommandsTest extends TestCase
 
     // --- Simple async actions -------------------------------------------------
 
-    public function testStageCurrentStagesTheOpenFileAndFlashes(): void
-    {
-        $commands = $this->commands(['a.txt' => "one\n"]);
-        $this->write('a.txt', "one\ntwo\n"); // modify the tracked file
-        $this->openInEditor('a.txt', "one\ntwo\n");
-
-        $commands->stageCurrent();
-        $this->pump();
-
-        $this->assertStringContainsString('Staged a.txt', $this->statusRow($this->statusBar));
-        // The file was tracked at init, so staging its change shows as staged-modified (M in the index column).
-        $this->assertStringContainsString('M  a.txt', $this->porcelain(), 'the change is staged in the index');
-    }
-
-    public function testStageCurrentWithNoOpenFileReportsUnavailable(): void
-    {
-        $commands = $this->commands(['a.txt' => "one\n"]);
-        // No file open in the editor → getFilePath() is null.
-        $commands->stageCurrent();
-        $this->pump();
-
-        $this->assertStringContainsString('Git not available', $this->statusRow($this->statusBar));
-    }
-
     public function testCommitPromptsThenCommitsTheStagedIndex(): void
     {
         $commands = $this->commands(['a.txt' => "one\n"]);
@@ -122,9 +98,7 @@ final class GitCommandsTest extends TestCase
      */
     public static function outsideARepo(): iterable
     {
-        yield 'stage' => [static fn (GitCommands $c) => $c->stageCurrent()];
         yield 'stashes' => [static fn (GitCommands $c) => $c->stashes()];
-        yield 'undo' => [static fn (GitCommands $c) => $c->undoLastCommit()];
         yield 'branchFromCommit' => [static fn (GitCommands $c) => $c->branchFromCommit(self::commitEntry('0000000000000000000000000000000000000000'))];
         yield 'cherryPick' => [static fn (GitCommands $c) => $c->cherryPick(self::commitEntry('0000000000000000000000000000000000000000'))];
         yield 'revertCommit' => [static fn (GitCommands $c) => $c->revertCommit(self::commitEntry('0000000000000000000000000000000000000000'))];
@@ -224,20 +198,6 @@ final class GitCommandsTest extends TestCase
         $this->pump(fn (): bool => !EditorState::pickerOpen($this->editor));
 
         $this->assertStringContainsString('wip', $this->project->git('stash', 'list'), 'the stash is untouched');
-    }
-
-    public function testUndoLastCommitSoftResetsAndFlashes(): void
-    {
-        $commands = $this->commands(['a.txt' => "one\n"]);
-        $this->write('a.txt', "one\nsecond\n");
-        $this->project->git('commit', '-am', 'second');
-        $tip = trim($this->project->git('rev-parse', 'HEAD'));
-
-        $commands->undoLastCommit();
-        $this->pump();
-
-        $this->assertStringContainsString('Last commit undone', $this->statusRow($this->statusBar));
-        $this->assertNotSame($tip, trim($this->project->git('rev-parse', 'HEAD')), 'HEAD moved back one commit');
     }
 
     // --- Commit-history context actions ---------------------------------------
@@ -576,7 +536,6 @@ final class GitCommandsTest extends TestCase
             $this->tui,
             $translator,
             $refresher,
-            $this->project->dir,
             new WorkspaceViews(),
             new Clipboard($this->tui),
             $this->events = new EventDispatcher(),

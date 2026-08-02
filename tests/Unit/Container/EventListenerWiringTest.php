@@ -258,13 +258,12 @@ final class EventListenerWiringTest extends TestCase
             'ActiveBufferChanged', // plugins' onBufferSwitched
             'IdeReady',
             'IdeShuttingDown',
-            // These three lost their last core listener when change marks
+            // These two lost their last core listener when change marks
             // became a version-control plugin's job. Core still dispatches
             // them; the only reactions are registered at runtime, through
-            // onFileOpened, onFileReloaded and on(WorkingTreeChanged).
+            // onFileOpened and onFileReloaded.
             'BufferOpened',
             'BufferReloaded',
-            'WorkingTreeChanged',
         ];
 
         $dispatcher = $this->dispatcher();
