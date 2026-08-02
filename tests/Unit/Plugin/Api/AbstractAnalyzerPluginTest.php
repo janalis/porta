@@ -17,6 +17,7 @@ use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
+use Porta\Tests\Support\RecordingChangeMarkSink;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
 use Porta\Tests\Support\StatusReads;
@@ -110,6 +111,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
             $tui,
             $this->sink,
             new CodeEditorWidget(),
+            new RecordingChangeMarkSink(),
             $this->buffers,
             TestDockTools::controller(),
             TestDockTools::replacer(),

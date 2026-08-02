@@ -6,6 +6,7 @@ namespace Porta\Plugin\Runtime;
 
 use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
+use Porta\Editor\ChangeMarkSink;
 use Porta\Editor\DiagnosticsSink;
 use Porta\Editor\DocumentReplacer;
 use Porta\Editor\EditorTextAccess;
@@ -36,6 +37,7 @@ final readonly class PluginRuntime
         public Tui $tui,
         public DiagnosticsSink $diagnostics,
         public LineAnnotationSink $annotations,
+        public ChangeMarkSink $changeMarks,
         public BufferManager $buffers,
         public DockToolController $dockTools,
         public DocumentReplacer $documents,

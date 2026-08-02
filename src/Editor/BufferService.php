@@ -44,7 +44,7 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  * events; only intra-flow calls (didOpen ordering, external reloads) stay inline.
  */
 #[AsIdeService]
-final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
+final class BufferService implements BufferReopener, ChangeMarkSink, DiagnosticsSink, FileOpener
 {
     /**
      * The file name that titles a graph tab "Project Architecture".
@@ -602,6 +602,29 @@ final class BufferService implements BufferReopener, DiagnosticsSink, FileOpener
      *
      * @param array<int, list<array{severity: int, message: string, col: int, endCol: int}>> $byLine
      */
+    /**
+     * Store a file's change marks and, if that file is the one on screen, paint
+     * them. A path with no open buffer is a silent no-op — the producer works
+     * from the working tree and may answer about a file the user never opened.
+     *
+     * @param array<int, string> $marks 0-based line => 'added'|'modified'|'deleted'
+     */
+    public function applyChangeMarks(string $path, array $marks): void
+    {
+        foreach ($this->buffers->all() as $buffer) {
+            if ($path !== $buffer->path) {
+                continue;
+            }
+            $buffer->vcsMarks = $marks;
+            if ($buffer === $this->buffers->active()) {
+                $this->editor->setVcsMarks($marks);
+            }
+            $this->tui->requestRender();
+
+            return;
+        }
+    }
+
     public function applyDiagnostics(string $uri, array $byLine): void
     {
         $target = null;

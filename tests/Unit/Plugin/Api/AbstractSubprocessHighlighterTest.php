@@ -14,6 +14,7 @@ use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
+use Porta\Tests\Support\RecordingChangeMarkSink;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
 use Porta\Tests\Support\TempProject;
@@ -97,6 +98,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
             $tui,
             new RecordingDiagnosticsSink(),
             new CodeEditorWidget(),
+            new RecordingChangeMarkSink(),
             new BufferManager(),
             TestDockTools::controller(),
             TestDockTools::replacer(),

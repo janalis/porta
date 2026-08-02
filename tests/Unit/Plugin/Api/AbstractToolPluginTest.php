@@ -14,6 +14,7 @@ use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Tests\Support\RecordingChangeMarkSink;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
 use Porta\Tests\Support\StatusReads;
@@ -132,6 +133,7 @@ final class AbstractToolPluginTest extends TestCase
             $tui,
             new RecordingDiagnosticsSink(),
             $this->editor,
+            new RecordingChangeMarkSink(),
             $this->buffers,
             TestDockTools::controller(),
             TestDockTools::replacer($this->buffers),

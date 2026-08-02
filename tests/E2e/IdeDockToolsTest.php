@@ -10,6 +10,7 @@ use Porta\Editor\BufferService;
 use Porta\Ide;
 use Porta\Lsp\Uri;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -83,6 +84,35 @@ final class IdeDockToolsTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testChangeMarksReachTheGutterAndFollowTheActiveBuffer(): void
+    {
+        // The seam a version-control plugin publishes through: path-keyed, so
+        // an answer that arrives after a tab switch lands on the file it was
+        // computed for rather than whatever is on screen.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n\$x = 1;\n", 'b.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $decorations = Probe::get($tui->getById('editor'), 'decorations');
+                    $this->assertSame([], $decorations->vcsMarks(), 'nothing published yet');
+
+                    self::bufferService($ide)->applyChangeMarks((string) realpath($project->path('a.php')), [1 => 'modified']);
+                    $this->assertSame([1 => 'modified'], $decorations->vcsMarks(), 'the active file paints');
+
+                    // A file with no open buffer is a silent no-op, not a crash.
+                    self::bufferService($ide)->applyChangeMarks($project->path('nope.php'), [0 => 'added']);
+                    $this->assertSame([1 => 'modified'], $decorations->vcsMarks(), 'and nothing else moved');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testProblemsTabRefreshesLiveAsDiagnosticsLand(): void
     {
         putenv('PATH=/nonexistent');
@@ -116,7 +146,7 @@ final class IdeDockToolsTest extends TestCase
                     // A further refresh that adds an EARLIER row must not move
                     // the selection off the diagnostic the user is on.
                     $results = $tui->getById('results');
-                    \assert($results instanceof \Porta\Widget\ResultsPanelWidget);
+                    \assert($results instanceof \Porta\Widget\ResultsPanelWidget, description: 'the dock shows the results panel');
                     $this->assertSame(1, $results->captureViewState()->selectedLine, 'the fresh tab selected its first match');
                     self::bufferService($ide)
                         ->applyDiagnostics(

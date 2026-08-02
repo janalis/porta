@@ -942,6 +942,37 @@ final class PluginApi
     }
 
     /**
+     * Publish version-control change marks for a file — the gutter's
+     * added/modified/deleted stripe. Keys are 0-based lines, values one of
+     * `added`, `modified`, `deleted`; an empty array clears the file.
+     *
+     * Path-keyed, unlike {@see setLineAnnotations}: the answer arrives from a
+     * subprocess and the user may have switched tabs, so name the file you
+     * computed and core decides whether it is on screen. A path with no open
+     * buffer is a silent no-op.
+     *
+     * The three kinds are core's vocabulary. A plugin says which lines changed
+     * and how; core owns what that looks like, which is why a plugin cannot
+     * invent a colour here.
+     *
+     * @param array<int, string> $marks 0-based line => 'added'|'modified'|'deleted'
+     */
+    public function setChangeMarks(string $path, array $marks): void
+    {
+        $runtime = $this->manager->runtime();
+        $known = [];
+        foreach ($marks as $line => $kind) {
+            // Normalised at the boundary, like setDiagnostics' severity: an
+            // unknown kind has no Role behind it, so dropping it here is what
+            // stops it reaching the renderer as a colour nobody chose.
+            if (\in_array($kind, ['added', 'modified', 'deleted'], strict: true)) {
+                $known[max(0, $line)] = $kind;
+            }
+        }
+        $runtime->changeMarks->applyChangeMarks($path, $known);
+    }
+
+    /**
      * Show a dim trailing note after each of the ACTIVE document's lines — the
      * slot `git blame` uses. The map replaces whatever was showing, so an empty
      * array clears it.

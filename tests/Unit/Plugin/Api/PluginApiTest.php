@@ -18,6 +18,7 @@ use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\RecordingChangeMarkSink;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
 use Porta\Tests\Support\StatusReads;
@@ -46,6 +47,7 @@ final class PluginApiTest extends TestCase
 {
     use StatusReads;
 
+    private RecordingChangeMarkSink $changeMarks;
     private CodeEditorWidget $editor;
     private StatusBarWidget $status;
     private RecordingFileOpener $files;
@@ -71,6 +73,7 @@ final class PluginApiTest extends TestCase
                     $tui,
                     $this->diagnostics,
                     $this->editor,
+                    $this->changeMarks = new RecordingChangeMarkSink(),
                     $this->buffers,
                     TestDockTools::controller(),
                     TestDockTools::replacer($this->buffers),
@@ -225,6 +228,7 @@ final class PluginApiTest extends TestCase
             static fn () => $api->jumpTo(0),
             static fn () => $api->setDiagnostics('/x', []),
             static fn () => $api->setLineAnnotations([]),
+            static fn () => $api->setChangeMarks('/x', []),
             static fn () => $api->changeSetting('flag', true),
             static fn () => $api->showList('todo'),
             static fn () => $api->updateList('todo', []),
@@ -257,6 +261,7 @@ final class PluginApiTest extends TestCase
                 $tui,
                 new RecordingDiagnosticsSink(),
                 new CodeEditorWidget(),
+                $this->changeMarks = new RecordingChangeMarkSink(),
                 new BufferManager(),
                 TestDockTools::controller(),
                 TestDockTools::replacer(),
@@ -310,6 +315,28 @@ final class PluginApiTest extends TestCase
 
         $api->openFile('/p/b.php');
         $this->assertSame([['path' => '/p/b.php', 'focus' => true]], $this->files->opened);
+    }
+
+    public function testSetChangeMarksNormalisesAndReachesTheSink(): void
+    {
+        $api = $this->api();
+
+        $api->setChangeMarks('/p/a.php', [
+            0 => 'added',
+            1 => 'modified',
+            2 => 'deleted',
+            3 => 'exploded', // not a kind core has a Role for
+            -1 => 'added', // clamped
+        ]);
+
+        $published = $this->changeMarks->published;
+        $this->assertCount(1, $published);
+        $this->assertSame('/p/a.php', $published[0]['path']);
+        $this->assertSame(
+            [0 => 'added', 1 => 'modified', 2 => 'deleted'],
+            $published[0]['marks'],
+            'an unknown kind is dropped at the boundary rather than reaching the renderer',
+        );
     }
 
     public function testSetLineAnnotationsReachesTheEditorAndClearsWithAnEmptyMap(): void
@@ -380,6 +407,7 @@ final class PluginApiTest extends TestCase
             $tui,
             new RecordingDiagnosticsSink(),
             new CodeEditorWidget(),
+            $this->changeMarks = new RecordingChangeMarkSink(),
             new BufferManager(),
             new DockToolController($manager, $dock, '/p'), // the manager IS the source
             TestDockTools::replacer(),
