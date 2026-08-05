@@ -76,9 +76,14 @@ final class GitCommandsTest extends TestCase
 
         $commands->commit();
         $this->key("\r"); // submit with an empty message
-        $this->pump();
+        $this->drain(); // a non-event: nothing will flash, so there is nothing to await
 
         $this->assertSame($before, trim($this->project->git('rev-parse', 'HEAD')), 'no commit was made');
+        // HEAD alone proves nothing here — git refuses an empty message on its
+        // own, so this passed even with the early return deleted. What the
+        // guard actually buys is that git is never RUN: without it the user
+        // gets "Commit failed (nothing staged?)" for having typed nothing.
+        $this->assertSame('', trim($this->statusRow($this->statusBar)), 'and git was never run, so nothing was flashed');
     }
 
     public function testCommitWithNoRepositoryReportsUnavailable(): void
@@ -327,7 +332,7 @@ final class GitCommandsTest extends TestCase
         // WorkspaceViews has no git controller here, so this is a no-op — but
         // it must reach that branch without flashing "unavailable".
         $commands->fileHistory();
-        $this->pump();
+        $this->drain(); // likewise: the assertion below is that NOTHING flashed
 
         $this->assertStringNotContainsString('Git not available', $this->statusRow($this->statusBar));
     }
@@ -587,17 +592,40 @@ final class GitCommandsTest extends TestCase
      * turns. With no predicate it just waits for a flash to land — the signal
      * the simple actions end on; the overlay flows wait for the list to open.
      */
-    private function pump(?callable $until = null, float $timeout = 5.0): void
+    private function pump(?callable $until = null, float $timeout = 10.0, string $what = 'a flash to land'): void
     {
         $until ??= fn (): bool => '' !== trim($this->statusRow($this->statusBar));
         $elapsed = 0.0;
-        while (!$until() && $elapsed < $timeout) {
+        while (!$until()) {
+            if ($elapsed >= $timeout) {
+                // Throws rather than falling through, like PumpsLoop::await:
+                // a silent expiry runs the assertion below it against pre-op
+                // state, which reads as a wrong result instead of a slow one.
+                throw new \RuntimeException(\sprintf('timed out after %.1fs waiting for %s', $timeout, $what));
+            }
             $this->tick();
             $elapsed += 0.01;
         }
         // Drain any callbacks the resolved op queued behind it (refreshers).
         for ($i = 0; $i < 3; ++$i) {
             $this->tick();
+        }
+    }
+
+    /**
+     * Pump for a fixed span with nothing to await — the deliberate cousin of
+     * {@see pump()}, for the tests that assert a NON-event ("no commit was
+     * made", "it did not flash unavailable"). Those cannot use pump(): its
+     * predicate waits for a flash that by definition never lands, so they were
+     * relying on the timeout falling through silently. Prefer pump() whenever
+     * a real condition exists.
+     */
+    private function drain(float $seconds = 0.2): void
+    {
+        $elapsed = 0.0;
+        while ($elapsed < $seconds) {
+            $this->tick();
+            $elapsed += 0.01;
         }
     }
 
