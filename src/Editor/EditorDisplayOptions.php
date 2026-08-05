@@ -65,7 +65,7 @@ final class EditorDisplayOptions
         return $this->vcsGutter;
     }
 
-    public function setGitGutter(bool $on): bool
+    public function setVcsGutter(bool $on): bool
     {
         return $this->apply($this->vcsGutter, $on);
     }

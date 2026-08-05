@@ -431,12 +431,12 @@ final class CodeEditorWidget extends AbstractWidget implements
 
     public function enableVcsGutter(): void
     {
-        $this->display->setGitGutter(true);
+        $this->display->setVcsGutter(true);
     }
 
     public function disableVcsGutter(): void
     {
-        if ($this->display->setGitGutter(false)) {
+        if ($this->display->setVcsGutter(false)) {
             $this->setVcsMarks([]); // drop stale marks so nothing lingers when the strip hides
         }
     }
