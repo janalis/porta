@@ -423,6 +423,116 @@ final class IdeContextMenusTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testRightClickOverAnOpenPickerOpensNoMenu(): void
+    {
+        // A floating picker owns input while it is up, so a right-click under
+        // it opens nothing. Deleting that guard failed no test: every other
+        // right-click case starts from a screen with no picker on it.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                200 => function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1b[101;6u"); // ctrl+shift+e → Search Everywhere
+                    $this->assertTrue($tui->getById('editor')->isAnyPickerOpen(), 'the picker is up');
+                },
+                300 => function ($tui, $terminal, $ide): void {
+                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('editor'));
+                    $this->assertNotNull($rect, 'the editor is laid out');
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 5, $rect->row + 2)); // SGR is 1-based
+
+                    $this->assertFalse($tui->getById('context-menu')->isOpen(), 'no menu opened under the picker');
+                    $this->assertTrue($tui->getById('editor')->isAnyPickerOpen(), 'and the picker survived the click');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAPluginsFileMenuItemReachesFileRowsButNotDirectories(): void
+    {
+        // The tree menu adds the plugin FILE surface to a file row and not to a
+        // directory: the surface names a file, and a folder's own verbs are the
+        // ones that make sense there. Nothing covered the directory half —
+        // handing folders the file items too went unnoticed.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta/plugins/filesurf/plugin.php' => $this->fileSurfacePlugin(),
+            'pkg/deep.php' => "<?php\n",
+            'a.php' => "<?php\n",
+        ]);
+
+        // pkg/ collapsed on row 0 and a.php on row 1: a directory row and a
+        // file row both reachable without expanding anything.
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                250 => function ($tui, $terminal, $ide): void {
+                    $tui->tick();
+                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('tree'));
+                    $this->assertNotNull($rect, 'the tree is laid out');
+                    $tree = $tui->getById('tree');
+                    $dirRow = null;
+                    $fileRow = null;
+                    for ($r = 0; $r < 10; ++$r) {
+                        $node = $tree->nodeAt($r);
+                        if (null === $node) {
+                            continue;
+                        }
+                        $dirRow ??= $node->isDir ? $r : null;
+                        $fileRow ??= $node->isDir ? null : $r;
+                    }
+                    $this->assertNotNull($dirRow, 'a directory row is showing');
+                    $this->assertNotNull($fileRow, 'a file row is showing');
+
+                    $terminal->clearOutput();
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + $dirRow + 1)); // SGR is 1-based
+                    $this->assertTrue($tui->getById('context-menu')->isOpen(), 'the directory has a menu');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'New File'), what: 'the folder menu to paint');
+                    $this->assertStringNotContainsString('Touch This File', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'a folder gets no file-surface item');
+                    $tui->handleInput("\x1b"); // close
+
+                    $terminal->clearOutput();
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + $fileRow + 1));
+                    $this->assertTrue($tui->getById('context-menu')->isOpen(), 'the file has a menu');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Touch This File'), what: 'the file-surface item to paint');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    /** A plugin whose single command sits on the FILE context surface. */
+    private function fileSurfacePlugin(): string
+    {
+        return <<<'PHP'
+            <?php
+            use Porta\Plugin\Api\PluginApi;
+            use Porta\Plugin\Api\PortaPlugin;
+            use Porta\Workbench\Menu\MenuSurface;
+
+            return new class implements PortaPlugin {
+                public function name(): string
+                {
+                    return 'filesurf';
+                }
+
+                public function activate(PluginApi $api): void
+                {
+                    $api->registerCommand('touch', 'Touch This File', static function (): void {});
+                    $api->addMenuItem('touch', surface: MenuSurface::FileContext);
+                }
+            };
+            PHP;
+    }
+
     public function testTabContextMenuCloseClosesTheClickedTab(): void
     {
         putenv('PATH=/nonexistent');
