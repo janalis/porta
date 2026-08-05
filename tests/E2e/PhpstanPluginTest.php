@@ -122,7 +122,7 @@ final class PhpstanPluginTest extends TestCase
                     $tui->handleInput("\x13"); // ctrl+s → save → analyse
                 },
                 300 => function ($tui, $terminal): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpstan: 1 error in a.php'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpstan: 1 error in a.php'), what: 'phpstan to report the error');
                     $tui->tick();
                     $this->assertStringContainsString('phpstan: 1 error in a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'saving analysed the file');
                 },
@@ -168,7 +168,7 @@ final class PhpstanPluginTest extends TestCase
                     $tui->handleInput("\x1b\x01");
                 },
                 300 => function ($tui, $terminal): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpstan: exited with code 255'));
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpstan: exited with code 255'), what: 'phpstan to report its non-zero exit');
                     $tui->tick();
                     $this->assertStringContainsString('phpstan: exited with code 255', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },

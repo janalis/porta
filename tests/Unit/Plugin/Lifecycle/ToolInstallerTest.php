@@ -47,7 +47,7 @@ final class ToolInstallerTest extends TestCase
 
         $this->await(static function () use (&$result): bool {
             return null !== $result;
-        });
+        }, what: "brew's exit");
         $this->assertTrue($result, 'a zero exit is a successful install');
         $this->assertSame("install\nphpantom-lsp\n", file_get_contents($log), 'brew install <pkg>, brew winning over cargo');
     }
@@ -72,7 +72,7 @@ final class ToolInstallerTest extends TestCase
 
         $this->await(static function () use (&$result): bool {
             return null !== $result;
-        });
+        }, what: "cargo's exit");
         $this->assertSame("install\nphpantom_lsp\n--locked\n", file_get_contents($log), 'cargo install <pkg> --locked');
     }
 
@@ -89,7 +89,7 @@ final class ToolInstallerTest extends TestCase
 
         $this->await(static function () use (&$result): bool {
             return null !== $result;
-        });
+        }, what: "composer's exit");
         $this->assertSame("require\n--dev\nphpstan/phpstan\n", file_get_contents($log), 'composer require --dev <pkg>');
     }
 
@@ -106,7 +106,7 @@ final class ToolInstallerTest extends TestCase
 
         $this->await(static function () use (&$result): bool {
             return null !== $result;
-        });
+        }, what: "the failing manager's exit");
         $this->assertFalse($result, 'a non-zero exit is a failed install');
     }
 
