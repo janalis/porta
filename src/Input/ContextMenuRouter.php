@@ -116,15 +116,15 @@ final class ContextMenuRouter
         if (!$handled && null === $items && null !== ($commit = $this->git->historyCommitAt($mouse))) {
             $items = $this->contextItems->gitCommitItems($commit);
         }
-        // A right-click on the status-bar branch name offers the branch actions.
+        // A right-click on a status cell offers whatever that cell put there.
+        // This branch used to read one hardcoded span and pair it with the git
+        // branch menu; the cell carries its own menu now, so nothing here knows
+        // which cell was clicked.
         if (!$handled && null === $items) {
             $statusRect = $this->hit->rect($this->statusBar);
-            $span = $this->statusBar->branchColumnSpan();
-            if (null !== $statusRect && null !== $span && $statusRect->contains($mouse->row, $mouse->col)) {
-                $relCol = $statusRect->toRelative($mouse->row, $mouse->col)['col'];
-                if ($relCol >= $span[0] && $relCol < $span[1]) {
-                    $items = $this->contextItems->branchItems();
-                }
+            if (null !== $statusRect && $statusRect->contains($mouse->row, $mouse->col)) {
+                $menu = $this->statusBar->menuAt($statusRect->toRelative($mouse->row, $mouse->col)['col']);
+                $items = null === $menu ? null : $menu();
             }
         }
         if (null === $items) {

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ui\Role;
 use Porta\Workbench\PluginStatusSegments;
 use Porta\Workbench\StatusSegmentSource;
+use Porta\Workbench\StatusTone;
 
 /** The plugins' single slot in the status bar's prefix. */
 final class PluginStatusSegmentsTest extends TestCase
@@ -32,21 +32,22 @@ final class PluginStatusSegmentsTest extends TestCase
     {
         // One tagged contributor for all of them, because the tag is a compiled
         // container list a plugin can never be in.
-        $this->assertSame('▶ build · 3 ahead', $this->slot(['▶ build', '3 ahead'])->statusSegment());
-        $this->assertSame('▶ build', $this->slot(['▶ build'])->statusSegment());
+        $this->assertSame('▶ build · 3 ahead', $this->slot(['▶ build', '3 ahead'])->statusCell()?->text);
+        $this->assertSame('▶ build', $this->slot(['▶ build'])->statusCell()?->text);
     }
 
     public function testNothingToSayIsNullSoTheBarReservesNoSpace(): void
     {
         // Not '': the provider skips a null contributor entirely, and an empty
         // string would still cost the two-column separator after it.
-        $this->assertNull($this->slot([])->statusSegment());
+        $this->assertNull($this->slot([])->statusCell());
     }
 
     public function testEveryPluginSegmentPaintsInAnExistingRole(): void
     {
         // A plugin cannot choose a colour, and no theme gains an entry for
         // this — which is what keeps ThemeLockTest pinned.
-        $this->assertSame(Role::Subtle, $this->slot([])->statusRole());
+        $this->assertSame(StatusTone::Subtle, $this->slot(['x'])->statusCell()?->tone, 'a plugin never picks its own prominence');
+        $this->assertNull($this->slot(['x'])->statusCell()?->menu, 'nor makes its segment clickable');
     }
 }

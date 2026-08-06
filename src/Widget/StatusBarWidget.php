@@ -11,6 +11,8 @@ use Porta\Support\AnsiText;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Support\StylesDefault;
+use Porta\Workbench\Menu\MenuItem;
+use Porta\Workbench\StatusMenuSpan;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -28,16 +30,24 @@ final class StatusBarWidget extends AbstractWidget
 {
     use StylesDefault;
 
-    /** @var (callable(): array{left: string, right: string, branchStart?: int|null, branchEnd?: int|null})|null */
+    /** @var (callable(): array{left: string, right: string, menus?: list<StatusMenuSpan>})|null */
     private $provider = null;
 
     private string $lastLeft = '';
     private string $lastRight = '';
-    /** The branch cell's column range within `left` (from the provider), or null. */
-    private ?int $branchStart = null;
-    private ?int $branchEnd = null;
-    /** @var array{int, int}|null the branch's on-screen column span from the last render, for hit-testing */
-    private ?array $branchSpan = null;
+    /**
+     * Clickable cells, as the provider reports them.
+     *
+     * @var list<StatusMenuSpan>
+     */
+    private array $cellMenus = [];
+
+    /**
+     * Their on-screen spans from the last render.
+     *
+     * @var list<StatusMenuSpan>
+     */
+    private array $renderedMenus = [];
 
     /** @var array{text: string, until: float}|null */
     private ?array $flash = null;
@@ -52,7 +62,7 @@ final class StatusBarWidget extends AbstractWidget
     }
 
     /**
-     * @param callable(): array{left: string, right: string, branchStart?: int|null, branchEnd?: int|null} $provider
+     * @param callable(): array{left: string, right: string, menus?: list<StatusMenuSpan>} $provider
      */
     public function setProvider(callable $provider): self
     {
@@ -68,9 +78,25 @@ final class StatusBarWidget extends AbstractWidget
      *
      * @return array{int, int}|null
      */
-    public function branchColumnSpan(): ?array
+    /**
+     * The menu a status cell at column $col offers, or null when nothing
+     * clickable is there.
+     *
+     * Replaces branchColumnSpan(): the router used to read one hardcoded span
+     * and pair it with one hardcoded menu, which is how the status bar came to
+     * know what a git branch was.
+     *
+     * @return (\Closure(): list<MenuItem>)|null
+     */
+    public function menuAt(int $col): ?\Closure
     {
-        return $this->branchSpan;
+        foreach ($this->renderedMenus as $span) {
+            if ($span->contains($col)) {
+                return $span->items;
+            }
+        }
+
+        return null;
     }
 
     /** The clock's current instant as float seconds (with sub-second precision). */
@@ -106,8 +132,7 @@ final class StatusBarWidget extends AbstractWidget
         $segments = ($this->provider)();
         $left = $segments['left'];
         $right = $segments['right'];
-        $this->branchStart = $segments['branchStart'] ?? null;
-        $this->branchEnd = $segments['branchEnd'] ?? null;
+        $this->cellMenus = $segments['menus'] ?? [];
         if ($left !== $this->lastLeft || $right !== $this->lastRight) {
             $this->lastLeft = $left;
             $this->lastRight = $right;
@@ -134,13 +159,15 @@ final class StatusBarWidget extends AbstractWidget
         $left = AnsiText::truncate($left, $leftMax);
         $leftWidth = AnsiUtils::visibleWidth($left);
 
-        // The branch (leftmost in `left`) is offset by the one leading space in
-        // the row. Only offer its hit region when the whole label is on screen —
-        // not while a flash replaced `left`, nor when truncation clipped it.
-        $this->branchSpan =
-            null !== $this->flash || null === $this->branchStart || null === $this->branchEnd || $this->branchEnd > $leftWidth
-                ? null
-                : [1 + $this->branchStart, 1 + $this->branchEnd];
+        // Cells are offset by the one leading space in the row. Only offer a
+        // hit region when the whole label is on screen — not while a flash
+        // replaced `left`, nor when truncation clipped it.
+        $this->renderedMenus = null !== $this->flash
+            ? []
+            : array_values(array_map(
+                static fn (StatusMenuSpan $span): StatusMenuSpan => $span->shifted(1),
+                array_filter($this->cellMenus, static fn (StatusMenuSpan $span): bool => $span->to <= $leftWidth),
+            ));
 
         $gap = max(1, $columns - $leftWidth - $rightWidth - 2);
         $line = ' '.$left.str_repeat(' ', $gap).$right.' ';

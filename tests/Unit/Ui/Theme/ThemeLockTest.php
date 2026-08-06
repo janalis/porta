@@ -74,8 +74,8 @@ final class ThemeLockTest extends TestCase
         yield 'faint' => [Role::Faint, new Style(color: 242)];
         yield 'subtle' => [Role::Subtle, new Style(color: 246)];
         yield 'emphasis' => [Role::Emphasis, new Style(color: 255)];
-        yield 'status-branch' => [Role::StatusBranch, new Style(color: 114)];
-        yield 'status-debug' => [Role::StatusDebug, new Style(color: 203)];
+        yield 'status-accent' => [Role::StatusAccent, new Style(color: 114)];
+        yield 'status-active' => [Role::StatusActive, new Style(color: 203)];
         yield 'status-error' => [Role::StatusError, new Style(color: 203)];
         yield 'status-warning' => [Role::StatusWarning, new Style(color: 179)];
     }
@@ -139,8 +139,8 @@ final class ThemeLockTest extends TestCase
         yield 'faint' => [Role::Faint, new Style(color: 245)];
         yield 'subtle' => [Role::Subtle, new Style(color: 246)];
         yield 'emphasis' => [Role::Emphasis, new Style(color: 16)];
-        yield 'status-branch' => [Role::StatusBranch, new Style(color: 28)];
-        yield 'status-debug' => [Role::StatusDebug, new Style(color: 160)];
+        yield 'status-accent' => [Role::StatusAccent, new Style(color: 28)];
+        yield 'status-active' => [Role::StatusActive, new Style(color: 160)];
         yield 'status-error' => [Role::StatusError, new Style(color: 160)];
         yield 'status-warning' => [Role::StatusWarning, new Style(color: 130)];
     }

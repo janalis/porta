@@ -69,8 +69,8 @@ final class HighContrastTheme
                 Role::Faint->selector() => new Style(color: 249),
                 Role::Subtle->selector() => new Style(color: 251),
                 Role::Emphasis->selector() => new Style(color: 231),
-                Role::StatusBranch->selector() => new Style(color: 120),
-                Role::StatusDebug->selector() => new Style(color: 203),
+                Role::StatusAccent->selector() => new Style(color: 120),
+                Role::StatusActive->selector() => new Style(color: 203),
                 Role::StatusError->selector() => new Style(color: 203),
                 Role::StatusWarning->selector() => new Style(color: 226),
                 // List selection as a `.list` pseudo-element: the base rule is

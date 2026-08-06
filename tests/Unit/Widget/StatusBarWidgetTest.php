@@ -6,12 +6,22 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Menu\MenuItem;
+use Porta\Workbench\StatusMenuSpan;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class StatusBarWidgetTest extends TestCase
 {
+    /** A status row with one clickable cell spanning cols [0,6) of `left`. */
+    private static function provider(bool $menus, string $right = 'R'): callable
+    {
+        $spans = $menus ? [new StatusMenuSpan(0, 6, static fn (): array => [new MenuItem('Switch', '', static fn () => null)])] : [];
+
+        return static fn (): array => ['left' => "\u{e0a0} main  file.php", 'right' => $right, 'menus' => $spans];
+    }
+
     public function testRendersProviderContentAtExactWidth(): void
     {
         $status = new StatusBarWidget();
@@ -76,46 +86,53 @@ final class StatusBarWidgetTest extends TestCase
         $this->assertSame(20, AnsiUtils::visibleWidth($line));
     }
 
-    public function testBranchColumnSpanTracksTheBranchCellWithTheLeadingSpace(): void
+    public function testStatusCellMenuTracksTheBranchCellWithTheLeadingSpace(): void
     {
         $status = new StatusBarWidget();
-        // The branch occupies cols [0,6) in `left`; the row's one leading space shifts it to [1,7).
-        $status->setProvider(static fn () => ['left' => "\u{e0a0} main  file.php", 'right' => 'R', 'branchStart' => 0, 'branchEnd' => 6]);
+        // The cell occupies cols [0,6) in `left`; the row's one leading space shifts it to [1,7).
+        $status->setProvider(self::provider(menus: true));
         $status->beforeRender();
         $status->render(new RenderContext(60, 1));
 
-        $this->assertSame([1, 7], $status->branchColumnSpan(), 'the on-screen span accounts for the leading space');
+        $this->assertNull($status->menuAt(0), 'the leading space is not part of the cell');
+        $this->assertNotNull($status->menuAt(1), 'the on-screen span accounts for it');
+        $this->assertNotNull($status->menuAt(6), 'the last column of the cell');
+        $this->assertNull($status->menuAt(7), 'and the column past it');
+        $this->assertSame(['Switch'], array_map(static fn (MenuItem $i): string => $i->label, $status->menuAt(1)()), 'the cell carries its OWN menu');
     }
 
-    public function testBranchColumnSpanIsNullWithoutABranch(): void
+    public function testStatusCellMenuIsNullWithoutABranch(): void
     {
         $status = new StatusBarWidget();
-        $status->setProvider(static fn () => ['left' => 'file.php', 'right' => 'R']); // no branch keys
+        $status->setProvider(self::provider(menus: false));
         $status->beforeRender();
         $status->render(new RenderContext(60, 1));
 
-        $this->assertNull($status->branchColumnSpan());
+        $this->assertNull($status->menuAt(1));
     }
 
-    public function testBranchColumnSpanIsNullWhileFlashing(): void
+    public function testStatusCellMenuIsNullWhileFlashing(): void
     {
         $status = new StatusBarWidget(new MockClock('2020-01-01T00:00:00+00:00'));
-        $status->setProvider(static fn () => ['left' => "\u{e0a0} main  file.php", 'right' => 'R', 'branchStart' => 0, 'branchEnd' => 6]);
+        $status->setProvider(self::provider(menus: true));
         $status->beforeRender();
-        $status->flash('Saved', 1.0);
+        // A flash LONGER than the cell, deliberately: a short one is excluded
+        // by the truncation filter anyway, so this would pass with the flash
+        // guard deleted and prove nothing about it.
+        $status->flash(str_repeat('Saved ', times: 4), 1.0);
         $status->render(new RenderContext(60, 1));
 
-        $this->assertNull($status->branchColumnSpan(), 'a flash replaces the branch, so there is no hit region');
+        $this->assertNull($status->menuAt(1), 'a flash replaces the prefix, so there is no hit region');
     }
 
-    public function testBranchColumnSpanIsNullWhenTruncatedOff(): void
+    public function testStatusCellMenuIsNullWhenTruncatedOff(): void
     {
         $status = new StatusBarWidget();
         // A wide right side + narrow terminal truncates the branch off the left.
-        $status->setProvider(static fn () => ['left' => "\u{e0a0} main  file.php", 'right' => str_repeat('R', times: 40), 'branchStart' => 0, 'branchEnd' => 6]);
+        $status->setProvider(self::provider(menus: true, right: str_repeat('R', times: 40)));
         $status->beforeRender();
         $status->render(new RenderContext(20, 1));
 
-        $this->assertNull($status->branchColumnSpan(), 'a clipped branch offers no hit region');
+        $this->assertNull($status->menuAt(1), 'a clipped cell offers no hit region');
     }
 }

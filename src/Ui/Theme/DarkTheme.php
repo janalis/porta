@@ -69,8 +69,8 @@ final class DarkTheme
                 Role::Faint->selector() => new Style(color: 242),
                 Role::Subtle->selector() => new Style(color: 246),
                 Role::Emphasis->selector() => new Style(color: 255),
-                Role::StatusBranch->selector() => new Style(color: 114),
-                Role::StatusDebug->selector() => new Style(color: 203),
+                Role::StatusAccent->selector() => new Style(color: 114),
+                Role::StatusActive->selector() => new Style(color: 203),
                 Role::StatusError->selector() => new Style(color: 203),
                 Role::StatusWarning->selector() => new Style(color: 179),
                 // List selection as a `.list` pseudo-element: the base rule is

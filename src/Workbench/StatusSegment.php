@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Workbench;
 
-use Porta\Ui\Role;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
 /**
@@ -22,13 +21,6 @@ use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 #[AutoconfigureTag('porta.status_segment')]
 interface StatusSegment
 {
-    /** The text for this contributor, or null when it has nothing to show. */
-    public function statusSegment(): ?string;
-
-    /**
-     * How to paint it. A {@see Role} rather than a colour so the three themes
-     * keep deciding — and so a contributor cannot invent one, which is what
-     * the theme lock exists to prevent.
-     */
-    public function statusRole(): Role;
+    /** This contributor's cell, or null when it has nothing to show. */
+    public function statusCell(): ?StatusCell;
 }

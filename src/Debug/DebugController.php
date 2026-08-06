@@ -22,7 +22,9 @@ use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockTab;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\StatusCell;
 use Porta\Workbench\StatusSegment;
+use Porta\Workbench\StatusTone;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -113,25 +115,20 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         return null !== $this->session && DebugState::Paused === $this->session->state();
     }
 
-    /** How the segment paints — the debugger's own role, unchanged by the seam. */
-    public function statusRole(): Role
-    {
-        return Role::StatusDebug;
-    }
-
-    /** The status-bar segment: '⏸ path:line' when paused, '▶ debug' while running, null when idle. */
-    public function statusSegment(): ?string
+    /** The status-bar cell: '⏸ path:line' when paused, '▶ debug' while running, null when idle. */
+    public function statusCell(): ?StatusCell
     {
         if (!$this->isActive()) {
             return null;
         }
         $path = $this->state->stoppedPath();
         $line = $this->state->stoppedLine();
-        if ($this->isPaused() && null !== $path && null !== $line) {
-            return Glyphs::DEBUG_PAUSED.' '.ProjectPaths::relative($this->rootDir, $path).':'.($line + 1);
-        }
+        $text =
+            $this->isPaused() && null !== $path && null !== $line
+                ? Glyphs::DEBUG_PAUSED.' '.ProjectPaths::relative($this->rootDir, $path).':'.($line + 1)
+                : Glyphs::DEBUG_RUNNING.' debug';
 
-        return Glyphs::DEBUG_RUNNING.' debug';
+        return new StatusCell($text, StatusTone::Active);
     }
 
     /** Ctrl+F8 / a gutter click: toggle a breakpoint on the caret's (or given) line. */

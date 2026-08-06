@@ -6,8 +6,6 @@ namespace Porta\Workbench;
 
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
-use Porta\Git\GitRefresher;
-use Porta\Git\GitSettings;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Support\ProjectPaths;
@@ -29,23 +27,22 @@ final class StatusBarProvider
         private readonly BufferManager $buffers,
         private readonly CodeEditorWidget $editor,
         private readonly EditorPanes $panes,
-        private readonly GitRefresher $gitRefresher,
         /** @var iterable<StatusSegment> ambient-state contributors, core's first (see StatusSegment) */
         #[AutowireIterator('porta.status_segment')]
         private readonly iterable $segmentSources,
         private readonly LspSessionPool $lsp,
         private readonly Styles $styles,
         private readonly Translator $translator,
-        private readonly GitSettings $gitSettings,
         private readonly string $rootDir,
     ) {}
 
     /**
-     * The two status segments plus the branch cell's column range within `left`
-     * (null when there is no branch), so the router can hit-test a right-click
-     * on the branch. The range shifts right when a debug segment precedes it.
+     * The two status segments plus, for every clickable cell, its column range
+     * within `left` and the menu it offers — so the router can hit-test a
+     * right-click without knowing which cell is which. Ranges shift right as
+     * earlier segments appear and disappear.
      *
-     * @return array{left: string, right: string, branchStart: int|null, branchEnd: int|null}
+     * @return array{left: string, right: string, menus: list<StatusMenuSpan>}
      */
     public function segments(): array
     {
@@ -65,24 +62,20 @@ final class StatusBarProvider
         // it (each part is independently exercised; their sum needs no third
         // path). The debugger is one contributor among them now, which is what
         // takes Porta\Debug out of this file.
-        $branchStart = null;
-        $branchEnd = null;
+        $menus = [];
         $prefix = '';
         $prefixWidth = 0;
         foreach ($this->segmentSources as $source) {
-            $segment = $source->statusSegment();
-            if (null === $segment || '' === $segment) {
+            $cell = $source->statusCell();
+            if (null === $cell || '' === $cell->text) {
                 continue;
             }
-
-            $prefix .= $this->styles->of($source->statusRole())->apply($segment).'  ';
-            $prefixWidth += AnsiUtils::visibleWidth($segment) + 2;
-        }
-        if ($this->gitSettings->showBranch() && null !== ($branch = $this->gitRefresher->branch())) {
-            $branchText = Glyphs::STATUS_BRANCH." {$branch}";
-            $branchStart = $prefixWidth;
-            $branchEnd = $prefixWidth + AnsiUtils::visibleWidth($branchText);
-            $prefix .= $this->styles->of(Role::StatusBranch)->apply($branchText).'  ';
+            $width = AnsiUtils::visibleWidth($cell->text);
+            if (null !== $cell->menu) {
+                $menus[] = new StatusMenuSpan($prefixWidth, $prefixWidth + $width, $cell->menu);
+            }
+            $prefix .= $this->styles->of(self::role($cell->tone))->apply($cell->text).'  ';
+            $prefixWidth += $width + 2;
         }
         $left = $prefix.$left;
 
@@ -93,7 +86,7 @@ final class StatusBarProvider
         // to the editor's diagnostics/LSP legend below.
         $paneSegment = $this->panes->paneFor((string) $active?->paneId)?->statusRight();
         if (null !== $paneSegment && '' !== $paneSegment) {
-            return ['left' => $left, 'right' => $paneSegment, 'branchStart' => $branchStart, 'branchEnd' => $branchEnd];
+            return ['left' => $left, 'right' => $paneSegment, 'menus' => $menus];
         }
 
         if (null !== ($diagnostic = $this->editor->getCursorDiagnostic())) {
@@ -115,6 +108,16 @@ final class StatusBarProvider
         ]);
         $right = $problems.$location.'  '.$legend;
 
-        return ['left' => $left, 'right' => $right, 'branchStart' => $branchStart, 'branchEnd' => $branchEnd];
+        return ['left' => $left, 'right' => $right, 'menus' => $menus];
+    }
+
+    /** A contributor asks for prominence; core decides the colour, so the theme lock holds. */
+    private static function role(StatusTone $tone): Role
+    {
+        return match ($tone) {
+            StatusTone::Subtle => Role::Subtle,
+            StatusTone::Accent => Role::StatusAccent,
+            StatusTone::Active => Role::StatusActive,
+        };
     }
 }

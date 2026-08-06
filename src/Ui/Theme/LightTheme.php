@@ -68,8 +68,8 @@ final class LightTheme
                 Role::Faint->selector() => new Style(color: 245),
                 Role::Subtle->selector() => new Style(color: 246),
                 Role::Emphasis->selector() => new Style(color: 16),
-                Role::StatusBranch->selector() => new Style(color: 28),
-                Role::StatusDebug->selector() => new Style(color: 160),
+                Role::StatusAccent->selector() => new Style(color: 28),
+                Role::StatusActive->selector() => new Style(color: 160),
                 Role::StatusError->selector() => new Style(color: 160),
                 Role::StatusWarning->selector() => new Style(color: 130),
                 // List selection as a `.list` pseudo-element: the base rule is

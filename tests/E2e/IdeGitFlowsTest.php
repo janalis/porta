@@ -45,12 +45,11 @@ final class IdeGitFlowsTest extends TestCase
                 300 => function ($tui, $terminal, $ide): void {
                     $status = $tui->getById('status');
                     // The branch resolves asynchronously; wait for it to render.
-                    $this->await(static fn (): bool => null !== $status->branchColumnSpan(), what: 'the branch to render in the status bar');
+                    $this->await(static fn (): bool => null !== self::clickableColumn($status), what: 'the branch to render in the status bar');
 
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($status);
-                    $span = $status->branchColumnSpan();
-                    $col = $rect->col + intdiv($span[0] + $span[1], num2: 2); // middle of the branch cell
+                    $col = $rect->col + (int) self::clickableColumn($status);
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $col + 1, $rect->row + 1)); // right-click (1-based)
                     $tui->tick();
 
@@ -231,6 +230,24 @@ final class IdeGitFlowsTest extends TestCase
         );
 
         $this->addToAssertionCount(1);
+    }
+
+    /**
+     * The first status column offering a context menu, or null.
+     *
+     * The widget used to expose the branch's span directly; it reports a menu
+     * PER COLUMN now, because the status bar no longer knows which of its cells
+     * is a branch. Scanning is how a caller finds one without being told.
+     */
+    private static function clickableColumn(object $status): ?int
+    {
+        for ($col = 0; $col < 120; ++$col) {
+            if (null !== $status->menuAt($col)) {
+                return $col;
+            }
+        }
+
+        return null;
     }
 
     private function menuTitles($tui): array
@@ -469,7 +486,7 @@ final class IdeGitFlowsTest extends TestCase
                     // Branch + gutter marks resolve through two async git
                     // round trips; await each, never a fixed gap.
                     $status = $tui->getById('status');
-                    $this->await(static fn (): bool => null !== $status->branchColumnSpan(), what: 'the branch to resolve in the status bar');
+                    $this->await(static fn (): bool => null !== self::clickableColumn($status), what: 'the branch to resolve in the status bar');
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     // Branch name in the status bar (default branch: main or master)

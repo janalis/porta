@@ -107,8 +107,8 @@ enum Role
     case Emphasis;
 
     // Status bar segments: git branch, debug indicator, problem counts.
-    case StatusBranch;
-    case StatusDebug;
+    case StatusAccent;
+    case StatusActive;
     case StatusError;
     case StatusWarning;
 

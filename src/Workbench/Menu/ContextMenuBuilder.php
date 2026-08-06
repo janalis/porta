@@ -39,21 +39,6 @@ final class ContextMenuBuilder
     ) {}
 
     /**
-     * The status-bar branch menu — thin triggers over the existing branch
-     * flows, so switching/creating/deleting stays single-sourced in GitCommands.
-     *
-     * @return list<MenuItem>
-     */
-    public function branchItems(): array
-    {
-        return [
-            new MenuItem($this->translator->trans('Switch Branch…'), '', fn () => $this->git->branches()),
-            new MenuItem($this->translator->trans('New Branch…'), '', fn () => $this->git->newBranch()),
-            new MenuItem($this->translator->trans('Delete Branch…'), '', fn () => $this->git->deleteBranch()),
-        ];
-    }
-
-    /**
      * The editor's right-click menu: core's verbs, then whatever plugins have
      * put on this surface, behind a separator.
      *

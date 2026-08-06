@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Workbench;
 
-use Porta\Ui\Role;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
 /**
@@ -27,15 +26,10 @@ final class PluginStatusSegments implements StatusSegment
         private readonly StatusSegmentSource $plugins,
     ) {}
 
-    public function statusSegment(): ?string
+    public function statusCell(): ?StatusCell
     {
         $segments = $this->plugins->statusSegments();
 
-        return [] === $segments ? null : implode(' · ', $segments);
-    }
-
-    public function statusRole(): Role
-    {
-        return Role::Subtle;
+        return [] === $segments ? null : new StatusCell(implode(' · ', $segments));
     }
 }
