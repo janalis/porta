@@ -169,4 +169,93 @@ final class CoverageCheckCommandTest extends TestCase
         $this->assertStringNotContainsString('Helper.php', $display, 'the vendored file is not ours to cover');
         $this->assertStringContainsString('demo/src/Tool.php', $display);
     }
+
+    public function testAFileTheReportNeverMentionsFailsEvenAtFullCoverage(): void
+    {
+        // The hole --require exists to close. Clover runs with
+        // includeUncoveredFiles="false", so a file nothing loads is not a 0%
+        // row — it is no row at all, and the percentage is computed from the
+        // rows that ARE there. src/ cannot hit this (compiling the container
+        // touches every file); plugin code loads only when a plugin activates,
+        // which is exactly the guarantee a file moving INTO a plugin loses.
+        $project = new TempProject([
+            'plugins/demo/src/Graded.php' => "<?php\n",
+            'plugins/demo/src/Ghost.php' => "<?php\n",
+        ]);
+        $project->write('clover.xml', $this->clover(
+            [(string) realpath($project->path('plugins/demo/src/Graded.php')) => [5, 5]],
+            totalCovered: 5,
+            totalStatements: 5,
+        ));
+
+        $tester = $this->tester();
+        $arguments = ['clover' => $project->path('clover.xml'), 'threshold' => '100', '--only' => '/plugins/'];
+
+        $this->assertSame(Command::SUCCESS, $tester->execute($arguments), 'without --require the ghost is invisible');
+
+        $status = $tester->execute([...$arguments, '--require' => $project->path('plugins')]);
+        $display = $tester->getDisplay();
+
+        $this->assertSame(Command::FAILURE, $status, $display);
+        $this->assertStringContainsString('100.00%', $display, 'the percentage was green the whole time — that is the point');
+        // The graded file still appears in the table above; what matters is
+        // which files the failure itself names.
+        $named = substr($display, (int) strpos($display, 'absent from the report'));
+        $this->assertStringContainsString('Ghost.php', $named, 'the ungraded file is named');
+        $this->assertStringNotContainsString('Graded.php', $named, 'and the graded one is not');
+    }
+
+    public function testRequireIgnoresVendoredAndTestFilesAndAnAbsentDirectory(): void
+    {
+        // The same exclusions rows() makes: neither is a coverage subject, so
+        // neither may fail the presence check either.
+        $project = new TempProject([
+            'plugins/demo/src/Graded.php' => "<?php\n",
+            'plugins/demo/vendor/vend/lib/Helper.php' => "<?php\n",
+            'plugins/demo/tests/DemoTest.php' => "<?php\n",
+        ]);
+        $project->write('clover.xml', $this->clover(
+            [(string) realpath($project->path('plugins/demo/src/Graded.php')) => [5, 5]],
+            totalCovered: 5,
+            totalStatements: 5,
+        ));
+
+        $tester = $this->tester();
+        $arguments = ['clover' => $project->path('clover.xml'), 'threshold' => '100', '--only' => '/plugins/'];
+
+        $this->assertSame(
+            Command::SUCCESS,
+            $tester->execute([...$arguments, '--require' => $project->path('plugins')]),
+            $tester->getDisplay(),
+        );
+        $this->assertSame(
+            Command::SUCCESS,
+            $tester->execute([...$arguments, '--require' => $project->path('nowhere')]),
+            'a directory that does not exist is not a gap',
+        );
+    }
+
+    public function testAnExternalToolPluginEntryPointMayBeAbsent(): void
+    {
+        // Its tests skipWithoutBinary(), so on a machine without the tool
+        // plugin.php is never required and pcov has nothing to record. The list
+        // permits that absence; it does not excuse a neighbour's.
+        $project = new TempProject([
+            'plugins/psalm/plugin.php' => "<?php\n",
+            'plugins/demo/plugin.php' => "<?php\n",
+        ]);
+        $project->write('clover.xml', $this->clover([], totalCovered: 0, totalStatements: 0));
+
+        $tester = $this->tester();
+        $status = $tester->execute([
+            'clover' => $project->path('clover.xml'),
+            'threshold' => '0',
+            '--require' => $project->path('plugins'),
+        ]);
+        $display = $tester->getDisplay();
+
+        $this->assertSame(Command::FAILURE, $status, $display);
+        $this->assertStringContainsString('demo/plugin.php', $display, 'an ordinary plugin entry point is still required');
+        $this->assertStringNotContainsString('psalm', $display, 'the external-tool one is excused');
+    }
 }

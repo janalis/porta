@@ -56,7 +56,7 @@
             "@coverage",
             "@php bin/porta-dev coverage:check coverage/clover.xml 100",
             "@coverage:plugins",
-            "@php bin/porta-dev coverage:check coverage/plugins-clover.xml 100 --only=/plugins/"
+            "@php bin/porta-dev coverage:check coverage/plugins-clover.xml 100 --only=/plugins/ --require=plugins"
         ],
         "arch": "@php bin/porta-dev arch",
         "container": "@php bin/porta-dev container"

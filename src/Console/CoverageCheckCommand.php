@@ -26,12 +26,38 @@ use Symfony\Component\Console\Output\OutputInterface;
 #[AsCommand(name: 'coverage:check', description: 'Fail when Clover line coverage is below a threshold')]
 final class CoverageCheckCommand extends Command
 {
+    /**
+     * Files whose absence from the report is not a gap.
+     *
+     * Each is the entry point of a plugin that wraps an EXTERNAL binary, and its
+     * tests call `skipWithoutBinary()`. On a machine without that tool the tests
+     * skip, `plugin.php` is never required, and pcov has nothing to record — so
+     * the file is legitimately missing. On a machine that has the tool it is
+     * present and graded like anything else; this list permits an absence, it
+     * does not excuse a shortfall.
+     *
+     * Anything NOT listed here that vanishes from the report is a real gap: a
+     * file nothing loads is a file nothing tests.
+     *
+     * @var list<string>
+     */
+    private const array MAY_BE_ABSENT = [
+        'plugins/chroma/plugin.php',
+        'plugins/mago/plugin.php',
+        'plugins/php-cs-fixer/plugin.php',
+        'plugins/phpactor/plugin.php',
+        'plugins/phpantom/plugin.php',
+        'plugins/phpstan/plugin.php',
+        'plugins/psalm/plugin.php',
+    ];
+
     protected function configure(): void
     {
         $this
             ->addArgument('clover', InputArgument::OPTIONAL, 'Path to the Clover XML report', 'coverage/clover.xml')
             ->addArgument('threshold', InputArgument::OPTIONAL, 'Required line-coverage percentage', '100')
-            ->addOption('only', mode: InputOption::VALUE_REQUIRED, description: 'Grade only files whose path contains this string');
+            ->addOption('only', mode: InputOption::VALUE_REQUIRED, description: 'Grade only files whose path contains this string')
+            ->addOption('require', mode: InputOption::VALUE_REQUIRED, description: 'Fail when a .php file under this directory is absent from the report');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -101,10 +127,71 @@ final class CoverageCheckCommand extends Command
             return Command::FAILURE;
         }
 
+        /** @var string|null $require */
+        $require = $input->getOption('require');
+        $absent = null === $require ? [] : $this->absentFrom($xml, $require);
+        if ([] !== $absent) {
+            $errors->writeln('');
+            $errors->writeln('coverage-check: FAILED — these files are absent from the report entirely, so nothing loaded them:');
+            foreach ($absent as $path) {
+                $errors->writeln('  '.$path);
+            }
+
+            return Command::FAILURE;
+        }
+
         $output->writeln('');
         $output->writeln('coverage-check: OK');
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * The `.php` files under $directory that the report never mentions.
+     *
+     * A percentage cannot catch these. Clover is configured with
+     * `includeUncoveredFiles="false"`, so a file no test ever loads is not a
+     * 0% row — it is not a row at all, and {@see rows()} grades what it finds.
+     * `src/` is safe by construction (compiling the container touches every
+     * file), but plugin code is loaded only when a plugin actually activates,
+     * which is exactly the guarantee a file moving INTO a plugin loses.
+     *
+     * Vendored and test files are not coverage subjects, matching {@see rows()}.
+     *
+     * @return list<string> project-relative, sorted
+     */
+    private function absentFrom(\SimpleXMLElement $xml, string $directory): array
+    {
+        if (!is_dir($directory)) {
+            return [];
+        }
+        $graded = [];
+        foreach (\is_array($files = $xml->xpath('//file')) ? $files : [] as $file) {
+            $graded[(string) $file['name']] = true;
+        }
+
+        $root = getcwd();
+        $absent = [];
+        $tree = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory, \FilesystemIterator::SKIP_DOTS));
+        foreach ($tree as $entry) {
+            /** @var \SplFileInfo $entry */
+            $path = $entry->getPathname();
+            if ('php' !== $entry->getExtension() || str_contains($path, needle: '/vendor/') || str_contains($path, needle: '/tests/')) {
+                continue;
+            }
+            $relative = false === $root ? $path : str_replace($root.'/', '', $path);
+            // Suffix-matched, not equality: the gate runs from the project root
+            // where the path is already relative, but nothing should depend on
+            // the caller's working directory to decide what is excused.
+            $excused = array_filter(self::MAY_BE_ABSENT, static fn (string $tail): bool => str_ends_with($relative, $tail));
+            if (isset($graded[(string) realpath($path)]) || [] !== $excused) {
+                continue;
+            }
+            $absent[] = $relative;
+        }
+        sort($absent);
+
+        return $absent;
     }
 
     /**
