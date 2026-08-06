@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Overlay\Presenter\OverlayDelivery;
 use Porta\Overlay\Presenter\PickerModalPresenter;
 use Porta\Overlay\State\MenuOverlayPanes;
+use Porta\Overlay\State\OverlayHost;
 use Porta\Tests\Support\RendersRoot;
 use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
@@ -32,6 +33,7 @@ final class PickerModalPresenterTest extends TestCase
     use RendersRoot;
 
     private CodeEditorWidget $editor;
+    private OverlayHost $overlays;
     private AbstractWidget&MenuOverlayHost $pane;
 
     private function presenter(bool $attachEditor = true): PickerModalPresenter
@@ -44,14 +46,17 @@ final class PickerModalPresenterTest extends TestCase
         );
         $this->pane = new TestOverlayPane();
         $this->tui->add($this->pane);
-        $this->editor = new CodeEditorWidget();
+        // One host, shared: the widget delegates to it and the presenter reads
+        // it, which is the whole point of it no longer being the widget's own.
+        $this->overlays = new OverlayHost($this->tui);
+        $this->editor = new CodeEditorWidget(overlayHost: $this->overlays);
         if ($attachEditor) {
             $this->tui->add($this->editor);
         }
 
         return new PickerModalPresenter(
             new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], [], [], static fn (): bool => false, static fn (): bool => false), $this->tui),
-            $this->editor,
+            $this->overlays,
             frameHooks: $this->tui,
         );
     }
@@ -101,8 +106,13 @@ final class PickerModalPresenterTest extends TestCase
         $this->assertSame([], $presenter->regions());
     }
 
-    /** A detached editor (image tab, git/settings view) means an invisible picker: paint nothing. */
-    public function testADetachedEditorPaintsNothing(): void
+    /**
+     * A detached editor still paints. It used not to, and that was the defect:
+     * a full-screen view detaches the editor, so every picker raised over one —
+     * the command palette the Git menu offers as view-safe, a branch list —
+     * went invisible, and the git verbs closed the view to be seen at all.
+     */
+    public function testADetachedEditorStillPaintsThePickers(): void
     {
         $presenter = $this->presenter(attachEditor: false);
         $this->frame();
@@ -110,9 +120,9 @@ final class PickerModalPresenterTest extends TestCase
 
         $presenter->sync();
 
-        $this->assertSame([], $this->pane->modalSpans, 'no spans for a detached editor');
-        $this->assertFalse($this->pane->backdrop);
-        $this->assertSame([], $presenter->regions());
+        $this->assertNotSame([], $this->pane->modalSpans, 'the picker paints over whatever owns the main area');
+        $this->assertTrue($this->pane->backdrop);
+        $this->assertCount(1, $presenter->regions(), 'and owns a shadow region like any other painted box');
     }
 
     /** Closing clears spans and backdrop exactly once — the slot is shared with the full modals. */

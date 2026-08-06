@@ -9,7 +9,6 @@ use Porta\I18n\Translator;
 use Porta\Support\Outcome;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Workbench\Notifier;
-use Porta\Workbench\WorkspaceViews;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Tui;
 
@@ -33,7 +32,6 @@ final class GitRemoteCommands
         // Concrete on purpose: besides the pick-one list this hands the widget
         // itself back to Tui::setFocus(), which needs an AbstractWidget.
         private readonly CodeEditorWidget $editor,
-        private readonly WorkspaceViews $views,
         private readonly Tui $tui,
     ) {}
 
@@ -184,8 +182,6 @@ final class GitRemoteCommands
      */
     private function offer(string $title, array $items, \Closure $onPick): void
     {
-        $this->views->closeAll();
-        $this->tui->setFocus($this->editor);
         $this->editor->openListOverlay($title, $items, $onPick);
         $this->tui->requestRender();
     }

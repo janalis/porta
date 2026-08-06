@@ -118,7 +118,7 @@ final class WheelRouter
         // A floating picker owns the wheel wherever the pointer is — the
         // workspace beneath is dimmed and must not scroll away under it.
         // Only the menu dropdowns (which paint above it) win first.
-        if (null !== $this->panes->editor()->getContext() && $this->panes->editor()->isAnyPickerOpen()) {
+        if ($this->panes->editor()->isAnyPickerOpen()) {
             $this->panes->editor()->movePopupSelection(WheelStep::rows($mouse));
             $this->tui->requestRender();
 

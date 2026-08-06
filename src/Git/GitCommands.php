@@ -75,8 +75,6 @@ final class GitCommands
 
                 return;
             }
-            $this->views->closeAll();
-            $this->tui->setFocus($this->editor);
             $items = array_map(static fn (array $stash): array => [
                 'label' => '  '.$stash['subject'],
                 'hint' => date('Y-m-d H:i', $stash['timestamp']),
@@ -176,8 +174,6 @@ final class GitCommands
         if (!$this->guardAvailable()) {
             return;
         }
-        $this->views->closeAll();
-        $this->tui->setFocus($this->editor);
         $this->editor->openListOverlay(
             $this->translator->trans('Reset to %sha%?', ['%sha%' => $commit->shortSha]),
             [
@@ -250,10 +246,6 @@ final class GitCommands
             return;
         }
         $this->git->branches(function (array $branches): void {
-            // The overlay lives inside the editor: close whichever full view
-            // owns the main area so the picker is actually visible.
-            $this->views->closeAll();
-            $this->tui->setFocus($this->editor);
             $items = [
                 ['label' => $this->translator->trans('+ Create new branch…'), 'hint' => '', 'value' => self::CREATE],
                 ['label' => $this->translator->trans('− Delete branch…'), 'hint' => '', 'value' => self::DELETE],
@@ -290,8 +282,6 @@ final class GitCommands
 
             return;
         }
-        $this->views->closeAll();
-        $this->tui->setFocus($this->editor);
         $this->promptNewBranch();
     }
 
@@ -303,8 +293,6 @@ final class GitCommands
 
             return;
         }
-        $this->views->closeAll();
-        $this->tui->setFocus($this->editor);
         $this->pickBranchToDelete();
     }
 

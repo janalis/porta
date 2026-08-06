@@ -11,22 +11,36 @@ use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\TestTui;
 use Porta\Widget\Render\OverlayCompositor;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Input\Keybindings;
+use Symfony\Component\Tui\Tui;
 
 final class OverlayHostTest extends TestCase
 {
-    private int $invalidations = 0;
+    private Tui $tui;
 
     private function host(): OverlayHost
     {
-        $this->invalidations = 0;
+        // A real Tui, because the host asks IT for a frame now rather than
+        // calling back into a widget: these boxes float over the workspace and
+        // there is no widget below them to invalidate.
+        $this->tui = TestTui::create(100, 24);
+        $this->clearRepaint();
 
-        return new OverlayHost(function (): void {
-            ++$this->invalidations;
-        });
+        return new OverlayHost($this->tui);
+    }
+
+    private function clearRepaint(): void
+    {
+        Probe::set($this->tui, 'renderRequested', false);
+    }
+
+    private function repainted(): bool
+    {
+        return true === Probe::get($this->tui, 'renderRequested');
     }
 
     private function keybindings(): Keybindings
@@ -69,7 +83,7 @@ final class OverlayHostTest extends TestCase
         $host = $this->host();
         $host->openList('Empty', [], static fn () => null);
         $this->assertFalse(null !== Probe::get($host, 'overlay'));
-        $this->assertSame(0, $this->invalidations);
+        $this->assertFalse($this->repainted(), 'nothing to repaint');
     }
 
     public function testInputFallsThroughWhenNothingIsOpen(): void
@@ -135,7 +149,7 @@ final class OverlayHostTest extends TestCase
     {
         $host = $this->host();
         $this->assertFalse($host->promptClickAt(0, 0), 'no prompt open → not consumed');
-        $this->assertSame(0, $this->invalidations);
+        $this->assertFalse($this->repainted(), 'nothing to repaint');
     }
 
     public function testPromptClickOnTheBoxIsSwallowedAndClickElsewhereDismisses(): void
@@ -291,7 +305,7 @@ final class OverlayHostTest extends TestCase
         $this->assertFalse($host->isSearchOpen());
         $this->assertFalse($host->searchClickAt(0, 0));
         $this->assertFalse($host->searchHoverAt(0, 0));
-        $this->assertSame(0, $this->invalidations);
+        $this->assertFalse($this->repainted(), 'nothing to repaint');
     }
 
     public function testOpenSearchAndTypeQueriesWithTheField(): void
@@ -526,9 +540,9 @@ final class OverlayHostTest extends TestCase
             ++$activated;
         }));
 
-        $before = $this->invalidations;
+        $this->clearRepaint();
         $host->moveSearchSelection(1);
-        $this->assertGreaterThan($before, $this->invalidations, 'the wheel moved the search selection');
+        $this->assertTrue($this->repainted(), 'the wheel moved the search selection');
     }
 
     public function testWheelWrapsTheListOverlaySelection(): void
@@ -683,9 +697,9 @@ final class OverlayHostTest extends TestCase
         $host->openList('L', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn () => null);
         $host->openSearch('Search', static fn () => null, static fn () => null, static fn () => null);
         $host->setSearchRows($this->searchRows(static fn () => null));
-        $before = $this->invalidations;
+        $this->clearRepaint();
 
         $this->assertTrue($host->moveSelection(1));
-        $this->assertGreaterThan($before, $this->invalidations, 'the search selection moved');
+        $this->assertTrue($this->repainted(), 'the search selection moved');
     }
 }

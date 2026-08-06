@@ -198,6 +198,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         ?CursorStyle $cursorStyle = null,
         ?Translator $translator = null,
         private readonly ?WorkspaceViews $views = null,
+        ?OverlayHost $overlayHost = null,
     ) {
         $this->initStyles($styles);
         $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
@@ -206,7 +207,9 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->callbacks = new EditorCallbacks();
         $this->display = new EditorDisplayOptions($this->invalidate(...));
         $this->decorations = new DecorationStore($this->invalidate(...));
-        $this->overlayHost = new OverlayHost($this->invalidate(...), $this->styles, $this->cursorStyle);
+        // Injected when the container builds it, so the pickers outlive this
+        // widget being detached; direct construction (tests) still gets one.
+        $this->overlayHost = $overlayHost ?? new OverlayHost(null, $this->styles, $this->cursorStyle);
         $this->findModal = new FindInFilesModal($this->invalidate(...), $this->styles, $this->cursorStyle, $this->translator);
         $this->document = new Document('');
         $this->highlighter = $this->placeholderHighlighter();

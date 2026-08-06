@@ -52,7 +52,7 @@ final class GitRemoteCommandsTest extends TestCase
             $this->events[] = $event;
         });
 
-        return new GitRemoteCommands($remote, new Notifier($this->status, $tui), new Translator('en'), $dispatcher, $this->editor = new CodeEditorWidget(), new WorkspaceViews(), $tui);
+        return new GitRemoteCommands($remote, new Notifier($this->status, $tui), new Translator('en'), $dispatcher, $this->editor = new CodeEditorWidget(), $tui);
     }
 
     /** A repo whose origin is itself — every remote operation completes fast. */

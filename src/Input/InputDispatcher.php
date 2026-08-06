@@ -8,6 +8,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\LiveKeybindings;
 use Porta\Container\AsIdeService;
 use Porta\Overlay\Presenter\WelcomeModalController;
+use Porta\Overlay\State\OverlayHost;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\MenuBarWidget;
@@ -32,6 +33,7 @@ final class InputDispatcher
         private readonly CodeEditorWidget $editor,
         private readonly CommandRegistry $commands,
         private readonly LiveKeybindings $keybindings,
+        private readonly OverlayHost $overlays,
     ) {}
 
     public function dispatch(InputEvent $event): void
@@ -69,19 +71,26 @@ final class InputDispatcher
             return;
         }
 
-        // The Search Everywhere modal likewise captures the keyboard while
-        // open, so its query field and result navigation take every key.
-        // Both editor-hosted modals are skipped while the editor is detached
-        // (image tab active) — an invisible modal must never trap the keyboard.
-        if (null !== $this->editor->getContext() && $this->editor->isSearchOverlayOpen()) {
+        // The workspace pickers — Search Everywhere, the list overlay and the
+        // mini prompt — capture the keyboard while open. No attachment guard:
+        // they are painted above every pane by their own presenter, so they are
+        // visible wherever the editor is, and a visible modal must take keys.
+        if ($this->overlays->isSearchOpen()) {
             $event->stopPropagation();
             $this->editor->handleSearchOverlayInput($data);
             $this->tui->requestRender();
 
             return;
         }
+        if ($this->overlays->handleInput($data, $this->editor->getKeybindings())) {
+            $event->stopPropagation();
+            $this->tui->requestRender();
 
-        // The Find-in-Files modal captures the keyboard the same way.
+            return;
+        }
+
+        // The Find-in-Files modal is an EDITOR feature (it scopes to the open
+        // buffer) and stays editor-hosted, so it keeps its attachment guard.
         if (null !== $this->editor->getContext() && $this->editor->isFindModalOpen()) {
             $event->stopPropagation();
             $this->editor->handleFindModalInput($data);

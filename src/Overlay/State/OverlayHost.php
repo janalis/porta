@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Overlay\State;
 
+use Porta\Container\AsIdeService;
 use Porta\Overlay\Region\ModalBox;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
@@ -15,6 +16,7 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\PickerLayout;
 use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Input\Keybindings;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The workspace-floating pickers: the centered list overlay (recent files,
@@ -23,7 +25,15 @@ use Symfony\Component\Tui\Input\Keybindings;
  * state, modal input handling, mouse hit-testing (screen coordinates) and the
  * per-frame {@see layout()} the presenter composites from; the editor widget
  * only delegates. While one is open, all keyboard input is swallowed.
+ *
+ * A SERVICE, not a member of the editor widget, because these surfaces float
+ * over the whole workspace and the editor does not always exist. A full-screen
+ * view detaches it, and while it was detached the pickers were dead: the
+ * command palette is listed view-safe in the Git menu and painted nothing, and
+ * every git verb that asks a question had to close the view first to be seen.
+ * Owning the state above the editor is what makes those the same surface.
  */
+#[AsIdeService]
 final class OverlayHost
 {
     use StylesDefault;
@@ -43,18 +53,21 @@ final class OverlayHost
     /** last-rendered search box, for mouse hit-testing */
     private ?ModalBox $searchBox = null;
 
-    /**
-     * @param \Closure(): void $invalidate repaint request back into the widget
-     */
     private readonly CursorStyle $cursorStyle;
 
+    /** Repaint request. A frame, not a widget invalidation — nothing below owns these boxes. */
+    private readonly \Closure $invalidate;
+
     public function __construct(
-        private readonly \Closure $invalidate,
+        ?Tui $tui = null,
         ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
     ) {
         $this->initStyles($styles);
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
+        $this->invalidate = static function () use ($tui): void {
+            $tui?->requestRender();
+        };
     }
 
     /**

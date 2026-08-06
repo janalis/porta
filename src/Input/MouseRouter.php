@@ -462,9 +462,10 @@ final class MouseRouter
 
         // The floating pickers (list overlay, Search Everywhere, the mini
         // prompt), after the menus: item/×/outside-dismiss in screen
-        // coordinates. Gated on an attached editor — a detached editor means
-        // an invisible picker, which must not eat clicks.
-        if (null !== $this->panes->editor()->getContext() && $this->panes->editor()->isAnyPickerOpen()) {
+        // coordinates. No attachment guard — the pickers are painted above
+        // every pane, so a click on a visible box belongs to it wherever the
+        // editor is.
+        if ($this->panes->editor()->isAnyPickerOpen()) {
             $this->panes->editor()->handlePickerClick($mouse->row, $mouse->col);
             $this->tui->requestRender();
 

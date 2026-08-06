@@ -14,6 +14,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
@@ -177,6 +178,61 @@ final class IdeGitFlowsTest extends TestCase
     }
 
     /** @return list<\Porta\Workbench\Menu\Menu> */
+    public function testAPickerRaisedOverTheGitViewIsVisibleAndLeavesTheViewOpen(): void
+    {
+        // Two defects in one shape: the pickers were owned by the editor
+        // widget, which a full-screen view detaches. So the command palette —
+        // which the Git menu offers as view-safe — painted nothing while the
+        // git view was open, and every git verb that asks a question called
+        // closeAll() first so its list would be somewhere visible.
+        //
+        // The palette half is the one nothing worked around, and nothing
+        // noticed: it was simply dead from inside the view.
+        $this->skipWithoutGit();
+        putenv('PATH='.\dirname((string) $this->whichGit()));
+        $project = new TempProject(['src/A.php' => "<?php\n\$a = 1;\n"]);
+        $project->initGit();
+        $project->commitAll('init');
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b\x04"); // ctrl+alt+d → the git view owns the main area
+                },
+                600 => function ($tui, $terminal, $ide): void {
+                    $screen = static fn (): string => AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    // From the container, not getById: the git view has DETACHED the
+                    // editor and getById refuses a widget that is not mounted.
+                    $editor = Services::resolve($ide, CodeEditorWidget::class);
+                    $this->await(static fn (): bool => 'git-changes' === $tui->getFocus()?->getId(), what: 'the git view to take focus');
+
+                    $terminal->clearOutput();
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_command_palette');
+                    $this->await(static fn (): bool => str_contains($screen(), 'Find Action'), what: 'the palette to paint over the git view');
+
+                    // Painting is only half of it — a visible picker that takes
+                    // no keys is still broken, and the editor is not focused
+                    // here, so this is the dispatcher's branch or nothing.
+                    $tui->handleInput("\x1b");
+                    $this->await(static fn (): bool => !$editor->isSearchOverlayOpen(), what: 'Esc to reach the palette and close it');
+
+                    // And a git verb's own picker no longer costs the view.
+                    $terminal->clearOutput();
+                    Services::resolve($ide, CommandRegistry::class)->run('git_branches');
+                    $this->await(static fn (): bool => str_contains($screen(), 'Create new branch'), what: 'the branch picker to paint');
+                    $this->assertSame('git-changes', $tui->getFocus()?->getId(), 'the git view kept focus and the main area');
+
+                    $tui->handleInput("\x1b");
+                    $this->await(static fn (): bool => !EditorState::pickerOpen($editor), what: 'Esc to close the branch picker');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     private function menuTitles($tui): array
     {
         return array_column(Probe::get($tui->getById('menu'), 'menus'), 'title');

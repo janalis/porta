@@ -215,7 +215,7 @@ final class GitViewControllerTest extends TestCase
             // Wired, because the container wires it: with the nullable
             // dependency left null the remote listener is a no-op, and a test
             // of it can only assert that nothing threw.
-            new GitRemoteCommands(new GitRemote($this->project->dir), $notifier, $t, $dispatcher, $this->editor, $views, $this->tui),
+            new GitRemoteCommands(new GitRemote($this->project->dir), $notifier, $t, $dispatcher, $this->editor, $this->tui),
             historyPageSize: $historyPageSize,
         );
         // The container compiles these from #[AsEventListener]; a unit test

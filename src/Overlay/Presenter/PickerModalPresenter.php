@@ -6,8 +6,8 @@ namespace Porta\Overlay\Presenter;
 
 use Porta\Container\AsEager;
 use Porta\Overlay\Region\DropdownRegion;
+use Porta\Overlay\State\OverlayHost;
 use Porta\Ui\FrameHooks;
-use Porta\Widget\CodeEditorWidget;
 
 /**
  * Presents the editor's pickers — the list overlay, Search Everywhere and the
@@ -23,12 +23,15 @@ use Porta\Widget\CodeEditorWidget;
  * cost the pickers had as editor-composited overlays. The span slot is shared
  * with the two full modals: opening a picker closes them (the
  * CodeEditorWidget interlock) and each presenter clears only what it painted
- * (`$shown`). While the editor is detached (image tab, git/settings view) the
- * pickers stay invisible and the presenter paints nothing — mirroring the
- * InputDispatcher guards that keep an invisible modal from trapping keys.
+ * (`$shown`).
  *
  * Resolved eagerly by {@see \Porta\Ide} — nothing else references it, and
  * without the eager resolve the pickers would never paint.
+ *
+ * Reads {@see OverlayHost} directly rather than through the editor: these boxes
+ * float over the workspace, so whether the EDITOR happens to be attached is not
+ * their business. It used to be, and the pickers went dark under a full-screen
+ * view.
  */
 #[AsEager(priority: 200)]
 final class PickerModalPresenter
@@ -41,7 +44,7 @@ final class PickerModalPresenter
 
     public function __construct(
         private readonly OverlayDelivery $delivery,
-        private readonly CodeEditorWidget $editor,
+        private readonly OverlayHost $overlays,
         ?FrameHooks $frameHooks = null,
     ) {
         $frameHooks?->onBeforeFrame($this->sync(...));
@@ -56,7 +59,7 @@ final class PickerModalPresenter
      */
     public function regions(): array
     {
-        return null !== $this->editor->getContext() && $this->editor->isAnyPickerOpen() ? $this->shadowRegions : [];
+        return $this->overlays->anyOpen() ? $this->shadowRegions : [];
     }
 
     /**
@@ -67,7 +70,7 @@ final class PickerModalPresenter
      */
     public function sync(): void
     {
-        if (null === $this->editor->getContext() || !$this->editor->isAnyPickerOpen()) {
+        if (!$this->overlays->anyOpen()) {
             if ($this->shown) {
                 $this->shown = false;
                 $this->shadowRegions = [];
@@ -81,7 +84,7 @@ final class PickerModalPresenter
         if (null === $bounds) {
             return;
         }
-        $placed = $this->editor->layoutPickers($bounds);
+        $placed = $this->overlays->layout($bounds);
 
         $this->delivery->deliverModal($placed);
         $this->shown = true;

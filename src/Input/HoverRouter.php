@@ -71,7 +71,7 @@ final readonly class HoverRouter
         // A floating picker owns hover while open (screen coordinates); the
         // workspace beneath is dimmed, so its pane tints would be invisible
         // anyway. The menu bar keeps first refusal, like the other modals.
-        if (null !== $this->panes->editor()->getContext() && $this->panes->editor()->isAnyPickerOpen()) {
+        if ($this->panes->editor()->isAnyPickerOpen()) {
             if (!$this->handleMenuHover($mouse) && $this->panes->editor()->handlePickerHover($mouse->row, $mouse->col)) {
                 $this->tui->requestRender();
             }
