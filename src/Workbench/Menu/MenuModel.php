@@ -111,19 +111,6 @@ final class MenuModel
             'i:ide_terminal',
             'i:ide_terminal_new',
         ],
-        'Git' => [
-            'i:ide_git',
-            self::SEP,
-            'i:git_stage',
-            'i:git_commit',
-            'i:git_undo_commit',
-            'i:git_blame',
-            'i:git_branches',
-            self::SEP,
-            'i:git_fetch',
-            'i:git_pull',
-            'i:git_push',
-        ],
         'View' => [
             'i:ide_problems',
             'i:ide_todo',
@@ -145,10 +132,7 @@ final class MenuModel
     /**
      * @param (\Closure(): ?string)|null $activeView  while a view is active, only its {@see VIEW_SAFE} items stay enabled
      * @param list<PluginMenuSpec>              $pluginSpecs runtime plugin entries — a Plugins menu between Code and Run when non-empty
-     * @param (\Closure(string): bool)|null      $groupVisible hides a whole DEFS group; keyed by the UNTRANSLATED title, since
-     *                                                        that is the only place the key still exists. Git's group is hidden
-     *                                                        outside a repository, where none of its verbs is registered and
-     *                                                        every item would render dead.
+     * @param list<MenuContribution>            $contributions top-level menus core does not own; each is placed after its `after` title
      *
      * @return list<Menu>
      */
@@ -159,18 +143,31 @@ final class MenuModel
         Translator $translator,
         ?\Closure $activeView = null,
         array $pluginSpecs = [],
-        ?\Closure $groupVisible = null,
+        array $contributions = [],
     ): array {
+        $viewSafe = self::VIEW_SAFE;
+        foreach ($contributions as $contribution) {
+            if ('' !== $contribution->viewId) {
+                $viewSafe[$contribution->viewId] = [...($viewSafe[$contribution->viewId] ?? []), ...$contribution->viewSafe];
+            }
+        }
+
         $menus = [];
         foreach (self::DEFS as $title => $specs) {
-            if (null !== $groupVisible && !$groupVisible($title)) {
-                continue;
-            }
-            $menus[] = new Menu($translator->trans($title), self::items($specs, $commands, $editor, $ideKeys, $translator, $activeView));
+            $menus[] = new Menu($translator->trans($title), self::items($specs, $commands, $editor, $ideKeys, $translator, $activeView, $viewSafe));
             if ('Code' === $title && [] !== $pluginSpecs) {
                 $menus[] = new Menu(
                     $translator->trans('Plugins'),
-                    self::items(self::groupByPlugin($pluginSpecs), $commands, $editor, $ideKeys, $translator, $activeView),
+                    self::items(self::groupByPlugin($pluginSpecs), $commands, $editor, $ideKeys, $translator, $activeView, $viewSafe),
+                );
+            }
+            foreach ($contributions as $contribution) {
+                if ($title !== $contribution->after || null !== $contribution->visible && !($contribution->visible)()) {
+                    continue;
+                }
+                $menus[] = new Menu(
+                    $translator->trans($contribution->title),
+                    self::items($contribution->items, $commands, $editor, $ideKeys, $translator, $activeView, $viewSafe),
                 );
             }
         }
@@ -215,8 +212,9 @@ final class MenuModel
      * in the File menu, so skipping it would render them adjacent — hence a
      * separator that follows a separator, or trails the list, is dropped.
      *
-     * @param list<string|PluginMenuSpec>       $specs
-     * @param (\Closure(): ?string)|null $activeView
+     * @param list<string|PluginMenuSpec>   $specs
+     * @param (\Closure(): ?string)|null    $activeView
+     * @param array<string, list<string>>   $viewSafe the ids each open view leaves enabled
      *
      * @return list<MenuItem>
      */
@@ -227,6 +225,7 @@ final class MenuModel
         Keybindings $ideKeys,
         Translator $translator,
         ?\Closure $activeView = null,
+        array $viewSafe = self::VIEW_SAFE,
     ): array {
         $items = [];
         foreach ($specs as $entry) {
@@ -245,7 +244,7 @@ final class MenuModel
             }
             $items[] = self::SEP === $spec
                 ? MenuItem::separator()
-                : self::item($spec, $commands, $editor, $ideKeys, $translator, $activeView, $when);
+                : self::item($spec, $commands, $editor, $ideKeys, $translator, $activeView, $viewSafe, $when);
         }
         while ([] !== $items && $items[\count($items) - 1]->separator) {
             array_pop($items);
@@ -269,14 +268,14 @@ final class MenuModel
      * Settings must still be able to get back.
      */
     private const array VIEW_SAFE = [
-        'git' => ['ide_quit', 'ide_git', 'git_commit', 'git_undo_commit', 'git_fetch', 'git_pull', 'git_push', 'git_branches', 'ide_command_palette', 'ide_help', 'ide_welcome'],
         'settings' => ['ide_quit', 'ide_settings', 'ide_command_palette', 'ide_help', 'ide_welcome'],
         'welcome' => ['ide_quit', 'ide_welcome', 'ide_command_palette', 'ide_help'],
     ];
 
     /**
-     * @param (\Closure(): ?string)|null $activeView
-     * @param (\Closure(): bool)|null           $pluginWhen a plugin item's own enabled gate, ANDed with the view gating
+     * @param (\Closure(): ?string)|null      $activeView
+     * @param array<string, list<string>>     $viewSafe   the ids each open view leaves enabled
+     * @param (\Closure(): bool)|null         $pluginWhen a plugin item's own enabled gate, ANDed with the view gating
      */
     private static function item(
         string $spec,
@@ -285,6 +284,7 @@ final class MenuModel
         Keybindings $ideKeys,
         Translator $translator,
         ?\Closure $activeView,
+        array $viewSafe,
         ?\Closure $pluginWhen = null,
     ): MenuItem {
         [$scope, $id] = explode(':', $spec, limit: 2);
@@ -302,7 +302,7 @@ final class MenuModel
         $isEnabled = null === $activeView && !$requiresFile
             ? null
             : static fn (): bool => match (true) {
-                null !== $activeView && null !== ($activeViewId = $activeView()) => 'i' === $scope && \in_array($id, self::VIEW_SAFE[$activeViewId] ?? [], strict: true),
+                null !== $activeView && null !== ($activeViewId = $activeView()) => 'i' === $scope && \in_array($id, $viewSafe[$activeViewId] ?? [], strict: true),
                 default => !$requiresFile || null !== $editor->getFilePath(),
             };
         if (null !== $pluginWhen) {

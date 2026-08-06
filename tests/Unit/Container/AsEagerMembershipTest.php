@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Container;
 
+use Porta\Git\GitMenu;
 use Porta\Git\GitViewController;
 use Porta\Input\GitMouseRouter;
 use Porta\Input\SettingsMouseRouter;
@@ -40,7 +41,8 @@ final class AsEagerMembershipTest extends ContainerTestCase
         arsort($priorities);
         $actual = array_keys($priorities);
 
-        $expected = [
+        // The prioritised head, where the ORDER is the contract.
+        $ordered = [
             GitViewController::class, // 700
             ResponsiveLayout::class, // 600
             SettingsViewController::class, // 500
@@ -48,15 +50,24 @@ final class AsEagerMembershipTest extends ContainerTestCase
             FindModalPresenter::class, // 300 — find →
             PickerModalPresenter::class, // 200 — picker →
             ToastPresenter::class, // 100 — toast
-            // The two view pointer routers, priority 0: nothing references them
-            // any more (the mouse, hover and wheel routers look their pointer up
-            // by view id instead of holding it), so without the tag they would
-            // never be constructed and never register. Order between them does
-            // not matter — each answers for its own view id.
+        ];
+        // And the priority-0 tail, where it is not: each of these exists only
+        // to register itself with something, and nothing references them, so
+        // without the tag they would never be constructed at all. Compared as a
+        // SET, because their relative order is container discovery order and no
+        // behaviour reads it — asserting it would pin an accident.
+        $unordered = [
+            GitMenu::class,
             GitMouseRouter::class,
             SettingsMouseRouter::class,
         ];
 
-        self::assertSame($expected, $actual, 'every eager service must carry #[AsEager] with its contractual priority');
+        self::assertSame($ordered, \array_slice($actual, offset: 0, length: \count($ordered)), 'the contractual construction order');
+
+        $tail = \array_slice($actual, offset: \count($ordered));
+        sort($tail);
+        $expected = $unordered;
+        sort($expected);
+        self::assertSame($expected, $tail, 'every self-registering service must carry #[AsEager] or it is never built');
     }
 }

@@ -13,6 +13,8 @@ use Porta\Plugin\Runtime\PluginMenuSpec;
 use Porta\Tests\Support\Probe;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Workbench\Menu\Menu;
+use Porta\Workbench\Menu\MenuContribution;
+use Porta\Workbench\Menu\MenuContributions;
 use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Menu\MenuModel;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -27,7 +29,25 @@ final class MenuModelTest extends TestCase
             'ide_search_everywhere' => ['ctrl+shift+e'],
         ]);
 
-        return MenuModel::build($commands, $editor, $ideKeys, $translator ?? new Translator('en'));
+        return MenuModel::build($commands, $editor, $ideKeys, $translator ?? new Translator('en'), contributions: [self::gitContribution()]);
+    }
+
+    /**
+     * The git menu, as GitMenu registers it. Core's model no longer carries a
+     * DEFS['Git'] group or a VIEW_SAFE['git'] list, so every assertion below
+     * about git items is now also an assertion that a CONTRIBUTED menu behaves
+     * exactly like one of core's own.
+     */
+    private static function gitContribution(bool $visible = true): MenuContribution
+    {
+        return new MenuContribution(
+            title: 'Git',
+            after: 'Run',
+            items: ['i:ide_git', MenuModel::SEP, 'i:git_stage', 'i:git_commit', 'i:git_undo_commit', 'i:git_blame', 'i:git_branches', MenuModel::SEP, 'i:git_fetch', 'i:git_pull', 'i:git_push'],
+            visible: static fn (): bool => $visible,
+            viewId: 'git',
+            viewSafe: ['ide_quit', 'ide_git', 'git_commit', 'git_undo_commit', 'git_fetch', 'git_pull', 'git_push', 'git_branches', 'ide_command_palette', 'ide_help', 'ide_welcome'],
+        );
     }
 
     private function item(array $menus, string $title, string $label): MenuItem
@@ -68,7 +88,14 @@ final class MenuModelTest extends TestCase
         );
         $ideKeys = new Keybindings(['demo:hello' => ['ctrl+alt+y']]);
 
-        $menus = MenuModel::build($commands, new CodeEditorWidget(), $ideKeys, new Translator('en'), pluginSpecs: [new PluginMenuSpec('demo', 'i:demo:hello')]);
+        $menus = MenuModel::build(
+            $commands,
+            new CodeEditorWidget(),
+            $ideKeys,
+            new Translator('en'),
+            pluginSpecs: [new PluginMenuSpec('demo', 'i:demo:hello')],
+            contributions: [self::gitContribution()],
+        );
         $titles = array_map(static fn (Menu $m) => $m->title, $menus);
         $this->assertSame(['File', 'Edit', 'Navigate', 'Code', 'Plugins', 'Run', 'Git', 'View', 'Help'], $titles, 'the Plugins menu sits between Code and Run');
         $plugins = $menus[4];
@@ -79,7 +106,7 @@ final class MenuModelTest extends TestCase
         ($plugins->items[0]->run)();
         $this->assertSame(1, $ran, 'the item runs through the registry');
 
-        $bare = MenuModel::build($commands, new CodeEditorWidget(), $ideKeys, new Translator('en'));
+        $bare = MenuModel::build($commands, new CodeEditorWidget(), $ideKeys, new Translator('en'), contributions: [self::gitContribution()]);
         $this->assertCount(8, $bare, 'no Plugins menu without specs');
     }
 
@@ -221,9 +248,16 @@ final class MenuModelTest extends TestCase
             ->gitCommands()
             ->add('git_undo_commit', static function (): void {}, label: 'Git: Undo Last Commit')
             ->add('ide_git', static function (): void {}, label: 'Git: Changes');
-        $menus = MenuModel::build($commands, $editor, $ideKeys, new Translator('en'), static function () use (&$gitViewOpen): ?string {
-            return $gitViewOpen ? 'git' : null;
-        });
+        $menus = MenuModel::build(
+            $commands,
+            $editor,
+            $ideKeys,
+            new Translator('en'),
+            static function () use (&$gitViewOpen): ?string {
+                return $gitViewOpen ? 'git' : null;
+            },
+            contributions: [self::gitContribution()],
+        );
 
         // Open view: only the git-safe commands stay live, file open or not.
         $this->assertFalse($this->item($menus, 'Edit', 'Undo')->enabled(), 'editor actions target the detached editor');
@@ -256,9 +290,16 @@ final class MenuModelTest extends TestCase
         $settingsOpen = true;
         $ideKeys = new Keybindings([]);
         $commands = $this->gitCommands()->add('ide_settings', static function (): void {}, label: 'Settings…');
-        $menus = MenuModel::build($commands, $editor, $ideKeys, new Translator('en'), static function () use (&$settingsOpen): ?string {
-            return $settingsOpen ? 'settings' : null;
-        });
+        $menus = MenuModel::build(
+            $commands,
+            $editor,
+            $ideKeys,
+            new Translator('en'),
+            static function () use (&$settingsOpen): ?string {
+                return $settingsOpen ? 'settings' : null;
+            },
+            contributions: [self::gitContribution()],
+        );
 
         // Open view: only the settings-safe commands stay live.
         $this->assertFalse($this->item($menus, 'Edit', 'Undo')->enabled());
@@ -367,7 +408,14 @@ final class MenuModelTest extends TestCase
         /** @var array<string, list<string>> $map */
         $map = Probe::getStatic(MenuModel::class, 'VIEW_SAFE');
 
-        $this->assertSame(['git', 'settings', 'welcome'], array_keys($map), 'the ids core ships a menu for');
+        // Core's own, plus every contributed list — a contributor that named a
+        // view but left its list empty greys out its OWN menu the moment that
+        // view opens, which is the failure with no error message.
+        $registry = new MenuContributions();
+        $registry->register(self::gitContribution());
+        $map = [...$map, ...$registry->viewSafe()];
+
+        $this->assertSame(['settings', 'welcome', 'git'], array_keys($map));
         foreach ($map as $id => $safe) {
             $this->assertNotSame([], $safe, $id.': an empty entry disables every menu item silently');
             $this->assertContains('ide_quit', $safe, $id.': quitting stays reachable');

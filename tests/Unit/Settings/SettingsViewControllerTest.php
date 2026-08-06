@@ -73,6 +73,7 @@ use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TabBarWidget;
 use Porta\Workbench\EditorArea;
+use Porta\Workbench\Menu\MenuContributions;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewRegistry;
@@ -168,7 +169,7 @@ final class SettingsViewControllerTest extends TestCase
             new Translator('en'),
             new ViewRegistry(),
             new PluginManager(new EventDispatcher(), $this->pluginSettings ?? new PluginSettings($this->project->dir, [])),
-            new GitInfo($this->project->dir),
+            new MenuContributions(),
         );
         $keymap = new SettingsKeymapController(
             new ActionRegistry($keysHost->manager()),

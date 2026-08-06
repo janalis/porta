@@ -24,6 +24,7 @@ use Porta\Tests\Support\TestPane;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Menu\MenuContributions;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewRegistry;
@@ -59,7 +60,7 @@ final class SettingsKeymapControllerTest extends TestCase
             new Translator('en'),
             new ViewRegistry(),
             new PluginManager(new EventDispatcher(), new PluginSettings($rootDir, [])),
-            new GitInfo($rootDir),
+            new MenuContributions(),
         );
 
         return new SettingsKeymapController(
