@@ -9,6 +9,7 @@ use Porta\Debug\DebugController;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Layout\LayoutController;
+use Porta\Layout\ViewRegions;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Support\IntMath;
@@ -68,6 +69,8 @@ final class MouseRouter
         private readonly HitTester $hit,
         private readonly Tui $tui,
         private readonly EditorLayoutPanes $panes,
+        private readonly ViewPointers $pointers,
+        private readonly ViewRegions $regions,
         private readonly BottomDock $dock,
         private readonly DockTabsWidget $dockTabs,
         private readonly MenuBarWidget $menuBar,
@@ -76,9 +79,7 @@ final class MouseRouter
         private readonly MenuOverlayController $overlay,
         private readonly BufferManager $buffers,
         private readonly BufferService $bufferService,
-        private readonly GitMouseRouter $git,
         private readonly ViewRegistry $views,
-        private readonly SettingsMouseRouter $settings,
         private readonly WelcomeMouseRouter $welcome,
         private readonly BidiTui $bidi,
         private readonly DebugController $debug,
@@ -116,17 +117,18 @@ final class MouseRouter
             $editorRect = null;
             $sepRect = null;
         }
-        // The git/settings sidebars' drag columns and left edges (each router
-        // owns its widgets; the rects exist only while its view is swapped in).
-        $gitSepRect = $gitViewOpen ? $this->git->separatorRect() : null;
-        $gitLeftRect = $gitViewOpen ? $this->git->leftRect() : null;
-        $settingsSepRect = $settingsViewOpen ? $this->settings->separatorRect() : null;
-        $settingsLeftRect = $settingsViewOpen ? $this->settings->leftRect() : null;
+        // The sidebars' drag columns and left edges. Core hit-tests its OWN
+        // widgets — it minted these regions — so the two verbs the views used
+        // to expose for this are gone rather than shared.
+        $gitSepRect = $gitViewOpen ? $this->hit->rect($this->regions->mint('git')->separator()) : null;
+        $gitLeftRect = $gitViewOpen ? $this->hit->rect($this->regions->mint('git')->sidebar()) : null;
+        $settingsSepRect = $settingsViewOpen ? $this->hit->rect($this->regions->mint('settings')->separator()) : null;
+        $settingsLeftRect = $settingsViewOpen ? $this->hit->rect($this->regions->mint('settings')->sidebar()) : null;
 
         if ($mouse->wheel) {
             // The Welcome modal is app-modal: every wheel is its while open.
             if ($this->welcome->isModalOpen()) {
-                $this->welcome->handleWheel($mouse);
+                $this->welcome->wheel(new WheelGesture($mouse, WheelAxis::Vertical, WheelStep::rows($mouse)));
                 $this->tui->requestRender();
 
                 return;
@@ -152,7 +154,7 @@ final class MouseRouter
             || $this->continueTabDrag($mouse, $tabsRect)
             || $this->continuePaneDrag($mouse)
             || $this->continueDockTabDrag($mouse)
-            || $this->git->continueDiffDrag($mouse)
+            || $this->pointers->of($this->views->activeId())->continueDrag($mouse)
             || $this->welcome->continueDrag($mouse)
             || $this->continueFindModalDrag($mouse)
             || $this->layout->continueResizeDrag($mouse, $treeRect, $gitLeftRect, $settingsLeftRect)
@@ -179,7 +181,7 @@ final class MouseRouter
         $this->tabDragging = false;
         $this->dockTabDrag = null;
         $this->paneDrag = null;
-        $this->git->cancelDrag();
+        $this->pointers->of($this->views->activeId())->cancelDrag();
         $this->welcome->cancelDrag();
         $this->panes->editor()->cancelFindModalDrag();
         $this->layout->cancelDrags();
@@ -479,7 +481,7 @@ final class MouseRouter
 
         // The Welcome modal, after the menus (the menu bar stays reachable over
         // it): ×/drag/select inside the box, swallowed everywhere else.
-        if ($this->welcome->tryModalClick($mouse)) {
+        if ($this->welcome->press($mouse)) {
             return true;
         }
 
@@ -489,10 +491,7 @@ final class MouseRouter
     /** A left press on the panes, tried front-to-back; the editor is the final target. */
     private function handlePaneClick(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $tabsRect, ?WidgetRect $editorRect): void
     {
-        if ($this->git->tryPaneClick($mouse)) {
-            return;
-        }
-        if ($this->settings->tryPaneClick($mouse)) {
+        if ($this->pointers->of($this->views->activeId())->press($mouse)) {
             return;
         }
         if ($this->tryOverlayPanelClick($mouse)) {

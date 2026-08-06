@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Input;
 
+use Porta\Container\AsEager;
 use Porta\Layout\ViewRegions;
 use Porta\Widget\SeparatorWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
@@ -19,7 +20,8 @@ use Symfony\Component\Tui\Tui;
  * swapped into the main area, so its hit tests miss otherwise. It carries no
  * cross-event drag state (settings has none).
  */
-final class SettingsMouseRouter
+#[AsEager]
+final class SettingsMouseRouter implements ViewPointer
 {
     private readonly SeparatorWidget $separator;
 
@@ -29,26 +31,21 @@ final class SettingsMouseRouter
         private readonly SettingsNavWidget $nav,
         private readonly SettingsFormWidget $form,
         private readonly KeybindingsListWidget $keys,
+        ViewPointers $pointers,
         ViewRegions $regions,
     ) {
+        $pointers->register('settings', $this);
+        // Held for the divider hover tint only — the RECTS are core's now: it
+        // mints this region, so it hit-tests its own widgets for resize arming.
         $this->separator = $regions->mint('settings')->separator();
     }
 
-    /** The sidebar's drag column (identity for the layout's resize arming). */
-    public function separatorRect(): ?WidgetRect
+    public function wheel(WheelGesture $gesture): bool
     {
-        return $this->hit->rect($this->separator);
-    }
-
-    /** The sidebar's left edge (the nav spans the sidebar width). */
-    public function leftRect(): ?WidgetRect
-    {
-        return $this->hit->rect($this->nav);
-    }
-
-    /** Vertical wheel over the keybindings list; returns whether it scrolled. */
-    public function scrollVertical(MouseEvent $mouse): bool
-    {
+        if (WheelAxis::Horizontal === $gesture->axis) {
+            return false; // no settings pane scrolls sideways
+        }
+        $mouse = $gesture->mouse;
         // Every settings list scrolls under the wheel as it does under its
         // arrow keys — the nav changes the shown section, exactly as from the
         // keyboard (see ArrowScrollTrait).
@@ -57,7 +54,7 @@ final class SettingsMouseRouter
                 continue;
             }
 
-            $pane->scrollBy(WheelStep::rows($mouse));
+            $pane->scrollBy($gesture->step);
 
             return true;
         }
@@ -66,7 +63,7 @@ final class SettingsMouseRouter
     }
 
     /** A left press on a settings pane (rects exist only while the view is swapped in). */
-    public function tryPaneClick(MouseEvent $mouse): bool
+    public function press(MouseEvent $mouse): bool
     {
         if (null !== ($rel = $this->hit->hit($this->nav, $mouse->row, $mouse->col))) {
             $this->tui->setFocus($this->nav);
@@ -97,6 +94,14 @@ final class SettingsMouseRouter
      * The nav sidebar and the keybindings list tint on hover; a miss clears
      * them. Called after the menu bar has had its turn.
      */
+    /** Nothing in the settings view arms a drag; the stage exists for the views that do. */
+    public function continueDrag(MouseEvent $mouse): bool
+    {
+        return false;
+    }
+
+    public function cancelDrag(): void {}
+
     public function hover(MouseEvent $mouse): void
     {
         $listsChanged = $this->hit->hover($mouse->row, $mouse->col, $this->nav, $this->form, $this->keys);

@@ -13,6 +13,7 @@ use Porta\Widget\HoverableList;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\SeparatorWidget;
 use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 
@@ -36,9 +37,9 @@ final readonly class HoverRouter
         private MenuBarWidget $menuBar,
         private ContextMenu $contextMenu,
         private MenuOverlayController $overlay,
-        private GitMouseRouter $git,
-        private SettingsMouseRouter $settings,
         private WelcomeMouseRouter $welcome,
+        private ViewPointers $pointers,
+        private ViewRegistry $views,
         #[LayoutSlot('separator')]
         private SeparatorWidget $separator,
         private ToastCenter $toasts,
@@ -100,19 +101,14 @@ final readonly class HoverRouter
             return;
         }
 
-        // Each full-view state owns its hover targets exclusively; the tree/editor
-        // targets are detached while a view is swapped in. The menu bar rides
-        // along into either view, so it gets first refusal before the region.
-        if ('settings' === $view) {
+        // An open view owns its hover targets exclusively; the tree/editor
+        // targets are detached while it is swapped in. The menu bar rides along
+        // into any view, so it gets first refusal before the region. Two
+        // identical branches — one per view core happened to know — collapse
+        // into one because the pointer is looked up, not held.
+        if (null !== $view && $this->views->isAnyOpen()) {
             if (!$this->handleMenuHover($mouse)) {
-                $this->settings->hover($mouse);
-            }
-
-            return;
-        }
-        if ('git' === $view) {
-            if (!$this->handleMenuHover($mouse)) {
-                $this->git->hover($mouse);
+                $this->pointers->of($view)->hover($mouse);
             }
 
             return;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Input;
 
+use Porta\Container\AsEager;
 use Porta\Git\ChangeEntry;
 use Porta\Git\GitViewMode;
 use Porta\Git\LogEntry;
@@ -25,7 +26,8 @@ use Symfony\Component\Tui\Tui;
  * has to. Its panes are live only while the git view is swapped into the main
  * area, so its hit tests miss under the normal editor layout.
  */
-final class GitMouseRouter
+#[AsEager]
+final class GitMouseRouter implements ViewPointer
 {
     /** A press on a diff body row arms a row-range drag (rows join as the pointer moves). */
     private bool $diffSelecting = false;
@@ -40,8 +42,12 @@ final class GitMouseRouter
         private readonly CommitBoxWidget $commitBox,
         private readonly HistoryListWidget $history,
         private readonly GitTabsWidget $tabs,
+        ViewPointers $pointers,
         ViewRegions $regions,
     ) {
+        $pointers->register('git', $this);
+        // Held for the divider hover tint only — the RECTS are core's now: it
+        // mints this region, so it hit-tests its own widgets for resize arming.
         $this->separator = $regions->mint('git')->separator();
     }
 
@@ -83,43 +89,24 @@ final class GitMouseRouter
         return $commit;
     }
 
-    /** The sidebar's drag column (identity for the layout's resize arming). */
-    public function separatorRect(): ?WidgetRect
-    {
-        return $this->hit->rect($this->separator);
-    }
-
-    /** The sidebar's left edge (the tab strip spans exactly the sidebar width). */
-    public function leftRect(): ?WidgetRect
-    {
-        return $this->hit->rect($this->tabs);
-    }
-
     /** Clear the diff-drag arming on a fresh press (mirrors the other drag resets). */
     public function cancelDrag(): void
     {
         $this->diffSelecting = false;
     }
 
-    /** Horizontal wheel over the diff pane; returns whether it scrolled. */
-    public function scrollHorizontal(MouseEvent $mouse): bool
+    public function wheel(WheelGesture $gesture): bool
     {
+        $mouse = $gesture->mouse;
         if (null !== $this->hit->hit($this->diff, $mouse->row, $mouse->col)) {
-            $this->diff->scrollHBy(WheelStep::cols($mouse));
+            WheelAxis::Horizontal === $gesture->axis
+                ? $this->diff->scrollHBy($gesture->step)
+                : $this->diff->scrollBy($gesture->step);
 
             return true;
         }
-
-        return false;
-    }
-
-    /** Vertical wheel over a git pane; returns whether it scrolled. */
-    public function scrollVertical(MouseEvent $mouse, int $step): bool
-    {
-        if (null !== $this->hit->hit($this->diff, $mouse->row, $mouse->col)) {
-            $this->diff->scrollBy($step);
-
-            return true;
+        if (WheelAxis::Horizontal === $gesture->axis) {
+            return false; // only the diff pane scrolls sideways
         }
         // The lists scroll their selection, so the changes list reloads its
         // diff on the way — the wheel is their arrow keys (ArrowScrollTrait).
@@ -128,7 +115,7 @@ final class GitMouseRouter
                 continue;
             }
 
-            $list->scrollBy($step);
+            $list->scrollBy($gesture->step);
 
             return true;
         }
@@ -140,7 +127,7 @@ final class GitMouseRouter
      * Extend the diff row-range selection while the left button drags over the
      * diff pane; the release keeps the range armed for a follow-up copy.
      */
-    public function continueDiffDrag(MouseEvent $mouse): bool
+    public function continueDrag(MouseEvent $mouse): bool
     {
         if (!$this->diffSelecting || !$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
             return false;
@@ -159,7 +146,7 @@ final class GitMouseRouter
     }
 
     /** A left press on a git pane (rects exist only while the view is swapped in). */
-    public function tryPaneClick(MouseEvent $mouse): bool
+    public function press(MouseEvent $mouse): bool
     {
         if (null !== ($rel = $this->hit->hit($this->tabs, $mouse->row, $mouse->col))) {
             $mode = $this->tabs->modeAtColumn($rel['col']);

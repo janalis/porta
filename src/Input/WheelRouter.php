@@ -10,6 +10,7 @@ use Porta\Widget\ContextMenu;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\NavigablePaneWidget;
 use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 
@@ -32,12 +33,12 @@ final class WheelRouter
         private readonly HitTester $hit,
         private readonly Tui $tui,
         private readonly EditorLayoutPanes $panes,
+        private readonly ViewPointers $pointers,
+        private readonly ViewRegistry $views,
         private readonly BottomDock $dock,
         private readonly MenuBarWidget $menuBar,
         private readonly ContextMenu $contextMenu,
         private readonly MenuOverlayController $overlay,
-        private readonly GitMouseRouter $git,
-        private readonly SettingsMouseRouter $settings,
         private readonly BidiTui $bidi,
         private readonly HoverRouter $hover,
     ) {
@@ -70,7 +71,7 @@ final class WheelRouter
         // Horizontal wheel (trackpad swipe or shift+wheel): only the panes
         // with long lines scroll sideways; everything else ignores it.
         if (0 !== $mouse->wheelHDelta) {
-            if ($this->git->scrollHorizontal($mouse)) {
+            if ($this->pointers->of($this->views->activeId())->wheel(new WheelGesture($mouse, WheelAxis::Horizontal, WheelStep::cols($mouse)))) {
                 $this->tui->requestRender();
 
                 return;
@@ -198,8 +199,8 @@ final class WheelRouter
 
             return;
         }
-        if (!$this->git->scrollVertical($mouse, $step) && !$this->settings->scrollVertical($mouse)) {
-            // No full view's pane is under the pointer.
+        if (!$this->pointers->of($this->views->activeId())->wheel(new WheelGesture($mouse, WheelAxis::Vertical, $step))) {
+            // No view pane is under the pointer.
             return;
         }
         $this->tui->requestRender();

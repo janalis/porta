@@ -19,12 +19,15 @@ use Symfony\Component\Tui\Tui;
  * reachable), and an outside click is swallowed without dismissing — the ×
  * and Esc are the ways out.
  */
-final class WelcomeMouseRouter
+final class WelcomeMouseRouter implements ViewPointer
 {
     public function __construct(
         private readonly WelcomeModalController $modal,
         private readonly Tui $tui,
-    ) {}
+        ?ViewPointers $pointers = null,
+    ) {
+        $pointers?->register('welcome', $this);
+    }
 
     /** Whether the modal is open — the router's swallow-everything gate. */
     public function isModalOpen(): bool
@@ -33,13 +36,15 @@ final class WelcomeMouseRouter
     }
 
     /** Wheel while the modal is open: over the box it scrolls the cards; consumed everywhere. */
-    public function handleWheel(MouseEvent $mouse): bool
+    public function wheel(WheelGesture $gesture): bool
     {
-        return $this->modal->wheelAt($mouse->row, $mouse->col, WheelStep::rows($mouse));
+        $mouse = $gesture->mouse;
+
+        return $this->modal->wheelAt($mouse->row, $mouse->col, $gesture->step);
     }
 
     /** A left press while the modal is open: ×/drag-arm/select, swallowed everywhere else. */
-    public function tryModalClick(MouseEvent $mouse): bool
+    public function press(MouseEvent $mouse): bool
     {
         if (!$this->modal->clickAt($mouse->row, $mouse->col)) {
             return false;

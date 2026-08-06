@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Container;
 
 use Porta\Git\GitViewController;
+use Porta\Input\GitMouseRouter;
+use Porta\Input\SettingsMouseRouter;
 use Porta\Layout\ResponsiveLayout;
 use Porta\Overlay\Presenter\FindModalPresenter;
 use Porta\Overlay\Presenter\PickerModalPresenter;
@@ -46,6 +48,13 @@ final class AsEagerMembershipTest extends ContainerTestCase
             FindModalPresenter::class, // 300 — find →
             PickerModalPresenter::class, // 200 — picker →
             ToastPresenter::class, // 100 — toast
+            // The two view pointer routers, priority 0: nothing references them
+            // any more (the mouse, hover and wheel routers look their pointer up
+            // by view id instead of holding it), so without the tag they would
+            // never be constructed and never register. Order between them does
+            // not matter — each answers for its own view id.
+            GitMouseRouter::class,
+            SettingsMouseRouter::class,
         ];
 
         self::assertSame($expected, $actual, 'every eager service must carry #[AsEager] with its contractual priority');
