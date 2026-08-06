@@ -268,13 +268,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // (a bare ContainerWidget, not a class that can carry #[AsChromeRoot]), so
     // it is tagged here — the Keybindings/event_dispatcher exception pattern.
     $services->set('porta.widget.main', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'main'])->tag('porta.chrome_root');
-    $services->set('porta.widget.settings_area', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'settingsArea']);
-    $services->set('porta.widget.settings_content', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'settingsContent']);
-    $services->set('porta.widget.git_area', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'gitArea']);
-    $services->set('porta.widget.git_left', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'gitLeft']);
     $services->set('porta.widget.separator', SeparatorWidget::class)->factory([service(WorkspaceLayout::class), 'separator']);
-    $services->set('porta.widget.git_separator', SeparatorWidget::class)->factory([service(WorkspaceLayout::class), 'gitSeparator']);
-    $services->set('porta.widget.settings_separator', SeparatorWidget::class)->factory([service(WorkspaceLayout::class), 'settingsSeparator']);
 
     // The mouse routers (and the hover router split out of the main one) share
     // the parameter name $separator with different instances; each names the one

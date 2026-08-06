@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Input;
 
-use Porta\Container\LayoutSlot;
+use Porta\Layout\ViewRegions;
 use Porta\Widget\SeparatorWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
@@ -21,15 +21,18 @@ use Symfony\Component\Tui\Tui;
  */
 final class SettingsMouseRouter
 {
+    private readonly SeparatorWidget $separator;
+
     public function __construct(
         private readonly HitTester $hit,
         private readonly Tui $tui,
         private readonly SettingsNavWidget $nav,
         private readonly SettingsFormWidget $form,
         private readonly KeybindingsListWidget $keys,
-        #[LayoutSlot('settings_separator')]
-        private readonly SeparatorWidget $separator,
-    ) {}
+        ViewRegions $regions,
+    ) {
+        $this->separator = $regions->mint('settings')->separator();
+    }
 
     /** The sidebar's drag column (identity for the layout's resize arming). */
     public function separatorRect(): ?WidgetRect

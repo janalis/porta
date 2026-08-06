@@ -9,8 +9,6 @@ use Porta\I18n\PaneReorder;
 use Porta\I18n\Translator;
 use Porta\Ui\BidiTui;
 use Porta\Ui\PaneSegmenter;
-use Porta\Widget\Git\DiffViewWidget;
-use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Workbench\WorkspaceViews;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
@@ -27,12 +25,6 @@ final class PaneLayout implements EditorAreaPanes
     /** @var list<AbstractWidget> */
     private readonly array $editorPanes;
 
-    /** @var list<AbstractWidget> */
-    private readonly array $gitPanes;
-
-    /** @var list<AbstractWidget> */
-    private readonly array $settingsPanes;
-
     /** Auto-collapse state for narrow terminals — ephemeral, never persisted. */
     private bool $sidebarCollapsed = false;
 
@@ -43,12 +35,9 @@ final class PaneLayout implements EditorAreaPanes
         private readonly PaneSegmenter $segmenter,
         private readonly PaneReorder $reorder,
         private readonly WorkspaceViews $views,
-        SettingsNavWidget $settingsNav,
-        DiffViewWidget $gitDiff,
+        private readonly ViewRegions $regions,
     ) {
         $this->editorPanes = $layout->editorPanes();
-        $this->gitPanes = [$layout->gitLeft(), $layout->gitSeparator(), $gitDiff];
-        $this->settingsPanes = [$settingsNav, $layout->settingsSeparator(), $layout->settingsContent()];
     }
 
     /**
@@ -104,14 +93,16 @@ final class PaneLayout implements EditorAreaPanes
         return $this->sidebarCollapsed ? \array_slice($this->editorPanes, offset: 2) : $this->editorPanes;
     }
 
-    public function arrangeGitArea(): void
+    /**
+     * Order every minted view region's panes. Read at call time rather than
+     * captured in the constructor: a region exists once its view has minted
+     * one, and a plugin's view mints after this service is built.
+     */
+    public function arrangeViewAreas(): void
     {
-        $this->setPanes($this->layout->gitArea(), $this->gitPanes);
-    }
-
-    public function arrangeSettingsArea(): void
-    {
-        $this->setPanes($this->layout->settingsArea(), $this->settingsPanes);
+        foreach ($this->regions->all() as $region) {
+            $this->setPanes($region->area(), $region->panes());
+        }
     }
 
     /**
@@ -130,8 +121,7 @@ final class PaneLayout implements EditorAreaPanes
         $this->translator->isRtl()
             ? $this->bidi->setPaneReorder($this->segmenter, $this->reorder)
             : $this->bidi->setPaneReorder(null, null);
-        $this->arrangeGitArea();
-        $this->arrangeSettingsArea();
+        $this->arrangeViewAreas();
         if (!$this->views->isAnyOpen()) {
             $this->arrangeEditorArea();
         }

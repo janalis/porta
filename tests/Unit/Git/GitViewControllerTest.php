@@ -35,6 +35,8 @@ use Porta\Layout\DiffLayout;
 use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
+use Porta\Layout\ViewRegion;
+use Porta\Layout\ViewRegions;
 use Porta\Support\Clipboard;
 use Porta\Tests\Support\AwaitsGit;
 use Porta\Tests\Support\GitBinary;
@@ -45,6 +47,7 @@ use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestTui;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\FileTreeWidget;
@@ -68,6 +71,7 @@ use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Tui;
+use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
 
 /**
@@ -113,6 +117,7 @@ final class GitViewControllerTest extends TestCase
     private GitTabsWidget $tabs;
     private MenuBarWidget $menuBar;
     private ContainerWidget $gitLeft;
+    private ViewRegion $region;
     private ContainerWidget $main;
     private StatusBarWidget $statusBar;
     private int $committed = 0;
@@ -149,12 +154,10 @@ final class GitViewControllerTest extends TestCase
         $editWidget->setId('edit-stub');
         $this->main = new ContainerWidget();
         $this->main->add($editWidget);
-        $this->gitLeft = new ContainerWidget();
-        $this->gitLeft->setId('git-left');
-        $this->gitLeft->add($this->tabs)->add($this->changes)->add($this->commitBox);
-        $gitArea = new ContainerWidget();
-        $gitArea->setId('git-area');
-        $gitArea->add($this->gitLeft)->add($this->diffView);
+        // The controller mints its own region and seeds the sidebar for the
+        // initial Changes mode, so the test asks the registry for the same one
+        // instead of hand-stacking the containers.
+        $regions = new ViewRegions(Styles::dark());
         $this->statusBar = new StatusBarWidget();
         $this->tui = TestTui::create(100, 24);
         $this->committed = 0;
@@ -191,8 +194,7 @@ final class GitViewControllerTest extends TestCase
             $this->project->dir,
             new GitPanes($this->changes, $this->diffView, $this->commitBox, $this->history, $this->tabs),
             $this->main,
-            $gitArea,
-            $this->gitLeft,
+            $regions,
             $this->menuBar,
             $this->tui,
             $notifier,
@@ -218,6 +220,11 @@ final class GitViewControllerTest extends TestCase
             new GitRemoteCommands(new GitRemote($this->project->dir), $notifier, $t, $dispatcher, $this->editor, $this->tui),
             historyPageSize: $historyPageSize,
         );
+        // PaneLayout fills the AREA at runtime; the region's two panes are
+        // the controller's own doing and are asserted, not arranged, below.
+        $this->region = $regions->mint('git');
+        $this->gitLeft = $this->region->sidebar();
+        $this->region->area()->add($this->gitLeft)->add($this->region->content());
         // The container compiles these from #[AsEventListener]; a unit test
         // wires the same two by hand.
         $dispatcher->addListener(GitViewModeRequested::class, $controller->onViewModeRequested(...));
@@ -243,6 +250,25 @@ final class GitViewControllerTest extends TestCase
         exec('git -C '.escapeshellarg($this->project->dir).' status --porcelain 2>/dev/null', $lines);
 
         return $lines;
+    }
+
+    public function testTheControllerSeedsItsOwnRegionOnConstruction(): void
+    {
+        // WorkspaceLayout used to stack the three sidebar widgets at
+        // construction and PaneLayout used to hand the diff pane in as a bare
+        // widget — the two places core layout named this view's contents. The
+        // controller does both now, and switchMode() only refills on a CHANGE,
+        // so a missed seed is a git view that opens empty with nothing failing.
+        $this->controller();
+
+        $kinds = static fn (ContainerWidget $c): array => array_map(static fn (AbstractWidget $w): string => $w::class, $c->all());
+
+        $this->assertSame(
+            [GitTabsWidget::class, ChangesListWidget::class, CommitBoxWidget::class],
+            $kinds($this->region->sidebar()),
+            'seeded for the initial Changes mode',
+        );
+        $this->assertSame([DiffViewWidget::class], $kinds($this->region->content()), 'and the diff pane, which is fixed for both modes');
     }
 
     public function testOpenIsRefusedOutsideARepository(): void

@@ -25,6 +25,8 @@ use Porta\I18n\Translator;
 use Porta\Layout\DiffLayout;
 use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\LayoutController;
+use Porta\Layout\ViewRegion;
+use Porta\Layout\ViewRegions;
 use Porta\Support\Clipboard;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\MenuBarWidget;
@@ -74,16 +76,15 @@ final class GitViewController implements FullScreenView
     /** Runs the index-mutating verbs (stage/unstage/discard/commit) for this view. */
     private readonly GitStagingService $staging;
 
+    private readonly ViewRegion $region;
+
     public function __construct(
         private readonly GitInfo $git,
         private readonly string $rootDir,
         private readonly GitPanes $panes,
         #[LayoutSlot('main')]
         private readonly ContainerWidget $main,
-        #[LayoutSlot('git_area')]
-        private readonly ContainerWidget $gitArea,
-        #[LayoutSlot('git_left')]
-        private readonly ContainerWidget $gitLeft,
+        ViewRegions $regions,
         private readonly MenuBarWidget $menuBar,
         private readonly Tui $tui,
         private readonly Notifier $notifier,
@@ -98,6 +99,16 @@ final class GitViewController implements FullScreenView
         private readonly int $historyPageSize = 200,
         private readonly ?GitSettings $gitSettings = null,
     ) {
+        // The region is minted, not injected: a compiled slot cannot reach a
+        // view core does not know at build time. The sidebar is refilled per
+        // mode; the diff pane is fixed, so it goes in once here.
+        $this->region = $regions->mint('git');
+        $this->region->content()->add($this->panes->diffView);
+        // Seeded for the initial Changes mode. WorkspaceLayout used to stack
+        // these three at construction — the one place core layout named a
+        // view's contents — and switchMode() only refills on a CHANGE, so
+        // without this the sidebar would open empty.
+        $this->region->sidebar()->add($this->panes->tabs)->add($this->panes->changes)->add($this->panes->commitBox);
         $views->attachGit($this);
         $this->staging = new GitStagingService($this->git, $this->rootDir, $this->panes->commitBox, $this->notifier, $this->translator);
 
@@ -148,7 +159,7 @@ final class GitViewController implements FullScreenView
         // dropdown so its tracked hit region cannot go stale across the swap.
         $this->menuBar->close();
         $this->main->clear();
-        $this->main->add($this->gitArea);
+        $this->main->add($this->region->area());
         if (GitViewMode::Changes !== $this->mode) {
             $this->switchMode(GitViewMode::Changes); // the view always opens on Changes
         }
@@ -370,10 +381,10 @@ final class GitViewController implements FullScreenView
         }
         $this->mode = $mode;
         $this->panes->tabs->setActive($mode);
-        $this->gitLeft->clear();
-        $this->gitLeft->add($this->panes->tabs);
+        $this->region->sidebar()->clear();
+        $this->region->sidebar()->add($this->panes->tabs);
         if (GitViewMode::History === $mode) {
-            $this->gitLeft->add($this->panes->history);
+            $this->region->sidebar()->add($this->panes->history);
             $this->panes->diffView->makeReadOnly();
             $this->panes->diffView->setDocument(null, null, 'Select a commit file');
             $this->tui->setFocus($this->panes->history);
@@ -385,8 +396,8 @@ final class GitViewController implements FullScreenView
         // Tabbing away drops any file filter — History reopens repo-wide.
         $this->historyPath = null;
         $this->panes->history->setFilterLabel(null);
-        $this->gitLeft->add($this->panes->changes);
-        $this->gitLeft->add($this->panes->commitBox);
+        $this->region->sidebar()->add($this->panes->changes);
+        $this->region->sidebar()->add($this->panes->commitBox);
         $this->panes->diffView->makeEditable();
         $this->tui->setFocus($this->panes->changes);
         $this->refresh();

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\Input;
 
-use Porta\Container\LayoutSlot;
 use Porta\Git\ChangeEntry;
 use Porta\Git\GitViewMode;
 use Porta\Git\LogEntry;
+use Porta\Layout\ViewRegions;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
 use Porta\Widget\Git\DiffViewWidget;
@@ -30,6 +30,8 @@ final class GitMouseRouter
     /** A press on a diff body row arms a row-range drag (rows join as the pointer moves). */
     private bool $diffSelecting = false;
 
+    private readonly SeparatorWidget $separator;
+
     public function __construct(
         private readonly HitTester $hit,
         private readonly Tui $tui,
@@ -38,9 +40,10 @@ final class GitMouseRouter
         private readonly CommitBoxWidget $commitBox,
         private readonly HistoryListWidget $history,
         private readonly GitTabsWidget $tabs,
-        #[LayoutSlot('git_separator')]
-        private readonly SeparatorWidget $separator,
-    ) {}
+        ViewRegions $regions,
+    ) {
+        $this->separator = $regions->mint('git')->separator();
+    }
 
     /**
      * A right-press landed on a changes row: select it and return its entry

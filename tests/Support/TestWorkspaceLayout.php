@@ -14,9 +14,6 @@ use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
-use Porta\Widget\Git\ChangesListWidget;
-use Porta\Widget\Git\CommitBoxWidget;
-use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
@@ -40,9 +37,6 @@ final class TestWorkspaceLayout
         ?TabBarWidget $tabBar = null,
         ?BreadcrumbsWidget $breadcrumbs = null,
         ?CodeEditorWidget $editor = null,
-        ?GitTabsWidget $gitTabs = null,
-        ?ChangesListWidget $gitChanges = null,
-        ?CommitBoxWidget $gitCommitBox = null,
         ?MenuBarWidget $menuBar = null,
         ?ContextMenu $contextMenu = null,
         ?FindBarWidget $findBar = null,
@@ -65,9 +59,6 @@ final class TestWorkspaceLayout
             $tabBar ?? $id(new TabBarWidget(), id: 'tabs'),
             $breadcrumbs ?? $id(new BreadcrumbsWidget(), id: 'breadcrumbs'),
             $editor ?? $id(new CodeEditorWidget(), id: 'editor'),
-            $gitTabs ?? $id(new GitTabsWidget($t), id: 'git-tabs'),
-            $gitChanges ?? $id(new ChangesListWidget($t), id: 'git-changes'),
-            $gitCommitBox ?? $id(new CommitBoxWidget($t), id: 'git-commit'),
             $menuBar ?? $id(new MenuBarWidget(), id: 'menu'),
             $contextMenu ?? $id(new ContextMenu(), id: 'context-menu'),
             $findBar ?? $id(new FindBarWidget($t), id: 'find-bar'),

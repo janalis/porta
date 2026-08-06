@@ -42,15 +42,9 @@ final class WorkspaceLayoutTest extends TestCase
         $this->assertSame('main', $layout->main()->getId());
         $this->assertSame(['tabs', 'editor-body'], $this->ids(Probe::get($layout, 'editorPane')), 'top position at boot');
         $this->assertSame(['breadcrumbs', 'find-bar', 'editor'], $this->ids($layout->editorBody()), 'the find bar sits below the breadcrumbs, above the content slot');
-        $this->assertSame(['git-tabs', 'git-changes', 'git-commit'], $this->ids($layout->gitLeft()));
-        $this->assertSame([], $layout->gitArea()->all(), 'horizontal areas are filled by the RTL-aware pane ordering');
-        $this->assertSame([], $layout->settingsArea()->all());
-        $this->assertSame('settings-content', $layout->settingsContent()->getId());
-        $this->assertSame(['separator', 'git-separator', 'settings-separator'], [
-            $layout->separator()->getId(),
-            $layout->gitSeparator()->getId(),
-            $layout->settingsSeparator()->getId(),
-        ]);
+        // A full-screen view's own sidebar/separator/content is ViewRegions'
+        // now, minted at runtime — see ViewRegionsTest.
+        $this->assertSame('separator', $layout->separator()->getId());
         $this->assertSame(['tree', 'separator', 'editor-pane'], array_map(static fn (AbstractWidget $w): string => $w->getId(), $layout->editorPanes()));
     }
 

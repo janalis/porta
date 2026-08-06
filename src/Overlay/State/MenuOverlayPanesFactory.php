@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Overlay\State;
 
 use Porta\Editor\EditorPanes;
+use Porta\Layout\ViewRegions;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
@@ -35,6 +36,7 @@ final class MenuOverlayPanesFactory
     public function __construct(
         private readonly FileTreeWidget $tree,
         private readonly WorkspaceLayout $layout,
+        private readonly ViewRegions $regions,
         private readonly TabBarWidget $tabBar,
         private readonly CodeEditorWidget $editor,
         private readonly EditorPanes $panes,
@@ -70,8 +72,8 @@ final class MenuOverlayPanesFactory
                 $this->terminalPanel,
                 $this->debugPanel,
             ],
-            [$this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->layout->gitSeparator(), $this->gitDiff],
-            [$this->settingsNav, $this->layout->settingsSeparator(), $this->settingsForm, $this->settingsKeys],
+            [$this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->regions->mint('git')->separator(), $this->gitDiff],
+            [$this->settingsNav, $this->regions->mint('settings')->separator(), $this->settingsForm, $this->settingsKeys],
             fn (): bool => $this->views->isOpen(WorkspaceView::Git),
             fn (): bool => $this->views->isOpen(WorkspaceView::Settings),
             $this->panes,

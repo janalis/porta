@@ -23,6 +23,7 @@ use Porta\Highlight\NoHighlightPlugins;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\I18n\Translator;
 use Porta\Layout\EditorAreaPanes;
+use Porta\Layout\ViewRegions;
 use Porta\Lsp\BufferReopener;
 use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LanguageServerProvider;
@@ -59,6 +60,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\StyleSheetThemer;
 use Porta\Ui\Theme\Themes;
 use Porta\Widget\BreadcrumbsWidget;
@@ -114,10 +116,10 @@ final class SettingsViewControllerTest extends TestCase
         $this->form->setId('settings-form');
         $this->keymapList = new KeybindingsListWidget(new Translator('en'), events: $this->sectionEvents);
         $this->keymapList->setId('settings-keys');
-        $this->content = new ContainerWidget();
-        $area = new ContainerWidget();
-        $area->setId('settings-area');
-        $area->add($this->nav)->add($this->content);
+        // The controller mints its region and puts the nav into the sidebar
+        // itself; the test reads the same containers back off the registry.
+        $regions = new ViewRegions(Styles::dark());
+        $this->content = $regions->mint('settings')->content();
         $menuBar = new MenuBarWidget();
         $menuBar->setId('menu');
 
@@ -227,8 +229,7 @@ final class SettingsViewControllerTest extends TestCase
             $this->form,
             $this->keymapList,
             $this->main,
-            $area,
-            $this->content,
+            $regions,
             $menuBar,
             new class($editWidget) implements EditorAreaPanes {
                 public function __construct(

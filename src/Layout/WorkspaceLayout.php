@@ -13,9 +13,6 @@ use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\FindBarWidget;
-use Porta\Widget\Git\ChangesListWidget;
-use Porta\Widget\Git\CommitBoxWidget;
-use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\SeparatorWidget;
@@ -33,8 +30,12 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  * Owns the workspace's composite widget tree: the generic layout containers
  * and separators (duplicate-typed, so the container cannot autowire them),
  * their assembly, the Tui Z-order, and the tab-strip position surgery. The
- * horizontal areas' children (main/git/settings pane order) are set by the
- * RTL-aware pane ordering, not here.
+ * editor area's children are set by the RTL-aware pane ordering, not here.
+ *
+ * A full-screen view's own sidebar/separator/content is NOT here — that is
+ * {@see ViewRegions}, minted at runtime. This class knew the git widgets by
+ * name and stacked them into `git-left` at construction, which is the one place
+ * core layout named a view's contents.
  */
 #[AsIdeService]
 final class WorkspaceLayout
@@ -45,28 +46,13 @@ final class WorkspaceLayout
 
     private readonly ContainerWidget $editorBody;
 
-    private readonly ContainerWidget $gitLeft;
-
-    private readonly ContainerWidget $gitArea;
-
-    private readonly ContainerWidget $settingsContent;
-
-    private readonly ContainerWidget $settingsArea;
-
     private readonly SeparatorWidget $separator;
-
-    private readonly SeparatorWidget $gitSeparator;
-
-    private readonly SeparatorWidget $settingsSeparator;
 
     public function __construct(
         private readonly FileTreeWidget $tree,
         private readonly TabBarWidget $tabBar,
         BreadcrumbsWidget $breadcrumbs,
         CodeEditorWidget $editor,
-        GitTabsWidget $gitTabs,
-        ChangesListWidget $gitChanges,
-        CommitBoxWidget $gitCommitBox,
         private readonly MenuBarWidget $menuBar,
         private readonly ContextMenu $contextMenu,
         private readonly FindBarWidget $findBar,
@@ -90,15 +76,6 @@ final class WorkspaceLayout
 
         $this->separator = $this->separatorWidget('separator');
         $this->main = $this->container('main', new Style(direction: Direction::Horizontal, gap: 0));
-
-        $this->gitLeft = $this->container('git-left', new Style(flex: 0));
-        $this->gitLeft->add($gitTabs)->add($gitChanges)->add($gitCommitBox);
-        $this->gitSeparator = $this->separatorWidget('git-separator');
-        $this->gitArea = $this->container('git-area', new Style(direction: Direction::Horizontal, gap: 0));
-
-        $this->settingsSeparator = $this->separatorWidget('settings-separator');
-        $this->settingsContent = $this->container('settings-content', new Style(flex: 1));
-        $this->settingsArea = $this->container('settings-area', new Style(direction: Direction::Horizontal, gap: 0));
     }
 
     /** The floating chrome Z-order: later adds composite over earlier ones. */
@@ -148,39 +125,9 @@ final class WorkspaceLayout
         return $this->editorBody;
     }
 
-    public function gitLeft(): ContainerWidget
-    {
-        return $this->gitLeft;
-    }
-
-    public function gitArea(): ContainerWidget
-    {
-        return $this->gitArea;
-    }
-
-    public function settingsContent(): ContainerWidget
-    {
-        return $this->settingsContent;
-    }
-
-    public function settingsArea(): ContainerWidget
-    {
-        return $this->settingsArea;
-    }
-
     public function separator(): SeparatorWidget
     {
         return $this->separator;
-    }
-
-    public function gitSeparator(): SeparatorWidget
-    {
-        return $this->gitSeparator;
-    }
-
-    public function settingsSeparator(): SeparatorWidget
-    {
-        return $this->settingsSeparator;
     }
 
     private function container(string $id, Style $style): ContainerWidget

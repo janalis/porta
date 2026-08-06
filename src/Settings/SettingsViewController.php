@@ -8,6 +8,8 @@ use Porta\Container\AsEager;
 use Porta\Container\LayoutSlot;
 use Porta\Event\SettingsSectionRequested;
 use Porta\Layout\EditorAreaPanes;
+use Porta\Layout\ViewRegion;
+use Porta\Layout\ViewRegions;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
@@ -32,6 +34,8 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
 #[AsEager(priority: 500)]
 final class SettingsViewController implements FullScreenView
 {
+    private readonly ViewRegion $region;
+
     private bool $open = false;
     /** 'general' | 'keybindings' | 'lang:<id>' — the active section. */
     private string $section = 'general';
@@ -42,10 +46,7 @@ final class SettingsViewController implements FullScreenView
         private readonly KeybindingsListWidget $keymapList,
         #[LayoutSlot('main')]
         private readonly ContainerWidget $main,
-        #[LayoutSlot('settings_area')]
-        private readonly ContainerWidget $settingsArea,
-        #[LayoutSlot('settings_content')]
-        private readonly ContainerWidget $settingsContent,
+        ViewRegions $regions,
         private readonly MenuBarWidget $menuBar,
         private readonly EditorAreaPanes $editArea,
         private readonly Tui $tui,
@@ -57,6 +58,12 @@ final class SettingsViewController implements FullScreenView
         private readonly EditorArea $editorArea,
         WorkspaceViews $views,
     ) {
+        // Minted, like git's. The nav is this view's fixed half, so it goes
+        // into the sidebar once here — it used to be handed to PaneLayout as a
+        // bare widget, which is why the two views' regions were mirror images
+        // and neither shape could describe the other.
+        $this->region = $regions->mint('settings');
+        $this->region->sidebar()->add($this->nav);
         $views->attachSettings($this);
         $exit = $this->close(...);
 
@@ -100,7 +107,7 @@ final class SettingsViewController implements FullScreenView
         // dropdown so its tracked hit region cannot go stale across the swap.
         $this->menuBar->close();
         $this->main->clear();
-        $this->main->add($this->settingsArea);
+        $this->main->add($this->region->area());
 
         $this->selectSection('general'); // always open on General
         $this->tui->setFocus($this->form);
@@ -140,14 +147,14 @@ final class SettingsViewController implements FullScreenView
     {
         $this->section = $id;
         $this->nav->setActive($id);
-        $this->settingsContent->clear();
+        $this->region->content()->clear();
         if ('keybindings' === $id) {
             $this->keymapList->setRows($this->keymap->rows());
-            $this->settingsContent->add($this->keymapList);
+            $this->region->content()->add($this->keymapList);
         }
         if ('keybindings' !== $id) {
             $this->form->setRows($this->rowsForSection());
-            $this->settingsContent->add($this->form);
+            $this->region->content()->add($this->form);
         }
         $this->tui->requestRender();
     }

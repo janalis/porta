@@ -162,9 +162,6 @@ final class Ide
 
         $this->git = $this->service(GitInfo::class);
         $this->gitRefresher = $this->service(GitRefresher::class);
-        $this->buildGitView();
-
-        $this->buildSettingsWidgets();
 
         $this->buildLayoutAndOverlay();
 
@@ -198,8 +195,10 @@ final class Ide
         $this->service(EagerServices::class)->boot();
         $this->pluginLifecycle->refreshNav();
 
-        // Now that both view controllers exist, settle the layout for the
-        // persisted locale's writing direction (RTL mirrors the sidebar right).
+        // Now that the view controllers exist — and have MINTED their regions,
+        // which is why this cannot run earlier — settle the layout for the
+        // persisted locale's writing direction (RTL mirrors the sidebar right)
+        // and give every region its pane order.
         $this->paneLayout->applyDirection();
 
         $this->service(SearchUiWiring::class)->wire();
@@ -351,12 +350,6 @@ final class Ide
         $this->menuRebuilder = $this->service(MenuRebuilder::class);
     }
 
-    /** Construct the settings-view widgets and their horizontal pane container. */
-    private function buildSettingsWidgets(): void
-    {
-        $this->paneLayout->arrangeSettingsArea();
-    }
-
     /** The resize/layout controller, the menu/context overlay compositor and the tree operations. */
     private function buildLayoutAndOverlay(): void
     {
@@ -379,16 +372,6 @@ final class Ide
         $this->workspaceLayout = $this->service(WorkspaceLayout::class);
         $this->paneLayout = $this->service(PaneLayout::class);
         $this->paneLayout->arrangeEditorArea();
-    }
-
-    /** Construct the git-view widgets, their horizontal pane container and the controller. */
-    private function buildGitView(): void
-    {
-        $this->paneLayout->arrangeGitArea();
-
-        // GitViewController + ResponsiveLayout are #[AsEager] — constructed by
-        // EagerServices::boot() at the ctor tail (they self-attach to
-        // WorkspaceViews / the width hook), so no eager resolve here.
     }
 
     // --- File handling ----------------------------------------------------------

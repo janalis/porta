@@ -11,15 +11,15 @@ use Porta\I18n\PaneReorder;
 use Porta\I18n\Translator;
 use Porta\Layout\PaneLayout;
 use Porta\Layout\ResponsiveLayout;
+use Porta\Layout\ViewRegions;
 use Porta\Overlay\Region\FloatingRegions;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\BidiTui;
 use Porta\Ui\PaneSegmenter;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
-use Porta\Widget\Git\DiffViewWidget;
-use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\WorkspaceViews;
 use Symfony\Component\Tui\Render\Renderer;
@@ -61,8 +61,7 @@ final class ResponsiveLayoutTest extends TestCase
             }),
             new PaneReorder(),
             new WorkspaceViews(),
-            new SettingsNavWidget($t),
-            new DiffViewWidget($t),
+            new ViewRegions(Styles::dark()),
         );
         $this->paneLayout->arrangeEditorArea();
 
