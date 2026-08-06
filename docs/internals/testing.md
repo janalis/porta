@@ -65,9 +65,27 @@ is genuinely nothing to await, say so with `pump()`.
 
 ## The flake doctrine
 
-`await()` budgets are denominated in **loop turns**, not wall time, so an await
-almost never fails from slowness — a timeout means the condition never became
-true. The flaky shapes are all on the fixed-clock side, and each has a cure.
+`await()` budgets are denominated in **loop turns**, not wall time: `$elapsed`
+advances by 0.02 per turn however long the turn really took, so a loaded machine
+gets *more* wall time than the nominal budget, not less. For a condition that
+resolves in-process, a timeout therefore means it never became true. Most flaky
+shapes are on the fixed-clock side, and each has a cure.
+
+**The exception is an await on an EXTERNAL PROCESS**, and it is not rare. The
+subprocess competes for the same CPU the loop turns are spending, so all 500
+turns of a 10s budget can pass without it being scheduled to completion. These
+fail from load and nothing else: the installer, analyzer-plugin and
+opener-shim tests all did so repeatedly at load 10–40, and every one passed in
+isolation. Diagnose in this order before touching the code — `uptime` first;
+re-run the failing class alone; and note that `coverage:check` passing while
+`composer test` fails is the tell, since it runs the same tests. A *different*
+handful failing on each run is load; the *same* test failing every run is not.
+
+Before accepting that verdict, though, check the wait itself: a hand-rolled loop
+with its own smaller budget, or a poll that starts after a flash which fires when
+the subprocess is *spawned*, is a real defect wearing load's clothes. Both were
+found and fixed here. Give every subprocess wait a `what:` label — a bare
+`timed out after 10.0s waiting for condition` tells the next reader nothing.
 
 **No fixed-gap asserts.** Never `handleInput` → next `ms =>` step → assert.
 Await the effect in the *same* step: `awaitGit($ide)` after every mutating git
@@ -150,6 +168,32 @@ and confirm it goes red. If it does not, either strengthen it or say in the
 commit message which mutation it survives. Mutation-check the *fix* too: a
 replacement test can be satisfied by a different code path than the one you
 meant.
+
+**Scope the sweep, and get a green baseline first.** Judged against the full
+suite on a loaded machine, five of six `ContextMenuRouter` mutations looked
+killed — by Chroma, LSP and installer tests that cannot be about a context menu.
+Filter to the suites that could plausibly fail, confirm they are green
+unmutated, and only then call a mutation dead.
+
+Three shapes account for most survivors found so far:
+
+- **Two branches emitting the same words.** `stageCurrent()` flashes "Git not
+  available" both for a null path and for git being unavailable; the suite
+  tested the first, so deleting the second changed no output. Set up a state
+  only the guard under test can refuse.
+- **An assertion reading whole-screen text that something else painted.**
+  `"Debug: prog.php"` is written twice — by the dock strip's label closure and
+  by the session tab inside the panel — so reducing the label to a bare "Debug"
+  kept the E2e green. Read the model (call the closure, inspect the entry), or
+  assert a distinguishing suffix, as `"Unsaved changes in b.php"` does.
+- **The half of a seam nobody observes.** The emitting side usually has a test
+  and the listening side does not. `PluginApi::emit()`'s activate-time gate and
+  `GitRefresher::onWorkingTreeChanged` both deleted clean.
+
+**Put a positive control in a negative test.** "The setting off publishes
+nothing" passes just as well when the fixture is broken and there was nothing to
+publish. Assert in the same test that the *same* fixture does produce the effect
+with the flag on.
 
 ## No test-only code in `src`
 
