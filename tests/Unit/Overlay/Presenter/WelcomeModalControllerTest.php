@@ -32,8 +32,7 @@ use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Workbench\ChromeInvalidator;
 use Porta\Workbench\ChromeRefreshListener;
 use Porta\Workbench\EditorArea;
-use Porta\Workbench\WorkspaceView;
-use Porta\Workbench\WorkspaceViews;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
@@ -53,7 +52,7 @@ final class WelcomeModalControllerTest extends TestCase
     use RendersRoot;
 
     private WelcomeWidget $welcome;
-    private WorkspaceViews $views;
+    private ViewRegistry $views;
     private AbstractWidget&MenuOverlayHost $pane;
 
     private function controller(): WelcomeModalController
@@ -73,7 +72,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->tui->add($this->pane);
 
         $this->welcome = new WelcomeWidget(new Translator('en'));
-        $this->views = new WorkspaceViews();
+        $this->views = new ViewRegistry();
 
         $editArea = new EditorArea(
             new BufferManager(),
@@ -98,9 +97,9 @@ final class WelcomeModalControllerTest extends TestCase
     {
         $controller = $this->controller();
 
-        $this->assertFalse($this->views->isOpen(WorkspaceView::Welcome));
-        $this->views->toggle(WorkspaceView::Welcome);
-        $this->assertTrue($this->views->isOpen(WorkspaceView::Welcome));
+        $this->assertFalse($this->views->isOpen('welcome'));
+        $this->views->toggle('welcome');
+        $this->assertTrue($this->views->isOpen('welcome'));
         $this->assertTrue($controller->isOpen());
     }
 
@@ -109,7 +108,7 @@ final class WelcomeModalControllerTest extends TestCase
     {
         $this->controller()->open();
 
-        $this->assertTrue($this->views->isOpen(WorkspaceView::Welcome));
+        $this->assertTrue($this->views->isOpen('welcome'));
         $this->assertFalse($this->views->isAnyOpen(), 'the modal must not read as a detached main area');
     }
 
@@ -176,7 +175,7 @@ final class WelcomeModalControllerTest extends TestCase
         $controller->close();
 
         $this->assertNull($this->views->focusTarget());
-        $this->assertFalse($this->views->isOpen(WorkspaceView::Welcome));
+        $this->assertFalse($this->views->isOpen('welcome'));
     }
 
     /** The first-run entry point opens without toggling an already-open modal shut. */
@@ -184,10 +183,10 @@ final class WelcomeModalControllerTest extends TestCase
     {
         $controller = $this->controller();
 
-        $this->views->open(WorkspaceView::Welcome);
-        $this->views->open(WorkspaceView::Welcome);
+        $this->views->open('welcome');
+        $this->views->open('welcome');
 
-        $this->assertTrue($this->views->isOpen(WorkspaceView::Welcome));
+        $this->assertTrue($this->views->isOpen('welcome'));
         $this->assertTrue($controller->isOpen());
     }
 
@@ -197,7 +196,7 @@ final class WelcomeModalControllerTest extends TestCase
 
         $this->views->closeAll();
 
-        $this->assertFalse($this->views->isOpen(WorkspaceView::Welcome));
+        $this->assertFalse($this->views->isOpen('welcome'));
     }
 
     /**

@@ -68,8 +68,7 @@ use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Workbench\Menu\EditorCommandTarget;
-use Porta\Workbench\WorkspaceView;
-use Porta\Workbench\WorkspaceViews;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -197,7 +196,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         ?TerminalTheme $syntaxTheme = null,
         ?CursorStyle $cursorStyle = null,
         ?Translator $translator = null,
-        private readonly ?WorkspaceViews $views = null,
+        private readonly ?ViewRegistry $views = null,
         ?OverlayHost $overlayHost = null,
     ) {
         $this->initStyles($styles);
@@ -342,7 +341,7 @@ final class CodeEditorWidget extends AbstractWidget implements
      */
     private function closeSiblingFloaters(): void
     {
-        $this->views?->close(WorkspaceView::Welcome);
+        $this->views?->close('welcome');
         $this->findModal->close();
     }
 

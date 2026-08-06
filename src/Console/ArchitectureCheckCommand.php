@@ -270,7 +270,6 @@ final class ArchitectureCheckCommand extends Command
         'Workbench>Plugin',
         'Workbench>Run',
         'Workbench>Search',
-        'Workbench>Settings',
         'Workbench>Support',
         'Workbench>Terminal',
         'Workbench>Tree',
@@ -286,23 +285,8 @@ final class ArchitectureCheckCommand extends Command
      * a constant, not a collaboration.
      */
     private const array ALLOWED_SCCS = [
-        [
-            'Porta\\Git\\GitViewController',
-            'Porta\\Layout\\LayoutController',
-            'Porta\\Settings\\SettingsViewController',
-            'Porta\\Widget\\CodeEditorWidget',
-            'Porta\\Workbench\\Dock\\BottomDock',
-            'Porta\\Workbench\\EditorArea',
-            'Porta\\Workbench\\WorkspaceViews',
-        ],
-        [
-            'Porta\\Container\\IdeContainerFactory',
-            'Porta\\Ide',
-        ],
-        [
-            'Porta\\Plugin\\Api\\PluginApi',
-            'Porta\\Plugin\\Runtime\\PluginManager',
-        ],
+        ['Porta\\Container\\IdeContainerFactory', 'Porta\\Ide'],
+        ['Porta\\Plugin\\Api\\PluginApi',         'Porta\\Plugin\\Runtime\\PluginManager'],
     ];
 
     private const int E2E_MAX_TESTS = 60;

@@ -63,7 +63,7 @@ use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\Notifier;
-use Porta\Workbench\WorkspaceViews;
+use Porta\Workbench\View\ViewRegistry;
 use Revolt\EventLoop;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -176,7 +176,7 @@ final class GitViewControllerTest extends TestCase
             $this->tui,
         );
         $t = new Translator('en');
-        $views = new WorkspaceViews();
+        $views = new ViewRegistry();
         $notifier = new Notifier($this->statusBar, $this->tui);
         $this->layoutController = new LayoutController(
             new LayoutStore($this->project->dir),

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Git;
 
+use Porta\Event\GitFileHistoryRequested;
 use Porta\Event\WorkingTreeChanged;
 use Porta\I18n\Translator;
 use Porta\Support\Clipboard;
@@ -11,7 +12,6 @@ use Porta\Support\Outcome;
 use Porta\Ui\Glyphs;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Workbench\Notifier;
-use Porta\Workbench\WorkspaceViews;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Tui;
 
@@ -32,7 +32,6 @@ final class GitCommands
         private readonly Tui $tui,
         private readonly Translator $translator,
         private readonly GitRefresher $refresher,
-        private readonly WorkspaceViews $views,
         private readonly Clipboard $clipboard,
         private readonly EventDispatcherInterface $dispatcher,
     ) {}
@@ -122,7 +121,10 @@ final class GitCommands
 
             return;
         }
-        $this->views->openGitFileHistory($path);
+        // The registry used to carry an openGitFileHistory() verb over a
+        // concrete GitViewController field, which is what made Workbench
+        // depend on Git. The view performs its own capability now.
+        $this->dispatcher->dispatch(new GitFileHistoryRequested($path));
     }
 
     /** Copy a commit's full hash to the clipboard (the history context menu). */

@@ -14,9 +14,8 @@ use Porta\Run\RunController;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Settings\SettingsController;
 use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\View\ViewRegistry;
 use Porta\Workbench\WorkbenchActions;
-use Porta\Workbench\WorkspaceView;
-use Porta\Workbench\WorkspaceViews;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
@@ -32,7 +31,7 @@ final class ViewCommands implements CommandProvider
         private readonly SettingsController $settings,
         private readonly RunController $run,
         private readonly BottomDock $dock,
-        private readonly WorkspaceViews $views,
+        private readonly ViewRegistry $views,
         private readonly BufferService $bufferService,
         private readonly FoldingController $folding,
         private readonly string $docsDir,
@@ -79,17 +78,17 @@ final class ViewCommands implements CommandProvider
         // chain breaks here rather than moving the id, so the palette order is
         // unchanged where it does register.
         if ($this->git->isRepository()) {
-            $commands->add('ide_git', fn () => $this->views->toggle(WorkspaceView::Git), keyBound: KeyDispatch::Bound);
+            $commands->add('ide_git', fn () => $this->views->toggle('git'), keyBound: KeyDispatch::Bound);
         }
         $commands
-            ->add('ide_settings', fn () => $this->views->toggle(WorkspaceView::Settings), keyBound: KeyDispatch::Bound)
+            ->add('ide_settings', fn () => $this->views->toggle('settings'), keyBound: KeyDispatch::Bound)
             // No ActionCatalog entry and no default key: a keyless catalog entry
             // must be bound by some widget, which is wrong for an IDE command,
             // and this is a menu/palette action rather than a keystroke. Hence
             // the explicit label.
             ->add(
                 'ide_welcome',
-                fn () => $this->views->toggle(WorkspaceView::Welcome),
+                fn () => $this->views->toggle('welcome'),
                 label: 'Welcome',
             )
             ->add(

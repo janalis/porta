@@ -9,7 +9,6 @@ use Porta\Config\CommandRegistry;
 use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginMenuSpec;
 use Porta\Ui\ShortcutFormatter;
-use Porta\Workbench\WorkspaceView;
 use Symfony\Component\Tui\Input\Keybindings;
 
 /**
@@ -144,7 +143,7 @@ final class MenuModel
     ];
 
     /**
-     * @param (\Closure(): ?WorkspaceView)|null $activeView  while a view is active, only its {@see VIEW_SAFE} items stay enabled
+     * @param (\Closure(): ?string)|null $activeView  while a view is active, only its {@see VIEW_SAFE} items stay enabled
      * @param list<PluginMenuSpec>              $pluginSpecs runtime plugin entries — a Plugins menu between Code and Run when non-empty
      * @param (\Closure(string): bool)|null      $groupVisible hides a whole DEFS group; keyed by the UNTRANSLATED title, since
      *                                                        that is the only place the key still exists. Git's group is hidden
@@ -217,7 +216,7 @@ final class MenuModel
      * separator that follows a separator, or trails the list, is dropped.
      *
      * @param list<string|PluginMenuSpec>       $specs
-     * @param (\Closure(): ?WorkspaceView)|null $activeView
+     * @param (\Closure(): ?string)|null $activeView
      *
      * @return list<MenuItem>
      */
@@ -263,20 +262,20 @@ final class MenuModel
 
     /**
      * The only commands that stay enabled while a full view is active — one
-     * list per {@see WorkspaceView} case, keyed by its name. Everything else
+     * list per view, keyed by the id the view supplies. Everything else
      * targets the detached editor/tree and would act invisibly. Git keeps its
      * own verbs live; Settings only the ways out; `ide_welcome` is in every
      * list, not just Welcome's: a user who followed a Welcome step into
      * Settings must still be able to get back.
      */
     private const array VIEW_SAFE = [
-        'Git' => ['ide_quit', 'ide_git', 'git_commit', 'git_undo_commit', 'git_fetch', 'git_pull', 'git_push', 'git_branches', 'ide_command_palette', 'ide_help', 'ide_welcome'],
-        'Settings' => ['ide_quit', 'ide_settings', 'ide_command_palette', 'ide_help', 'ide_welcome'],
-        'Welcome' => ['ide_quit', 'ide_welcome', 'ide_command_palette', 'ide_help'],
+        'git' => ['ide_quit', 'ide_git', 'git_commit', 'git_undo_commit', 'git_fetch', 'git_pull', 'git_push', 'git_branches', 'ide_command_palette', 'ide_help', 'ide_welcome'],
+        'settings' => ['ide_quit', 'ide_settings', 'ide_command_palette', 'ide_help', 'ide_welcome'],
+        'welcome' => ['ide_quit', 'ide_welcome', 'ide_command_palette', 'ide_help'],
     ];
 
     /**
-     * @param (\Closure(): ?WorkspaceView)|null $activeView
+     * @param (\Closure(): ?string)|null $activeView
      * @param (\Closure(): bool)|null           $pluginWhen a plugin item's own enabled gate, ANDed with the view gating
      */
     private static function item(
@@ -303,7 +302,7 @@ final class MenuModel
         $isEnabled = null === $activeView && !$requiresFile
             ? null
             : static fn (): bool => match (true) {
-                null !== $activeView && null !== ($active = $activeView()) => 'i' === $scope && \in_array($id, self::VIEW_SAFE[$active->name] ?? [], strict: true),
+                null !== $activeView && null !== ($activeViewId = $activeView()) => 'i' === $scope && \in_array($id, self::VIEW_SAFE[$activeViewId] ?? [], strict: true),
                 default => !$requiresFile || null !== $editor->getFilePath(),
             };
         if (null !== $pluginWhen) {

@@ -17,9 +17,8 @@ use Porta\Widget\Onboarding\WelcomeWidget;
 use Porta\Widget\Render\ModalFrame;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Workbench\EditorArea;
-use Porta\Workbench\FullScreenView;
-use Porta\Workbench\WorkspaceView;
-use Porta\Workbench\WorkspaceViews;
+use Porta\Workbench\View\ContributedView;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -52,7 +51,7 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
  */
 #[AsIdeService]
 #[AsEager(priority: 400)]
-final class WelcomeModalController implements FullScreenView
+final class WelcomeModalController implements ContributedView
 {
     use StylesDefault;
 
@@ -97,16 +96,26 @@ final class WelcomeModalController implements FullScreenView
         private readonly MenuBarWidget $menuBar,
         private readonly EditorArea $editorArea,
         private readonly Tui $tui,
-        WorkspaceViews $views,
+        ViewRegistry $views,
         ?Styles $styles = null,
         ?FrameHooks $frameHooks = null,
     ) {
         $this->initStyles($styles);
-        $views->attach(WorkspaceView::Welcome, $this);
+        $views->register($this);
         $this->welcome
             ->onExit($this->close(...))
             ->onRan($this->refresh(...));
         $frameHooks?->onBeforeFrame($this->syncBeforeFrame(...));
+    }
+
+    public function viewId(): string
+    {
+        return 'welcome';
+    }
+
+    public function ownsMainArea(): bool
+    {
+        return false;
     }
 
     public function isOpen(): bool

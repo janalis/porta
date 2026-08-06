@@ -43,9 +43,11 @@ final class IdeSettingsViewTest extends TestCase
         new OnboardingState($project->dir)->markWelcomeSeen();
         $this->ide = new Ide($project->dir, $project->path('a.php'), new VirtualTerminal(columns: 100, rows: 24));
         $this->commands = Services::resolve($this->ide, CommandRegistry::class);
-        $views = Services::resolve($this->ide, \Porta\Workbench\WorkspaceViews::class);
-        $this->gitView = Probe::get($views, 'git');
-        $this->settingsView = Probe::get($views, 'settings');
+        $views = Services::resolve($this->ide, \Porta\Workbench\View\ViewRegistry::class);
+        // find(), not reflection: the registry no longer keeps a concrete
+        // field per view, which is what dissolved the seven-class cycle.
+        $this->gitView = $views->find('git');
+        $this->settingsView = $views->find('settings');
         $this->main = Services::resolve($this->ide, WorkspaceLayout::class)->main();
     }
 

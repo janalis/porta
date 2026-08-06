@@ -17,7 +17,7 @@ use Porta\Overlay\Region\FloatingRegions;
 use Porta\Ui\BidiTui;
 use Porta\Ui\FrameHooks;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Workbench\FullScreenView;
+use Porta\Workbench\View\ContributedView;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;

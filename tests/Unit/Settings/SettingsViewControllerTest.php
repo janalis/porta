@@ -75,7 +75,7 @@ use Porta\Widget\TabBarWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Notifier;
-use Porta\Workbench\WorkspaceViews;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
@@ -102,7 +102,7 @@ final class SettingsViewControllerTest extends TestCase
     private FakePluginLifecycle $lifecycle;
 
     /** @param list<SettingsSection>|null $sections */
-    private function controller(?WorkspaceViews $views = null, ?array $sections = null): SettingsViewController
+    private function controller(?ViewRegistry $views = null, ?array $sections = null): SettingsViewController
     {
         $this->project = new TempProject();
         $editWidget = new ContainerWidget();
@@ -166,7 +166,7 @@ final class SettingsViewControllerTest extends TestCase
             $editor,
             $liveKeys,
             new Translator('en'),
-            new WorkspaceViews(),
+            new ViewRegistry(),
             new PluginManager(new EventDispatcher(), $this->pluginSettings ?? new PluginSettings($this->project->dir, [])),
             new GitInfo($this->project->dir),
         );
@@ -266,7 +266,7 @@ final class SettingsViewControllerTest extends TestCase
                 new EditorPanes(),
                 $this->tui,
             ),
-            views: $views ?? new WorkspaceViews(),
+            views: $views ?? new ViewRegistry(),
         );
         // Compiled from #[AsEventListener] in the container; wired by hand here.
         $this->sectionEvents->addListener(SettingsSectionRequested::class, $controller->onSectionRequested(...));
@@ -294,7 +294,7 @@ final class SettingsViewControllerTest extends TestCase
 
     public function testWorkspaceViewsResolveTheFocusTargetWhileOpen(): void
     {
-        $views = new WorkspaceViews();
+        $views = new ViewRegistry();
         $controller = $this->controller($views);
 
         $this->assertNull($views->focusTarget(), 'the editor layout owns focus while settings is closed');

@@ -50,7 +50,7 @@ final readonly class HoverRouter
      * Re-renders only when the highlighted row actually changes, so the extra
      * motion traffic from mouse mode 1003 stays cheap.
      */
-    public function handle(MouseEvent $mouse, ?WidgetRect $editorRect, ActiveView $view = ActiveView::Editor): void
+    public function handle(MouseEvent $mouse, ?WidgetRect $editorRect, ?string $view = null): void
     {
         // The toast stack floats above every modal: over a card, only its ×
         // tint reacts, and the hover never leaks to what is beneath.
@@ -103,14 +103,14 @@ final readonly class HoverRouter
         // Each full-view state owns its hover targets exclusively; the tree/editor
         // targets are detached while a view is swapped in. The menu bar rides
         // along into either view, so it gets first refusal before the region.
-        if (ActiveView::Settings === $view) {
+        if ('settings' === $view) {
             if (!$this->handleMenuHover($mouse)) {
                 $this->settings->hover($mouse);
             }
 
             return;
         }
-        if (ActiveView::Git === $view) {
+        if ('git' === $view) {
             if (!$this->handleMenuHover($mouse)) {
                 $this->git->hover($mouse);
             }

@@ -45,8 +45,7 @@ use Porta\Workbench\EditorArea;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\TerminalStateRefresher;
-use Porta\Workbench\WorkspaceView;
-use Porta\Workbench\WorkspaceViews;
+use Porta\Workbench\View\ViewRegistry;
 use Revolt\EventLoop;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
@@ -236,7 +235,7 @@ final class Ide
         }
 
         $onboarding->markWelcomeSeen();
-        $this->service(WorkspaceViews::class)->open(WorkspaceView::Welcome);
+        $this->service(ViewRegistry::class)->open('welcome');
     }
 
     /**
@@ -324,7 +323,7 @@ final class Ide
             $this->service(EventDispatcherInterface::class)->dispatch(new IdeShuttingDown($this->rootDir));
             // Then: closing the full-screen views cancels their timers (the
             // git view's 2s status-poll repeat) so nothing re-arms below.
-            $this->service(WorkspaceViews::class)->closeAll();
+            $this->service(ViewRegistry::class)->closeAll();
             $this->watchdog->stop();
             EventLoop::cancel($watcher);
             // Disable mouse reporting, then leave the alternate screen (restoring

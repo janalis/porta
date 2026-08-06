@@ -17,6 +17,7 @@ use Porta\Event\GitDiffCopyRequested;
 use Porta\Event\GitDiffLayoutToggled;
 use Porta\Event\GitDiffStagingRequested;
 use Porta\Event\GitDiffWhitespaceToggleRequested;
+use Porta\Event\GitFileHistoryRequested;
 use Porta\Event\GitHistoryEndReached;
 use Porta\Event\GitRemoteCompleted;
 use Porta\Event\GitRemoteRequested;
@@ -27,7 +28,7 @@ use Porta\Git\GitViewController;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
- * The eighteen git reactions, pinned as an explicit event → method map.
+ * The nineteen git reactions, pinned as an explicit event → method map.
  *
  * These are wired by an ATTRIBUTE the container reads, which is a feature that
  * evaporates the moment the class stops being a service — and the failure is
@@ -37,7 +38,7 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  * `src/` these events leave with it, so that guarantee goes too.
  *
  * This is the checklist the move is measured against: hand-registering
- * seventeen of eighteen is a working IDE with one dead interaction.
+ * eighteen of nineteen is a working IDE with one dead interaction.
  *
  * The assertion is two-directional on purpose — a listener that disappears
  * fails, and so does one that appears without being written down here.
@@ -57,6 +58,7 @@ final class GitListenerContractTest extends TestCase
             GitDiffLayoutToggled::class => 'onDiffLayoutToggled',
             GitDiffStagingRequested::class => 'onDiffLinesStaged',
             GitDiffWhitespaceToggleRequested::class => 'onDiffWhitespaceToggled',
+            GitFileHistoryRequested::class => 'onFileHistoryRequested',
             GitHistoryEndReached::class => 'onHistoryEndReached',
             GitRemoteCompleted::class => 'onRemoteCompleted',
             GitRemoteRequested::class => 'onRemoteRequested',
@@ -77,14 +79,14 @@ final class GitListenerContractTest extends TestCase
         }
     }
 
-    public function testTheSetIsEighteenReactionsAcrossTwoClasses(): void
+    public function testTheSetIsNineteenReactionsAcrossTwoClasses(): void
     {
         // A count as well as a map: it is the number to check a hand-registered
         // replacement against at a glance, and it is what makes "one of these
         // was dropped" a visible arithmetic failure rather than a diff to read.
         $total = array_sum(array_map(static fn (array $map): int => \count($map), self::EXPECTED));
 
-        $this->assertSame(18, $total);
+        $this->assertSame(19, $total);
         $this->assertCount(2, self::EXPECTED);
     }
 

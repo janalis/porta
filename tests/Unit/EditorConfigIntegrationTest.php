@@ -19,7 +19,7 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
-use Porta\Workbench\WorkspaceViews;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 
 /**
@@ -53,7 +53,7 @@ final class EditorConfigIntegrationTest extends TestCase
             return;
         }
 
-        Services::resolve($this->ide, WorkspaceViews::class)->closeAll();
+        Services::resolve($this->ide, ViewRegistry::class)->closeAll();
         Services::resolve($this->ide, Notifier::class)->dismissAll();
         $this->awaitGitInfo(Services::resolve($this->ide, GitInfo::class));
     }

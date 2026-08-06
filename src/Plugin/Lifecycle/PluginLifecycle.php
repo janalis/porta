@@ -9,6 +9,7 @@ use Porta\Config\LiveKeybindings;
 use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
 use Porta\Editor\PaneRegistrar;
+use Porta\Event\SettingsRowsStale;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspReconfigurer;
 use Porta\Plugin\Runtime\PluginLoader;
@@ -16,8 +17,8 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginManifest;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Notifier;
-use Porta\Workbench\WorkspaceViews;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -52,7 +53,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         private readonly Translator $translator,
         private readonly MenuRebuilder $menuRebuilder,
         private readonly PluginPagesSync $pages,
-        private readonly WorkspaceViews $views,
+        private readonly EventDispatcherInterface $events,
         private readonly Tui $tui,
         private readonly LspReconfigurer $lspReconfigurer,
         private readonly string $rootDir,
@@ -132,7 +133,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         $this->keys->rebuild();
         $this->menuRebuilder->rebuild();
         $this->refreshNav();
-        $this->views->refreshSettings();
+        $this->events->dispatch(new SettingsRowsStale());
     }
 
     /**
@@ -602,6 +603,6 @@ final class PluginLifecycle implements PluginLifecycleOps
 
     public function refreshView(): void
     {
-        $this->views->refreshSettings();
+        $this->events->dispatch(new SettingsRowsStale());
     }
 }

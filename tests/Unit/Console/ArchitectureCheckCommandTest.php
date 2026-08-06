@@ -211,6 +211,6 @@ final class ArchitectureCheckCommandTest extends TestCase
 
         $this->assertSame(Command::SUCCESS, $status, $tester->getDisplay());
         $this->assertStringContainsString('architecture-check: OK', $tester->getDisplay());
-        $this->assertStringContainsString('3 known SCCs', $tester->getDisplay());
+        $this->assertStringContainsString('2 known SCCs', $tester->getDisplay());
     }
 }

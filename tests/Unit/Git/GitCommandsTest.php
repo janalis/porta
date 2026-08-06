@@ -20,7 +20,7 @@ use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
-use Porta\Workbench\WorkspaceViews;
+use Porta\Workbench\View\ViewRegistry;
 use Revolt\EventLoop;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Process\Process;
@@ -541,7 +541,6 @@ final class GitCommandsTest extends TestCase
             $this->tui,
             $translator,
             $refresher,
-            new WorkspaceViews(),
             new Clipboard($this->tui),
             $this->events = new EventDispatcher(),
         );

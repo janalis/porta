@@ -21,7 +21,7 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\EditorArea;
-use Porta\Workbench\WorkspaceViews;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -35,6 +35,7 @@ final class ResponsiveLayoutTest extends TestCase
     private \Porta\Layout\WorkspaceLayout $layout;
     private BidiTui $bidi;
     private PaneLayout $paneLayout;
+    private Renderer $renderer;
 
     private function responsive(): ResponsiveLayout
     {
@@ -44,7 +45,7 @@ final class ResponsiveLayoutTest extends TestCase
         $this->editor = new CodeEditorWidget();
         $this->editor->setId('editor');
         $this->layout = TestWorkspaceLayout::create(rootDir: $this->project->dir, tree: $this->tree, editor: $this->editor);
-        $renderer = new Renderer(new StyleSheet());
+        $this->renderer = $renderer = new Renderer(new StyleSheet());
         $this->bidi = new BidiTui(terminal: new VirtualTerminal(columns: 100, rows: 30), renderer: $renderer);
         $this->layout->mount($this->bidi);
 
@@ -60,7 +61,7 @@ final class ResponsiveLayoutTest extends TestCase
                 }
             }),
             new PaneReorder(),
-            new WorkspaceViews(),
+            new ViewRegistry(),
             new ViewRegions(Styles::dark()),
         );
         $this->paneLayout->arrangeEditorArea();
@@ -79,6 +80,49 @@ final class ResponsiveLayoutTest extends TestCase
     private function mainIds(): array
     {
         return array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->layout->main()->all());
+    }
+
+    public function testApplyingDirectionBeforeAnyViewMintsARegionIsANoOp(): void
+    {
+        // The boot-time applyAll() fires before any view controller exists, and
+        // a view's region is minted in its constructor — so "no regions yet" is
+        // the same moment the old "no controller attached yet" guard named.
+        // Without it, boot mirrors panes for a workspace that is not built.
+        $this->responsive(); // builds the layout, the bidi tui and the renderer
+        $regions = new ViewRegions(Styles::dark());
+        $paneLayout = new PaneLayout(
+            $this->layout,
+            new Translator('he'), // the RTL locale, so a missing guard visibly mirrors
+            $this->bidi,
+            new PaneSegmenter($this->renderer, new class implements FloatingRegions {
+                public function regions(): array
+                {
+                    return [];
+                }
+            }),
+            new PaneReorder(),
+            new ViewRegistry(),
+            $regions,
+        );
+
+        $paneLayout->applyDirection();
+
+        $this->assertSame([], $regions->all(), 'nothing minted, so nothing to arrange');
+        $this->assertSame(
+            ['tree', 'separator', 'editor-pane'],
+            array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->layout->main()->all()),
+            'and the editor area was left in its build-time order',
+        );
+
+        // The control: the SAME pane layout mirrors once a region exists, so
+        // the assertion above is the guard holding rather than 'he' quietly
+        // not being right-to-left.
+        $regions->mint('acme');
+        $paneLayout->applyDirection();
+        $this->assertSame(
+            ['editor-pane', 'separator', 'tree'],
+            array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->layout->main()->all()),
+        );
     }
 
     public function testCollapsesBelowTheThresholdAndRestoresAbove(): void

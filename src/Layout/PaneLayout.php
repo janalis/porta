@@ -9,7 +9,7 @@ use Porta\I18n\PaneReorder;
 use Porta\I18n\Translator;
 use Porta\Ui\BidiTui;
 use Porta\Ui\PaneSegmenter;
-use Porta\Workbench\WorkspaceViews;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
 
@@ -34,7 +34,7 @@ final class PaneLayout implements EditorAreaPanes
         private readonly BidiTui $bidi,
         private readonly PaneSegmenter $segmenter,
         private readonly PaneReorder $reorder,
-        private readonly WorkspaceViews $views,
+        private readonly ViewRegistry $views,
         private readonly ViewRegions $regions,
     ) {
         $this->editorPanes = $layout->editorPanes();
@@ -109,13 +109,13 @@ final class PaneLayout implements EditorAreaPanes
      * Mirror the horizontal layouts for the active writing direction: the git
      * and settings areas always, and the editor layout when it currently owns
      * the main container (a swapped-in view restores in order when it closes).
-     * A no-op until both view controllers have attached (the boot-time
-     * applyAll() fires before they exist; build time already ordered the
-     * containers for the persisted locale).
+     * A no-op until a view has minted a region — the boot-time applyAll()
+     * fires before any view controller exists, and build time already ordered
+     * the containers for the persisted locale.
      */
     public function applyDirection(): void
     {
-        if (!$this->views->isAttached()) {
+        if ([] === $this->regions->all()) {
             return;
         }
         $this->translator->isRtl()

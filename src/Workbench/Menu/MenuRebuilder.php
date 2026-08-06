@@ -11,8 +11,7 @@ use Porta\Git\GitInfo;
 use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Widget\MenuBarWidget;
-use Porta\Workbench\WorkspaceView;
-use Porta\Workbench\WorkspaceViews;
+use Porta\Workbench\View\ViewRegistry;
 
 /**
  * Rebuilds the application menu bar. The menu bakes translated, colored
@@ -28,7 +27,7 @@ final class MenuRebuilder
         private readonly EditorCommandTarget $editor,
         private readonly LiveKeybindings $keybindings,
         private readonly Translator $translator,
-        private readonly WorkspaceViews $views,
+        private readonly ViewRegistry $views,
         private readonly PluginManager $plugins,
         private readonly GitInfo $git,
     ) {}
@@ -40,7 +39,7 @@ final class MenuRebuilder
             $this->editor,
             $this->keybindings->current(),
             $this->translator,
-            fn (): ?WorkspaceView => $this->views->activeView(),
+            fn (): ?string => $this->views->activeId(),
             $this->plugins->menuSpecs(MenuSurface::Plugins),
             fn (string $title): bool => 'Git' !== $title || $this->git->isRepository(),
         ));

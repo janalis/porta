@@ -22,7 +22,7 @@ use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\TabListProvider;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\StatusBarProvider;
-use Porta\Workbench\WorkspaceViews;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -54,7 +54,7 @@ final class WidgetHooks
         private readonly MenuBarWidget $menuBar,
         private readonly ContextMenu $contextMenu,
         private readonly MenuOverlayController $overlay,
-        private readonly WorkspaceViews $views,
+        private readonly ViewRegistry $views,
         private readonly EditorArea $editorArea,
         private readonly string $docsDir,
     ) {}

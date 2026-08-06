@@ -30,7 +30,7 @@ use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Workbench\Notifier;
-use Porta\Workbench\WorkspaceViews;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -62,7 +62,7 @@ final class IdeHelpersTest extends TestCase
      */
     protected function tearDown(): void
     {
-        Services::resolve($this->ide, WorkspaceViews::class)->closeAll();
+        Services::resolve($this->ide, ViewRegistry::class)->closeAll();
         Services::resolve($this->ide, Notifier::class)->dismissAll();
         $this->awaitGitInfo(Services::resolve($this->ide, GitInfo::class));
     }

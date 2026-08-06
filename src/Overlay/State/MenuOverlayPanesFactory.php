@@ -23,8 +23,7 @@ use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
-use Porta\Workbench\WorkspaceView;
-use Porta\Workbench\WorkspaceViews;
+use Porta\Workbench\View\ViewRegistry;
 
 /**
  * Assembles the {@see MenuOverlayPanes} value from the autowired widgets, the
@@ -53,7 +52,7 @@ final class MenuOverlayPanesFactory
         private readonly SettingsNavWidget $settingsNav,
         private readonly SettingsFormWidget $settingsForm,
         private readonly KeybindingsListWidget $settingsKeys,
-        private readonly WorkspaceViews $views,
+        private readonly ViewRegistry $views,
     ) {}
 
     public function create(): MenuOverlayPanes
@@ -74,8 +73,8 @@ final class MenuOverlayPanesFactory
             ],
             [$this->gitTabs, $this->gitChanges, $this->gitCommitBox, $this->gitHistory, $this->regions->mint('git')->separator(), $this->gitDiff],
             [$this->settingsNav, $this->regions->mint('settings')->separator(), $this->settingsForm, $this->settingsKeys],
-            fn (): bool => $this->views->isOpen(WorkspaceView::Git),
-            fn (): bool => $this->views->isOpen(WorkspaceView::Settings),
+            fn (): bool => $this->views->isOpen('git'),
+            fn (): bool => $this->views->isOpen('settings'),
             $this->panes,
         );
     }

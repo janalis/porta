@@ -15,7 +15,6 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Menu\MenuModel;
-use Porta\Workbench\WorkspaceView;
 use Symfony\Component\Tui\Input\Keybindings;
 
 final class MenuModelTest extends TestCase
@@ -129,8 +128,8 @@ final class MenuModelTest extends TestCase
             new CodeEditorWidget(),
             new Keybindings([]),
             new Translator('en'),
-            activeView: static function () use (&$settingsOpen): ?WorkspaceView {
-                return $settingsOpen ? WorkspaceView::Settings : null;
+            activeView: static function () use (&$settingsOpen): ?string {
+                return $settingsOpen ? 'settings' : null;
             },
             pluginSpecs: [new PluginMenuSpec('demo', 'i:demo:hello', static function () use (&$usable): bool {
                 return $usable;
@@ -222,8 +221,8 @@ final class MenuModelTest extends TestCase
             ->gitCommands()
             ->add('git_undo_commit', static function (): void {}, label: 'Git: Undo Last Commit')
             ->add('ide_git', static function (): void {}, label: 'Git: Changes');
-        $menus = MenuModel::build($commands, $editor, $ideKeys, new Translator('en'), static function () use (&$gitViewOpen): ?WorkspaceView {
-            return $gitViewOpen ? WorkspaceView::Git : null;
+        $menus = MenuModel::build($commands, $editor, $ideKeys, new Translator('en'), static function () use (&$gitViewOpen): ?string {
+            return $gitViewOpen ? 'git' : null;
         });
 
         // Open view: only the git-safe commands stay live, file open or not.
@@ -257,8 +256,8 @@ final class MenuModelTest extends TestCase
         $settingsOpen = true;
         $ideKeys = new Keybindings([]);
         $commands = $this->gitCommands()->add('ide_settings', static function (): void {}, label: 'Settings…');
-        $menus = MenuModel::build($commands, $editor, $ideKeys, new Translator('en'), static function () use (&$settingsOpen): ?WorkspaceView {
-            return $settingsOpen ? WorkspaceView::Settings : null;
+        $menus = MenuModel::build($commands, $editor, $ideKeys, new Translator('en'), static function () use (&$settingsOpen): ?string {
+            return $settingsOpen ? 'settings' : null;
         });
 
         // Open view: only the settings-safe commands stay live.
@@ -353,27 +352,26 @@ final class MenuModelTest extends TestCase
     }
 
     /**
-     * The VIEW_SAFE map must decide for EVERY WorkspaceView case: the gate at
+     * The VIEW_SAFE map must leave a way out of every view it covers: the gate at
      * MenuModel::item() reads `VIEW_SAFE[$active->name] ?? []`, so a new view
      * with no entry silently disables every single menu item — the same
      * silent-unreachable failure mode the settings-section order test guards.
      */
-    public function testViewSafeCoversEveryWorkspaceViewCaseBothWays(): void
+    public function testEveryViewSafeEntryLeavesAWayOut(): void
     {
+        // This used to range over WorkspaceView::cases() in both directions.
+        // There is no enum to range over now — a view supplies its own id and
+        // registers — so what is left is the invariant that actually matters:
+        // a view whose entry is missing or empty greys out the WHOLE menu, and
+        // the user needs at minimum a way to quit and a way to run a command.
         /** @var array<string, list<string>> $map */
         $map = Probe::getStatic(MenuModel::class, 'VIEW_SAFE');
 
-        foreach (\Porta\Workbench\WorkspaceView::cases() as $case) {
-            $this->assertArrayHasKey($case->name, $map, $case->name.' has a VIEW_SAFE entry (a missing one disables every menu item silently)');
-            $this->assertNotSame([], $map[$case->name], $case->name.': the entry is non-empty');
-            $this->assertContains('ide_quit', $map[$case->name], $case->name.': quitting stays reachable');
-            $this->assertContains('ide_command_palette', $map[$case->name], $case->name.': the palette stays reachable');
-        }
-        foreach (array_keys($map) as $name) {
-            $this->assertNotNull(
-                \constant(\Porta\Workbench\WorkspaceView::class.'::'.$name),
-                $name.' is a live WorkspaceView case (no stale allowlist entry)',
-            );
+        $this->assertSame(['git', 'settings', 'welcome'], array_keys($map), 'the ids core ships a menu for');
+        foreach ($map as $id => $safe) {
+            $this->assertNotSame([], $safe, $id.': an empty entry disables every menu item silently');
+            $this->assertContains('ide_quit', $safe, $id.': quitting stays reachable');
+            $this->assertContains('ide_command_palette', $safe, $id.': the palette stays reachable');
         }
     }
 

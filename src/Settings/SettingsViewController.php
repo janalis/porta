@@ -6,6 +6,7 @@ namespace Porta\Settings;
 
 use Porta\Container\AsEager;
 use Porta\Container\LayoutSlot;
+use Porta\Event\SettingsRowsStale;
 use Porta\Event\SettingsSectionRequested;
 use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\ViewRegion;
@@ -15,8 +16,8 @@ use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Workbench\EditorArea;
-use Porta\Workbench\FullScreenView;
-use Porta\Workbench\WorkspaceViews;
+use Porta\Workbench\View\ContributedView;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Tui;
@@ -32,7 +33,7 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
  * poll loop, no availability gate).
  */
 #[AsEager(priority: 500)]
-final class SettingsViewController implements FullScreenView
+final class SettingsViewController implements ContributedView
 {
     private readonly ViewRegion $region;
 
@@ -56,7 +57,7 @@ final class SettingsViewController implements FullScreenView
         private readonly SettingsKeymapController $keymap,
         private readonly SettingsPluginsController $plugins,
         private readonly EditorArea $editorArea,
-        WorkspaceViews $views,
+        ViewRegistry $views,
     ) {
         // Minted, like git's. The nav is this view's fixed half, so it goes
         // into the sidebar once here — it used to be handed to PaneLayout as a
@@ -64,7 +65,7 @@ final class SettingsViewController implements FullScreenView
         // and neither shape could describe the other.
         $this->region = $regions->mint('settings');
         $this->region->sidebar()->add($this->nav);
-        $views->attachSettings($this);
+        $views->register($this);
         $exit = $this->close(...);
 
         $this->nav
@@ -79,6 +80,16 @@ final class SettingsViewController implements FullScreenView
             ->onRebind($this->rebind(...))
             ->onFocusNext($this->focusNav(...))
             ->onExit($exit);
+    }
+
+    public function viewId(): string
+    {
+        return 'settings';
+    }
+
+    public function ownsMainArea(): bool
+    {
+        return true;
     }
 
     public function isOpen(): bool
@@ -192,6 +203,17 @@ final class SettingsViewController implements FullScreenView
      * shown plugin page's plugin just vanished, fall back to the Plugins
      * section. No-op elsewhere.
      */
+    /**
+     * The plugin set moved under us. Core used to reach this through a
+     * concrete SettingsViewController field on the view registry, which is
+     * exactly the coupling that put Workbench -> Settings in the graph.
+     */
+    #[AsEventListener]
+    public function onSettingsRowsStale(SettingsRowsStale $event): void
+    {
+        $this->refresh();
+    }
+
     public function refresh(): void
     {
         if (!$this->open) {

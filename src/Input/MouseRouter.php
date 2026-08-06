@@ -19,8 +19,7 @@ use Porta\Widget\MenuBarWidget;
 use Porta\Widget\SeparatorWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockTab;
-use Porta\Workbench\WorkspaceView;
-use Porta\Workbench\WorkspaceViews;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 
@@ -78,7 +77,7 @@ final class MouseRouter
         private readonly BufferManager $buffers,
         private readonly BufferService $bufferService,
         private readonly GitMouseRouter $git,
-        private readonly WorkspaceViews $views,
+        private readonly ViewRegistry $views,
         private readonly SettingsMouseRouter $settings,
         private readonly WelcomeMouseRouter $welcome,
         private readonly BidiTui $bidi,
@@ -109,8 +108,8 @@ final class MouseRouter
         // tree/tabs/editor (and the menu bar inside the editor pane) are
         // detached — but the renderer still holds their last-frame rects. Null
         // them so no stale-rect branch routes events to an invisible widget.
-        $gitViewOpen = $this->views->isOpen(WorkspaceView::Git);
-        $settingsViewOpen = $this->views->isOpen(WorkspaceView::Settings);
+        $gitViewOpen = $this->views->isOpen('git');
+        $settingsViewOpen = $this->views->isOpen('settings');
         if ($this->views->isAnyOpen()) {
             $treeRect = null;
             $tabsRect = null;
@@ -140,11 +139,7 @@ final class MouseRouter
         // Bare hover-move (mouse mode 1003): track the row under the pointer in
         // whichever list popup/panel is open, like PhpStorm's menu hovering.
         if ($mouse->isMove()) {
-            $this->hover->handle($mouse, $editorRect, match (true) {
-                $settingsViewOpen => ActiveView::Settings,
-                $gitViewOpen => ActiveView::Git,
-                default => ActiveView::Editor,
-            });
+            $this->hover->handle($mouse, $editorRect, $this->views->activeId());
 
             return;
         }

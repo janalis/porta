@@ -17,6 +17,7 @@ use Porta\Event\GitDiffCopyRequested;
 use Porta\Event\GitDiffLayoutToggled;
 use Porta\Event\GitDiffStagingRequested;
 use Porta\Event\GitDiffWhitespaceToggleRequested;
+use Porta\Event\GitFileHistoryRequested;
 use Porta\Event\GitHistoryEndReached;
 use Porta\Event\GitRemoteCompleted;
 use Porta\Event\GitRemoteRequested;
@@ -31,9 +32,9 @@ use Porta\Support\Clipboard;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\EditorArea;
-use Porta\Workbench\FullScreenView;
 use Porta\Workbench\Notifier;
-use Porta\Workbench\WorkspaceViews;
+use Porta\Workbench\View\ContributedView;
+use Porta\Workbench\View\ViewRegistry;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Revolt\EventLoop;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -49,7 +50,7 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
  * stage/unstage/discard/commit pipelines against {@see GitInfo}.
  */
 #[AsEager(priority: 700)]
-final class GitViewController implements FullScreenView
+final class GitViewController implements ContributedView
 {
     private bool $open = false;
     /** @var list<ChangeEntry> */
@@ -94,7 +95,7 @@ final class GitViewController implements FullScreenView
         private readonly EventDispatcherInterface $dispatcher,
         private readonly LayoutController $layout,
         private readonly Clipboard $clipboard,
-        WorkspaceViews $views,
+        ViewRegistry $views,
         private readonly ?GitRemoteCommands $remoteCommands = null,
         private readonly int $historyPageSize = 200,
         private readonly ?GitSettings $gitSettings = null,
@@ -109,7 +110,7 @@ final class GitViewController implements FullScreenView
         // view's contents — and switchMode() only refills on a CHANGE, so
         // without this the sidebar would open empty.
         $this->region->sidebar()->add($this->panes->tabs)->add($this->panes->changes)->add($this->panes->commitBox);
-        $views->attachGit($this);
+        $views->register($this);
         $this->staging = new GitStagingService($this->git, $this->rootDir, $this->panes->commitBox, $this->notifier, $this->translator);
 
         $exit = $this->close(...);
@@ -125,6 +126,16 @@ final class GitViewController implements FullScreenView
             ->onAmendToggle(fn () => $this->amendToggled($this->panes->commitBox->isAmend() ? CommitMode::Amend : CommitMode::Fresh))
             ->onFocusNext($next)
             ->onExit($exit);
+    }
+
+    public function viewId(): string
+    {
+        return 'git';
+    }
+
+    public function ownsMainArea(): bool
+    {
+        return true;
     }
 
     public function isOpen(): bool
@@ -432,6 +443,12 @@ final class GitViewController implements FullScreenView
      * "commits that touched this file" view. The filter clears when the
      * user tabs back to Changes.
      */
+    #[AsEventListener]
+    public function onFileHistoryRequested(GitFileHistoryRequested $event): void
+    {
+        $this->openFileHistory($event->path);
+    }
+
     public function openFileHistory(string $absPath): void
     {
         $this->open();

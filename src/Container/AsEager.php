@@ -8,7 +8,7 @@ use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
 /**
  * Marks a service that must be CONSTRUCTED at boot for its constructor's side
- * effect — it registers itself somewhere (attaches to {@see \Porta\Workbench\WorkspaceViews},
+ * effect — it registers itself somewhere (attaches to {@see \Porta\Workbench\View\ViewRegistry},
  * hooks {@see \Porta\Ui\BidiTui::onBeforeFrame}, …) and has no inbound service
  * reference, so without a forced resolve it would never exist. Extends
  * `#[AutoconfigureTag]`, so the `porta.eager` tag applies natively with no
