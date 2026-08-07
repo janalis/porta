@@ -17,6 +17,7 @@ use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\View\ContributedView;
+use Porta\Workbench\View\ViewHost;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -45,18 +46,14 @@ final class SettingsViewController implements ContributedView
         private readonly SettingsNavWidget $nav,
         private readonly SettingsFormWidget $form,
         private readonly KeybindingsListWidget $keymapList,
-        #[LayoutSlot('main')]
-        private readonly ContainerWidget $main,
         ViewRegions $regions,
-        private readonly MenuBarWidget $menuBar,
-        private readonly EditorAreaPanes $editArea,
+        private readonly ViewHost $host,
         private readonly Tui $tui,
         /** @var iterable<SettingsSection> in #[AsTaggedItem] priority order; the general section claims everything and sorts last */
         #[AutowireIterator('porta.settings_section')]
         private readonly iterable $sections,
         private readonly SettingsKeymapController $keymap,
         private readonly SettingsPluginsController $plugins,
-        private readonly EditorArea $editorArea,
         ViewRegistry $views,
     ) {
         // Minted, like git's. The nav is this view's fixed half, so it goes
@@ -116,13 +113,11 @@ final class SettingsViewController implements ContributedView
         $this->open = true;
         // The (global, full-width) menu bar stays put; just drop any open
         // dropdown so its tracked hit region cannot go stale across the swap.
-        $this->menuBar->close();
-        $this->main->clear();
-        $this->main->add($this->region->area());
+        $this->host->show($this->region);
 
         $this->selectSection('general'); // always open on General
-        $this->tui->setFocus($this->form);
-        $this->tui->requestRender();
+        $this->host->focus($this->form);
+        $this->host->invalidate();
     }
 
     public function close(): void
@@ -131,13 +126,9 @@ final class SettingsViewController implements ContributedView
             return;
         }
         $this->open = false;
-        $this->menuBar->close();
-        $this->main->clear();
-        foreach ($this->editArea->orderedEditorPanes() as $widget) {
-            $this->main->add($widget);
-        }
-        $this->tui->setFocus($this->editorArea->widget());
-        $this->tui->requestRender();
+        // EditorArea::focus() is setFocus(widget()) + requestRender(), which
+        // is what these two lines were doing by hand.
+        $this->host->restore();
     }
 
     /**
@@ -167,7 +158,7 @@ final class SettingsViewController implements ContributedView
             $this->form->setRows($this->rowsForSection());
             $this->region->content()->add($this->form);
         }
-        $this->tui->requestRender();
+        $this->host->invalidate();
     }
 
     /**
@@ -226,7 +217,7 @@ final class SettingsViewController implements ContributedView
         }
         if ('plugins' === $this->section || str_starts_with($this->section, 'plugin:')) {
             $this->form->setRows($this->rowsForSection());
-            $this->tui->requestRender();
+            $this->host->invalidate();
         }
     }
 
@@ -259,13 +250,13 @@ final class SettingsViewController implements ContributedView
 
     private function focusNav(): void
     {
-        $this->tui->setFocus($this->nav);
-        $this->tui->requestRender();
+        $this->host->focus($this->nav);
+        $this->host->invalidate();
     }
 
     private function focusContent(): void
     {
-        $this->tui->setFocus($this->contentWidget());
-        $this->tui->requestRender();
+        $this->host->focus($this->contentWidget());
+        $this->host->invalidate();
     }
 }

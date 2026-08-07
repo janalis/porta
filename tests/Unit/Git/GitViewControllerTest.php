@@ -63,6 +63,7 @@ use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\View\ViewHost;
 use Porta\Workbench\View\ViewRegistry;
 use Revolt\EventLoop;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -193,23 +194,26 @@ final class GitViewControllerTest extends TestCase
             $this->git,
             $this->project->dir,
             new GitPanes($this->changes, $this->diffView, $this->commitBox, $this->history, $this->tabs),
-            $this->main,
             $regions,
-            $this->menuBar,
+            new ViewHost(
+                $this->main,
+                $this->menuBar,
+                new class($editWidget) implements EditorAreaPanes {
+                    public function __construct(
+                        private readonly ContainerWidget $editWidget,
+                    ) {}
+
+                    public function orderedEditorPanes(): array
+                    {
+                        return [$this->editWidget];
+                    }
+                },
+                $editorArea,
+                $this->tui,
+            ),
             $this->tui,
             $notifier,
             $t,
-            new class($editWidget) implements EditorAreaPanes {
-                public function __construct(
-                    private readonly ContainerWidget $editWidget,
-                ) {}
-
-                public function orderedEditorPanes(): array
-                {
-                    return [$this->editWidget];
-                }
-            },
-            $editorArea,
             $dispatcher,
             $this->layoutController,
             new Clipboard($this->tui),

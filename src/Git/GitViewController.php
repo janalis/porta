@@ -34,6 +34,7 @@ use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ContributedView;
+use Porta\Workbench\View\ViewHost;
 use Porta\Workbench\View\ViewRegistry;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Revolt\EventLoop;
@@ -83,15 +84,11 @@ final class GitViewController implements ContributedView
         private readonly GitInfo $git,
         private readonly string $rootDir,
         private readonly GitPanes $panes,
-        #[LayoutSlot('main')]
-        private readonly ContainerWidget $main,
         ViewRegions $regions,
-        private readonly MenuBarWidget $menuBar,
+        private readonly ViewHost $host,
         private readonly Tui $tui,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
-        private readonly EditorAreaPanes $editArea,
-        private readonly EditorArea $editorArea,
         private readonly EventDispatcherInterface $dispatcher,
         private readonly LayoutController $layout,
         private readonly Clipboard $clipboard,
@@ -168,13 +165,11 @@ final class GitViewController implements ContributedView
         $this->open = true;
         // The (global, full-width) menu bar stays put; just drop any open
         // dropdown so its tracked hit region cannot go stale across the swap.
-        $this->menuBar->close();
-        $this->main->clear();
-        $this->main->add($this->region->area());
+        $this->host->show($this->region);
         if (GitViewMode::Changes !== $this->mode) {
             $this->switchMode(GitViewMode::Changes); // the view always opens on Changes
         }
-        $this->tui->setFocus($this->panes->changes);
+        $this->host->focus($this->panes->changes);
         $this->lastStatusRaw = "\0unset";
         $this->contextStep = 0;
         $prefs = $this->layout->gitDiffPrefs();
@@ -184,7 +179,7 @@ final class GitViewController implements ContributedView
         $this->refresh();
         $interval = (float) ($this->gitSettings?->refreshInterval() ?? 2);
         $this->poll = EventLoop::repeat($interval, fn () => $this->refresh(RefreshMode::Quiet));
-        $this->tui->requestRender();
+        $this->host->invalidate();
     }
 
     public function close(): void
@@ -197,12 +192,7 @@ final class GitViewController implements ContributedView
             EventLoop::cancel($this->poll);
             $this->poll = null;
         }
-        $this->menuBar->close();
-        $this->main->clear();
-        foreach ($this->editArea->orderedEditorPanes() as $widget) {
-            $this->main->add($widget);
-        }
-        $this->editorArea->focus();
+        $this->host->restore();
     }
 
     /** Re-read `git status`; {@see RefreshMode::Quiet} skips the repaint when nothing changed. */
@@ -223,7 +213,7 @@ final class GitViewController implements ContributedView
             $selected = $this->panes->changes->selectedEntry();
             if (null === $selected) {
                 $this->panes->diffView->setDocument(null, null, 'Working tree clean');
-                $this->tui->requestRender();
+                $this->host->invalidate();
 
                 return;
             }
@@ -231,7 +221,7 @@ final class GitViewController implements ContributedView
             // worktree and cached as staging changes; a same-path reload
             // keeps the diff cursor in place.
             $this->loadDiff($selected);
-            $this->tui->requestRender();
+            $this->host->invalidate();
         });
     }
 
@@ -250,7 +240,7 @@ final class GitViewController implements ContributedView
             $this->shownEntry = $entry;
             $this->shownDocument = $document->isEmpty() ? null : $document;
             $this->panes->diffView->setDocument($this->shownDocument, $entry->path, $this->hideWhitespace ? 'No changes (whitespace hidden)' : 'No changes');
-            $this->tui->requestRender();
+            $this->host->invalidate();
         };
 
         if ($entry->isUntracked()) {
@@ -305,14 +295,14 @@ final class GitViewController implements ContributedView
             if (null !== $this->shownCommit && null !== $this->shownCommitPath) {
                 $this->loadCommitFileDiff($this->shownCommit, $this->shownCommitPath);
             }
-            $this->tui->requestRender();
+            $this->host->invalidate();
 
             return;
         }
         if (null !== $this->shownEntry) {
             $this->loadDiff($this->shownEntry);
         }
-        $this->tui->requestRender();
+        $this->host->invalidate();
     }
 
     /** `c` in the diff pane: reload with the next context size in the cycle. */
@@ -367,7 +357,7 @@ final class GitViewController implements ContributedView
     {
         if (CommitMode::Amend !== $mode) {
             $this->panes->commitBox->setMessage('');
-            $this->tui->requestRender();
+            $this->host->invalidate();
 
             return;
         }
@@ -375,7 +365,7 @@ final class GitViewController implements ContributedView
             if ($this->open && $this->panes->commitBox->isAmend()) {
                 $this->panes->commitBox->setMessage($message);
             }
-            $this->tui->requestRender();
+            $this->host->invalidate();
         });
     }
 
@@ -398,9 +388,9 @@ final class GitViewController implements ContributedView
             $this->region->sidebar()->add($this->panes->history);
             $this->panes->diffView->makeReadOnly();
             $this->panes->diffView->setDocument(null, null, 'Select a commit file');
-            $this->tui->setFocus($this->panes->history);
+            $this->host->focus($this->panes->history);
             $this->reloadHistory(HistoryReload::SelectFirst);
-            $this->tui->requestRender();
+            $this->host->invalidate();
 
             return;
         }
@@ -410,9 +400,9 @@ final class GitViewController implements ContributedView
         $this->region->sidebar()->add($this->panes->changes);
         $this->region->sidebar()->add($this->panes->commitBox);
         $this->panes->diffView->makeEditable();
-        $this->tui->setFocus($this->panes->changes);
+        $this->host->focus($this->panes->changes);
         $this->refresh();
-        $this->tui->requestRender();
+        $this->host->invalidate();
     }
 
     /** The repo-relative file the History tab is filtered to, or null for repo-wide. */
@@ -432,7 +422,7 @@ final class GitViewController implements ContributedView
                 if (HistoryReload::SelectFirst === $mode && null !== ($first = $this->panes->history->selectedCommit())) {
                     $this->loadCommitFiles($first);
                 }
-                $this->tui->requestRender();
+                $this->host->invalidate();
             },
             path: $this->historyPath,
         );
@@ -571,7 +561,7 @@ final class GitViewController implements ContributedView
                 }
                 $this->panes->history->appendCommits($commits);
                 \count($commits) === $this->historyPageSize ? $this->panes->history->markHasMore() : $this->panes->history->markNoMore();
-                $this->tui->requestRender();
+                $this->host->invalidate();
             },
             skip: $this->panes->history->commitCount(),
             path: $this->historyPath,
@@ -587,13 +577,13 @@ final class GitViewController implements ContributedView
             $this->panes->history->setFiles($files);
             if ([] === $files) {
                 $this->panes->diffView->setDocument(null, null, 'No files in this commit');
-                $this->tui->requestRender();
+                $this->host->invalidate();
 
                 return;
             }
             // The first file is selected by default — show its patch right away.
             $this->loadCommitFileDiff($commit, $files[0]['path']);
-            $this->tui->requestRender();
+            $this->host->invalidate();
         });
     }
 
@@ -610,7 +600,7 @@ final class GitViewController implements ContributedView
                 }
                 $document = DiffDocument::parse($raw);
                 $this->panes->diffView->setDocument($document->isEmpty() ? null : $document, $path, $this->hideWhitespace ? 'No patch (whitespace hidden)' : 'No patch for this file');
-                $this->tui->requestRender();
+                $this->host->invalidate();
             },
             $this->hideWhitespace ? WhitespaceMode::Hidden : WhitespaceMode::Shown,
         );
@@ -645,8 +635,8 @@ final class GitViewController implements ContributedView
         if ($target === $this->panes->commitBox) {
             $this->panes->commitBox->resetField();
         }
-        $this->tui->setFocus($target);
-        $this->tui->requestRender();
+        $this->host->focus($target);
+        $this->host->invalidate();
 
         return true;
     }

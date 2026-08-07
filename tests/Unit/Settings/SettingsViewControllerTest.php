@@ -76,6 +76,7 @@ use Porta\Workbench\EditorArea;
 use Porta\Workbench\Menu\MenuContributions;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\View\ViewHost;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -225,23 +226,34 @@ final class SettingsViewControllerTest extends TestCase
             $this->project->dir,
         );
 
+        $editorArea = new EditorArea(
+            new BufferManager(),
+            $this->editorWidget = new CodeEditorWidget(),
+            new EditorPanes(),
+            $this->tui,
+        );
+
         $controller = new SettingsViewController(
             $this->nav,
             $this->form,
             $this->keymapList,
-            $this->main,
             $regions,
-            $menuBar,
-            new class($editWidget) implements EditorAreaPanes {
-                public function __construct(
-                    private readonly ContainerWidget $editWidget,
-                ) {}
+            new ViewHost(
+                $this->main,
+                $menuBar,
+                new class($editWidget) implements EditorAreaPanes {
+                    public function __construct(
+                        private readonly ContainerWidget $editWidget,
+                    ) {}
 
-                public function orderedEditorPanes(): array
-                {
-                    return [$this->editWidget];
-                }
-            },
+                    public function orderedEditorPanes(): array
+                    {
+                        return [$this->editWidget];
+                    }
+                },
+                $editorArea,
+                $this->tui,
+            ),
             $this->tui,
             // Same order the porta.settings_section tag priorities produce, with
             // the catch-all general section last.
@@ -261,12 +273,6 @@ final class SettingsViewControllerTest extends TestCase
             ],
             $keymap,
             $plugins,
-            editorArea: new EditorArea(
-                new BufferManager(),
-                $this->editorWidget = new CodeEditorWidget(),
-                new EditorPanes(),
-                $this->tui,
-            ),
             views: $views ?? new ViewRegistry(),
         );
         // Compiled from #[AsEventListener] in the container; wired by hand here.
