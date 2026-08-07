@@ -82,6 +82,59 @@ final class ActionCatalogTest extends TestCase
         }
     }
 
+    public function testEveryGitVerbIsAdoptableUnderItsRealLabel(): void
+    {
+        // The checklist the move is measured against, and it has to be a list
+        // rather than a rule: adoptCommand() REFUSES an id with no 'adoptable'
+        // entry, so a verb missing from here cannot be vacated at all — the
+        // plugin throws at activate() and every git command disappears.
+        //
+        // The labels matter as much as the flags. label() falls back to
+        // ucwords(str_replace('_', ' ', $id)) for an unknown id, so a verb that
+        // core stopped registering and the catalog never named would quietly
+        // read "Git Commit" in the palette, the menu and the keymap page.
+        $expected = [
+            'git_blame' => 'Git: Blame Current Line',
+            'git_branches' => 'Git: Branches…',
+            'git_commit' => 'Git: Commit…',
+            'git_fetch' => 'Git: Fetch',
+            'git_file_history' => 'Git: File History',
+            'git_pull' => 'Git: Pull',
+            'git_push' => 'Git: Push',
+            'git_push_upstream' => 'Git: Push (Set Upstream)',
+            'git_remote_cancel' => 'Git: Cancel Remote Operation',
+            'git_stage' => 'Git: Stage Current File',
+            'git_stash' => 'Git: Stash',
+            'git_stash_pop' => 'Git: Stash Pop',
+            'git_stashes' => 'Git: Stashes…',
+            'git_toggle_blame' => 'Git: Toggle Blame Annotations',
+            'git_undo_commit' => 'Git: Undo Last Commit',
+        ];
+
+        $actual = [];
+        /** @var array<string, array<string, mixed>> $actions */
+        $actions = Probe::getStatic(ActionCatalog::class, 'ACTIONS');
+        foreach ($actions as $id => $action) {
+            if (str_starts_with((string) $id, 'git_')) {
+                $actual[$id] = ActionCatalog::label((string) $id);
+                $this->assertTrue(ActionCatalog::isAdoptable((string) $id), $id.' must be adoptable before the plugin can implement it');
+            }
+        }
+        ksort($actual);
+
+        $this->assertSame($expected, $actual);
+    }
+
+    public function testTheViewToggleIsNotAdoptable(): void
+    {
+        // ide_git toggles a view BY ID, and core can toggle any id — it stays
+        // core's and goes inert when nothing registers under 'git'. Flagging it
+        // would also make MenuModel skip the menu item whenever it is
+        // unregistered, which is the opposite of what that skip is for.
+        $this->assertFalse(ActionCatalog::isAdoptable('ide_git'));
+        $this->assertSame('Git: Changes', ActionCatalog::label('ide_git'));
+    }
+
     public function testIdeDefaultsCarryOnlyKeyedEntries(): void
     {
         $defaults = ActionCatalog::ideDefaults();

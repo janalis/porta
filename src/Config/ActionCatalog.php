@@ -145,6 +145,22 @@ final class ActionCatalog
         'git_stash_pop' => ['label' => 'Git: Stash Pop', 'adoptable' => true], // implemented by the bundled git plugin
         'git_stage' => ['label' => 'Git: Stage Current File', 'adoptable' => true], // implemented by the bundled git plugin
         'git_undo_commit' => ['label' => 'Git: Undo Last Commit', 'adoptable' => true], // implemented by the bundled git plugin
+        // The rest of the git verbs, ahead of the plugin owning them. Named
+        // here for two reasons that are easy to miss: adoptCommand() REFUSES an
+        // id with no 'adoptable' entry, so flagging has to precede the move;
+        // and label() falls back to ucwords(str_replace('_', ' ', $id)), so an
+        // id that is registered-then-adopted without an entry would silently
+        // become "Git Commit" instead of "Git: Commit…". Inert until core
+        // stops registering them — CommandRegistry::add() is `??=` and the
+        // first registration wins.
+        'git_commit' => ['label' => 'Git: Commit…', 'adoptable' => true],
+        'git_branches' => ['label' => 'Git: Branches…', 'adoptable' => true],
+        'git_stashes' => ['label' => 'Git: Stashes…', 'adoptable' => true],
+        'git_file_history' => ['label' => 'Git: File History', 'adoptable' => true],
+        'git_fetch' => ['label' => 'Git: Fetch', 'adoptable' => true],
+        'git_pull' => ['label' => 'Git: Pull', 'adoptable' => true],
+        'git_push_upstream' => ['label' => 'Git: Push (Set Upstream)', 'adoptable' => true],
+        'git_remote_cancel' => ['label' => 'Git: Cancel Remote Operation', 'adoptable' => true],
         'ide_terminal' => ['label' => 'Open Terminal', 'keys' => ['ctrl+`', 'alt+f12']],
         'ide_terminal_new' => ['label' => 'New Terminal Session', 'keys' => ['ctrl+shift+`', 'alt+f11']],
         'dock_next_panel' => ['label' => 'Next Dock Panel', 'keys' => ['alt+page_down']],
@@ -165,8 +181,13 @@ final class ActionCatalog
         'debug_run_to_cursor' => ['label' => 'Run to Cursor', 'keys' => ['alt+f9']],
         'debug_stop' => ['label' => 'Stop Debugger', 'keys' => ['ctrl+f2']],
         'debug_restart' => ['label' => 'Restart Debugger', 'keys' => ['ctrl+shift+f5']],
+        // NOT adoptable: ide_git toggles a view BY ID, and core can toggle any
+        // id — the command stays core's and goes inert when nothing registers
+        // under 'git'. Flagging it would also make the menu skip the item
+        // whenever it is unregistered, which is the opposite of what the
+        // adoptable skip is for.
         'ide_git' => ['label' => 'Git: Changes', 'keys' => ['ctrl+alt+d']],
-        'git_push' => ['label' => 'Git: Push', 'keys' => ['ctrl+shift+k']],
+        'git_push' => ['label' => 'Git: Push', 'keys' => ['ctrl+shift+k'], 'adoptable' => true],
         'ide_settings' => ['label' => 'Settings…', 'keys' => ['ctrl+,']],
         'ide_help' => ['label' => 'Documentation', 'keys' => ['f1']],
         'ide_menu' => ['label' => 'Open Menu', 'keys' => ['f10']],
