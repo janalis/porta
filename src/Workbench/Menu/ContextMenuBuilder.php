@@ -7,13 +7,9 @@ namespace Porta\Workbench\Menu;
 use Porta\Config\CommandRegistry;
 use Porta\Config\LiveKeybindings;
 use Porta\Editor\BufferService;
-use Porta\Git\ChangeEntry;
-use Porta\Git\GitCommands;
-use Porta\Git\LogEntry;
 use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Run\RunController;
-use Porta\Widget\Git\ChangesListWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockTab;
 
@@ -32,8 +28,6 @@ final class ContextMenuBuilder
         private readonly Translator $translator,
         private readonly BottomDock $dock,
         private readonly RunController $run,
-        private readonly ChangesListWidget $changes,
-        private readonly GitCommands $git,
         private readonly PluginManager $plugins,
         private readonly MenuFileContext $fileContext,
     ) {}
@@ -92,41 +86,6 @@ final class ContextMenuBuilder
         }
 
         return [new MenuItem($this->translator->trans('Close'), '', fn () => $this->dock->closeTab($tab, $key))];
-    }
-
-    /**
-     * A git changes row's menu — thin triggers over the widget's existing
-     * callbacks, so the git view's staging/discard/history flows stay single-sourced.
-     *
-     * @return list<MenuItem>
-     */
-    public function gitChangeItems(ChangeEntry $entry): array
-    {
-        $stageLabel = 'full' === $entry->stagedState() ? 'Unstage' : 'Stage';
-
-        return [
-            new MenuItem($this->translator->trans($stageLabel), '', fn () => $this->changes->toggleStageSelected()),
-            new MenuItem($this->translator->trans('Discard…'), '', fn () => $this->changes->armDiscardSelected()),
-            new MenuItem($this->translator->trans('File History'), '', fn () => $this->changes->showHistory()),
-        ];
-    }
-
-    /**
-     * A commit row's menu in the history browser — thin triggers over
-     * GitCommands, so the copy/branch/cherry-pick/revert/reset flows stay
-     * single-sourced.
-     *
-     * @return list<MenuItem>
-     */
-    public function gitCommitItems(LogEntry $commit): array
-    {
-        return [
-            new MenuItem($this->translator->trans('Copy Hash'), '', fn () => $this->git->copyCommitHash($commit)),
-            new MenuItem($this->translator->trans('Create Branch from Commit…'), '', fn () => $this->git->branchFromCommit($commit)),
-            new MenuItem($this->translator->trans('Cherry-pick'), '', fn () => $this->git->cherryPick($commit)),
-            new MenuItem($this->translator->trans('Revert Commit'), '', fn () => $this->git->revertCommit($commit)),
-            new MenuItem($this->translator->trans('Reset to Commit…'), '', fn () => $this->git->resetToCommit($commit)),
-        ];
     }
 
     /** @return list<MenuItem> */

@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Container;
 
 use Porta\Git\GitMenu;
 use Porta\Git\GitViewController;
+use Porta\Input\GitContextMenus;
 use Porta\Input\GitMouseRouter;
 use Porta\Input\SettingsMouseRouter;
 use Porta\Layout\ResponsiveLayout;
@@ -57,6 +58,7 @@ final class AsEagerMembershipTest extends ContainerTestCase
         // SET, because their relative order is container discovery order and no
         // behaviour reads it — asserting it would pin an accident.
         $unordered = [
+            GitContextMenus::class,
             GitMenu::class,
             GitMouseRouter::class,
             SettingsMouseRouter::class,

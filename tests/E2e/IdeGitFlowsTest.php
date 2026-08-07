@@ -593,8 +593,17 @@ final class IdeGitFlowsTest extends TestCase
                     $rect = $renderer->getWidgetRect($tui->getById('git-changes'));
 
                     $terminal->clearOutput();
+                    // Focus somewhere else first, or this proves nothing: the
+                    // view opens with the changes list already focused, so a
+                    // right-press that never moved focus would look identical.
+                    $tui->setFocus($tui->getById('git-diff'));
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 8, $rect->row + 2)); // right-click the first row
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'right-clicking a changes row opened its menu');
+                    // Asserted HERE, not after the menu action: selecting the row
+                    // under the pointer and taking focus is part of answering,
+                    // and it is what makes the Ctrl+F10 parity below act on this
+                    // row rather than on whatever had focus before.
+                    $this->assertSame('git-changes', $tui->getFocus()?->getId(), 'the right-press focused the list it selected in');
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'File History'));
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Stage', $screen, 'an unstaged row offers Stage');

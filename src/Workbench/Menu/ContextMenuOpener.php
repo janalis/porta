@@ -14,14 +14,13 @@ use Porta\Widget\ContextMenu;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\EditorPaneWidget;
 use Porta\Widget\FileTreeWidget;
-use Porta\Widget\Git\ChangesListWidget;
-use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\DockTab;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Tui;
 
@@ -67,8 +66,8 @@ final class ContextMenuOpener
         private readonly TerminalPanelWidget $terminalPanel,
         private readonly DockTabsWidget $dockTabs,
         private readonly TerminalSessions $sessions,
-        private readonly ChangesListWidget $changes,
-        private readonly HistoryListWidget $history,
+        private readonly ViewMenuSources $viewMenus,
+        private readonly ViewRegistry $views,
     ) {}
 
     /** Open the focused pane's context menu, or flash when the pane has none. */
@@ -123,22 +122,12 @@ final class ContextMenuOpener
             return;
         }
 
-        if ($focus === $this->changes) {
-            $entry = $this->changes->selectedEntry();
-            $rect = $this->renderer->getWidgetRect($this->changes);
-            if (null !== $entry && null !== $rect) {
-                $this->openAt($this->items->gitChangeItems($entry), $rect->row + $this->changes->selectedRow() + 1, $rect->col + 2);
-            }
-
-            return;
-        }
-
-        if ($focus === $this->history) {
-            $commit = $this->history->selectedCommit();
-            $rect = $this->renderer->getWidgetRect($this->history);
-            if (null !== $commit && null !== $rect) {
-                $this->openAt($this->items->gitCommitItems($commit), $rect->row + $this->history->selectedCommitRow() + 1, $rect->col + 2);
-            }
+        // The open view answers for its own focused pane, anchor included.
+        // Two branches stood here comparing focus against a git widget by
+        // identity and doing that view's anchor arithmetic in core.
+        $menu = $this->viewMenus->of($this->views->activeId())?->focusedContextMenu();
+        if (null !== $menu) {
+            $this->openAt($menu->items, $menu->row, $menu->col);
 
             return;
         }

@@ -263,7 +263,6 @@ final class ArchitectureCheckCommand extends Command
         'Workbench>Container',
         'Workbench>Editor',
         'Workbench>Event',
-        'Workbench>Git',
         'Workbench>Layout',
         'Workbench>Lsp',
         'Workbench>Overlay',

@@ -11,6 +11,8 @@ use Porta\Widget\MenuBarWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Menu\ContextMenuBuilder;
 use Porta\Workbench\Menu\ContextMenuOpener;
+use Porta\Workbench\Menu\ViewMenuSources;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 
@@ -38,8 +40,9 @@ final class ContextMenuRouter
         private readonly BufferManager $buffers,
         private readonly TreeOperations $treeOps,
         private readonly ContextMenuBuilder $contextItems,
+        private readonly ViewMenuSources $viewMenus,
+        private readonly ViewRegistry $views,
         private readonly ContextMenuOpener $opener,
-        private readonly GitMouseRouter $git,
         private readonly HoverRouter $hover,
         private readonly StatusBarWidget $statusBar,
     ) {}
@@ -110,11 +113,11 @@ final class ContextMenuRouter
             }
             $items = $this->contextItems->dockTabItems($hit['tab'], $hit['key']);
         }
-        if (!$handled && null !== ($entry = $this->git->changesRowAt($mouse))) {
-            $items = $this->contextItems->gitChangeItems($entry);
-        }
-        if (!$handled && null === $items && null !== ($commit = $this->git->historyCommitAt($mouse))) {
-            $items = $this->contextItems->gitCommitItems($commit);
+        // Whatever view owns the main area answers for its own panes. Two
+        // git-shaped branches stood here, each pulling a selected row out of
+        // the git router so core could build git's menu from it.
+        if (!$handled) {
+            $items = $this->viewMenus->of($this->views->activeId())?->contextItemsAt($mouse->row, $mouse->col);
         }
         // A right-click on a status cell offers whatever that cell put there.
         // This branch used to read one hardcoded span and pair it with the git

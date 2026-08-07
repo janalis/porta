@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace Porta\Input;
 
 use Porta\Container\AsEager;
-use Porta\Git\ChangeEntry;
 use Porta\Git\GitViewMode;
-use Porta\Git\LogEntry;
 use Porta\Layout\ViewRegions;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
@@ -49,44 +47,6 @@ final class GitMouseRouter implements ViewPointer
         // Held for the divider hover tint only — the RECTS are core's now: it
         // mints this region, so it hit-tests its own widgets for resize arming.
         $this->separator = $regions->mint('git')->separator();
-    }
-
-    /**
-     * A right-press landed on a changes row: select it and return its entry
-     * for the context menu; null anywhere else (or while the git view is closed
-     * — a hidden widget has no rect).
-     */
-    public function changesRowAt(MouseEvent $mouse): ?ChangeEntry
-    {
-        $rel = $this->hit->hit($this->changes, $mouse->row, $mouse->col);
-        if (null === $rel) {
-            return null;
-        }
-        $entry = $this->changes->selectRowAt($rel['row']);
-        if (null !== $entry) {
-            $this->tui->setFocus($this->changes);
-        }
-
-        return $entry;
-    }
-
-    /**
-     * A right-press landed on a commit row in the history browser: select it and
-     * return its entry for the context menu; null anywhere else (or while the
-     * git view is closed — a hidden widget has no rect).
-     */
-    public function historyCommitAt(MouseEvent $mouse): ?LogEntry
-    {
-        $rel = $this->hit->hit($this->history, $mouse->row, $mouse->col);
-        if (null === $rel) {
-            return null;
-        }
-        $commit = $this->history->selectCommitAt($rel['row']);
-        if (null !== $commit) {
-            $this->tui->setFocus($this->history);
-        }
-
-        return $commit;
     }
 
     /** Clear the diff-drag arming on a fresh press (mirrors the other drag resets). */
