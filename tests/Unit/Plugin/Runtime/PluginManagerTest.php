@@ -21,6 +21,7 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginMenuSpec;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Support\Clipboard;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RecordingChangeMarkSink;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
@@ -31,6 +32,7 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
@@ -67,6 +69,8 @@ final class PluginManagerTest extends TestCase
                 TestDockTools::replacer(),
                 new CodeEditorWidget(),
                 new MenuFileContext(),
+                new ViewRegistry(),
+                new Clipboard($tui),
             ),
         );
 
@@ -92,6 +96,37 @@ final class PluginManagerTest extends TestCase
         $this->assertSame('Say Hello', $registry->label('demo:hello'));
         $this->assertContains('demo:quiet', $registry->keyBoundIds(), 'always keyBound so user rebinds dispatch');
         $this->assertContains('Say Hello', array_column($registry->paletteCommands(), 'label'));
+    }
+
+    public function testCommittedViewsSurviveToTheRegistrarAndLeaveOnDeactivate(): void
+    {
+        // A view registered during activate() has to reach ViewRegistrar, and
+        // has to go when its plugin does — a view left behind would keep a
+        // removed plugin's workspace takeover reachable by id.
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
+        $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
+        $factory = static fn (): ?object => null;
+        $api->registerView('vcs', $factory);
+        $manager->commit($api);
+
+        $views = $manager->contributedViews();
+        $this->assertCount(1, $views);
+        $this->assertSame(['plugin' => 'demo', 'id' => 'vcs', 'factory' => $factory], $views[0]);
+
+        $manager->deactivate('demo', new CommandRegistry());
+        $this->assertSame([], $manager->contributedViews());
+    }
+
+    public function testAViewFailureIsReportedThroughThePluginsOwnBarrier(): void
+    {
+        // The channel ViewRegistrar reports a broken factory on — the same one
+        // a broken pane uses, so a plugin author is told the same way whichever
+        // of its contributions failed.
+        $manager = $this->wiredManager(new EventDispatcher());
+
+        $manager->reportViewFailure('demo', new \RuntimeException('boom'));
+
+        $this->assertStringContainsString('boom', $this->renderedStatus());
     }
 
     public function testRegisterCommandsIsIncrementalAcrossCommits(): void

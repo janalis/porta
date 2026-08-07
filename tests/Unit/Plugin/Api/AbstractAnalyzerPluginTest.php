@@ -15,6 +15,7 @@ use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Support\Clipboard;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\RecordingChangeMarkSink;
@@ -28,6 +29,7 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
@@ -117,6 +119,8 @@ final class AbstractAnalyzerPluginTest extends TestCase
             TestDockTools::replacer(),
             new CodeEditorWidget(),
             new MenuFileContext(),
+            new ViewRegistry(),
+            new Clipboard($tui),
         ));
 
         return new PluginApi('demo', $this->manager, $this->project->dir, $settings);

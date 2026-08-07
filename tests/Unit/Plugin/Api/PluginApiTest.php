@@ -16,6 +16,7 @@ use Porta\Plugin\Api\PluginException;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Support\Clipboard;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\Probe;
@@ -37,7 +38,11 @@ use Porta\Workbench\Dock\ToolRun;
 use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Menu\MenuSurface;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\View\ContributedView;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Tui\Widget\AbstractWidget;
+use Symfony\Component\Tui\Widget\FocusableInterface;
 
 final class PluginApiTest extends TestCase
 {
@@ -49,6 +54,7 @@ final class PluginApiTest extends TestCase
     private RecordingFileOpener $files;
     private RecordingDiagnosticsSink $diagnostics;
     private BufferManager $buffers;
+    private ViewRegistry $views;
 
     private function api(Presence $wired = Presence::With): PluginApi
     {
@@ -75,6 +81,8 @@ final class PluginApiTest extends TestCase
                     TestDockTools::replacer($this->buffers),
                     $this->editor,
                     new MenuFileContext(),
+                    $this->views = new ViewRegistry(),
+                    new Clipboard($tui),
                 ),
             );
         }
@@ -115,6 +123,87 @@ final class PluginApiTest extends TestCase
         } catch (PluginException $e) {
             $this->assertStringContainsString('register it first', $e->getMessage());
         }
+    }
+
+    public function testRegisterViewBuffersAndValidatesTheId(): void
+    {
+        $api = $this->api(wired: Presence::Without);
+        $factory = static fn (): ?object => null;
+
+        $api->registerView('vcs', $factory);
+
+        $buffered = $api->bufferedViews();
+        $this->assertCount(1, $buffered);
+        $this->assertSame('demo', $buffered[0]['plugin']);
+        $this->assertSame('vcs', $buffered[0]['id'], 'the id is NOT namespaced: a view is reached by the id it claims');
+        $this->assertSame($factory, $buffered[0]['factory']);
+
+        try {
+            $api->registerView('bad id', $factory);
+            $this->fail('an invalid view id must throw');
+        } catch (PluginException $error) {
+            $this->assertStringContainsString('Invalid view id', $error->getMessage());
+        }
+    }
+
+    public function testTheViewAndClipboardActionsReachTheRuntime(): void
+    {
+        $api = $this->api();
+        $view = new class implements ContributedView {
+            public bool $open = false;
+
+            public function viewId(): string
+            {
+                return 'vcs';
+            }
+
+            public function ownsMainArea(): bool
+            {
+                return true;
+            }
+
+            public function isOpen(): bool
+            {
+                return $this->open;
+            }
+
+            public function open(): void
+            {
+                $this->open = true;
+            }
+
+            public function close(): void
+            {
+                $this->open = false;
+            }
+
+            public function toggle(): void
+            {
+                $this->open = !$this->open;
+            }
+
+            public function focusTarget(): AbstractWidget&FocusableInterface
+            {
+                return new CodeEditorWidget();
+            }
+
+            public function cycleFocus(int $direction): bool
+            {
+                return false;
+            }
+        };
+        $this->views->register($view);
+
+        $api->openView('vcs');
+        $this->assertTrue($view->isOpen(), 'a view opens by id, without the caller holding it');
+
+        $api->closeView('vcs');
+        $this->assertFalse($view->isOpen());
+
+        // Clipboard has no readable state here; that it reaches the runtime at
+        // all is the contract — the alternative was a view with no route to it.
+        $api->copyToClipboard('deadbeef');
+        $this->addToAssertionCount(1);
     }
 
     public function testRegisterLanguageServerBuffersAndValidatesTheLanguageId(): void
@@ -226,6 +315,9 @@ final class PluginApiTest extends TestCase
             static fn () => $api->setLineAnnotations([]),
             static fn () => $api->setChangeMarks('/x', []),
             static fn () => $api->emit(new WorkingTreeChanged()),
+            static fn () => $api->openView('git'),
+            static fn () => $api->closeView('git'),
+            static fn () => $api->copyToClipboard('x'),
             static fn () => $api->changeSetting('flag', true),
             static fn () => $api->showList('todo'),
             static fn () => $api->updateList('todo', []),
@@ -264,6 +356,8 @@ final class PluginApiTest extends TestCase
                 TestDockTools::replacer(),
                 new CodeEditorWidget(),
                 new MenuFileContext(),
+                new ViewRegistry(),
+                new Clipboard($tui),
             ),
         );
         $api = new PluginApi('demo', $manager, $project->dir, $settings);
@@ -410,6 +504,8 @@ final class PluginApiTest extends TestCase
             TestDockTools::replacer(),
             new CodeEditorWidget(),
             new MenuFileContext(),
+            new ViewRegistry(),
+            new Clipboard($tui),
         ));
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
         $api->registerListTool('todo', 'TODO');

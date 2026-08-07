@@ -22,6 +22,7 @@ use Porta\Search\TokenSpanProvider;
 use Porta\Workbench\Dock\DockToolSource;
 use Porta\Workbench\Menu\MenuSurface;
 use Porta\Workbench\StatusSegmentSource;
+use Porta\Workbench\View\ContributedViewSource;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -36,6 +37,7 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 final class PluginManager implements
     DebugAdapterProvider,
     DockToolSource,
+    ContributedViewSource,
     EditorPaneSource,
     LanguageServerProvider,
     RebindableActionSource,
@@ -62,6 +64,8 @@ final class PluginManager implements
     private array $viewers = [];
     /** @var list<array{plugin: string, id: string, pane: \Closure, load: \Closure}> committed panes, in load order */
     private array $panes = [];
+    /** @var list<array{plugin: string, id: string, factory: \Closure}> committed full-screen views, in load order */
+    private array $views = [];
     /** @var list<array{plugin: string, id: string, label: string}> committed rebindable actions, in load order */
     private array $actions = [];
     /** @var list<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}> committed dock list tools, in load order */
@@ -176,6 +180,9 @@ final class PluginManager implements
         foreach ($api->bufferedPanes() as $pane) {
             $this->panes[] = $pane;
         }
+        foreach ($api->bufferedViews() as $view) {
+            $this->views[] = $view;
+        }
         foreach ($api->bufferedActions() as $action) {
             $this->actions[] = $action;
         }
@@ -276,6 +283,7 @@ final class PluginManager implements
         $this->tokenSpans = array_values(array_filter($this->tokenSpans, static fn (array $spans): bool => $name !== $spans['plugin']));
         $this->viewers = array_values(array_filter($this->viewers, static fn (array $viewer): bool => $name !== $viewer['plugin']));
         $this->panes = array_values(array_filter($this->panes, static fn (array $pane): bool => $name !== $pane['plugin']));
+        $this->views = array_values(array_filter($this->views, static fn (array $view): bool => $name !== $view['plugin']));
         $this->actions = array_values(array_filter($this->actions, static fn (array $action): bool => $name !== $action['plugin']));
         $this->listTools = array_values(array_filter($this->listTools, static fn (array $tool): bool => $name !== $tool['plugin']));
         $this->statusSegments = array_values(array_filter($this->statusSegments, static fn (array $segment): bool => $name !== $segment['plugin']));
@@ -621,6 +629,17 @@ final class PluginManager implements
     public function reportPaneFailure(string $plugin, \Throwable $error): void
     {
         $this->reportFailure($plugin, $error);
+    }
+
+    public function reportViewFailure(string $plugin, \Throwable $error): void
+    {
+        $this->reportFailure($plugin, $error);
+    }
+
+    /** @return list<array{plugin: string, id: string, factory: \Closure}> */
+    public function contributedViews(): array
+    {
+        return $this->views;
     }
 
     /** Report a plugin fault: flash when the IDE is up, else a boot warning. */

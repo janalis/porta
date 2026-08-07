@@ -15,9 +15,11 @@ use Porta\Editor\LineAnnotationSink;
 use Porta\Editor\ModalHost;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
+use Porta\Support\Clipboard;
 use Porta\Workbench\Dock\DockToolController;
 use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -43,5 +45,7 @@ final readonly class PluginRuntime
         public DocumentReplacer $documents,
         public ModalHost $modals,
         public MenuFileContext $menuFile,
+        public ViewRegistry $views,
+        public Clipboard $clipboard,
     ) {}
 }

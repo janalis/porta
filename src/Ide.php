@@ -45,6 +45,7 @@ use Porta\Workbench\EditorArea;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\TerminalStateRefresher;
+use Porta\Workbench\View\ViewRegistrar;
 use Porta\Workbench\View\ViewRegistry;
 use Revolt\EventLoop;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -207,6 +208,10 @@ final class Ide
         // rather than being replaced by it.
         $this->service(CorePanes::class)->register();
         $this->service(PaneRegistrar::class)->register();
+        // After the eager boot below would be too late: a contributed view has
+        // to be registered before anything can open it, and core's own two
+        // register from their constructors during that boot.
+        $this->service(ViewRegistrar::class)->register();
         // Before WidgetHooks: BottomDock::wire() installs a dismiss hook on
         // every registered panel, so the registry has to be populated first.
         $this->service(CoreDockPanels::class)->register();

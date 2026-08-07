@@ -78,6 +78,8 @@ final class PluginApi
     private readonly PluginBuffer $viewers;
     /** @var PluginBuffer<array{plugin: string, id: string, pane: \Closure, load: \Closure}> */
     private readonly PluginBuffer $panes;
+
+    private readonly PluginBuffer $views;
     /** @var PluginBuffer<array{plugin: string, id: string, label: string}> */
     private readonly PluginBuffer $actions;
     /** @var PluginBuffer<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}> */
@@ -104,6 +106,7 @@ final class PluginApi
         $this->tokenSpans = new PluginBuffer();
         $this->viewers = new PluginBuffer();
         $this->panes = new PluginBuffer();
+        $this->views = new PluginBuffer();
         $this->actions = new PluginBuffer();
         $this->listTools = new PluginBuffer();
         $this->statusSegments = new PluginBuffer();
@@ -374,6 +377,33 @@ final class PluginApi
             'plugin' => $this->pluginName,
             'id' => $id,
             'claims' => $claims,
+        ]);
+    }
+
+    /**
+     * Register a full-screen view: a workspace takeover with its own sidebar,
+     * drag separator and content pane, reached by {@see openView()}.
+     *
+     * $factory is called ONCE, after plugins have committed, with the
+     * {@see \Porta\Workbench\View\ViewServices} core assembles — a plugin
+     * class can never be a container service, so this is how a view receives
+     * its collaborators. Its region is minted for $id before the call, so the
+     * view can fill both panes immediately.
+     *
+     * Untyped here on purpose, the same reason `registerPane`'s is: naming the
+     * return type would put the plugin tier back in front of a widget.
+     *
+     * @param \Closure $factory \Closure(\Porta\Workbench\View\ViewServices): \Porta\Workbench\View\ContributedView
+     */
+    public function registerView(string $id, \Closure $factory): void
+    {
+        if (1 !== preg_match(self::ID_PATTERN, $id)) {
+            throw new PluginException(\sprintf('Invalid view id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $id));
+        }
+        $this->views->add([
+            'plugin' => $this->pluginName,
+            'id' => $id,
+            'factory' => $factory,
         ]);
     }
 
@@ -979,6 +1009,37 @@ final class PluginApi
     }
 
     /**
+     * Open a registered full-screen view, or close it. Every other view yields
+     * first — one owns the workspace at a time.
+     *
+     * A view's own commands reach it through here rather than by holding the
+     * controller: the registry hands back a `ContributedView` without a view's
+     * own verbs on it, deliberately, so that a capability only one view has
+     * stays that view's business.
+     */
+    public function openView(string $id): void
+    {
+        $this->manager->runtime()->views->open($id);
+    }
+
+    public function closeView(string $id): void
+    {
+        $this->manager->runtime()->views->close($id);
+    }
+
+    /**
+     * Put text on the system clipboard (OSC 52 where the terminal allows it).
+     *
+     * The one verb a full-screen view needed that had no plugin route at all:
+     * `Support\Clipboard` is a single-method service, and a view that copies a
+     * commit hash cannot inject it.
+     */
+    public function copyToClipboard(string $text): void
+    {
+        $this->manager->runtime()->clipboard->copy($text);
+    }
+
+    /**
      * Publish version-control change marks for a file — the gutter's
      * added/modified/deleted stripe. Keys are 0-based lines, values one of
      * `added`, `modified`, `deleted`; an empty array clears the file.
@@ -1095,6 +1156,17 @@ final class PluginApi
     public function bufferedPanes(): array
     {
         return $this->panes->all();
+    }
+
+    /**
+     * @return list<array{plugin: string, id: string, factory: \Closure}>
+     *
+     * @phpstan-ignore-next-line the buffer is untyped by design; the shape is registerView's
+     */
+    public function bufferedViews(): array
+    {
+        /** @var list<array{plugin: string, id: string, factory: \Closure}> */
+        return $this->views->all();
     }
 
     /** @return list<array{plugin: string, id: string, label: string}> */

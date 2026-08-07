@@ -10,6 +10,7 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Search\ProjectSearch;
+use Porta\Support\Clipboard;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RecordingChangeMarkSink;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
@@ -28,6 +29,7 @@ use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockToolController;
 use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -71,6 +73,8 @@ final class TodoScanTest extends TestCase
             TestDockTools::replacer(),
             new CodeEditorWidget(),
             new MenuFileContext(),
+            new ViewRegistry(),
+            new Clipboard($tui),
         ));
 
         $api = new PluginApi('todo', $manager, $project->dir, $settings);
