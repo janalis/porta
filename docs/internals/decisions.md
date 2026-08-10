@@ -99,7 +99,8 @@ What Phase A delivered, all of it green and independently useful:
 - `Layout/ViewRegions` mints a view's sidebar/separator/content at runtime.
 - `Workbench\View\{ContributedView, ViewRegistry, ViewHost, ViewServices,
   ViewRegistrar}` — views register by string id; `PluginApi::registerView()`.
-- `Input\{ViewPointer, ViewPointers, WheelGesture}` — five pointer stages.
+- `Workbench\View\{ViewPointer, ViewPointers, WheelGesture, WheelAxis}` — five
+  pointer stages, carried by the view rather than registered beside it.
 - `Workbench\{StatusCell, StatusTone, StatusMenuSpan}` — a status cell carries
   its own context menu, so the branch indicator is an ordinary contributor.
 - `Workbench\Menu\{MenuContribution, MenuContributions, ViewMenuSource}` — a
@@ -109,7 +110,7 @@ What Phase A delivered, all of it green and independently useful:
   command palette is listed view-safe in the Git menu and painted NOTHING while
   the git view was open.
 
-The graph: **224 edges and 3 SCCs became 222 and 2**, `Workbench>Git` is gone,
+The graph: **224 edges and 3 SCCs became 224 and 2**, `Workbench>Git` is gone,
 and the seven-class cycle around `WorkspaceViews` dissolved rather than shrank
 — its two concrete controller fields were the whole of it.
 

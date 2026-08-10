@@ -70,8 +70,11 @@ Hit-testing uses the renderer's per-widget rects via `Input/HitTester`, whose
 
 Satellites carry the parts that need no drag state: `WheelRouter` (all wheel
 routing), `ContextMenuRouter` (all right-click routing), `HoverRouter`,
-`ClickCounter`, `ZoomGesture`, `GitMouseRouter`, `SettingsMouseRouter`,
-`WelcomeMouseRouter`.
+`ClickCounter`, `ZoomGesture`, `WelcomeMouseRouter`. The per-view ones live with
+their views — `Git\GitMouseRouter`, `Settings\SettingsMouseRouter` — because the
+view carries them: `ContributedView::pointer()` is what `ViewRegistry::register()`
+wires into `ViewPointers`, so a view and its pointer arrive together or not at
+all.
 
 Named zone rows share `Ui/ClickZones` — `clear`, `add(name, start, end)`,
 `at(col)`, half-open, first match wins, which the help header's overlapping
