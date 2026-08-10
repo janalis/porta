@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Workbench\View;
 
 use Porta\I18n\Translator;
+use Porta\Input\HitTester;
 use Porta\Layout\ViewRegion;
 use Porta\Support\Scheduler;
 use Porta\Ui\CursorStyle;
@@ -19,11 +20,17 @@ use Porta\Ui\Theme\Styles;
  * hand-passed, and growing this DTO is how "my view needs one more thing from
  * core" becomes visible in review.
  *
- * Six members, against the twelve a previous attempt measured and stopped at.
+ * Seven members, against the twelve a previous attempt measured and stopped at.
  * The difference is not restraint: a view that owns its REGION no longer needs
  * three layout slots, and a view whose main-area swap is core's job
  * ({@see ViewHost}) no longer needs the menu bar, the editor area or the pane
- * order. What is left is the four things its WIDGETS need plus the two handles.
+ * order. What is left is the four things its WIDGETS need plus the two handles
+ * and {@see $hit}.
+ *
+ * {@see $hit} is forced by {@see ContributedView::pointer()}: a view with panes
+ * to click has to ask where they landed, and the renderer's per-widget rects
+ * are the only source. Handing over the `Renderer` instead would hand over
+ * every widget's rect, not just the view's own.
  *
  * {@see $cursorStyle} is the one member with no `PaneServices` precedent,
  * because no editor pane has a text field: the git view's commit box builds a
@@ -40,5 +47,6 @@ final readonly class ViewServices
         public CursorStyle $cursorStyle,
         public ViewRegion $region,
         public ViewHost $host,
+        public HitTester $hit,
     ) {}
 }

@@ -17,6 +17,12 @@ namespace Porta\Workbench;
  */
 interface StatusSegmentSource
 {
-    /** @return list<string> the non-empty segments, in plugin load order */
+    /**
+     * A plugin says what it has to say either as plain text — the common case,
+     * folded into one shared subtle cell — or as a whole {@see StatusCell} when
+     * it needs a tone or a right-click menu of its own.
+     *
+     * @return list<string|StatusCell> the non-empty segments, in plugin load order
+     */
     public function statusSegments(): array;
 }

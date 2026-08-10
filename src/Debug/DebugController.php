@@ -115,11 +115,16 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         return null !== $this->session && DebugState::Paused === $this->session->state();
     }
 
-    /** The status-bar cell: '⏸ path:line' when paused, '▶ debug' while running, null when idle. */
-    public function statusCell(): ?StatusCell
+    /**
+     * The status-bar cell: '⏸ path:line' when paused, '▶ debug' while running,
+     * and nothing at all when idle.
+     *
+     * @return list<StatusCell>
+     */
+    public function statusCells(): array
     {
         if (!$this->isActive()) {
-            return null;
+            return [];
         }
         $path = $this->state->stoppedPath();
         $line = $this->state->stoppedLine();
@@ -128,7 +133,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
                 ? Glyphs::DEBUG_PAUSED.' '.ProjectPaths::relative($this->rootDir, $path).':'.($line + 1)
                 : Glyphs::DEBUG_RUNNING.' debug';
 
-        return new StatusCell($text, StatusTone::Active);
+        return [new StatusCell($text, StatusTone::Active)];
     }
 
     /** Ctrl+F8 / a gutter click: toggle a breakpoint on the caret's (or given) line. */

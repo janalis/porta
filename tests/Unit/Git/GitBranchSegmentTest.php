@@ -61,19 +61,21 @@ final class GitBranchSegmentTest extends TestCase
     {
         // Not merely hidden: a suppressed cell contributes no span either, so
         // right-clicking where it would have been offers nothing.
-        $this->assertNull($this->segment(showBranch: false, branch: 'main')->statusCell());
+        $this->assertSame([], $this->segment(showBranch: false, branch: 'main')->statusCells());
     }
 
     public function testNoResolvedBranchMeansNoCell(): void
     {
         // The branch resolves through an async git call; until it lands there
         // is nothing to show, which is the normal state for the first frames.
-        $this->assertNull($this->segment(showBranch: true, branch: null)->statusCell());
+        $this->assertSame([], $this->segment(showBranch: true, branch: null)->statusCells());
     }
 
     public function testAResolvedBranchIsAnAccentCellCarryingItsOwnMenu(): void
     {
-        $cell = $this->segment(showBranch: true, branch: 'trunk')->statusCell();
+        $cells = $this->segment(showBranch: true, branch: 'trunk')->statusCells();
+        self::assertCount(1, $cells);
+        $cell = $cells[0];
 
         $this->assertNotNull($cell);
         $this->assertStringContainsString('trunk', $cell->text);

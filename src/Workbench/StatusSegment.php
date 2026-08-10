@@ -21,6 +21,18 @@ use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 #[AutoconfigureTag('porta.status_segment')]
 interface StatusSegment
 {
-    /** This contributor's cell, or null when it has nothing to show. */
-    public function statusCell(): ?StatusCell;
+    /**
+     * This contributor's cells, in the order they paint; empty when it has
+     * nothing to show.
+     *
+     * A LIST rather than one cell because {@see PluginStatusSegments} speaks
+     * for every plugin at once — the tag is a compiled container list and a
+     * plugin cannot be in it. While a plugin could only contribute a string,
+     * joining them into one subtle cell was lossless; a plugin cell that
+     * carries its own tone and its own right-click menu (the git branch) cannot
+     * be folded into a neighbour's.
+     *
+     * @return list<StatusCell>
+     */
+    public function statusCells(): array;
 }

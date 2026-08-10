@@ -66,16 +66,17 @@ final class StatusBarProvider
         $prefix = '';
         $prefixWidth = 0;
         foreach ($this->segmentSources as $source) {
-            $cell = $source->statusCell();
-            if (null === $cell || '' === $cell->text) {
-                continue;
+            foreach ($source->statusCells() as $cell) {
+                if ('' === $cell->text) {
+                    continue;
+                }
+                $width = AnsiUtils::visibleWidth($cell->text);
+                if (null !== $cell->menu) {
+                    $menus[] = new StatusMenuSpan($prefixWidth, $prefixWidth + $width, $cell->menu);
+                }
+                $prefix .= $this->styles->of(self::role($cell->tone))->apply($cell->text).'  ';
+                $prefixWidth += $width + 2;
             }
-            $width = AnsiUtils::visibleWidth($cell->text);
-            if (null !== $cell->menu) {
-                $menus[] = new StatusMenuSpan($prefixWidth, $prefixWidth + $width, $cell->menu);
-            }
-            $prefix .= $this->styles->of(self::role($cell->tone))->apply($cell->text).'  ';
-            $prefixWidth += $width + 2;
         }
         $left = $prefix.$left;
 

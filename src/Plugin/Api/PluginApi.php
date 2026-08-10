@@ -84,7 +84,7 @@ final class PluginApi
     private readonly PluginBuffer $actions;
     /** @var PluginBuffer<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}> */
     private readonly PluginBuffer $listTools;
-    /** @var PluginBuffer<array{plugin: string, segment: \Closure(): (string|null)}> */
+    /** @var PluginBuffer<array{plugin: string, segment: \Closure(): (string|\Porta\Workbench\StatusCell|null)}> */
     private readonly PluginBuffer $statusSegments;
     /** @var PluginBuffer<array{plugin: string, languageId: string, resolve: \Closure(): (list<string>|null)}> */
     private readonly PluginBuffer $debugAdapters;
@@ -506,7 +506,13 @@ final class PluginApi
      * null (or '') to show nothing, which is the normal state most of the time.
      * A throwing closure reads as nothing and is reported once.
      *
-     * @param \Closure(): (string|null) $segment
+     * Returning a bare STRING shares one subtle cell with every other plugin
+     * doing the same. Returning a {@see \Porta\Workbench\StatusCell} claims a
+     * cell of its own, which is what a segment needs when it carries a tone or
+     * a right-click menu — the git branch indicator is the case that forced it.
+     * The tone is chosen from core's three; a plugin cannot name a colour.
+     *
+     * @param \Closure(): (string|\Porta\Workbench\StatusCell|null) $segment
      */
     public function registerStatusSegment(\Closure $segment): void
     {
@@ -1181,7 +1187,7 @@ final class PluginApi
         return $this->listTools->all();
     }
 
-    /** @return list<array{plugin: string, segment: \Closure(): (string|null)}> */
+    /** @return list<array{plugin: string, segment: \Closure(): (string|\Porta\Workbench\StatusCell|null)}> */
     public function bufferedStatusSegments(): array
     {
         return $this->statusSegments->all();

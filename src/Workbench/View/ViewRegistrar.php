@@ -6,6 +6,7 @@ namespace Porta\Workbench\View;
 
 use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
+use Porta\Input\HitTester;
 use Porta\Layout\ViewRegions;
 use Porta\Support\Scheduler;
 use Porta\Ui\CursorStyle;
@@ -33,6 +34,7 @@ final readonly class ViewRegistrar
         private ViewRegistry $registry,
         private ViewRegions $regions,
         private ViewHost $host,
+        private HitTester $hit,
         private Styles $styles,
         private Translator $translator,
         private Scheduler $scheduler,
@@ -51,6 +53,7 @@ final readonly class ViewRegistrar
                     $this->cursorStyle,
                     $this->regions->mint($entry['id']),
                     $this->host,
+                    $this->hit,
                 ));
                 if (!$view instanceof ContributedView) {
                     throw new \RuntimeException(\sprintf('registerView("%s") must return a ContributedView', $entry['id']));

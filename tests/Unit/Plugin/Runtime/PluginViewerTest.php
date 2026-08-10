@@ -15,6 +15,8 @@ use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\TestPane;
 use Porta\Widget\EditorPaneWidget;
 use Porta\Workbench\Menu\MenuSurface;
+use Porta\Workbench\StatusCell;
+use Porta\Workbench\StatusTone;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
@@ -301,6 +303,25 @@ final class PluginViewerTest extends TestCase
 
         $manager->deactivate('demo', new CommandRegistry());
         $this->assertSame([], $manager->statusSegments(), 'a removed plugin takes its segment with it');
+    }
+
+    public function testASegmentMayBeAWholeCellAndIsGuardedTheSameWay(): void
+    {
+        // A tone and a right-click menu do not survive being joined into the
+        // shared text cell, which is what the git branch indicator needs now
+        // that git contributes it from outside src/. The text guard still
+        // applies: a cell with nothing in it reserves no space either.
+        $manager = $this->manager();
+        $api = $this->api($manager, 'vcs');
+        $api->registerStatusSegment(static fn (): StatusCell => new StatusCell('⎇ main', StatusTone::Accent));
+        $api->registerStatusSegment(static fn (): StatusCell => new StatusCell(''));
+        $manager->commit($api);
+
+        $segments = $manager->statusSegments();
+        self::assertCount(1, $segments, 'the empty cell contributes nothing');
+        self::assertInstanceOf(StatusCell::class, $segments[0]);
+        $this->assertSame('⎇ main', $segments[0]->text);
+        $this->assertSame(StatusTone::Accent, $segments[0]->tone);
     }
 
     public function testDebugAdaptersResolveLikeLanguageServersDo(): void

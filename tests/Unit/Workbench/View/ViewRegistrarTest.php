@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
+use Porta\Input\HitTester;
 use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\ViewRegions;
 use Porta\Tests\Support\FakeScheduler;
@@ -23,6 +24,8 @@ use Porta\Workbench\View\ViewHost;
 use Porta\Workbench\View\ViewRegistrar;
 use Porta\Workbench\View\ViewRegistry;
 use Porta\Workbench\View\ViewServices;
+use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -80,6 +83,7 @@ final class ViewRegistrarTest extends TestCase
                 new EditorArea(new BufferManager(), new CodeEditorWidget(), new EditorPanes(), $tui),
                 $tui,
             ),
+            new HitTester(new Renderer(new StyleSheet())),
             Styles::dark(),
             new Translator('en'),
             new FakeScheduler(),

@@ -195,13 +195,13 @@ final class DebugControllerTest extends TestCase
     public function testStoppedMarshalsEditorPanelStatusAndFrameJumps(): void
     {
         $controller = $this->controller();
-        $this->assertNull($controller->statusCell(), 'idle → no segment');
+        $this->assertSame([], $controller->statusCells(), 'idle → no segment');
 
         $this->pauseAtBreakpoint($controller, line: 2);
         $this->assertSame(['/p/prog.php'], $this->opened, 'stop opened the file through the choke point');
         $this->assertSame(2, $this->editor->getDocument()->getCursorLine());
         $this->assertTrue($controller->isPaused());
-        $this->assertSame('⏸ prog.php:3', $controller->statusCell()?->text);
+        $this->assertSame('⏸ prog.php:3', $controller->statusCells()[0]->text);
         $this->assertSame(2, $this->statusEvents, 'start and pause each dispatched DebugStatusChanged');
 
         $panelScreen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
@@ -238,11 +238,11 @@ final class DebugControllerTest extends TestCase
         $this->client->emit('stopped', ['reason' => 'step', 'threadId' => 1]);
         $controller->continueRun();
         $this->assertContains('continue', $this->client->commands());
-        $this->assertSame('▶ debug', $controller->statusCell()?->text, 'running segment');
+        $this->assertSame('▶ debug', $controller->statusCells()[0]->text, 'running segment');
 
         $controller->stop();
         $this->assertFalse($controller->isActive());
-        $this->assertNull($controller->statusCell());
+        $this->assertSame([], $controller->statusCells());
     }
 
     public function testStoppedWithAnEmptyStackStillReportsThePause(): void

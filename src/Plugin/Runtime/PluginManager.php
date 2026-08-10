@@ -21,6 +21,7 @@ use Porta\Plugin\Api\PluginException;
 use Porta\Search\TokenSpanProvider;
 use Porta\Workbench\Dock\DockToolSource;
 use Porta\Workbench\Menu\MenuSurface;
+use Porta\Workbench\StatusCell;
 use Porta\Workbench\StatusSegmentSource;
 use Porta\Workbench\View\ContributedViewSource;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -70,7 +71,7 @@ final class PluginManager implements
     private array $actions = [];
     /** @var list<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}> committed dock list tools, in load order */
     private array $listTools = [];
-    /** @var list<array{plugin: string, segment: \Closure(): (string|null)}> committed status-bar segments, in load order */
+    /** @var list<array{plugin: string, segment: \Closure(): (string|StatusCell|null)}> committed status-bar segments, in load order */
     private array $statusSegments = [];
     /** @var list<array{plugin: string, languageId: string, resolve: \Closure(): (list<string>|null)}> committed debug adapters, in load order */
     private array $debugAdapters = [];
@@ -536,13 +537,14 @@ final class PluginManager implements
      * render, so a throwing closure reads as nothing and reports at most once
      * per plugin (the {@see wrapWhen()} reasoning, for the same reason).
      *
-     * @return list<string>
+     * @return list<string|StatusCell>
      */
     public function statusSegments(): array
     {
         $segments = [];
         foreach ($this->statusSegments as $entry) {
             try {
+                /** @var mixed $text */
                 $text = $entry['segment']();
             } catch (\Throwable $error) {
                 if (!array_key_exists($entry['plugin'], $this->reportedSegments)) {
@@ -552,7 +554,14 @@ final class PluginManager implements
 
                 continue;
             }
-            if (null !== $text && '' !== $text) {
+            if ($text instanceof StatusCell) {
+                if ('' !== $text->text) {
+                    $segments[] = $text;
+                }
+
+                continue;
+            }
+            if (\is_string($text) && '' !== $text) {
                 $segments[] = $text;
             }
         }

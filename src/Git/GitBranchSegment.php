@@ -34,21 +34,22 @@ final readonly class GitBranchSegment implements \Porta\Workbench\StatusSegment
         private Translator $translator,
     ) {}
 
-    public function statusCell(): ?StatusCell
+    /** @return list<StatusCell> */
+    public function statusCells(): array
     {
         if (!$this->settings->showBranch()) {
-            return null;
+            return [];
         }
         $branch = $this->refresher->branch();
         if (null === $branch) {
-            return null;
+            return [];
         }
 
-        return new StatusCell(
+        return [new StatusCell(
             Glyphs::STATUS_BRANCH." {$branch}",
             StatusTone::Accent,
             fn (): array => $this->branchItems(),
-        );
+        )];
     }
 
     /**
