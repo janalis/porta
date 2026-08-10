@@ -81,56 +81,78 @@ construction remaining a DAG. Relocating the widget→domain-VO edges was measur
 and mostly rejected — for Git, Settings, Tree, Debug and Highlight that is the
 *correct* layering direction, views reading domain shapes.
 
-**Extracting git to a bundled plugin — reopened, pursued, and stopped at the
-view.** The programme ran and delivered most of what it was for; what it could
-not do is move the git VIEW, and that was measured rather than assumed.
+**Extracting git to a bundled plugin — the three numbers that stopped it were
+beaten; the move itself is one atomic commit and has not been made yet.**
 
-What landed, and stands on its own:
+An earlier attempt stopped at the view, measuring three seams that each failed
+its bar. Every one of them changed, and not by trying harder — by changing what
+the seam had to describe:
 
-- Core's decoration vocabulary is VCS-neutral — `Role::Vcs*` across three
-  themes, `Glyphs::VCS_*`, `$vcsMarks`, `$vcsGutter`, `vcsCell()`. Core no
-  longer names one version control system in its theme lock.
-- Change marks are a normal decoration layer with a plugin producer, through
-  `Editor/ChangeMarkSink` and `PluginApi::setChangeMarks()`. `Git>Editor`
-  vanished from the graph with them.
-- The bus is symmetric: `PluginApi::emit()` is the counterpart to `on()`, over
-  the same frozen marker, and the plugin never holds the dispatcher.
-- `Event/WorkingTreeChanged` — core refreshes its own branch indicator whenever
-  the tree moves, whoever moved it, instead of each mover remembering to ask.
-- Four verbs moved with their identity intact: `git_stash`, `git_stash_pop`,
-  `git_stage`, `git_undo_commit`.
+| Seam | Bar | Then | Now | Why it moved |
+| --- | --- | --- | --- | --- |
+| Services DTO | ~8 members | 12 | **6** | a view owning its REGION needs one handle, not three layout slots; a view whose main-area swap is `ViewHost`'s needs neither the menu bar, the editor area nor the pane order |
+| Pointer routing | fits >1 consumer | 11-verb union | **5 stages, 3 consumers** | `separatorRect`/`leftRect` existed only because the separator arrived by `#[LayoutSlot]`; core mints the region and hit-tests its own widgets, so they are gone rather than shared. `scrollVertical`'s signature clash was arithmetic, not scrolling — `WheelGesture` carries the resolved step |
+| Layout region | net-negative | `ViewRegion` −36/+45 | **forced** | that measurement was of a RENAME which kept both regions as compiled services. The container is built and cached before any plugin PHP runs, so a plugin-owned view can never receive `git_left` under any naming. Minting is the only route, and it deleted six service definitions, five `#[LayoutSlot]` consumers and the getters |
 
-**Where it stopped, with the numbers.** A contributed full-screen view needs
-three seams, and each failed its own bar:
+What Phase A delivered, all of it green and independently useful:
 
-| Seam | Bar | Measured |
-| --- | --- | --- |
-| Services DTO | ~8 members | 12 |
-| Pointer routing | fits both consumers | 11-verb union, 5 git-only |
-| Layout region | net-negative | `ViewRegion`: −36/+45 |
+- `Layout/ViewRegions` mints a view's sidebar/separator/content at runtime.
+- `Workbench\View\{ContributedView, ViewRegistry, ViewHost, ViewServices,
+  ViewRegistrar}` — views register by string id; `PluginApi::registerView()`.
+- `Input\{ViewPointer, ViewPointers, WheelGesture}` — five pointer stages.
+- `Workbench\{StatusCell, StatusTone, StatusMenuSpan}` — a status cell carries
+  its own context menu, so the branch indicator is an ordinary contributor.
+- `Workbench\Menu\{MenuContribution, MenuContributions, ViewMenuSource}` — a
+  top-level menu, its view-safe command list and its context menus are
+  contributed, not declared.
+- The modal layer floats above `main`, which fixed a live bug on its own: the
+  command palette is listed view-safe in the Git menu and painted NOTHING while
+  the git view was open.
 
-The DTO would hand a contributed view three layout slots, `MenuBarWidget`,
-`Tui`, `Notifier`, `EditorAreaPanes`, `EditorArea`, `LayoutController`,
-`Clipboard`, `WorkspaceViews` and live settings access — for one consumer.
-`GitMouseRouter` has ten public verbs to `SettingsMouseRouter`'s five, they
-share four, and `scrollVertical` differs in signature between them: a seam over
-both is the superset the `Clickable` rejection already named.
+The graph: **224 edges and 3 SCCs became 222 and 2**, `Workbench>Git` is gone,
+and the seven-class cycle around `WorkspaceViews` dissolved rather than shrank
+— its two concrete controller fields were the whole of it.
 
-**The end state is a core git VIEW over a plugin-provided CLIENT**, which is
-coherent: the view is one VCS's UI for its own index model, while marks, blame
-and the tree-mutating verbs are a producer core does not need to know.
+**The move has no valid intermediate state, which was proved by attempting it.**
+`config/services.php` discovers `../src/*` only, so the instant a class leaves
+`src/` its `#[AsIdeService]`/`#[AsWidget]`/`#[AsEager]` becomes inert and
+everything injecting it fails. Eleven of the ~52 files carry one. There is no
+ordering that keeps the container satisfied, so widgets, panes, controller,
+routers and commands move together — roughly 5,700 source lines in one commit.
 
-*Re-opens on:* the pointer union shrinking (if the git view's drag handling
-ever collapses into the shared shape), or a second consumer appearing for a
-contributed full-screen view. Not on effort — this was attempted, not
-estimated.
+What that commit has to resolve, measured rather than guessed — sixteen core
+files import git today and they fall into four kinds:
 
-**Still core's, and why**: `git_commit` needs the live-mutable sign/no-verify/
-signoff settings and a focused prompt; `branches` and `stashes` must close the
-view and take focus for their picker to be visible; the four remote verbs are
-called BACK from the view; `file_history` opens it. The settings migration is
-blocked by the same thing — the view reads those settings, so moving the keys
-to `plugins.git.*` would make core read a plugin's config.
+- **Five are docblock-only** (`Input/ClickCounter`, `Widget/DebugPanelCallbacks`,
+  `Widget/Support/HoverTrait`, `Widget/Support/OptionTagState`,
+  `Settings/SettingsViewController`). Invisible to `composer arch`, in scope for
+  grep-to-zero.
+- **Seven `Event/Git*` carry git types** and become plugin-internal on a
+  plugin-owned `EventDispatcher` (a vendor class, so no core edge). Only
+  `GitCommitted`, `GitRemoteCompleted` and `WorkingTreeChanged` stay, as
+  `PluginObservable`.
+- **`Command/GitCommandProvider` is deleted** and its nine ids adopted. Flagging
+  already landed; vacate-and-adopt must be one commit, because `adoptCommand()`
+  refuses an unflagged id and `CommandRegistry::add()` is `??=` so both
+  registered means duplicate palette rows.
+- **`Ide.php`, `Command/ViewCommands`, `Settings/SettingsGitController`** need
+  real rewiring: the boot wiring, the `isRepository()` gate on `ide_git`, and
+  the settings page.
+
+**The tests are rewrites, not relocations, and they are the bulk.**
+`GitViewControllerTest` (1,089 lines) builds through the container via
+`Services::resolve`; a plugin test cannot, because a plugin class is never a
+service. Same for `GitCommandsTest` (644), `GitInfoStatusTest` (672),
+`DiffViewWidgetTest` (745). About 7,000 lines against `PluginApi` and fakes.
+
+Two pins exist precisely as that commit's checklists, and both have already
+caught drift during Phase A: `GitListenerContractTest` maps the nineteen
+`#[AsEventListener]` wirings that evaporate when a class stops being a service,
+and `ActionCatalogTest` maps the fifteen adoptable ids to their real labels
+(`label()` falls back to `ucwords()`, so a missing entry reads "Git Commit").
+
+*Re-opens on:* nothing — this is not rejected, it is prepared and unfinished.
+The next attempt should start with the move as its sole goal.
 
 **`Layout/ViewRegion` — rejected on arithmetic.** Collapsing git's and settings'
 sidebar/separator/area triples deletes ~36 lines and adds ~45. The five

@@ -27,12 +27,27 @@ geometry and hit-test value objects. Stateless render helpers stay in
 codebase's most-depended-on namespace, so **it imports nothing feature-owned**.
 Anything that composes features does not belong here.
 
-**`Workbench/`** — the composition tier over the features: the view-interlock
-registry (`WorkspaceViews`, `WorkspaceView`, `FullScreenView`), `Notifier` and
+**`Workbench/`** — the composition tier over the features: `Notifier` and
 `NotificationLog`, `StatusBarProvider`, focus (`FocusRing`,
-`FocusCoordinator`), the chrome sweep pair, and two subsystem *models* —
-`Workbench/Menu/` and `Workbench/Dock/`. Their **widgets** (`MenuBarWidget`,
-`ContextMenu`, `DockTabsWidget`, `ResultsPanelWidget`) live in `Widget/`.
+`FocusCoordinator`), the chrome sweep pair, and three subsystem *models* —
+`Workbench/View/`, `Workbench/Menu/` and `Workbench/Dock/`. Their **widgets**
+(`MenuBarWidget`, `ContextMenu`, `DockTabsWidget`, `ResultsPanelWidget`) live
+in `Widget/`.
+
+**`Workbench/View/`** — what a full-screen view is, for core's own and for a
+contributed one alike. `ContributedView` (a view supplies its own string id;
+there is no enum of views), `ViewRegistry` (the interlock — one view owns the
+main area at a time), `ViewHost` (the main-area swap, done once rather than
+per view), `ViewServices` (the six members core hands a contributed view) and
+`ViewRegistrar` (the `PaneRegistrar` twin that drains `registerView()`).
+
+A view's sidebar/separator/content is NOT here: `Layout/ViewRegions` mints
+those at runtime, because the container is compiled and cached before any
+plugin PHP runs and a compiled slot can only describe a view core knew at build
+time. A view fills its own region and declares how its sidebar resizes
+(`ViewRegion::setSidebarPanes()`); everything that used to name a view's
+widgets — the resize nudge, the menu-overlay pane list, the theme-refresh
+sweep — asks the region instead.
 
 **`Notifier::notify()` ends in `requestRender()`** on both the toast and
 status-bar paths. Never follow a flash with your own render request.

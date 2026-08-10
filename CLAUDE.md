@@ -83,7 +83,7 @@ what would re-open it. Re-proposing one costs a round.
   locator; `classmap-authoritative` in `composer.json`.
 - The extraction audit — every candidate measured, the topic closed.
 - Namespace cycles — closed at class granularity.
-- `Layout/ViewRegion`; clickable status segments; moving the git VIEW to a plugin
-  (attempted and stopped at a 12-member DTO — the client half did move).
+- `Layout/ViewRegion` as a RENAME of the compiled slots (runtime minting replaced
+  it); clickable status segments (reopened — the branch cell is the consumer).
 - `registerWelcomeStep()`; unifying the five plain-array plugin buffers.
 - Escalating `[loop-leak]` to a failure — refused on evidence.
