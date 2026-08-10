@@ -109,21 +109,20 @@ final class MouseRouter
         // tree/tabs/editor (and the menu bar inside the editor pane) are
         // detached — but the renderer still holds their last-frame rects. Null
         // them so no stale-rect branch routes events to an invisible widget.
-        $gitViewOpen = $this->views->isOpen('git');
-        $settingsViewOpen = $this->views->isOpen('settings');
         if ($this->views->isAnyOpen()) {
             $treeRect = null;
             $tabsRect = null;
             $editorRect = null;
             $sepRect = null;
         }
-        // The sidebars' drag columns and left edges. Core hit-tests its OWN
+        // The open view's drag column and left edge. Core hit-tests its OWN
         // widgets — it minted these regions — so the two verbs the views used
-        // to expose for this are gone rather than shared.
-        $gitSepRect = $gitViewOpen ? $this->hit->rect($this->regions->mint('git')->separator()) : null;
-        $gitLeftRect = $gitViewOpen ? $this->hit->rect($this->regions->mint('git')->sidebar()) : null;
-        $settingsSepRect = $settingsViewOpen ? $this->hit->rect($this->regions->mint('settings')->separator()) : null;
-        $settingsLeftRect = $settingsViewOpen ? $this->hit->rect($this->regions->mint('settings')->sidebar()) : null;
+        // to expose for this are gone rather than shared, and one pair of rects
+        // replaces a pair per view core happened to know about.
+        $activeView = $this->views->isAnyOpen() ? $this->views->activeId() : null;
+        $viewRegion = null === $activeView ? null : $this->regions->find($activeView);
+        $viewSepRect = null === $viewRegion ? null : $this->hit->rect($viewRegion->separator());
+        $viewLeftRect = null === $viewRegion ? null : $this->hit->rect($viewRegion->sidebar());
 
         if ($mouse->wheel) {
             // The Welcome modal is app-modal: every wheel is its while open.
@@ -157,7 +156,7 @@ final class MouseRouter
             || $this->pointers->of($this->views->activeId())->continueDrag($mouse)
             || $this->welcome->continueDrag($mouse)
             || $this->continueFindModalDrag($mouse)
-            || $this->layout->continueResizeDrag($mouse, $treeRect, $gitLeftRect, $settingsLeftRect)
+            || $this->layout->continueResizeDrag($mouse, $treeRect, $viewLeftRect)
         ) {
             return;
         }
@@ -203,10 +202,7 @@ final class MouseRouter
         if ($this->layout->armSidebarResize($sepRect, $mouse)) {
             return;
         }
-        if ($this->layout->armGitSidebarResize($gitSepRect, $mouse)) {
-            return;
-        }
-        if ($this->layout->armSettingsSidebarResize($settingsSepRect, $mouse)) {
+        if (null !== $activeView && $this->layout->armViewSidebarResize($activeView, $viewSepRect, $mouse)) {
             return;
         }
         // The dock strip is both the tool tabs and the resize grab: a click

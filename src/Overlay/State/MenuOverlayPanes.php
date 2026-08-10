@@ -19,48 +19,48 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 final readonly class MenuOverlayPanes
 {
     /**
-     * @param list<AbstractWidget&MenuOverlayHost> $editor   tree, separator, tab bar, editor, breadcrumbs
-     * @param list<AbstractWidget&MenuOverlayHost> $git      the git view's panes
-     * @param list<AbstractWidget&MenuOverlayHost> $settings the settings view's panes
-     * @param \Closure(): bool                     $gitViewOpen
-     * @param \Closure(): bool                     $settingsViewOpen
+     * @param list<AbstractWidget&MenuOverlayHost>            $editor    tree, separator, tab bar, editor, breadcrumbs
+     * @param \Closure(): list<AbstractWidget&MenuOverlayHost> $viewPanes the OPEN view's panes; empty when none is
      */
     public function __construct(
         private array $editor,
-        private array $git,
-        private array $settings,
-        private \Closure $gitViewOpen,
-        private \Closure $settingsViewOpen,
+        private \Closure $viewPanes,
         private ?EditorPanes $panes = null,
     ) {}
 
     /**
-     * The panes the app-menu dropdown floats over in the current mode: the
-     * settings view's, else the git view's, else the editor layout's.
+     * The panes the app-menu dropdown floats over right now: the open view's,
+     * else the editor layout's.
+     *
+     * Asked, not baked: two lists were held here, one per view core knew, each
+     * naming that view's widgets. A view's panes are whatever is in its region,
+     * which it fills itself, so the answer has to be computed when the question
+     * is asked.
      *
      * @return list<AbstractWidget&MenuOverlayHost>
      */
     public function current(): array
     {
-        return match (true) {
-            ($this->settingsViewOpen)() => $this->settings,
-            ($this->gitViewOpen)() => $this->git,
-            // The registered panes are appended at ASK time, not baked in: this
-            // value is built while the widget tree is assembled, and panes
-            // register at the constructor tail — a plugin's even later, when it
-            // is enabled live.
-            default => [...$this->editor, ...($this->panes?->all() ?? [])],
-        };
+        $view = ($this->viewPanes)();
+        if ([] !== $view) {
+            return $view;
+        }
+
+        // The registered panes are appended at ASK time too: this value is
+        // built while the widget tree is assembled, and panes register at the
+        // constructor tail — a plugin's even later, when it is enabled live.
+        return [...$this->editor, ...($this->panes?->all() ?? [])];
     }
 
     /**
-     * Every pane across all modes, for clearing a dropdown that may close across
-     * a view swap (clearing a detached widget is harmless).
+     * The editor's panes plus whichever view is open, for clearing a dropdown
+     * that may close across a view swap (clearing a detached widget is
+     * harmless, and a closed view's are unreachable anyway).
      *
      * @return list<AbstractWidget&MenuOverlayHost>
      */
     public function all(): array
     {
-        return [...$this->editor, ...$this->git, ...$this->settings];
+        return [...$this->editor, ...($this->viewPanes)()];
     }
 }

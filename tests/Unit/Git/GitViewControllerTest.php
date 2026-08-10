@@ -185,8 +185,9 @@ final class GitViewControllerTest extends TestCase
             new Renderer(new StyleSheet()),
             new FileTreeWidget($this->project->dir),
             TestBottomDock::create($this->tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
-            new GitSidebar($this->tabs, $this->changes, $this->commitBox, $this->history),
-            new SettingsNavWidget($t),
+            // The controller declares its own sidebar when it mints the region,
+            // so the layout gets it from there rather than being handed one.
+            $regions,
             $t,
         );
 

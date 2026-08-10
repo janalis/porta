@@ -13,13 +13,14 @@ use Porta\Highlight\ColorMode;
 use Porta\Highlight\SwitchableTerminalTheme;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\I18n\Translator;
+use Porta\Layout\ViewRegions;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Lsp\FormatOnSave;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\StyleSheetThemer;
 use Porta\Ui\Theme\Themes;
-use Porta\Widget\Git\DiffViewWidget;
+use Porta\Ui\ThemeRefreshable;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -38,7 +39,7 @@ final class LiveSettingsApplier
         private readonly SwitchableTerminalTheme $syntaxTheme,
         private readonly CursorStyle $cursorStyle,
         private readonly Translator $translator,
-        private readonly DiffViewWidget $gitDiff,
+        private readonly ViewRegions $regions,
         private readonly EditorPanes $panes,
         private readonly TabBarWidget $tabBar,
         private readonly WorkspaceLayout $workspaceLayout,
@@ -66,10 +67,18 @@ final class LiveSettingsApplier
         // Buffer highlighters are busted by HighlightThemeListener at priority
         // -200 — after the plugin bridge, so a plugin backend that bakes the
         // theme has rebuilt itself before core drops the caches.
-        $this->gitDiff->refreshTheme();
         // Every pane, not a list of the ones that happened to bake codes: a pane
         // that caches rendered lines has to re-make them, and the default is a
-        // plain invalidate().
+        // plain invalidate(). The git diff was named here for exactly that
+        // reason and is reached through its region now, so a contributed view's
+        // panes rebake on a theme switch without being listed.
+        foreach ($this->regions->all() as $region) {
+            foreach ([...$region->sidebar()->all(), ...$region->content()->all()] as $widget) {
+                if ($widget instanceof ThemeRefreshable) {
+                    $widget->refreshTheme();
+                }
+            }
+        }
         foreach ($this->panes->all() as $pane) {
             $pane->refreshTheme();
         }

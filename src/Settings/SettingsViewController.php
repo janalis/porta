@@ -62,6 +62,8 @@ final class SettingsViewController implements ContributedView
         // and neither shape could describe the other.
         $this->region = $regions->mint('settings');
         $this->region->sidebar()->add($this->nav);
+        // One widget spans this sidebar, so it IS the resizable unit.
+        $this->region->setSidebarPanes($this->nav);
         $views->register($this);
         $exit = $this->close(...);
 

@@ -25,6 +25,7 @@ use Porta\Event\GitViewModeRequested;
 use Porta\I18n\Translator;
 use Porta\Layout\DiffLayout;
 use Porta\Layout\EditorAreaPanes;
+use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
 use Porta\Layout\ViewRegion;
 use Porta\Layout\ViewRegions;
@@ -102,6 +103,10 @@ final class GitViewController implements ContributedView
         // mode; the diff pane is fixed, so it goes in once here.
         $this->region = $regions->mint('git');
         $this->region->content()->add($this->panes->diffView);
+        // How this sidebar resizes. Four stacked widgets each render their own
+        // width, so a drag fans the new one out to all of them; core sees a
+        // container and cannot know that.
+        $this->region->setSidebarPanes(new GitSidebar($this->panes->tabs, $this->panes->changes, $this->panes->commitBox, $this->panes->history));
         // Seeded for the initial Changes mode. WorkspaceLayout used to stack
         // these three at construction — the one place core layout named a
         // view's contents — and switchMode() only refills on a CHANGE, so

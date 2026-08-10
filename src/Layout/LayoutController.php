@@ -12,7 +12,6 @@ use Porta\Input\MouseEvent;
 use Porta\Support\IntMath;
 use Porta\Widget\DockPanelWidget;
 use Porta\Widget\FileTreeWidget;
-use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -28,10 +27,18 @@ use Symfony\Component\Tui\Tui;
 #[AsIdeService]
 final class LayoutController
 {
-    /** The three sidebars' resize state (armed drag, start width, persisted proportion). */
+    /** The file tree's resize state (armed drag, start width, persisted proportion). */
     private readonly SidebarResizeState $treeResize;
-    private readonly SidebarResizeState $gitResize;
-    private readonly SidebarResizeState $settingsResize;
+
+    /**
+     * Each view region's, created on first use from the sidebar the view
+     * declared. Keyed by region id rather than named per view: core does not
+     * know how many views there are, and a view that declared no resizable
+     * sidebar simply has no entry.
+     *
+     * @var array<string, SidebarResizeState>
+     */
+    private array $viewResizes = [];
 
     private bool $panelResizing = false;
     private int $panelResizeBottom = 0; // the dragged panel's anchored bottom row, captured at press
@@ -49,13 +56,21 @@ final class LayoutController
         private readonly Renderer $renderer,
         FileTreeWidget $tree,
         private readonly BottomDock $dock,
-        GitSidebar $gitSidebar,
-        SettingsNavWidget $settingsSidebar,
+        private readonly ViewRegions $regions,
         private readonly Translator $translator,
     ) {
         $this->treeResize = new SidebarResizeState($tree);
-        $this->gitResize = new SidebarResizeState($gitSidebar);
-        $this->settingsResize = new SidebarResizeState($settingsSidebar);
+    }
+
+    /** The resize state for a view's region, or null when it declared no resizable sidebar. */
+    private function viewResize(string $id): ?SidebarResizeState
+    {
+        if (isset($this->viewResizes[$id])) {
+            return $this->viewResizes[$id];
+        }
+        $panes = $this->regions->find($id)?->sidebarPanes();
+
+        return null === $panes ? null : ($this->viewResizes[$id] = new SidebarResizeState($panes));
     }
 
     public function applyLayout(): void
@@ -69,8 +84,15 @@ final class LayoutController
         $cols = $terminal->getColumns();
         $rows = $terminal->getRows();
         $this->treeResize->widthPercent = $layout->sidebarWidthPercent;
-        $this->gitResize->widthPercent = $layout->gitSidebarWidthPercent;
-        $this->settingsResize->widthPercent = $layout->settingsSidebarWidthPercent;
+        // Still two named fields in the persisted prefs: the file's shape is a
+        // user-visible contract and changing it belongs with the settings
+        // migration, not here.
+        foreach (['git' => $layout->gitSidebarWidthPercent, 'settings' => $layout->settingsSidebarWidthPercent] as $id => $percent) {
+            $state = $this->viewResize($id);
+            if (null !== $state) {
+                $state->widthPercent = $percent;
+            }
+        }
         $this->bottomPanelHeightPercent = $layout->bottomPanelHeightPercent;
         $this->gitDiffSplit = $layout->gitDiffSplit ?? false;
         $this->gitDiffHideWhitespace = $layout->gitDiffHideWhitespace ?? false;
@@ -96,17 +118,18 @@ final class LayoutController
      * Continue an armed resize drag: apply the new sidebar width / panel height on
      * each left-drag, persist on release. Returns true when it consumed the event.
      */
-    public function continueResizeDrag(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $gitLeftRect = null, ?WidgetRect $settingsLeftRect = null): bool
+    public function continueResizeDrag(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $viewLeftRect = null): bool
     {
         // Sidebar resize: dragging a pane's separator sets that pane's width. Only
         // one sidebar is ever armed at a time (see cancelDrags), so the first
         // match wins and the rest fall through untouched.
-        if (
-            $this->continueSidebarResize($mouse, $treeRect, $this->treeResize)
-            || $this->continueSidebarResize($mouse, $gitLeftRect, $this->gitResize)
-            || $this->continueSidebarResize($mouse, $settingsLeftRect, $this->settingsResize)
-        ) {
+        if ($this->continueSidebarResize($mouse, $treeRect, $this->treeResize)) {
             return true;
+        }
+        foreach ($this->viewResizes as $state) {
+            if ($this->continueSidebarResize($mouse, $viewLeftRect, $state)) {
+                return true;
+            }
         }
 
         // Bottom-panel resize: dragging a panel's top edge sets the bottom-panel height.
@@ -175,16 +198,12 @@ final class LayoutController
         return $this->arm($this->treeResize, $separatorRect, $mouse);
     }
 
-    /** Arm a git-sidebar resize (a left-press on the git separator's rect). */
-    public function armGitSidebarResize(?WidgetRect $gitSeparatorRect, MouseEvent $mouse): bool
+    /** Arm a view sidebar's resize (a left-press on that region's separator rect). */
+    public function armViewSidebarResize(string $id, ?WidgetRect $separatorRect, MouseEvent $mouse): bool
     {
-        return $this->arm($this->gitResize, $gitSeparatorRect, $mouse);
-    }
+        $state = $this->viewResize($id);
 
-    /** Arm a settings-sidebar resize (a left-press on the settings separator's rect). */
-    public function armSettingsSidebarResize(?WidgetRect $settingsSeparatorRect, MouseEvent $mouse): bool
-    {
-        return $this->arm($this->settingsResize, $settingsSeparatorRect, $mouse);
+        return null !== $state && $this->arm($state, $separatorRect, $mouse);
     }
 
     /** The shared arm path: capture the start width, mark the drag active. */
@@ -229,16 +248,13 @@ final class LayoutController
         $this->nudgeSidebarWidth($this->treeResize, $delta);
     }
 
-    /** Keyboard resize of the git sidebar. */
-    public function nudgeGitSidebar(int $delta): void
+    /** Keyboard resize of a view's sidebar. */
+    public function nudgeViewSidebar(string $id, int $delta): void
     {
-        $this->nudgeSidebarWidth($this->gitResize, $delta);
-    }
-
-    /** Keyboard resize of the settings sidebar. */
-    public function nudgeSettingsSidebar(int $delta): void
-    {
-        $this->nudgeSidebarWidth($this->settingsResize, $delta);
+        $state = $this->viewResize($id);
+        if (null !== $state) {
+            $this->nudgeSidebarWidth($state, $delta);
+        }
     }
 
     /**
@@ -282,7 +298,7 @@ final class LayoutController
     /** @return list<SidebarResizeState> */
     private function sidebarResizes(): array
     {
-        return [$this->treeResize, $this->gitResize, $this->settingsResize];
+        return [$this->treeResize, ...array_values($this->viewResizes)];
     }
 
     private function resizeBottomPanels(int $height): void
@@ -351,8 +367,8 @@ final class LayoutController
         $this->store->save(new LayoutPrefs(
             sidebarWidthPercent: $this->treeResize->widthPercent,
             bottomPanelHeightPercent: $this->bottomPanelHeightPercent,
-            gitSidebarWidthPercent: $this->gitResize->widthPercent,
-            settingsSidebarWidthPercent: $this->settingsResize->widthPercent,
+            gitSidebarWidthPercent: $this->viewResize('git')?->widthPercent,
+            settingsSidebarWidthPercent: $this->viewResize('settings')?->widthPercent,
             gitDiffSplit: $this->gitDiffSplit ? true : null,
             gitDiffHideWhitespace: $this->gitDiffHideWhitespace ? true : null,
         ));

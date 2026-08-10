@@ -47,6 +47,12 @@ final class ViewRegions
         );
     }
 
+    /** The region for $id if one has been minted, else null — no minting side effect. */
+    public function find(string $id): ?ViewRegion
+    {
+        return $this->regions[$id] ?? null;
+    }
+
     /**
      * Every minted region, in mint order.
      *

@@ -50,7 +50,7 @@ final class ToastPresenterTest extends TestCase
         $this->toasts = new ToastCenter($this->scheduler, $this->tui);
 
         return new ToastPresenter(
-            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], [], [], static fn (): bool => false, static fn (): bool => false), $this->tui),
+            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui),
             $this->toasts,
             frameHooks: $this->tui,
         );

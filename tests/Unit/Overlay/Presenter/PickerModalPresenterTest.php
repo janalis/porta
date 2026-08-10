@@ -55,7 +55,7 @@ final class PickerModalPresenterTest extends TestCase
         }
 
         return new PickerModalPresenter(
-            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], [], [], static fn (): bool => false, static fn (): bool => false), $this->tui),
+            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui),
             $this->overlays,
             frameHooks: $this->tui,
         );

@@ -10,8 +10,11 @@ use Porta\I18n\Translator;
 use Porta\Input\MouseEvent;
 use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
+use Porta\Layout\ResizableSidebar;
+use Porta\Layout\ViewRegions;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\Git\ChangesListWidget;
@@ -53,8 +56,7 @@ final class LayoutControllerNudgeTest extends TestCase
             $renderer,
             $this->tree,
             TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
-            $this->gitSidebar,
-            $this->settingsSidebar,
+            self::regionsWith($this->gitSidebar, $this->settingsSidebar),
             new Translator('en'),
         );
     }
@@ -69,6 +71,19 @@ final class LayoutControllerNudgeTest extends TestCase
 
         /** @var array<string, int|bool> */
         return json_decode((string) file_get_contents($file), associative: true);
+    }
+
+    /**
+     * The two regions, each already told how its sidebar resizes — which is
+     * what the container does once each view has minted and declared its own.
+     */
+    private static function regionsWith(ResizableSidebar $git, ResizableSidebar $settings): ViewRegions
+    {
+        $regions = new ViewRegions(Styles::dark());
+        $regions->mint('git')->setSidebarPanes($git);
+        $regions->mint('settings')->setSidebarPanes($settings);
+
+        return $regions;
     }
 
     public function testNudgeSidebarResizesTheTreeAndPersistsThePercent(): void
@@ -103,10 +118,10 @@ final class LayoutControllerNudgeTest extends TestCase
     {
         $layout = $this->controller();
 
-        $layout->nudgeGitSidebar(-200);
+        $layout->nudgeViewSidebar('git', -200);
         $this->assertSame(30, $this->gitSidebar->width(), 'git sidebar floor is 30');
 
-        $layout->nudgeSettingsSidebar(2);
+        $layout->nudgeViewSidebar('settings', 2);
         $file = $this->layoutFile();
         $this->assertSame(30, $file['gitSidebarWidthPercent']);
         $this->assertArrayHasKey('settingsSidebarWidthPercent', $file);
@@ -141,7 +156,7 @@ final class LayoutControllerNudgeTest extends TestCase
         $layout = $this->controller(columns: 200);
 
         for ($i = 0; $i < 100; ++$i) {
-            $layout->nudgeSettingsSidebar(2);
+            $layout->nudgeViewSidebar('settings', 2);
         }
 
         $this->assertSame(60, $this->settingsSidebar->width(), '60 columns, not 50% of 200');
@@ -151,7 +166,7 @@ final class LayoutControllerNudgeTest extends TestCase
     {
         $layout = $this->controller();
 
-        $layout->nudgeGitSidebar(-200);
+        $layout->nudgeViewSidebar('git', -200);
 
         $this->assertSame(30, $this->gitSidebar->width(), 'the pane declares 30 now, which is what the controller always clamped to');
         $this->assertSame(30, $this->gitSidebar->minWidth(), 'and it says so itself');

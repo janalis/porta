@@ -17,6 +17,7 @@ use Porta\Highlight\ColorMode;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\I18n\Translator;
 use Porta\Ide;
+use Porta\Layout\ViewRegions;
 use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceEditor;
@@ -35,6 +36,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\StyleSheetThemer;
 use Porta\Ui\Theme\Themes;
 use Porta\Widget\BreadcrumbsWidget;
@@ -111,7 +113,7 @@ final class SettingsControllerTest extends TestCase
             TerminalThemeFactory::createSwitchable(ColorMode::Ansi, 'dark'),
             new CursorStyle(),
             $translator,
-            new DiffViewWidget($t),
+            new ViewRegions(Styles::dark()),
             new EditorPanes(),
             new TabBarWidget(),
             TestWorkspaceLayout::create(rootDir: $rootDir),

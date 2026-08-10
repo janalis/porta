@@ -22,6 +22,7 @@ use Porta\Ui\ClickZones;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Ui\ThemeRefreshable;
 use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\DiffViewRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
@@ -49,7 +50,7 @@ use Tempest\Highlight\TerminalTheme;
  * a toolbar with clickable display toggles. Scrollable; read-only for history.
  */
 #[AsWidget('git-diff', flex: 1)]
-final class DiffViewWidget extends AbstractWidget implements FocusableInterface, LtrPane, MenuOverlayHost, VerticallyExpandableInterface
+final class DiffViewWidget extends AbstractWidget implements FocusableInterface, LtrPane, MenuOverlayHost, ThemeRefreshable, VerticallyExpandableInterface
 {
     use FillsPaneTrait;
     use FocusableTrait;

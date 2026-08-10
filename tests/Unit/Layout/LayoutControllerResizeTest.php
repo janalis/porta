@@ -10,8 +10,11 @@ use Porta\I18n\Translator;
 use Porta\Input\MouseEvent;
 use Porta\Layout\GitSidebar;
 use Porta\Layout\LayoutController;
+use Porta\Layout\ResizableSidebar;
+use Porta\Layout\ViewRegions;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\Git\ChangesListWidget;
@@ -60,10 +63,22 @@ final class LayoutControllerResizeTest extends TestCase
             $renderer,
             $this->tree,
             TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
-            $this->gitSidebar,
-            $this->settingsSidebar,
+            self::regionsWith($this->gitSidebar, $this->settingsSidebar),
             new Translator($locale),
         );
+    }
+
+    /**
+     * The two regions, each already told how its sidebar resizes — which is
+     * what each view does when it mints its own.
+     */
+    private static function regionsWith(ResizableSidebar $git, ResizableSidebar $settings): ViewRegions
+    {
+        $regions = new ViewRegions(Styles::dark());
+        $regions->mint('git')->setSidebarPanes($git);
+        $regions->mint('settings')->setSidebarPanes($settings);
+
+        return $regions;
     }
 
     private function press(int $col): MouseEvent
@@ -116,7 +131,7 @@ final class LayoutControllerResizeTest extends TestCase
         $separator = new WidgetRect(row: 0, col: 59, columns: 1, rows: 30);
         $left = new WidgetRect(row: 0, col: 60, columns: 40, rows: 30);
 
-        $this->assertTrue($layout->armGitSidebarResize($separator, $this->press(59)));
+        $this->assertTrue($layout->armViewSidebarResize('git', $separator, $this->press(59)));
 
         $layout->continueResizeDrag($this->drag(50), null, $left);
         $this->assertSame(50, $this->gitSidebar->width(), 'the git sidebar grows leftward under RTL');
@@ -128,9 +143,9 @@ final class LayoutControllerResizeTest extends TestCase
         $separator = new WidgetRect(row: 0, col: 69, columns: 1, rows: 30);
         $left = new WidgetRect(row: 0, col: 70, columns: 30, rows: 30);
 
-        $this->assertTrue($layout->armSettingsSidebarResize($separator, $this->press(69)));
+        $this->assertTrue($layout->armViewSidebarResize('settings', $separator, $this->press(69)));
 
-        $layout->continueResizeDrag($this->drag(60), null, null, $left);
+        $layout->continueResizeDrag($this->drag(60), null, $left);
         $this->assertSame(40, $this->settingsSidebar->width(), 'the settings sidebar grows leftward under RTL');
     }
 }

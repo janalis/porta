@@ -46,7 +46,7 @@ final class OverlayDeliveryTest extends TestCase
 
         return new OverlayDelivery(
             $this->renderer,
-            new MenuOverlayPanes([$this->pane, $this->detachedPane], [], [], static fn (): bool => false, static fn (): bool => false),
+            new MenuOverlayPanes([$this->pane, $this->detachedPane], static fn (): array => []),
             $this->tui,
         );
     }

@@ -82,7 +82,7 @@ final class WelcomeModalControllerTest extends TestCase
         );
 
         return new WelcomeModalController(
-            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], [], [], static fn (): bool => false, static fn (): bool => false), $this->tui),
+            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui),
             $this->welcome,
             new WelcomeSteps(new Translator('en'), $source ?? new NoHighlightPlugins(), $lifecycle, new CommandRegistry(), new MagoDetector('/nonexistent')),
             new MenuBarWidget(),

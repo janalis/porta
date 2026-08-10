@@ -22,15 +22,37 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  * Minted at runtime by {@see ViewRegions}, never compiled. A container built
  * before any plugin loads cannot hand a plugin-owned view its slots.
  */
-final readonly class ViewRegion
+final class ViewRegion
 {
+    /**
+     * The sidebar as ONE resizable unit.
+     *
+     * A region's sidebar is a container of stacked widgets that each render
+     * their own width, so a drag on the separator has to fan the new width out
+     * to all of them. Only the view knows which widgets those are — core sees
+     * a container — so the view supplies the unit and the layout controller
+     * resizes whatever it was given.
+     */
+    private ?ResizableSidebar $panes = null;
+
     public function __construct(
-        public string $id,
-        private ContainerWidget $area,
-        private ContainerWidget $sidebar,
-        private SeparatorWidget $separator,
-        private ContainerWidget $content,
+        public readonly string $id,
+        private readonly ContainerWidget $area,
+        private readonly ContainerWidget $sidebar,
+        private readonly SeparatorWidget $separator,
+        private readonly ContainerWidget $content,
     ) {}
+
+    /** The view declares how its sidebar resizes; without this the column is fixed. */
+    public function setSidebarPanes(ResizableSidebar $panes): void
+    {
+        $this->panes = $panes;
+    }
+
+    public function sidebarPanes(): ?ResizableSidebar
+    {
+        return $this->panes;
+    }
 
     /** The horizontal area mounted into `main`; the view never fills this itself. */
     public function area(): ContainerWidget

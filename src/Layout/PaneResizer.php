@@ -5,12 +5,6 @@ declare(strict_types=1);
 namespace Porta\Layout;
 
 use Porta\Widget\FileTreeWidget;
-use Porta\Widget\Git\ChangesListWidget;
-use Porta\Widget\Git\CommitBoxWidget;
-use Porta\Widget\Git\HistoryListWidget;
-use Porta\Widget\Settings\KeybindingsListWidget;
-use Porta\Widget\Settings\SettingsFormWidget;
-use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Tui;
 
@@ -26,12 +20,7 @@ final class PaneResizer
         private readonly LayoutController $layout,
         private readonly FileTreeWidget $tree,
         private readonly BottomDock $dock,
-        private readonly ChangesListWidget $gitChanges,
-        private readonly HistoryListWidget $gitHistory,
-        private readonly CommitBoxWidget $gitCommitBox,
-        private readonly SettingsNavWidget $settingsNav,
-        private readonly SettingsFormWidget $settingsForm,
-        private readonly KeybindingsListWidget $settingsKeys,
+        private readonly ViewRegions $regions,
     ) {}
 
     public function canResize(): bool
@@ -46,6 +35,26 @@ final class PaneResizer
         }
     }
 
+    /**
+     * The view whose sidebar holds $focus, or null.
+     *
+     * Two hardcoded three-widget lists stood here, one per view core happened
+     * to know. A region's sidebar IS the list — whatever the view stacked in
+     * it — so a contributed view's panes answer the same question.
+     */
+    private function viewOwning(?object $focus): ?string
+    {
+        // No null guard: a sidebar's children are widgets, so a null focus
+        // matches nothing and falls out of the loop on its own.
+        foreach ($this->regions->all() as $region) {
+            if (null !== $region->sidebarPanes() && \in_array($focus, $region->sidebar()->all(), strict: true)) {
+                return $region->id;
+            }
+        }
+
+        return null;
+    }
+
     private function resizer(int $direction): ?\Closure
     {
         $focus = $this->tui->getFocus();
@@ -53,8 +62,7 @@ final class PaneResizer
         return match (true) {
             $focus === $this->tree => fn () => $this->layout->nudgeSidebar(2 * $direction),
             null !== $focus && $focus === $this->dock->visiblePanel() => fn () => $this->layout->nudgeBottomPanel($direction),
-            \in_array($focus, [$this->gitChanges, $this->gitHistory, $this->gitCommitBox], strict: true) => fn () => $this->layout->nudgeGitSidebar(2 * $direction),
-            \in_array($focus, [$this->settingsNav, $this->settingsForm, $this->settingsKeys], strict: true) => fn () => $this->layout->nudgeSettingsSidebar(2 * $direction),
+            null !== ($view = $this->viewOwning($focus)) => fn () => $this->layout->nudgeViewSidebar($view, 2 * $direction),
             default => null,
         };
     }
