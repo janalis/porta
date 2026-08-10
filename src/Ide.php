@@ -21,8 +21,6 @@ use Porta\Editor\OpenFocus;
 use Porta\Editor\PaneRegistrar;
 use Porta\Event\IdeReady;
 use Porta\Event\IdeShuttingDown;
-use Porta\Git\GitInfo;
-use Porta\Git\GitRefresher;
 use Porta\History\SessionRestorer;
 use Porta\Input\InputDispatcher;
 use Porta\Layout\LayoutController;
@@ -43,6 +41,7 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\Menu\MenuRebuilder;
+use Porta\Workbench\Menu\MenuRegistrar;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\TerminalStateRefresher;
 use Porta\Workbench\View\ViewRegistrar;
@@ -83,8 +82,6 @@ final class Ide
 
     /** @var ServiceLocator<object> The one public boundary; every service() resolution goes through it. */
     private readonly ServiceLocator $locator;
-    private GitInfo $git;
-    private GitRefresher $gitRefresher;
     private WorkspaceLayout $workspaceLayout;
     private PaneLayout $paneLayout;
     private LayoutController $layout;
@@ -160,9 +157,6 @@ final class Ide
 
         $this->buildEditorArea();
 
-        $this->git = $this->service(GitInfo::class);
-        $this->gitRefresher = $this->service(GitRefresher::class);
-
         $this->buildLayoutAndOverlay();
 
         $this->workspaceLayout->mount($this->tui);
@@ -188,18 +182,12 @@ final class Ide
         $this->settingsLanguages->applyToEditor();
         $this->pluginLifecycle = $this->service(PluginLifecycle::class);
         // Construct every #[AsEager] service for its self-registering ctor
-        // side effect (view controllers attach to WorkspaceViews; the
+        // side effect (core's view controllers register themselves; the
         // presenters hook onBeforeFrame), in the tag's priority order — which
         // keeps the contractual find→picker→toast so a shared-span-slot
         // hand-over clears before it repaints.
         $this->service(EagerServices::class)->boot();
         $this->pluginLifecycle->refreshNav();
-
-        // Now that the view controllers exist — and have MINTED their regions,
-        // which is why this cannot run earlier — settle the layout for the
-        // persisted locale's writing direction (RTL mirrors the sidebar right)
-        // and give every region its pane order.
-        $this->paneLayout->applyDirection();
 
         $this->service(SearchUiWiring::class)->wire();
         // Panes before commands: a pane's registration is what makes its
@@ -212,6 +200,13 @@ final class Ide
         // to be registered before anything can open it, and core's own two
         // register from their constructors during that boot.
         $this->service(ViewRegistrar::class)->register();
+        $this->service(MenuRegistrar::class)->register();
+        // AFTER the registrar, not before: a region exists only once its view
+        // has minted one, and a plugin's view is built right above. Running
+        // this at the eager boot — where it sat while both views were core's —
+        // left a contributed view's area mounted and empty, which renders as a
+        // blank workspace with no error anywhere.
+        $this->paneLayout->applyDirection();
         // Before WidgetHooks: BottomDock::wire() installs a dismiss hook on
         // every registered panel, so the registry has to be populated first.
         $this->service(CoreDockPanels::class)->register();
@@ -270,9 +265,8 @@ final class Ide
     public function run(): void
     {
         $this->lspBootstrapper->start();
-        $this->gitRefresher->refreshBranch();
 
-        // Poll the filesystem so external edits, git checkouts and deletions are
+        // Poll the filesystem so external edits, branch switches and deletions are
         // reflected in the open buffers and the tree without a manual reload. The
         // timer only fires once the event loop runs (inside tui->run()), so it is
         // safe to arm before setup; arming it before the try guarantees the finally
@@ -338,7 +332,6 @@ final class Ide
             $this->debugState->save();
             $this->notifier->dismissAll(); // cancel pending toast timers — nothing may outlive the loop
             $this->lsp->stop();
-            $this->git->cancelAll();
             $this->run->stop();
             $this->debug->stop();
         }

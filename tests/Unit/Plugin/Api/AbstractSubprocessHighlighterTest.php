@@ -108,6 +108,8 @@ final class AbstractSubprocessHighlighterTest extends TestCase
             new MenuFileContext(),
             new ViewRegistry(),
             new Clipboard($tui),
+            new StatusBarWidget(),
+            new CodeEditorWidget(),
         ));
 
         $api = new PluginApi('demo', $this->manager, $this->project->dir, $settings);

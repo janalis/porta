@@ -9,7 +9,6 @@ use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
-use Porta\Git\GitInfo;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\AwaitsGit;
@@ -55,7 +54,6 @@ final class EditorConfigIntegrationTest extends TestCase
 
         Services::resolve($this->ide, ViewRegistry::class)->closeAll();
         Services::resolve($this->ide, Notifier::class)->dismissAll();
-        $this->awaitGitInfo(Services::resolve($this->ide, GitInfo::class));
     }
 
     private function ide(TempProject $project): Ide

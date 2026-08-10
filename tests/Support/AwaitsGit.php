@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
-use Porta\Git\GitInfo;
-
 /**
  * The git completion barrier, for any test that starts real git subprocesses —
  * `src` carries no test-only `isBusy()`, so it reads the runner's in-flight map
@@ -19,10 +17,14 @@ use Porta\Git\GitInfo;
  * landed, a watcher the NEXT test inherited.
  *
  * Composed by {@see RunsIde}; a unit test pairs it with {@see PumpsLoop}.
+ *
+ * Untyped $git on purpose: git is a PLUGIN now, so `Porta\GitPlugin\GitInfo`
+ * is not a name core's test support may hold — the arch gate would read it as
+ * a core→plugin edge. What is reached through it is private state either way.
  */
 trait AwaitsGit
 {
-    private function awaitGitInfo(GitInfo $git, float $timeout = 5.0): void
+    private function awaitGitInfo(object $git, float $timeout = 5.0): void
     {
         $runner = Probe::get($git, 'runner');
         $this->await(static fn (): bool => [] === Probe::get($runner, 'running'), $timeout, 'git to finish');

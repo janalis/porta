@@ -79,6 +79,10 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
      * The nav rows: sections, one sub-item per active plugin under Plugins,
      * then the Languages header and its rows.
      *
+     * There is no "Version control" header any more. Git's page was a core
+     * section with a hardcoded row here; git is a plugin, so its settings are
+     * its own page under Plugins, reached the same way every other plugin's is.
+     *
      * @param list<string> $pluginNames
      *
      * @return list<Entry>
@@ -94,8 +98,6 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
                 }
             }
         }
-        $entries[] = ['id' => null, 'label' => 'Version control', 'kind' => NavEntryKind::Header];
-        $entries[] = ['id' => 'vcs:git', 'label' => 'Git', 'kind' => NavEntryKind::Vcs];
         $entries[] = ['id' => null, 'label' => 'Languages', 'kind' => NavEntryKind::Header];
         foreach (LanguageCatalog::LANGUAGES as $id => $name) {
             $entries[] = ['id' => 'lang:'.$id, 'label' => $name, 'kind' => NavEntryKind::Language];
@@ -271,7 +273,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
 
             // Language, plugin and the Git sub-item indent under their category
             // and keep their own (untranslated) names.
-            $text = \in_array($entry['kind'], [NavEntryKind::Language, NavEntryKind::Plugin, NavEntryKind::Vcs], strict: true) ? '   '.$entry['label'] : ' '.$this->translator->trans($entry['label']);
+            $text = \in_array($entry['kind'], [NavEntryKind::Language, NavEntryKind::Plugin], strict: true) ? '   '.$entry['label'] : ' '.$this->translator->trans($entry['label']);
             $text = AnsiText::truncate($text, $width, pad: true);
             $lines[] = match (true) {
                 $index === $this->list->selected() => $this->applyElement('selected', $text),

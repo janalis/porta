@@ -81,7 +81,9 @@ what would re-open it. Re-proposing one costs a round.
 
 - Adopting FrameworkBundle or a Kernel; `inline_factories`; `tagged_locator()` for the
   locator; `classmap-authoritative` in `composer.json`.
-- The extraction audit — every candidate measured, the topic closed.
+- The extraction audit — every candidate measured, the topic closed. Git is the
+  one that re-opened and landed: `src/Git` and `src/Widget/Git` are
+  `plugins/git/` now, and core keeps no git-named symbol.
 - Namespace cycles — closed at class granularity.
 - `Layout/ViewRegion` as a RENAME of the compiled slots (runtime minting replaced
   it); clickable status segments (reopened — the branch cell is the consumer).

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Container;
 
 use Porta\Settings\Section\GeneralSection;
-use Porta\Settings\Section\GitSection;
 use Porta\Settings\Section\HighlightingSection;
 use Porta\Settings\Section\InterfaceSection;
 use Porta\Settings\Section\LanguageSection;
@@ -41,7 +40,6 @@ final class SettingsSectionOrderTest extends ContainerTestCase
             InterfaceSection::class, // 600
             HighlightingSection::class, // 500
             PluginsSection::class, // 400 — claims both 'plugins' and 'plugin:<name>'
-            GitSection::class, // 300
             LanguageSection::class, // 200
             GeneralSection::class, // 100 — the catch-all; MUST stay last
         ];

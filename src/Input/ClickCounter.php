@@ -21,7 +21,7 @@ namespace Porta\Input;
  * action in the IDE and give every list a second idiom for one act. The one
  * pane where select-vs-activate genuinely differs — the git changes list,
  * whose selection loads a diff — solves it without multiplicity (see
- * {@see \Porta\Widget\Git\ChangesListWidget::hoverRow()}).
+ * a list widget's `hoverRow()`).
  */
 final class ClickCounter
 {

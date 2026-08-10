@@ -19,7 +19,7 @@ use Symfony\Component\Tui\Tui;
  * the per-pane slice loop (local spans + shadow bands) and the clear sweep.
  * The presenters keep what differs — their open gate, their clear-once
  * `$shown` guard (each clears only what it painted; the modal slot is shared
- * under the WorkspaceViews interlock) and their state source; this owns only
+ * under the view registry's interlock) and their state source; this owns only
  * "push these boxes onto the panes". Delivery targets the CURRENT pane set,
  * clearing targets ALL panes — a surface may close across a view swap.
  */

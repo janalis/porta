@@ -17,7 +17,5 @@ final readonly class LayoutPrefs
         public ?int $bottomPanelHeightPercent = null,
         public ?int $gitSidebarWidthPercent = null,
         public ?int $settingsSidebarWidthPercent = null,
-        public ?bool $gitDiffSplit = null,
-        public ?bool $gitDiffHideWhitespace = null,
     ) {}
 }

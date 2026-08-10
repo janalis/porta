@@ -181,12 +181,12 @@ final class ActionCatalog
         'debug_run_to_cursor' => ['label' => 'Run to Cursor', 'keys' => ['alt+f9']],
         'debug_stop' => ['label' => 'Stop Debugger', 'keys' => ['ctrl+f2']],
         'debug_restart' => ['label' => 'Restart Debugger', 'keys' => ['ctrl+shift+f5']],
-        // NOT adoptable: ide_git toggles a view BY ID, and core can toggle any
-        // id — the command stays core's and goes inert when nothing registers
-        // under 'git'. Flagging it would also make the menu skip the item
-        // whenever it is unregistered, which is the opposite of what the
-        // adoptable skip is for.
-        'ide_git' => ['label' => 'Git: Changes', 'keys' => ['ctrl+alt+d']],
+        // Adoptable, unlike ide_settings and ide_welcome beside it: the git
+        // view is IMPLEMENTED by the bundled git plugin, and outside a
+        // repository that plugin registers neither the view nor this verb. The
+        // menu's skip-an-unregistered-adoptable rule is then exactly right —
+        // the whole Git group is hidden in the same case.
+        'ide_git' => ['label' => 'Git: Changes', 'keys' => ['ctrl+alt+d'], 'adoptable' => true],
         'git_push' => ['label' => 'Git: Push', 'keys' => ['ctrl+shift+k'], 'adoptable' => true],
         'ide_settings' => ['label' => 'Settings…', 'keys' => ['ctrl+,']],
         'ide_help' => ['label' => 'Documentation', 'keys' => ['f1']],

@@ -35,11 +35,15 @@ Anything that composes features does not belong here.
 in `Widget/`.
 
 **`Workbench/View/`** — what a full-screen view is, for core's own and for a
-contributed one alike. `ContributedView` (a view supplies its own string id;
+contributed one alike. Git's is a plugin's; Settings' and Welcome's are core's;
+nothing in this namespace can tell. `ContributedView` (a view supplies its own string id;
 there is no enum of views), `ViewRegistry` (the interlock — one view owns the
 main area at a time), `ViewHost` (the main-area swap, done once rather than
-per view), `ViewServices` (the six members core hands a contributed view) and
-`ViewRegistrar` (the `PaneRegistrar` twin that drains `registerView()`).
+per view), `ViewServices` (the seven members core hands a contributed view) and
+`ViewRegistrar` (the `PaneRegistrar` twin that drains `registerView()`). The
+pointer seam is here too — `ViewPointer`, `ViewPointers`, `WheelGesture`,
+`WheelAxis` — because a view CARRIES its pointer (`ContributedView::pointer()`),
+so registering the view is what wires it.
 
 A view's sidebar/separator/content is NOT here: `Layout/ViewRegions` mints
 those at runtime, because the container is compiled and cached before any
@@ -51,6 +55,13 @@ sweep — asks the region instead.
 
 **`Notifier::notify()` ends in `requestRender()`** on both the toast and
 status-bar paths. Never follow a flash with your own render request.
+
+**`plugins/<name>/src/`** — a plugin's own classes, under its own namespace
+(`Porta\GitPlugin\`, never `Porta\Git`: core's edge buckets are FQCN-keyed and
+sharing a prefix would merge the two halves). **A plugin class can never be a
+container service**, so a plugin holds no core service it was not handed: the
+git plugin carries `Flash`, `Modals`, `Translate` and `DiffPrefs`, each one
+closure from `PluginApi` behind the method name its call sites already used.
 
 **`Settings/`** — all settings controllers plus the row model (`SettingsRow`,
 `SettingsRowKind`). `Config/` keeps only `.porta.json` parsing and the action

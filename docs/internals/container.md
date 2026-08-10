@@ -105,7 +105,7 @@ All five are Symfony-native: three are `AutoconfigureTag` subclasses, one is an
 `registerAttributeForAutoconfiguration()` API because it builds a nested `Style`
 definition, which a tag cannot express.
 
-**`#[AsEager]`** exists for services that attach to `WorkspaceViews` or hook
+**`#[AsEager]`** exists for services that register themselves with something or hook
 `BidiTui::onBeforeFrame` and have no inbound reference — without a forced
 resolve they would never exist. Its priority fixes contractual construction
 order (the find → picker → toast presenters). Note the priority is deliberately

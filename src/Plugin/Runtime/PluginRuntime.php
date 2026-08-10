@@ -10,12 +10,14 @@ use Porta\Editor\ChangeMarkSink;
 use Porta\Editor\DiagnosticsSink;
 use Porta\Editor\DocumentReplacer;
 use Porta\Editor\EditorTextAccess;
+use Porta\Editor\EditorViewOptions;
 use Porta\Editor\FileOpener;
 use Porta\Editor\LineAnnotationSink;
 use Porta\Editor\ModalHost;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Support\Clipboard;
+use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Dock\DockToolController;
 use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Notifier;
@@ -47,5 +49,7 @@ final readonly class PluginRuntime
         public MenuFileContext $menuFile,
         public ViewRegistry $views,
         public Clipboard $clipboard,
+        public StatusBarWidget $statusBar,
+        public EditorViewOptions $editorView,
     ) {}
 }

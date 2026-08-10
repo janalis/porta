@@ -69,6 +69,20 @@ final readonly class ViewHost
         $this->tui->setFocus($widget);
     }
 
+    /**
+     * What holds focus right now, so a view can find its place in its own ring.
+     *
+     * A view cycling its panes has to know which one it is on, and the answer
+     * is the runtime's, not the region's — the region holds the widgets but not
+     * which of them the terminal is typing into. This exists rather than
+     * handing a view the whole `Tui`: every other thing the git view did with
+     * one was `setFocus` or `requestRender`, which are already here.
+     */
+    public function focused(): ?AbstractWidget
+    {
+        return $this->tui->getFocus();
+    }
+
     /** Ask for a frame. */
     public function invalidate(): void
     {

@@ -71,7 +71,7 @@ Hit-testing uses the renderer's per-widget rects via `Input/HitTester`, whose
 Satellites carry the parts that need no drag state: `WheelRouter` (all wheel
 routing), `ContextMenuRouter` (all right-click routing), `HoverRouter`,
 `ClickCounter`, `ZoomGesture`, `WelcomeMouseRouter`. The per-view ones live with
-their views — `Git\GitMouseRouter`, `Settings\SettingsMouseRouter` — because the
+their views — the git plugin's `GitMouseRouter`, `Settings\SettingsMouseRouter` — because the
 view carries them: `ContributedView::pointer()` is what `ViewRegistry::register()`
 wires into `ViewPointers`, so a view and its pointer arrive together or not at
 all.
@@ -94,21 +94,38 @@ notch.
 
 ## Full-screen views
 
-`Workbench/WorkspaceViews` keys `Workbench/FullScreenView` controllers by the
-`Workbench/WorkspaceView` enum. That enum's exhaustive `ownsMainArea()` match is
-what makes Welcome's floating nature declarative: Welcome is *active* without
-*detaching* the main area, so `isAnyOpen()` and `isAttached()` range over
-main-area-owning cases only. A fourth view fails `composer analyze` until it
-decides.
+`Workbench/View/ViewRegistry` keys `ContributedView`s by a **string id the view
+supplies**. It was an enum, and the enum was the reason a view had to be known
+at compile time — adding one meant editing `WorkspaceView`, which a plugin
+cannot do. Everything that ranged over `WorkspaceView::cases()` now ranges over
+what has registered.
 
-Every verb — toggle-with-interlock, closeAll, focusTarget, cycleFocus — ranges
-over the registry, so a new view is one enum case plus one `attach()` call. Only
-the two view-specific capabilities keep concrete controllers, via typed
-`attachGit`/`attachSettings` wrappers; callers cannot hold the controllers
-themselves, because of the construction cycles the registry breaks.
+`ownsMainArea()` moved onto the interface for the same reason, and Welcome is
+what proves the distinction is real: it is *active* without *detaching* the main
+area, so `isAnyOpen()` and `isAttached()` count only main-area-owning views.
 
-Welcome's `cycleFocus` returns **false**, so `FocusCoordinator` falls through to
-the editor ring while the dispatcher's modal branch swallows keys.
+A view carries everything it needs to be driven:
+
+- **`pointer()`** — its `ViewPointer`, or null when it has no panes to click.
+  `ViewRegistry::register()` wires it, so a view and its pointer arrive together
+  or not at all. Three services used to carry `#[AsEager]` purely to register
+  themselves.
+- **`contextMenus()`** — its `ViewMenuSource`, on the same terms.
+- **`focusTarget()`/`cycleFocus()`** — its own focus ring. Welcome's
+  `cycleFocus` returns **false**, so `FocusCoordinator` falls through to the
+  editor ring while the dispatcher's modal branch swallows keys.
+
+`Workbench/View/ViewHost` does the main-area swap — clear, add the region,
+restore the editor panes in RTL-aware order — once for every view.
+`Layout/ViewRegions` mints the region: a compiled slot cannot reach a view core
+does not know at build time, and the container is built before any plugin PHP
+runs.
+
+A plugin registers one with `PluginApi::registerView($id, $factory)`. The
+factory runs ONCE, after plugins commit, with the seven-member `ViewServices`;
+its region is minted before the call, so it can fill both panes immediately.
+The git view is the proof that this carries a real one — see
+`docs/internals/decisions.md`.
 
 ## Floating surfaces
 
@@ -304,13 +321,20 @@ active but not shown.
 Adapters are config-only: `.porta.json` `languages.<id>.debug`, with the
 registry in `Debug/DebugAdapters`.
 
-## Git
+## Git — a bundled plugin, not a subsystem
 
-`Git/GitProcessRunner` owns the only mutable state in the layer — the in-flight
-process map — so `Git/GitInfo`'s thirty-odd porcelain verbs are stateless
+**All of it lives in `plugins/git/`.** Core keeps no git-named symbol: not in
+the view enum, the menu model, the status bar, the settings nav, or
+`.porta.json`. What is written below is still true of the code; it is just not
+core's. `docs/internals/decisions.md` has the move and the seams it needed.
+
+`GitProcessRunner` owns the only mutable state in the layer — the in-flight
+process map — so `GitInfo`'s thirty-odd porcelain verbs are stateless
 argv-builders over it. That in-flight map is also the **E2e completion
 barrier**: git mutates the tree before the exit callback fires, so an empty map
-means the operation landed on disk.
+means the operation landed on disk. `RunsIde::awaitGit()` reaches it through
+`ViewRegistry::find('git')` — the view is the one plugin-built object core can
+name.
 
 The runner answers a run that cannot happen as exit 1 with no output. Every
 caller already handles that shape — the `Outcome` verbs read the code, and every
@@ -319,16 +343,17 @@ whole availability rule.
 
 Availability has **two predicates and they mean different things**:
 `isAvailable()` is binary-and-repository, `isRepository()` is repository alone.
-Outside a repository the git verbs and `ide_git` are not registered and
-`MenuModel`'s `groupVisible` predicate drops the whole Git group. Inside one
-with no `git` binary the chrome all stays and says so when run — hiding it there
-would leave a user plainly inside a repository with no way to learn why git
-vanished.
+Outside a repository `activate()` returns before registering the view, the menu,
+the branch cell or any verb — `ide_git` included, which is why that id is
+`adoptable` — so `MenuModel` skips the unregistered items and the group is
+never built. Inside one with no `git` binary the chrome all stays and says so
+when run: hiding it there would leave a user plainly inside a repository with no
+way to learn why git vanished.
 
 The repository check is `file_exists($rootDir.'/.git')`, not `is_dir`: in a
 linked worktree and in a submodule that path is a **file**.
 
-Output parsing lives in the `Git/*Parser` tier. The view's axes are all pure
+Output parsing lives in the `*Parser` tier. The view's axes are all pure
 enums — nothing crosses a persistence boundary, which is what backed enums are
 for.
 

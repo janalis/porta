@@ -20,6 +20,8 @@ use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
 use Porta\Search\TokenSpanProvider;
 use Porta\Workbench\Dock\DockToolSource;
+use Porta\Workbench\Menu\ContributedMenuSource;
+use Porta\Workbench\Menu\MenuContribution;
 use Porta\Workbench\Menu\MenuSurface;
 use Porta\Workbench\StatusCell;
 use Porta\Workbench\StatusSegmentSource;
@@ -36,9 +38,10 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
  * {@see runtime()} gate.
  */
 final class PluginManager implements
+    ContributedMenuSource,
+    ContributedViewSource,
     DebugAdapterProvider,
     DockToolSource,
-    ContributedViewSource,
     EditorPaneSource,
     LanguageServerProvider,
     RebindableActionSource,
@@ -67,6 +70,8 @@ final class PluginManager implements
     private array $panes = [];
     /** @var list<array{plugin: string, id: string, factory: \Closure}> committed full-screen views, in load order */
     private array $views = [];
+    /** @var list<array{plugin: string, contribution: MenuContribution}> committed top-level menus, in load order */
+    private array $menus = [];
     /** @var list<array{plugin: string, id: string, label: string}> committed rebindable actions, in load order */
     private array $actions = [];
     /** @var list<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}> committed dock list tools, in load order */
@@ -184,6 +189,9 @@ final class PluginManager implements
         foreach ($api->bufferedViews() as $view) {
             $this->views[] = $view;
         }
+        foreach ($api->bufferedMenus() as $menu) {
+            $this->menus[] = $menu;
+        }
         foreach ($api->bufferedActions() as $action) {
             $this->actions[] = $action;
         }
@@ -285,6 +293,7 @@ final class PluginManager implements
         $this->viewers = array_values(array_filter($this->viewers, static fn (array $viewer): bool => $name !== $viewer['plugin']));
         $this->panes = array_values(array_filter($this->panes, static fn (array $pane): bool => $name !== $pane['plugin']));
         $this->views = array_values(array_filter($this->views, static fn (array $view): bool => $name !== $view['plugin']));
+        $this->menus = array_values(array_filter($this->menus, static fn (array $menu): bool => $name !== $menu['plugin']));
         $this->actions = array_values(array_filter($this->actions, static fn (array $action): bool => $name !== $action['plugin']));
         $this->listTools = array_values(array_filter($this->listTools, static fn (array $tool): bool => $name !== $tool['plugin']));
         $this->statusSegments = array_values(array_filter($this->statusSegments, static fn (array $segment): bool => $name !== $segment['plugin']));
@@ -643,6 +652,12 @@ final class PluginManager implements
     public function reportViewFailure(string $plugin, \Throwable $error): void
     {
         $this->reportFailure($plugin, $error);
+    }
+
+    /** @return list<MenuContribution> */
+    public function contributedMenus(): array
+    {
+        return array_map(static fn (array $entry): MenuContribution => $entry['contribution'], $this->menus);
     }
 
     /** @return list<array{plugin: string, id: string, factory: \Closure}> */

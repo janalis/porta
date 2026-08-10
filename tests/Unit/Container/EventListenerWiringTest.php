@@ -264,6 +264,14 @@ final class EventListenerWiringTest extends TestCase
             // onFileOpened and onFileReloaded.
             'BufferOpened',
             'BufferReloaded',
+            // The three git facts. They stayed in `Porta\Event` when the rest
+            // of git left `src/` — precisely because they are the three
+            // anything may care about, which is why they are PluginObservable
+            // — so both the dispatch and every reaction are now a plugin's,
+            // registered through PluginApi::on() at runtime.
+            'GitCommitted',
+            'GitRemoteCompleted',
+            'WorkingTreeChanged',
         ];
 
         $dispatcher = $this->dispatcher();

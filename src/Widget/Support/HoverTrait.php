@@ -13,7 +13,7 @@ namespace Porta\Widget\Support;
  *
  * Hover is tint-only in every pane whose selection outlives the pointer — ask
  * "can the selection change while the pointer sits still?", and if it can, the
- * pointer must not own it. {@see \Porta\Widget\Git\ChangesListWidget::hoverRow()}
+ * pointer must not own it. a list widget's `hoverRow()`
  * is the load-bearing case (its selection drives a diff reload) and the
  * query-field panels are the subtle one: a resting pointer would silently
  * re-target Enter while you type.
@@ -27,7 +27,7 @@ namespace Porta\Widget\Support;
  *
  * Single-index lists only. A widget with two independent sub-list tints
  * implements {@see HoverableList} directly — see
- * {@see \Porta\Widget\Git\HistoryListWidget}.
+ * a paged history list.
  */
 trait HoverTrait
 {

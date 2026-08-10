@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Container;
 
-use Porta\Git\GitMenu;
-use Porta\Git\GitViewController;
 use Porta\Layout\ResponsiveLayout;
 use Porta\Overlay\Presenter\FindModalPresenter;
 use Porta\Overlay\Presenter\PickerModalPresenter;
@@ -41,7 +39,6 @@ final class AsEagerMembershipTest extends ContainerTestCase
 
         // The prioritised head, where the ORDER is the contract.
         $ordered = [
-            GitViewController::class, // 700
             ResponsiveLayout::class, // 600
             SettingsViewController::class, // 500
             WelcomeModalController::class, // 400
@@ -55,15 +52,14 @@ final class AsEagerMembershipTest extends ContainerTestCase
         // SET, because their relative order is container discovery order and no
         // behaviour reads it — asserting it would pin an accident.
         //
-        // Three left this list when a view took ownership of its pointer and
-        // its context menus: the two mouse routers and GitContextMenus are now
-        // constructor arguments of the controllers that own them, so
-        // ViewRegistry::register() wires them and an ordinary reference builds
-        // them. The tag stays only for what genuinely has no owner — a menu
-        // contribution belongs to no one widget.
-        $unordered = [
-            GitMenu::class,
-        ];
+        // Empty, and that is the finding rather than an omission. Three left
+        // when a view took ownership of its pointer and its context menus, and
+        // the last two left with git: a plugin class can never be a container
+        // service, so what `plugin.php` builds by hand cannot carry a tag. The
+        // list stays because the tag is still the sanctioned way for a CORE
+        // service to exist for its side effect, and the day one does it must
+        // be written down here.
+        $unordered = [];
 
         self::assertSame($ordered, \array_slice($actual, offset: 0, length: \count($ordered)), 'the contractual construction order');
 

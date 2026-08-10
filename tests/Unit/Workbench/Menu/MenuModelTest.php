@@ -193,7 +193,11 @@ final class MenuModelTest extends TestCase
 
     private function gitCommands(): CommandRegistry
     {
+        // ide_git is adoptable too, and therefore skipped when unregistered:
+        // the git VIEW is the git plugin's, and outside a repository that
+        // plugin registers neither the view nor this verb.
         return new CommandRegistry()
+            ->add('ide_git', static function (): void {}, label: 'Git: Changes')
             ->add('git_stage', static function (): void {}, label: 'Git: Stage Current File')
             ->add('git_commit', static function (): void {}, label: 'Git: Commit…')
             ->add('git_blame', static function (): void {}, label: 'Git: Blame Current Line');

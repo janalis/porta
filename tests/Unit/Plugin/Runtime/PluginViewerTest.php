@@ -305,6 +305,39 @@ final class PluginViewerTest extends TestCase
         $this->assertSame([], $manager->statusSegments(), 'a removed plugin takes its segment with it');
     }
 
+    public function testAContributedMenuTravelsWithItsViewSafeListAndLeavesWithItsPlugin(): void
+    {
+        // A top-level group of its own, rather than an entry in the trailing
+        // Plugins menu — the git group is the case that needed it. Both halves
+        // are one call because a menu without its view-safe list greys out its
+        // own items the moment its view opens.
+        $manager = $this->manager();
+        $api = $this->api($manager, 'vcs');
+        $api->registerMenu('Git', 'Run', ['i:git_commit'], viewId: 'git', viewSafe: ['ide_quit']);
+        $manager->commit($api);
+
+        $menus = $manager->contributedMenus();
+        self::assertCount(1, $menus);
+        $this->assertSame('Git', $menus[0]->title);
+        $this->assertSame('Run', $menus[0]->after);
+        $this->assertSame(['ide_quit'], $menus[0]->viewSafe);
+
+        $manager->deactivate('vcs', new CommandRegistry());
+        $this->assertSame([], $manager->contributedMenus(), 'a removed plugin takes its menu with it');
+    }
+
+    public function testATitlelessMenuIsRefused(): void
+    {
+        // The menu bar renders a title; an empty one is a group nothing can
+        // open, sitting in the bar as a gap. Refused where it is declared
+        // rather than skipped at render, so the plugin's own barrier reports it.
+        $api = $this->api($this->manager(), 'vcs');
+
+        $this->expectException(PluginException::class);
+        $this->expectExceptionMessageMatches('/needs a title/');
+        $api->registerMenu('', 'Run', ['i:git_commit']);
+    }
+
     public function testASegmentMayBeAWholeCellAndIsGuardedTheSameWay(): void
     {
         // A tone and a right-click menu do not survive being joined into the

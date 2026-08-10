@@ -8,7 +8,6 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
-use Porta\Git\GitInfo;
 use Porta\Lsp\FoldingController;
 use Porta\Run\RunController;
 use Porta\Search\Everywhere\SearchEverywhereController;
@@ -35,7 +34,6 @@ final class ViewCommands implements CommandProvider
         private readonly BufferService $bufferService,
         private readonly FoldingController $folding,
         private readonly string $docsDir,
-        private readonly GitInfo $git,
     ) {}
 
     public function register(CommandRegistry $commands): void
@@ -73,13 +71,6 @@ final class ViewCommands implements CommandProvider
             ->add('dock_prev_panel', fn () => $this->dock->cycle(-1), keyBound: KeyDispatch::Bound, when: fn (): bool => null !== $this->dock->visiblePanel())
             ->add('ide_terminal_new', fn () => $this->run->newTerminalSession(), keyBound: KeyDispatch::Bound)
             ->add('ide_run', fn () => $this->run->openRunMenu(), keyBound: KeyDispatch::Bound);
-        // Registered only inside a repository, with the rest of git's verbs: the
-        // view it toggles can only say "not a git repository" outside one. The
-        // chain breaks here rather than moving the id, so the palette order is
-        // unchanged where it does register.
-        if ($this->git->isRepository()) {
-            $commands->add('ide_git', fn () => $this->views->toggle('git'), keyBound: KeyDispatch::Bound);
-        }
         $commands
             ->add('ide_settings', fn () => $this->views->toggle('settings'), keyBound: KeyDispatch::Bound)
             // No ActionCatalog entry and no default key: a keyless catalog entry

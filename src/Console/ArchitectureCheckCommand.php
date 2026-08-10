@@ -55,7 +55,6 @@ final class ArchitectureCheckCommand extends Command
         'Command>Container',
         'Command>Debug',
         'Command>Editor',
-        'Command>Git',
         'Command>Layout',
         'Command>Lsp',
         'Command>Plugin',
@@ -89,17 +88,8 @@ final class ArchitectureCheckCommand extends Command
         'Editor>Widget',
         'Editor>Workbench',
         'Event>Editor',
-        'Event>Git',
         'Event>Workbench',
         'Event>Widget',
-        'Git>Container',
-        'Git>Event',
-        'Git>Input',
-        'Git>Layout',
-        'Git>Support',
-        'Git>Ui',
-        'Git>Widget',
-        'Git>Workbench',
         // The graph-viewer plugin's own classes (plugins/graph-viewer/src): the
         // architecture scanner reaches core's AsyncProcess and JsonFile. A
         // plugin depending on core is the allowed direction — core depending on
@@ -110,10 +100,22 @@ final class ArchitectureCheckCommand extends Command
         // paints with the image viewer's rasterizer, which is why its manifest
         // declares `requires: ["image-viewer"]` — the dependency mechanism's
         // first real use.
+        // The git plugin owns the whole git feature now: the view and its five
+        // widgets, the branch cell, the menu, the palette verbs, the settings.
+        // `Porta\Git` no longer exists, and neither does any core edge INTO
+        // git — which is what the seven vanished `*>Git` entries above record.
+        // What is left is a plugin reaching for core's toolkits, the allowed
+        // direction, and the same set `Help` and `GraphViewer` already reach for.
         'GitPlugin>Event',
-        'GitPlugin>Git',
+        'GitPlugin>Highlight',
+        'GitPlugin>Input',
+        'GitPlugin>Layout',
+        'GitPlugin>Overlay',
         'GitPlugin>Support',
         'GitPlugin>Plugin',
+        'GitPlugin>Ui',
+        'GitPlugin>Widget',
+        'GitPlugin>Workbench',
         'GraphViewer>ImageViewer',
         'GraphViewer>Support',
         'GraphViewer>Ui',
@@ -186,9 +188,11 @@ final class ArchitectureCheckCommand extends Command
         'Plugin>Event',
         'Plugin>Highlight',
         'Plugin>Lsp',
+        'Plugin>Overlay',
         'Plugin>Search',
         'Plugin>Settings',
         'Plugin>Support',
+        'Plugin>Widget',
         'Plugin>Workbench',
         'Run>Event',
         'Run>Container',
@@ -213,7 +217,6 @@ final class ArchitectureCheckCommand extends Command
         'Settings>Debug',
         'Settings>Editor',
         'Settings>Event',
-        'Settings>Git',
         'Settings>Highlight',
         'Settings>Input',
         'Settings>Layout',
@@ -246,7 +249,6 @@ final class ArchitectureCheckCommand extends Command
         'Widget>Container',
         'Widget>Debug',
         'Widget>Editor',
-        'Widget>Git',
         'Widget>Help',
         'Widget>Highlight',
         'Widget>Input',
@@ -280,10 +282,14 @@ final class ArchitectureCheckCommand extends Command
 
     /**
      * Multi-member SCCs the audit measured and accepted, each a sorted member
-     * list. #1 is the WorkspaceViews registry: closed only by its attach*()
-     * setter fields; construction stays a DAG (docs/internals/decisions.md). #2 is
-     * degenerate: IdeContainerFactory reads Ide::VERSION as a cache-key salt —
-     * a constant, not a collaboration.
+     * list. Both are degenerate: IdeContainerFactory reads Ide::VERSION as a
+     * cache-key salt (a constant, not a collaboration), and PluginApi/
+     * PluginManager hold each other because the API's every verb reports
+     * through the manager's fault barrier.
+     *
+     * The third — the seven-class ring around the old view registry — is gone
+     * rather than pinned: its two concrete controller fields were the whole of
+     * it, and a string-keyed registry has neither.
      */
     private const array ALLOWED_SCCS = [
         ['Porta\\Container\\IdeContainerFactory', 'Porta\\Ide'],

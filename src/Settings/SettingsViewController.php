@@ -33,7 +33,7 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
  * The full-screen settings view: swaps the main area's tree|editor children for
  * a [nav sidebar | separator | content] column. The sidebar selects a section —
  * General, Keybindings, Plugins, or a language — and the content pane shows the
- * matching form/list. Structured like {@see \Porta\Git\GitViewController} but simpler (no
+ * matching form/list. Structured like the git plugin's view but simpler (no
  * poll loop, no availability gate).
  */
 #[AsEager(priority: 500)]

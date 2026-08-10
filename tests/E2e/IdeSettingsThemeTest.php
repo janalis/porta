@@ -118,11 +118,13 @@ final class IdeSettingsThemeTest extends TestCase
                 },
                 1100 => static function ($tui): void {
                     $tui->tick();
-                    // Select PHP in the nav (screen row 10, after Interface +
-                    // Highlighting + Plugins + the Version control category and
-                    // the Languages header) → the content shows its indent rows.
-                    $tui->handleInput("\x1b[<0;5;10M");
-                    $tui->handleInput("\x1b[<0;5;10m");
+                    // Select PHP in the nav (screen row 8, after Interface +
+                    // Highlighting + Plugins and the Languages header) → the
+                    // content shows its indent rows. Two rows higher than it
+                    // used to be: the Version control category and its Git
+                    // sub-item went with the git plugin.
+                    $tui->handleInput("\x1b[<0;5;8M");
+                    $tui->handleInput("\x1b[<0;5;8m");
                 },
                 1300 => function ($tui, $terminal): void {
                     $tui->tick();

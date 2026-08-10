@@ -48,7 +48,7 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
  * reopening re-centers.
  *
  * Like the view controllers it replaces, it attaches itself to
- * {@see WorkspaceViews} in its constructor and has no inbound service
+ * {@see \Porta\Workbench\View\ViewRegistry} in its constructor and has no inbound service
  * references, so {@see \Porta\Ide} resolves it eagerly for that side effect.
  */
 #[AsIdeService]

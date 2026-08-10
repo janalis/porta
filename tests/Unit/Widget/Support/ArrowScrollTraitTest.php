@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Support;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Git\ChangeEntry;
+use Porta\GitPlugin\ChangeEntry;
+use Porta\GitPlugin\Tests\Support\GitWidgetEvents;
+use Porta\GitPlugin\Widget\ChangesListWidget;
 use Porta\I18n\Translator;
-use Porta\Tests\Support\GitWidgetEvents;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\FileTreeWidget;
-use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Render\RenderContext;

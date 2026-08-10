@@ -335,7 +335,7 @@ final class CodeEditorWidget extends AbstractWidget implements
 
     /**
      * Opening any floating surface closes the others — the same rule the full
-     * views follow ({@see WorkspaceViews}): the pickers share the pane span
+     * views follow ({@see \Porta\Workbench\View\ViewRegistry}): the pickers share the pane span
      * slot with the Welcome and Find-in-Files modals, and two writers painting
      * the same frame would fight over it.
      */

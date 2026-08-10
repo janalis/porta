@@ -230,7 +230,7 @@ final class CoverageCheckCommand extends Command
 
     /**
      * Enough of the path to know which file it is: the last two segments, which
-     * for `src/` reads as `Workbench/WorkspaceViews.php`. Plugin-owned code is
+     * for `src/` reads as `Workbench/View/ViewRegistry.php`. Plugin-owned code is
      * named from its plugin instead — `src/ArchitectureArtifact.php` would read
      * as core's `src/`, and which plugin owns a file is the interesting half.
      */

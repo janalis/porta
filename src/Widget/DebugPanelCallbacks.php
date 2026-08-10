@@ -6,7 +6,7 @@ namespace Porta\Widget;
 
 /**
  * The debug panel's outbound hooks, wired in one call instead of four fluent
- * setters — the {@see \Porta\Widget\Git\DiffViewCallbacks} shape. Every slot
+ * setters — the diff pane's callbacks shape. Every slot
  * is nullable: a bare widget fires nothing.
  */
 final readonly class DebugPanelCallbacks

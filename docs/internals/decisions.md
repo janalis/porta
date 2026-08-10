@@ -75,26 +75,26 @@ to one candidate. Not a fresh sweep.
 
 **Namespace cycles are closed.** The import graph had 42 top-level cycle pairs;
 the two stable-dependency inversions worth fixing were fixed. Verified at class
-granularity across 550 classes and 1534 code edges: exactly one real SCC exists,
-closed solely by `WorkspaceViews`' two `attach*()` setter fields, with
-construction remaining a DAG. Relocating the widget→domain-VO edges was measured
-and mostly rejected — for Git, Settings, Tree, Debug and Highlight that is the
-*correct* layering direction, views reading domain shapes.
+granularity: the one real SCC — a seven-class ring closed by the old view
+registry's two `attach*()` setter fields — is gone, not pinned. A string-keyed
+`ViewRegistry` has no concrete controller fields to close it with. What remains
+allowed is two degenerate pairs. Relocating the widget→domain-VO edges was
+measured and mostly rejected — for Settings, Tree, Debug and Highlight that is
+the *correct* layering direction, views reading domain shapes.
 
-**Extracting git to a bundled plugin — the three numbers that stopped it were
-beaten; the move itself is one atomic commit and has not been made yet.**
+**Git is a bundled plugin. `src/Git` and `src/Widget/Git` are gone, and core
+keeps no git-named symbol.**
 
-An earlier attempt stopped at the view, measuring three seams that each failed
-its bar. Every one of them changed, and not by trying harder — by changing what
-the seam had to describe:
+An earlier attempt stopped at the view on three measurements. Every one of them
+changed, and not by trying harder — by changing what the seam had to describe:
 
 | Seam | Bar | Then | Now | Why it moved |
 | --- | --- | --- | --- | --- |
-| Services DTO | ~8 members | 12 | **6** | a view owning its REGION needs one handle, not three layout slots; a view whose main-area swap is `ViewHost`'s needs neither the menu bar, the editor area nor the pane order |
+| Services DTO | ~8 members | 12 | **7** | a view owning its REGION needs one handle, not three layout slots; a view whose main-area swap is `ViewHost`'s needs neither the menu bar, the editor area nor the pane order. The seventh is `HitTester`, forced by a view owning its pointer |
 | Pointer routing | fits >1 consumer | 11-verb union | **5 stages, 3 consumers** | `separatorRect`/`leftRect` existed only because the separator arrived by `#[LayoutSlot]`; core mints the region and hit-tests its own widgets, so they are gone rather than shared. `scrollVertical`'s signature clash was arithmetic, not scrolling — `WheelGesture` carries the resolved step |
 | Layout region | net-negative | `ViewRegion` −36/+45 | **forced** | that measurement was of a RENAME which kept both regions as compiled services. The container is built and cached before any plugin PHP runs, so a plugin-owned view can never receive `git_left` under any naming. Minting is the only route, and it deleted six service definitions, five `#[LayoutSlot]` consumers and the getters |
 
-What Phase A delivered, all of it green and independently useful:
+The seams Phase A built, each independently useful:
 
 - `Layout/ViewRegions` mints a view's sidebar/separator/content at runtime.
 - `Workbench\View\{ContributedView, ViewRegistry, ViewHost, ViewServices,
@@ -103,57 +103,76 @@ What Phase A delivered, all of it green and independently useful:
   pointer stages, carried by the view rather than registered beside it.
 - `Workbench\{StatusCell, StatusTone, StatusMenuSpan}` — a status cell carries
   its own context menu, so the branch indicator is an ordinary contributor.
-- `Workbench\Menu\{MenuContribution, MenuContributions, ViewMenuSource}` — a
-  top-level menu, its view-safe command list and its context menus are
-  contributed, not declared.
+- `Workbench\Menu\{MenuContribution, MenuContributions, MenuRegistrar,
+  ViewMenuSource}` — a top-level menu, its view-safe command list and its
+  context menus are contributed, not declared.
 - The modal layer floats above `main`, which fixed a live bug on its own: the
   command palette is listed view-safe in the Git menu and painted NOTHING while
   the git view was open.
 
-The graph: **224 edges and 3 SCCs became 224 and 2**, `Workbench>Git` is gone,
-and the seven-class cycle around `WorkspaceViews` dissolved rather than shrank
-— its two concrete controller fields were the whole of it.
-
-**The move has no valid intermediate state, which was proved by attempting it.**
+**The move had no valid intermediate state, which was proved by attempting it.**
 `config/services.php` discovers `../src/*` only, so the instant a class leaves
 `src/` its `#[AsIdeService]`/`#[AsWidget]`/`#[AsEager]` becomes inert and
-everything injecting it fails. Eleven of the ~52 files carry one. There is no
-ordering that keeps the container satisfied, so widgets, panes, controller,
-routers and commands move together — roughly 5,700 source lines in one commit.
+everything injecting it fails. There is no ordering that keeps the container
+satisfied, so widgets, panes, controller, routers, events and commands moved
+together: ~5,700 source lines, 148 files, one commit.
 
-What that commit has to resolve, measured rather than guessed — sixteen core
-files import git today and they fall into four kinds:
+What that commit had to build, beyond the move itself:
 
-- **Five are docblock-only** (`Input/ClickCounter`, `Widget/DebugPanelCallbacks`,
-  `Widget/Support/HoverTrait`, `Widget/Support/OptionTagState`,
-  `Settings/SettingsViewController`). Invisible to `composer arch`, in scope for
-  grep-to-zero.
-- **Seven `Event/Git*` carry git types** and become plugin-internal on a
-  plugin-owned `EventDispatcher` (a vendor class, so no core edge). Only
-  `GitCommitted`, `GitRemoteCompleted` and `WorkingTreeChanged` stay, as
-  `PluginObservable`.
-- **`Command/GitCommandProvider` is deleted** and its nine ids adopted. Flagging
-  already landed; vacate-and-adopt must be one commit, because `adoptCommand()`
-  refuses an unflagged id and `CommandRegistry::add()` is `??=` so both
-  registered means duplicate palette rows.
-- **`Ide.php`, `Command/ViewCommands`, `Settings/SettingsGitController`** need
-  real rewiring: the boot wiring, the `isRepository()` gate on `ide_git`, and
-  the settings page.
+- **Four closure-backed shims in the plugin** — `Flash`, `Modals`, `Translate`,
+  `DiffPrefs` — because `Notifier`, `CodeEditorWidget`, `Translator` and
+  `LayoutController` are container services a plugin cannot hold. Each is one
+  closure behind the method name its call sites already used, so ~90 call sites
+  are unchanged.
+- **A `ViewSlot`**, because the phases do not line up: `PluginApi` drains its
+  buffers at commit, but a view's factory runs after commit (it needs the region
+  core mints for it). Anything registered before the view exists — the `ide_git`
+  toggle, the core-bus listeners — goes through the slot.
+- **A fact bridge in `plugin.php`.** The plugin's widgets dispatch on its own
+  `EventDispatcher`, and three of those events are core `PluginObservable`
+  facts. Forwarding them is what keeps the gutter stripe refreshing after a
+  commit or a pull; without it they would reach only the git plugin's own
+  listeners, silently.
+- **`PluginApi` grew five verbs**: `registerMenu`, `notify`, `refreshStatusSegments`,
+  `showChangeMarkGutter`, and a `pick()` that takes hint rows. `StatusSegment`
+  became `statusCells(): list<StatusCell>`, so a plugin's cell keeps its tone
+  and its right-click menu instead of being folded into the shared subtle one.
 
-**The tests are rewrites, not relocations, and they are the bulk.**
-`GitViewControllerTest` (1,089 lines) builds through the container via
-`Services::resolve`; a plugin test cannot, because a plugin class is never a
-service. Same for `GitCommandsTest` (644), `GitInfoStatusTest` (672),
-`DiffViewWidgetTest` (745). About 7,000 lines against `PluginApi` and fakes.
+**The tests moved nearly as-is** — the opposite of what was predicted here. Only
+the construction sites changed, because every shim was designed to be
+substitutable for the service it replaced: `GitDoubles::flash()` wraps a REAL
+`Notifier`, so every `StatusReads`/`Toasts` assertion stands. `plugins/git/tests`
+holds ~6,900 lines including the E2e suites, which had to move because the
+coverage gate grades `plugins/` from the plugin's OWN tests.
 
-Two pins exist precisely as that commit's checklists, and both have already
-caught drift during Phase A: `GitListenerContractTest` maps the nineteen
-`#[AsEventListener]` wirings that evaporate when a class stops being a service,
-and `ActionCatalogTest` maps the fifteen adoptable ids to their real labels
-(`label()` falls back to `ucwords()`, so a missing entry reads "Git Commit").
+**The persistence migration landed with it**, rather than after: the eight
+`git*` settings and the two diff toggles are `plugins.git.*` now, on the
+plugin's own settings page under Plugins. Keeping them where they were would
+have needed a `registerSettingsSection` verb that `registerSetting` already
+covers.
 
-*Re-opens on:* nothing — this is not rejected, it is prepared and unfinished.
-The next attempt should start with the move as its sole goal.
+Three regressions the gates would not have caught, each now pinned by a test:
+
+- `PaneLayout::applyDirection()` ran during the eager boot, before a PLUGIN view
+  can have minted its region — so the git area mounted empty. It runs after the
+  view registrar now.
+- The `#[AsWidget]` flex styles vanished with the attribute; `plugin.php`
+  applies them by hand beside the ids.
+- `ide_git` had to become adoptable. The old note said flagging it would make
+  `MenuModel` skip the item when unregistered, "the opposite of what the skip is
+  for" — true while core owned the view, and exactly right now that a plugin
+  implements it and registers neither outside a repository.
+
+The graph: **224 edges and 3 SCCs became 220 and 2.** `Porta\Git` no longer
+exists; the seven `*>Git` edges and the six `Git>*` ones are gone, replaced by
+`GitPlugin>{Event,Highlight,Input,Layout,Overlay,Plugin,Support,Ui,Widget,Workbench}`
+— a plugin reaching for core's toolkits, the allowed direction, and the same set
+`Help` and `GraphViewer` already reach for.
+
+*Re-opens on:* nothing. What is worth watching is the two pins that made it
+safe — `GitListenerContractTest` (the eighteen wirings, now read off a
+`GitWiring` map rather than an attribute) and `ActionCatalogTest` (the sixteen
+adoptable ids and their real labels).
 
 **`Layout/ViewRegion` — rejected on arithmetic.** Collapsing git's and settings'
 sidebar/separator/area triples deletes ~36 lines and adds ~45. The five

@@ -121,6 +121,8 @@ final class AbstractAnalyzerPluginTest extends TestCase
             new MenuFileContext(),
             new ViewRegistry(),
             new Clipboard($tui),
+            new StatusBarWidget(),
+            new CodeEditorWidget(),
         ));
 
         return new PluginApi('demo', $this->manager, $this->project->dir, $settings);

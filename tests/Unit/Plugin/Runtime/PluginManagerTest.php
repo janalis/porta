@@ -71,6 +71,8 @@ final class PluginManagerTest extends TestCase
                 new MenuFileContext(),
                 new ViewRegistry(),
                 new Clipboard($tui),
+                new StatusBarWidget(),
+                new CodeEditorWidget(),
             ),
         );
 

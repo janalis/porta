@@ -83,6 +83,8 @@ final class PluginApiTest extends TestCase
                     new MenuFileContext(),
                     $this->views = new ViewRegistry(),
                     new Clipboard($tui),
+                    new StatusBarWidget(),
+                    $this->editor,
                 ),
             );
         }
@@ -368,6 +370,8 @@ final class PluginApiTest extends TestCase
                 new MenuFileContext(),
                 new ViewRegistry(),
                 new Clipboard($tui),
+                new StatusBarWidget(),
+                new CodeEditorWidget(),
             ),
         );
         $api = new PluginApi('demo', $manager, $project->dir, $settings);
@@ -438,6 +442,37 @@ final class PluginApiTest extends TestCase
             $published[0]['marks'],
             'an unknown kind is dropped at the boundary rather than reaching the renderer',
         );
+    }
+
+    public function testHidingTheChangeMarkGutterDropsWhatWasShowingInIt(): void
+    {
+        // The strip and the marks are two questions — "which lines changed?" is
+        // the plugin's, "is there a column for them?" is the user's — and
+        // hiding has to answer both, or the marks come back the moment the
+        // strip does. The setting behind this exists to remove the empty
+        // one-column indent a plugin that publishes nothing would leave.
+        $api = $this->api();
+        $this->editor->setVcsMarks([0 => 'added']);
+
+        $api->showChangeMarkGutter(false);
+
+        $this->assertFalse(Probe::get($this->editor, 'display')->vcsGutter(), 'the strip is hidden');
+        $this->assertSame([], Probe::get($this->editor, 'decorations')->vcsMarks(), 'and it took the stale marks with it');
+    }
+
+    public function testShowingTheChangeMarkGutterIsTheDefaultAndIsIdempotent(): void
+    {
+        // On at boot, which is why the plugin only ever calls this to turn it
+        // OFF — and calling it twice must not be a second render request or a
+        // second clear.
+        $api = $this->api();
+
+        $api->showChangeMarkGutter(true);
+        $this->editor->setVcsMarks([0 => 'added']);
+        $api->showChangeMarkGutter(true);
+
+        $this->assertTrue(Probe::get($this->editor, 'display')->vcsGutter());
+        $this->assertSame([0 => 'added'], Probe::get($this->editor, 'decorations')->vcsMarks(), 'turning on what is already on clears nothing');
     }
 
     public function testSetLineAnnotationsReachesTheEditorAndClearsWithAnEmptyMap(): void
@@ -516,6 +551,8 @@ final class PluginApiTest extends TestCase
             new MenuFileContext(),
             new ViewRegistry(),
             new Clipboard($tui),
+            new StatusBarWidget(),
+            new CodeEditorWidget(),
         ));
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
         $api->registerListTool('todo', 'TODO');

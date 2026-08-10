@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
-use Porta\Git\GitInfo;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\Services;
+use Porta\Workbench\View\ViewRegistry;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -143,6 +143,14 @@ trait RunsIde
      */
     private function awaitGit(Ide $ide, float $timeout = 5.0): void
     {
-        $this->awaitGitInfo(Services::resolve($ide, GitInfo::class), $timeout);
+        // Reached through the registered VIEW rather than a service: git is a
+        // plugin, so its repository handle is not in the container at all. The
+        // view is the one plugin-built object core can name, and `find()` is
+        // how anything else would reach it too.
+        $view = Services::resolve($ide, ViewRegistry::class)->find('git');
+        if (null === $view) {
+            return; // the git plugin is not loaded — nothing can be in flight
+        }
+        $this->awaitGitInfo(Probe::get($view, 'git'), $timeout);
     }
 }

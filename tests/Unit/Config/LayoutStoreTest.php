@@ -21,8 +21,6 @@ final class LayoutStoreTest extends TestCase
             bottomPanelHeightPercent: 35,
             gitSidebarWidthPercent: 28,
             settingsSidebarWidthPercent: 19,
-            gitDiffSplit: true,
-            gitDiffHideWhitespace: true,
         )));
 
         $loaded = $store->load();
@@ -30,8 +28,6 @@ final class LayoutStoreTest extends TestCase
         $this->assertSame(22, $loaded->sidebarWidthPercent);
         $this->assertSame(35, $loaded->bottomPanelHeightPercent);
         $this->assertSame(28, $loaded->gitSidebarWidthPercent);
-        $this->assertTrue($loaded->gitDiffSplit);
-        $this->assertTrue($loaded->gitDiffHideWhitespace);
         $this->assertSame(19, $loaded->settingsSidebarWidthPercent);
     }
 
@@ -47,15 +43,13 @@ final class LayoutStoreTest extends TestCase
         if (!is_dir($project->path('.porta'))) {
             mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
         }
-        file_put_contents($project->path('.porta/layout.json'), json_encode(['sidebarWidthPercent' => 'nope', 'gitDiffSplit' => 'yes']));
+        file_put_contents($project->path('.porta/layout.json'), json_encode(['sidebarWidthPercent' => 'nope']));
 
         $loaded = new LayoutStore($project->dir)->load();
         $this->assertNotNull($loaded);
         $this->assertNull($loaded->sidebarWidthPercent, 'non-numeric value is ignored');
-        $this->assertNull($loaded->gitDiffSplit, 'a non-bool toggle is ignored');
         $this->assertNull($loaded->bottomPanelHeightPercent, 'absent key is null');
         $this->assertNull($loaded->gitSidebarWidthPercent, 'absent git key is null');
-        $this->assertNull($loaded->gitDiffHideWhitespace, 'absent bool key is null');
         $this->assertNull($loaded->settingsSidebarWidthPercent, 'absent settings key is null');
     }
 
@@ -81,7 +75,6 @@ final class LayoutStoreTest extends TestCase
         $this->assertStringNotContainsString('bottomPanelHeightPercent', $raw);
         $this->assertStringNotContainsString('gitSidebarWidthPercent', $raw);
         $this->assertStringNotContainsString('settingsSidebarWidthPercent', $raw);
-        $this->assertStringNotContainsString('gitDiffSplit', $raw, 'false/omitted toggles leave no key');
         $this->assertSame(20, $store->load()?->sidebarWidthPercent);
         $this->assertNull($store->load()?->bottomPanelHeightPercent);
     }

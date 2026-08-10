@@ -13,7 +13,7 @@ namespace Porta\Widget\Support;
  * are named once here. The shading stays per-widget: they sit on different
  * backgrounds and an on-tag has no room for a second one, which is why a
  * hovered on-tag underlines rather than re-tinting (see
- * {@see \Porta\Widget\Git\CommitBoxWidget} for the same precedent).
+ * the git plugin's commit box is the same precedent).
  *
  * {@see of()} resolves the precedence once — on beats hovered — rather than at
  * each tag; mirrors {@see \Porta\Widget\Render\TabState}.

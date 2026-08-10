@@ -148,7 +148,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // grammar parsers — zero container-built classes in each). A class
     // in one of these that ever becomes a real service must be un-excluded
     // here; that edit is the review point. Mixed directories (Overlay/Region,
-    // Ui/, Editor/, Git/ proper, …) stay discovered and rely on compile
+    // Ui/, Editor/, Lsp/ proper, …) stay discovered and rely on compile
     // pruning as before.
     $services
         ->load('Porta\\', '../src/*')
@@ -157,7 +157,6 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
             '../src/Container/',
             '../src/Console/',
             '../src/Event/',
-            '../src/Git/*Parser.php',
             '../src/Highlight/Json/',
             '../src/Widget/Render/',
             '../src/Widget/Support/',

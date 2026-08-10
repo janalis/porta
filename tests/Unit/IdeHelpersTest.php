@@ -10,7 +10,6 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\Document;
 use Porta\Editor\OpenFocus;
-use Porta\Git\GitInfo;
 use Porta\History\LocalHistoryController;
 use Porta\History\SessionRestorer;
 use Porta\Ide;
@@ -64,7 +63,6 @@ final class IdeHelpersTest extends TestCase
     {
         Services::resolve($this->ide, ViewRegistry::class)->closeAll();
         Services::resolve($this->ide, Notifier::class)->dismissAll();
-        $this->awaitGitInfo(Services::resolve($this->ide, GitInfo::class));
     }
 
     private function call(string $method, mixed ...$args): mixed
@@ -75,7 +73,6 @@ final class IdeHelpersTest extends TestCase
     public function testServicesSeamReturnsLocatorMembersAndSynthetics(): void
     {
         // A porta.ide locator member resolves through the locator branch...
-        self::assertInstanceOf(GitInfo::class, Services::resolve($this->ide, GitInfo::class));
         // ...and a synthetic (Renderer) falls back to the container branch —
         // the empirical proof that PRIVATE synthetics stay get()-able once
         // Ide's constructor has set() them.

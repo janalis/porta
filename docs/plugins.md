@@ -511,6 +511,27 @@ something you already know, don't compute it here. Return null to show nothing,
 which should be the normal case. A throwing closure shows nothing and is
 reported once.
 
+Every plugin returning a plain string shares one dim cell. Return a
+`StatusCell` instead when you need a tone or a right-click menu of your own —
+the bundled git plugin's branch indicator is one:
+
+```php
+use Porta\Workbench\StatusCell;
+use Porta\Workbench\StatusTone;
+
+$api->registerStatusSegment(fn (): ?StatusCell => null === $this->branch ? null : new StatusCell(
+    "⎇ {$this->branch}",
+    StatusTone::Accent,
+    fn (): array => $this->branchMenuItems(),
+));
+```
+
+The tone is one of core's three (`Subtle`, `Accent`, `Active`) — you ask for
+prominence, core owns the colour. When the value behind a segment changes
+between frames, call `$api->refreshStatusSegments()`: the bar caches its
+assembled line, so a branch name that resolves out of a subprocess needs to say
+so or the old text stays.
+
 ### Applying what your tool produced
 
 ```php
@@ -571,7 +592,9 @@ Registration (during `activate()`):
 | `contextFile()` | The file the running invocation is **about**: the right-clicked path when it came from a file context menu, else `activeFile()`. Use it instead of `activeFile()` in any command you put on `FileContext` |
 | `registerSetting(string $key, string $label, string $kind = 'text', $default = '', ?array $options = null, ?string $hint = null)` | Declare a user-editable setting shown on the plugin's settings page; kinds: `text`, `bool`, `int`, `choice` (with `$options`). Values persist under `plugins.<name>.<key>` in `.porta.json` |
 | `registerListTool(string $id, string $title, ?\Closure $rerun = null, ?\Closure $activate = null)` | Declare a bottom-dock list of results with jump-to-location |
-| `registerStatusSegment(\Closure $segment)` | Contribute ambient state to the status bar; pulled once per render |
+| `registerStatusSegment(\Closure $segment)` | Contribute ambient state to the status bar; pulled once per render. Return a string to share the plugins' cell, or a `StatusCell` to claim one with its own tone and right-click menu |
+| `registerView(string $id, \Closure $factory)` | Contribute a **full-screen view** — a workspace takeover with its own sidebar, drag separator and content pane, opened with `openView($id)`. `$factory(ViewServices $s): ContributedView` runs ONCE after plugins commit, with the region already minted for `$id` |
+| `registerMenu(string $title, string $after, array $items, ?\Closure $visible = null, string $viewId = '', array $viewSafe = [])` | Contribute a **top-level menu** rather than an entry in the trailing Plugins one. `$items` are `'i:<command-id>'` and separators; `$after` names the core menu it follows; `$viewSafe` lists the ids that stay enabled while `$viewId`'s view owns the main area — a menu without one greys out its own items the moment its view opens |
 | `registerDebugAdapter(string $languageId, \Closure $resolveCommand)` | Supply a DAP adapter's argv for a language (consulted below `.porta.json`) |
 | `adoptCommand(string $id, \Closure $handler)` | Implement a core command whose id core has vacated, keeping its label, keys and menu position. Bundled plugins only in practice — the id must be marked adoptable |
 | `onReady(\Closure $hook)` | `$hook(string $projectRoot)` once the IDE is up, before the first file opens |
@@ -587,11 +610,15 @@ Actions (from handlers/hooks):
 | Method | Purpose |
 | --- | --- |
 | `flash(string $message, float $seconds = 2.5)` | Status-bar notification |
+| `notify(string $message, ToastSeverity $severity = ToastSeverity::Info, float $seconds = 2.5)` | The same toast, coloured for what happened: `Success`, `Warn`, `Error`. `flash()` is this at `Info` |
+| `refreshStatusSegments()` | Tell the status bar your segment changed; the bar caches its line, so a value that arrives asynchronously needs this |
+| `openView(string $id)` / `closeView(string $id)` | Open or close a registered full-screen view. Opening closes whatever other view owns the main area |
+| `showChangeMarkGutter(bool $on)` | Show or hide the version-control gutter STRIP itself. Hiding drops whatever marks were showing, so nothing lingers under a column that is no longer painted |
 | `showList(string $id, array $rows = [], ToolRun $run = ToolRun::Finished)` | Open your list tool's tab and show rows |
 | `updateList(string $id, array $rows, ToolRun $run = ToolRun::Finished)` | Replace its rows in place; a no-op once the user ×'d the tab |
 | `replaceDocument(string $text)` | Replace the active text buffer's whole content as ONE undoable edit; no-op on an identical text, a viewer tab, or nothing open |
 | `trans(string $id, array $params = [])` | Translate through the IDE's catalogs; an unknown string passes through |
-| `pick(string $title, array $items, \Closure $onPick)` | Ask the user to choose from `value => label` |
+| `pick(string $title, array $items, \Closure $onPick)` | Ask the user to choose from `value => label`, or from full rows (`['label' => …, 'hint' => …, 'value' => …]`) when the list needs a dimmed second column |
 | `prompt(string $label, string $initial, \Closure $onSubmit)` | Ask the user for one line of text |
 | `activeFile(): ?string` | Absolute path of the focused buffer |
 | `documentText(): ?string` | Full text of the focused buffer |

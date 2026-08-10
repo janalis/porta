@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Input;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Git\GitMouseRouter;
 use Porta\I18n\Translator;
 use Porta\Input\HitTester;
 use Porta\Input\MouseEvent;
@@ -13,11 +12,6 @@ use Porta\Layout\ViewRegions;
 use Porta\Settings\SettingsMouseRouter;
 use Porta\Tests\Support\TestTui;
 use Porta\Ui\Theme\Styles;
-use Porta\Widget\Git\ChangesListWidget;
-use Porta\Widget\Git\CommitBoxWidget;
-use Porta\Widget\Git\DiffViewWidget;
-use Porta\Widget\Git\GitTabsWidget;
-use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
@@ -33,6 +27,10 @@ use Symfony\Component\Tui\Style\StyleSheet;
  * views share it — but it means every view implements every stage, including
  * the ones it does nothing with. Those are the branches no screen test walks:
  * a view that never arms a drag, and an axis nothing in it scrolls along.
+ *
+ * The settings view stands for all of them here. Git's router made the same
+ * three assertions and moved to that plugin's own tests when it did, because a
+ * core test may not name a plugin class.
  */
 final class ViewPointerStagesTest extends TestCase
 {
@@ -46,22 +44,6 @@ final class ViewPointerStagesTest extends TestCase
             new SettingsNavWidget($translator),
             new SettingsFormWidget($translator),
             new KeybindingsListWidget($translator),
-            new ViewRegions(Styles::dark()),
-        );
-    }
-
-    private function gitRouter(): GitMouseRouter
-    {
-        $translator = new Translator('en');
-
-        return new GitMouseRouter(
-            new HitTester(new Renderer(new StyleSheet())),
-            TestTui::create(100, 24),
-            new ChangesListWidget($translator),
-            new DiffViewWidget($translator),
-            new CommitBoxWidget($translator),
-            new HistoryListWidget($translator),
-            new GitTabsWidget($translator),
             new ViewRegions(Styles::dark()),
         );
     }
@@ -90,10 +72,10 @@ final class ViewPointerStagesTest extends TestCase
         // state these two stages report by returning false. The caller reads
         // that to decide whether the workspace beneath should get the event,
         // so a stage that swallowed a miss would eat clicks over the chrome.
-        foreach ([$this->gitRouter(), $this->router()] as $router) {
-            $this->assertFalse($router->wheel(new WheelGesture($this->mouse(), WheelAxis::Vertical, 3)), $router::class);
-            $this->assertFalse($router->press($this->mouse()), $router::class);
-        }
+        $router = $this->router();
+
+        $this->assertFalse($router->wheel(new WheelGesture($this->mouse(), WheelAxis::Vertical, 3)));
+        $this->assertFalse($router->press($this->mouse()));
     }
 
     public function testAHorizontalNotchIsRefusedBecauseNoSettingsPaneScrollsSideways(): void

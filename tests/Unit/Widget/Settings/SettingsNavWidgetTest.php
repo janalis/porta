@@ -43,14 +43,6 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertSame('general', $this->widget()->selectedId(), 'opens on General');
     }
 
-    public function testRendersTheVersionControlCategoryWithAnIndentedGitSubItem(): void
-    {
-        $screen = $this->plain($this->widget()->render(new RenderContext(28, 24)));
-
-        $this->assertStringContainsString('Version control', $screen);
-        $this->assertMatchesRegularExpression('/Version control\s*\n\s{3}Git/', $screen, 'Git indents under Version control');
-    }
-
     public function testArrowNavigationSkipsTheHeaderAndFires(): void
     {
         $widget = $this->widget($selected);
@@ -65,14 +57,12 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertSame('keybindings', $widget->selectedId());
 
         $widget->handleInput("\x1b[B"); // → Plugins
-        $widget->handleInput("\x1b[B"); // skips the Version control header → Git
-        $this->assertSame('vcs:git', $widget->selectedId());
         $widget->handleInput("\x1b[B"); // skips the Languages header → PHP
         $this->assertSame('lang:php', $widget->selectedId());
-        $this->assertSame(['interface', 'highlighting', 'keybindings', 'plugins', 'vcs:git', 'lang:php'], $selected);
+        $this->assertSame(['interface', 'highlighting', 'keybindings', 'plugins', 'lang:php'], $selected);
 
-        $widget->handleInput("\x1b[A"); // back up, skipping the Languages header → Git
-        $this->assertSame('vcs:git', $widget->selectedId());
+        $widget->handleInput("\x1b[A"); // back up, skipping the Languages header → Plugins
+        $this->assertSame('plugins', $widget->selectedId());
     }
 
     public function testNavigationClampsAtBothEnds(): void
@@ -95,14 +85,14 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->handleClick(3); // Keybindings (row 3, after the new Highlighting row)
         $this->assertSame('keybindings', $widget->selectedId());
 
-        $widget->handleClick(5); // the Version control header → no-op
+        $widget->handleClick(5); // the Languages header → no-op
         $this->assertSame('keybindings', $widget->selectedId());
         $this->assertSame(['keybindings'], $selected, 'the header fires nothing');
 
-        $widget->handleClick(6); // Git
-        $this->assertSame('vcs:git', $widget->selectedId());
+        $widget->handleClick(6); // PHP
+        $this->assertSame('lang:php', $widget->selectedId());
         $widget->handleClick(99); // dead space
-        $this->assertSame('vcs:git', $widget->selectedId());
+        $this->assertSame('lang:php', $widget->selectedId());
     }
 
     public function testSetPluginEntriesInsertsIndentedSubItemsUnderPlugins(): void
@@ -143,10 +133,10 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertStringContainsString("\x1b[48;5;31m", $rendered[0], 'General selected + focused');
 
         $widget->setFocused(false);
-        $this->assertTrue($widget->hoverRow(8)); // hover PHP
+        $this->assertTrue($widget->hoverRow(6)); // hover PHP
         $rendered = $widget->render(new RenderContext(24, 20));
-        $this->assertStringContainsString("\x1b[48;5;236m", $rendered[8], 'hovered language tinted');
-        $this->assertTrue($widget->hoverRow(7), 'hovering the header clears the language tint');
+        $this->assertStringContainsString("\x1b[48;5;236m", $rendered[6], 'hovered language tinted');
+        $this->assertTrue($widget->hoverRow(5), 'hovering the header clears the language tint');
         $this->assertFalse($widget->clearHover(), 'already cleared');
     }
 

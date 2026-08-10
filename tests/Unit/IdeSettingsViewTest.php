@@ -6,7 +6,6 @@ namespace Porta\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
-use Porta\Git\GitViewController;
 use Porta\Ide;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Onboarding\OnboardingState;
@@ -15,6 +14,8 @@ use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\UsesBundledPlugins;
+use Porta\Workbench\View\ContributedView;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
@@ -26,17 +27,18 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
 final class IdeSettingsViewTest extends TestCase
 {
     use GitBinary;
+    use UsesBundledPlugins;
 
     private Ide $ide;
     private CommandRegistry $commands;
-    private GitViewController $gitView;
+    private ContributedView $gitView;
     private SettingsViewController $settingsView;
     private ContainerWidget $main;
 
     private function boot(): void
     {
         $this->skipWithoutGit();
-        $project = new TempProject(['a.php' => "<?php\n"]);
+        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => '{"enabledPlugins":["git"]}']);
         $project->initGit();
         $project->commitAll('init');
 
@@ -46,7 +48,9 @@ final class IdeSettingsViewTest extends TestCase
         $views = Services::resolve($this->ide, \Porta\Workbench\View\ViewRegistry::class);
         // find(), not reflection: the registry no longer keeps a concrete
         // field per view, which is what dissolved the seven-class cycle.
-        $this->gitView = $views->find('git');
+        $git = $views->find('git');
+        self::assertNotNull($git, 'the git plugin registered its view');
+        $this->gitView = $git;
         $this->settingsView = $views->find('settings');
         $this->main = Services::resolve($this->ide, WorkspaceLayout::class)->main();
     }

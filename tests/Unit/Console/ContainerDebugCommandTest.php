@@ -57,7 +57,7 @@ final class ContainerDebugCommandTest extends TestCase
 
         $this->assertSame(Command::SUCCESS, $status);
         $this->assertStringContainsString('tagged porta.eager', $display);
-        $this->assertStringContainsString('Porta\Git\GitViewController {"priority":700}', $display, 'priority is contractual and shown');
+        $this->assertStringContainsString('Porta\Layout\ResponsiveLayout {"priority":600}', $display, 'priority is contractual and shown');
     }
 
     public function testATagNobodyCarriesListsNothing(): void

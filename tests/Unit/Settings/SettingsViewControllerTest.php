@@ -14,8 +14,8 @@ use Porta\Debug\DebugAdapters;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\Event\SettingsSectionRequested;
-use Porta\Git\GitInfo;
-use Porta\Git\GitSettings;
+use Porta\GitPlugin\GitInfo;
+use Porta\GitPlugin\Widget\DiffViewWidget;
 use Porta\Highlight\ColorMode;
 use Porta\Highlight\HighlightPreferences;
 use Porta\Highlight\HighlightRegistry;
@@ -38,14 +38,12 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\Section\GeneralSection;
-use Porta\Settings\Section\GitSection;
 use Porta\Settings\Section\HighlightingSection;
 use Porta\Settings\Section\InterfaceSection;
 use Porta\Settings\Section\LanguageSection;
 use Porta\Settings\Section\PluginsSection;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsDebugController;
-use Porta\Settings\SettingsGitController;
 use Porta\Settings\SettingsHighlightController;
 use Porta\Settings\SettingsKeymapController;
 use Porta\Settings\SettingsLanguageController;
@@ -67,7 +65,6 @@ use Porta\Ui\Theme\StyleSheetThemer;
 use Porta\Ui\Theme\Themes;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
@@ -214,20 +211,6 @@ final class SettingsViewControllerTest extends TestCase
             new PluginManager(new EventDispatcher(), $this->pluginSettings),
             new ToolInstaller($this->project->dir, []),
         );
-        $gitSettings = new GitSettings([]);
-        $status = new StatusBarWidget();
-        $git = new SettingsGitController(
-            IdeConfig::DEFAULT_SETTINGS,
-            $gitSettings,
-            $editor,
-            new EventDispatcher(),
-            $status,
-            $this->tui,
-            $notifier,
-            new Translator('en'),
-            $this->project->dir,
-        );
-
         $editorArea = new EditorArea(
             new BufferManager(),
             $this->editorWidget = new CodeEditorWidget(),
@@ -277,7 +260,6 @@ final class SettingsViewControllerTest extends TestCase
                     $this->lifecycle,
                 )),
                 new PluginsSection($plugins),
-                new GitSection($git),
                 new LanguageSection($languages, $lsp, $debug),
                 new GeneralSection($settings),
             ],
@@ -397,24 +379,6 @@ final class SettingsViewControllerTest extends TestCase
         // Actuate the indent-style row (auto → spaces) → persists to the languages block.
         $this->form->handleClick(0);
         $this->assertSame('spaces', IdeConfig::load($this->project->dir)->languages['php']['indentStyle']);
-    }
-
-    public function testNavSelectingGitShowsGitRowsAndPersists(): void
-    {
-        $controller = $this->controller();
-        $controller->open();
-
-        $this->selectSettingsSection($this->nav, 'vcs:git');
-        $this->assertSame('vcs:git', $this->nav->selectedId());
-        $this->assertSame(['settings-form'], $this->ids($this->content));
-
-        $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 12)));
-        $this->assertStringContainsString('Show branch in status bar', $screen);
-        $this->assertStringContainsString('Git executable path', $screen);
-
-        // Toggle the first row (Show branch) → routes to the git controller and persists.
-        $this->form->handleClick(0);
-        $this->assertFalse(IdeConfig::load($this->project->dir)->settings['gitShowBranch']);
     }
 
     public function testEditingTheLspRowRoutesToTheLspControllerAndPersists(): void

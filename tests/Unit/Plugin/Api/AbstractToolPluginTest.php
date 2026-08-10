@@ -143,6 +143,8 @@ final class AbstractToolPluginTest extends TestCase
             new MenuFileContext(),
             new ViewRegistry(),
             new Clipboard($tui),
+            new StatusBarWidget(),
+            new CodeEditorWidget(),
         ));
 
         return new PluginApi($pluginName, $manager, $this->project->dir, $settings);

@@ -39,12 +39,6 @@ final readonly class LayoutStore
         if (null !== $prefs->settingsSidebarWidthPercent) {
             $data['settingsSidebarWidthPercent'] = $prefs->settingsSidebarWidthPercent;
         }
-        if (null !== $prefs->gitDiffSplit) {
-            $data['gitDiffSplit'] = $prefs->gitDiffSplit;
-        }
-        if (null !== $prefs->gitDiffHideWhitespace) {
-            $data['gitDiffHideWhitespace'] = $prefs->gitDiffHideWhitespace;
-        }
 
         try {
             $this->fs->dumpFile(
@@ -71,14 +65,7 @@ final readonly class LayoutStore
             bottomPanelHeightPercent: $this->percent($data['bottomPanelHeightPercent'] ?? null),
             gitSidebarWidthPercent: $this->percent($data['gitSidebarWidthPercent'] ?? null),
             settingsSidebarWidthPercent: $this->percent($data['settingsSidebarWidthPercent'] ?? null),
-            gitDiffSplit: $this->bool($data['gitDiffSplit'] ?? null),
-            gitDiffHideWhitespace: $this->bool($data['gitDiffHideWhitespace'] ?? null),
         );
-    }
-
-    private function bool(mixed $value): ?bool
-    {
-        return \is_bool($value) ? $value : null;
     }
 
     private function percent(mixed $value): ?int

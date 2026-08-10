@@ -23,7 +23,7 @@ use Porta\Widget\CodeEditorWidget;
  * the modal's content streams in asynchronously (search results) and its
  * caret blinks, so a per-frame rebuild matches the cost it had as an
  * editor-composited overlay. The two floating modals share the pane span
- * slot safely: the WorkspaceViews interlock means they are never open
+ * slot safely: the view registry's interlock means they are never open
  * together, and each clears only what it painted (`$shown`).
  *
  * Resolved eagerly by {@see \Porta\Ide} — nothing else references it, and

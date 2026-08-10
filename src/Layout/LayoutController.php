@@ -47,8 +47,6 @@ final class LayoutController
     /** The armed grab row relative to the panel top (-1 when the dock strip is the grab). */
     private int $panelResizeGrabOffset = 0;
     private ?int $bottomPanelHeightPercent = null;
-    private bool $gitDiffSplit = false;
-    private bool $gitDiffHideWhitespace = false;
 
     public function __construct(
         private readonly LayoutStore $store,
@@ -94,8 +92,6 @@ final class LayoutController
             }
         }
         $this->bottomPanelHeightPercent = $layout->bottomPanelHeightPercent;
-        $this->gitDiffSplit = $layout->gitDiffSplit ?? false;
-        $this->gitDiffHideWhitespace = $layout->gitDiffHideWhitespace ?? false;
 
         // Plain width fields: safe to set even while a view's widgets are detached.
         foreach ($this->sidebarResizes() as $state) {
@@ -337,31 +333,6 @@ final class LayoutController
         }
     }
 
-    /**
-     * The persisted git-diff display toggles (side-by-side, hide whitespace).
-     *
-     * Whitespace is a bool here, not Git's WhitespaceMode: this class stores a
-     * bool, its only caller stores a bool, and the enum existed solely to be
-     * built at one boundary and unwrapped at the other. DiffLayout stays — that
-     * one is Layout's own.
-     *
-     * @return array{layout: DiffLayout, hideWhitespace: bool}
-     */
-    public function gitDiffPrefs(): array
-    {
-        return [
-            'layout' => $this->gitDiffSplit ? DiffLayout::Split : DiffLayout::Unified,
-            'hideWhitespace' => $this->gitDiffHideWhitespace,
-        ];
-    }
-
-    public function setGitDiffPrefs(DiffLayout $layout, bool $hideWhitespace): void
-    {
-        $this->gitDiffSplit = DiffLayout::Split === $layout;
-        $this->gitDiffHideWhitespace = $hideWhitespace;
-        $this->persistLayout();
-    }
-
     private function persistLayout(): void
     {
         $this->store->save(new LayoutPrefs(
@@ -369,8 +340,6 @@ final class LayoutController
             bottomPanelHeightPercent: $this->bottomPanelHeightPercent,
             gitSidebarWidthPercent: $this->viewResize('git')?->widthPercent,
             settingsSidebarWidthPercent: $this->viewResize('settings')?->widthPercent,
-            gitDiffSplit: $this->gitDiffSplit ? true : null,
-            gitDiffHideWhitespace: $this->gitDiffHideWhitespace ? true : null,
         ));
     }
 }

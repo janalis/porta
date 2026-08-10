@@ -125,14 +125,20 @@ final class ActionCatalogTest extends TestCase
         $this->assertSame($expected, $actual);
     }
 
-    public function testTheViewToggleIsNotAdoptable(): void
+    public function testTheGitViewToggleIsAdoptableButItsTwoNeighboursAreNot(): void
     {
-        // ide_git toggles a view BY ID, and core can toggle any id — it stays
-        // core's and goes inert when nothing registers under 'git'. Flagging it
-        // would also make MenuModel skip the menu item whenever it is
-        // unregistered, which is the opposite of what that skip is for.
-        $this->assertFalse(ActionCatalog::isAdoptable('ide_git'));
+        // ide_git flipped when the git VIEW became the git plugin's: nothing in
+        // core implements it any more, and outside a repository the plugin
+        // registers neither the view nor the verb — so MenuModel skipping the
+        // unregistered item is exactly right, in the same case where the whole
+        // Git group is hidden.
+        $this->assertTrue(ActionCatalog::isAdoptable('ide_git'));
         $this->assertSame('Git: Changes', ActionCatalog::label('ide_git'));
+
+        // The contrast that keeps this honest: the other two view toggles are
+        // core's own views, always registered, and must never be adoptable.
+        $this->assertFalse(ActionCatalog::isAdoptable('ide_settings'));
+        $this->assertFalse(ActionCatalog::isAdoptable('ide_welcome'));
     }
 
     public function testIdeDefaultsCarryOnlyKeyedEntries(): void

@@ -6,7 +6,6 @@ namespace Porta\Tests\Unit\Container;
 
 use Porta\Command\DebugCommands;
 use Porta\Command\FileCommands;
-use Porta\Command\GitCommandProvider;
 use Porta\Command\PluginCommandProvider;
 use Porta\Command\SearchCommands;
 use Porta\Command\ViewCommands;
@@ -47,7 +46,6 @@ final class CommandProviderOrderTest extends ContainerTestCase
             FileCommands::class, // 400
             SearchCommands::class, // 300
             ViewCommands::class, // 200
-            GitCommandProvider::class, // 100
         ];
 
         self::assertSame($expected, $actual, 'every command provider must carry #[AsTaggedItem] with its contractual priority');

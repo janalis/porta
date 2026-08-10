@@ -16,11 +16,13 @@ use Porta\Event\PluginObservable;
 use Porta\Event\ThemeChanged;
 use Porta\Highlight\DarkTerminalTheme;
 use Porta\Lsp\Uri;
+use Porta\Overlay\State\ToastSeverity;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginMenuSpec;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\SettingsRowKind;
 use Porta\Workbench\Dock\ToolRun;
+use Porta\Workbench\Menu\MenuContribution;
 use Porta\Workbench\Menu\MenuSurface;
 use Tempest\Highlight\TerminalTheme;
 
@@ -84,6 +86,8 @@ final class PluginApi
     private readonly PluginBuffer $actions;
     /** @var PluginBuffer<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}> */
     private readonly PluginBuffer $listTools;
+    /** @var PluginBuffer<array{plugin: string, contribution: MenuContribution}> */
+    private readonly PluginBuffer $menus;
     /** @var PluginBuffer<array{plugin: string, segment: \Closure(): (string|\Porta\Workbench\StatusCell|null)}> */
     private readonly PluginBuffer $statusSegments;
     /** @var PluginBuffer<array{plugin: string, languageId: string, resolve: \Closure(): (list<string>|null)}> */
@@ -109,6 +113,7 @@ final class PluginApi
         $this->views = new PluginBuffer();
         $this->actions = new PluginBuffer();
         $this->listTools = new PluginBuffer();
+        $this->menus = new PluginBuffer();
         $this->statusSegments = new PluginBuffer();
         $this->debugAdapters = new PluginBuffer();
     }
@@ -520,6 +525,55 @@ final class PluginApi
     }
 
     /**
+     * Contribute a TOP-LEVEL MENU — a group of its own in the menu bar, rather
+     * than an entry in the trailing Plugins one that {@see addMenuItem()} adds
+     * to.
+     *
+     * $items are command ids spelled `'i:<id>'`, with
+     * {@see \Porta\Workbench\Menu\MenuModel::SEP} between groups; an id
+     * nothing registered is skipped, which is what lets a menu list a verb that
+     * only exists under some condition. $after names the CORE menu title this
+     * group follows, so a contributed group lands where it belongs rather than
+     * at the end.
+     *
+     * $viewSafe is the other half and travels with it: while the view named by
+     * $viewId owns the main area, only the ids listed here stay enabled. A menu
+     * contributed without one greys out its own items the moment its view
+     * opens — a bug with no error, which is why the two are one call.
+     *
+     * @param list<string>            $items    `'i:<command-id>'` entries and separators
+     * @param (\Closure(): bool)|null $visible  hides the whole group; null means always shown
+     * @param string                  $viewId   the view whose open state $viewSafe applies to, '' for none
+     * @param list<string>            $viewSafe command ids that stay enabled while that view is open
+     */
+    public function registerMenu(string $title, string $after, array $items, ?\Closure $visible = null, string $viewId = '', array $viewSafe = []): void
+    {
+        if ('' === $title) {
+            throw new PluginException('A contributed menu needs a title');
+        }
+        $this->menus->add([
+            'plugin' => $this->pluginName,
+            'contribution' => new MenuContribution($title, $after, $items, $visible, $viewId, $viewSafe),
+        ]);
+    }
+
+    /**
+     * Tell the status bar this plugin's segment has changed.
+     *
+     * Segments are PULLED once per render, but the bar caches its assembled
+     * line, so a segment that changes between frames — a branch name resolving
+     * out of a subprocess — needs to say so or the old text stays until
+     * something else invalidates. Cheap and idempotent; call it from whatever
+     * callback produced the new value.
+     */
+    public function refreshStatusSegments(): void
+    {
+        $runtime = $this->manager->runtime();
+        $runtime->statusBar->invalidate();
+        $runtime->tui->requestRender();
+    }
+
+    /**
      * Declare REBINDABLE ACTIONS — keys a pane binds itself, listed on the
      * Settings → Keymap page and overridable in `.porta.json` under their bare
      * ids, exactly like core's.
@@ -806,15 +860,20 @@ final class PluginApi
      * The one thing a plugin could not do before this: `flash()` tells, and
      * nothing asked.
      *
-     * @param array<string, string>  $items  value => label, in the order to show them
-     * @param \Closure(string): void $onPick
+     * A value => label map is the short spelling. Pass full rows —
+     * `['label' => …, 'hint' => …, 'value' => …]` — when the list needs a
+     * dimmed second column: a stash's date, a branch's tracking state. Both
+     * spellings reach the same overlay.
+     *
+     * @param array<string, string>|list<array{label: string, hint: string, value: string}> $items in the order to show them
+     * @param \Closure(string): void                                                        $onPick
      */
     public function pick(string $title, array $items, \Closure $onPick): void
     {
         $runtime = $this->manager->runtime(); // activate()-phase gate
         $rows = [];
         foreach ($items as $value => $label) {
-            $rows[] = ['label' => $label, 'hint' => '', 'value' => $value];
+            $rows[] = \is_array($label) ? $label : ['label' => $label, 'hint' => '', 'value' => (string) $value];
         }
         $runtime->modals->openListOverlay($title, $rows, $onPick);
     }
@@ -836,6 +895,20 @@ final class PluginApi
     {
         $runtime = $this->manager->runtime();
         $runtime->notifier->flash($message, $seconds);
+    }
+
+    /**
+     * Say it with a SEVERITY — the same toast {@see flash()} shows, coloured
+     * for what happened: `Success` for a completed action, `Error` for one that
+     * failed, `Warn` for one that half-worked.
+     *
+     * The severity is chosen from core's four and core owns what each looks
+     * like, the same split {@see registerStatusSegment()} draws between asking
+     * for prominence and naming a colour. `flash()` is this at `Info`.
+     */
+    public function notify(string $message, ToastSeverity $severity = ToastSeverity::Info, float $seconds = 2.5): void
+    {
+        $this->manager->runtime()->notifier->notify($message, $severity, $seconds);
     }
 
     /**
@@ -1077,6 +1150,26 @@ final class PluginApi
     }
 
     /**
+     * Show or hide the version-control gutter STRIP — the one-column stripe
+     * {@see setChangeMarks()} paints into.
+     *
+     * Separate from publishing marks, because they answer different questions:
+     * "which lines changed?" is the plugin's, "is there a column for them?" is
+     * the user's. Publishing nothing while the strip is on leaves an empty
+     * column indented into every file, which is what the setting behind this
+     * exists to remove.
+     *
+     * Hiding drops whatever marks were showing, so nothing lingers under a
+     * strip that is no longer painted.
+     */
+    public function showChangeMarkGutter(bool $on): void
+    {
+        $runtime = $this->manager->runtime();
+        $on ? $runtime->editorView->enableVcsGutter() : $runtime->editorView->disableVcsGutter();
+        $runtime->tui->requestRender();
+    }
+
+    /**
      * Show a dim trailing note after each of the ACTIVE document's lines — the
      * slot `git blame` uses. The map replaces whatever was showing, so an empty
      * array clears it.
@@ -1185,6 +1278,12 @@ final class PluginApi
     public function bufferedListTools(): array
     {
         return $this->listTools->all();
+    }
+
+    /** @return list<array{plugin: string, contribution: MenuContribution}> */
+    public function bufferedMenus(): array
+    {
+        return $this->menus->all();
     }
 
     /** @return list<array{plugin: string, segment: \Closure(): (string|\Porta\Workbench\StatusCell|null)}> */

@@ -33,7 +33,7 @@ final class ResponsiveLayout
     /**
      * Registers itself on the render loop's width hook — this service is
      * resolved eagerly for that side effect (like the view controllers,
-     * which attach themselves to WorkspaceViews).
+     * which register themselves with the view registry).
      */
     public function __construct(
         private readonly PaneLayout $paneLayout,

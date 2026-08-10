@@ -75,6 +75,8 @@ final class TodoScanTest extends TestCase
             new MenuFileContext(),
             new ViewRegistry(),
             new Clipboard($tui),
+            new StatusBarWidget(),
+            new CodeEditorWidget(),
         ));
 
         $api = new PluginApi('todo', $manager, $project->dir, $settings);
