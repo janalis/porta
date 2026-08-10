@@ -10,7 +10,10 @@ use Porta\Widget\ContextMenu;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\NavigablePaneWidget;
 use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\View\ViewPointers;
 use Porta\Workbench\View\ViewRegistry;
+use Porta\Workbench\View\WheelAxis;
+use Porta\Workbench\View\WheelGesture;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 

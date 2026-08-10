@@ -22,6 +22,7 @@ use Porta\Highlight\HighlightRegistry;
 use Porta\Highlight\NoHighlightPlugins;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\I18n\Translator;
+use Porta\Input\HitTester;
 use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\ViewRegions;
 use Porta\Lsp\BufferReopener;
@@ -49,6 +50,7 @@ use Porta\Settings\SettingsHighlightController;
 use Porta\Settings\SettingsKeymapController;
 use Porta\Settings\SettingsLanguageController;
 use Porta\Settings\SettingsLspController;
+use Porta\Settings\SettingsMouseRouter;
 use Porta\Settings\SettingsPluginsController;
 use Porta\Settings\SettingsSection;
 use Porta\Settings\SettingsViewController;
@@ -253,6 +255,14 @@ final class SettingsViewControllerTest extends TestCase
                 },
                 $editorArea,
                 $this->tui,
+            ),
+            new SettingsMouseRouter(
+                new HitTester(new Renderer(new StyleSheet())),
+                $this->tui,
+                $this->nav,
+                $this->form,
+                $this->keymapList,
+                $regions,
             ),
             $this->tui,
             // Same order the porta.settings_section tag priorities produce, with

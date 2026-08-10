@@ -187,6 +187,16 @@ final class PluginApiTest extends TestCase
                 return new CodeEditorWidget();
             }
 
+            public function pointer(): ?\Porta\Workbench\View\ViewPointer
+            {
+                return null;
+            }
+
+            public function contextMenus(): ?\Porta\Workbench\Menu\ViewMenuSource
+            {
+                return null;
+            }
+
             public function cycleFocus(int $direction): bool
             {
                 return false;

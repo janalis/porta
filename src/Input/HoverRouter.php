@@ -13,6 +13,7 @@ use Porta\Widget\HoverableList;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\SeparatorWidget;
 use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\View\ViewPointers;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;

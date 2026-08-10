@@ -5,15 +5,12 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Input;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Git\GitMouseRouter;
 use Porta\I18n\Translator;
-use Porta\Input\GitMouseRouter;
 use Porta\Input\HitTester;
 use Porta\Input\MouseEvent;
-use Porta\Input\SettingsMouseRouter;
-use Porta\Input\ViewPointers;
-use Porta\Input\WheelAxis;
-use Porta\Input\WheelGesture;
 use Porta\Layout\ViewRegions;
+use Porta\Settings\SettingsMouseRouter;
 use Porta\Tests\Support\TestTui;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Git\ChangesListWidget;
@@ -24,6 +21,8 @@ use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
+use Porta\Workbench\View\WheelAxis;
+use Porta\Workbench\View\WheelGesture;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
 
@@ -47,7 +46,6 @@ final class ViewPointerStagesTest extends TestCase
             new SettingsNavWidget($translator),
             new SettingsFormWidget($translator),
             new KeybindingsListWidget($translator),
-            new ViewPointers(),
             new ViewRegions(Styles::dark()),
         );
     }
@@ -64,7 +62,6 @@ final class ViewPointerStagesTest extends TestCase
             new CommitBoxWidget($translator),
             new HistoryListWidget($translator),
             new GitTabsWidget($translator),
-            new ViewPointers(),
             new ViewRegions(Styles::dark()),
         );
     }

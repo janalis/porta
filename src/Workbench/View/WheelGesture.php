@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Porta\Input;
+namespace Porta\Workbench\View;
+
+use Porta\Input\MouseEvent;
+use Porta\Input\WheelStep;
 
 /**
  * A wheel notch, with its axis and its already-resolved step.

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Workbench\View;
 
 use Porta\Container\AsIdeService;
+use Porta\Workbench\Menu\ViewMenuSources;
+use Porta\Workbench\View\ViewPointers;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
@@ -29,10 +31,27 @@ final class ViewRegistry
     /** @var array<string, ContributedView> */
     private array $views = [];
 
-    /** Each view registers itself when constructed. */
+    public function __construct(
+        private readonly ViewPointers $pointers = new ViewPointers(),
+        private readonly ViewMenuSources $menus = new ViewMenuSources(),
+    ) {}
+
+    /**
+     * Each view registers itself when constructed, and its pointer and context
+     * menus go with it — they are the view's, not separate services that
+     * happen to answer for the same id.
+     */
     public function register(ContributedView $view): void
     {
         $this->views[$view->viewId()] = $view;
+        $pointer = $view->pointer();
+        if (null !== $pointer) {
+            $this->pointers->register($view->viewId(), $pointer);
+        }
+        $menus = $view->contextMenus();
+        if (null !== $menus) {
+            $this->menus->register($view->viewId(), $menus);
+        }
     }
 
     /** The registered view for $id, or null. The way to reach a view's own verbs. */

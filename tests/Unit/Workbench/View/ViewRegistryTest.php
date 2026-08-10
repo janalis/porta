@@ -5,8 +5,15 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Workbench\View;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Input\MouseEvent;
+use Porta\Workbench\Menu\ViewContextMenu;
+use Porta\Workbench\Menu\ViewMenuSource;
+use Porta\Workbench\Menu\ViewMenuSources;
 use Porta\Workbench\View\ContributedView;
+use Porta\Workbench\View\ViewPointer;
+use Porta\Workbench\View\ViewPointers;
 use Porta\Workbench\View\ViewRegistry;
+use Porta\Workbench\View\WheelGesture;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -20,9 +27,14 @@ final class ViewRegistryTest extends TestCase
      * whatever registers, and the id travels on the view rather than being a
      * case core had to declare.
      */
-    private function fakeView(string $id, bool $ownsMainArea = true, bool $hasRing = true): ContributedView
-    {
-        return new class($id, $ownsMainArea, $hasRing) implements ContributedView {
+    private function fakeView(
+        string $id,
+        bool $ownsMainArea = true,
+        bool $hasRing = true,
+        ?ViewPointer $pointer = null,
+        ?ViewMenuSource $menus = null,
+    ): ContributedView {
+        return new class($id, $ownsMainArea, $hasRing, $pointer, $menus) implements ContributedView {
             private bool $open = false;
 
             private readonly AbstractWidget&FocusableInterface $widget;
@@ -31,6 +43,8 @@ final class ViewRegistryTest extends TestCase
                 private readonly string $id,
                 private readonly bool $ownsMainArea,
                 private readonly bool $hasRing,
+                private readonly ?ViewPointer $pointer,
+                private readonly ?ViewMenuSource $menus,
             ) {
                 $this->widget = new class extends AbstractWidget implements FocusableInterface {
                     use FocusableTrait;
@@ -78,6 +92,16 @@ final class ViewRegistryTest extends TestCase
             public function focusTarget(): AbstractWidget&FocusableInterface
             {
                 return $this->widget;
+            }
+
+            public function pointer(): ?ViewPointer
+            {
+                return $this->pointer;
+            }
+
+            public function contextMenus(): ?ViewMenuSource
+            {
+                return $this->menus;
             }
 
             public function cycleFocus(int $direction): bool
@@ -173,5 +197,87 @@ final class ViewRegistryTest extends TestCase
         $views->toggle('welcome');
         $this->assertSame($welcome->focusTarget(), $views->focusTarget());
         $this->assertFalse($views->cycleFocus(1), 'the modal has no ring; the caller falls through to the editor');
+    }
+
+    /**
+     * The view carries its pointer and its menus, so registering the view is
+     * what wires them.
+     *
+     * They used to register themselves: three services carried #[AsEager]
+     * purely for the side effect, because nothing referenced them. That made
+     * two failure modes silent — a pointer registered under a view that never
+     * arrived, and a view that arrived without its pointer — and neither is an
+     * error anything could raise. Now there is one call and the compiler
+     * enforces the pair.
+     */
+    public function testRegisteringAViewWiresThePointerAndMenusItCarries(): void
+    {
+        $pointers = new ViewPointers();
+        $menus = new ViewMenuSources();
+        $views = new ViewRegistry($pointers, $menus);
+
+        $pointer = $this->fakePointer();
+        $source = $this->fakeMenuSource();
+        $views->register($this->fakeView('git', pointer: $pointer, menus: $source));
+
+        $this->assertSame($pointer, $pointers->of('git'));
+        $this->assertSame($source, $menus->of('git'));
+    }
+
+    public function testAViewWithNoPanesToClickWiresNeither(): void
+    {
+        // Not the same as "wires a null": ViewPointers hands back a null object
+        // so no caller branches, and ViewMenuSources answers null so the
+        // context-menu path falls through to the editor.
+        $pointers = new ViewPointers();
+        $menus = new ViewMenuSources();
+        $views = new ViewRegistry($pointers, $menus);
+
+        $views->register($this->fakeView('welcome'));
+
+        $event = MouseEvent::parse("\x1b[<0;10;5M");
+        self::assertNotNull($event);
+
+        $this->assertFalse($pointers->of('welcome')->press($event));
+        $this->assertNull($menus->of('welcome'));
+    }
+
+    private function fakePointer(): ViewPointer
+    {
+        return new class implements ViewPointer {
+            public function continueDrag(MouseEvent $mouse): bool
+            {
+                return false;
+            }
+
+            public function cancelDrag(): void {}
+
+            public function press(MouseEvent $mouse): bool
+            {
+                return false;
+            }
+
+            public function hover(MouseEvent $mouse): void {}
+
+            public function wheel(WheelGesture $gesture): bool
+            {
+                return false;
+            }
+        };
+    }
+
+    private function fakeMenuSource(): ViewMenuSource
+    {
+        return new class implements ViewMenuSource {
+            public function contextItemsAt(int $row, int $col): ?array
+            {
+                return null;
+            }
+
+            public function focusedContextMenu(): ?ViewContextMenu
+            {
+                return null;
+            }
+        };
     }
 }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Input;
 
 use Porta\Overlay\Presenter\WelcomeModalController;
+use Porta\Workbench\View\ViewPointer;
+use Porta\Workbench\View\WheelGesture;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -24,10 +26,7 @@ final class WelcomeMouseRouter implements ViewPointer
     public function __construct(
         private readonly WelcomeModalController $modal,
         private readonly Tui $tui,
-        ?ViewPointers $pointers = null,
-    ) {
-        $pointers?->register('welcome', $this);
-    }
+    ) {}
 
     /** Whether the modal is open — the router's swallow-everything gate. */
     public function isModalOpen(): bool

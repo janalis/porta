@@ -17,7 +17,9 @@ use Porta\Widget\Onboarding\WelcomeWidget;
 use Porta\Widget\Render\ModalFrame;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Workbench\EditorArea;
+use Porta\Workbench\Menu\ViewMenuSource;
 use Porta\Workbench\View\ContributedView;
+use Porta\Workbench\View\ViewPointer;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Tui;
@@ -121,6 +123,22 @@ final class WelcomeModalController implements ContributedView
     public function isOpen(): bool
     {
         return $this->open;
+    }
+
+    /**
+     * None: WelcomeMouseRouter holds THIS controller, so the reference cannot
+     * run the other way — and it does not need to. The modal is app-modal, so
+     * MouseRouter answers it in its own branch before any view dispatch.
+     */
+    public function pointer(): ?ViewPointer
+    {
+        return null;
+    }
+
+    /** The modal offers no context menu; a right-click over it does nothing. */
+    public function contextMenus(): ?ViewMenuSource
+    {
+        return null;
     }
 
     public function focusTarget(): AbstractWidget&FocusableInterface

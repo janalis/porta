@@ -23,14 +23,19 @@ use Porta\Event\GitHistoryEndReached;
 use Porta\Event\GitRemoteCompleted;
 use Porta\Event\GitRemoteRequested;
 use Porta\Event\GitViewModeRequested;
+use Porta\Git\GitCommands;
+use Porta\Git\GitContextMenus;
 use Porta\Git\GitInfo;
+use Porta\Git\GitMouseRouter;
 use Porta\Git\GitPanes;
+use Porta\Git\GitRefresher;
 use Porta\Git\GitRemote;
 use Porta\Git\GitRemoteCommands;
 use Porta\Git\GitViewController;
 use Porta\Git\GitViewMode;
 use Porta\Git\RefreshMode;
 use Porta\I18n\Translator;
+use Porta\Input\HitTester;
 use Porta\Layout\DiffLayout;
 use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\GitSidebar;
@@ -179,10 +184,11 @@ final class GitViewControllerTest extends TestCase
         $t = new Translator('en');
         $views = new ViewRegistry();
         $notifier = new Notifier($this->statusBar, $this->tui);
+        $renderer = new Renderer(new StyleSheet());
         $this->layoutController = new LayoutController(
             new LayoutStore($this->project->dir),
             $this->tui,
-            new Renderer(new StyleSheet()),
+            $renderer,
             new FileTreeWidget($this->project->dir),
             TestBottomDock::create($this->tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
             // The controller declares its own sidebar when it mints the region,
@@ -211,6 +217,33 @@ final class GitViewControllerTest extends TestCase
                 },
                 $editorArea,
                 $this->tui,
+            ),
+            new GitMouseRouter(
+                new HitTester($renderer),
+                $this->tui,
+                $this->changes,
+                $this->diffView,
+                $this->commitBox,
+                $this->history,
+                $this->tabs,
+                $regions,
+            ),
+            new GitContextMenus(
+                new HitTester($renderer),
+                $this->tui,
+                $this->changes,
+                $this->history,
+                new GitCommands(
+                    $this->git,
+                    $this->editor,
+                    $notifier,
+                    $this->tui,
+                    $t,
+                    new GitRefresher($this->git, $this->statusBar, $this->tui),
+                    new Clipboard($this->tui),
+                    $dispatcher,
+                ),
+                $t,
             ),
             $this->tui,
             $notifier,

@@ -22,6 +22,8 @@ use Porta\Event\GitHistoryEndReached;
 use Porta\Event\GitRemoteCompleted;
 use Porta\Event\GitRemoteRequested;
 use Porta\Event\GitViewModeRequested;
+use Porta\Git\GitContextMenus;
+use Porta\Git\GitMouseRouter;
 use Porta\I18n\Translator;
 use Porta\Layout\DiffLayout;
 use Porta\Layout\EditorAreaPanes;
@@ -33,9 +35,11 @@ use Porta\Support\Clipboard;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\EditorArea;
+use Porta\Workbench\Menu\ViewMenuSource;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ContributedView;
 use Porta\Workbench\View\ViewHost;
+use Porta\Workbench\View\ViewPointer;
 use Porta\Workbench\View\ViewRegistry;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Revolt\EventLoop;
@@ -87,6 +91,8 @@ final class GitViewController implements ContributedView
         private readonly GitPanes $panes,
         ViewRegions $regions,
         private readonly ViewHost $host,
+        private readonly GitMouseRouter $mouse,
+        private readonly GitContextMenus $menus,
         private readonly Tui $tui,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
@@ -146,6 +152,16 @@ final class GitViewController implements ContributedView
     }
 
     /** Where focus should land when a popup (e.g. the app menu) closes over the view. */
+    public function pointer(): ?ViewPointer
+    {
+        return $this->mouse;
+    }
+
+    public function contextMenus(): ?ViewMenuSource
+    {
+        return $this->menus;
+    }
+
     public function focusTarget(): AbstractWidget&FocusableInterface
     {
         return GitViewMode::History === $this->mode ? $this->panes->history : $this->panes->changes;

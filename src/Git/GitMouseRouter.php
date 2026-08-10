@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Porta\Input;
+namespace Porta\Git;
 
-use Porta\Container\AsEager;
 use Porta\Git\GitViewMode;
+use Porta\Input\HitTester;
+use Porta\Input\MouseEvent;
+use Porta\Input\MouseRouter;
 use Porta\Layout\ViewRegions;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\CommitBoxWidget;
@@ -13,6 +15,9 @@ use Porta\Widget\Git\DiffViewWidget;
 use Porta\Widget\Git\GitTabsWidget;
 use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\SeparatorWidget;
+use Porta\Workbench\View\ViewPointer;
+use Porta\Workbench\View\WheelAxis;
+use Porta\Workbench\View\WheelGesture;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 
@@ -24,7 +29,6 @@ use Symfony\Component\Tui\Tui;
  * has to. Its panes are live only while the git view is swapped into the main
  * area, so its hit tests miss under the normal editor layout.
  */
-#[AsEager]
 final class GitMouseRouter implements ViewPointer
 {
     /** A press on a diff body row arms a row-range drag (rows join as the pointer moves). */
@@ -40,10 +44,8 @@ final class GitMouseRouter implements ViewPointer
         private readonly CommitBoxWidget $commitBox,
         private readonly HistoryListWidget $history,
         private readonly GitTabsWidget $tabs,
-        ViewPointers $pointers,
         ViewRegions $regions,
     ) {
-        $pointers->register('git', $this);
         // Held for the divider hover tint only — the RECTS are core's now: it
         // mints this region, so it hit-tests its own widgets for resize arming.
         $this->separator = $regions->mint('git')->separator();

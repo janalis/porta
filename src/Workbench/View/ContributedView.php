@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Workbench\View;
 
+use Porta\Workbench\Menu\ViewMenuSource;
+use Porta\Workbench\View\ViewPointer;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 
@@ -40,6 +42,19 @@ interface ContributedView
     public function close(): void;
 
     public function toggle(): void;
+
+    /**
+     * This view's pointer surface, or null when it has no panes to click.
+     *
+     * Owned by the view rather than registered separately: a pointer target
+     * that outlives its view, or exists without one, is a bug with no error —
+     * and three services carried #[AsEager] purely to register themselves
+     * because nothing else referenced them.
+     */
+    public function pointer(): ?ViewPointer;
+
+    /** This view's context menus, or null when its panes offer none. */
+    public function contextMenus(): ?ViewMenuSource;
 
     /** Where focus should land when a popup closes over the open view. */
     public function focusTarget(): AbstractWidget&FocusableInterface;

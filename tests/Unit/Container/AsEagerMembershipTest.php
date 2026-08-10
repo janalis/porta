@@ -6,9 +6,6 @@ namespace Porta\Tests\Unit\Container;
 
 use Porta\Git\GitMenu;
 use Porta\Git\GitViewController;
-use Porta\Input\GitContextMenus;
-use Porta\Input\GitMouseRouter;
-use Porta\Input\SettingsMouseRouter;
 use Porta\Layout\ResponsiveLayout;
 use Porta\Overlay\Presenter\FindModalPresenter;
 use Porta\Overlay\Presenter\PickerModalPresenter;
@@ -57,11 +54,15 @@ final class AsEagerMembershipTest extends ContainerTestCase
         // without the tag they would never be constructed at all. Compared as a
         // SET, because their relative order is container discovery order and no
         // behaviour reads it — asserting it would pin an accident.
+        //
+        // Three left this list when a view took ownership of its pointer and
+        // its context menus: the two mouse routers and GitContextMenus are now
+        // constructor arguments of the controllers that own them, so
+        // ViewRegistry::register() wires them and an ordinary reference builds
+        // them. The tag stays only for what genuinely has no owner — a menu
+        // contribution belongs to no one widget.
         $unordered = [
-            GitContextMenus::class,
             GitMenu::class,
-            GitMouseRouter::class,
-            SettingsMouseRouter::class,
         ];
 
         self::assertSame($ordered, \array_slice($actual, offset: 0, length: \count($ordered)), 'the contractual construction order');

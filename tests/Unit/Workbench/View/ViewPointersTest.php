@@ -6,10 +6,10 @@ namespace Porta\Tests\Unit\Input;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Input\MouseEvent;
-use Porta\Input\ViewPointer;
-use Porta\Input\ViewPointers;
-use Porta\Input\WheelAxis;
-use Porta\Input\WheelGesture;
+use Porta\Workbench\View\ViewPointer;
+use Porta\Workbench\View\ViewPointers;
+use Porta\Workbench\View\WheelAxis;
+use Porta\Workbench\View\WheelGesture;
 
 /**
  * The lookup that replaced four `Input` classes holding GitMouseRouter and

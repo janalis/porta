@@ -2,14 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Porta\Input;
+namespace Porta\Settings;
 
-use Porta\Container\AsEager;
+use Porta\Input\HitTester;
+use Porta\Input\MouseEvent;
+use Porta\Input\MouseRouter;
 use Porta\Layout\ViewRegions;
 use Porta\Widget\SeparatorWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
+use Porta\Workbench\View\ViewPointer;
+use Porta\Workbench\View\WheelAxis;
+use Porta\Workbench\View\WheelGesture;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 
@@ -20,7 +25,6 @@ use Symfony\Component\Tui\Tui;
  * swapped into the main area, so its hit tests miss otherwise. It carries no
  * cross-event drag state (settings has none).
  */
-#[AsEager]
 final class SettingsMouseRouter implements ViewPointer
 {
     private readonly SeparatorWidget $separator;
@@ -31,10 +35,8 @@ final class SettingsMouseRouter implements ViewPointer
         private readonly SettingsNavWidget $nav,
         private readonly SettingsFormWidget $form,
         private readonly KeybindingsListWidget $keys,
-        ViewPointers $pointers,
         ViewRegions $regions,
     ) {
-        $pointers->register('settings', $this);
         // Held for the divider hover tint only — the RECTS are core's now: it
         // mints this region, so it hit-tests its own widgets for resize arming.
         $this->separator = $regions->mint('settings')->separator();

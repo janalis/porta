@@ -2,20 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Porta\Input;
+namespace Porta\Git;
 
-use Porta\Container\AsEager;
 use Porta\Git\ChangeEntry;
 use Porta\Git\GitCommands;
 use Porta\Git\LogEntry;
 use Porta\I18n\Translator;
+use Porta\Input\ContextMenuRouter;
+use Porta\Input\HitTester;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\HistoryListWidget;
 use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Menu\ViewContextMenu;
 use Porta\Workbench\Menu\ViewMenuSource;
-use Porta\Workbench\Menu\ViewMenuSources;
-use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -29,21 +28,16 @@ use Symfony\Component\Tui\Tui;
  * knowing what its menu offers, and knowing where to anchor it are one thing,
  * and it is git's.
  */
-#[AsEager]
 final readonly class GitContextMenus implements ViewMenuSource
 {
     public function __construct(
         private HitTester $hit,
         private Tui $tui,
-        private Renderer $renderer,
         private ChangesListWidget $changes,
         private HistoryListWidget $history,
         private GitCommands $commands,
         private Translator $translator,
-        ViewMenuSources $sources,
-    ) {
-        $sources->register('git', $this);
-    }
+    ) {}
 
     public function contextItemsAt(int $row, int $col): ?array
     {
@@ -76,7 +70,7 @@ final readonly class GitContextMenus implements ViewMenuSource
         $focus = $this->tui->getFocus();
         if ($focus === $this->changes) {
             $entry = $this->changes->selectedEntry();
-            $rect = $this->renderer->getWidgetRect($this->changes);
+            $rect = $this->hit->rect($this->changes);
 
             return null === $entry || null === $rect
                 ? null
@@ -86,7 +80,7 @@ final readonly class GitContextMenus implements ViewMenuSource
             return null;
         }
         $commit = $this->history->selectedCommit();
-        $rect = $this->renderer->getWidgetRect($this->history);
+        $rect = $this->hit->rect($this->history);
 
         return null === $commit || null === $rect
             ? null

@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Porta\Input;
+namespace Porta\Workbench\View;
 
 use Porta\Container\AsIdeService;
+use Porta\Input\MouseEvent;
+use Porta\Input\MouseRouter;
 
 /**
  * Which {@see ViewPointer} answers for which view id.

@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Porta\Input;
+namespace Porta\Workbench\View;
+
+use Porta\Input\MouseEvent;
+use Porta\Input\MouseRouter;
 
 /**
  * The pointer surface of a view that owns a region: five stages of the mouse

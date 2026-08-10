@@ -11,13 +11,16 @@ use Porta\Event\SettingsSectionRequested;
 use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\ViewRegion;
 use Porta\Layout\ViewRegions;
+use Porta\Settings\SettingsMouseRouter;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Workbench\EditorArea;
+use Porta\Workbench\Menu\ViewMenuSource;
 use Porta\Workbench\View\ContributedView;
 use Porta\Workbench\View\ViewHost;
+use Porta\Workbench\View\ViewPointer;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -48,6 +51,7 @@ final class SettingsViewController implements ContributedView
         private readonly KeybindingsListWidget $keymapList,
         ViewRegions $regions,
         private readonly ViewHost $host,
+        private readonly SettingsMouseRouter $mouse,
         private readonly Tui $tui,
         /** @var iterable<SettingsSection> in #[AsTaggedItem] priority order; the general section claims everything and sorts last */
         #[AutowireIterator('porta.settings_section')]
@@ -97,6 +101,17 @@ final class SettingsViewController implements ContributedView
     }
 
     /** Where focus should land when a popup (e.g. the app menu) closes over the view. */
+    public function pointer(): ?ViewPointer
+    {
+        return $this->mouse;
+    }
+
+    /** No pane in the settings view offers a context menu. */
+    public function contextMenus(): ?ViewMenuSource
+    {
+        return null;
+    }
+
     public function focusTarget(): AbstractWidget&FocusableInterface
     {
         return $this->contentWidget();

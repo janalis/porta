@@ -6,10 +6,10 @@ namespace Porta\Tests\Unit\Input;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Git\GitCommands;
+use Porta\Git\GitContextMenus;
 use Porta\Git\GitInfo;
 use Porta\Git\GitRefresher;
 use Porta\I18n\Translator;
-use Porta\Input\GitContextMenus;
 use Porta\Input\HitTester;
 use Porta\Support\Clipboard;
 use Porta\Tests\Support\RendersRoot;
@@ -19,7 +19,6 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\Git\ChangesListWidget;
 use Porta\Widget\Git\HistoryListWidget;
 use Porta\Widget\StatusBarWidget;
-use Porta\Workbench\Menu\ViewMenuSources;
 use Porta\Workbench\Notifier;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -69,7 +68,6 @@ final class GitContextMenusTest extends TestCase
         return new GitContextMenus(
             new HitTester($this->renderer),
             $this->tui,
-            $this->renderer,
             $this->changes,
             $this->history,
             new GitCommands(
@@ -83,7 +81,6 @@ final class GitContextMenusTest extends TestCase
                 new EventDispatcher(),
             ),
             $translator,
-            new ViewMenuSources(),
         );
     }
 
