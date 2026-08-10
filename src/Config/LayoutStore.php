@@ -33,11 +33,8 @@ final readonly class LayoutStore
         if (null !== $prefs->bottomPanelHeightPercent) {
             $data['bottomPanelHeightPercent'] = $prefs->bottomPanelHeightPercent;
         }
-        if (null !== $prefs->gitSidebarWidthPercent) {
-            $data['gitSidebarWidthPercent'] = $prefs->gitSidebarWidthPercent;
-        }
-        if (null !== $prefs->settingsSidebarWidthPercent) {
-            $data['settingsSidebarWidthPercent'] = $prefs->settingsSidebarWidthPercent;
+        if ([] !== $prefs->viewSidebarWidthPercent) {
+            $data['viewSidebarWidthPercent'] = $prefs->viewSidebarWidthPercent;
         }
 
         try {
@@ -63,9 +60,43 @@ final readonly class LayoutStore
         return new LayoutPrefs(
             sidebarWidthPercent: $this->percent($data['sidebarWidthPercent'] ?? null),
             bottomPanelHeightPercent: $this->percent($data['bottomPanelHeightPercent'] ?? null),
-            gitSidebarWidthPercent: $this->percent($data['gitSidebarWidthPercent'] ?? null),
-            settingsSidebarWidthPercent: $this->percent($data['settingsSidebarWidthPercent'] ?? null),
+            viewSidebarWidthPercent: $this->viewWidths($data),
         );
+    }
+
+    /**
+     * The per-view sidebar widths, adopting the two pre-move keys for a file
+     * written before views were contributed.
+     *
+     * Adopted rather than migrated in place: this file is hand-editable, so the
+     * old key keeps working until the next save rewrites the map. A view that
+     * has a value under BOTH spellings takes the map's — that is the one the
+     * user's last drag wrote.
+     *
+     * @param array<array-key, mixed> $data
+     *
+     * @return array<string, int>
+     */
+    private function viewWidths(array $data): array
+    {
+        $widths = [];
+        foreach (['git' => 'gitSidebarWidthPercent', 'settings' => 'settingsSidebarWidthPercent'] as $id => $legacy) {
+            $percent = $this->percent($data[$legacy] ?? null);
+            if (null !== $percent) {
+                $widths[$id] = $percent;
+            }
+        }
+        /** @var mixed $map */
+        $map = $data['viewSidebarWidthPercent'] ?? null;
+        /** @var mixed $value */
+        foreach (\is_array($map) ? $map : [] as $id => $value) {
+            $percent = $this->percent($value);
+            if (\is_string($id) && null !== $percent) {
+                $widths[$id] = $percent;
+            }
+        }
+
+        return $widths;
     }
 
     private function percent(mixed $value): ?int

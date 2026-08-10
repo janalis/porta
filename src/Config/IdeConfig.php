@@ -40,14 +40,6 @@ final class IdeConfig
         'formatOnSave' => false,
         'cursorShape' => 'bar',
         'tabBarPosition' => 'top',
-        'gitShowBranch' => true,
-        'gitGutterMarks' => true,
-        'gitBlameDefault' => false,
-        'gitSignCommits' => false,
-        'gitNoVerify' => false,
-        'gitSignoff' => false,
-        'gitRefreshInterval' => 2,
-        'gitPath' => '',
         'dotPath' => '',
         'graphRender' => 'bitmap',
         'svgConverter' => '',
@@ -60,8 +52,24 @@ final class IdeConfig
      * ({@see PortaJsonWriter}). `editorConfig` was the "Respect .editorconfig"
      * toggle — .editorconfig is always honored now, superseded per language by
      * the indent settings.
+     *
+     * The eight `git*` keys are here because git became a bundled PLUGIN: they
+     * live under `plugins.git.*` now, on that plugin's own settings page. The
+     * plugin adopts whatever value the old key held, once, so silence here is
+     * not "ignored" — it is "already read, by their new owner".
      */
-    public const array LEGACY_SETTINGS = ['editorConfig', 'relativeLineNumbers'];
+    public const array LEGACY_SETTINGS = [
+        'editorConfig',
+        'relativeLineNumbers',
+        'gitShowBranch',
+        'gitGutterMarks',
+        'gitBlameDefault',
+        'gitSignCommits',
+        'gitNoVerify',
+        'gitSignoff',
+        'gitRefreshInterval',
+        'gitPath',
+    ];
 
     /**
      * Bundled plugins enabled when `.porta.json` has NO `enabledPlugins` key —

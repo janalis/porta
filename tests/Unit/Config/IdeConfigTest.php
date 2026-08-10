@@ -55,9 +55,6 @@ final class IdeConfigTest extends TestCase
                 'lineNumbers' => 'relative',
                 'theme' => 'light',
                 'tabBarPosition' => 'left',
-                'gitShowBranch' => false,
-                'gitRefreshInterval' => '5', // string coerced to int
-                'gitPath' => '/usr/bin/git',
                 'bogusSetting' => 'x',
             ],
         ])]);
@@ -68,10 +65,6 @@ final class IdeConfigTest extends TestCase
         $this->assertSame('relative', $config->settings['lineNumbers']);
         $this->assertSame('light', $config->settings['theme']);
         $this->assertSame('left', $config->settings['tabBarPosition']);
-        $this->assertFalse($config->settings['gitShowBranch']);
-        $this->assertSame(5, $config->settings['gitRefreshInterval'], 'string coerced to int');
-        $this->assertSame('/usr/bin/git', $config->settings['gitPath']);
-        $this->assertTrue($config->settings['gitGutterMarks'], 'git default preserved when unset');
         $this->assertTrue($config->settings['autoPairs'], 'default preserved when unset');
         $this->assertContains('Unknown setting "bogusSetting" in .porta.json', $config->warnings);
     }
@@ -80,14 +73,18 @@ final class IdeConfigTest extends TestCase
     {
         // "editorConfig" was the removed "Respect .editorconfig" toggle: stale
         // values in older configs load silently, unlike genuinely-unknown keys.
+        // The eight `git*` keys joined it when git became a plugin — they are
+        // `plugins.git.*` now, and that plugin adopts the old value once, so a
+        // warning here would be wrong twice over.
         $project = new TempProject(['.porta.json' => json_encode([
-            'settings' => ['editorConfig' => false, 'bogusSetting' => 'x'],
+            'settings' => ['editorConfig' => false, 'gitShowBranch' => false, 'gitPath' => '/usr/bin/git', 'bogusSetting' => 'x'],
         ])]);
 
         $config = IdeConfig::load($project->dir);
 
         $this->assertArrayNotHasKey('editorConfig', $config->settings, 'the legacy key never reaches the settings');
-        $this->assertSame(['Unknown setting "bogusSetting" in .porta.json'], $config->warnings, 'no warning for the legacy key; unknown keys still warn');
+        $this->assertArrayNotHasKey('gitShowBranch', $config->settings, 'nor does a key that moved to a plugin');
+        $this->assertSame(['Unknown setting "bogusSetting" in .porta.json'], $config->warnings, 'no warning for a superseded key; unknown keys still warn');
     }
 
     public function testLanguagesParsingAndValidation(): void

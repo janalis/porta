@@ -24,7 +24,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * Every setting applies live: its `apply` closure mutates the running UI (the
  * editor, the theme, the cursor shape, or the locale) the instant it
  * changes, and the value is persisted — except the Graphviz `dotPath`, which
- * is `restart: true` like the git `gitPath` and per-language `runCommand`
+ * is `restart: true` like the per-language `runCommand`
  * rows: it resolves through the compiled env channel, and
  * {@see \Porta\Widget\Settings\SettingsFormWidget} renders its
  * "applies on restart" note. (The architecture generator command lives on the

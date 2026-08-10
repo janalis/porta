@@ -123,8 +123,8 @@ final class LayoutControllerNudgeTest extends TestCase
 
         $layout->nudgeViewSidebar('settings', 2);
         $file = $this->layoutFile();
-        $this->assertSame(30, $file['gitSidebarWidthPercent']);
-        $this->assertArrayHasKey('settingsSidebarWidthPercent', $file);
+        $this->assertSame(30, $file['viewSidebarWidthPercent']['git']);
+        $this->assertArrayHasKey('settings', $file['viewSidebarWidthPercent']);
     }
 
     public function testNudgeBottomPanelIsANoOpWhenNoPanelIsOpen(): void

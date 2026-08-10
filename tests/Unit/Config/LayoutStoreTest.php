@@ -19,16 +19,14 @@ final class LayoutStoreTest extends TestCase
         $this->assertTrue($store->save(new LayoutPrefs(
             sidebarWidthPercent: 22,
             bottomPanelHeightPercent: 35,
-            gitSidebarWidthPercent: 28,
-            settingsSidebarWidthPercent: 19,
+            viewSidebarWidthPercent: ['git' => 28, 'settings' => 19],
         )));
 
         $loaded = $store->load();
         $this->assertNotNull($loaded);
         $this->assertSame(22, $loaded->sidebarWidthPercent);
         $this->assertSame(35, $loaded->bottomPanelHeightPercent);
-        $this->assertSame(28, $loaded->gitSidebarWidthPercent);
-        $this->assertSame(19, $loaded->settingsSidebarWidthPercent);
+        $this->assertSame(['git' => 28, 'settings' => 19], $loaded->viewSidebarWidthPercent);
     }
 
     public function testLoadWhenNoFileReturnsNull(): void
@@ -49,8 +47,7 @@ final class LayoutStoreTest extends TestCase
         $this->assertNotNull($loaded);
         $this->assertNull($loaded->sidebarWidthPercent, 'non-numeric value is ignored');
         $this->assertNull($loaded->bottomPanelHeightPercent, 'absent key is null');
-        $this->assertNull($loaded->gitSidebarWidthPercent, 'absent git key is null');
-        $this->assertNull($loaded->settingsSidebarWidthPercent, 'absent settings key is null');
+        $this->assertSame([], $loaded->viewSidebarWidthPercent, 'no view has been resized');
     }
 
     public function testHandEditedNumericStringIsAccepted(): void
@@ -73,8 +70,7 @@ final class LayoutStoreTest extends TestCase
         $raw = (string) file_get_contents($project->path('.porta/layout.json'));
         $this->assertStringContainsString('sidebarWidthPercent', $raw);
         $this->assertStringNotContainsString('bottomPanelHeightPercent', $raw);
-        $this->assertStringNotContainsString('gitSidebarWidthPercent', $raw);
-        $this->assertStringNotContainsString('settingsSidebarWidthPercent', $raw);
+        $this->assertStringNotContainsString('viewSidebarWidthPercent', $raw, 'no view resized, no key');
         $this->assertSame(20, $store->load()?->sidebarWidthPercent);
         $this->assertNull($store->load()?->bottomPanelHeightPercent);
     }
@@ -85,5 +81,51 @@ final class LayoutStoreTest extends TestCase
         file_put_contents($project->path('.porta'), data: 'not a dir'); // block mkdir of .porta/
 
         $this->assertFalse(new LayoutStore($project->dir)->save(new LayoutPrefs(sidebarWidthPercent: 20, bottomPanelHeightPercent: 30)));
+    }
+
+    public function testAFileWrittenBeforeViewsWereContributedIsStillRead(): void
+    {
+        // The two named keys this map replaced. They were core's while core
+        // knew both views; a contributed view has an id core learns at
+        // runtime, so a field per view cannot describe one. Adopted rather than
+        // migrated in place, because this file is hand-editable — the old
+        // spelling keeps working until the next drag rewrites the map.
+        $project = new TempProject();
+        if (!is_dir($project->path('.porta'))) {
+            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        }
+        file_put_contents(
+            $project->path('.porta/layout.json'),
+            json_encode([
+                'gitSidebarWidthPercent' => 28,
+                'settingsSidebarWidthPercent' => 19,
+            ]),
+        );
+
+        $this->assertSame(['git' => 28, 'settings' => 19], new LayoutStore($project->dir)->load()?->viewSidebarWidthPercent);
+    }
+
+    public function testTheMapWinsOverTheKeyItReplaced(): void
+    {
+        // A file mid-migration holds both: the old key from before the move and
+        // the map from the first drag after it. The map is the one the user's
+        // last drag wrote.
+        $project = new TempProject();
+        if (!is_dir($project->path('.porta'))) {
+            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        }
+        file_put_contents(
+            $project->path('.porta/layout.json'),
+            json_encode([
+                'gitSidebarWidthPercent' => 28,
+                'viewSidebarWidthPercent' => ['git' => 44, 'lsp-explorer' => 12],
+            ]),
+        );
+
+        $this->assertSame(
+            ['git' => 44, 'lsp-explorer' => 12],
+            new LayoutStore($project->dir)->load()?->viewSidebarWidthPercent,
+            'and a view core has never heard of is read like any other',
+        );
     }
 }

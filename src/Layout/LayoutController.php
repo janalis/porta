@@ -82,10 +82,7 @@ final class LayoutController
         $cols = $terminal->getColumns();
         $rows = $terminal->getRows();
         $this->treeResize->widthPercent = $layout->sidebarWidthPercent;
-        // Still two named fields in the persisted prefs: the file's shape is a
-        // user-visible contract and changing it belongs with the settings
-        // migration, not here.
-        foreach (['git' => $layout->gitSidebarWidthPercent, 'settings' => $layout->settingsSidebarWidthPercent] as $id => $percent) {
+        foreach ($layout->viewSidebarWidthPercent as $id => $percent) {
             $state = $this->viewResize($id);
             if (null !== $state) {
                 $state->widthPercent = $percent;
@@ -333,13 +330,33 @@ final class LayoutController
         }
     }
 
+    /**
+     * Every minted region's sidebar width, keyed by view id.
+     *
+     * Reads the regions rather than naming views: the ids are whatever
+     * registered, which is the whole point of a contributed view.
+     *
+     * @return array<string, int>
+     */
+    private function viewWidths(): array
+    {
+        $widths = [];
+        foreach ($this->regions->all() as $region) {
+            $percent = $this->viewResize($region->id)?->widthPercent;
+            if (null !== $percent) {
+                $widths[$region->id] = $percent;
+            }
+        }
+
+        return $widths;
+    }
+
     private function persistLayout(): void
     {
         $this->store->save(new LayoutPrefs(
             sidebarWidthPercent: $this->treeResize->widthPercent,
             bottomPanelHeightPercent: $this->bottomPanelHeightPercent,
-            gitSidebarWidthPercent: $this->viewResize('git')?->widthPercent,
-            settingsSidebarWidthPercent: $this->viewResize('settings')?->widthPercent,
+            viewSidebarWidthPercent: $this->viewWidths(),
         ));
     }
 }

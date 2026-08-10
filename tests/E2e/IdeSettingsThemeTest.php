@@ -238,7 +238,7 @@ final class IdeSettingsThemeTest extends TestCase
                 900 => function ($tui) use ($project): void {
                     $this->assertSame(30, $tui->getById('settings-nav')->width(), 'the drag resized the sidebar');
                     $layout = json_decode((string) file_get_contents($project->path('.porta/layout.json')), associative: true);
-                    $this->assertSame(19, $layout['settingsSidebarWidthPercent'], 'saved as a percentage (round(30/160))');
+                    $this->assertSame(19, $layout['viewSidebarWidthPercent']['settings'], 'saved as a percentage (round(30/160))');
                 },
             ],
         );

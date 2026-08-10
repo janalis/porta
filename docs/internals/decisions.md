@@ -151,6 +151,19 @@ plugin's own settings page under Plugins. Keeping them where they were would
 have needed a `registerSettingsSection` verb that `registerSetting` already
 covers.
 
+Two adoptions carry an existing project across, and both read the FILE rather
+than the resolved settings — the question is "was this key ever written?", and
+an absent key and a key set to its default are the same VALUE:
+
+- `GitPlugin\LegacySettings` adopts the eight `git*` keys, per key, and writes
+  what it adopted through so the file stops answering the same question twice.
+  The old keys join `IdeConfig::LEGACY_SETTINGS`, so core skips them silently
+  instead of warning eight times.
+- `LayoutStore` reads `gitSidebarWidthPercent`/`settingsSidebarWidthPercent`
+  into a `viewSidebarWidthPercent` MAP. Two named fields could not describe a
+  view whose id core learns at runtime, which is what removed the last
+  git-named symbol from `src/`.
+
 Three regressions the gates would not have caught, each now pinned by a test:
 
 - `PaneLayout::applyDirection()` ran during the eager boot, before a PLUGIN view
