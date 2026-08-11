@@ -151,6 +151,13 @@ trait RunsIde
         if (null === $view) {
             return; // the git plugin is not loaded — nothing can be in flight
         }
-        $this->awaitGitInfo(Probe::get($view, 'git'), $timeout);
+        // BOTH lanes, walked from the two objects the view already holds. The
+        // plugin keeps them apart so that "Cancel Remote Operation" can stop a
+        // fetch without stopping the status poll; a barrier that waited on one
+        // let a test walk out with the other still running.
+        $this->awaitLanes([
+            Probe::get(Probe::get(Probe::get($view, 'git'), 'runner'), 'lane'),
+            Probe::get(Probe::get(Probe::get($view, 'remoteCommands'), 'remote'), 'lane'),
+        ], $timeout);
     }
 }

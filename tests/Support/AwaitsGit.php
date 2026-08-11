@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Porta\Tests\Support;
 
 /**
- * The git completion barrier, for any test that starts real git subprocesses —
- * `src` carries no test-only `isBusy()`, so it reads the runner's in-flight map
- * through the blessed {@see Probe}.
+ * The git completion barrier, for any test that starts real git subprocesses.
+ *
+ * It waits on BOTH of the plugin's process lanes. It used to read one runner's
+ * in-flight map, which was one lane of the four the plugin then had — so a
+ * blame, a mark refresh or a fetch could still be running when a test walked
+ * out, which is a flake and a `[loop-leak]` in whatever ran next.
  *
  * Two reasons to wait rather than walk out. The first is correctness: git
  * mutates the tree before the exit callback fires, so an empty map is what
@@ -18,15 +21,30 @@ namespace Porta\Tests\Support;
  *
  * Composed by {@see RunsIde}; a unit test pairs it with {@see PumpsLoop}.
  *
- * Untyped $git on purpose: git is a PLUGIN now, so `Porta\GitPlugin\GitInfo`
- * is not a name core's test support may hold — the arch gate would read it as
- * a core→plugin edge. What is reached through it is private state either way.
+ * The lanes arrive as a list of untyped objects, and both facts are deliberate.
+ * Untyped, because git is a PLUGIN and `Porta\GitPlugin\ProcessLane` is not a
+ * name core's test support may hold — the arch gate would read it as a
+ * core→plugin edge. A list, because the plugin keeps two of them on purpose:
+ * remote operations are separately cancellable, so they are separately tracked,
+ * and the caller walks to each rather than this deciding where they live.
  */
 trait AwaitsGit
 {
-    private function awaitGitInfo(object $git, float $timeout = 5.0): void
+    /** @param list<object> $lanes every ProcessLane whose emptiness means "done" */
+    private function awaitLanes(array $lanes, float $timeout = 5.0): void
     {
-        $runner = Probe::get($git, 'runner');
-        $this->await(static fn (): bool => [] === Probe::get($runner, 'running'), $timeout, 'git to finish');
+        $this->await(
+            static function () use ($lanes): bool {
+                foreach ($lanes as $lane) {
+                    if (0 !== $lane->inFlight()) {
+                        return false;
+                    }
+                }
+
+                return true;
+            },
+            $timeout,
+            'git to finish',
+        );
     }
 }
