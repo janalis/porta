@@ -163,8 +163,13 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 # five *Callbacks DTOs and adding ~30 event classes: unmoved. Worth knowing
 # WHY that keeps happening — every floor is pinned by one big class each
 # (MouseRouter, CodeEditorWidget, Document…), and rounds that add small
-# classes cannot move a maximum. Round 31 (git becomes a bundled plugin, ~5,700
-# lines out of `src/`) re-bisected all nine and moved exactly one:
+# classes cannot move a maximum. Round 32 (the git plugin's interior: one git
+# API where there were two, two process lanes where there were four, and fifty
+# files grouped into eight directories) re-bisected all nine: none moved, which
+# is what deleting a 104-line class and splitting a namespace should do — none
+# of the nine is pinned by anything the round touched. Round 31 (git becomes a
+# bundled plugin, ~5,700 lines out of `src/`) re-bisected all nine and moved
+# exactly one:
 # cyclomatic-complexity 145 → 143, because MouseRouter is one of the few pins a
 # round CAN move — it lost two git-shaped branches to ViewPointers. The other
 # eight are unmoved, and the git ones deliberately so: `plugins` is a linted

@@ -63,6 +63,12 @@ container service**, so a plugin holds no core service it was not handed: the
 git plugin carries `Flash`, `Modals`, `Translate` and `DiffPrefs`, each one
 closure from `PluginApi` behind the method name its call sites already used.
 
+A plugin big enough to need interior structure states its own rules, because
+this page cannot: the git plugin's are in `plugins/git/plugin.php`'s docblock.
+A subdirectory there costs nothing in the graph — `composer arch` attributes a
+file by the first segment after `Porta\`, so `Porta\GitPlugin\Process\Foo` is a
+`GitPlugin` file exactly as `Porta\GitPlugin\Foo` was.
+
 **`Settings/`** — all settings controllers plus the row model (`SettingsRow`,
 `SettingsRowKind`). `Config/` keeps only `.porta.json` parsing and the action
 and command catalogs. Settings **widgets** stay in `Widget/Settings/`.

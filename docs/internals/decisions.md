@@ -187,6 +187,49 @@ safe — `GitListenerContractTest` (the eighteen wirings, now read off a
 `GitWiring` map rather than an attribute) and `ActionCatalogTest` (the sixteen
 adoptable ids and their real labels).
 
+**The round after it found what a move preserves and what it hides.** Behaviour
+was preserved exactly, which was the goal; what nobody had done was introduce
+the two halves — the editor half (blame, marks, stage/stash) had been written in
+a different tier from the workbench half and still duplicated it.
+
+- **`GitInfo::diff()` and `GitClient::diff()` were byte-identical**: same argv,
+  same parser. `GitClient` was a 104-line subset — `stage`, `undoLastCommit`,
+  `stashPush`, `stashPop` are verbatim on `GitInfo` — written when the halves
+  were in different namespaces and `GitInfo` was genuinely unreachable. The
+  reason went with the move; the class did not. Deleted.
+- **Four process lanes, and the stated reason for two was false.** Three
+  classes each built a `GitProcessRunner`, a fourth re-implemented its
+  start/track/cancel inline, and two docblocks justified it as "no business
+  queueing behind the view's status and diff traffic". `runStatus()` spawns
+  immediately and tracks only for cancellation — there was never a queue.
+  What the belief cost was quiet and real: `onShutdown` cancelled one lane of
+  four, and the E2e completion barrier awaited one of four, so a test could walk
+  out with a blame, a mark refresh or a fetch in flight.
+- **Two lanes survive, on a reason that holds**: "Cancel Remote Operation" must
+  stop a hung fetch without stopping the status poll, and `isBusy()` must mean
+  "a remote operation is running". Cancellation SCOPE, not queueing — the
+  distinction is now the docblock on `ProcessLane`.
+
+The lesson generalises past git: **a justification survives a move even when the
+thing that made it true does not.** Both docblocks were accurate when written.
+Nothing re-read them when the world changed, and no gate can — which is why the
+mutation sweep, not the reading, is what found the hole underneath.
+
+That sweep is also why the fix is a fix. Five mutations survived its first pass
+— shutdown missing the remote lane, shutdown cancelling nothing, and the lane
+not reaching any of three constructors — and writing tests for them turned up a
+real gap in the working tree: `plugin.php` was still building `GitRemote`
+without its lane, so shutdown reached one lane of two. The defect the commit
+claims to fix, reintroduced while fixing it, caught only because nothing
+asserted the claim.
+
+The fifty files are grouped by tier now (`Process/`, `Parse/`, `Diff/`, `View/`,
+`Command/`, `Blame/`, `Setting/`, `Support/`), with the membership rules in
+`plugins/git/plugin.php`'s docblock — the only plugin large enough to need its
+own `code-map.md`. `composer arch` stayed at 220 edges throughout: the scanner
+keys on the first segment after `Porta\`, so a subdirectory cannot invent
+coupling.
+
 **`Layout/ViewRegion` — rejected on arithmetic.** Collapsing git's and settings'
 sidebar/separator/area triples deletes ~36 lines and adds ~45. The five
 `porta.widget.*` getter services do not disappear; they would call
