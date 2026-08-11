@@ -12,6 +12,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\ConsoleOutputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -66,31 +67,47 @@ final class PortaCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $target = (string) ($input->getArgument('path') ?? getcwd());
-        try {
-            $workspace = new WorkspaceResolver()->resolve($target, (string) getcwd());
-        } catch (\InvalidArgumentException $e) {
-            $output->writeln('<error>porta: '.$e->getMessage().'</error>');
-
-            return Command::FAILURE;
-        }
-
-        // An explicit --line overrides the file:line shorthand.
-        /** @var string|null $lineOption */
-        $lineOption = $input->getOption('line');
-        $line = null !== $lineOption ? max(1, (int) $lineOption) : $workspace->line;
-        $workspace = new Workspace($workspace->rootDir, $workspace->initialFile, $line);
-
-        if (!($this->isInteractive)()) {
-            $output->writeln('<error>porta: an interactive terminal is required.</error>');
-
-            return Command::FAILURE;
-        }
+        // Failures speak on stderr so a piped stdout stays clean (the
+        // CoverageCheckCommand pattern); CommandTester's plain output has no
+        // error channel and falls back to the one stream.
+        $errors = $output instanceof ConsoleOutputInterface ? $output->getErrorOutput() : $output;
 
         /** @var string|null $lsp */
         $lsp = $input->getOption('lsp');
         /** @var bool $noLsp */
         $noLsp = $input->getOption('no-lsp');
+        if (null !== $lsp && $noLsp) {
+            $errors->writeln('<error>porta: --lsp and --no-lsp contradict each other; pass one.</error>');
+
+            return Command::INVALID;
+        }
+
+        /** @var string|null $lineOption */
+        $lineOption = $input->getOption('line');
+        if (null !== $lineOption && !ctype_digit($lineOption)) {
+            $errors->writeln(\sprintf('<error>porta: --line expects a line number, got "%s".</error>', $lineOption));
+
+            return Command::INVALID;
+        }
+
+        $target = (string) ($input->getArgument('path') ?? getcwd());
+        try {
+            $workspace = new WorkspaceResolver()->resolve($target, (string) getcwd());
+        } catch (\InvalidArgumentException $e) {
+            $errors->writeln('<error>porta: '.$e->getMessage().'</error>');
+
+            return Command::FAILURE;
+        }
+
+        // An explicit --line overrides the file:line shorthand.
+        $line = null !== $lineOption ? max(1, (int) $lineOption) : $workspace->line;
+        $workspace = new Workspace($workspace->rootDir, $workspace->initialFile, $line);
+
+        if (!($this->isInteractive)()) {
+            $errors->writeln('<error>porta: an interactive terminal is required.</error>');
+
+            return Command::FAILURE;
+        }
         // --ansi/--no-ansi are Symfony's global options; they resolve into the
         // output decoration, which we thread to the IDE as its color mode.
         ($this->launch)($workspace, $lsp, $noLsp ? LspMode::Disabled : LspMode::Enabled, $output->isDecorated() ? Ansi::Enabled : Ansi::Disabled);

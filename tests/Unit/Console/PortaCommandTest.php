@@ -65,15 +65,61 @@ final class PortaCommandTest extends TestCase
         $this->assertSame(99, $this->launched[0]->line, '--line wins over file:line');
     }
 
-    public function testLspOptionsReachTheLauncher(): void
+    public function testTheLspOptionReachesTheLauncher(): void
     {
         $project = new TempProject(['a.php' => '']);
         $tester = new CommandTester($this->command());
 
-        $tester->execute(['path' => $project->dir, '--lsp' => 'my-ls --stdio', '--no-lsp' => true]);
-        [, $lsp, $noLsp] = $this->launched;
+        $tester->execute(['path' => $project->dir, '--lsp' => 'my-ls --stdio']);
+        [, $lsp, $mode] = $this->launched;
         $this->assertSame('my-ls --stdio', $lsp);
-        $this->assertSame(LspMode::Disabled, $noLsp);
+        $this->assertSame(LspMode::Enabled, $mode);
+    }
+
+    public function testNoLspDisablesTheLanguageServer(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $tester = new CommandTester($this->command());
+
+        $tester->execute(['path' => $project->dir, '--no-lsp' => true]);
+        [, $lsp, $mode] = $this->launched;
+        $this->assertNull($lsp);
+        $this->assertSame(LspMode::Disabled, $mode);
+    }
+
+    public function testLspTogetherWithNoLspIsInvalid(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $tester = new CommandTester($this->command());
+
+        $status = $tester->execute(['path' => $project->dir, '--lsp' => 'my-ls', '--no-lsp' => true]);
+
+        $this->assertSame(Command::INVALID, $status);
+        $this->assertNull($this->launched, 'a contradictory invocation never launches');
+        $this->assertStringContainsString('--lsp and --no-lsp contradict each other', $tester->getDisplay());
+    }
+
+    public function testANonNumericLineIsInvalid(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $tester = new CommandTester($this->command());
+
+        $status = $tester->execute(['path' => $project->path('a.php'), '--line' => 'abc']);
+
+        $this->assertSame(Command::INVALID, $status);
+        $this->assertNull($this->launched, 'the old cast silently opened line 1 instead');
+        $this->assertStringContainsString('--line expects a line number, got "abc"', $tester->getDisplay());
+    }
+
+    public function testFailuresSpeakOnStderrWhenTheOutputHasOne(): void
+    {
+        $tester = new CommandTester($this->command());
+
+        $status = $tester->execute(['path' => '/does/not/exist'], ['capture_stderr_separately' => true]);
+
+        $this->assertSame(Command::FAILURE, $status);
+        $this->assertStringContainsString('no such file or directory', $tester->getErrorOutput());
+        $this->assertSame('', $tester->getDisplay(), 'a piped stdout stays clean');
     }
 
     public function testOutputDecorationDrivesTheColorMode(): void
