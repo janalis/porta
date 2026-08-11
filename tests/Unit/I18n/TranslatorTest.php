@@ -46,6 +46,17 @@ final class TranslatorTest extends TestCase
         $this->assertSame('Validé : init', $translator->trans('Committed: %summary%', ['%summary%' => 'init']));
     }
 
+    public function testAMalformedCatalogDegradesToEnglishInsteadOfThrowing(): void
+    {
+        // The catalog loads lazily inside the first trans() for its locale,
+        // where an exception would take the whole UI down; a broken file must
+        // cost only its translations.
+        $project = new TempProject(['messages.fr.xlf' => 'not xml at all']);
+        $translator = new Translator('fr', $project->dir);
+
+        $this->assertSame('Save File', $translator->trans('Save File'), 'the id (English) serves as the answer');
+    }
+
     public function testAnEmptyTargetFallsBackToTheSource(): void
     {
         $project = new TempProject(['messages.de.xlf' => $this->xliff('de', $this->unit('Save File', ''))]);

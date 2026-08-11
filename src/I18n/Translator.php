@@ -5,18 +5,21 @@ declare(strict_types=1);
 namespace Porta\I18n;
 
 use Porta\Container\AsIdeService;
-use Symfony\Component\Translation\Loader\ArrayLoader;
 use Symfony\Component\Translation\Translator as SymfonyTranslator;
 
 /**
- * The UI translator: a thin wrapper over {@see SymfonyTranslator} that loads the
- * XLIFF catalogs shipped in the package's `translations/` directory and answers
- * {@see trans()} against the active locale, falling back to English. The message
- * ids are the English source strings, so an untranslated (or 'en') lookup
- * returns the original English text.
+ * The UI translator: a thin wrapper over {@see SymfonyTranslator} that serves
+ * the XLIFF catalogs shipped in the package's `translations/` directory and
+ * answers {@see trans()} against the active locale, falling back to English.
+ * The message ids are the English source strings, so an untranslated (or 'en')
+ * lookup returns the original English text.
  *
- * XLIFF is parsed here with ext-simplexml (avoiding a symfony/config dependency)
- * into `source => target` maps fed to the array loader.
+ * The catalogs are registered as lazy resources: a locale's ~1100-unit file is
+ * only parsed on the first trans() that needs it, so constructing a translator
+ * (including the widgets' `?? new Translator('en')` fallbacks) costs nothing
+ * per catalog, and switching locale pays for exactly the one it activates.
+ * {@see LenientXliffLoader} keeps the two catalog conventions the old
+ * hand-rolled parser had: malformed file → English, stubbed entry → English.
  */
 #[AsIdeService]
 final class Translator
@@ -45,52 +48,13 @@ final class Translator
         $dir = $translationsDir ?? \dirname(__DIR__, levels: 2).'/translations';
         $this->translator = new SymfonyTranslator(self::normalize($locale));
         $this->translator->setFallbackLocales(['en']);
-        $this->translator->addLoader('array', new ArrayLoader());
+        $this->translator->addLoader('xlf', new LenientXliffLoader());
         foreach (self::LOCALES as $l) {
             $file = $dir.'/messages.'.$l.'.xlf';
             if (is_file($file)) {
-                $this->translator->addResource('array', self::parseXliff($file), $l);
+                $this->translator->addResource('xlf', $file, $l);
             }
         }
-    }
-
-    /**
-     * Parse an XLIFF 1.2 file into a `source => target` map (an empty target
-     * keeps the source, so a stubbed entry still resolves to English).
-     *
-     * @return array<string, string>
-     */
-    private static function parseXliff(string $file): array
-    {
-        $previous = libxml_use_internal_errors(true);
-        $xml = simplexml_load_file($file);
-        libxml_use_internal_errors($previous);
-        if (false === $xml) {
-            return [];
-        }
-        $xml->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
-
-        $map = [];
-        $units = $xml->xpath('//x:trans-unit');
-        foreach (\is_array($units) ? $units : [] as $unit) {
-            $source = self::childText($unit, 'source');
-            $target = self::childText($unit, 'target');
-            if ('' !== $source) {
-                $map[$source] = '' !== $target ? $target : $source;
-            }
-        }
-
-        return $map;
-    }
-
-    /** The text of a namespaced child element (`source`/`target`) of a trans-unit. */
-    private static function childText(\SimpleXMLElement $unit, string $tag): string
-    {
-        $unit->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
-        $found = $unit->xpath('x:'.$tag);
-        $nodes = \is_array($found) ? $found : [];
-
-        return [] !== $nodes ? (string) $nodes[0] : '';
     }
 
     /**
