@@ -15,15 +15,17 @@ locator-only `service()`, so a class that forgets `#[AsIdeService]` fails loudly
 instead of silently resolving through the raw container. Tests reach a running
 IDE's services through `tests/Support/Services::resolve($ide, X::class)`.
 
-The `build*` steps — `buildEditorArea`, `buildGitView`, `buildSettingsWidgets`,
-`buildLayoutAndOverlay` — are resolution and arrangement only. The constructor
-tail then runs, in order:
+The one `build*` step left — `buildEditorArea` — is resolution and arrangement
+only. The constructor tail then runs, in order:
 
-1. `Command/CommandRegistryPopulator::populate()` — the tagged providers.
-2. `Bootstrap/WidgetHooks::wire()` — the widgets' runtime hooks.
-3. `Bootstrap/EagerServices::boot()` — the tagged eager services.
-4. The menu bake, and the `Input/InputDispatcher` listener.
-5. `Bootstrap/StartupWiring::wire()` — hands the plugin handlers their live
+1. `Bootstrap/EagerServices::boot()` — the tagged eager services.
+2. The pane, view and menu registrars, then `PaneLayout::applyDirection()`
+   (which must follow the view registrar — a contributed view's region exists
+   only once its view has minted one).
+3. `Command/CommandRegistryPopulator::populate()` — the tagged providers.
+4. `Bootstrap/WidgetHooks::wire()` — the widgets' runtime hooks.
+5. The menu bake, and the `Input/InputDispatcher` listener.
+6. `Bootstrap/StartupWiring::wire()` — hands the plugin handlers their live
    `PluginRuntime` seam and flashes config and plugin load warnings. A
    `WidgetHooks` sibling, kept separate so neither constructor grows unwieldy.
 
@@ -72,7 +74,7 @@ It lives outside `src/` so the wiring stays off the 100% line-coverage gate.
 
 Services are autoregistered by `$services->load('Porta\\', '../src/*')`,
 excluding `Ide.php`, `Container/`, and the measured non-service tiers:
-`Console/`, `Event/`, `Git/*Parser.php`, `Highlight/Json/`, `Widget/Render/`,
+`Console/`, `Event/`, `Highlight/Json/`, `Widget/Render/`,
 `Widget/Support/`. A class in one of those that becomes a real service must be
 un-excluded — Symfony's error names the exclusion, so that edit is the review
 point.

@@ -134,8 +134,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->bind('$ansi', env('PORTA_ANSI')->bool())
         ->bind('$lspCommand', env('default::PORTA_LSP_COMMAND'))
         ->bind('$lspDisabled', env('PORTA_LSP_DISABLED')->bool())
-        ->bind('$docsDir', env('PORTA_DOCS_DIR'))
-        ->bind('$gitPath', env('default::PORTA_GIT_PATH')); // '' resolves to null (auto-discover)
+        ->bind('$docsDir', env('PORTA_DOCS_DIR'));
     // The composite tree's duplicate-typed sub-widgets (editorBody/main/git+
     // settings areas/separators) and the scoped Search Everywhere instances
     // (Ctrl+P / palette / go-to-symbol) are selected at the consumer with
@@ -145,7 +144,8 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // Autoregister every Porta\ class except the orchestrator, the container
     // factory, and the measured 100%-non-service tiers (events, widget-support
     // DTOs/enums/traits, the stateless render tier, the console entrypoint,
-    // grammar parsers — zero container-built classes in each). A class
+    // the JSON grammars (Highlight/Json) — zero container-built classes in
+    // each). A class
     // in one of these that ever becomes a real service must be un-excluded
     // here; that edit is the review point. Mixed directories (Overlay/Region,
     // Ui/, Editor/, Lsp/ proper, …) stay discovered and rely on compile
@@ -165,12 +165,6 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // The wall clock (symfony/clock). A NativeClock backs Psr\Clock\ClockInterface
     // so time-dependent services autowire it; tests inject a MockClock.
     $services->set(ClockInterface::class, NativeClock::class);
-
-    // The DAP transport factory: a child process in production, fakes in tests.
-
-    // The delay-timer seam: the shared Revolt loop in production, fakes in tests.
-
-    // "The active file" is the editor widget's current path.
 
     // The overlay compositor's pane bundle: built by a factory because its
     // widget lists and view-open closures aren't expressible in a dumped
@@ -261,7 +255,8 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // with #[Autoconfigure(constructor: 'create')].
 
     // Duplicate-typed widgets from the composite tree: exposed per getter so
-    // typed-named binds (below, in _defaults) can feed them to consumers.
+    // a consumer can name the one it wants at the parameter with
+    // #[LayoutSlot('…')] (see the _defaults comment above — no central binds).
     $services->set('porta.widget.editor_body', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'editorBody']);
     // The main editor area is a chrome root too, but it is a getter service
     // (a bare ContainerWidget, not a class that can carry #[AsChromeRoot]), so
@@ -288,7 +283,8 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // The Search Everywhere modal aggregates per-source hooks; its factory
     // owns them (see SearchEverywhereFactory).
     $services->set(SearchEverywhereController::class)->factory([service(SearchEverywhereFactory::class), 'create']);
-    // Scoped instances behind Ctrl+P / palette / go-to-symbol; the binds feed them to their consumers.
+    // Scoped instances behind Ctrl+P / palette / go-to-symbol; each consumer
+    // names its instance with #[Autowire(service: 'porta.…')] at the param.
     $services->set('porta.go_to_file', SearchEverywhereController::class)->factory([service(SearchEverywhereFactory::class), 'createGoToFile']);
     $services->set('porta.command_palette', SearchEverywhereController::class)->factory([service(SearchEverywhereFactory::class), 'createCommandPalette']);
     $services->set('porta.go_to_symbol', SearchEverywhereController::class)->factory([service(SearchEverywhereFactory::class), 'createGoToSymbol']);

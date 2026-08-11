@@ -157,14 +157,19 @@ final class Ide
 
         $this->buildEditorArea();
 
-        $this->buildLayoutAndOverlay();
+        // The resize/layout controller, the menu/context overlay compositor
+        // and the tree operations.
+        $this->layout = $this->service(LayoutController::class);
 
         $this->workspaceLayout->mount($this->tui);
         // The chrome roots swept by the live-setting appliers (theme/locale/
         // cursor/tab position) declare themselves with #[AsChromeRoot];
         // ChromeInvalidator injects them as a tagged iterator — no register here.
 
-        $this->wireWidgets($keybindings);
+        // The menu rebuilder is held for the ctor-tail bake; commands register
+        // and menus bake at the end of the constructor, once every provider
+        // dependency exists.
+        $this->menuRebuilder = $this->service(MenuRebuilder::class);
         $this->bufferService = $this->service(BufferService::class);
         $this->run = $this->service(RunController::class);
         $this->lspBootstrapper = $this->service(LspBootstrapper::class);
@@ -338,20 +343,6 @@ final class Ide
     }
 
     // --- Wiring ---------------------------------------------------------------
-
-    private function wireWidgets(Keybindings $keybindings): void
-    {
-        // The menu rebuilder is held for the ctor-tail bake; commands register
-        // and menus bake at the end of the constructor, once every provider
-        // dependency exists.
-        $this->menuRebuilder = $this->service(MenuRebuilder::class);
-    }
-
-    /** The resize/layout controller, the menu/context overlay compositor and the tree operations. */
-    private function buildLayoutAndOverlay(): void
-    {
-        $this->layout = $this->service(LayoutController::class);
-    }
 
     /** The editor workspace: tree, editor + LSP backend, chrome widgets and the main horizontal layout. */
     private function buildEditorArea(): void

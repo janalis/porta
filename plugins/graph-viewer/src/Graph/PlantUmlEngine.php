@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\GraphViewer\Graph;
 
 use Porta\Support\AsyncProcess;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * The PlantUML-backed {@see DiagramEngine}: the diagram on stdin, PNG off
@@ -30,7 +29,6 @@ final class PlantUmlEngine implements DiagramEngine
     public function __construct(
         private readonly string $rootDir,
         // The "PlantUML" setting: a launcher, a .jar, or '' to auto-discover.
-        #[Autowire('%env(default::PORTA_PLANTUML)%')]
         private readonly ?string $toolPath = null,
     ) {}
 
