@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Console;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\IdeConfig;
 use Porta\Console\ContainerDebugCommand;
+use Porta\Container\Ansi;
+use Porta\Container\IdeContainerFactory;
+use Porta\Tests\Support\Probe;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Exception\InvalidOptionException;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -94,6 +98,54 @@ final class ContainerDebugCommandTest extends TestCase
 
         $this->assertSame('container', $command->getName());
         $this->assertFileExists(\dirname(__DIR__, levels: 3).'/config/services.php', 'the default config dir is where the command looks');
+    }
+
+    public function testEnvDefaultsMirrorExactlyWhatTheFactorySeeds(): void
+    {
+        // ENV_DEFAULTS and IdeContainerFactory::build()'s seeding are two
+        // hand-maintained lists of ONE contract (the per-boot env channel), and
+        // they had already drifted apart once (three plugin-tool keys). Observe
+        // the factory's half by seeding into a scrubbed $_ENV, then require the
+        // two sets to be identical in BOTH directions — a key seeded but not
+        // mirrored fails, and a mirrored key no longer seeded fails too.
+        $savedCache = getenv('PORTA_CONTAINER_CACHE');
+        /** @var array<string, mixed> $saved */
+        $saved = [];
+        foreach ($_ENV as $key => $value) {
+            if (\is_string($key) && str_starts_with($key, 'PORTA_')) {
+                $saved[$key] = $value;
+                unset($_ENV[$key]);
+            }
+        }
+        putenv('PORTA_CONTAINER_CACHE=off');
+
+        try {
+            new IdeContainerFactory()->build('/tmp/porta-env-contract-test', IdeConfig::load('/tmp/porta-env-contract-test'), Ansi::Enabled);
+            $seeded = [];
+            foreach (array_keys($_ENV) as $key) {
+                if (\is_string($key) && str_starts_with($key, 'PORTA_')) {
+                    $seeded[] = $key;
+                }
+            }
+        } finally {
+            foreach (array_keys($_ENV) as $key) {
+                if (\is_string($key) && str_starts_with($key, 'PORTA_')) {
+                    unset($_ENV[$key]);
+                }
+            }
+            foreach ($saved as $key => $value) {
+                $_ENV[$key] = $value;
+            }
+            putenv(false === $savedCache ? 'PORTA_CONTAINER_CACHE' : 'PORTA_CONTAINER_CACHE='.$savedCache);
+        }
+
+        /** @var array<string, string> $defaults */
+        $defaults = Probe::getStatic(ContainerDebugCommand::class, 'ENV_DEFAULTS');
+        $this->assertEqualsCanonicalizing(
+            [...array_keys($defaults), 'PORTA_ROOT_DIR'],
+            $seeded,
+            'ENV_DEFAULTS + PORTA_ROOT_DIR (set separately in execute()) must equal the keys the factory seeds',
+        );
     }
 
     private function serviceCount(string $display): int
