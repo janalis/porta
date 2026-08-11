@@ -6,7 +6,7 @@ namespace Porta\Tests\Unit\Layout;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\LayoutStore;
-use Porta\GitPlugin\GitSidebar;
+use Porta\GitPlugin\View\GitSidebar;
 use Porta\GitPlugin\Widget\ChangesListWidget;
 use Porta\GitPlugin\Widget\CommitBoxWidget;
 use Porta\GitPlugin\Widget\GitTabsWidget;

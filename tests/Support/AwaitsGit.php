@@ -22,7 +22,7 @@ namespace Porta\Tests\Support;
  * Composed by {@see RunsIde}; a unit test pairs it with {@see PumpsLoop}.
  *
  * The lanes arrive as a list of untyped objects, and both facts are deliberate.
- * Untyped, because git is a PLUGIN and `Porta\GitPlugin\ProcessLane` is not a
+ * Untyped, because git is a PLUGIN and `Porta\GitPlugin\Process\ProcessLane` is not a
  * name core's test support may hold — the arch gate would read it as a
  * core→plugin edge. A list, because the plugin keeps two of them on purpose:
  * remote operations are separately cancellable, so they are separately tracked,
