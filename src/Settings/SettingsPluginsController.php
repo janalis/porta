@@ -149,8 +149,9 @@ final class SettingsPluginsController
             return;
         }
         if (str_starts_with($key, 'pluginSetting:')) {
-            $this->pluginSettings->change($name, substr($key, offset: 14), $value);
-            $this->lifecycle->onProviderSettingChanged($name);
+            $setting = substr($key, offset: 14);
+            $this->pluginSettings->change($name, $setting, $value);
+            $this->lifecycle->onPluginSettingChanged($name, $setting, $value);
         }
     }
 

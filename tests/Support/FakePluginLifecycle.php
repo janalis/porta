@@ -54,9 +54,18 @@ final class FakePluginLifecycle implements PluginLifecycleOps
     /** @var list<string> plugins whose setting change triggered a provider reconfigure check */
     public array $providerSettingChanged = [];
 
+    /** @var list<array{string, string, bool|int|string}> plugin, key and new value, as the Settings page reported them */
+    public array $pluginSettingChanged = [];
+
     public function onProviderSettingChanged(string $name): void
     {
         $this->providerSettingChanged[] = $name;
+    }
+
+    public function onPluginSettingChanged(string $name, string $key, bool|int|string $value): void
+    {
+        $this->pluginSettingChanged[] = [$name, $key, $value];
+        $this->onProviderSettingChanged($name);
     }
 
     public function isDisabled(string $name): bool

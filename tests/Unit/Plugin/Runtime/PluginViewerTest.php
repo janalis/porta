@@ -326,6 +326,67 @@ final class PluginViewerTest extends TestCase
         $this->assertSame([], $manager->contributedMenus(), 'a removed plugin takes its menu with it');
     }
 
+    public function testASettingChangeReachesOnlyThePluginThatOwnsIt(): void
+    {
+        // A plugin has no business seeing another's configuration, and a
+        // listener that had to filter would be a listener that could forget
+        // to. Without this hook a setting read once at activate() is
+        // restart-required by construction.
+        $manager = $this->manager();
+        $mine = [];
+        $theirs = [];
+        $vcs = $this->api($manager, 'vcs');
+        $vcs->onSettingChanged(static function (string $key, bool|int|string $value) use (&$mine): void {
+            $mine[] = [$key, $value];
+        });
+        $manager->commit($vcs);
+        $todo = $this->api($manager, 'todo');
+        $todo->onSettingChanged(static function (string $key, bool|int|string $value) use (&$theirs): void {
+            $theirs[] = [$key, $value];
+        });
+        $manager->commit($todo);
+
+        $manager->notifySettingChanged('vcs', 'gutterMarks', false);
+
+        $this->assertSame([['gutterMarks', false]], $mine);
+        $this->assertSame([], $theirs, 'the other plugin saw nothing');
+    }
+
+    public function testAThrowingSettingListenerIsReportedAndDoesNotStopTheOthers(): void
+    {
+        // This runs from the Settings page, so a faulting listener must not
+        // take the keystroke that changed the row down with it.
+        $manager = $this->manager();
+        $seen = 0;
+        $api = $this->api($manager, 'vcs');
+        $api->onSettingChanged(static fn (string $key, bool|int|string $value) => throw new \RuntimeException('listener exploded'));
+        $api->onSettingChanged(static function () use (&$seen): void {
+            ++$seen;
+        });
+        $manager->commit($api);
+
+        $manager->notifySettingChanged('vcs', 'gutterMarks', false);
+
+        $this->assertSame(1, $seen, 'the second listener still ran');
+        $this->assertCount(1, $manager->warnings(), 'and the fault was reported');
+    }
+
+    public function testARemovedPluginTakesItsSettingListenerWithIt(): void
+    {
+        $manager = $this->manager();
+        $seen = 0;
+        $api = $this->api($manager, 'vcs');
+        $api->onSettingChanged(static function () use (&$seen): void {
+            ++$seen;
+        });
+        $manager->commit($api);
+
+        $manager->deactivate('vcs', new CommandRegistry());
+        $manager->notifySettingChanged('vcs', 'gutterMarks', false);
+
+        $this->assertSame(0, $seen);
+    }
+
     public function testATitlelessMenuIsRefused(): void
     {
         // The menu bar renders a title; an empty one is a group nothing can

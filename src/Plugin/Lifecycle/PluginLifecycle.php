@@ -522,6 +522,19 @@ final class PluginLifecycle implements PluginLifecycleOps
     }
 
     /**
+     * The Settings page wrote one of $name's own settings.
+     *
+     * Separate from {@see onProviderSettingChanged()} because that one is also
+     * reached from the install-a-binary path, which has no key to report — and
+     * an optional key would make "no key" and "some key" the same call.
+     */
+    public function onPluginSettingChanged(string $name, string $key, bool|int|string $value): void
+    {
+        $this->plugins->notifySettingChanged($name, $key, $value);
+        $this->onProviderSettingChanged($name);
+    }
+
+    /**
      * Persist a disable: bundled plugins leave `enabledPlugins`, installed ones
      * join `disabledPlugins`.
      */

@@ -88,6 +88,8 @@ final class PluginApi
     private readonly PluginBuffer $listTools;
     /** @var PluginBuffer<array{plugin: string, contribution: MenuContribution}> */
     private readonly PluginBuffer $menus;
+    /** @var PluginBuffer<array{plugin: string, listener: \Closure(string, bool|int|string): void}> */
+    private readonly PluginBuffer $settingHooks;
     /** @var PluginBuffer<array{plugin: string, segment: \Closure(): (string|\Porta\Workbench\StatusCell|null)}> */
     private readonly PluginBuffer $statusSegments;
     /** @var PluginBuffer<array{plugin: string, languageId: string, resolve: \Closure(): (list<string>|null)}> */
@@ -114,6 +116,7 @@ final class PluginApi
         $this->actions = new PluginBuffer();
         $this->listTools = new PluginBuffer();
         $this->menus = new PluginBuffer();
+        $this->settingHooks = new PluginBuffer();
         $this->statusSegments = new PluginBuffer();
         $this->debugAdapters = new PluginBuffer();
     }
@@ -750,6 +753,26 @@ final class PluginApi
     }
 
     /**
+     * One of THIS plugin's settings changed — the Settings page wrote it, and
+     * whatever the plugin cached from it is now stale.
+     *
+     * Only its own: a plugin never sees another's configuration. Runs after the
+     * new value is persisted, so `setting()` inside the listener reads the new
+     * one; the value is handed over anyway, because the common shape is a
+     * `match` on the key.
+     *
+     * Without this, a setting a plugin reads once at `activate()` is
+     * restart-required by construction — which is right for a few (a binary
+     * path baked into a process runner) and wrong for the rest.
+     *
+     * @param \Closure(string, bool|int|string): void $listener receives the key and its new value
+     */
+    public function onSettingChanged(\Closure $listener): void
+    {
+        $this->settingHooks->add(['plugin' => $this->pluginName, 'listener' => $listener]);
+    }
+
+    /**
      * The theme changed; the listener receives the new theme name.
      *
      * For a highlighting backend that bakes colours at construction rather than
@@ -1284,6 +1307,12 @@ final class PluginApi
     public function bufferedMenus(): array
     {
         return $this->menus->all();
+    }
+
+    /** @return list<array{plugin: string, listener: \Closure(string, bool|int|string): void}> */
+    public function bufferedSettingHooks(): array
+    {
+        return $this->settingHooks->all();
     }
 
     /** @return list<array{plugin: string, segment: \Closure(): (string|\Porta\Workbench\StatusCell|null)}> */

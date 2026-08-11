@@ -162,6 +162,12 @@ final class SettingsPluginsControllerTest extends TestCase
         $controller->changePlugin('demo', 'pluginSetting:binary', '/opt/x');
         $controller->changePlugin('demo', 'someOtherKey', 'ignored');
         $this->assertSame('/opt/x', $this->pluginSettings->value('demo', 'binary'));
+        // And the plugin is TOLD, with the bare key it registered — not the
+        // `pluginSetting:` row id, which is this page's spelling. A plugin that
+        // is never told has to read every setting at activate(), which makes
+        // all of them restart-required by construction.
+        $this->assertSame([['demo', 'binary', '/opt/x']], $this->lifecycle->pluginSettingChanged);
+        $this->assertSame('/opt/x', $this->pluginSettings->value('demo', 'binary'), 'and told AFTER the write, so setting() reads the new value');
     }
 
     public function testTheEnabledToggleRoutesToSetEnabledAndReflectsDisabledState(): void

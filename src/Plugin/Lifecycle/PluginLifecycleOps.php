@@ -25,6 +25,9 @@ interface PluginLifecycleOps extends PluginEnablement
     /** A plugin setting changed: re-resolve the LSP servers if that plugin provides one. */
     public function onProviderSettingChanged(string $name): void;
 
+    /** One of $name's OWN settings was written; tell it, and reconfigure the LSP if it serves one. */
+    public function onPluginSettingChanged(string $name, string $key, bool|int|string $value): void;
+
     /** Re-push the settings view's rows (an async install lands after the view re-rendered). */
     public function refreshView(): void;
 }

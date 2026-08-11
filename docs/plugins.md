@@ -604,6 +604,7 @@ Registration (during `activate()`):
 | `onFileSaved(\Closure $hook)` | `$hook(string $path)` after a buffer saves |
 | `onBufferSwitched(\Closure $hook)` | `$hook(string $path)` when the active buffer changes — a real change, not every re-show of the same file |
 | `onThemeChanged(\Closure $hook)` | `$hook(string $theme)` after a theme switch, **before** core drops its highlight caches — where a backend that bakes colours rebuilds |
+| `onSettingChanged(\Closure $hook)` | `$hook(string $key, bool\|int\|string $value)` when the Settings page writes one of **this plugin's own** settings. Runs after the write, so `setting()` reads the new value. Without it, anything read once in `activate()` is restart-required by construction |
 
 Actions (from handlers/hooks):
 

@@ -72,6 +72,8 @@ final class PluginManager implements
     private array $views = [];
     /** @var list<array{plugin: string, contribution: MenuContribution}> committed top-level menus, in load order */
     private array $menus = [];
+    /** @var list<array{plugin: string, listener: \Closure(string, bool|int|string): void}> committed own-setting listeners */
+    private array $settingHooks = [];
     /** @var list<array{plugin: string, id: string, label: string}> committed rebindable actions, in load order */
     private array $actions = [];
     /** @var list<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}> committed dock list tools, in load order */
@@ -192,6 +194,9 @@ final class PluginManager implements
         foreach ($api->bufferedMenus() as $menu) {
             $this->menus[] = $menu;
         }
+        foreach ($api->bufferedSettingHooks() as $hook) {
+            $this->settingHooks[] = $hook;
+        }
         foreach ($api->bufferedActions() as $action) {
             $this->actions[] = $action;
         }
@@ -294,6 +299,7 @@ final class PluginManager implements
         $this->panes = array_values(array_filter($this->panes, static fn (array $pane): bool => $name !== $pane['plugin']));
         $this->views = array_values(array_filter($this->views, static fn (array $view): bool => $name !== $view['plugin']));
         $this->menus = array_values(array_filter($this->menus, static fn (array $menu): bool => $name !== $menu['plugin']));
+        $this->settingHooks = array_values(array_filter($this->settingHooks, static fn (array $hook): bool => $name !== $hook['plugin']));
         $this->actions = array_values(array_filter($this->actions, static fn (array $action): bool => $name !== $action['plugin']));
         $this->listTools = array_values(array_filter($this->listTools, static fn (array $tool): bool => $name !== $tool['plugin']));
         $this->statusSegments = array_values(array_filter($this->statusSegments, static fn (array $segment): bool => $name !== $segment['plugin']));
@@ -652,6 +658,27 @@ final class PluginManager implements
     public function reportViewFailure(string $plugin, \Throwable $error): void
     {
         $this->reportFailure($plugin, $error);
+    }
+
+    /**
+     * Tell $plugin one of ITS settings changed, inside its own fault barrier.
+     *
+     * Per plugin, not broadcast: a plugin has no business seeing another's
+     * configuration, and a listener that had to filter would be a listener that
+     * could forget to.
+     */
+    public function notifySettingChanged(string $plugin, string $key, bool|int|string $value): void
+    {
+        foreach ($this->settingHooks as $hook) {
+            if ($plugin !== $hook['plugin']) {
+                continue;
+            }
+            try {
+                $hook['listener']($key, $value);
+            } catch (\Throwable $error) {
+                $this->reportFailure($plugin, $error);
+            }
+        }
     }
 
     /** @return list<MenuContribution> */
