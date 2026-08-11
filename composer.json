@@ -32,6 +32,7 @@
         "symfony/event-dispatcher": "^8.1",
         "symfony/filesystem": "^8.1",
         "symfony/finder": "^8.1",
+        "symfony/polyfill-intl-grapheme": "^1.33",
         "symfony/process": "^8.1",
         "symfony/translation": "^8.1",
         "symfony/tui": "^8.1",

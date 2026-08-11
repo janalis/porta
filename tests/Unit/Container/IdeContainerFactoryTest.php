@@ -123,7 +123,8 @@ final class IdeContainerFactoryTest extends TestCase
         $project = new TempProject();
         putenv('PORTA_CACHE_DIR='.$project->dir);
         $this->build();
-        $this->assertCount(1, (array) glob($project->path('container-*.php')));
+        $before = (array) glob($project->path('container-*.php'));
+        $this->assertCount(1, $before);
 
         // InstalledVersions is process-global vendor state: perturb it, then put
         // all three fields reload() touches back.
@@ -143,7 +144,10 @@ final class IdeContainerFactoryTest extends TestCase
             }
         }
 
-        $this->assertCount(2, (array) glob($project->path('container-*.php')), 'the upgraded set got its own dump instead of the old one');
+        $after = (array) glob($project->path('container-*.php'));
+        $this->assertCount(1, $after, 'the stale generation was pruned with the new dump');
+        $this->assertNotSame($before, $after, 'the upgraded set got its own dump instead of the old one');
+        $this->assertCount(1, (array) glob($project->path('container-*.php.meta')), 'the stale .meta went with it');
     }
 
     public function testCacheOffCompilesInMemory(): void

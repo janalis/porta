@@ -25,6 +25,12 @@ jobs:
 
       - run: composer install --no-interaction --no-progress --classmap-authoritative
 
+      - name: Manifest check
+        run: composer validate --strict
+
+      - name: Dependency audit
+        run: composer audit
+
       - name: Format check
         run: composer format:check
 

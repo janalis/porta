@@ -92,6 +92,7 @@ final class IdeContainerFactory
                 $dump = new PhpDumper($builder)->dump(['class' => $class]);
                 \assert(\is_string($dump), description: 'PhpDumper::dump returns a string unless as_files is requested');
                 $cache->write($dump, $builder->getResources());
+                self::pruneStaleGenerations($cacheDir, $hash);
             } catch (IOException) {
                 return $this->compileFresh(CompileTarget::Direct); // unwritable cache dir: serve this boot uncached
             }
@@ -149,6 +150,25 @@ final class IdeContainerFactory
         $container->compile(resolveEnvPlaceholders: CompileTarget::Direct === $target);
 
         return $container;
+    }
+
+    /**
+     * Drop the previous generations' files (dump, .meta, .meta.json) once a
+     * new one is written: the hash changes on every Porta/PHP/dependency-set
+     * change and nothing else ever removes the old files, so a long-lived
+     * machine otherwise accumulates one generation per upgrade forever. POSIX
+     * unlink is safe against a process still serving an old generation — its
+     * open file lives on until that process exits.
+     */
+    private static function pruneStaleGenerations(string $cacheDir, string $hash): void
+    {
+        foreach (glob($cacheDir.'/container-*.php*') ?: [] as $file) {
+            if (str_starts_with(basename($file), 'container-'.$hash.'.php')) {
+                continue;
+            }
+            // @mago-expect lint:no-error-control-operator — best-effort GC: an unremovable sibling costs disk, not correctness.
+            @unlink($file);
+        }
     }
 
     /** The porta cache dir: $PORTA_CACHE_DIR as-is, else XDG/HOME + /porta, else null (no caching). */
