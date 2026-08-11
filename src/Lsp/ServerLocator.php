@@ -183,10 +183,57 @@ final class ServerLocator
         return basename($command[0] ?? 'lsp');
     }
 
-    /** @return list<string> */
+    /**
+     * Tokenize a configured command string into argv, honoring quotes so a
+     * server path containing spaces survives: '…' is literal, "…" allows the
+     * \" and \\ escapes, and adjacent quoted/bare runs join into one token. An
+     * unterminated quote runs to the end of the string — a config seam
+     * degrades, it never throws.
+     *
+     * @return list<string>
+     */
     private static function split(string $command): array
     {
-        return array_values(array_filter(($parts = preg_split('/\s+/', trim($command))) ? $parts : []));
+        $parts = [];
+        $current = '';
+        $inToken = false; // tracked apart from $current, so a quoted '' still counts as an argument
+        $quote = null;
+        $length = \strlen($command);
+        for ($i = 0; $i < $length; ++$i) {
+            $char = $command[$i];
+            if (null !== $quote) {
+                if ('"' === $quote && '\\' === $char && ($i + 1) < $length && ('"' === $command[$i + 1] || '\\' === $command[$i + 1])) {
+                    $current .= $command[++$i];
+                    continue;
+                }
+                if ($char === $quote) {
+                    $quote = null;
+                    continue;
+                }
+                $current .= $char;
+                continue;
+            }
+            if (1 === preg_match('/\s/', $char)) {
+                if ($inToken) {
+                    $parts[] = $current;
+                    $current = '';
+                    $inToken = false;
+                }
+                continue;
+            }
+            if ("'" === $char || '"' === $char) {
+                $quote = $char;
+                $inToken = true;
+                continue;
+            }
+            $current .= $char;
+            $inToken = true;
+        }
+        if ($inToken) {
+            $parts[] = $current;
+        }
+
+        return $parts;
     }
 
     private static function which(string $binary): ?string
