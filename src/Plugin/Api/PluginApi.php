@@ -1130,6 +1130,20 @@ final class PluginApi
     }
 
     /**
+     * Flip a registered view open or closed — what a keybinding on a view
+     * wants, and the reason it is here rather than composed from the two above.
+     *
+     * "Is it open?" is a question only the registry can answer, and a plugin
+     * asking it any other way has to hold its own controller for the duration
+     * — which means keeping a reference alive purely to read one bool, against
+     * an object built later than everything that needs it.
+     */
+    public function toggleView(string $id): void
+    {
+        $this->manager->runtime()->views->toggle($id);
+    }
+
+    /**
      * Put text on the system clipboard (OSC 52 where the terminal allows it).
      *
      * The one verb a full-screen view needed that had no plugin route at all:

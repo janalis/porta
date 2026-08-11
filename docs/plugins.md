@@ -614,6 +614,7 @@ Actions (from handlers/hooks):
 | `notify(string $message, ToastSeverity $severity = ToastSeverity::Info, float $seconds = 2.5)` | The same toast, coloured for what happened: `Success`, `Warn`, `Error`. `flash()` is this at `Info` |
 | `refreshStatusSegments()` | Tell the status bar your segment changed; the bar caches its line, so a value that arrives asynchronously needs this |
 | `openView(string $id)` / `closeView(string $id)` | Open or close a registered full-screen view. Opening closes whatever other view owns the main area |
+| `toggleView(string $id)` | Flip it open or closed — what a keybinding on a view wants. "Is it open?" is the registry's to answer, so a plugin never holds its own controller to find out |
 | `showChangeMarkGutter(bool $on)` | Show or hide the version-control gutter STRIP itself. Hiding drops whatever marks were showing, so nothing lingers under a column that is no longer painted |
 | `showList(string $id, array $rows = [], ToolRun $run = ToolRun::Finished)` | Open your list tool's tab and show rows |
 | `updateList(string $id, array $rows, ToolRun $run = ToolRun::Finished)` | Replace its rows in place; a no-op once the user ×'d the tab |

@@ -212,6 +212,14 @@ final class PluginApiTest extends TestCase
         $api->closeView('vcs');
         $this->assertFalse($view->isOpen());
 
+        // toggleView is not openView-or-closeView spelled shorter: the plugin
+        // does not know which it wants, and finding out any other way means
+        // keeping its own controller alive to read one bool.
+        $api->toggleView('vcs');
+        $this->assertTrue($view->isOpen(), 'closed → open');
+        $api->toggleView('vcs');
+        $this->assertFalse($view->isOpen(), 'and back, from the same call');
+
         // Clipboard has no readable state here; that it reaches the runtime at
         // all is the contract — the alternative was a view with no route to it.
         $api->copyToClipboard('deadbeef');
