@@ -108,10 +108,12 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 # code; the round-5 test split retired the E2e monolith that pinned two rules;
 # all nine re-bisected again under mago 1.45, where exactly one moved):
 #
-#   cyclomatic-complexity   145  Input/MouseRouter — back on top: round 5's
-#                                handler map took FindInFilesModal below it
-#                                (was 220 two rounds ago, 133 before the graph
-#                                viewer's click/drag-pan routing landed)
+#   cyclomatic-complexity   143  Input/MouseRouter — still on top, two lower
+#                                than before git left `src/`: the router's
+#                                git-shaped branches became ViewPointers
+#                                lookups (was 145; 220 two rounds before that,
+#                                133 before the graph viewer's click/drag-pan
+#                                routing landed)
 #   too-many-methods         97  Widget/CodeEditorWidget (was 208, a test file;
 #                                106 until mago 1.45, which counts the same
 #                                unchanged class as 97 — a counting change, not
@@ -128,9 +130,11 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 #                                26 dropped it 25 → 22: the pin had drifted
 #                                above the real maximum, which is the exact
 #                                failure mode this re-bisection exists to catch
-#   kan-defect                8  Widget/Git/DiffViewWidget and
+#   kan-defect                8  plugins/git/src/Widget/DiffViewWidget and
 #                                Overlay/State/FindInFilesModal (was 14, the
-#                                E2e monolith)
+#                                E2e monolith). Unmoved by the git extraction
+#                                because `plugins` is a linted path: the class
+#                                changed address, not shape
 #   halstead effort       21435  Help/MarkdownRenderer::render
 #   halstead difficulty      30  Overlay/Presenter/WelcomeModalController::open
 #   halstead volume        3236  tests/E2e/IdeTest::testFullScenario — one
@@ -159,7 +163,12 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 # five *Callbacks DTOs and adding ~30 event classes: unmoved. Worth knowing
 # WHY that keeps happening — every floor is pinned by one big class each
 # (MouseRouter, CodeEditorWidget, Document…), and rounds that add small
-# classes cannot move a maximum.
+# classes cannot move a maximum. Round 31 (git becomes a bundled plugin, ~5,700
+# lines out of `src/`) re-bisected all nine and moved exactly one:
+# cyclomatic-complexity 145 → 143, because MouseRouter is one of the few pins a
+# round CAN move — it lost two git-shaped branches to ViewPointers. The other
+# eight are unmoved, and the git ones deliberately so: `plugins` is a linted
+# path, so moving a class out of `src/` does not take it out of the gate.
 #
 # Re-bisect and lower again after the next structural change — AND after a mago
 # upgrade, which can change how a metric is counted without a line of code
@@ -167,7 +176,7 @@ excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demandin
 # real maximum is not a gate. Verified failing: injecting 60 dummy
 # properties into Ui/Notifier trips too-many-properties and lint exits 1.
 [linter.rules]
-cyclomatic-complexity = { threshold = 145 }
+cyclomatic-complexity = { threshold = 143 }
 too-many-methods = { threshold = 97 }
 too-many-properties = { threshold = 32 }
 too-many-enum-cases = { threshold = 58 }

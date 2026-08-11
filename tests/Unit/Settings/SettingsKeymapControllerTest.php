@@ -12,7 +12,6 @@ use Porta\Config\KeybindingsFactory;
 use Porta\Config\KeyDispatch;
 use Porta\Config\LiveKeybindings;
 use Porta\Editor\EditorPanes;
-use Porta\GitPlugin\GitInfo;
 use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Plugin\Runtime\PluginManager;
