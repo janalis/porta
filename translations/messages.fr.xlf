@@ -2198,6 +2198,258 @@
         <source>Disabled "%name%", but its dependencies could not be removed</source>
         <target>« %name% » désactivée, mais ses dépendances n'ont pas pu être supprimées</target>
       </trans-unit>
+      <trans-unit id="552">
+        <source>Add to Search Scopes</source>
+        <target>Ajouter aux portées de recherche</target>
+      </trans-unit>
+      <trans-unit id="553">
+        <source>Added %dir% to search scopes</source>
+        <target>%dir% ajouté aux portées de recherche</target>
+      </trans-unit>
+      <trans-unit id="554">
+        <source>Breadcrumbs bar</source>
+        <target>Barre de fil d'Ariane</target>
+      </trans-unit>
+      <trans-unit id="555">
+        <source>Cherry-pick</source>
+        <target>Cherry-pick</target>
+      </trans-unit>
+      <trans-unit id="556">
+        <source>Cherry-picked %sha%</source>
+        <target>Cherry-pick de %sha% effectué</target>
+      </trans-unit>
+      <trans-unit id="557">
+        <source>Copied %sha%</source>
+        <target>%sha% copié</target>
+      </trans-unit>
+      <trans-unit id="558">
+        <source>Copy Hash</source>
+        <target>Copier le hash</target>
+      </trans-unit>
+      <trans-unit id="559">
+        <source>Create Branch from Commit…</source>
+        <target>Créer une branche depuis le commit…</target>
+      </trans-unit>
+      <trans-unit id="560">
+        <source>Cycle Line Numbers</source>
+        <target>Alterner les numéros de ligne</target>
+      </trans-unit>
+      <trans-unit id="561">
+        <source>Debug</source>
+        <target>Débogage</target>
+      </trans-unit>
+      <trans-unit id="562">
+        <source>Debug adapter</source>
+        <target>Adaptateur de débogage</target>
+      </trans-unit>
+      <trans-unit id="563">
+        <source>Delete Branch…</source>
+        <target>Supprimer la branche…</target>
+      </trans-unit>
+      <trans-unit id="564">
+        <source>Exported %count% results</source>
+        <target>%count% résultats exportés</target>
+      </trans-unit>
+      <trans-unit id="565">
+        <source>Find in Files</source>
+        <target>Rechercher dans les fichiers</target>
+      </trans-unit>
+      <trans-unit id="566">
+        <source>Find in Project: %query%</source>
+        <target>Rechercher dans le projet : %query%</target>
+      </trans-unit>
+      <trans-unit id="567">
+        <source>Graph rendering</source>
+        <target>Rendu du graphe</target>
+      </trans-unit>
+      <trans-unit id="568">
+        <source>Help: Back</source>
+        <target>Aide : retour</target>
+      </trans-unit>
+      <trans-unit id="569">
+        <source>Help: Follow Link</source>
+        <target>Aide : suivre le lien</target>
+      </trans-unit>
+      <trans-unit id="570">
+        <source>Help: Go to Bottom</source>
+        <target>Aide : aller à la fin</target>
+      </trans-unit>
+      <trans-unit id="571">
+        <source>Help: Go to Top</source>
+        <target>Aide : aller au début</target>
+      </trans-unit>
+      <trans-unit id="572">
+        <source>Help: Next Link</source>
+        <target>Aide : lien suivant</target>
+      </trans-unit>
+      <trans-unit id="573">
+        <source>Help: Page Down</source>
+        <target>Aide : page suivante</target>
+      </trans-unit>
+      <trans-unit id="574">
+        <source>Help: Page Up</source>
+        <target>Aide : page précédente</target>
+      </trans-unit>
+      <trans-unit id="575">
+        <source>Help: Previous Link</source>
+        <target>Aide : lien précédent</target>
+      </trans-unit>
+      <trans-unit id="576">
+        <source>Help: Scroll Down</source>
+        <target>Aide : défiler vers le bas</target>
+      </trans-unit>
+      <trans-unit id="577">
+        <source>Help: Scroll Up</source>
+        <target>Aide : défiler vers le haut</target>
+      </trans-unit>
+      <trans-unit id="578">
+        <source>Indent guides</source>
+        <target>Guides d'indentation</target>
+      </trans-unit>
+      <trans-unit id="579">
+        <source>Installed, but composer install failed (exit code %code%)</source>
+        <target>Installé, mais composer install a échoué (code de sortie %code%)</target>
+      </trans-unit>
+      <trans-unit id="580">
+        <source>Installed, but composer is not available to install its dependencies</source>
+        <target>Installé, mais composer n'est pas disponible pour installer ses dépendances</target>
+      </trans-unit>
+      <trans-unit id="581">
+        <source>Invalid JSON — not saved</source>
+        <target>JSON invalide — non enregistré</target>
+      </trans-unit>
+      <trans-unit id="582">
+        <source>JSON merged into the DAP launch request</source>
+        <target>JSON fusionné dans la requête de lancement DAP</target>
+      </trans-unit>
+      <trans-unit id="583">
+        <source>Join Lines</source>
+        <target>Joindre les lignes</target>
+      </trans-unit>
+      <trans-unit id="584">
+        <source>Launch config (JSON)</source>
+        <target>Config de lancement (JSON)</target>
+      </trans-unit>
+      <trans-unit id="585">
+        <source>Line numbers</source>
+        <target>Numéros de ligne</target>
+      </trans-unit>
+      <trans-unit id="586">
+        <source>Log message (empty: pause instead of logging)</source>
+        <target>Message de journal (vide : pause au lieu de journaliser)</target>
+      </trans-unit>
+      <trans-unit id="587">
+        <source>Mixed (unstage changes)</source>
+        <target>Mixed (désindexer les modifications)</target>
+      </trans-unit>
+      <trans-unit id="588">
+        <source>New Branch…</source>
+        <target>Nouvelle branche…</target>
+      </trans-unit>
+      <trans-unit id="589">
+        <source>Next Dock Panel</source>
+        <target>Panneau suivant du dock</target>
+      </trans-unit>
+      <trans-unit id="590">
+        <source>No debug session to restart</source>
+        <target>Aucune session de débogage à redémarrer</target>
+      </trans-unit>
+      <trans-unit id="591">
+        <source>Nothing to export</source>
+        <target>Rien à exporter</target>
+      </trans-unit>
+      <trans-unit id="592">
+        <source>Open as Text</source>
+        <target>Ouvrir en tant que texte</target>
+      </trans-unit>
+      <trans-unit id="593">
+        <source>PlantUML path (or .jar)</source>
+        <target>Chemin de PlantUML (ou .jar)</target>
+      </trans-unit>
+      <trans-unit id="594">
+        <source>Previous Dock Panel</source>
+        <target>Panneau précédent du dock</target>
+      </trans-unit>
+      <trans-unit id="595">
+        <source>Reset to %sha% (%mode%)</source>
+        <target>Réinitialisé sur %sha% (%mode%)</target>
+      </trans-unit>
+      <trans-unit id="596">
+        <source>Reset to %sha%?</source>
+        <target>Réinitialiser sur %sha% ?</target>
+      </trans-unit>
+      <trans-unit id="597">
+        <source>Reset to Commit…</source>
+        <target>Réinitialiser sur le commit…</target>
+      </trans-unit>
+      <trans-unit id="598">
+        <source>Restart Debugger</source>
+        <target>Redémarrer le débogueur</target>
+      </trans-unit>
+      <trans-unit id="599">
+        <source>Revert Commit</source>
+        <target>Annuler le commit</target>
+      </trans-unit>
+      <trans-unit id="600">
+        <source>Reverted %sha%</source>
+        <target>%sha% annulé</target>
+      </trans-unit>
+      <trans-unit id="601">
+        <source>SVG converter path</source>
+        <target>Chemin du convertisseur SVG</target>
+      </trans-unit>
+      <trans-unit id="602">
+        <source>Set %name% to</source>
+        <target>Définir %name% à</target>
+      </trans-unit>
+      <trans-unit id="603">
+        <source>Soft (keep staged changes)</source>
+        <target>Soft (conserver les modifications indexées)</target>
+      </trans-unit>
+      <trans-unit id="604">
+        <source>Sort Lines</source>
+        <target>Trier les lignes</target>
+      </trans-unit>
+      <trans-unit id="605">
+        <source>Sticky scroll</source>
+        <target>Défilement épinglé</target>
+      </trans-unit>
+      <trans-unit id="606">
+        <source>Switch Branch…</source>
+        <target>Changer de branche…</target>
+      </trans-unit>
+      <trans-unit id="607">
+        <source>This debug adapter cannot edit variables</source>
+        <target>Cet adaptateur de débogage ne peut pas modifier les variables</target>
+      </trans-unit>
+      <trans-unit id="608">
+        <source>Toggle Case</source>
+        <target>Changer la casse</target>
+      </trans-unit>
+      <trans-unit id="609">
+        <source>latest</source>
+        <target>dernier</target>
+      </trans-unit>
+      <trans-unit id="610">
+        <source>not configured</source>
+        <target>non configuré</target>
+      </trans-unit>
+      <trans-unit id="611">
+        <source>plantuml not found — install it, or set the "plantuml" setting</source>
+        <target>plantuml introuvable — installez-le ou définissez le réglage "plantuml"</target>
+      </trans-unit>
+      <trans-unit id="612">
+        <source>rendering…</source>
+        <target>rendu…</target>
+      </trans-unit>
+      <trans-unit id="613">
+        <source>the SVG could not be decoded</source>
+        <target>le SVG n'a pas pu être décodé</target>
+      </trans-unit>
+      <trans-unit id="614">
+        <source>the graph bitmap could not be decoded</source>
+        <target>le bitmap du graphe n'a pas pu être décodé</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

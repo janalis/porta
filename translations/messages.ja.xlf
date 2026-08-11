@@ -2198,6 +2198,258 @@
         <source>Disabled "%name%", but its dependencies could not be removed</source>
         <target>「%name%」を無効にしましたが、依存関係を削除できませんでした</target>
       </trans-unit>
+      <trans-unit id="552">
+        <source>Add to Search Scopes</source>
+        <target>検索スコープに追加</target>
+      </trans-unit>
+      <trans-unit id="553">
+        <source>Added %dir% to search scopes</source>
+        <target>%dir% を検索スコープに追加しました</target>
+      </trans-unit>
+      <trans-unit id="554">
+        <source>Breadcrumbs bar</source>
+        <target>パンくずバー</target>
+      </trans-unit>
+      <trans-unit id="555">
+        <source>Cherry-pick</source>
+        <target>チェリーピック</target>
+      </trans-unit>
+      <trans-unit id="556">
+        <source>Cherry-picked %sha%</source>
+        <target>%sha% をチェリーピックしました</target>
+      </trans-unit>
+      <trans-unit id="557">
+        <source>Copied %sha%</source>
+        <target>%sha% をコピーしました</target>
+      </trans-unit>
+      <trans-unit id="558">
+        <source>Copy Hash</source>
+        <target>ハッシュをコピー</target>
+      </trans-unit>
+      <trans-unit id="559">
+        <source>Create Branch from Commit…</source>
+        <target>コミットからブランチを作成…</target>
+      </trans-unit>
+      <trans-unit id="560">
+        <source>Cycle Line Numbers</source>
+        <target>行番号表示を切り替え</target>
+      </trans-unit>
+      <trans-unit id="561">
+        <source>Debug</source>
+        <target>デバッグ</target>
+      </trans-unit>
+      <trans-unit id="562">
+        <source>Debug adapter</source>
+        <target>デバッグアダプター</target>
+      </trans-unit>
+      <trans-unit id="563">
+        <source>Delete Branch…</source>
+        <target>ブランチを削除…</target>
+      </trans-unit>
+      <trans-unit id="564">
+        <source>Exported %count% results</source>
+        <target>%count% 件の結果をエクスポートしました</target>
+      </trans-unit>
+      <trans-unit id="565">
+        <source>Find in Files</source>
+        <target>ファイル内を検索</target>
+      </trans-unit>
+      <trans-unit id="566">
+        <source>Find in Project: %query%</source>
+        <target>プロジェクト内を検索: %query%</target>
+      </trans-unit>
+      <trans-unit id="567">
+        <source>Graph rendering</source>
+        <target>グラフのレンダリング</target>
+      </trans-unit>
+      <trans-unit id="568">
+        <source>Help: Back</source>
+        <target>ヘルプ: 戻る</target>
+      </trans-unit>
+      <trans-unit id="569">
+        <source>Help: Follow Link</source>
+        <target>ヘルプ: リンクを開く</target>
+      </trans-unit>
+      <trans-unit id="570">
+        <source>Help: Go to Bottom</source>
+        <target>ヘルプ: 末尾へ</target>
+      </trans-unit>
+      <trans-unit id="571">
+        <source>Help: Go to Top</source>
+        <target>ヘルプ: 先頭へ</target>
+      </trans-unit>
+      <trans-unit id="572">
+        <source>Help: Next Link</source>
+        <target>ヘルプ: 次のリンク</target>
+      </trans-unit>
+      <trans-unit id="573">
+        <source>Help: Page Down</source>
+        <target>ヘルプ: ページダウン</target>
+      </trans-unit>
+      <trans-unit id="574">
+        <source>Help: Page Up</source>
+        <target>ヘルプ: ページアップ</target>
+      </trans-unit>
+      <trans-unit id="575">
+        <source>Help: Previous Link</source>
+        <target>ヘルプ: 前のリンク</target>
+      </trans-unit>
+      <trans-unit id="576">
+        <source>Help: Scroll Down</source>
+        <target>ヘルプ: 下へスクロール</target>
+      </trans-unit>
+      <trans-unit id="577">
+        <source>Help: Scroll Up</source>
+        <target>ヘルプ: 上へスクロール</target>
+      </trans-unit>
+      <trans-unit id="578">
+        <source>Indent guides</source>
+        <target>インデントガイド</target>
+      </trans-unit>
+      <trans-unit id="579">
+        <source>Installed, but composer install failed (exit code %code%)</source>
+        <target>インストールしましたが、composer install が失敗しました (終了コード %code%)</target>
+      </trans-unit>
+      <trans-unit id="580">
+        <source>Installed, but composer is not available to install its dependencies</source>
+        <target>インストールしましたが、依存関係をインストールするための composer がありません</target>
+      </trans-unit>
+      <trans-unit id="581">
+        <source>Invalid JSON — not saved</source>
+        <target>無効なJSON — 保存されていません</target>
+      </trans-unit>
+      <trans-unit id="582">
+        <source>JSON merged into the DAP launch request</source>
+        <target>DAP起動リクエストに統合されるJSON</target>
+      </trans-unit>
+      <trans-unit id="583">
+        <source>Join Lines</source>
+        <target>行を結合</target>
+      </trans-unit>
+      <trans-unit id="584">
+        <source>Launch config (JSON)</source>
+        <target>起動設定 (JSON)</target>
+      </trans-unit>
+      <trans-unit id="585">
+        <source>Line numbers</source>
+        <target>行番号</target>
+      </trans-unit>
+      <trans-unit id="586">
+        <source>Log message (empty: pause instead of logging)</source>
+        <target>ログメッセージ（空の場合はログではなく一時停止）</target>
+      </trans-unit>
+      <trans-unit id="587">
+        <source>Mixed (unstage changes)</source>
+        <target>Mixed（変更のステージを解除）</target>
+      </trans-unit>
+      <trans-unit id="588">
+        <source>New Branch…</source>
+        <target>新しいブランチ…</target>
+      </trans-unit>
+      <trans-unit id="589">
+        <source>Next Dock Panel</source>
+        <target>次のドックパネル</target>
+      </trans-unit>
+      <trans-unit id="590">
+        <source>No debug session to restart</source>
+        <target>再起動するデバッグセッションがありません</target>
+      </trans-unit>
+      <trans-unit id="591">
+        <source>Nothing to export</source>
+        <target>エクスポートするものがありません</target>
+      </trans-unit>
+      <trans-unit id="592">
+        <source>Open as Text</source>
+        <target>テキストとして開く</target>
+      </trans-unit>
+      <trans-unit id="593">
+        <source>PlantUML path (or .jar)</source>
+        <target>PlantUMLのパス（または .jar）</target>
+      </trans-unit>
+      <trans-unit id="594">
+        <source>Previous Dock Panel</source>
+        <target>前のドックパネル</target>
+      </trans-unit>
+      <trans-unit id="595">
+        <source>Reset to %sha% (%mode%)</source>
+        <target>%sha% へリセットしました (%mode%)</target>
+      </trans-unit>
+      <trans-unit id="596">
+        <source>Reset to %sha%?</source>
+        <target>%sha% へリセットしますか？</target>
+      </trans-unit>
+      <trans-unit id="597">
+        <source>Reset to Commit…</source>
+        <target>コミットへリセット…</target>
+      </trans-unit>
+      <trans-unit id="598">
+        <source>Restart Debugger</source>
+        <target>デバッガーを再起動</target>
+      </trans-unit>
+      <trans-unit id="599">
+        <source>Revert Commit</source>
+        <target>コミットをリバート</target>
+      </trans-unit>
+      <trans-unit id="600">
+        <source>Reverted %sha%</source>
+        <target>%sha% をリバートしました</target>
+      </trans-unit>
+      <trans-unit id="601">
+        <source>SVG converter path</source>
+        <target>SVGコンバーターのパス</target>
+      </trans-unit>
+      <trans-unit id="602">
+        <source>Set %name% to</source>
+        <target>%name% を設定</target>
+      </trans-unit>
+      <trans-unit id="603">
+        <source>Soft (keep staged changes)</source>
+        <target>Soft（ステージ済みの変更を保持）</target>
+      </trans-unit>
+      <trans-unit id="604">
+        <source>Sort Lines</source>
+        <target>行を並べ替え</target>
+      </trans-unit>
+      <trans-unit id="605">
+        <source>Sticky scroll</source>
+        <target>スティッキースクロール</target>
+      </trans-unit>
+      <trans-unit id="606">
+        <source>Switch Branch…</source>
+        <target>ブランチを切り替え…</target>
+      </trans-unit>
+      <trans-unit id="607">
+        <source>This debug adapter cannot edit variables</source>
+        <target>このデバッグアダプターは変数を編集できません</target>
+      </trans-unit>
+      <trans-unit id="608">
+        <source>Toggle Case</source>
+        <target>大文字と小文字を切り替え</target>
+      </trans-unit>
+      <trans-unit id="609">
+        <source>latest</source>
+        <target>最新</target>
+      </trans-unit>
+      <trans-unit id="610">
+        <source>not configured</source>
+        <target>未設定</target>
+      </trans-unit>
+      <trans-unit id="611">
+        <source>plantuml not found — install it, or set the "plantuml" setting</source>
+        <target>plantuml が見つかりません — インストールするか、"plantuml" 設定を指定してください</target>
+      </trans-unit>
+      <trans-unit id="612">
+        <source>rendering…</source>
+        <target>レンダリング中…</target>
+      </trans-unit>
+      <trans-unit id="613">
+        <source>the SVG could not be decoded</source>
+        <target>SVGをデコードできませんでした</target>
+      </trans-unit>
+      <trans-unit id="614">
+        <source>the graph bitmap could not be decoded</source>
+        <target>グラフのビットマップをデコードできませんでした</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

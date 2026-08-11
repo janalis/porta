@@ -2198,6 +2198,258 @@
         <source>Disabled "%name%", but its dependencies could not be removed</source>
         <target>"%name%" הושבת, אך לא ניתן היה להסיר את התלויות שלו</target>
       </trans-unit>
+      <trans-unit id="552">
+        <source>Add to Search Scopes</source>
+        <target>הוספה לטווחי החיפוש</target>
+      </trans-unit>
+      <trans-unit id="553">
+        <source>Added %dir% to search scopes</source>
+        <target>%dir% נוסף לטווחי החיפוש</target>
+      </trans-unit>
+      <trans-unit id="554">
+        <source>Breadcrumbs bar</source>
+        <target>שורת שבילי ניווט</target>
+      </trans-unit>
+      <trans-unit id="555">
+        <source>Cherry-pick</source>
+        <target>Cherry-pick</target>
+      </trans-unit>
+      <trans-unit id="556">
+        <source>Cherry-picked %sha%</source>
+        <target>בוצע Cherry-pick של %sha%</target>
+      </trans-unit>
+      <trans-unit id="557">
+        <source>Copied %sha%</source>
+        <target>%sha% הועתק</target>
+      </trans-unit>
+      <trans-unit id="558">
+        <source>Copy Hash</source>
+        <target>העתקת גיבוב</target>
+      </trans-unit>
+      <trans-unit id="559">
+        <source>Create Branch from Commit…</source>
+        <target>יצירת ענף מקומיט…</target>
+      </trans-unit>
+      <trans-unit id="560">
+        <source>Cycle Line Numbers</source>
+        <target>מעבר בין מצבי מספרי שורות</target>
+      </trans-unit>
+      <trans-unit id="561">
+        <source>Debug</source>
+        <target>ניפוי שגיאות</target>
+      </trans-unit>
+      <trans-unit id="562">
+        <source>Debug adapter</source>
+        <target>מתאם ניפוי שגיאות</target>
+      </trans-unit>
+      <trans-unit id="563">
+        <source>Delete Branch…</source>
+        <target>מחיקת ענף…</target>
+      </trans-unit>
+      <trans-unit id="564">
+        <source>Exported %count% results</source>
+        <target>יוצאו %count% תוצאות</target>
+      </trans-unit>
+      <trans-unit id="565">
+        <source>Find in Files</source>
+        <target>חיפוש בקבצים</target>
+      </trans-unit>
+      <trans-unit id="566">
+        <source>Find in Project: %query%</source>
+        <target>חיפוש בפרויקט: %query%</target>
+      </trans-unit>
+      <trans-unit id="567">
+        <source>Graph rendering</source>
+        <target>עיבוד הגרף</target>
+      </trans-unit>
+      <trans-unit id="568">
+        <source>Help: Back</source>
+        <target>עזרה: חזרה</target>
+      </trans-unit>
+      <trans-unit id="569">
+        <source>Help: Follow Link</source>
+        <target>עזרה: מעבר לקישור</target>
+      </trans-unit>
+      <trans-unit id="570">
+        <source>Help: Go to Bottom</source>
+        <target>עזרה: אל הסוף</target>
+      </trans-unit>
+      <trans-unit id="571">
+        <source>Help: Go to Top</source>
+        <target>עזרה: אל ההתחלה</target>
+      </trans-unit>
+      <trans-unit id="572">
+        <source>Help: Next Link</source>
+        <target>עזרה: הקישור הבא</target>
+      </trans-unit>
+      <trans-unit id="573">
+        <source>Help: Page Down</source>
+        <target>עזרה: עמוד למטה</target>
+      </trans-unit>
+      <trans-unit id="574">
+        <source>Help: Page Up</source>
+        <target>עזרה: עמוד למעלה</target>
+      </trans-unit>
+      <trans-unit id="575">
+        <source>Help: Previous Link</source>
+        <target>עזרה: הקישור הקודם</target>
+      </trans-unit>
+      <trans-unit id="576">
+        <source>Help: Scroll Down</source>
+        <target>עזרה: גלילה למטה</target>
+      </trans-unit>
+      <trans-unit id="577">
+        <source>Help: Scroll Up</source>
+        <target>עזרה: גלילה למעלה</target>
+      </trans-unit>
+      <trans-unit id="578">
+        <source>Indent guides</source>
+        <target>קווי הזחה</target>
+      </trans-unit>
+      <trans-unit id="579">
+        <source>Installed, but composer install failed (exit code %code%)</source>
+        <target>הותקן, אך composer install נכשל (קוד יציאה %code%)</target>
+      </trans-unit>
+      <trans-unit id="580">
+        <source>Installed, but composer is not available to install its dependencies</source>
+        <target>הותקן, אך composer אינו זמין להתקנת התלויות שלו</target>
+      </trans-unit>
+      <trans-unit id="581">
+        <source>Invalid JSON — not saved</source>
+        <target>JSON לא תקין — לא נשמר</target>
+      </trans-unit>
+      <trans-unit id="582">
+        <source>JSON merged into the DAP launch request</source>
+        <target>JSON הממוזג לבקשת ההפעלה של DAP</target>
+      </trans-unit>
+      <trans-unit id="583">
+        <source>Join Lines</source>
+        <target>איחוד שורות</target>
+      </trans-unit>
+      <trans-unit id="584">
+        <source>Launch config (JSON)</source>
+        <target>תצורת הפעלה (JSON)</target>
+      </trans-unit>
+      <trans-unit id="585">
+        <source>Line numbers</source>
+        <target>מספרי שורות</target>
+      </trans-unit>
+      <trans-unit id="586">
+        <source>Log message (empty: pause instead of logging)</source>
+        <target>הודעת יומן (ריק: השהיה במקום רישום)</target>
+      </trans-unit>
+      <trans-unit id="587">
+        <source>Mixed (unstage changes)</source>
+        <target>Mixed (ביטול הבאת השינויים)</target>
+      </trans-unit>
+      <trans-unit id="588">
+        <source>New Branch…</source>
+        <target>ענף חדש…</target>
+      </trans-unit>
+      <trans-unit id="589">
+        <source>Next Dock Panel</source>
+        <target>לוח העגינה הבא</target>
+      </trans-unit>
+      <trans-unit id="590">
+        <source>No debug session to restart</source>
+        <target>אין הפעלת ניפוי שגיאות להפעלה מחדש</target>
+      </trans-unit>
+      <trans-unit id="591">
+        <source>Nothing to export</source>
+        <target>אין מה לייצא</target>
+      </trans-unit>
+      <trans-unit id="592">
+        <source>Open as Text</source>
+        <target>פתיחה כטקסט</target>
+      </trans-unit>
+      <trans-unit id="593">
+        <source>PlantUML path (or .jar)</source>
+        <target>נתיב PlantUML (או .jar)</target>
+      </trans-unit>
+      <trans-unit id="594">
+        <source>Previous Dock Panel</source>
+        <target>לוח העגינה הקודם</target>
+      </trans-unit>
+      <trans-unit id="595">
+        <source>Reset to %sha% (%mode%)</source>
+        <target>אופס ל־%sha% (%mode%)</target>
+      </trans-unit>
+      <trans-unit id="596">
+        <source>Reset to %sha%?</source>
+        <target>לאפס ל־%sha%?</target>
+      </trans-unit>
+      <trans-unit id="597">
+        <source>Reset to Commit…</source>
+        <target>איפוס לקומיט…</target>
+      </trans-unit>
+      <trans-unit id="598">
+        <source>Restart Debugger</source>
+        <target>הפעלה מחדש של המנפה</target>
+      </trans-unit>
+      <trans-unit id="599">
+        <source>Revert Commit</source>
+        <target>היפוך קומיט</target>
+      </trans-unit>
+      <trans-unit id="600">
+        <source>Reverted %sha%</source>
+        <target>בוצע היפוך של %sha%</target>
+      </trans-unit>
+      <trans-unit id="601">
+        <source>SVG converter path</source>
+        <target>נתיב ממיר ה־SVG</target>
+      </trans-unit>
+      <trans-unit id="602">
+        <source>Set %name% to</source>
+        <target>הגדרת %name% לערך</target>
+      </trans-unit>
+      <trans-unit id="603">
+        <source>Soft (keep staged changes)</source>
+        <target>Soft (שמירת השינויים שהובאו)</target>
+      </trans-unit>
+      <trans-unit id="604">
+        <source>Sort Lines</source>
+        <target>מיון שורות</target>
+      </trans-unit>
+      <trans-unit id="605">
+        <source>Sticky scroll</source>
+        <target>גלילה דביקה</target>
+      </trans-unit>
+      <trans-unit id="606">
+        <source>Switch Branch…</source>
+        <target>החלפת ענף…</target>
+      </trans-unit>
+      <trans-unit id="607">
+        <source>This debug adapter cannot edit variables</source>
+        <target>מתאם ניפוי השגיאות הזה אינו יכול לערוך משתנים</target>
+      </trans-unit>
+      <trans-unit id="608">
+        <source>Toggle Case</source>
+        <target>החלפת רישיות</target>
+      </trans-unit>
+      <trans-unit id="609">
+        <source>latest</source>
+        <target>אחרון</target>
+      </trans-unit>
+      <trans-unit id="610">
+        <source>not configured</source>
+        <target>לא מוגדר</target>
+      </trans-unit>
+      <trans-unit id="611">
+        <source>plantuml not found — install it, or set the "plantuml" setting</source>
+        <target>plantuml לא נמצא — התקינו אותו או הגדירו את ההגדרה "plantuml"</target>
+      </trans-unit>
+      <trans-unit id="612">
+        <source>rendering…</source>
+        <target>מעבד…</target>
+      </trans-unit>
+      <trans-unit id="613">
+        <source>the SVG could not be decoded</source>
+        <target>לא ניתן לפענח את ה־SVG</target>
+      </trans-unit>
+      <trans-unit id="614">
+        <source>the graph bitmap could not be decoded</source>
+        <target>לא ניתן לפענח את מפת הסיביות של הגרף</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

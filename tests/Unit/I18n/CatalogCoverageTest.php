@@ -21,78 +21,15 @@ final class CatalogCoverageTest extends TestCase
     private const string ROOT = __DIR__.'/../../..';
 
     /**
-     * Ids the first run of this gate found already missing — standing debt,
-     * pinned in BOTH directions: a NEW untranslated literal fails (it will be
-     * absent from this list), and translating one of these fails until its
-     * entry here is removed, so the list can only shrink.
+     * Ids the gate has found used in code but missing from messages.en.xlf —
+     * standing debt, pinned in BOTH directions: a NEW untranslated literal
+     * fails (it will be absent from this list), and translating one fails
+     * until its entry here is removed, so the list can only shrink. Empty
+     * since the first run's 65 findings were translated (63 real gaps, plus
+     * two find-bar hints a scanner bug had mis-decoded — they were in the
+     * catalog all along).
      */
-    private const array KNOWN_GAPS = [
-        'Add to Search Scopes',
-        'Added %dir% to search scopes',
-        'Breadcrumbs bar',
-        'Cherry-pick',
-        'Cherry-picked %sha%',
-        'Copied %sha%',
-        'Copy Hash',
-        'Create Branch from Commit…',
-        'Cycle Line Numbers',
-        'Debug',
-        'Debug adapter',
-        'Delete Branch…',
-        'Exported %count% results',
-        'Find in Files',
-        'Find in Project: %query%',
-        'Graph rendering',
-        'Help: Back',
-        'Help: Follow Link',
-        'Help: Go to Bottom',
-        'Help: Go to Top',
-        'Help: Next Link',
-        'Help: Page Down',
-        'Help: Page Up',
-        'Help: Previous Link',
-        'Help: Scroll Down',
-        'Help: Scroll Up',
-        'Indent guides',
-        'Installed, but composer install failed (exit code %code%)',
-        'Installed, but composer is not available to install its dependencies',
-        'Invalid JSON — not saved',
-        'JSON merged into the DAP launch request',
-        'Join Lines',
-        'Launch config (JSON)',
-        'Line numbers',
-        'Log message (empty: pause instead of logging)',
-        'Mixed (unstage changes)',
-        'New Branch…',
-        'Next Dock Panel',
-        'No debug session to restart',
-        'Nothing to export',
-        'Open as Text',
-        'PlantUML path (or .jar)',
-        'Previous Dock Panel',
-        'Reset to %sha% (%mode%)',
-        'Reset to %sha%?',
-        'Reset to Commit…',
-        'Restart Debugger',
-        'Revert Commit',
-        'Reverted %sha%',
-        'SVG converter path',
-        'Set %name% to',
-        'Soft (keep staged changes)',
-        'Sort Lines',
-        'Sticky scroll',
-        'Switch Branch…',
-        'This debug adapter cannot edit variables',
-        'Toggle Case',
-        'latest',
-        'not configured',
-        'plantuml not found — install it, or set the "plantuml" setting',
-        'rendering…',
-        'the SVG could not be decoded',
-        'the graph bitmap could not be decoded',
-        '⏎/F3 next  Shift+F3 prev  Alt+X .*  Alt+W   Esc',
-        '⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Alt+X .*  Alt+W   Esc',
-    ];
+    private const array KNOWN_GAPS = [];
 
     public function testEveryUiStringLiteralReachesTheEnglishCatalogOrTheShrinkList(): void
     {
@@ -142,7 +79,7 @@ final class CatalogCoverageTest extends TestCase
                 }
                 $k = $this->nextMeaningful($tokens, $j + 1);
                 if (',' === $tokens[$k] || ')' === $tokens[$k]) {
-                    $ids[] = stripcslashes(substr($argument[1], 1, -1));
+                    $ids[] = $this->unquote($argument[1]);
                 }
             }
         }
@@ -165,7 +102,7 @@ final class CatalogCoverageTest extends TestCase
             $matches = [];
             preg_match_all("/'label' => '((?:[^'\\\\]|\\\\.)*)'/", $source, $matches);
             foreach ($matches[1] as $label) {
-                $labels[] = stripcslashes($label);
+                $labels[] = str_replace(['\\\\', "\\'"], ['\\', "'"], $label);
             }
         }
 
@@ -208,6 +145,19 @@ final class CatalogCoverageTest extends TestCase
         }
 
         return $files;
+    }
+
+    /**
+     * Decode a T_CONSTANT_ENCAPSED_STRING by its own quoting rules: inside
+     * single quotes only \\ and \' are escapes (a '\b' is a literal backslash
+     * and b — the find bar's hint really contains those two characters), where
+     * stripcslashes would invent a backspace.
+     */
+    private function unquote(string $literal): string
+    {
+        $body = substr($literal, 1, -1);
+
+        return "'" === $literal[0] ? str_replace(['\\\\', "\\'"], ['\\', "'"], $body) : stripcslashes($body);
     }
 
     /**
