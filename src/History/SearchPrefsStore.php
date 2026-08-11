@@ -103,7 +103,7 @@ final class SearchPrefsStore
                     JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES,
                 ),
             );
-        } catch (IOExceptionInterface) {
+        } catch (IOExceptionInterface|\JsonException) {
             // best-effort persistence; prefs are non-critical
             return;
         }

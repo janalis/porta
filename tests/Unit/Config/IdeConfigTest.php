@@ -556,4 +556,14 @@ final class IdeConfigTest extends TestCase
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertArrayNotHasKey('disabledPlugins', $written, 'an emptied disabledPlugins key is dropped');
     }
+
+    public function testPersistSettingReturnsFalseOnAnUnencodableValue(): void
+    {
+        // Invalid UTF-8 makes json_encode(JSON_THROW_ON_ERROR) throw inside
+        // write(); the widened catch degrades it to the IO-error false.
+        $project = new TempProject();
+
+        $this->assertFalse(new PortaJsonWriter()->persistSetting($project->dir, 'theme', "\xB1"));
+        $this->assertFalse(is_file($project->path('.porta.json')), 'nothing half-written');
+    }
 }

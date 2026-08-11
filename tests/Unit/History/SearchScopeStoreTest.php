@@ -99,4 +99,15 @@ final class SearchScopeStoreTest extends TestCase
             is_file($file) && unlink($file);
         }
     }
+
+    public function testAnUnencodableLabelStaysLiveAndPersistenceDegradesSilently(): void
+    {
+        $project = new TempProject();
+        $store = new SearchScopeStore($project->dir);
+
+        $store->addRecent("scope\xB1", ['/p/src']);
+
+        $this->assertCount(1, $store->all(), 'the live list keeps the scope');
+        $this->assertFalse(is_file($project->path('.porta/search-scopes.json')), 'the file write degraded silently');
+    }
 }

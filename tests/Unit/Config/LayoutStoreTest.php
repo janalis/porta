@@ -128,4 +128,16 @@ final class LayoutStoreTest extends TestCase
             'and a view core has never heard of is read like any other',
         );
     }
+
+    public function testAnUnencodablePayloadDegradesToFalseInsteadOfThrowing(): void
+    {
+        // An invalid-UTF-8 view id makes json_encode(JSON_THROW_ON_ERROR)
+        // throw; the widened catch degrades that to the IO-error false.
+        $project = new TempProject();
+
+        $saved = new LayoutStore($project->dir)->save(new LayoutPrefs(viewSidebarWidthPercent: ["v\xB1" => 40]));
+
+        $this->assertFalse($saved);
+        $this->assertFalse(is_file($project->path('.porta/layout.json')), 'nothing half-written');
+    }
 }

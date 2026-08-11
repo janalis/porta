@@ -103,4 +103,15 @@ final class SearchPrefsStoreTest extends TestCase
         $this->assertSame('', $store->lastMask(), 'a non-string mask is ignored');
         $this->assertSame(['*.php'], Probe::get($store, 'recentMasks'));
     }
+
+    public function testAnUnencodableMaskStaysLiveAndPersistenceDegradesSilently(): void
+    {
+        $project = new TempProject();
+        $store = new SearchPrefsStore($project->dir);
+
+        $store->setMask("*.\xB1");
+
+        $this->assertSame("*.\xB1", $store->lastMask(), 'the live pref keeps the mask');
+        $this->assertFalse(is_file($project->path('.porta/search-prefs.json')), 'the file write degraded silently');
+    }
 }

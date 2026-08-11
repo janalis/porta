@@ -310,7 +310,7 @@ final readonly class PortaJsonWriter
                 $file,
                 json_encode($config, JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES).\PHP_EOL,
             );
-        } catch (IOExceptionInterface) {
+        } catch (IOExceptionInterface|\JsonException) {
             return false;
         }
 

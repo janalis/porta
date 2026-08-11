@@ -72,7 +72,7 @@ final class SearchHistoryStore
     {
         try {
             $this->fs->dumpFile($this->file, json_encode(['queries' => $this->queries], JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES));
-        } catch (IOExceptionInterface) {
+        } catch (IOExceptionInterface|\JsonException) {
             // best-effort persistence; history is non-critical
             return;
         }

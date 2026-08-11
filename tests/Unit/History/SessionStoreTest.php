@@ -99,4 +99,18 @@ final class SessionStoreTest extends TestCase
         $this->assertSame(['path' => '/p/ok.php', 'line' => 2, 'col' => 0], $loaded['buffers'][0]);
         $this->assertNull($loaded['active']);
     }
+
+    public function testAnUnencodablePayloadDegradesToFalseInsteadOfThrowing(): void
+    {
+        // A path can carry invalid UTF-8 (byte-wise edits produce them), and
+        // json_encode(JSON_THROW_ON_ERROR) then throws where dumpFile never
+        // ran — only the widened catch turns that into the same best-effort
+        // false an IO error produces.
+        $project = new TempProject();
+
+        $saved = new SessionStore($project->dir)->save([['path' => "/p/\xB1.php", 'line' => 1, 'col' => 0]], null);
+
+        $this->assertFalse($saved);
+        $this->assertFalse(is_file($project->path('.porta/session.json')), 'nothing half-written');
+    }
 }

@@ -41,7 +41,7 @@ final readonly class SessionStore
                 $this->file,
                 json_encode(['buffers' => $buffers, 'active' => $activePath], JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES),
             );
-        } catch (IOExceptionInterface) {
+        } catch (IOExceptionInterface|\JsonException) {
             return false;
         }
 

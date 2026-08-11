@@ -42,7 +42,7 @@ final readonly class LayoutStore
                 $this->file,
                 json_encode($data, JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES),
             );
-        } catch (IOExceptionInterface) {
+        } catch (IOExceptionInterface|\JsonException) {
             return false;
         }
 

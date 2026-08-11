@@ -80,4 +80,18 @@ final class SearchHistoryStoreTest extends TestCase
         $mixed->write('.porta/search-history.json', (string) json_encode(['queries' => ['ok', 123, '', null]]));
         $this->assertSame(['ok'], new SearchHistoryStore($mixed->dir)->all());
     }
+
+    public function testAnUnencodableQueryStaysLiveAndPersistenceDegradesSilently(): void
+    {
+        // Searching for an invalid-UTF-8 needle must not crash the IDE:
+        // json_encode(JSON_THROW_ON_ERROR) throws, the widened catch keeps
+        // save() best-effort, and the in-memory history still works.
+        $project = new TempProject();
+        $store = new SearchHistoryStore($project->dir);
+
+        $store->add("needle\xB1");
+
+        $this->assertSame(["needle\xB1"], $store->all(), 'the live list keeps the query');
+        $this->assertFalse(is_file($project->path('.porta/search-history.json')), 'the file write degraded silently');
+    }
 }
