@@ -41,7 +41,8 @@ composer analyze > /tmp/x.log 2>&1; echo "exit=$?"
 Every commit passes all six. CI (`.github/workflows/ci.yml`) runs them.
 
 **`composer test`** — green. Two tests drive real git and opener subprocesses
-and were hardened against timing: `GitViewControllerTest::testLineStagingAndUnstagingThroughTheDiffPane`
+and were hardened against timing: the git plugin's
+`GitViewControllerTest::testLineStagingAndUnstagingThroughTheDiffPane`
 and the async URL-open E2e in `IdeDocsTest`. If one fails under heavy machine
 load, re-run it with `--filter` before assuming a regression.
 

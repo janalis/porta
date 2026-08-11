@@ -39,10 +39,21 @@ on the four synthetics.
 Everything a plugin's object needs is therefore hand-passed. That is what
 `Editor/PaneServices` is: a four-member DTO (the `Styles` holder, the
 `Translator`, the `Support/Scheduler`, the `ViewerTabHandler`) handed to a pane
-factory. **Growing it is how "my pane needs one more thing from core" becomes
-visible in review**, and it should stay hard to add to. The same argument
-governs `Plugin/Runtime/PluginRuntime`, the twelve-member surface the action
-verbs reach.
+factory. `Workbench/View/ViewServices` is the same idea one size up — seven
+members for a whole full-screen view. **Growing either is how "my pane needs one
+more thing from core" becomes visible in review**, and both should stay hard to
+add to. The same argument governs `Plugin/Runtime/PluginRuntime`, the surface
+the action verbs reach.
+
+What a plugin CANNOT be handed, it wraps. The bundled git plugin owns a
+workbench view, and the services that view was written against — `Notifier`,
+`CodeEditorWidget`, `Translator`, `LayoutController` — are none of them
+available: they are container services, and half of them would hand a plugin far
+more than the one verb it wants. So it carries `Flash`, `Modals`, `Translate`
+and `DiffPrefs`: one closure from `PluginApi` behind the method name the call
+sites already used. **~90 call sites are unchanged**, which is the test of
+whether a shim is the right shape — if the bodies have to change, the seam is
+in the wrong place.
 
 ## The manifest is `composer.json`
 
@@ -137,9 +148,18 @@ synthetic `IdeConfig`. `ensureLoaded()` is idempotent and triggered by the
 built and plugin default keys merge into it.
 
 Registration buffers in the per-plugin `PluginApi` and commits atomically after
-`activate()`. Ten of the fifteen extension points share the generic
-`PluginBuffer`; the other five stay plain arrays, each saying why at its
-declaration.
+`activate()`. Twelve of the sixteen extension points share the generic
+`PluginBuffer`; the other four (commands, menu items, hooks, setting
+descriptors) stay plain arrays, each saying why at its declaration.
+
+**Commit is the deadline, and a contributed VIEW arrives after it.** A view's
+factory needs the region core mints for it, which cannot exist until the view
+has registered — so `registerView()`'s closure runs once, after the drain. That
+is a real ordering constraint, not a detail: anything a view has to be reachable
+from — a command that toggles it, a listener that answers it — has to be
+registered during `activate()`, against a slot the factory fills. The git
+plugin's `ViewSlot` is that, and the symptom of getting it wrong is a
+`PluginException` about a listener arriving after the plugin was committed.
 
 Consumer-owned interfaces are how a subsystem consumes plugin registrations
 without depending on `Porta\Plugin`: `Editor/EditorPaneSource`,
@@ -188,10 +208,20 @@ registration are one commit.
 An adopted verb is the one kind that may go unanswered, since its plugin can be
 disabled. The rule stays narrow for that reason.
 
-The ids that moved this way: `ide_todo`, `ide_local_history`, `git_blame`,
-`git_toggle_blame`. The last two are keyless in the catalog — neither had a
-default binding when core implemented them, and a move is not the moment to
-invent one.
+The ids that moved this way: `ide_todo`, `ide_local_history`, and the sixteen
+git ones — the whole feature is a bundled plugin now, so `ide_git`,
+`git_commit`, `git_push` and the rest are all adopted. `git_blame` and
+`git_toggle_blame` are keyless in the catalog, because neither had a default
+binding when core implemented them and a move is not the moment to invent one;
+the others keep the keys and labels they always had, which is the entire point
+of adopting rather than re-registering.
+
+`ide_git` is the case that shows why the skip rule earns its narrowness. It was
+deliberately NOT adoptable while core owned the git view — flagging it would
+have hidden the menu item whenever nothing registered under `git`, which was
+wrong for a core-owned toggle. A plugin implements it now, and registers neither
+the view nor the verb outside a repository, so the skip is exactly right: the
+whole Git group is hidden in the same case.
 
 ## A plugin file wires; `src/` implements
 

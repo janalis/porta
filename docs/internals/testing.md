@@ -10,8 +10,12 @@ suite deterministic.
 `Porta\Tests\Support` freely, and are what hold that plugin at 100% — its
 coverage pass sees nothing under `tests/`.
 
-E2e suites are **thematic**: one per subject (LSP features, context menus, git
-flows). Keep a new E2e test in its subject's suite. The `too-many-methods` and
+E2e suites are **thematic**: one per subject (LSP features, context menus, dock
+tools). Keep a new E2e test in its subject's suite — and in the right TREE: an
+E2e that drives a plugin's code belongs under `plugins/<name>/tests/`, because
+the coverage gate grades `plugins/` from that plugin's own tests and a core E2e
+covering plugin code reads as covered in one pass and absent in the other. The
+git flows and git context menus moved there for exactly that reason. The `too-many-methods` and
 `kan-defect` ratchets gate `src`, and a regrown monolith would re-pin them.
 `IdeTest::testFullScenario` stays one continuous session on purpose; `mago.toml`
 carries the calibration note.
@@ -37,7 +41,7 @@ Roughly 700 duplicated lines once collapsed onto these.
 | `PumpsLoop` | `await()` / `pump()` |
 | `ScreenReads` | screen scrape, the force-`frame()` idiom |
 | `RunsIde::awaitPainted` | act, then wait for it to be ON SCREEN |
-| `RunsIde::awaitGit` | the git in-flight barrier |
+| `RunsIde::awaitGit` | the git in-flight barrier, reached through `ViewRegistry::find('git')` — git is a plugin, so its handle is not in the container |
 | `FindModalReads` | find-modal scraping |
 | `RendersWidget` | `plain()` / `rows()`, ANSI-stripped |
 | `StatusReads` | `flashText()` reads the model, `statusRow()` the rendered row |

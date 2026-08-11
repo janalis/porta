@@ -1,9 +1,16 @@
 # Events
 
 Porta's subsystems talk to each other over one `symfony/event-dispatcher`
-bus. Roughly fifty event classes live in `src/Event/`, every one of them
+bus. Not quite forty event classes live in `src/Event/`, every one of them
 `final readonly`, and listeners are compiled into the dispatcher's map from
 attributes — there is no runtime registration in core.
+
+A **plugin** cannot use either half of that: it cannot carry
+`#[AsEventListener]`, and its own events do not belong in `src/Event/`. It
+listens with `PluginApi::on()` (restricted to the `PluginObservable` subset) and
+raises its own on a dispatcher it constructs itself. The bundled git plugin does
+both — fourteen of its widget→controller events left `src/Event/` with it, and
+the three facts anything may observe stayed.
 
 If you are writing a *plugin*, the page you want is
 [Plugins → Listening to core events](plugins.md); this one is about the
@@ -97,8 +104,9 @@ Two tests, both of which exist because the failure mode here is *silence*
 rather than an error:
 
 - `EventListenerWiringTest::testEveryEventCoreDispatchesHasSomewhereToLand` —
-  every event class has at least one compiled listener, except the three
-  observed only by plugins at runtime. A forgotten `#[AsEventListener]` breaks
+  every event class has at least one compiled listener, except the eight
+  observed only at runtime — by plugins, and by the bundled git plugin for the
+  three git facts it now both raises and answers. A forgotten `#[AsEventListener]` breaks
   no build and throws nothing; the reaction simply never happens. This is what
   turns that into a failure. It has already caught one.
 - `EventListenerWiringTest::testACommandEventHasExactlyOnePerformer` — the
