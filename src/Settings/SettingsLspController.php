@@ -32,6 +32,7 @@ final class SettingsLspController
         private readonly LspReconfigurer $reconfigurer,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
+        private readonly PortaJsonWriter $writer,
     ) {}
 
     /**
@@ -69,7 +70,7 @@ final class SettingsLspController
         }
 
         $command = trim($command);
-        $persisted = PortaJsonWriter::persistLspServer($this->rootDir, $language, $command);
+        $persisted = $this->writer->persistLspServer($this->rootDir, $language, $command);
         if ('' === $command) {
             unset($this->overrides[$language]);
         }

@@ -34,6 +34,9 @@ final class PluginSettings
     public function __construct(
         private readonly string $rootDir,
         array $values,
+        // Optional trailing (the widget-Translator idiom): PluginHost hands in
+        // the container's shared writer; direct constructions default to a real one.
+        private readonly PortaJsonWriter $writer = new PortaJsonWriter(),
     ) {
         $this->values = $values;
     }
@@ -101,7 +104,7 @@ final class PluginSettings
         }
         $coerced = $this->coerce($descriptor, $value);
         $this->values[$plugin][$key] = $coerced;
-        PortaJsonWriter::persistPluginSetting($this->rootDir, $plugin, $key, $coerced);
+        $this->writer->persistPluginSetting($this->rootDir, $plugin, $key, $coerced);
     }
 
     /** @param Descriptor $descriptor */

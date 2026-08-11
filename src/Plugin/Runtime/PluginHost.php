@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin\Runtime;
 
 use Porta\Config\IdeConfig;
+use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Tempest\Highlight\TerminalTheme;
@@ -29,9 +30,9 @@ final class PluginHost
 
     private readonly PluginLoader $loader;
 
-    public function __construct(IdeConfig $config, EventDispatcherInterface $events, string $rootDir, ?TerminalTheme $syntaxTheme = null)
+    public function __construct(IdeConfig $config, EventDispatcherInterface $events, string $rootDir, ?TerminalTheme $syntaxTheme = null, PortaJsonWriter $writer = new PortaJsonWriter())
     {
-        $this->settings = new PluginSettings($rootDir, $config->plugins);
+        $this->settings = new PluginSettings($rootDir, $config->plugins, $writer);
         $this->manager = new PluginManager($events, $this->settings);
         $this->loader = new PluginLoader($rootDir, PluginLoader::globalBase(), $this->settings, PluginLoader::embeddedDir(), $config->disabledPlugins, $config->enabledPlugins, $syntaxTheme);
     }

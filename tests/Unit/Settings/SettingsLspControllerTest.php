@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
+use Porta\Config\PortaJsonWriter;
 use Porta\I18n\Translator;
 use Porta\Lsp\BufferReopener;
 use Porta\Lsp\LanguageServerProvider;
@@ -68,6 +69,7 @@ final class SettingsLspControllerTest extends TestCase
             $reconfigurer,
             new Notifier($status, $tui),
             new Translator('en'),
+            new PortaJsonWriter(),
         );
     }
 

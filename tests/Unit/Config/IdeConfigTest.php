@@ -125,8 +125,8 @@ final class IdeConfigTest extends TestCase
             'languages' => ['php' => ['indentStyle' => 'tabs']],
         ])]);
 
-        $this->assertTrue(PortaJsonWriter::persistLanguageSetting($project->dir, 'php', 'indentSize', 4));
-        $this->assertTrue(PortaJsonWriter::persistLanguageSetting($project->dir, 'css', 'indentStyle', 'spaces'));
+        $this->assertTrue(new PortaJsonWriter()->persistLanguageSetting($project->dir, 'php', 'indentSize', 4));
+        $this->assertTrue(new PortaJsonWriter()->persistLanguageSetting($project->dir, 'css', 'indentStyle', 'spaces'));
 
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertSame(['indentStyle' => 'tabs', 'indentSize' => 4], $written['languages']['php'], 'merged into the existing entry');
@@ -140,7 +140,7 @@ final class IdeConfigTest extends TestCase
     {
         $project = new TempProject();
         mkdir($project->path('.porta.json'));
-        $this->assertFalse(PortaJsonWriter::persistLanguageSetting($project->dir, 'php', 'indentStyle', 'tabs'));
+        $this->assertFalse(new PortaJsonWriter()->persistLanguageSetting($project->dir, 'php', 'indentStyle', 'tabs'));
     }
 
     public function testRelativeLineNumbersMigratesToTheLineNumbersMode(): void
@@ -167,7 +167,7 @@ final class IdeConfigTest extends TestCase
             'customUnknownKey' => ['keep' => 'me'],
         ])]);
 
-        $this->assertTrue(PortaJsonWriter::persistSetting($project->dir, 'inlineDiagnostics', false));
+        $this->assertTrue(new PortaJsonWriter()->persistSetting($project->dir, 'inlineDiagnostics', false));
 
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertFalse($written['settings']['inlineDiagnostics'], 'new setting written');
@@ -185,7 +185,7 @@ final class IdeConfigTest extends TestCase
             'settings' => ['relativeLineNumbers' => true, 'editorConfig' => true, 'tabWidth' => 4],
         ])]);
 
-        $this->assertTrue(PortaJsonWriter::persistSetting($project->dir, 'lineNumbers', 'relative'));
+        $this->assertTrue(new PortaJsonWriter()->persistSetting($project->dir, 'lineNumbers', 'relative'));
 
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertSame('relative', $written['settings']['lineNumbers'], 'the new key was written');
@@ -197,7 +197,7 @@ final class IdeConfigTest extends TestCase
     public function testPersistSettingCreatesFileWhenAbsent(): void
     {
         $project = new TempProject();
-        $this->assertTrue(PortaJsonWriter::persistSetting($project->dir, 'inlineDiagnostics', false));
+        $this->assertTrue(new PortaJsonWriter()->persistSetting($project->dir, 'inlineDiagnostics', false));
 
         $this->assertFalse(IdeConfig::load($project->dir)->settings['inlineDiagnostics']);
     }
@@ -205,7 +205,7 @@ final class IdeConfigTest extends TestCase
     public function testPersistSettingIgnoresCorruptExistingFile(): void
     {
         $project = new TempProject(['.porta.json' => '{not json']);
-        $this->assertTrue(PortaJsonWriter::persistSetting($project->dir, 'inlineDiagnostics', false));
+        $this->assertTrue(new PortaJsonWriter()->persistSetting($project->dir, 'inlineDiagnostics', false));
 
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertFalse($written['settings']['inlineDiagnostics']);
@@ -217,7 +217,7 @@ final class IdeConfigTest extends TestCase
         $project = new TempProject();
         mkdir($project->path('.porta.json'));
 
-        $this->assertFalse(PortaJsonWriter::persistSetting($project->dir, 'inlineDiagnostics', false));
+        $this->assertFalse(new PortaJsonWriter()->persistSetting($project->dir, 'inlineDiagnostics', false));
     }
 
     public function testPersistKeymapMergesAndPreservesOtherEntries(): void
@@ -228,7 +228,7 @@ final class IdeConfigTest extends TestCase
             'settings' => ['tabWidth' => 8],
         ])]);
 
-        $this->assertTrue(PortaJsonWriter::persistKeymap($project->dir, 'duplicate_line', ['ctrl+shift+d']));
+        $this->assertTrue(new PortaJsonWriter()->persistKeymap($project->dir, 'duplicate_line', ['ctrl+shift+d']));
 
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertSame(['ctrl+shift+d'], $written['keymap']['duplicate_line'], 'new binding written');
@@ -245,7 +245,7 @@ final class IdeConfigTest extends TestCase
         $project = new TempProject(['.porta.json' => json_encode(['keymap' => ['save' => ['f10']]])]);
 
         // A non-zero-based list is stored contiguously.
-        $this->assertTrue(PortaJsonWriter::persistKeymap($project->dir, 'save', [1 => 'ctrl+s']));
+        $this->assertTrue(new PortaJsonWriter()->persistKeymap($project->dir, 'save', [1 => 'ctrl+s']));
 
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertSame(['ctrl+s'], $written['keymap']['save']);
@@ -254,7 +254,7 @@ final class IdeConfigTest extends TestCase
     public function testPersistKeymapCreatesFileWhenAbsent(): void
     {
         $project = new TempProject();
-        $this->assertTrue(PortaJsonWriter::persistKeymap($project->dir, 'duplicate_line', ['ctrl+shift+q']));
+        $this->assertTrue(new PortaJsonWriter()->persistKeymap($project->dir, 'duplicate_line', ['ctrl+shift+q']));
 
         $this->assertSame(['ctrl+shift+q'], IdeConfig::load($project->dir)->keymap['duplicate_line']);
     }
@@ -262,7 +262,7 @@ final class IdeConfigTest extends TestCase
     public function testPersistKeymapIgnoresCorruptExistingFile(): void
     {
         $project = new TempProject(['.porta.json' => '{not json']);
-        $this->assertTrue(PortaJsonWriter::persistKeymap($project->dir, 'save', ['f10']));
+        $this->assertTrue(new PortaJsonWriter()->persistKeymap($project->dir, 'save', ['f10']));
 
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertSame(['f10'], $written['keymap']['save']);
@@ -273,7 +273,7 @@ final class IdeConfigTest extends TestCase
         $project = new TempProject();
         mkdir($project->path('.porta.json'));
 
-        $this->assertFalse(PortaJsonWriter::persistKeymap($project->dir, 'save', ['f10']));
+        $this->assertFalse(new PortaJsonWriter()->persistKeymap($project->dir, 'save', ['f10']));
     }
 
     public function testKeymapParsingAndValidation(): void
@@ -327,18 +327,18 @@ final class IdeConfigTest extends TestCase
     {
         $project = new TempProject(['.porta.json' => json_encode(['lsp' => ['php' => 'phpactor language-server']])]);
 
-        $this->assertTrue(PortaJsonWriter::persistLspServer($project->dir, 'typescript', 'typescript-language-server --stdio'));
+        $this->assertTrue(new PortaJsonWriter()->persistLspServer($project->dir, 'typescript', 'typescript-language-server --stdio'));
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertSame('phpactor language-server', $written['lsp']['php'], 'existing entry preserved');
         $this->assertSame('typescript-language-server --stdio', $written['lsp']['typescript']);
 
         // Clearing a language removes its key (reverts to auto-detect).
-        $this->assertTrue(PortaJsonWriter::persistLspServer($project->dir, 'php', '  '));
+        $this->assertTrue(new PortaJsonWriter()->persistLspServer($project->dir, 'php', '  '));
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertArrayNotHasKey('php', $written['lsp']);
 
         // Clearing the last entry drops the whole lsp block.
-        $this->assertTrue(PortaJsonWriter::persistLspServer($project->dir, 'typescript', ''));
+        $this->assertTrue(new PortaJsonWriter()->persistLspServer($project->dir, 'typescript', ''));
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertArrayNotHasKey('lsp', $written);
     }
@@ -347,7 +347,7 @@ final class IdeConfigTest extends TestCase
     {
         $project = new TempProject(['.porta.json' => json_encode(['lsp' => 'phpactor language-server'])]);
 
-        $this->assertTrue(PortaJsonWriter::persistLspServer($project->dir, 'python', 'pylsp'));
+        $this->assertTrue(new PortaJsonWriter()->persistLspServer($project->dir, 'python', 'pylsp'));
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertSame('phpactor language-server', $written['lsp']['*'], 'the catch-all is kept as *');
         $this->assertSame('pylsp', $written['lsp']['python']);
@@ -357,7 +357,7 @@ final class IdeConfigTest extends TestCase
     {
         $project = new TempProject(['.porta.json' => json_encode(['lsp' => ['node', '/x/ls.js', '--stdio']])]);
 
-        $this->assertTrue(PortaJsonWriter::persistLspServer($project->dir, 'php', 'phpactor'));
+        $this->assertTrue(new PortaJsonWriter()->persistLspServer($project->dir, 'php', 'phpactor'));
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertSame('node /x/ls.js --stdio', $written['lsp']['*'], 'the argv catch-all is joined and kept as *');
         $this->assertSame('phpactor', $written['lsp']['php']);
@@ -367,7 +367,7 @@ final class IdeConfigTest extends TestCase
     {
         $project = new TempProject();
         mkdir($project->path('.porta.json'));
-        $this->assertFalse(PortaJsonWriter::persistLspServer($project->dir, 'php', 'phpactor'));
+        $this->assertFalse(new PortaJsonWriter()->persistLspServer($project->dir, 'php', 'phpactor'));
     }
 
     public function testLanguageDebugBlockParsesAndDropsInvalidParts(): void
@@ -393,16 +393,16 @@ final class IdeConfigTest extends TestCase
     {
         $project = new TempProject(['.porta.json' => json_encode(['languages' => ['php' => ['indentStyle' => 'spaces']]])]);
 
-        $this->assertTrue(PortaJsonWriter::persistLanguageDebug($project->dir, 'php', 'adapter', 'node /x/phpDebug.js'));
-        $this->assertTrue(PortaJsonWriter::persistLanguageDebug($project->dir, 'php', 'launch', ['env' => ['X' => '1']]));
+        $this->assertTrue(new PortaJsonWriter()->persistLanguageDebug($project->dir, 'php', 'adapter', 'node /x/phpDebug.js'));
+        $this->assertTrue(new PortaJsonWriter()->persistLanguageDebug($project->dir, 'php', 'launch', ['env' => ['X' => '1']]));
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertSame('spaces', $written['languages']['php']['indentStyle'], 'sibling keys preserved');
         $this->assertSame('node /x/phpDebug.js', $written['languages']['php']['debug']['adapter']);
         $this->assertSame(['env' => ['X' => '1']], $written['languages']['php']['debug']['launch']);
 
         // Blank removes a key; removing the last key drops the debug block but keeps the language.
-        $this->assertTrue(PortaJsonWriter::persistLanguageDebug($project->dir, 'php', 'launch', null));
-        $this->assertTrue(PortaJsonWriter::persistLanguageDebug($project->dir, 'php', 'adapter', ''));
+        $this->assertTrue(new PortaJsonWriter()->persistLanguageDebug($project->dir, 'php', 'launch', null));
+        $this->assertTrue(new PortaJsonWriter()->persistLanguageDebug($project->dir, 'php', 'adapter', ''));
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertArrayNotHasKey('debug', $written['languages']['php']);
         $this->assertSame('spaces', $written['languages']['php']['indentStyle']);
@@ -412,7 +412,7 @@ final class IdeConfigTest extends TestCase
     {
         $project = new TempProject();
         mkdir($project->path('.porta.json'));
-        $this->assertFalse(PortaJsonWriter::persistLanguageDebug($project->dir, 'php', 'adapter', 'x'));
+        $this->assertFalse(new PortaJsonWriter()->persistLanguageDebug($project->dir, 'php', 'adapter', 'x'));
     }
 
     public function testPluginsBlockParsesScalarsAndWarnsOnNonObjects(): void
@@ -436,18 +436,18 @@ final class IdeConfigTest extends TestCase
     {
         $project = new TempProject(['.porta.json' => json_encode(['settings' => ['theme' => 'light']])]);
 
-        $this->assertTrue(PortaJsonWriter::persistPluginSetting($project->dir, 'phpstan', 'binary', '/opt/x'));
-        $this->assertTrue(PortaJsonWriter::persistPluginSetting($project->dir, 'phpstan', 'strict', true));
-        $this->assertTrue(PortaJsonWriter::persistPluginDisabled($project->dir, 'psalm'));
-        $this->assertTrue(PortaJsonWriter::persistPluginDisabled($project->dir, 'mago'));
-        $this->assertTrue(PortaJsonWriter::persistPluginEnabled($project->dir, 'psalm'));
+        $this->assertTrue(new PortaJsonWriter()->persistPluginSetting($project->dir, 'phpstan', 'binary', '/opt/x'));
+        $this->assertTrue(new PortaJsonWriter()->persistPluginSetting($project->dir, 'phpstan', 'strict', true));
+        $this->assertTrue(new PortaJsonWriter()->persistPluginDisabled($project->dir, 'psalm'));
+        $this->assertTrue(new PortaJsonWriter()->persistPluginDisabled($project->dir, 'mago'));
+        $this->assertTrue(new PortaJsonWriter()->persistPluginEnabled($project->dir, 'psalm'));
 
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertSame(['binary' => '/opt/x', 'strict' => true], $written['plugins']['phpstan']);
         $this->assertSame('light', $written['settings']['theme'], 'unrelated keys preserved');
         $this->assertSame(['mago'], $written['disabledPlugins'], 're-enabling removes the entry');
 
-        $this->assertTrue(PortaJsonWriter::persistPluginEnabled($project->dir, 'mago'));
+        $this->assertTrue(new PortaJsonWriter()->persistPluginEnabled($project->dir, 'mago'));
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertArrayNotHasKey('disabledPlugins', $written, 'an emptied list is dropped');
     }
@@ -534,25 +534,25 @@ final class IdeConfigTest extends TestCase
     {
         // Disabling from the default state writes "the default minus that name".
         $project = new TempProject(['.porta.json' => '{}']);
-        $this->assertTrue(PortaJsonWriter::persistBundledDisabled($project->dir, 'image-viewer'));
+        $this->assertTrue(new PortaJsonWriter()->persistBundledDisabled($project->dir, 'image-viewer'));
         $this->assertSame(['graph-viewer', 'todo', 'local-history', 'git'], IdeConfig::load($project->dir)->enabledPlugins);
 
         // Disabling the last one must persist an explicit [] — an unset key would flip the default back on.
-        $this->assertTrue(PortaJsonWriter::persistBundledDisabled($project->dir, 'graph-viewer'));
-        $this->assertTrue(PortaJsonWriter::persistBundledDisabled($project->dir, 'todo'));
-        $this->assertTrue(PortaJsonWriter::persistBundledDisabled($project->dir, 'local-history'));
-        $this->assertTrue(PortaJsonWriter::persistBundledDisabled($project->dir, 'git'));
+        $this->assertTrue(new PortaJsonWriter()->persistBundledDisabled($project->dir, 'graph-viewer'));
+        $this->assertTrue(new PortaJsonWriter()->persistBundledDisabled($project->dir, 'todo'));
+        $this->assertTrue(new PortaJsonWriter()->persistBundledDisabled($project->dir, 'local-history'));
+        $this->assertTrue(new PortaJsonWriter()->persistBundledDisabled($project->dir, 'git'));
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertSame([], $written['enabledPlugins'] ?? null, 'the empty list is explicit in the file');
         $this->assertSame([], IdeConfig::load($project->dir)->enabledPlugins);
 
         // Re-enabling appends to the explicit list.
-        $this->assertTrue(PortaJsonWriter::persistBundledEnabled($project->dir, 'image-viewer'));
+        $this->assertTrue(new PortaJsonWriter()->persistBundledEnabled($project->dir, 'image-viewer'));
         $this->assertSame(['image-viewer'], IdeConfig::load($project->dir)->enabledPlugins);
 
         // Project/global disable lists keep their unset-when-empty behavior.
-        $this->assertTrue(PortaJsonWriter::persistPluginDisabled($project->dir, 'demo'));
-        $this->assertTrue(PortaJsonWriter::persistPluginEnabled($project->dir, 'demo'));
+        $this->assertTrue(new PortaJsonWriter()->persistPluginDisabled($project->dir, 'demo'));
+        $this->assertTrue(new PortaJsonWriter()->persistPluginEnabled($project->dir, 'demo'));
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertArrayNotHasKey('disabledPlugins', $written, 'an emptied disabledPlugins key is dropped');
     }

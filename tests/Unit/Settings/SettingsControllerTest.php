@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
+use Porta\Config\PortaJsonWriter;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\Editor\LineNumberMode;
@@ -128,6 +129,7 @@ final class SettingsControllerTest extends TestCase
             new Notifier($status, $tui),
             $rootDir,
             $translator,
+            new PortaJsonWriter(),
             $applier,
             $breadcrumbs,
         );

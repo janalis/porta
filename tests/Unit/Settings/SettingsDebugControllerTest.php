@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\PortaJsonWriter;
 use Porta\Debug\DebugAdapters;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsDebugController;
@@ -29,7 +30,7 @@ final class SettingsDebugControllerTest extends TestCase
         $this->statusBar = new StatusBarWidget();
         $notifier = new Notifier($this->statusBar, new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20)));
 
-        return new SettingsDebugController($this->project->dir, $this->adapters, $notifier, new Translator('en'));
+        return new SettingsDebugController($this->project->dir, $this->adapters, $notifier, new Translator('en'), new PortaJsonWriter());
     }
 
     private function flashed(): string

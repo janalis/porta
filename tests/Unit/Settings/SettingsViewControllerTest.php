@@ -10,6 +10,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
 use Porta\Config\LiveKeybindings;
+use Porta\Config\PortaJsonWriter;
 use Porta\Debug\DebugAdapters;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
@@ -154,6 +155,7 @@ final class SettingsViewControllerTest extends TestCase
             $notifier,
             $this->project->dir,
             new Translator('en'),
+            new PortaJsonWriter(),
             $applier,
             new BreadcrumbsWidget(),
         );
@@ -181,8 +183,9 @@ final class SettingsViewControllerTest extends TestCase
             $notifier,
             $this->project->dir,
             new Translator('en'),
+            new PortaJsonWriter(),
         );
-        $languages = new SettingsLanguageController($editor, $notifier, $this->project->dir, new Translator('en'), []);
+        $languages = new SettingsLanguageController($editor, $notifier, $this->project->dir, new Translator('en'), [], new PortaJsonWriter());
         $pool = new LspSessionPool($this->project->dir, new FixedActiveFile(), new Translator('en'));
         $reconfigurer = new LspReconfigurer(
             $pool,
@@ -198,8 +201,8 @@ final class SettingsViewControllerTest extends TestCase
             $this->project->dir,
             null,
         );
-        $lsp = new SettingsLspController($this->project->dir, [], $reconfigurer, $notifier, new Translator('en'));
-        $debug = new SettingsDebugController($this->project->dir, new DebugAdapters([]), $notifier, new Translator('en'));
+        $lsp = new SettingsLspController($this->project->dir, [], $reconfigurer, $notifier, new Translator('en'), new PortaJsonWriter());
+        $debug = new SettingsDebugController($this->project->dir, new DebugAdapters([]), $notifier, new Translator('en'), new PortaJsonWriter());
         $this->pluginSettings = new PluginSettings($this->project->dir, []);
         $this->lifecycle = new FakePluginLifecycle();
         $plugins = new SettingsPluginsController(
@@ -257,6 +260,7 @@ final class SettingsViewControllerTest extends TestCase
                     new Translator('en'),
                     $this->project->dir,
                     IdeConfig::load($this->project->dir),
+                    new PortaJsonWriter(),
                     $this->lifecycle,
                 )),
                 new PluginsSection($plugins),

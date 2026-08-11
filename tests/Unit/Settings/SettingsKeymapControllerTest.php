@@ -11,6 +11,7 @@ use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
 use Porta\Config\KeyDispatch;
 use Porta\Config\LiveKeybindings;
+use Porta\Config\PortaJsonWriter;
 use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginHost;
@@ -72,6 +73,7 @@ final class SettingsKeymapControllerTest extends TestCase
             new Notifier($status, $tui),
             $rootDir,
             new Translator('en'),
+            new PortaJsonWriter(),
         );
     }
 

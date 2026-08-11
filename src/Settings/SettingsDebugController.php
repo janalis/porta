@@ -23,6 +23,7 @@ final class SettingsDebugController
         private readonly DebugAdapters $adapters,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
+        private readonly PortaJsonWriter $writer,
     ) {}
 
     /** @return list<SettingsRow> */
@@ -63,7 +64,7 @@ final class SettingsDebugController
 
     private function changeAdapter(string $language, string $command): void
     {
-        $persisted = PortaJsonWriter::persistLanguageDebug($this->rootDir, $language, 'adapter', $command);
+        $persisted = $this->writer->persistLanguageDebug($this->rootDir, $language, 'adapter', $command);
         $this->adapters->set($language, $command, $this->adapters->launchOverrides($language));
 
         $shown = '' === $command ? $this->translator->trans('not configured') : $command;
@@ -86,7 +87,7 @@ final class SettingsDebugController
             $launch = $decoded;
         }
 
-        $persisted = PortaJsonWriter::persistLanguageDebug($this->rootDir, $language, 'launch', [] === $launch ? null : $launch);
+        $persisted = $this->writer->persistLanguageDebug($this->rootDir, $language, 'launch', [] === $launch ? null : $launch);
         $this->adapters->set($language, $this->adapters->adapterCommand($language), $launch);
 
         $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';

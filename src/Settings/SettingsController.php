@@ -48,6 +48,7 @@ final class SettingsController
         private readonly Notifier $notifier,
         private readonly string $rootDir,
         private readonly Translator $translator,
+        private readonly PortaJsonWriter $writer,
         LiveSettingsApplier $applier,
         BreadcrumbsWidget $breadcrumbs,
     ) {
@@ -273,7 +274,7 @@ final class SettingsController
             $descriptor['apply']($value);
         }
 
-        $persisted = PortaJsonWriter::persistSetting($this->rootDir, $key, $value);
+        $persisted = $this->writer->persistSetting($this->rootDir, $key, $value);
         $state = \is_bool($value) ? $this->translator->trans($value ? 'on' : 'off') : (string) $value;
         $note = $descriptor['restart'] ? ' · '.$this->translator->trans('applies on restart') : '';
         $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';

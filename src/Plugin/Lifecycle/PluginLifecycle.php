@@ -56,6 +56,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         private readonly EventDispatcherInterface $events,
         private readonly Tui $tui,
         private readonly LspReconfigurer $lspReconfigurer,
+        private readonly PortaJsonWriter $writer,
         private readonly string $rootDir,
         #[Autowire('%env(json:PORTA_DISABLED_PLUGINS)%')]
         array $disabledPlugins,
@@ -542,12 +543,12 @@ final class PluginLifecycle implements PluginLifecycleOps
     {
         if ($this->isBundled($name)) {
             unset($this->enabled[$name]);
-            PortaJsonWriter::persistBundledDisabled($this->rootDir, $name);
+            $this->writer->persistBundledDisabled($this->rootDir, $name);
 
             return;
         }
         $this->disabled[$name] = true;
-        PortaJsonWriter::persistPluginDisabled($this->rootDir, $name);
+        $this->writer->persistPluginDisabled($this->rootDir, $name);
     }
 
     /**
@@ -558,12 +559,12 @@ final class PluginLifecycle implements PluginLifecycleOps
     {
         if ($this->isBundled($name)) {
             $this->enabled[$name] = true;
-            PortaJsonWriter::persistBundledEnabled($this->rootDir, $name);
+            $this->writer->persistBundledEnabled($this->rootDir, $name);
 
             return;
         }
         unset($this->disabled[$name]);
-        PortaJsonWriter::persistPluginEnabled($this->rootDir, $name);
+        $this->writer->persistPluginEnabled($this->rootDir, $name);
     }
 
     /** Re-resolve the LSP servers when a toggled plugin provides one (and no --lsp override wins). */

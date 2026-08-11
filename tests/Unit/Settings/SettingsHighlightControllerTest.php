@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
+use Porta\Config\PortaJsonWriter;
 use Porta\Config\RecommendedPlugins;
 use Porta\Highlight\CallableHighlightProvider;
 use Porta\Highlight\HighlightPreferences;
@@ -58,6 +59,7 @@ final class SettingsHighlightControllerTest extends TestCase
             new Translator('en'),
             $this->project->dir,
             IdeConfig::load($this->project->dir),
+            new PortaJsonWriter(),
             $this->lifecycle,
         );
     }

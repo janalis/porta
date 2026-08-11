@@ -44,6 +44,7 @@ final class SettingsHighlightController
         private readonly Translator $translator,
         private readonly string $rootDir,
         private readonly IdeConfig $config,
+        private readonly PortaJsonWriter $writer,
         private readonly ?PluginEnablement $lifecycle = null,
     ) {}
 
@@ -109,7 +110,7 @@ final class SettingsHighlightController
 
         $language = self::DEFAULT_KEY === $key ? null : substr($key, offset: 5);
 
-        PortaJsonWriter::persistHighlighter($this->rootDir, $language, $value);
+        $this->writer->persistHighlighter($this->rootDir, $language, $value);
     }
 
     /**

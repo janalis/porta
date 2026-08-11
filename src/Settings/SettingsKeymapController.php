@@ -40,6 +40,7 @@ final class SettingsKeymapController
         private readonly Notifier $notifier,
         private readonly string $rootDir,
         private readonly Translator $translator,
+        private readonly PortaJsonWriter $writer,
         private readonly KeyParser $parser = new KeyParser(),
     ) {}
 
@@ -95,7 +96,7 @@ final class SettingsKeymapController
         }
 
         $token = $parsed['key'];
-        $persisted = PortaJsonWriter::persistKeymap($this->rootDir, $action, [$token]);
+        $persisted = $this->writer->persistKeymap($this->rootDir, $action, [$token]);
         if ($persisted) {
             // The file is the keymap's truth: re-merge it into the live map,
             // then rebake the menus' shortcut labels from the fresh map.
