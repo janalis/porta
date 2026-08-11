@@ -10,7 +10,6 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\Document;
 use Porta\Editor\OpenFocus;
-use Porta\History\LocalHistoryController;
 use Porta\History\SessionRestorer;
 use Porta\Ide;
 use Porta\Lsp\LspMapper;
@@ -311,15 +310,6 @@ final class IdeHelpersTest extends TestCase
     {
         $this->navigation()->requestPeek(0, 0);
         $this->addToAssertionCount(1);
-    }
-
-    /** The local-history feature controller wired into the coordinator. */
-    private function localHistory(): LocalHistoryController
-    {
-        $controller = Services::resolve($this->ide, LocalHistoryController::class);
-        \assert($controller instanceof LocalHistoryController, description: 'the coordinator wires a LocalHistoryController');
-
-        return $controller;
     }
 
     public function testRestoreSessionSkipsMissingFiles(): void
