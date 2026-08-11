@@ -41,7 +41,7 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
- * The Welcome modal's lifecycle and geometry: the WorkspaceViews interlock
+ * The Welcome modal's lifecycle and geometry: the view registry's interlock
  * (a floating modal, so the editor layout is NOT "detached"), the span push
  * into the pane it floats over, click routing on the box (×, title-bar drag,
  * card select, outside swallow), and the per-frame re-sync that lays the box

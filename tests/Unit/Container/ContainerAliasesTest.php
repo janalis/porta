@@ -20,6 +20,7 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Workbench\View\ContributedView;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 
@@ -56,9 +57,22 @@ final class ContainerAliasesTest extends ContainerTestCase
             $this->assertSame($implementation, (string) $builder->getAlias($interface));
         }
 
-        // A multi-impl interface (three FullScreenView controllers) must NOT
-        // be auto-aliased — instances travel through attach(), never autowiring.
-        $this->assertFalse($builder->hasAlias(FullScreenView::class), 'multi-impl interfaces stay unaliased');
+        // A multi-impl interface must NOT be auto-aliased: `ContributedView`
+        // has two implementations in `src/` (settings and Welcome) and any
+        // number more from plugins, so nothing may autowire "the" view.
+        //
+        // This named `FullScreenView` until that class was deleted, which made
+        // it assert that a class the container has never heard of has no alias
+        // — true, and true for the wrong reason. `X::class` is a string even
+        // when X does not exist, so nothing caught it.
+        $this->assertFalse($builder->hasAlias(ContributedView::class), 'multi-impl interfaces stay unaliased');
+        $this->assertTrue(
+            2 <= \count(array_filter(
+                $builder->getDefinitions(),
+                static fn (Definition $definition): bool => is_a((string) $definition->getClass(), ContributedView::class, allow_string: true),
+            )),
+            'and there really is more than one implementation, or the assertion above proves nothing',
+        );
     }
 
     /**

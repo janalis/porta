@@ -337,6 +337,9 @@ Dense by nature, measured, and not to be "simplified":
 - **Single-consumer VOs** — `FindInFilesModal`'s `BoxPosition`, `BoxSize` and
   `ScopeChoices` were reversed back into plain fields. A single-consumer VO needs
   a second consumer to justify itself.
-- **The mouse and hover routers' per-view rects, and `Input/ActiveView`** — the
-  routers own wide per-view slices by design. Narrowing them is the rejected
-  `Clickable` idea.
+- **The mouse and hover routers' per-view rects, and the old `Input/ActiveView`**
+  — the routers owned wide per-view slices by design, and narrowing them was the
+  rejected `Clickable` idea. Overtaken since: `ViewPointer` narrowed them to five
+  stages after all, because the LAYOUT seam changed what the pointer seam had to
+  describe. The rejection was right about the shape proposed, not about the
+  possibility.

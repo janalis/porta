@@ -291,7 +291,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame('general', $this->nav->selectedId());
     }
 
-    public function testWorkspaceViewsResolveTheFocusTargetWhileOpen(): void
+    public function testTheRegistryResolvesTheFocusTargetWhileOpen(): void
     {
         $views = new ViewRegistry();
         $controller = $this->controller($views);
