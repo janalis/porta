@@ -10,6 +10,7 @@ use Porta\Lsp\LspLog;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\ResultsPanelMode;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -30,14 +31,16 @@ final class WorkbenchActions
         private readonly BottomDock $panels,
         private readonly NotificationLog $notificationLog,
         private readonly LspLog $lspLog,
+        private readonly ClockInterface $clock,
     ) {}
 
     /** Ctrl+Q: quit, unless dirty buffers need a confirming second press within 3s. */
     public function quit(): void
     {
         $dirty = $this->buffers->dirtyCount();
-        if ($dirty > 0 && (microtime(true) - $this->lastQuitPress) > 3.0) {
-            $this->lastQuitPress = microtime(true);
+        $now = (float) $this->clock->now()->format('U.u');
+        if ($dirty > 0 && ($now - $this->lastQuitPress) > 3.0) {
+            $this->lastQuitPress = $now;
             $noun = 1 === $dirty
                 ? $this->translator->trans('1 file has')
                 : $this->translator->trans('%count% files have', ['%count%' => $dirty]);

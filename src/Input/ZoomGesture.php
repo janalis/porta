@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Input;
 
+use Psr\Clock\ClockInterface;
+use Symfony\Component\Clock\NativeClock;
+
 /**
  * Tells a Ctrl+wheel BURST apart from a single Ctrl+wheel CLICK, so the viewers
  * can answer each the way its device deserves.
@@ -24,8 +27,9 @@ namespace Porta\Input;
  * The window is 0.1s: an order of magnitude above trackpad notch spacing and
  * comfortably below any human's repeated wheel click. Timing state lives here
  * rather than in the router for the same reason {@see ClickCounter}'s does, and
- * like it this is newed by its owner, not injected — a clock and a float are not
- * a service.
+ * like it this is newed by its owner, not injected. The clock rides along as
+ * an optional trailing input so a test can drive the window deterministically
+ * instead of sleeping through it.
  */
 final class ZoomGesture
 {
@@ -37,6 +41,10 @@ final class ZoomGesture
 
     private float $lastTime = 0.0;
 
+    public function __construct(
+        private readonly ClockInterface $clock = new NativeClock(),
+    ) {}
+
     /**
      * The factor for a notch continuing a gesture, or null when this notch stands
      * alone and the caller should step the zoom ladder instead.
@@ -45,7 +53,7 @@ final class ZoomGesture
      */
     public function glideFactor(int $dir): ?float
     {
-        $now = microtime(as_float: true);
+        $now = (float) $this->clock->now()->format('U.u');
         $burst = ($now - $this->lastTime) < self::BURST_SECONDS;
         $this->lastTime = $now;
 

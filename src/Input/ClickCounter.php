@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Input;
 
+use Psr\Clock\ClockInterface;
+use Symfony\Component\Clock\NativeClock;
+
 /**
  * Double/triple-click detection: counts consecutive presses landing in the same
  * cell within a short window, capped at a triple-click. Held by {@see MouseRouter}
@@ -32,10 +35,16 @@ final class ClickCounter
     private int $lastCol = -1;
     private int $count = 0;
 
+    // Optional trailing (the StatusBarWidget clock idiom): the router news
+    // this with the wall clock; tests hand in a MockClock and own the window.
+    public function __construct(
+        private readonly ClockInterface $clock = new NativeClock(),
+    ) {}
+
     /** The click multiplicity (1, 2 or 3) for a press at ($row, $col) right now. */
     public function countAt(int $row, int $col): int
     {
-        $now = microtime(as_float: true);
+        $now = (float) $this->clock->now()->format('U.u');
         $sameCell = ($now - $this->lastTime) < self::WINDOW_SECONDS && $row === $this->lastRow && $col === $this->lastCol;
         $this->count = $sameCell ? min($this->count + 1, 3) : 1;
         $this->lastTime = $now;
