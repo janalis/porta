@@ -205,6 +205,25 @@ final class IdeContainerFactoryTest extends TestCase
         $this->assertCount(2, (array) glob($project->path('container-*.php')), 'both installs coexist');
     }
 
+    public function testPruningSweepsPreInstallKeyLegacyGenerations(): void
+    {
+        // Before the install key existed, dumps were container-<32hex>.php;
+        // the keyed GC never matched them, stranding ~0.5 MB per generation
+        // forever. The old naming is globally obsolete, so it is fair game.
+        $project = new TempProject();
+        putenv('PORTA_CACHE_DIR='.$project->dir);
+        file_put_contents($project->path('container-353c64d8016a114fe6c3e529dd2d34ea.php'), '<?php // legacy');
+        file_put_contents($project->path('container-353c64d8016a114fe6c3e529dd2d34ea.php.meta'), 'meta');
+        file_put_contents($project->path('container-353c64d8016a114fe6c3e529dd2d34ea.php.meta.json'), '{}');
+
+        $this->build();
+
+        $this->assertFileDoesNotExist($project->path('container-353c64d8016a114fe6c3e529dd2d34ea.php'));
+        $this->assertFileDoesNotExist($project->path('container-353c64d8016a114fe6c3e529dd2d34ea.php.meta'));
+        $this->assertFileDoesNotExist($project->path('container-353c64d8016a114fe6c3e529dd2d34ea.php.meta.json'));
+        $this->assertCount(1, (array) glob($project->path('container-*.php')), 'only the fresh dump remains');
+    }
+
     public function testCacheOffCompilesInMemory(): void
     {
         $project = new TempProject();

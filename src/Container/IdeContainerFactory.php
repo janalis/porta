@@ -185,7 +185,14 @@ final class IdeContainerFactory
      */
     private static function pruneStaleGenerations(string $cacheDir, string $installKey, string $hash): void
     {
-        foreach (glob($cacheDir.'/container-'.$installKey.'-*.php*') ?: [] as $file) {
+        // The pre-installKey naming (container-<32hex>.php*) predates the GC
+        // itself, so those generations were never anyone's to collect and
+        // strand ~0.5 MB each forever; sweep them alongside this install's own.
+        $legacy = array_filter(
+            glob($cacheDir.'/container-*.php*') ?: [],
+            static fn (string $file): bool => 1 === preg_match('/^container-[0-9a-f]{32}\.php(\.meta(\.json)?)?$/', basename($file)),
+        );
+        foreach ([...(glob($cacheDir.'/container-'.$installKey.'-*.php*') ?: []), ...$legacy] as $file) {
             if (str_starts_with(basename($file), 'container-'.$installKey.'-'.$hash.'.php')) {
                 continue;
             }
