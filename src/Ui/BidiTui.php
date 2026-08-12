@@ -44,6 +44,15 @@ final class BidiTui extends Tui implements FrameHooks
     private array $onBeforeFrame = [];
 
     /**
+     * The vendor Tui privates the mirrored frame path reads EVERY frame,
+     * reflected once on the first RTL frame instead of four times per
+     * keystroke.
+     *
+     * @var array{requested: \ReflectionProperty, root: \ReflectionProperty, renderer: \ReflectionProperty, screenWriter: \ReflectionProperty}|null
+     */
+    private ?array $tuiPrivates = null;
+
+    /**
      * Install a hook fired whenever the terminal width changes (including the
      * first frame), before the frame renders — so a re-arrangement it makes
      * paints in the same frame. The render loop already re-reads the width
@@ -137,18 +146,26 @@ final class BidiTui extends Tui implements FrameHooks
             return;
         }
 
-        $requested = new \ReflectionProperty(Tui::class, 'renderRequested');
+        $privates =
+            $this->tuiPrivates ??= [
+                'requested' => new \ReflectionProperty(Tui::class, 'renderRequested'),
+                'root' => new \ReflectionProperty(Tui::class, 'root'),
+                'renderer' => new \ReflectionProperty(Tui::class, 'renderer'),
+                'screenWriter' => new \ReflectionProperty(Tui::class, 'screenWriter'),
+            ];
+
+        $requested = $privates['requested'];
         if (true !== $requested->getValue($this)) {
             return;
         }
         $requested->setValue($this, false);
 
         /** @var ContainerWidget $root */
-        $root = new \ReflectionProperty(Tui::class, 'root')->getValue($this);
+        $root = $privates['root']->getValue($this);
         /** @var Renderer $renderer */
-        $renderer = new \ReflectionProperty(Tui::class, 'renderer')->getValue($this);
+        $renderer = $privates['renderer']->getValue($this);
         /** @var ScreenWriter $screenWriter */
-        $screenWriter = new \ReflectionProperty(Tui::class, 'screenWriter')->getValue($this);
+        $screenWriter = $privates['screenWriter']->getValue($this);
 
         $terminal = $this->getTerminal();
         $columns = $terminal->getColumns();
