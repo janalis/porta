@@ -150,6 +150,23 @@ final class IdeContainerFactoryTest extends TestCase
         $this->assertCount(1, (array) glob($project->path('container-*.php.meta')), 'the stale .meta went with it');
     }
 
+    public function testPruningNeverEvictsAnotherInstallsGenerations(): void
+    {
+        // The per-user cache dir is shared; a dev checkout beside a release
+        // must not have its dump evicted on every one of the other's boots.
+        // Foreign generations carry a different install key in the filename.
+        $project = new TempProject();
+        putenv('PORTA_CACHE_DIR='.$project->dir);
+        file_put_contents($project->path('container-feedf00d-abc123.php'), '<?php // another install');
+        file_put_contents($project->path('container-feedf00d-abc123.php.meta'), 'meta');
+
+        $this->build();
+
+        $this->assertFileExists($project->path('container-feedf00d-abc123.php'), 'the foreign dump survives this install\'s GC');
+        $this->assertFileExists($project->path('container-feedf00d-abc123.php.meta'), 'and so does its metadata');
+        $this->assertCount(2, (array) glob($project->path('container-*.php')), 'both installs coexist');
+    }
+
     public function testCacheOffCompilesInMemory(): void
     {
         $project = new TempProject();

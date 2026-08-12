@@ -123,6 +123,20 @@ final class DebugStateStoreTest extends TestCase
         $this->assertSame([], $reloaded['watches']);
     }
 
+    public function testAnUnencodablePayloadDegradesToFalseInsteadOfThrowing(): void
+    {
+        // A breakpoint path or watch expression can carry invalid UTF-8;
+        // json_encode(JSON_THROW_ON_ERROR) then throws during TEARDOWN
+        // (DebugStatePersistence::save runs in Ide's finally), where an escape
+        // would abort the rest of the shutdown sequence.
+        $project = new TempProject();
+
+        $saved = new DebugStateStore($project->dir)->save([], ["\$x\xB1"], null);
+
+        $this->assertFalse($saved);
+        $this->assertFalse(is_file($project->path('.porta/debug.json')), 'nothing half-written');
+    }
+
     public function testPersistenceRestoreWithoutAFileIsANoOp(): void
     {
         $project = new TempProject();

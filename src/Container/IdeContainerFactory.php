@@ -76,9 +76,14 @@ final class IdeContainerFactory
         // The cache dir is folded into the hash so distinct cache dirs yield
         // distinct class names (each dump loads at most once per process), and
         // the installed package set so a dependency upgrade cannot be served a
-        // container dumped by the previous one.
+        // container dumped by the previous one. The filename carries a second,
+        // install-only key so GC can tell "an old generation of THIS install"
+        // from "another install sharing this per-user cache dir" — without it,
+        // a dev checkout beside a release would evict each other's dump on
+        // every boot and permanently defeat the cache for both.
+        $installKey = hash('xxh32', \dirname(__DIR__, levels: 2));
         $hash = hash('xxh128', Ide::VERSION.\PHP_VERSION.\dirname(__DIR__, levels: 2).'/config'.$cacheDir.self::installedPackages());
-        $file = $cacheDir.'/container-'.$hash.'.php';
+        $file = $cacheDir.'/container-'.$installKey.'-'.$hash.'.php';
         /** @var class-string<Container> $class The PhpDumper-generated class (declared by the require below). */
         $class = 'PortaCachedContainer_'.$hash;
 
@@ -92,7 +97,7 @@ final class IdeContainerFactory
                 $dump = new PhpDumper($builder)->dump(['class' => $class]);
                 \assert(\is_string($dump), description: 'PhpDumper::dump returns a string unless as_files is requested');
                 $cache->write($dump, $builder->getResources());
-                self::pruneStaleGenerations($cacheDir, $hash);
+                self::pruneStaleGenerations($cacheDir, $installKey, $hash);
             } catch (IOException) {
                 return $this->compileFresh(CompileTarget::Direct); // unwritable cache dir: serve this boot uncached
             }
@@ -153,17 +158,19 @@ final class IdeContainerFactory
     }
 
     /**
-     * Drop the previous generations' files (dump, .meta, .meta.json) once a
-     * new one is written: the hash changes on every Porta/PHP/dependency-set
+     * Drop THIS install's previous generations (dump, .meta, .meta.json) once
+     * a new one is written: the hash changes on every Porta/PHP/dependency-set
      * change and nothing else ever removes the old files, so a long-lived
-     * machine otherwise accumulates one generation per upgrade forever. POSIX
-     * unlink is safe against a process still serving an old generation — its
-     * open file lives on until that process exits.
+     * machine otherwise accumulates one generation per upgrade forever. The
+     * glob is scoped by $installKey — another install's generations in the
+     * shared per-user dir are its own, never this one's to evict. POSIX unlink
+     * is safe against a process still serving an old generation — its open
+     * file lives on until that process exits.
      */
-    private static function pruneStaleGenerations(string $cacheDir, string $hash): void
+    private static function pruneStaleGenerations(string $cacheDir, string $installKey, string $hash): void
     {
-        foreach (glob($cacheDir.'/container-*.php*') ?: [] as $file) {
-            if (str_starts_with(basename($file), 'container-'.$hash.'.php')) {
+        foreach (glob($cacheDir.'/container-'.$installKey.'-*.php*') ?: [] as $file) {
+            if (str_starts_with(basename($file), 'container-'.$installKey.'-'.$hash.'.php')) {
                 continue;
             }
             // @mago-expect lint:no-error-control-operator — best-effort GC: an unremovable sibling costs disk, not correctness.

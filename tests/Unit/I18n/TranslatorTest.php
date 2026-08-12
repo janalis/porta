@@ -57,6 +57,19 @@ final class TranslatorTest extends TestCase
         $this->assertSame('Save File', $translator->trans('Save File'), 'the id (English) serves as the answer');
     }
 
+    public function testACatalogVanishingAfterBootStillDegradesToEnglish(): void
+    {
+        // The is_file() check runs at construction but the parse runs at the
+        // first trans() for the locale — a package upgrade can swap the
+        // translations dir out in between, which throws NotFoundResourceException
+        // (a SIBLING of InvalidResourceException) unless the loader covers it.
+        $project = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', 'Enregistrer'))]);
+        $translator = new Translator('fr', $project->dir);
+        unlink($project->path('messages.fr.xlf'));
+
+        $this->assertSame('Save File', $translator->trans('Save File'), 'the id (English) serves as the answer');
+    }
+
     public function testAnEmptyTargetFallsBackToTheSource(): void
     {
         $project = new TempProject(['messages.de.xlf' => $this->xliff('de', $this->unit('Save File', ''))]);

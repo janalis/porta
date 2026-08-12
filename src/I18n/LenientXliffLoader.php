@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\I18n;
 
 use Symfony\Component\Translation\Exception\InvalidResourceException;
+use Symfony\Component\Translation\Exception\NotFoundResourceException;
 use Symfony\Component\Translation\Loader\XliffFileLoader;
 use Symfony\Component\Translation\MessageCatalogue;
 
@@ -23,7 +24,10 @@ final class LenientXliffLoader extends XliffFileLoader
     {
         try {
             $catalogue = parent::load($resource, $locale, $domain);
-        } catch (InvalidResourceException) {
+        } catch (InvalidResourceException|NotFoundResourceException) {
+            // NotFound is a sibling, not a subclass: the file was is_file()-
+            // checked at boot registration but the load runs lazily, so a
+            // catalog replaced or removed in between must still degrade.
             return new MessageCatalogue($locale);
         }
 

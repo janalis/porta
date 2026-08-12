@@ -489,7 +489,6 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
                 if ($this->saveBuffer($active)) {
                     $this->notifier->success($this->translator->trans('Saved %file%', ['%file%' => $this->relativePath($active->path)]));
                 }
-                $this->tui->requestRender();
             });
 
             return;
@@ -497,7 +496,10 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         if ($this->saveBuffer($active)) {
             $this->notifier->success($this->translator->trans('Saved %file%', ['%file%' => $this->relativePath($active->path)]));
         }
-        $this->tui->requestRender();
+
+        // No trailing requestRender: every outcome that changes the screen
+        // already rendered through the notifier (success flash, IO-error
+        // toast), and the silent viewer no-op changes nothing worth a frame.
     }
 
     public function saveAllBuffers(): void
