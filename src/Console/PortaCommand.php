@@ -110,7 +110,20 @@ final class PortaCommand extends Command
         }
         // --ansi/--no-ansi are Symfony's global options; they resolve into the
         // output decoration, which we thread to the IDE as its color mode.
-        ($this->launch)($workspace, $lsp, $noLsp ? LspMode::Disabled : LspMode::Enabled, $output->isDecorated() ? Ansi::Enabled : Ansi::Disabled);
+        try {
+            ($this->launch)($workspace, $lsp, $noLsp ? LspMode::Disabled : LspMode::Enabled, $output->isDecorated() ? Ansi::Enabled : Ansi::Disabled);
+        } catch (\Throwable $e) {
+            if ($output->isVerbose()) {
+                throw $e; // -v: let the console runner render the full trace
+            }
+            // The likeliest boot failure is a container that no longer
+            // compiles against a stale dump; say the remedy instead of dumping
+            // a stack trace at someone who just typed `porta .`.
+            $errors->writeln(\sprintf('<error>porta: fatal: %s</error>', $e->getMessage()));
+            $errors->writeln('A stale container cache can break startup — delete ~/.cache/porta (or $PORTA_CACHE_DIR) and retry. Run with -v for the full trace.');
+
+            return Command::FAILURE;
+        }
 
         return Command::SUCCESS;
     }

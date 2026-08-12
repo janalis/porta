@@ -13,6 +13,7 @@ use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Tester\CommandTester;
 
 final class PortaCommandTest extends TestCase
@@ -152,6 +153,38 @@ final class PortaCommandTest extends TestCase
         $this->assertSame(Command::FAILURE, $tester->execute(['path' => '/does/not/exist']));
         $this->assertNull($this->launched);
         $this->assertStringContainsString('no such file or directory', $tester->getDisplay());
+    }
+
+    public function testACrashedLaunchReportsTheRemedyInsteadOfATrace(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $command = new PortaCommand(
+            launch: static function (Workspace $workspace, ?string $lsp, LspMode $mode, Ansi $ansi): void {
+                throw new \RuntimeException('You have requested a synthetic service ("renderer").');
+            },
+            isInteractive: static fn (): bool => true,
+        );
+        $tester = new CommandTester($command);
+
+        $this->assertSame(Command::FAILURE, $tester->execute(['path' => $project->dir]));
+        $this->assertStringContainsString('porta: fatal: You have requested a synthetic service', $tester->getDisplay());
+        $this->assertStringContainsString('delete ~/.cache/porta', $tester->getDisplay(), 'the remedy is named, not just the failure');
+    }
+
+    public function testVerboseModeRethrowsForTheFullTrace(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $command = new PortaCommand(
+            launch: static function (Workspace $workspace, ?string $lsp, LspMode $mode, Ansi $ansi): void {
+                throw new \RuntimeException('boom');
+            },
+            isInteractive: static fn (): bool => true,
+        );
+        $tester = new CommandTester($command);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('boom');
+        $tester->execute(['path' => $project->dir], ['verbosity' => OutputInterface::VERBOSITY_VERBOSE]);
     }
 
     public function testProductionDefaultsAreWiredWithoutBootingTheIde(): void
