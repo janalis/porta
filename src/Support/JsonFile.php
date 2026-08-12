@@ -17,10 +17,14 @@ use Symfony\Component\Filesystem\Filesystem;
 final class JsonFile
 {
     /**
+     * @param string|null $error why decoding produced null, when it did — the decoder's own
+     *                           reason ("Syntax error", …; PHP reports no position) or the
+     *                           not-an-object case. Untouched when the file is simply absent.
+     *
      * @return array<mixed>|null decoded JSON object/array, or null when the file
      *                           is absent, invalid JSON, or not a JSON array/object
      */
-    public static function read(string $path): ?array
+    public static function read(string $path, ?string &$error = null): ?array
     {
         if (!is_file($path)) {
             return null;
@@ -28,11 +32,18 @@ final class JsonFile
         try {
             /** @var array<array-key, mixed>|scalar|null $data */
             $data = json_decode((string) file_get_contents($path), associative: true, depth: 512, flags: JSON_THROW_ON_ERROR);
-        } catch (\JsonException) {
+        } catch (\JsonException $e) {
+            $error = $e->getMessage();
+
+            return null;
+        }
+        if (!\is_array($data)) {
+            $error = 'the file is not a JSON object';
+
             return null;
         }
 
-        return \is_array($data) ? $data : null;
+        return $data;
     }
 
     /**

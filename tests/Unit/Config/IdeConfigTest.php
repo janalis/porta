@@ -7,7 +7,14 @@ namespace Porta\Tests\Unit\Config;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
+use Porta\Editor\LineNumberMode;
+use Porta\GraphViewer\Graph\GraphRenderMode;
+use Porta\I18n\Translator;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\CursorStyle;
+use Porta\Ui\Theme\Theme;
+use Porta\Widget\Support\TabBarPosition;
+use Symfony\Component\Tui\Style\CursorShape;
 
 final class IdeConfigTest extends TestCase
 {
@@ -586,5 +593,62 @@ final class IdeConfigTest extends TestCase
 
         $this->assertFalse(new PortaJsonWriter()->persistSetting($project->dir, 'theme', "\xB1"));
         $this->assertFalse(is_file($project->path('.porta.json')), 'nothing half-written');
+    }
+
+    public function testInvalidJsonWarningCarriesTheDecodersReason(): void
+    {
+        // PHP's decoder reports no position, but its reason ("Syntax error",
+        // "Control character error", …) still beats a bare "not valid JSON".
+        $project = new TempProject(['.porta.json' => '{not json']);
+
+        [$warning] = IdeConfig::load($project->dir)->warnings;
+
+        $this->assertStringStartsWith('.porta.json is not valid JSON (', $warning);
+        $this->assertStringContainsString('Syntax error', $warning);
+    }
+
+    public function testAChoiceSettingRejectsAValueOutsideItsDomain(): void
+    {
+        // "bogus" used to flow uncorrected into $PORTA_THEME and resolve to
+        // whatever fallback each consumer happened to apply, silently.
+        $project = new TempProject(['.porta.json' => json_encode([
+            'settings' => ['theme' => 'bogus', 'cursorShape' => 'wedge', 'lineNumbers' => 'roman'],
+        ])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame('dark', $config->settings['theme'], 'the default stands in for the rejected value');
+        $this->assertSame('bar', $config->settings['cursorShape']);
+        $this->assertSame('absolute', $config->settings['lineNumbers']);
+        $this->assertContains('Setting "theme" must be one of dark|light|high-contrast, got "bogus"', $config->warnings);
+        $this->assertContains('Setting "cursorShape" must be one of bar|block|underline, got "wedge"', $config->warnings);
+        $this->assertContains('Setting "lineNumbers" must be one of off|absolute|relative, got "roman"', $config->warnings);
+    }
+
+    public function testEveryChoiceDomainMatchesItsAuthority(): void
+    {
+        // CHOICE_SETTINGS mirrors vocabularies whose owners this parser cannot
+        // import (plugins and the container do not exist at parse time); these
+        // pins turn drift into a test failure instead of a rejected valid value.
+        $this->assertSame(Theme::ids(), IdeConfig::CHOICE_SETTINGS['theme']);
+        $this->assertSame(Translator::LOCALES, IdeConfig::CHOICE_SETTINGS['language']);
+        $this->assertSame(
+            array_map(static fn (LineNumberMode $mode): string => $mode->value, LineNumberMode::cases()),
+            IdeConfig::CHOICE_SETTINGS['lineNumbers'],
+        );
+        $this->assertSame(
+            array_map(static fn (TabBarPosition $position): string => $position->value, TabBarPosition::cases()),
+            IdeConfig::CHOICE_SETTINGS['tabBarPosition'],
+        );
+        $this->assertSame(
+            array_map(static fn (GraphRenderMode $mode): string => $mode->value, GraphRenderMode::cases()),
+            IdeConfig::CHOICE_SETTINGS['graphRender'],
+        );
+        // cursorShape has no enum of setting ids; its authority is the mapper.
+        // The three ids must reach three DISTINCT shapes (a dropped or repeated
+        // id collapses the count), and anything else falls back to Bar.
+        $shapes = array_map(CursorStyle::shapeFromSetting(...), IdeConfig::CHOICE_SETTINGS['cursorShape']);
+        $this->assertCount(3, array_unique(array_map(static fn ($s): int => $s->value, $shapes)));
+        $this->assertSame(CursorShape::Bar, CursorStyle::shapeFromSetting('anything-else'));
     }
 }

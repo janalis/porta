@@ -95,6 +95,24 @@ final class IdeConfig
      */
     public const array DEFAULT_ENABLED_PLUGINS = ['image-viewer', 'graph-viewer', 'todo', 'local-history', 'git'];
 
+    /**
+     * The closed value sets of the choice settings, mirrored here as literals
+     * because their owning enums live in namespaces this parser must not reach
+     * (the container, and the plugins, do not exist yet). Each list is pinned
+     * against its authority by IdeConfigTest, so drift fails a test instead of
+     * silently accepting values the UI would never offer.
+     *
+     * @var array<string, list<string>>
+     */
+    public const array CHOICE_SETTINGS = [
+        'language' => ['en', 'fr', 'de', 'es', 'it', 'ja', 'he'],
+        'theme' => ['dark', 'light', 'high-contrast'],
+        'lineNumbers' => ['off', 'absolute', 'relative'],
+        'cursorShape' => ['bar', 'block', 'underline'],
+        'tabBarPosition' => ['top', 'bottom', 'left', 'right'],
+        'graphRender' => ['bitmap', 'cells'],
+    ];
+
     /** An empty `highlight` block: no global default, no per-language overrides. */
     private const array NO_HIGHLIGHT = ['default' => '', 'languages' => []];
 
@@ -131,9 +149,12 @@ final class IdeConfig
             return new self([], self::DEFAULT_SETTINGS, [], [], [], [], self::DEFAULT_ENABLED_PLUGINS, self::NO_HIGHLIGHT, []);
         }
 
-        $config = JsonFile::read($file);
+        $jsonError = null;
+        $config = JsonFile::read($file, $jsonError);
         if (null === $config) {
-            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], self::DEFAULT_ENABLED_PLUGINS, self::NO_HIGHLIGHT, ['.porta.json is not valid JSON']);
+            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], self::DEFAULT_ENABLED_PLUGINS, self::NO_HIGHLIGHT, [
+                '.porta.json is not valid JSON'.(null !== $jsonError ? ' ('.$jsonError.')' : ''),
+            ]);
         }
 
         $keymap = [];
@@ -167,11 +188,20 @@ final class IdeConfig
             }
             // Coerce to the default's type (bool, int, or string).
             $default = self::DEFAULT_SETTINGS[$key];
-            $settings[$key] = match (true) {
+            $coerced = match (true) {
                 \is_bool($default) => (bool) $value,
                 \is_int($default) => (int) $value,
                 default => (string) $value,
             };
+            // A choice setting's value domain is closed: an unknown value
+            // would otherwise flow into the env channel and resolve to
+            // whatever fallback its consumer happens to apply, silently.
+            $allowed = self::CHOICE_SETTINGS[$key] ?? null;
+            if (null !== $allowed && !\in_array($coerced, $allowed, strict: true)) {
+                $warnings[] = \sprintf('Setting "%s" must be one of %s, got "%s"', $key, implode('|', $allowed), (string) $coerced);
+                continue;
+            }
+            $settings[$key] = $coerced;
         }
 
         // Migrate the legacy `relativeLineNumbers` bool into the `lineNumbers`
