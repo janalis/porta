@@ -34,9 +34,6 @@ final class HighlightRegistry
 {
     private readonly PlainTextHighlightProvider $plain;
 
-    /** @var list<string> ids that threw while being interrogated, reported once each */
-    private array $broken = [];
-
     public function __construct(
         private readonly SyntaxHighlightProviderSource $plugins,
         private readonly HighlightPreferences $preferences,
@@ -99,11 +96,6 @@ final class HighlightRegistry
         try {
             return $provider->supports($language);
         } catch (\Throwable) {
-            $id = $this->idOf($provider) ?? '?';
-            if (!\in_array($id, $this->broken, strict: true)) {
-                $this->broken[] = $id;
-            }
-
             return false;
         }
     }
