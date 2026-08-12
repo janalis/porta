@@ -25,6 +25,7 @@ use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\RendersRoot;
 use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
+use Porta\Ui\Theme\Theme;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Onboarding\WelcomeWidget;
@@ -488,7 +489,7 @@ final class WelcomeModalControllerTest extends TestCase
         $controller->open();
         $this->pane->modalSpans = []; // wiped: only the listener can bring them back
 
-        new ChromeRefreshListener(new ChromeInvalidator(), $controller, $this->tui)->onSettingApplied(new ThemeChanged('dark'));
+        new ChromeRefreshListener(new ChromeInvalidator(), $controller, $this->tui)->onSettingApplied(new ThemeChanged(Theme::Dark));
 
         $this->assertNotSame([], $this->pane->modalSpans, 'the modal recomposed');
     }
@@ -498,7 +499,7 @@ final class WelcomeModalControllerTest extends TestCase
         $controller = $this->controller();
         $this->frame(80);
 
-        new ChromeRefreshListener(new ChromeInvalidator(), $controller, $this->tui)->onSettingApplied(new ThemeChanged('dark'));
+        new ChromeRefreshListener(new ChromeInvalidator(), $controller, $this->tui)->onSettingApplied(new ThemeChanged(Theme::Dark));
 
         $this->assertSame([], $this->pane->modalSpans);
     }

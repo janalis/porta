@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Porta\Event;
 
-/** The hardware-cursor shape setting changed (holder already swapped). */
+use Symfony\Component\Tui\Style\CursorShape;
+
+/** The hardware-cursor shape setting changed (holder already swapped, to this resolved shape). */
 final readonly class CursorShapeChanged
 {
     public function __construct(
-        public string $shape,
+        public CursorShape $shape,
     ) {}
 }

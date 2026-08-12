@@ -9,6 +9,7 @@ use Porta\Editor\BufferManager;
 use Porta\Event\ThemeChanged;
 use Porta\Highlight\HighlightThemeListener;
 use Porta\Tests\Support\Probe;
+use Porta\Ui\Theme\Theme;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -30,7 +31,7 @@ final class HighlightThemeListenerTest extends TestCase
 
         $before = array_map(static fn ($b): int => Probe::get($b->highlighter, 'fullParses'), [$one, $two]);
 
-        new HighlightThemeListener($buffers)->onThemeChanged(new ThemeChanged('light'));
+        new HighlightThemeListener($buffers)->onThemeChanged(new ThemeChanged(Theme::Light));
 
         // The cache is gone, so the next paint re-parses rather than replaying.
         foreach ([$one, $two] as $buffer) {
@@ -49,7 +50,7 @@ final class HighlightThemeListenerTest extends TestCase
         $lines = ['<?php', 'return 1;'];
 
         $buffer->highlighter->highlight($lines, 1);
-        new HighlightThemeListener($buffers)->onThemeChanged(new ThemeChanged('light'));
+        new HighlightThemeListener($buffers)->onThemeChanged(new ThemeChanged(Theme::Light));
 
         $repainted = $buffer->highlighter->highlight($lines, 1);
 

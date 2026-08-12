@@ -19,6 +19,7 @@ use Porta\Lsp\FormatOnSave;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\StyleSheetThemer;
+use Porta\Ui\Theme\Theme;
 use Porta\Ui\Theme\Themes;
 use Porta\Ui\ThemeRefreshable;
 use Porta\Widget\Support\TabBarPosition;
@@ -82,7 +83,7 @@ final class LiveSettingsApplier
         foreach ($this->panes->all() as $pane) {
             $pane->refreshTheme();
         }
-        $this->dispatcher->dispatch(new ThemeChanged($theme));
+        $this->dispatcher->dispatch(new ThemeChanged(Theme::fromId($theme)));
     }
 
     /** Live formatOnSave enable: the flag holder the save path consults. */
@@ -106,8 +107,9 @@ final class LiveSettingsApplier
 
     public function applyCursorShape(string $shape): void
     {
-        $this->cursorStyle->switchTo(CursorStyle::shapeFromSetting($shape));
-        $this->dispatcher->dispatch(new CursorShapeChanged($shape));
+        $resolved = CursorStyle::shapeFromSetting($shape);
+        $this->cursorStyle->switchTo($resolved);
+        $this->dispatcher->dispatch(new CursorShapeChanged($resolved));
     }
 
     /**

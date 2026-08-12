@@ -784,7 +784,7 @@ final class PluginApi
      */
     public function onThemeChanged(\Closure $listener): void
     {
-        $this->listen(ThemeChanged::class, static fn (ThemeChanged $event) => $listener($event->theme));
+        $this->listen(ThemeChanged::class, static fn (ThemeChanged $event) => $listener($event->theme->value));
     }
 
     /**

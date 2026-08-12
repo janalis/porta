@@ -49,6 +49,7 @@ use Porta\Workbench\Notifier;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Style\CursorShape;
 use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -69,7 +70,7 @@ final class SettingsControllerTest extends TestCase
     /** @var list<string> */
     private array $themeChanges = [];
 
-    /** @var list<string> */
+    /** @var list<CursorShape> */
     private array $cursorShapeChanges = [];
 
     /** @var list<string> */
@@ -99,7 +100,7 @@ final class SettingsControllerTest extends TestCase
             $this->languageChanges[] = $e->locale;
         });
         $dispatcher->addListener(ThemeChanged::class, function (ThemeChanged $e): void {
-            $this->themeChanges[] = $e->theme;
+            $this->themeChanges[] = $e->theme->value;
         });
         $dispatcher->addListener(CursorShapeChanged::class, function (CursorShapeChanged $e): void {
             $this->cursorShapeChanges[] = $e->shape;
@@ -197,7 +198,7 @@ final class SettingsControllerTest extends TestCase
 
         $controller->changeSetting('cursorShape', 'block');
 
-        $this->assertSame(['block'], $this->cursorShapeChanges, 'the apply closure fired with the new shape');
+        $this->assertSame([CursorShape::Block], $this->cursorShapeChanges, 'the apply closure fired with the new shape');
         $this->assertSame('block', IdeConfig::load($project->dir)->settings['cursorShape'], 'persisted');
     }
 
@@ -317,7 +318,7 @@ final class SettingsControllerTest extends TestCase
         $controller->applyAll(); // every descriptor applies live now
         $this->assertSame(LineNumberMode::Relative, EditorState::display($editor)->lineNumbers());
         $this->assertSame(['light'], $this->themeChanges, 'the theme hook applies at boot too');
-        $this->assertSame(['bar'], $this->cursorShapeChanges, 'the cursor-shape hook applies at boot too');
+        $this->assertSame([CursorShape::Bar], $this->cursorShapeChanges, 'the cursor-shape hook applies at boot too');
         $this->assertSame(['top'], $this->tabBarPositionChanges, 'the tab-bar-position hook applies at boot too');
     }
 

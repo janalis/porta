@@ -88,6 +88,7 @@ final class ArchitectureCheckCommand extends Command
         'Editor>Widget',
         'Editor>Workbench',
         'Event>Editor',
+        'Event>Ui',
         'Event>Workbench',
         'Event>Widget',
         // The graph-viewer plugin's own classes (plugins/graph-viewer/src): the
