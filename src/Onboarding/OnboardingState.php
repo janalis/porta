@@ -6,7 +6,6 @@ namespace Porta\Onboarding;
 
 use Porta\Container\AsIdeService;
 use Porta\Support\JsonFile;
-use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -53,15 +52,6 @@ final readonly class OnboardingState
     /** Whether the marker was written; false on an unwritable project. */
     public function markWelcomeSeen(): bool
     {
-        try {
-            $this->fs->dumpFile(
-                $this->file,
-                json_encode(['welcomeSeen' => true], \JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT),
-            );
-        } catch (IOExceptionInterface) {
-            return false;
-        }
-
-        return true;
+        return JsonFile::write($this->fs, $this->file, ['welcomeSeen' => true]);
     }
 }

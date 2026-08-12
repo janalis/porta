@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\History;
 
 use Porta\Support\JsonFile;
-use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -108,11 +107,7 @@ final class SearchScopeStore
 
     private function save(): void
     {
-        try {
-            $this->fs->dumpFile($this->file, json_encode(['scopes' => $this->scopes], JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES));
-        } catch (IOExceptionInterface|\JsonException) {
-            // best-effort persistence; saved scopes are non-critical
-            return;
-        }
+        // Best-effort persistence; saved scopes are non-critical.
+        JsonFile::write($this->fs, $this->file, ['scopes' => $this->scopes]);
     }
 }

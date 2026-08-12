@@ -6,7 +6,6 @@ namespace Porta\History;
 
 use Porta\Support\JsonFile;
 use Porta\Ui\ScopeKind;
-use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -91,21 +90,11 @@ final class SearchPrefsStore
 
     private function save(): void
     {
-        try {
-            $this->fs->dumpFile(
-                $this->file,
-                json_encode(
-                    [
-                        'scope' => $this->scope,
-                        'mask' => $this->mask,
-                        'recentMasks' => $this->recentMasks,
-                    ],
-                    JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES,
-                ),
-            );
-        } catch (IOExceptionInterface|\JsonException) {
-            // best-effort persistence; prefs are non-critical
-            return;
-        }
+        // Best-effort persistence; prefs are non-critical.
+        JsonFile::write($this->fs, $this->file, [
+            'scope' => $this->scope,
+            'mask' => $this->mask,
+            'recentMasks' => $this->recentMasks,
+        ]);
     }
 }

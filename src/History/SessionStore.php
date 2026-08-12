@@ -6,7 +6,6 @@ namespace Porta\History;
 
 use Porta\Container\AsIdeService;
 use Porta\Support\JsonFile;
-use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -36,16 +35,7 @@ final readonly class SessionStore
             return true;
         }
 
-        try {
-            $this->fs->dumpFile(
-                $this->file,
-                json_encode(['buffers' => $buffers, 'active' => $activePath], JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES),
-            );
-        } catch (IOExceptionInterface|\JsonException) {
-            return false;
-        }
-
-        return true;
+        return JsonFile::write($this->fs, $this->file, ['buffers' => $buffers, 'active' => $activePath]);
     }
 
     /**

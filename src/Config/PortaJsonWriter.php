@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Config;
 
 use Porta\Support\JsonFile;
-use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -313,15 +312,6 @@ final readonly class PortaJsonWriter
      */
     private function write(string $file, array $config): bool
     {
-        try {
-            $this->fs->dumpFile(
-                $file,
-                json_encode($config, JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES).\PHP_EOL,
-            );
-        } catch (IOExceptionInterface|\JsonException) {
-            return false;
-        }
-
-        return true;
+        return JsonFile::write($this->fs, $file, $config, trailingNewline: true);
     }
 }
