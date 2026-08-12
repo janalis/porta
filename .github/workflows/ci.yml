@@ -5,9 +5,15 @@ on:
     branches: [main]
   pull_request:
 
+# A superseded push to the same PR cancels the run it obsoleted.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   gates:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -26,7 +32,11 @@ jobs:
       - run: composer install --no-interaction --no-progress --classmap-authoritative
 
       - name: Manifest check
-        run: composer validate --strict
+        run: |
+          composer validate --strict
+          for manifest in plugins/*/composer.json; do
+            composer validate --no-check-publish --no-check-lock "$manifest"
+          done
 
       - name: Dependency audit
         run: composer audit
@@ -48,3 +58,12 @@ jobs:
 
       - name: Coverage gate (100% lines)
         run: composer coverage:check
+
+      - name: Coverage report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-clover
+          path: coverage/*.xml
+          if-no-files-found: ignore
+          retention-days: 14
