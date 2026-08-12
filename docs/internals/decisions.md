@@ -314,6 +314,20 @@ hold. Do not write a test that cannot fail.
 
 ## Leave it alone
 
+**`PaneSegmenter` per-frame memoization — measured and rejected.** With RTL
+active every frame re-segments the whole widget tree while the vendor
+renderer's per-widget caching makes a warm `render()` almost free, so the
+segmenter looks dominant (~13× the warm render). The absolute number is what
+decides it: **0.178 ms per frame** at 120×40 on the standard workspace tree
+(warm render 0.013 ms; whole mirrored frame 0.19 ms) — two orders of magnitude
+under a frame budget. Memoizing would tie a cache to re-layout invalidation
+(resize, pane swap, view mint, overlay open) to buy back a fifth of a
+millisecond. The four per-frame `ReflectionProperty` constructions WERE
+cached — constant setup, no invalidation to get wrong.
+
+*Re-opens on:* a segmenter cost measured above ~2 ms/frame (a radically larger
+tree), or frame pacing showing the mirrored path missing frames.
+
 Dense by nature, measured, and not to be "simplified":
 
 - **`Lsp/LspMapper`** — its branch count is `??`-coalescing over optional wire
