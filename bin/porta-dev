@@ -12,6 +12,11 @@ declare(strict_types=1);
 // is what lets `porta src/Foo.php:12` treat its argument as a path rather than
 // a command name, and adding sibling commands there would break it.
 
+if (\PHP_VERSION_ID < 80400) {
+    fwrite(STDERR, 'porta-dev: PHP >= 8.4 is required, this is PHP '.\PHP_VERSION.".\n");
+    exit(1);
+}
+
 $autoload = __DIR__.'/../vendor/autoload.php';
 if (!is_file($autoload)) {
     fwrite(STDERR, "porta-dev: could not find Composer's autoload.php. Run 'composer install' first.\n");
