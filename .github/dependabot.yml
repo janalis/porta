@@ -1,0 +1,21 @@
+version: 2
+updates:
+  - package-ecosystem: composer
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      # The mago pin is load-bearing: a minor bump has silently changed a lint
+      # threshold's meaning before (mago.toml documents the incident and the
+      # re-bisection protocol). Bumps stay manual, with the metric floors
+      # re-bisected in the same commit.
+      - dependency-name: carthage-software/mago
+    groups:
+      symfony:
+        patterns:
+          - symfony/*
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
