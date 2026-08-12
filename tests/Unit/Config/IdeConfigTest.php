@@ -190,8 +190,29 @@ final class IdeConfigTest extends TestCase
         $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
         $this->assertSame('relative', $written['settings']['lineNumbers'], 'the new key was written');
         $this->assertSame(4, $written['settings']['tabWidth'], 'a live setting is preserved');
-        $this->assertArrayNotHasKey('relativeLineNumbers', $written['settings'], 'the migrated legacy key is gone');
-        $this->assertArrayNotHasKey('editorConfig', $written['settings'], 'every legacy key is stripped');
+        $this->assertArrayNotHasKey('relativeLineNumbers', $written['settings'], 'writing the successor retires the superseded key');
+        $this->assertArrayNotHasKey('editorConfig', $written['settings'], 'the value-less obsolete key is stripped on any write');
+    }
+
+    public function testPersistSettingPreservesLegacyValuesNobodyHasAdoptedYet(): void
+    {
+        // The old behavior stripped EVERY IdeConfig::LEGACY_SETTINGS key on
+        // ANY setting write. That destroyed the pre-move git* values the git
+        // plugin's one-time adoption had not read yet (plugin disabled, or the
+        // project simply not reopened under it), and dropped
+        // relativeLineNumbers before lineNumbers ever recorded the migrated
+        // preference — permanent data loss from toggling an unrelated setting.
+        $project = new TempProject(['.porta.json' => json_encode([
+            'settings' => ['gitSignCommits' => true, 'gitPath' => '/opt/git', 'relativeLineNumbers' => true],
+        ])]);
+
+        $this->assertTrue(new PortaJsonWriter()->persistSetting($project->dir, 'theme', 'light'));
+
+        $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+        $this->assertSame('light', $written['settings']['theme']);
+        $this->assertTrue($written['settings']['gitSignCommits'], 'a plugin-adopted key survives an unrelated write');
+        $this->assertSame('/opt/git', $written['settings']['gitPath']);
+        $this->assertTrue($written['settings']['relativeLineNumbers'], 'a superseded key survives until its successor is written');
     }
 
     public function testPersistSettingCreatesFileWhenAbsent(): void

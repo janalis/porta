@@ -42,10 +42,18 @@ final readonly class PortaJsonWriter
         return $this->edit($rootDir, static function (array &$config) use ($key, $value): void {
             $settings = self::section($config, 'settings');
             $settings[$key] = $value;
-            // Drop any migrated-away legacy key so a stale value doesn't linger next to
-            // the key that superseded it (e.g. relativeLineNumbers after lineNumbers).
-            foreach (IdeConfig::LEGACY_SETTINGS as $legacy) {
-                unset($settings[$legacy]);
+            // Only core-obsoleted keys are stripped here. Stripping EVERY
+            // legacy key (as this once did) destroyed values the git plugin's
+            // one-time adoption had not read yet, and dropped
+            // relativeLineNumbers before lineNumbers ever recorded the
+            // migrated preference.
+            foreach (IdeConfig::OBSOLETE_SETTINGS as $obsolete) {
+                unset($settings[$obsolete]);
+            }
+            foreach (IdeConfig::SUPERSEDED_BY as $legacy => $successor) {
+                if ($key === $successor) {
+                    unset($settings[$legacy]);
+                }
             }
             $config['settings'] = $settings;
         });

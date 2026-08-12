@@ -47,11 +47,10 @@ final class IdeConfig
     ];
 
     /**
-     * Superseded setting keys: silently skipped at load (so a stale value in
-     * an older .porta.json never warns) and stripped on write
-     * ({@see PortaJsonWriter}). `editorConfig` was the "Respect .editorconfig"
-     * toggle — .editorconfig is always honored now, superseded per language by
-     * the indent settings.
+     * Superseded setting keys: silently skipped at load, so a stale value in
+     * an older .porta.json never warns. `editorConfig` was the "Respect
+     * .editorconfig" toggle — .editorconfig is always honored now, superseded
+     * per language by the indent settings.
      *
      * The eight `git*` keys are here because git became a bundled PLUGIN: they
      * live under `plugins.git.*` now, on that plugin's own settings page. The
@@ -70,6 +69,22 @@ final class IdeConfig
         'gitRefreshInterval',
         'gitPath',
     ];
+
+    /**
+     * The stripped-on-write subset of {@see self::LEGACY_SETTINGS}
+     * ({@see PortaJsonWriter::persistSetting}): only keys core itself
+     * obsoleted. `editorConfig` carries no information any more and drops on
+     * any write; a SUPERSEDED_BY key drops only when its successor is being
+     * written, so the preference it still encodes is never destroyed before
+     * the successor records it. The eight git* keys are deliberately in
+     * neither list: their values belong to the git plugin's one-time adoption,
+     * which may not have run yet (plugin disabled, project not reopened) —
+     * stripping them on an unrelated write would destroy what it adopts.
+     */
+    public const array OBSOLETE_SETTINGS = ['editorConfig'];
+
+    /** legacy key => the successor whose write retires it. */
+    public const array SUPERSEDED_BY = ['relativeLineNumbers' => 'lineNumbers'];
 
     /**
      * Bundled plugins enabled when `.porta.json` has NO `enabledPlugins` key —
