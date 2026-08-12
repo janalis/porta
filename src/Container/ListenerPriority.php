@@ -23,12 +23,12 @@ namespace Porta\Container;
  * a dispatched event, run 0 and below, and are compiled into the dispatcher's
  * listener map. Overlapping magnitudes, unrelated meanings.
  */
-final class ListenerPriority
+enum ListenerPriority
 {
     /**
      * The default: react to the event, then let everything below react to the
      * state you left. Every core listener sits here unless it has a reason not
-     * to, and 44 of the 48 do.
+     * to; the exceptions are exactly the attribute sites on the rungs below.
      */
     public const int CORE = 0;
 

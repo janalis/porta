@@ -15,4 +15,4 @@ namespace Porta\Event;
  * own verbs on it, so a capability only one view has travels as an event
  * instead of as a concrete type on the registry.
  */
-final class SettingsRowsStale {}
+final readonly class SettingsRowsStale {}
