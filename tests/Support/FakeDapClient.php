@@ -73,7 +73,11 @@ class FakeDapClient implements DapClientInterface
         $this->stopped = true;
     }
 
-    /** Deliver the response for the oldest pending request of $command. */
+    /**
+     * Deliver the response for the oldest pending request of $command.
+     *
+     * @param array<string, mixed> $body
+     */
     public function respond(string $command, array $body = [], ?string $error = null): void
     {
         foreach ($this->pending as $i => $entry) {
@@ -88,7 +92,11 @@ class FakeDapClient implements DapClientInterface
         }
     }
 
-    /** Push a server event into the session. */
+    /**
+     * Push a server event into the session.
+     *
+     * @param array<string, mixed> $body
+     */
     public function emit(string $event, array $body = []): void
     {
         if (array_key_exists($event, $this->eventHandlers)) {

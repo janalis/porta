@@ -23,6 +23,6 @@ trait PreservesPath
     #[After]
     protected function restorePristinePath(): void
     {
-        putenv('PATH='.PORTA_TEST_PRISTINE_PATH);
+        putenv('PATH='.(string) PORTA_TEST_PRISTINE_PATH);
     }
 }

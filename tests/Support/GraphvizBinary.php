@@ -11,11 +11,14 @@ namespace Porta\Tests\Support;
  */
 trait GraphvizBinary
 {
+    /** Satisfied by the host TestCase (PHPUnit's Assert::markTestSkipped). */
+    abstract public static function markTestSkipped(string $message = ''): never;
+
     /** Skip the running test when no dot binary is reachable. */
     private function skipWithoutDot(): void
     {
         if (null === $this->whichDot()) {
-            $this->markTestSkipped('graphviz (dot) not available');
+            self::markTestSkipped('graphviz (dot) not available');
         }
     }
 

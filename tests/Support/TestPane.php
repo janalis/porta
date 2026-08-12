@@ -102,10 +102,11 @@ final class TestPane extends NavigablePaneWidget
 
     public function render(RenderContext $context): array
     {
+        $columns = max(0, $context->getColumns());
         $body = null === $this->shownPath ? 'empty' : 'showing '.basename($this->shownPath);
-        $lines = [substr(str_pad($body, $context->getColumns()), offset: 0, length: $context->getColumns())];
+        $lines = [substr(str_pad($body, $columns), offset: 0, length: $columns)];
         for ($row = 1; $row < $context->getRows(); ++$row) {
-            $lines[] = str_repeat(' ', $context->getColumns());
+            $lines[] = str_repeat(' ', $columns);
         }
 
         return $this->withMenuOverlay($lines, $context->getColumns());

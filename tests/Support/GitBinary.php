@@ -12,6 +12,9 @@ namespace Porta\Tests\Support;
  */
 trait GitBinary
 {
+    /** Satisfied by the host TestCase (PHPUnit's Assert::markTestSkipped). */
+    abstract public static function markTestSkipped(string $message = ''): never;
+
     private function gitAvailable(): bool
     {
         return null !== $this->whichGit();
@@ -21,7 +24,7 @@ trait GitBinary
     private function skipWithoutGit(): void
     {
         if (null === $this->whichGit()) {
-            $this->markTestSkipped('git not available');
+            self::markTestSkipped('git not available');
         }
     }
 

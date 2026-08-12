@@ -47,27 +47,38 @@ final class TestWorkspaceLayout
         ?StatusBarWidget $statusBar = null,
     ): WorkspaceLayout {
         $t = new Translator('en');
-        $id = static function (AbstractWidget $widget, string $id): AbstractWidget {
-            $widget->setId($id);
 
-            return $widget;
-        };
-
-        /** @var WorkspaceLayout */
         return new WorkspaceLayout(
-            $tree ?? $id(new FileTreeWidget($rootDir), id: 'tree'),
-            $tabBar ?? $id(new TabBarWidget(), id: 'tabs'),
-            $breadcrumbs ?? $id(new BreadcrumbsWidget(), id: 'breadcrumbs'),
-            $editor ?? $id(new CodeEditorWidget(), id: 'editor'),
-            $menuBar ?? $id(new MenuBarWidget(), id: 'menu'),
-            $contextMenu ?? $id(new ContextMenu(), id: 'context-menu'),
-            $findBar ?? $id(new FindBarWidget($t), id: 'find-bar'),
-            $dockTabs ?? $id(new DockTabsWidget(), id: 'dock-tabs'),
-            $resultsPanel ?? $id(new ResultsPanelWidget(), id: 'results'),
-            $debugPanel ?? $id(new DebugPanelWidget(), id: 'debug'),
-            $terminalPanel ?? $id(new TerminalPanelWidget(), id: 'terminal'),
-            $statusBar ?? $id(new StatusBarWidget(), id: 'status'),
+            $tree ?? self::withId(new FileTreeWidget($rootDir), id: 'tree'),
+            $tabBar ?? self::withId(new TabBarWidget(), id: 'tabs'),
+            $breadcrumbs ?? self::withId(new BreadcrumbsWidget(), id: 'breadcrumbs'),
+            $editor ?? self::withId(new CodeEditorWidget(), id: 'editor'),
+            $menuBar ?? self::withId(new MenuBarWidget(), id: 'menu'),
+            $contextMenu ?? self::withId(new ContextMenu(), id: 'context-menu'),
+            $findBar ?? self::withId(new FindBarWidget($t), id: 'find-bar'),
+            $dockTabs ?? self::withId(new DockTabsWidget(), id: 'dock-tabs'),
+            $resultsPanel ?? self::withId(new ResultsPanelWidget(), id: 'results'),
+            $debugPanel ?? self::withId(new DebugPanelWidget(), id: 'debug'),
+            $terminalPanel ?? self::withId(new TerminalPanelWidget(), id: 'terminal'),
+            $statusBar ?? self::withId(new StatusBarWidget(), id: 'status'),
             Styles::dark(),
         );
+    }
+
+    /**
+     * Assign the production widget id and hand the SAME instance back — a
+     * closure loses the concrete type, and the constructor above needs it.
+     *
+     * @template T of AbstractWidget
+     *
+     * @param T $widget
+     *
+     * @return T
+     */
+    private static function withId(AbstractWidget $widget, string $id): AbstractWidget
+    {
+        $widget->setId($id);
+
+        return $widget;
     }
 }

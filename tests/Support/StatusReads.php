@@ -22,9 +22,10 @@ trait StatusReads
     /** The status bar's live flash message (model read via Probe — src carries no test-only getter), or '' when none. */
     private function flashText(StatusBarWidget $status): string
     {
+        /** @var array{text: string}|null $flash */
         $flash = Probe::get($status, 'flash');
 
-        return \is_array($flash) ? (string) $flash['text'] : '';
+        return \is_array($flash) ? $flash['text'] : '';
     }
 
     /** The composed status row, ANSI-stripped (rendered read). */

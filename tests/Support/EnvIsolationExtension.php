@@ -54,7 +54,6 @@ final class EnvIsolationExtension implements Extension
 
     public function bootstrap(Configuration $configuration, Facade $facade, ParameterCollection $parameters): void
     {
-        /** @var array<string, string> $env */
         $env = getenv();
         self::$pristineEnv = $env;
         /** @var array<string, string> $superglobal */
@@ -84,7 +83,6 @@ final class EnvIsolationExtension implements Extension
     /** Report what drifted, then hand the next test the worker's boot environment. Idempotent. */
     public static function restore(string $testId): void
     {
-        /** @var array<string, string> $current */
         $current = getenv();
         $leaked = self::drift($current, self::$pristineEnv);
 

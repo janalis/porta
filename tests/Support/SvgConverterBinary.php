@@ -13,11 +13,14 @@ use Porta\ImageViewer\SvgConverter;
  */
 trait SvgConverterBinary
 {
+    /** Satisfied by the host TestCase (PHPUnit's Assert::markTestSkipped). */
+    abstract public static function markTestSkipped(string $message = ''): never;
+
     /** Skip the running test when no SVG converter is installed. */
     private function skipWithoutSvgConverter(): void
     {
         if (null === SvgConverter::discover()) {
-            $this->markTestSkipped('no SVG converter (librsvg / ImageMagick) available');
+            self::markTestSkipped('no SVG converter (librsvg / ImageMagick) available');
         }
     }
 }

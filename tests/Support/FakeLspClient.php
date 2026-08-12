@@ -23,7 +23,7 @@ class FakeLspClient implements LspClientInterface
 
     /** @var list<array{method: string, params: mixed}> */
     public array $notifications = [];
-    /** @var list<array{method: string, params: mixed}> */
+    /** @var list<array{method: string, params: mixed, respond?: \Closure}> */
     public array $requests = [];
 
     /** @var array<string, callable> */

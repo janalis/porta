@@ -24,6 +24,21 @@ final class Probe
         throw new \LogicException(\sprintf('No property $%s on %s', $property, $object::class));
     }
 
+    /** Walk a chain of private properties where every hop must be an object (throws where it is not). */
+    public static function object(object $object, string ...$path): object
+    {
+        foreach ($path as $property) {
+            // @mago-expect analysis:mixed-assignment — get() is untyped by nature; the guard below narrows.
+            $value = self::get($object, $property);
+            if (!\is_object($value)) {
+                throw new \LogicException(\sprintf('$%s on %s is not an object', $property, $object::class));
+            }
+            $object = $value;
+        }
+
+        return $object;
+    }
+
     /** Write a private/protected property, walking parent classes like {@see get()}. */
     public static function set(object $object, string $property, mixed $value): void
     {

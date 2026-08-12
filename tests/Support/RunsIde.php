@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
+use Porta\GitPlugin\Process\ProcessLane;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\Services;
@@ -155,9 +156,9 @@ trait RunsIde
         // plugin keeps them apart so that "Cancel Remote Operation" can stop a
         // fetch without stopping the status poll; a barrier that waited on one
         // let a test walk out with the other still running.
-        $this->awaitLanes([
-            Probe::get(Probe::get(Probe::get($view, 'git'), 'runner'), 'lane'),
-            Probe::get(Probe::get(Probe::get($view, 'remoteCommands'), 'remote'), 'lane'),
-        ], $timeout);
+        $statusLane = Probe::object($view, 'git', 'runner', 'lane');
+        $remoteLane = Probe::object($view, 'remoteCommands', 'remote', 'lane');
+        \assert($statusLane instanceof ProcessLane && $remoteLane instanceof ProcessLane, description: 'the git view holds its two process lanes');
+        $this->awaitLanes([$statusLane, $remoteLane], $timeout);
     }
 }

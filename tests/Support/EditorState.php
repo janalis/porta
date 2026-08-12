@@ -32,7 +32,7 @@ final class EditorState
     /** The display toggles (line numbers, indent guides, git gutter, …). */
     public static function display(object $editor): EditorDisplayOptions
     {
-        $display = Probe::get($editor, 'display');
+        $display = Probe::object($editor, 'display');
         \assert($display instanceof EditorDisplayOptions);
 
         return $display;
@@ -41,7 +41,7 @@ final class EditorState
     /** The viewport scroll state. */
     public static function scroll(object $editor): EditorScroll
     {
-        $scroll = Probe::get($editor, 'scroll');
+        $scroll = Probe::object($editor, 'scroll');
         \assert($scroll instanceof EditorScroll);
 
         return $scroll;
@@ -50,7 +50,7 @@ final class EditorState
     /** The multi-cursor model. */
     public static function multiCaret(object $editor): MultiCaret
     {
-        $multiCaret = Probe::get($editor, 'multiCaret');
+        $multiCaret = Probe::object($editor, 'multiCaret');
         \assert($multiCaret instanceof MultiCaret);
 
         return $multiCaret;
@@ -58,7 +58,7 @@ final class EditorState
 
     private static function host(object $editor): OverlayHost
     {
-        $host = Probe::get($editor, 'overlayHost');
+        $host = Probe::object($editor, 'overlayHost');
         \assert($host instanceof OverlayHost);
 
         return $host;

@@ -15,6 +15,9 @@ use Symfony\Component\Tui\Tui;
  */
 trait FindModalReads
 {
+    /** Satisfied by {@see ScreenReads::frame()} on the composing class. */
+    abstract private function frame(Tui $tui): void;
+
     /**
      * Promote the open Find-in-Files modal to the results pane (Alt+Enter =
      * "Open in Find Window"), so a test can drive the persistent pane as before.
@@ -44,13 +47,21 @@ trait FindModalReads
         return $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 40));
     }
 
-    /** How many hardware-cursor markers the rendered rows carry (there must be exactly one). */
+    /**
+     * How many hardware-cursor markers the rendered rows carry (there must be exactly one).
+     *
+     * @param list<string> $rows
+     */
     private function caretMarkerCount(array $rows): int
     {
         return array_sum(array_map(static fn (string $l): int => substr_count($l, AnsiUtils::CURSOR_MARKER_PREFIX), $rows));
     }
 
-    /** The index of the row carrying the hardware-cursor marker, or null. */
+    /**
+     * The index of the row carrying the hardware-cursor marker, or null.
+     *
+     * @param list<string> $rows
+     */
     private function caretMarkerRow(array $rows): ?int
     {
         foreach ($rows as $i => $line) {

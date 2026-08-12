@@ -13,7 +13,11 @@ namespace Porta\Tests\Support;
  */
 final class PngFixture
 {
-    /** A $width × $height PNG filled with $rgb. */
+    /**
+     * A $width × $height PNG filled with $rgb.
+     *
+     * @param array{int, int, int} $rgb
+     */
     public static function bytes(int $width, int $height, array $rgb = [200, 40, 40]): string
     {
         $gd = imagecreatetruecolor($width, height: $height);

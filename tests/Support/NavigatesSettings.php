@@ -21,6 +21,9 @@ use Porta\Widget\Settings\SettingsNavWidget;
  */
 trait NavigatesSettings
 {
+    /** Satisfied by the host TestCase (PHPUnit's Assert::fail). */
+    abstract public static function fail(string $message = ''): never;
+
     private function selectSettingsSection(SettingsNavWidget $nav, string $id): void
     {
         // Rewind to the top; the caller may have left the selection anywhere.

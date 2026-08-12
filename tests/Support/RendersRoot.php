@@ -24,7 +24,7 @@ trait RendersRoot
     /** Record the attached panes' rects so bounds exist. */
     private function frame(int $columns = 100, int $rows = 24): void
     {
-        $root = new \ReflectionProperty(Tui::class, 'root')->getValue($this->tui);
+        $root = Probe::object($this->tui, 'root');
         \assert($root instanceof ContainerWidget);
         $this->renderer->render($root, $columns, $rows);
     }

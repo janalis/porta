@@ -23,7 +23,7 @@ final class TempProject
     public function __construct(array $files = [], string $prefix = 'porta-test-')
     {
         $this->fs = new Filesystem();
-        $this->dir = sys_get_temp_dir().'/'.$prefix.getmypid().'-'.bin2hex(random_bytes(4));
+        $this->dir = sys_get_temp_dir().'/'.$prefix.(int) getmypid().'-'.bin2hex(random_bytes(4));
         $this->fs->mkdir($this->dir);
         foreach ($files as $path => $content) {
             $this->write($path, $content);
@@ -53,7 +53,7 @@ final class TempProject
      */
     public function git(string ...$args): string
     {
-        $process = new Process([self::gitBinary(), '--no-optional-locks', '-C', $this->dir, ...$args], $this->dir, ['PATH' => PORTA_TEST_PRISTINE_PATH]);
+        $process = new Process([self::gitBinary(), '--no-optional-locks', '-C', $this->dir, ...$args], $this->dir, ['PATH' => (string) PORTA_TEST_PRISTINE_PATH]);
         $process->mustRun();
 
         return trim($process->getOutput());
@@ -86,7 +86,9 @@ final class TempProject
 
     private static function gitBinary(): string
     {
-        return self::$git ??= new ExecutableFinder()->find('git', null, explode(\PATH_SEPARATOR, PORTA_TEST_PRISTINE_PATH)) ?? throw new \RuntimeException('git not found on the pristine PATH');
+        return self::$git ??= new ExecutableFinder()->find('git', null, explode(\PATH_SEPARATOR, (string) PORTA_TEST_PRISTINE_PATH)) ?? throw new \RuntimeException(
+            'git not found on the pristine PATH',
+        );
     }
 
     public function __destruct()

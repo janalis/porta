@@ -80,7 +80,7 @@ final class FakeLayoutEngine implements DiagramEngine, LayoutEngine
         }
     }
 
-    public function render(string $dot, int $dpi, \Closure $onPng, \Closure $onError): void
+    public function render(string $source, int $dpi, \Closure $onPng, \Closure $onError): void
     {
         $this->renderDpis[] = $dpi;
         if ($this->deferred) {

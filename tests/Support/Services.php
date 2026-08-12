@@ -16,13 +16,12 @@ use Symfony\Component\DependencyInjection\ServiceLocator;
  * (Renderer/Tui/BidiTui/IdeConfig, `set()` by Ide's constructor and therefore
  * `get()`-able even though their definitions are private).
  *
- * The single reflection point into Ide (its private `$container`) is
- * deliberate and blessed: one seam here beats N test-only getters in src.
+ * The single reflection point into Ide (its private `$container`, read via
+ * {@see Probe}) is deliberate and blessed: one seam here beats N test-only
+ * getters in src.
  */
 final class Services
 {
-    private static ?\ReflectionProperty $container = null;
-
     /**
      * @template T of object
      *
@@ -32,11 +31,11 @@ final class Services
      */
     public static function resolve(Ide $ide, string $class): object
     {
-        self::$container ??= new \ReflectionProperty(Ide::class, 'container');
-        $container = self::$container->getValue($ide);
+        $container = Probe::object($ide, 'container');
         \assert($container instanceof ContainerInterface);
         $locator = $container->get('porta.ide');
         \assert($locator instanceof ServiceLocator);
+        /** @var object $service the locator serves objects; the assert below pins the class */
         $service = $locator->has($class) ? $locator->get($class) : $container->get($class);
         \assert($service instanceof $class);
 

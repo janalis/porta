@@ -29,7 +29,7 @@ final class Toasts
     public static function all(Ide $ide): array
     {
         $notifier = Services::resolve($ide, Notifier::class);
-        $center = Probe::get($notifier, 'toasts'); // src carries no test-only getter
+        $center = Probe::object($notifier, 'toasts'); // src carries no test-only getter
         \assert($center instanceof ToastCenter);
 
         return array_map(static fn ($t): string => $t->message, $center->toasts());

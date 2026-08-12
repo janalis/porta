@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
+use Porta\GitPlugin\Process\ProcessLane;
+
 /**
  * The git completion barrier, for any test that starts real git subprocesses.
  *
@@ -30,7 +32,10 @@ namespace Porta\Tests\Support;
  */
 trait AwaitsGit
 {
-    /** @param list<object> $lanes every ProcessLane whose emptiness means "done" */
+    /** Satisfied by {@see PumpsLoop::await()} on the composing class. */
+    abstract private function await(callable $done, float $timeout = 10.0, string $what = 'condition'): void;
+
+    /** @param list<ProcessLane> $lanes every lane whose emptiness means "done" */
     private function awaitLanes(array $lanes, float $timeout = 5.0): void
     {
         $this->await(
