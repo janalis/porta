@@ -6,8 +6,13 @@
          colors="true"
          failOnRisky="true"
          failOnWarning="true"
+         failOnDeprecation="true"
+         failOnPhpunitDeprecation="true"
+         failOnNotice="true"
+         failOnEmptyTestSuite="true"
          displayDetailsOnTestsThatTriggerWarnings="true"
          displayDetailsOnTestsThatTriggerNotices="true"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
 >
     <php>
         <!-- Keep tests away from the developer's real ~/.porta/plugins, while
