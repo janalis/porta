@@ -2284,11 +2284,11 @@
       </trans-unit>
       <trans-unit id="573">
         <source>Help: Page Down</source>
-        <target>Hilfe: Seite runter</target>
+        <target>Hilfe: Seite nach unten</target>
       </trans-unit>
       <trans-unit id="574">
         <source>Help: Page Up</source>
-        <target>Hilfe: Seite hoch</target>
+        <target>Hilfe: Seite nach oben</target>
       </trans-unit>
       <trans-unit id="575">
         <source>Help: Previous Link</source>
@@ -2340,7 +2340,7 @@
       </trans-unit>
       <trans-unit id="587">
         <source>Mixed (unstage changes)</source>
-        <target>Mixed (Änderungen aus dem Staging nehmen)</target>
+        <target>Mixed (Änderungen unstagen)</target>
       </trans-unit>
       <trans-unit id="588">
         <source>New Branch…</source>

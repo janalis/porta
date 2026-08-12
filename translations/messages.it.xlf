@@ -2228,7 +2228,7 @@
       </trans-unit>
       <trans-unit id="559">
         <source>Create Branch from Commit…</source>
-        <target>Crea branch dal commit…</target>
+        <target>Crea ramo dal commit…</target>
       </trans-unit>
       <trans-unit id="560">
         <source>Cycle Line Numbers</source>
@@ -2244,7 +2244,7 @@
       </trans-unit>
       <trans-unit id="563">
         <source>Delete Branch…</source>
-        <target>Elimina branch…</target>
+        <target>Elimina ramo…</target>
       </trans-unit>
       <trans-unit id="564">
         <source>Exported %count% results</source>
@@ -2340,11 +2340,11 @@
       </trans-unit>
       <trans-unit id="587">
         <source>Mixed (unstage changes)</source>
-        <target>Mixed (rimuovi le modifiche dallo staging)</target>
+        <target>Mixed (rimuovi le modifiche dallo stage)</target>
       </trans-unit>
       <trans-unit id="588">
         <source>New Branch…</source>
-        <target>Nuovo branch…</target>
+        <target>Nuovo ramo…</target>
       </trans-unit>
       <trans-unit id="589">
         <source>Next Dock Panel</source>
@@ -2404,7 +2404,7 @@
       </trans-unit>
       <trans-unit id="603">
         <source>Soft (keep staged changes)</source>
-        <target>Soft (mantieni le modifiche in staging)</target>
+        <target>Soft (mantieni le modifiche in stage)</target>
       </trans-unit>
       <trans-unit id="604">
         <source>Sort Lines</source>
@@ -2416,7 +2416,7 @@
       </trans-unit>
       <trans-unit id="606">
         <source>Switch Branch…</source>
-        <target>Cambia branch…</target>
+        <target>Cambia ramo…</target>
       </trans-unit>
       <trans-unit id="607">
         <source>This debug adapter cannot edit variables</source>

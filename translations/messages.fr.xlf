@@ -2244,7 +2244,7 @@
       </trans-unit>
       <trans-unit id="563">
         <source>Delete Branch…</source>
-        <target>Supprimer la branche…</target>
+        <target>Supprimer une branche…</target>
       </trans-unit>
       <trans-unit id="564">
         <source>Exported %count% results</source>
@@ -2388,11 +2388,11 @@
       </trans-unit>
       <trans-unit id="599">
         <source>Revert Commit</source>
-        <target>Annuler le commit</target>
+        <target>Révoquer le commit</target>
       </trans-unit>
       <trans-unit id="600">
         <source>Reverted %sha%</source>
-        <target>%sha% annulé</target>
+        <target>%sha% révoqué</target>
       </trans-unit>
       <trans-unit id="601">
         <source>SVG converter path</source>

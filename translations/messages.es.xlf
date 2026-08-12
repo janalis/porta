@@ -2284,11 +2284,11 @@
       </trans-unit>
       <trans-unit id="573">
         <source>Help: Page Down</source>
-        <target>Ayuda: página siguiente</target>
+        <target>Ayuda: avanzar página</target>
       </trans-unit>
       <trans-unit id="574">
         <source>Help: Page Up</source>
-        <target>Ayuda: página anterior</target>
+        <target>Ayuda: retroceder página</target>
       </trans-unit>
       <trans-unit id="575">
         <source>Help: Previous Link</source>
@@ -2340,7 +2340,7 @@
       </trans-unit>
       <trans-unit id="587">
         <source>Mixed (unstage changes)</source>
-        <target>Mixed (quitar cambios del stage)</target>
+        <target>Mixed (quitar los cambios de preparados)</target>
       </trans-unit>
       <trans-unit id="588">
         <source>New Branch…</source>

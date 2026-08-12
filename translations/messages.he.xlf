@@ -2340,7 +2340,7 @@
       </trans-unit>
       <trans-unit id="587">
         <source>Mixed (unstage changes)</source>
-        <target>Mixed (ביטול הבאת השינויים)</target>
+        <target>Mixed (הסרת השינויים מה-Stage)</target>
       </trans-unit>
       <trans-unit id="588">
         <source>New Branch…</source>
@@ -2404,7 +2404,7 @@
       </trans-unit>
       <trans-unit id="603">
         <source>Soft (keep staged changes)</source>
-        <target>Soft (שמירת השינויים שהובאו)</target>
+        <target>Soft (שמירת השינויים שהועלו)</target>
       </trans-unit>
       <trans-unit id="604">
         <source>Sort Lines</source>
