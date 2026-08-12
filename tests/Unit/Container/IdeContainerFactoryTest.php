@@ -55,9 +55,9 @@ final class IdeContainerFactoryTest extends TestCase
         }
     }
 
-    private function build(): object
+    private function build(?bool $trackSources = null): object
     {
-        return new IdeContainerFactory()->build('/tmp/porta-factory-test', IdeConfig::load('/tmp/porta-factory-test'), Ansi::Enabled);
+        return new IdeContainerFactory($trackSources)->build('/tmp/porta-factory-test', IdeConfig::load('/tmp/porta-factory-test'), Ansi::Enabled);
     }
 
     public function testColdCacheDumpsAndServesTheCompiledContainer(): void
@@ -113,6 +113,44 @@ final class IdeContainerFactoryTest extends TestCase
         $this->assertInstanceOf(ContainerBuilder::class, $container, 'the loaded class cannot be redeclared, so the fresh builder is served');
         clearstatcache();
         $this->assertGreaterThan(time() - 60, filemtime($file), 'the dump was rewritten for the next process');
+    }
+
+    public function testAPackagedInstallServesTheDumpWithoutSourceTracking(): void
+    {
+        // Without tracking, debug isFresh() would autoload and re-hash every
+        // tracked class (~480) on each warm boot; a packaged install trusts
+        // the cache key alone, so no resource metadata is even written.
+        $project = new TempProject();
+        putenv('PORTA_CACHE_DIR='.$project->dir);
+
+        $this->build(trackSources: false);
+        $this->assertCount(1, (array) glob($project->path('container-*.php')), 'the dump is written');
+        $this->assertSame([], (array) glob($project->path('container-*.php.meta*')), 'no resource metadata without tracking');
+
+        $files = glob($project->path('container-*.php'));
+        [$file] = $files ? $files : [''];
+        touch($file, mtime: 1); // older than every source file — stale ONLY under tracking
+
+        $second = $this->build(trackSources: false);
+
+        $this->assertInstanceOf(Container::class, $second);
+        $this->assertNotInstanceOf(ContainerBuilder::class, $second, 'the mtime-stale dump is still served: existence is freshness');
+        clearstatcache();
+        $this->assertSame(1, filemtime($file), 'the dump was not rewritten');
+    }
+
+    public function testAnExplicitTrackingChoiceBeatsTheDebugEnvOverride(): void
+    {
+        // PORTA_CONTAINER_CACHE=debug only steers the auto-detection; a
+        // constructed choice is a test seam and must win.
+        $project = new TempProject();
+        putenv('PORTA_CACHE_DIR='.$project->dir);
+        putenv('PORTA_CONTAINER_CACHE=debug');
+
+        $this->build(trackSources: false);
+
+        $this->assertCount(1, (array) glob($project->path('container-*.php')));
+        $this->assertSame([], (array) glob($project->path('container-*.php.meta*')), 'explicit no-tracking ignored the env override');
     }
 
     public function testAChangedPackageSetDumpsItsOwnContainer(): void

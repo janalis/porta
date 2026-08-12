@@ -25,17 +25,32 @@ use Symfony\Component\Filesystem\Exception\IOException;
  * and resolve inside the container via %env()% placeholders — the one runtime
  * channel a dumped container supports. That makes the compiled container
  * project-independent, so it is dumped once and reused across boots: the dump
- * lands in the user cache dir, guarded by a ConfigCache in debug mode whose
- * tracked resources (services.php, the src/ glob, per-class reflection) make
- * any wiring-relevant change rebuild it automatically. Concurrent cold-cache
- * writers are safe — ConfigCache writes atomically and last-writer-wins with
- * identical content.
+ * lands in the user cache dir. On a dev checkout the guarding ConfigCache runs
+ * in debug mode, whose tracked resources (services.php, the src/ glob,
+ * per-class reflection) make any wiring-relevant change rebuild the dump
+ * automatically. A packaged install skips the tracking: debug isFresh()
+ * autoloads and re-hashes every tracked class (~480) on each warm boot — the
+ * bulk of what dumping was meant to save — and under an install only the cache
+ * key's inputs (Porta version, PHP, the dependency set) can change the wiring.
+ * Concurrent cold-cache writers are safe — ConfigCache writes atomically and
+ * last-writer-wins with identical content.
  *
- * Escape hatches: PORTA_CONTAINER_CACHE=off forces an in-memory build, and
- * deleting the cache dir is always safe.
+ * Escape hatches: PORTA_CONTAINER_CACHE=off forces an in-memory build,
+ * PORTA_CONTAINER_CACHE=debug forces source tracking on a packaged install,
+ * and deleting the cache dir is always safe.
  */
 final class IdeContainerFactory
 {
+    /**
+     * @param bool|null $trackSources whether the ConfigCache tracks source freshness (debug mode);
+     *                                null decides from the install: a dev checkout (or
+     *                                PORTA_CONTAINER_CACHE=debug) tracks, a packaged install
+     *                                trusts the cache key alone
+     */
+    public function __construct(
+        private readonly ?bool $trackSources = null,
+    ) {}
+
     public function build(string $rootDir, IdeConfig $config, Ansi $ansi, ?string $lspCommand = null, LspMode $lsp = LspMode::Enabled, string $docsDir = ''): ContainerInterface
     {
         // Per-boot values go through $_ENV — the env processor reads $_ENV
@@ -87,7 +102,8 @@ final class IdeContainerFactory
         /** @var class-string<Container> $class The PhpDumper-generated class (declared by the require below). */
         $class = 'PortaCachedContainer_'.$hash;
 
-        $cache = new ConfigCache($file, true);
+        $trackSources = $this->trackSources ?? 'debug' === getenv('PORTA_CONTAINER_CACHE') || is_dir(\dirname(__DIR__, levels: 2).'/.git');
+        $cache = new ConfigCache($file, $trackSources);
         if (!$cache->isFresh()) {
             // Compiled for the dump: env placeholders stay unresolved so the
             // file is project-independent. A builder served directly instead
@@ -96,7 +112,7 @@ final class IdeContainerFactory
             try {
                 $dump = new PhpDumper($builder)->dump(['class' => $class]);
                 \assert(\is_string($dump), description: 'PhpDumper::dump returns a string unless as_files is requested');
-                $cache->write($dump, $builder->getResources());
+                $cache->write($dump, $trackSources ? $builder->getResources() : null);
                 self::pruneStaleGenerations($cacheDir, $installKey, $hash);
             } catch (IOException) {
                 return $this->compileFresh(CompileTarget::Direct); // unwritable cache dir: serve this boot uncached
