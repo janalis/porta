@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\Console;
 
+use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\ConsoleOutputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -51,21 +50,17 @@ final class CoverageCheckCommand extends Command
         'plugins/psalm/plugin.php',
     ];
 
-    protected function configure(): void
-    {
-        $this
-            ->addArgument('clover', InputArgument::OPTIONAL, 'Path to the Clover XML report', 'coverage/clover.xml')
-            ->addArgument('threshold', InputArgument::OPTIONAL, 'Required line-coverage percentage', '100')
-            ->addOption('only', mode: InputOption::VALUE_REQUIRED, description: 'Grade only files whose path contains this string')
-            ->addOption('require', mode: InputOption::VALUE_REQUIRED, description: 'Fail when a .php file under this directory is absent from the report');
-    }
-
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        /** @var string $cloverPath */
-        $cloverPath = $input->getArgument('clover');
-        /** @var string $thresholdArgument */
-        $thresholdArgument = $input->getArgument('threshold');
+    public function __invoke(
+        OutputInterface $output,
+        #[Argument('Path to the Clover XML report', name: 'clover')]
+        string $cloverPath = 'coverage/clover.xml',
+        #[Argument('Required line-coverage percentage', name: 'threshold')]
+        string $thresholdArgument = '100',
+        #[Option('Grade only files whose path contains this string')]
+        ?string $only = null,
+        #[Option('Fail when a .php file under this directory is absent from the report')]
+        ?string $require = null,
+    ): int {
         // A non-numeric threshold reads as 0.0 — the same tolerance the old
         // positional-argv script had, rather than a new failure mode.
         $threshold = is_numeric($thresholdArgument) ? (float) $thresholdArgument : 0.0;
@@ -89,8 +84,6 @@ final class CoverageCheckCommand extends Command
             return Command::INVALID;
         }
 
-        /** @var string|null $only */
-        $only = $input->getOption('only');
         $rows = $this->rows($xml, $only);
         $width = ([] === $rows ? 0 : max(array_map(static fn (array $row): int => \strlen($row['name']), $rows))) + 2;
         foreach ($rows as $row) {
@@ -127,8 +120,6 @@ final class CoverageCheckCommand extends Command
             return Command::FAILURE;
         }
 
-        /** @var string|null $require */
-        $require = $input->getOption('require');
         $absent = null === $require ? [] : $this->absentFrom($xml, $require);
         if ([] !== $absent) {
             $errors->writeln('');

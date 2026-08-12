@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Console;
 
+use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\ConsoleOutputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -316,16 +315,12 @@ final class ArchitectureCheckCommand extends Command
         $this->allowedSccs = $allowedSccs ?? self::ALLOWED_SCCS;
     }
 
-    protected function configure(): void
-    {
-        $this->addArgument('path', InputArgument::OPTIONAL, 'Project root to scan (defaults to the working directory)');
-    }
-
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        /** @var string|null $pathArgument */
-        $pathArgument = $input->getArgument('path');
-        $root = rtrim($pathArgument ?? (string) getcwd(), characters: '/');
+    public function __invoke(
+        OutputInterface $output,
+        #[Argument('Project root to scan (defaults to the working directory)')]
+        ?string $path = null,
+    ): int {
+        $root = rtrim($path ?? (string) getcwd(), characters: '/');
 
         [$nsEdges, $classEdges] = $this->graphs([$root.'/src' => 'Porta\\', ...$this->pluginRoots($root.'/plugins')]);
         $current = array_keys($nsEdges);

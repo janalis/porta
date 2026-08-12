@@ -6,9 +6,8 @@ namespace Porta\Console;
 
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
@@ -68,21 +67,15 @@ final class ContainerDebugCommand extends Command
         $this->configDir = $configDir ?? \dirname(__DIR__, levels: 2).'/config';
     }
 
-    protected function configure(): void
-    {
-        $this
-            ->addOption('loaded', null, InputOption::VALUE_NONE, 'Show the pre-compile definitions instead of the compiled ones')
-            ->addOption('aliases', null, InputOption::VALUE_NONE, 'List interface → id aliases (always pre-compile)')
-            ->addOption('tag', null, InputOption::VALUE_REQUIRED, 'List the services carrying this tag');
-    }
-
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        $loadedView = true === $input->getOption('loaded');
-        $aliasView = true === $input->getOption('aliases');
-        /** @var string|null $tagView */
-        $tagView = $input->getOption('tag');
-
+    public function __invoke(
+        OutputInterface $output,
+        #[Option('Show the pre-compile definitions instead of the compiled ones', name: 'loaded')]
+        bool $loadedView = false,
+        #[Option('List interface → id aliases (always pre-compile)', name: 'aliases')]
+        bool $aliasView = false,
+        #[Option('List the services carrying this tag', name: 'tag')]
+        ?string $tagView = null,
+    ): int {
         // Non-destructive: only the keys a caller has not already set.
         $_ENV += ['PORTA_ROOT_DIR' => (string) getcwd()] + self::ENV_DEFAULTS;
 
