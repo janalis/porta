@@ -51,12 +51,8 @@
         <target>%count% קבצים</target>
       </trans-unit>
       <trans-unit id="14">
-        <source>%count% unsaved tab kept open</source>
-        <target>לשונית אחת שלא נשמרה נשארה פתוחה (%count%)</target>
-      </trans-unit>
-      <trans-unit id="15">
-        <source>%count% unsaved tabs kept open</source>
-        <target>%count% לשוניות שלא נשמרו נשארו פתוחות</target>
+        <source>%count% unsaved tab kept open|%count% unsaved tabs kept open</source>
+        <target>לשונית אחת שלא נשמרה נשארה פתוחה (%count%)|%count% לשוניות שלא נשמרו נשארו פתוחות</target>
       </trans-unit>
       <trans-unit id="16">
         <source>%file% changed on disk</source>
@@ -75,20 +71,12 @@
         <target>קובץ אחד</target>
       </trans-unit>
       <trans-unit id="20">
-        <source>Applied &quot;%title%&quot; to %count% file</source>
-        <target>‏&quot;%title%&quot; הוחל על %count% קובץ</target>
-      </trans-unit>
-      <trans-unit id="21">
-        <source>Applied &quot;%title%&quot; to %count% files</source>
-        <target>‏&quot;%title%&quot; הוחל על %count% קבצים</target>
+        <source>Applied &quot;%title%&quot; to %count% file|Applied &quot;%title%&quot; to %count% files</source>
+        <target>‏&quot;%title%&quot; הוחל על %count% קובץ|‏&quot;%title%&quot; הוחל על %count% קבצים</target>
       </trans-unit>
       <trans-unit id="22">
-        <source>Applied server edit to %count% file</source>
-        <target>עריכת השרת הוחלה על %count% קובץ</target>
-      </trans-unit>
-      <trans-unit id="23">
-        <source>Applied server edit to %count% files</source>
-        <target>עריכת השרת הוחלה על %count% קבצים</target>
+        <source>Applied server edit to %count% file|Applied server edit to %count% files</source>
+        <target>עריכת השרת הוחלה על %count% קובץ|עריכת השרת הוחלה על %count% קבצים</target>
       </trans-unit>
       <trans-unit id="24">
         <source>Cancel</source>
@@ -431,12 +419,8 @@
         <target>שנה שם ל</target>
       </trans-unit>
       <trans-unit id="109">
-        <source>Renamed in %count% file</source>
-        <target>השם שונה ב-%count% קובץ</target>
-      </trans-unit>
-      <trans-unit id="110">
-        <source>Renamed in %count% files</source>
-        <target>השם שונה ב-%count% קבצים</target>
+        <source>Renamed in %count% file|Renamed in %count% files</source>
+        <target>השם שונה ב-%count% קובץ|השם שונה ב-%count% קבצים</target>
       </trans-unit>
       <trans-unit id="111">
         <source>Renamed to %name%</source>
@@ -475,12 +459,8 @@
         <target>השמירה נכשלה: %file%</target>
       </trans-unit>
       <trans-unit id="120">
-        <source>Saved %count% file</source>
-        <target>נשמר %count% קובץ</target>
-      </trans-unit>
-      <trans-unit id="121">
-        <source>Saved %count% files</source>
-        <target>נשמרו %count% קבצים</target>
+        <source>Saved %count% file|Saved %count% files</source>
+        <target>נשמר %count% קובץ|נשמרו %count% קבצים</target>
       </trans-unit>
       <trans-unit id="122">
         <source>Saved %file%</source>
@@ -2449,6 +2429,14 @@
       <trans-unit id="614">
         <source>the graph bitmap could not be decoded</source>
         <target>לא ניתן לפענח את מפת הסיביות של הגרף</target>
+      </trans-unit>
+      <trans-unit id="615">
+        <source>%tool%: no %nouns% in %file%</source>
+        <target>%tool%: אין %noun% ב-%file%</target>
+      </trans-unit>
+      <trans-unit id="616">
+        <source>%tool%: %count% %noun% in %file%|%tool%: %count% %nouns% in %file%</source>
+        <target>%tool%: %count% %noun% ב-%file%|%tool%: %count% %nouns% ב-%file%</target>
       </trans-unit>
     </body>
   </file>

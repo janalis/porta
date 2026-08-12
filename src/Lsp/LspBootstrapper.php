@@ -51,9 +51,7 @@ final class LspBootstrapper
                 $count = $this->workspaceEditor->applyWorkspaceEdit($edit);
                 if ($count > 0) {
                     $this->notifier->flash(
-                        1 === $count
-                            ? $this->translator->trans('Applied server edit to %count% file', ['%count%' => $count])
-                            : $this->translator->trans('Applied server edit to %count% files', ['%count%' => $count]),
+                        $this->translator->trans('Applied server edit to %count% file|Applied server edit to %count% files', ['%count%' => $count]),
                     );
                 }
 

@@ -402,9 +402,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
 
         if ($dirtyKept > 0) {
             $this->notifier->flash(
-                1 === $dirtyKept
-                    ? $this->translator->trans('%count% unsaved tab kept open', ['%count%' => $dirtyKept])
-                    : $this->translator->trans('%count% unsaved tabs kept open', ['%count%' => $dirtyKept]),
+                $this->translator->trans('%count% unsaved tab kept open|%count% unsaved tabs kept open', ['%count%' => $dirtyKept]),
             );
         }
         $this->tui->requestRender();
@@ -512,11 +510,11 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
 
             ++$saved;
         }
-        $this->notifier->flash(match (true) {
-            0 === $saved => $this->translator->trans('Nothing to save'),
-            1 === $saved => $this->translator->trans('Saved %count% file', ['%count%' => $saved]),
-            default => $this->translator->trans('Saved %count% files', ['%count%' => $saved]),
-        });
+        $this->notifier->flash(
+            0 === $saved
+                ? $this->translator->trans('Nothing to save')
+                : $this->translator->trans('Saved %count% file|Saved %count% files', ['%count%' => $saved]),
+        );
     }
 
     public function saveBuffer(Buffer $buffer): bool

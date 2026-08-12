@@ -186,14 +186,27 @@ abstract class AbstractToolPlugin extends AbstractPlugin
         $api->flash($this->name().': exited with code '.$code, 4.0);
     }
 
-    /** '<n> issues' / '1 issue' / 'no issues' — the count report the analysis tools share. */
+    /**
+     * '<n> issues' / '1 issue' / 'no issues' — the count report the analysis
+     * tools share. The sentence is translated; %noun%/%nouns% arrive in English
+     * from {@see AbstractAnalyzerPlugin::noun()}, because plugins name their
+     * own diagnostics.
+     */
     protected function flashCount(PluginApi $api, int $count, string $noun, string $file): void
     {
-        $api->flash(match (true) {
-            0 === $count => \sprintf('%s: no %ss in %s', $this->name(), $noun, basename($file)),
-            1 === $count => \sprintf('%s: 1 %s in %s', $this->name(), $noun, basename($file)),
-            default => \sprintf('%s: %d %ss in %s', $this->name(), $count, $noun, basename($file)),
-        }, 4.0);
+        $params = [
+            '%tool%' => $this->name(),
+            '%count%' => $count,
+            '%noun%' => $noun,
+            '%nouns%' => $noun.'s',
+            '%file%' => basename($file),
+        ];
+        $api->flash(
+            0 === $count
+                ? $api->trans('%tool%: no %nouns% in %file%', $params)
+                : $api->trans('%tool%: %count% %noun% in %file%|%tool%: %count% %nouns% in %file%', $params),
+            4.0,
+        );
     }
 
     private function binaryHint(): string

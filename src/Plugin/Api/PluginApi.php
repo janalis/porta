@@ -1033,7 +1033,7 @@ final class PluginApi
      * know passes through unchanged, which is what a third-party plugin's own
      * copy will do.
      *
-     * @param array<string, string> $params placeholders, e.g. `['%name%' => $file]`
+     * @param array<string, string|int> $params placeholders, e.g. `['%name%' => $file]`
      */
     public function trans(string $id, array $params = []): string
     {

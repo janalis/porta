@@ -83,11 +83,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
                 }
                 /** @var array<string, mixed> $result */
                 $fileCount = $this->workspaceEditor->applyWorkspaceEdit($result);
-                $this->flash(
-                    1 === $fileCount
-                        ? $this->trans('Renamed in %count% file', ['%count%' => $fileCount])
-                        : $this->trans('Renamed in %count% files', ['%count%' => $fileCount]),
-                );
+                $this->flash($this->trans('Renamed in %count% file|Renamed in %count% files', ['%count%' => $fileCount]));
             },
         );
     }
@@ -168,9 +164,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
             $count = $this->workspaceEditor->applyWorkspaceEdit($edit);
             $title = (string) ($action['title'] ?? 'fix');
             $this->flash(
-                1 === $count
-                    ? $this->trans('Applied "%title%" to %count% file', ['%title%' => $title, '%count%' => $count])
-                    : $this->trans('Applied "%title%" to %count% files', ['%title%' => $title, '%count%' => $count]),
+                $this->trans('Applied "%title%" to %count% file|Applied "%title%" to %count% files', ['%title%' => $title, '%count%' => $count]),
             );
             $applied = true;
         }

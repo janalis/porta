@@ -51,11 +51,7 @@
         <target>%count% 件のファイルに</target>
       </trans-unit>
       <trans-unit id="14">
-        <source>%count% unsaved tab kept open</source>
-        <target>未保存のタブ %count% 件を開いたままにしました</target>
-      </trans-unit>
-      <trans-unit id="15">
-        <source>%count% unsaved tabs kept open</source>
+        <source>%count% unsaved tab kept open|%count% unsaved tabs kept open</source>
         <target>未保存のタブ %count% 件を開いたままにしました</target>
       </trans-unit>
       <trans-unit id="16">
@@ -75,19 +71,11 @@
         <target>1 件のファイルに</target>
       </trans-unit>
       <trans-unit id="20">
-        <source>Applied &quot;%title%&quot; to %count% file</source>
-        <target>「%title%」を %count% 件のファイルに適用しました</target>
-      </trans-unit>
-      <trans-unit id="21">
-        <source>Applied &quot;%title%&quot; to %count% files</source>
+        <source>Applied &quot;%title%&quot; to %count% file|Applied &quot;%title%&quot; to %count% files</source>
         <target>「%title%」を %count% 件のファイルに適用しました</target>
       </trans-unit>
       <trans-unit id="22">
-        <source>Applied server edit to %count% file</source>
-        <target>サーバー編集を %count% 件のファイルに適用しました</target>
-      </trans-unit>
-      <trans-unit id="23">
-        <source>Applied server edit to %count% files</source>
+        <source>Applied server edit to %count% file|Applied server edit to %count% files</source>
         <target>サーバー編集を %count% 件のファイルに適用しました</target>
       </trans-unit>
       <trans-unit id="24">
@@ -431,11 +419,7 @@
         <target>名前の変更先</target>
       </trans-unit>
       <trans-unit id="109">
-        <source>Renamed in %count% file</source>
-        <target>%count% 件のファイルで名前を変更しました</target>
-      </trans-unit>
-      <trans-unit id="110">
-        <source>Renamed in %count% files</source>
+        <source>Renamed in %count% file|Renamed in %count% files</source>
         <target>%count% 件のファイルで名前を変更しました</target>
       </trans-unit>
       <trans-unit id="111">
@@ -475,11 +459,7 @@
         <target>保存に失敗しました: %file%</target>
       </trans-unit>
       <trans-unit id="120">
-        <source>Saved %count% file</source>
-        <target>%count% 件のファイルを保存しました</target>
-      </trans-unit>
-      <trans-unit id="121">
-        <source>Saved %count% files</source>
+        <source>Saved %count% file|Saved %count% files</source>
         <target>%count% 件のファイルを保存しました</target>
       </trans-unit>
       <trans-unit id="122">
@@ -2449,6 +2429,14 @@
       <trans-unit id="614">
         <source>the graph bitmap could not be decoded</source>
         <target>グラフのビットマップをデコードできませんでした</target>
+      </trans-unit>
+      <trans-unit id="615">
+        <source>%tool%: no %nouns% in %file%</source>
+        <target>%tool%: %file% に%noun%はありません</target>
+      </trans-unit>
+      <trans-unit id="616">
+        <source>%tool%: %count% %noun% in %file%|%tool%: %count% %nouns% in %file%</source>
+        <target>%tool%: %file% に %count% 件の%noun%</target>
       </trans-unit>
     </body>
   </file>

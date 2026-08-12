@@ -51,12 +51,8 @@
         <target>%count% file hanno</target>
       </trans-unit>
       <trans-unit id="14">
-        <source>%count% unsaved tab kept open</source>
-        <target>%count% scheda non salvata mantenuta aperta</target>
-      </trans-unit>
-      <trans-unit id="15">
-        <source>%count% unsaved tabs kept open</source>
-        <target>%count% schede non salvate mantenute aperte</target>
+        <source>%count% unsaved tab kept open|%count% unsaved tabs kept open</source>
+        <target>%count% scheda non salvata mantenuta aperta|%count% schede non salvate mantenute aperte</target>
       </trans-unit>
       <trans-unit id="16">
         <source>%file% changed on disk</source>
@@ -75,19 +71,11 @@
         <target>1 file ha</target>
       </trans-unit>
       <trans-unit id="20">
-        <source>Applied &quot;%title%&quot; to %count% file</source>
-        <target>&quot;%title%&quot; applicato a %count% file</target>
-      </trans-unit>
-      <trans-unit id="21">
-        <source>Applied &quot;%title%&quot; to %count% files</source>
+        <source>Applied &quot;%title%&quot; to %count% file|Applied &quot;%title%&quot; to %count% files</source>
         <target>&quot;%title%&quot; applicato a %count% file</target>
       </trans-unit>
       <trans-unit id="22">
-        <source>Applied server edit to %count% file</source>
-        <target>Modifica del server applicata a %count% file</target>
-      </trans-unit>
-      <trans-unit id="23">
-        <source>Applied server edit to %count% files</source>
+        <source>Applied server edit to %count% file|Applied server edit to %count% files</source>
         <target>Modifica del server applicata a %count% file</target>
       </trans-unit>
       <trans-unit id="24">
@@ -431,11 +419,7 @@
         <target>Rinomina in</target>
       </trans-unit>
       <trans-unit id="109">
-        <source>Renamed in %count% file</source>
-        <target>Rinominato in %count% file</target>
-      </trans-unit>
-      <trans-unit id="110">
-        <source>Renamed in %count% files</source>
+        <source>Renamed in %count% file|Renamed in %count% files</source>
         <target>Rinominato in %count% file</target>
       </trans-unit>
       <trans-unit id="111">
@@ -475,12 +459,8 @@
         <target>Salvataggio non riuscito: %file%</target>
       </trans-unit>
       <trans-unit id="120">
-        <source>Saved %count% file</source>
-        <target>%count% file salvato</target>
-      </trans-unit>
-      <trans-unit id="121">
-        <source>Saved %count% files</source>
-        <target>%count% file salvati</target>
+        <source>Saved %count% file|Saved %count% files</source>
+        <target>%count% file salvato|%count% file salvati</target>
       </trans-unit>
       <trans-unit id="122">
         <source>Saved %file%</source>
@@ -2449,6 +2429,14 @@
       <trans-unit id="614">
         <source>the graph bitmap could not be decoded</source>
         <target>impossibile decodificare la bitmap del grafo</target>
+      </trans-unit>
+      <trans-unit id="615">
+        <source>%tool%: no %nouns% in %file%</source>
+        <target>%tool%: nessun %noun% in %file%</target>
+      </trans-unit>
+      <trans-unit id="616">
+        <source>%tool%: %count% %noun% in %file%|%tool%: %count% %nouns% in %file%</source>
+        <target>%tool%: %count% %noun% in %file%|%tool%: %count% %nouns% in %file%</target>
       </trans-unit>
     </body>
   </file>
