@@ -182,48 +182,12 @@ final class ServerLocatorTest extends TestCase
         $this->assertSame('ls', Probe::invokeStatic(ServerLocator::class, 'server', Probe::invokeStatic(ServerLocator::class, 'split', 'node /x/ls.js --stdio'))['name']);
     }
 
-    /** @return list<string> */
-    private static function split(string $command): array
-    {
-        /** @var list<string> $parts */
-        $parts = Probe::invokeStatic(ServerLocator::class, 'split', $command);
-
-        return $parts;
-    }
-
-    public function testSplitKeepsPlainCommandsAsBefore(): void
-    {
-        $this->assertSame(['php', 'vendor/bin/lsp', '--stdio'], self::split('  php   vendor/bin/lsp  --stdio '));
-        $this->assertSame([], self::split('   '));
-        $this->assertSame([], self::split(''));
-    }
-
     public function testSplitHonorsQuotedArgumentsWithSpaces(): void
     {
-        // The whole reason the tokenizer exists: a server under a path with
-        // spaces used to be broken into two argv entries and never spawn.
-        $this->assertSame(['php', '/path with spaces/lsp.php'], self::split('php "/path with spaces/lsp.php"'));
-        $this->assertSame(['php', '/path with spaces/lsp.php'], self::split("php '/path with spaces/lsp.php'"));
-    }
-
-    public function testSplitJoinsAdjacentQuotedAndBareRunsIntoOneToken(): void
-    {
-        $this->assertSame(['ab', 'c d'], self::split('"a"\'b\' c" d"'));
-        $this->assertSame(['--root=/a b/c'], self::split('--root="/a b/c"'));
-    }
-
-    public function testSplitUnescapesQuoteAndBackslashInsideDoubleQuotes(): void
-    {
-        $this->assertSame(['say "hi"', 'a\\b'], self::split('"say \\"hi\\"" "a\\\\b"'));
-        // Inside single quotes and before other characters, a backslash is literal.
-        $this->assertSame(['a\\nb', '\\x'], self::split("'a\\nb' \"\\x\""));
-    }
-
-    public function testSplitDegradesOnUnterminatedQuotesAndKeepsEmptyQuotedArguments(): void
-    {
-        // A config seam degrades instead of throwing: the open quote runs out.
-        $this->assertSame(['php', 'a b'], self::split('php "a b'));
-        // A deliberately quoted empty argument survives as one argv entry.
-        $this->assertSame(['lsp', ''], self::split("lsp ''"));
+        // The tokenizer itself is Support\Argv (ArgvTest holds its cases);
+        // this pins that the LSP seam actually routes through it.
+        /** @var list<string> $parts */
+        $parts = Probe::invokeStatic(ServerLocator::class, 'split', 'php "/path with spaces/lsp.php"');
+        $this->assertSame(['php', '/path with spaces/lsp.php'], $parts);
     }
 }

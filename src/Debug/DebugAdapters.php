@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Debug;
 
+use Porta\Support\Argv;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
@@ -89,11 +90,14 @@ final class DebugAdapters
         $this->configs[$languageId] = new DebugConfig(self::split($adapterCommand), $launch, $runCommandArgv);
     }
 
-    /** @return list<string> */
+    /**
+     * Tokenize a configured adapter command with the shared quote-aware
+     * tokenizer, so an adapter path containing spaces survives.
+     *
+     * @return list<string>
+     */
     private static function split(string $command): array
     {
-        $parts = preg_split('/\s+/', trim($command));
-
-        return array_values(array_filter(false === $parts ? [] : $parts));
+        return Argv::split($command);
     }
 }

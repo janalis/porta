@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Run;
 
+use Porta\Support\Argv;
 use Porta\Support\JsonFile;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
@@ -69,9 +70,11 @@ final readonly class RunConfigs
         if ('' === $command) {
             return [\PHP_BINARY];
         }
-        $parts = preg_split('/\s+/', $command);
+        // The shared quote-aware tokenizer: an interpreter under a path with
+        // spaces survives, exactly as it does for the LSP and debug seams.
+        $parts = Argv::split($command);
 
-        return false === $parts ? [\PHP_BINARY] : $parts;
+        return [] === $parts ? [\PHP_BINARY] : $parts;
     }
 
     /**

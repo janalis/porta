@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Support\Argv;
 use Porta\Support\JsonFile;
 use Symfony\Component\Process\ExecutableFinder;
 
@@ -184,56 +185,14 @@ final class ServerLocator
     }
 
     /**
-     * Tokenize a configured command string into argv, honoring quotes so a
-     * server path containing spaces survives: '…' is literal, "…" allows the
-     * \" and \\ escapes, and adjacent quoted/bare runs join into one token. An
-     * unterminated quote runs to the end of the string — a config seam
-     * degrades, it never throws.
+     * Tokenize a configured server command with the shared quote-aware
+     * tokenizer, so a server path containing spaces survives.
      *
      * @return list<string>
      */
     private static function split(string $command): array
     {
-        $parts = [];
-        $current = '';
-        $inToken = false; // tracked apart from $current, so a quoted '' still counts as an argument
-        $quote = null;
-        $length = \strlen($command);
-        for ($i = 0; $i < $length; ++$i) {
-            $char = $command[$i];
-            if (null !== $quote) {
-                if ('"' === $quote && '\\' === $char && ($i + 1) < $length && ('"' === $command[$i + 1] || '\\' === $command[$i + 1])) {
-                    $current .= $command[++$i];
-                    continue;
-                }
-                if ($char === $quote) {
-                    $quote = null;
-                    continue;
-                }
-                $current .= $char;
-                continue;
-            }
-            if (1 === preg_match('/\s/', $char)) {
-                if ($inToken) {
-                    $parts[] = $current;
-                    $current = '';
-                    $inToken = false;
-                }
-                continue;
-            }
-            if ("'" === $char || '"' === $char) {
-                $quote = $char;
-                $inToken = true;
-                continue;
-            }
-            $current .= $char;
-            $inToken = true;
-        }
-        if ($inToken) {
-            $parts[] = $current;
-        }
-
-        return $parts;
+        return Argv::split($command);
     }
 
     private static function which(string $binary): ?string

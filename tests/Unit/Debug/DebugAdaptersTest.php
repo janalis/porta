@@ -96,4 +96,13 @@ final class DebugAdaptersTest extends TestCase
         $this->assertSame(['x'], $adapters->adapterFor('php')?->adapterArgv);
         $this->assertNull($adapters->adapterFor('rust'));
     }
+
+    public function testAQuotedAdapterPathWithSpacesSurvivesTokenization(): void
+    {
+        // The shared Argv tokenizer: the same space-in-path bug fixed for the
+        // LSP seam must not live on in the adapter seam.
+        $adapters = new DebugAdapters(['php' => ['debug' => ['adapter' => 'node "/Users/x/Application Support/phpDebug.js"']]]);
+
+        $this->assertSame(['node', '/Users/x/Application Support/phpDebug.js'], $adapters->adapterFor('php')?->adapterArgv);
+    }
 }

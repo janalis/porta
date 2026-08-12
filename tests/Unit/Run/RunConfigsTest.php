@@ -103,4 +103,16 @@ final class RunConfigsTest extends TestCase
         $blank = new RunConfigs($project->dir, ['php' => ['runCommand' => '   ']])->discover($current);
         $this->assertSame([\PHP_BINARY, $current], $blank[0]['command']);
     }
+
+    public function testAQuotedInterpreterPathWithSpacesSurvivesTokenization(): void
+    {
+        // The shared Argv tokenizer: the same space-in-path bug fixed for the
+        // LSP seam must not live on in the run seam.
+        $project = new TempProject();
+        $current = $project->write('src/Foo.php', "<?php\n");
+
+        $tasks = new RunConfigs($project->dir, ['php' => ['runCommand' => '"/opt/my php/bin/php" -d memory_limit=1G']])->discover($current);
+
+        $this->assertSame(['/opt/my php/bin/php', '-d', 'memory_limit=1G', $current], $tasks[0]['command']);
+    }
 }
