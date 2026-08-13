@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\UndoHistory;
+use Symfony\Component\Clock\MockClock;
 
 final class UndoHistoryTest extends TestCase
 {
@@ -34,15 +35,13 @@ final class UndoHistoryTest extends TestCase
 
     public function testSameKeyEditsCoalesceWithinOneSecond(): void
     {
-        $t = 1000.0;
-        $h = new UndoHistory(static function () use (&$t): float {
-            return $t;
-        });
+        $clock = new MockClock('@1000.000000');
+        $h = new UndoHistory($clock);
 
         $h->push($this->snap(1), 'insert'); // stored
-        $t = 1000.5;
+        $clock->sleep(0.5);
         $h->push($this->snap(2), 'insert'); // coalesced — not stored
-        $t = 1002.0;
+        $clock->sleep(1.5);
         $h->push($this->snap(3), 'insert'); // >1s later — stored
 
         $this->assertSame($this->snap(3), $h->undo($this->snap(9)));
@@ -52,10 +51,7 @@ final class UndoHistoryTest extends TestCase
 
     public function testDifferentKeyDoesNotCoalesce(): void
     {
-        $t = 1000.0;
-        $h = new UndoHistory(static function () use (&$t): float {
-            return $t;
-        });
+        $h = new UndoHistory(new MockClock('@1000.000000'));
 
         $h->push($this->snap(1), 'a');
         $h->push($this->snap(2), 'b'); // different key → stored even within 1s
@@ -66,7 +62,7 @@ final class UndoHistoryTest extends TestCase
 
     public function testNullKeyNeverCoalesces(): void
     {
-        $h = new UndoHistory(static fn (): float => 5.0);
+        $h = new UndoHistory(new MockClock('@5.000000'));
         $h->push($this->snap(1), null);
         $h->push($this->snap(2), null);
 
@@ -103,10 +99,7 @@ final class UndoHistoryTest extends TestCase
 
     public function testCheckpointBreaksCoalescing(): void
     {
-        $t = 5.0;
-        $h = new UndoHistory(static function () use (&$t): float {
-            return $t;
-        });
+        $h = new UndoHistory(new MockClock('@5.000000'));
         $h->push($this->snap(1), 'type'); // stored
         $h->checkpoint(); // e.g. a save — the next same-key edit must not coalesce
         $h->push($this->snap(2), 'type'); // stored (not merged)
@@ -147,13 +140,11 @@ final class UndoHistoryTest extends TestCase
 
     public function testCapEvictsOldestBeyondLimit(): void
     {
-        $t = 0.0;
-        $h = new UndoHistory(static function () use (&$t): float {
-            return $t;
-        });
+        $clock = new MockClock('@0.000000');
+        $h = new UndoHistory($clock);
 
         for ($i = 0; $i < 250; ++$i) {
-            $t += 2.0; // spaced out so nothing coalesces
+            $clock->sleep(2.0); // spaced out so nothing coalesces
             $h->push($this->snap($i), 'k');
         }
 

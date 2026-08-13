@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
-use function Symfony\Component\Clock\now;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\Clock\NativeClock;
 
 /**
  * Undo/redo history for a {@see Document}: the undo and redo snapshot stacks,
@@ -35,23 +36,9 @@ final class UndoHistory
     private int $compoundDepth = 0;
     private bool $compoundSnapshotted = false;
 
-    /** @var \Closure(): float */
-    private \Closure $clock;
-
-    /** @param (\Closure(): float)|null $clock defaults to the symfony/clock wall clock */
-    public function __construct(?\Closure $clock = null)
-    {
-        $this->clock = $clock ?? self::wallClock(...);
-    }
-
-    /** Current wall-clock instant in float seconds, via symfony/clock's global clock. */
-    private static function wallClock(): float
-    {
-        /** @var numeric-string $seconds */
-        $seconds = now()->format('U.u');
-
-        return (float) $seconds;
-    }
+    public function __construct(
+        private readonly ClockInterface $clock = new NativeClock(),
+    ) {}
 
     /**
      * Begin an atomic edit group: every push until the matching endCompound()
@@ -111,7 +98,7 @@ final class UndoHistory
             return;
         }
 
-        $now = ($this->clock)();
+        $now = (float) $this->clock->now()->format('U.u');
         if (null !== $coalesceKey && $coalesceKey === $this->lastEditKind && ($now - $this->lastEditAt) < 1.0 && [] !== $this->undoStack) {
             $this->lastEditAt = $now;
             $this->redoStack = [];
