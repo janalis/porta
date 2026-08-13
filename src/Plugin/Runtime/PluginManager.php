@@ -101,14 +101,15 @@ final class PluginManager implements
     private array $pluginListeners = [];
     /** Watermark into $commands: how many are already in the registry. */
     private int $registered = 0;
-    /** @var array<string, true> plugins whose menu-enabled closure already reported a throw */
-    private array $reportedWhens = [];
-    /** @var array<string, true> plugins whose status-segment closure has already thrown — this runs every render */
-    private array $reportedSegments = [];
-    /** @var array<string, true> plugins whose highlighting backend already reported a throw */
-    private array $reportedHighlighters = [];
-    /** @var array<string, true> plugins whose viewer claim already reported a throw */
-    private array $reportedViewers = [];
+    /**
+     * Plugins whose closure on a given channel (menu-enabled, status segment,
+     * highlighter, viewer claim) already reported a throw. Those closures run
+     * per render or per file open, so a broken plugin reports once per
+     * channel, not once per frame.
+     *
+     * @var array<string, array<string, true>> channel => plugin => true
+     */
+    private array $reported = [];
 
     private ?PluginRuntime $runtime = null;
 
@@ -307,7 +308,9 @@ final class PluginManager implements
         $this->debugAdapters = array_values(array_filter($this->debugAdapters, static fn (array $adapter): bool => $name !== $adapter['plugin']));
         $this->registered = \count($this->commands);
 
-        unset($this->reportedWhens[$name], $this->reportedHighlighters[$name], $this->reportedViewers[$name], $this->reportedSegments[$name]);
+        foreach (array_keys($this->reported) as $channel) {
+            unset($this->reported[$channel][$name]);
+        }
         $registry->remove($removed);
         foreach ($this->pluginListeners[$name] ?? [] as [$eventClass, $wrapped]) {
             $this->events->removeListener($eventClass, $wrapped);
@@ -457,7 +460,7 @@ final class PluginManager implements
                     try {
                         return $languages();
                     } catch (\Throwable $error) {
-                        $this->reportHighlightFailure($plugin, $error);
+                        $this->reportOnce('highlighter', $plugin, $error);
 
                         return [];
                     }
@@ -466,7 +469,7 @@ final class PluginManager implements
                     try {
                         $highlight($content, $language, $deliver);
                     } catch (\Throwable $error) {
-                        $this->reportHighlightFailure($plugin, $error);
+                        $this->reportOnce('highlighter', $plugin, $error);
 
                         throw $error;
                     }
@@ -496,7 +499,7 @@ final class PluginManager implements
                 }
                 $result = $spans['classify']($content, $language);
             } catch (\Throwable $error) {
-                $this->reportHighlightFailure($spans['plugin'], $error);
+                $this->reportOnce('highlighter', $spans['plugin'], $error);
 
                 continue;
             }
@@ -568,10 +571,7 @@ final class PluginManager implements
                 /** @var mixed $text */
                 $text = $entry['segment']();
             } catch (\Throwable $error) {
-                if (!array_key_exists($entry['plugin'], $this->reportedSegments)) {
-                    $this->reportedSegments[$entry['plugin']] = true;
-                    $this->reportFailure($entry['plugin'], $error);
-                }
+                $this->reportOnce('segment', $entry['plugin'], $error);
 
                 continue;
             }
@@ -639,22 +639,20 @@ final class PluginManager implements
                     return $viewer['id'];
                 }
             } catch (\Throwable $error) {
-                if (!array_key_exists($viewer['plugin'], $this->reportedViewers)) {
-                    $this->reportedViewers[$viewer['plugin']] = true;
-                    $this->reportFailure($viewer['plugin'], $error);
-                }
+                $this->reportOnce('viewer', $viewer['plugin'], $error);
             }
         }
 
         return null;
     }
 
-    private function reportHighlightFailure(string $plugin, \Throwable $error): void
+    /** Report a plugin's failure at most once per $channel — see {@see $reported}. */
+    private function reportOnce(string $channel, string $plugin, \Throwable $error): void
     {
-        if (array_key_exists($plugin, $this->reportedHighlighters)) {
+        if (isset($this->reported[$channel][$plugin])) {
             return;
         }
-        $this->reportedHighlighters[$plugin] = true;
+        $this->reported[$channel][$plugin] = true;
         $this->reportFailure($plugin, $error);
     }
 
@@ -752,10 +750,7 @@ final class PluginManager implements
             try {
                 return $when();
             } catch (\Throwable $error) {
-                if (!array_key_exists($plugin, $this->reportedWhens)) {
-                    $this->reportedWhens[$plugin] = true;
-                    $this->reportFailure($plugin, $error);
-                }
+                $this->reportOnce('when', $plugin, $error);
 
                 return false;
             }
