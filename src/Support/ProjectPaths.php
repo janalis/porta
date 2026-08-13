@@ -16,9 +16,15 @@ namespace Porta\Support;
  */
 final readonly class ProjectPaths
 {
+    /** The root realpath'd and slash-trimmed once — relative() runs per frame, the root cannot change. */
+    private string $realRoot;
+
     public function __construct(
         private string $rootDir,
-    ) {}
+    ) {
+        $realRoot = realpath($rootDir);
+        $this->realRoot = rtrim($realRoot ? $realRoot : $rootDir, characters: '/');
+    }
 
     /** The project root this instance is bound to, for the callers that hand it on raw. */
     public function root(): string
@@ -31,10 +37,8 @@ final readonly class ProjectPaths
     {
         $realPath = realpath($path);
         $real = $realPath ? $realPath : $path;
-        $realRoot = realpath($this->rootDir);
-        $root = rtrim($realRoot ? $realRoot : $this->rootDir, characters: '/');
 
-        return str_starts_with($real, $root.'/') ? substr($real, \strlen($root) + 1) : $real;
+        return str_starts_with($real, $this->realRoot.'/') ? substr($real, \strlen($this->realRoot) + 1) : $real;
     }
 
     /** The absolute path of a project-relative one. */
