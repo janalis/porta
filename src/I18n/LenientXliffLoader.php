@@ -32,9 +32,11 @@ final class LenientXliffLoader extends XliffFileLoader
             return new MessageCatalogue($locale);
         }
 
-        foreach ($catalogue->all($domain) as $id => $translation) {
+        /** @var array<string, string> $messages one domain's id => translation map — all() is typed loosely upstream */
+        $messages = $catalogue->all($domain);
+        foreach ($messages as $id => $translation) {
             if ('' === $translation) {
-                $catalogue->set((string) $id, (string) $id, $domain);
+                $catalogue->set($id, $id, $domain);
             }
         }
 
