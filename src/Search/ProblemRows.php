@@ -19,7 +19,7 @@ final readonly class ProblemRows
 {
     public function __construct(
         private BufferManager $buffers,
-        private readonly ProjectPaths $paths,
+        private ProjectPaths $paths,
     ) {}
 
     /** @return list<array{path: string, line: int, text: string}> */

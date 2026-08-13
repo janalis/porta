@@ -6,10 +6,8 @@ namespace Porta\Layout;
 
 use Porta\Container\AsIdeService;
 use Porta\Ui\Theme\Styles;
-use Porta\Widget\SeparatorWidget;
 use Symfony\Component\Tui\Style\Direction;
 use Symfony\Component\Tui\Style\Style;
-use Symfony\Component\Tui\Widget\ContainerWidget;
 
 /**
  * Mints a {@see ViewRegion} on demand, and remembers it.

@@ -19,6 +19,6 @@ final class Text
      */
     public static function firstLine(string $text): string
     {
-        return rtrim(explode("\n", trim($text), limit: 2)[0], "\r");
+        return rtrim(explode("\n", trim($text), limit: 2)[0], characters: "\r");
     }
 }

@@ -649,7 +649,7 @@ final class PluginManager implements
     /** Report a plugin's failure at most once per $channel — see {@see $reported}. */
     private function reportOnce(string $channel, string $plugin, \Throwable $error): void
     {
-        if (isset($this->reported[$channel][$plugin])) {
+        if (array_key_exists($plugin, $this->reported[$channel] ?? [])) {
             return;
         }
         $this->reported[$channel][$plugin] = true;
