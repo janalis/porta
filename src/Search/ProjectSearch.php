@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Search;
 
 use Porta\Support\AsyncProcess;
+use Porta\Support\Files;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Process\ExecutableFinder;
 
@@ -469,7 +470,7 @@ final class ProjectSearch
     /** A file's contents as a string, or '' when it is not a readable file. */
     private function readFile(string $abs): string
     {
-        return is_file($abs) ? (string) file_get_contents($abs) : '';
+        return Files::read($abs);
     }
 
     private function findGrep(): ?string

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Search;
 
+use Porta\Support\Files;
 use Porta\Support\LanguageMap;
 
 /**
@@ -38,7 +39,7 @@ final class LanguageFilter
         foreach ($this->byPath($results) as $path => $indices) {
             $language = LanguageMap::highlightForPath($path);
             $abs = $this->rootDir.'/'.$path;
-            $content = is_file($abs) ? (string) file_get_contents($abs) : '';
+            $content = Files::read($abs);
             if (null === $language || '' === $content) {
                 foreach ($indices as $index) {
                     $keep[$index] = true; // unknown language / unreadable → filter is a no-op

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Search;
 
 use Porta\Editor\BufferManager;
+use Porta\Support\Files;
 
 /**
  * The source lines just above and below a search match (for the results
@@ -26,7 +27,7 @@ final class ResultContextProvider
         $buffer = $this->buffers->get($abs) ?? $this->buffers->get(($real = realpath($abs)) ? $real : $abs);
         $lines = null !== $buffer
             ? $buffer->document->getLines()
-            : explode("\n", is_file($abs) ? (string) file_get_contents($abs) : '');
+            : explode("\n", Files::read($abs));
 
         $context = [];
         for ($i = max(0, $line - 2); $i <= min(\count($lines) - 1, $line + 2); ++$i) {
