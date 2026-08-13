@@ -111,6 +111,12 @@ final class PluginManager implements
      */
     private array $reported = [];
 
+    /** The {@see $reported} channels — consts so a typo is an analyzer error, not a silent second bucket. */
+    private const string CHANNEL_HIGHLIGHTER = 'highlighter';
+    private const string CHANNEL_SEGMENT = 'segment';
+    private const string CHANNEL_VIEWER = 'viewer';
+    private const string CHANNEL_WHEN = 'when';
+
     private ?PluginRuntime $runtime = null;
 
     /**
@@ -460,7 +466,7 @@ final class PluginManager implements
                     try {
                         return $languages();
                     } catch (\Throwable $error) {
-                        $this->reportOnce('highlighter', $plugin, $error);
+                        $this->reportOnce(self::CHANNEL_HIGHLIGHTER, $plugin, $error);
 
                         return [];
                     }
@@ -469,7 +475,7 @@ final class PluginManager implements
                     try {
                         $highlight($content, $language, $deliver);
                     } catch (\Throwable $error) {
-                        $this->reportOnce('highlighter', $plugin, $error);
+                        $this->reportOnce(self::CHANNEL_HIGHLIGHTER, $plugin, $error);
 
                         throw $error;
                     }
@@ -499,7 +505,7 @@ final class PluginManager implements
                 }
                 $result = $spans['classify']($content, $language);
             } catch (\Throwable $error) {
-                $this->reportOnce('highlighter', $spans['plugin'], $error);
+                $this->reportOnce(self::CHANNEL_HIGHLIGHTER, $spans['plugin'], $error);
 
                 continue;
             }
@@ -571,7 +577,7 @@ final class PluginManager implements
                 /** @var mixed $text */
                 $text = $entry['segment']();
             } catch (\Throwable $error) {
-                $this->reportOnce('segment', $entry['plugin'], $error);
+                $this->reportOnce(self::CHANNEL_SEGMENT, $entry['plugin'], $error);
 
                 continue;
             }
@@ -639,7 +645,7 @@ final class PluginManager implements
                     return $viewer['id'];
                 }
             } catch (\Throwable $error) {
-                $this->reportOnce('viewer', $viewer['plugin'], $error);
+                $this->reportOnce(self::CHANNEL_VIEWER, $viewer['plugin'], $error);
             }
         }
 
@@ -750,7 +756,7 @@ final class PluginManager implements
             try {
                 return $when();
             } catch (\Throwable $error) {
-                $this->reportOnce('when', $plugin, $error);
+                $this->reportOnce(self::CHANNEL_WHEN, $plugin, $error);
 
                 return false;
             }
