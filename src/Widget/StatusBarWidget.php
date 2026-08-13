@@ -8,6 +8,7 @@ use Porta\Container\AsChromeRoot;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Support\AnsiText;
+use Porta\Support\Clocks;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Support\StylesDefault;
@@ -99,28 +100,19 @@ final class StatusBarWidget extends AbstractWidget
         return null;
     }
 
-    /** The clock's current instant as float seconds (with sub-second precision). */
-    private function nowSeconds(): float
-    {
-        /** @var numeric-string $seconds */
-        $seconds = $this->clock->now()->format('U.u');
-
-        return (float) $seconds;
-    }
-
     /**
      * Show a transient message (e.g. "Saved") for a few seconds.
      */
     public function flash(string $text, float $seconds = 2.5): void
     {
-        $this->flash = ['text' => $text, 'until' => $this->nowSeconds() + $seconds];
+        $this->flash = ['text' => $text, 'until' => Clocks::seconds($this->clock) + $seconds];
         $this->invalidate();
     }
 
     #[\Override]
     public function beforeRender(): void
     {
-        $now = $this->nowSeconds();
+        $now = Clocks::seconds($this->clock);
         if (null !== $this->flash && $now > $this->flash['until']) {
             $this->flash = null;
             $this->invalidate();

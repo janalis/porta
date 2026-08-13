@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Input;
 
+use Porta\Support\Clocks;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\NativeClock;
 
@@ -53,7 +54,7 @@ final class ZoomGesture
      */
     public function glideFactor(int $dir): ?float
     {
-        $now = (float) $this->clock->now()->format('U.u');
+        $now = Clocks::seconds($this->clock);
         $burst = ($now - $this->lastTime) < self::BURST_SECONDS;
         $this->lastTime = $now;
 

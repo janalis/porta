@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Input;
 
+use Porta\Support\Clocks;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\NativeClock;
 
@@ -44,7 +45,7 @@ final class ClickCounter
     /** The click multiplicity (1, 2 or 3) for a press at ($row, $col) right now. */
     public function countAt(int $row, int $col): int
     {
-        $now = (float) $this->clock->now()->format('U.u');
+        $now = Clocks::seconds($this->clock);
         $sameCell = ($now - $this->lastTime) < self::WINDOW_SECONDS && $row === $this->lastRow && $col === $this->lastCol;
         $this->count = $sameCell ? min($this->count + 1, 3) : 1;
         $this->lastTime = $now;

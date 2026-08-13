@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use Porta\Support\Clocks;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\NativeClock;
 
@@ -98,7 +99,7 @@ final class UndoHistory
             return;
         }
 
-        $now = (float) $this->clock->now()->format('U.u');
+        $now = Clocks::seconds($this->clock);
         if (null !== $coalesceKey && $coalesceKey === $this->lastEditKind && ($now - $this->lastEditAt) < 1.0 && [] !== $this->undoStack) {
             $this->lastEditAt = $now;
             $this->redoStack = [];

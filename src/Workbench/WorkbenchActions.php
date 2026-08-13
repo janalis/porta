@@ -7,6 +7,7 @@ namespace Porta\Workbench;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspLog;
+use Porta\Support\Clocks;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\ResultsPanelMode;
@@ -38,7 +39,7 @@ final class WorkbenchActions
     public function quit(): void
     {
         $dirty = $this->buffers->dirtyCount();
-        $now = (float) $this->clock->now()->format('U.u');
+        $now = Clocks::seconds($this->clock);
         if ($dirty > 0 && ($now - $this->lastQuitPress) > 3.0) {
             $this->lastQuitPress = $now;
             $noun = 1 === $dirty
