@@ -156,7 +156,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
             $this->error = null === $this->plantUml?->binary() ? 'missing-plantuml' : null;
             $this->pending->reset();
             $this->invalidate();
-            $this->scheduleBitmap();
+            $this->scheduleRefine();
 
             return;
         }
@@ -276,7 +276,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $this->lastRows = $rows;
         // The fit scale depends on the pane size, which is only known here; the
         // wanted-dpi guard makes this a float compare on every other frame.
-        $this->scheduleBitmap();
+        $this->scheduleRefine();
         $lines = $this->contentLines($cols, $rows);
         if ($this->isFocused() && $cols >= 3 && $rows >= 3) {
             $lines = $this->focusFrame($lines, $cols, $rows);
@@ -375,7 +375,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $this->selectionOrder = array_map(static fn (array $entry): int => (int) $entry[2], $order);
         $this->invalidate();
         $this->handler?->viewChanged();
-        $this->scheduleBitmap();
+        $this->scheduleRefine();
     }
 
     /** The tool that draws the shown tab, or null when this instance has none for it. */
@@ -411,7 +411,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
      * any zoom that lands on the same resolution) costs nothing, and a spin of
      * the wheel costs one process rather than one per notch.
      */
-    private function scheduleBitmap(): void
+    protected function scheduleRefine(): void
     {
         if (null === $this->dot || null === $this->drawingEngine()) {
             return;
@@ -496,7 +496,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         }
         $this->mode = $this->mode->toggled();
         $this->invalidate();
-        $this->scheduleBitmap();
+        $this->scheduleRefine();
         $this->handler?->viewChanged();
     }
 
@@ -520,13 +520,6 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $dy = (int) round(($node->y - ($rect['srcY'] + ($this->lastRows / $scale))) * $scale);
         $this->view->panBy($dx, $dy, $this->lastCols, 2 * $this->lastRows);
         $this->afterViewChange();
-    }
-
-    protected function afterViewChange(): void
-    {
-        $this->invalidate();
-        $this->handler?->viewChanged();
-        $this->scheduleBitmap();
     }
 
     /** @return list<string> */
