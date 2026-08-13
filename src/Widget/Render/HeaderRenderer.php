@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Porta\Widget\Render;
 
 use Porta\Support\AnsiText;
+use Porta\Ui\Role;
 use Porta\Ui\Sgr;
+use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Style\Style;
 
 /**
@@ -19,6 +21,12 @@ use Symfony\Component\Tui\Style\Style;
  */
 final class HeaderRenderer
 {
+    /** The standard panel title bar — {@see Role::HeaderBar}, bold — that five panels styled by hand. */
+    public static function title(string $text, int $width, Styles $styles, string $suffix = ''): string
+    {
+        return self::render($text, $width, $styles->of(Role::HeaderBar)->withBold(), $suffix);
+    }
+
     public static function render(string $text, int $width, Style $style, string $suffix = ''): string
     {
         if ('' === $suffix) {

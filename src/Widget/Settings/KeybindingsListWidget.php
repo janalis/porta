@@ -186,7 +186,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         $this->lastRows = $rows;
 
         $title = ' '.$this->translator->trans('Keybindings — %count% actions · ⏎ to rebind', ['%count%' => \count($this->rows)]);
-        $lines = [HeaderRenderer::render($title, $width, $this->styles->of(Role::HeaderBar)->withBold())];
+        $lines = [HeaderRenderer::title($title, $width, $this->styles)];
 
         $scroll = $this->list->follow($rows - 1);
         for ($row = 1; $row < $rows; ++$row) {
