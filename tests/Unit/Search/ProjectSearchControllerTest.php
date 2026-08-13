@@ -56,7 +56,7 @@ final class ProjectSearchControllerTest extends TestCase
             new \Porta\History\SearchHistoryStore($rootDir),
             new \Porta\History\SearchPrefsStore($rootDir),
             new \Porta\Search\SearchScopeResolver($buffers, $this->editor, new \Porta\Support\ProjectPaths($rootDir)),
-            new \Porta\Search\LanguageFilter(new \Porta\Search\TokenClassifier(), $projectSearch, $rootDir),
+            new \Porta\Search\LanguageFilter(new \Porta\Search\TokenClassifier(), $projectSearch, new \Porta\Support\ProjectPaths($rootDir)),
             new \Porta\History\SearchScopeStore($rootDir),
         );
     }

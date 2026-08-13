@@ -6,6 +6,7 @@ namespace Porta\Search\Everywhere;
 
 use Porta\Editor\OpenFocus;
 use Porta\Search\FileIndex;
+use Porta\Support\ProjectPaths;
 
 /**
  * Files source: fuzzy project-file paths via the shared {@see FileIndex},
@@ -18,7 +19,7 @@ final class FilesSource implements SearchSource
     /** @param \Closure(string, OpenFocus): void $openFile fn(absolutePath, focus) */
     public function __construct(
         private readonly FileIndex $index,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
         private readonly \Closure $openFile,
     ) {}
 
@@ -33,7 +34,7 @@ final class FilesSource implements SearchSource
     {
         $hits = [];
         foreach ($this->index->search($query, self::LIMIT) as $path) {
-            $absolute = $this->rootDir.'/'.$path;
+            $absolute = $this->paths->absolute($path);
             $dir = \dirname($path);
             $hits[] = new SearchHit(
                 SearchCategory::Files,

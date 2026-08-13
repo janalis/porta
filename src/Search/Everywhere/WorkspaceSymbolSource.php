@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Search\Everywhere;
 
 use Porta\Editor\OpenFocus;
+use Porta\Support\ProjectPaths;
 
 /**
  * Symbols source over LSP `workspace/symbol`: one instance for Classes (kinds
@@ -29,7 +30,7 @@ final class WorkspaceSymbolSource implements SearchSource
         private readonly \Closure $searchSymbols,
         private readonly SearchCategory $category,
         private readonly array $kinds,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
         private readonly \Closure $openFile,
         private readonly \Closure $jumpTo,
     ) {}
@@ -54,7 +55,7 @@ final class WorkspaceSymbolSource implements SearchSource
                 if ([] !== $this->kinds && !\in_array($symbol['kind'], $this->kinds, strict: true)) {
                     continue;
                 }
-                $absolute = $this->rootDir.'/'.$symbol['path'];
+                $absolute = $this->paths->absolute($symbol['path']);
                 $line = $symbol['line'];
                 $hits[] = new SearchHit(
                     $this->category,

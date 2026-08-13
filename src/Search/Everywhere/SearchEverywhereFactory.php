@@ -53,7 +53,7 @@ final class SearchEverywhereFactory
 
         return new SearchEverywhereController(
             $this->overlay,
-            [new FilesSource(new FileIndex($this->paths->root()), $this->paths->root(), $openFile)],
+            [new FilesSource(new FileIndex($this->paths->root()), $this->paths, $openFile)],
             [],
             $this->buffers,
             $this->tui,
@@ -100,7 +100,7 @@ final class SearchEverywhereFactory
         return new SearchEverywhereController(
             $this->overlay,
             [],
-            [new WorkspaceSymbolSource($searchSymbols, SearchCategory::Symbols, [], $this->paths->root(), $openFile, $jumpTo)],
+            [new WorkspaceSymbolSource($searchSymbols, SearchCategory::Symbols, [], $this->paths, $openFile, $jumpTo)],
             $this->buffers,
             $this->tui,
             $this->paths,
@@ -121,13 +121,13 @@ final class SearchEverywhereFactory
         return new SearchEverywhereController(
             $this->overlay,
             [
-                new FilesSource(new FileIndex($this->paths->root()), $this->paths->root(), $openFile),
+                new FilesSource(new FileIndex($this->paths->root()), $this->paths, $openFile),
                 new ActionsSource($this->commands),
             ],
             [
-                new WorkspaceSymbolSource($searchSymbols, SearchCategory::Classes, [5, 10, 11, 23], $this->paths->root(), $openFile, $jumpTo),
-                new WorkspaceSymbolSource($searchSymbols, SearchCategory::Symbols, [], $this->paths->root(), $openFile, $jumpTo),
-                new TextSource(new ProjectSearch($this->paths->root()), $this->paths->root(), $openFile, $jumpTo),
+                new WorkspaceSymbolSource($searchSymbols, SearchCategory::Classes, [5, 10, 11, 23], $this->paths, $openFile, $jumpTo),
+                new WorkspaceSymbolSource($searchSymbols, SearchCategory::Symbols, [], $this->paths, $openFile, $jumpTo),
+                new TextSource(new ProjectSearch($this->paths->root()), $this->paths, $openFile, $jumpTo),
             ],
             $this->buffers,
             $this->tui,

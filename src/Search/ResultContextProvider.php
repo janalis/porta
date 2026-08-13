@@ -6,6 +6,7 @@ namespace Porta\Search;
 
 use Porta\Editor\BufferManager;
 use Porta\Support\Files;
+use Porta\Support\ProjectPaths;
 
 /**
  * The source lines just above and below a search match (for the results
@@ -17,13 +18,13 @@ final class ResultContextProvider
 {
     public function __construct(
         private readonly BufferManager $buffers,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
     ) {}
 
     /** @return list<array{line: int, text: string}> */
     public function around(string $relativePath, int $line): array
     {
-        $abs = $this->rootDir.'/'.$relativePath;
+        $abs = $this->paths->absolute($relativePath);
         $buffer = $this->buffers->get($abs) ?? $this->buffers->get(($real = realpath($abs)) ? $real : $abs);
         $lines = null !== $buffer
             ? $buffer->document->getLines()

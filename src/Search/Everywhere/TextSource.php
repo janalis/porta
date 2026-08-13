@@ -6,6 +6,7 @@ namespace Porta\Search\Everywhere;
 
 use Porta\Editor\OpenFocus;
 use Porta\Search\ProjectSearch;
+use Porta\Support\ProjectPaths;
 
 /**
  * Text source: project-wide grep via the shared {@see ProjectSearch} (async,
@@ -20,7 +21,7 @@ final class TextSource implements SearchSource
      */
     public function __construct(
         private readonly ProjectSearch $search,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
         private readonly \Closure $openFile,
         private readonly \Closure $jumpTo,
     ) {}
@@ -37,7 +38,7 @@ final class TextSource implements SearchSource
         $this->search->search($query, function (array $results) use ($emit): void {
             $hits = [];
             foreach ($results as $result) {
-                $absolute = $this->rootDir.'/'.$result['path'];
+                $absolute = $this->paths->absolute($result['path']);
                 $line = $result['line'];
                 $hits[] = new SearchHit(
                     SearchCategory::Text,

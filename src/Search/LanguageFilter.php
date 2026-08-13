@@ -6,6 +6,7 @@ namespace Porta\Search;
 
 use Porta\Support\Files;
 use Porta\Support\LanguageMap;
+use Porta\Support\ProjectPaths;
 
 /**
  * Post-filters project-search results by a language-aware {@see TokenScope}:
@@ -19,7 +20,7 @@ final class LanguageFilter
     public function __construct(
         private readonly TokenClassifier $classifier,
         private readonly ProjectSearch $projectSearch,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
     ) {}
 
     /**
@@ -38,7 +39,7 @@ final class LanguageFilter
         $keep = [];
         foreach ($this->byPath($results) as $path => $indices) {
             $language = LanguageMap::highlightForPath($path);
-            $abs = $this->rootDir.'/'.$path;
+            $abs = $this->paths->absolute($path);
             $content = Files::read($abs);
             if (null === $language || '' === $content) {
                 foreach ($indices as $index) {

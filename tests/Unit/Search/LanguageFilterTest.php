@@ -10,13 +10,14 @@ use Porta\Search\ProjectSearch;
 use Porta\Search\SearchOptions;
 use Porta\Search\TokenClassifier;
 use Porta\Search\TokenScope;
+use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\TempProject;
 
 final class LanguageFilterTest extends TestCase
 {
     private function filter(TempProject $project): LanguageFilter
     {
-        return new LanguageFilter(new TokenClassifier(), new ProjectSearch($project->dir), $project->dir);
+        return new LanguageFilter(new TokenClassifier(), new ProjectSearch($project->dir), new ProjectPaths($project->dir));
     }
 
     /**
