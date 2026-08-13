@@ -26,4 +26,21 @@ final class ProjectPaths
     {
         return LanguageMap::lspForPath($path);
     }
+
+    /** The path's extension, lowercased; '' when it has none. */
+    public static function extension(string $path): string
+    {
+        return strtolower(pathinfo($path, \PATHINFO_EXTENSION));
+    }
+
+    /**
+     * Whether the path's lowercased extension is one of $extensions — the
+     * routing test every viewer and decoder claim hand-rolled inline.
+     *
+     * @param list<string> $extensions lowercase, without the dot
+     */
+    public static function hasExtension(string $path, array $extensions): bool
+    {
+        return \in_array(self::extension($path), $extensions, strict: true);
+    }
 }

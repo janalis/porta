@@ -6,6 +6,7 @@ namespace Porta\Run;
 
 use Porta\Support\Argv;
 use Porta\Support\JsonFile;
+use Porta\Support\ProjectPaths;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
@@ -33,7 +34,7 @@ final readonly class RunConfigs
     {
         $tasks = [];
 
-        if (null !== $currentFile && 'php' === strtolower(pathinfo($currentFile, \PATHINFO_EXTENSION))) {
+        if (null !== $currentFile && 'php' === ProjectPaths::extension($currentFile)) {
             $tasks[] = [
                 'label' => 'Run current file: '.basename($currentFile),
                 'command' => [...$this->phpArgv(), $currentFile],

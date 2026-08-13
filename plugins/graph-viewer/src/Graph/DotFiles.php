@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Graph;
 
+use Porta\Support\ProjectPaths;
+
 /**
  * What counts as a Graphviz DOT file — the routing predicate
  * {@see \Porta\Editor\BufferService} uses to send a path to the graph viewer
@@ -18,6 +20,6 @@ final class DotFiles
 
     public static function isDotPath(string $path): bool
     {
-        return \in_array(strtolower(pathinfo($path, \PATHINFO_EXTENSION)), self::EXTENSIONS, strict: true);
+        return ProjectPaths::hasExtension($path, self::EXTENSIONS);
     }
 }

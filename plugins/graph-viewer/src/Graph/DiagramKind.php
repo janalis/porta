@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Graph;
 
+use Porta\Support\ProjectPaths;
+
 /**
  * Which tool draws a diagram tab, decided by the file's extension. Pure — it
  * never crosses `.porta.json`; the buffer keeps carrying its source as text and
@@ -36,7 +38,7 @@ enum DiagramKind
     /** The kind a path names, or null when no diagram tool claims it. */
     public static function forPath(string $path): ?self
     {
-        $extension = strtolower(pathinfo($path, \PATHINFO_EXTENSION));
+        $extension = ProjectPaths::extension($path);
         foreach (self::cases() as $kind) {
             if (\in_array($extension, $kind->extensions(), strict: true)) {
                 return $kind;

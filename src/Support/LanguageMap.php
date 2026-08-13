@@ -134,13 +134,13 @@ final class LanguageMap
             return 'dotenv';
         }
 
-        return self::FILENAMES[$name] ?? self::EXTENSIONS[self::extension($path)][0] ?? null;
+        return self::FILENAMES[$name] ?? self::EXTENSIONS[ProjectPaths::extension($path)][0] ?? null;
     }
 
     /** The LSP languageId for a path; `plaintext` when no server speaks it. */
     public static function lspForPath(string $path): string
     {
-        return self::EXTENSIONS[self::extension($path)][1] ?? 'plaintext';
+        return self::EXTENSIONS[ProjectPaths::extension($path)][1] ?? 'plaintext';
     }
 
     /**
@@ -165,10 +165,5 @@ final class LanguageMap
         sort($names);
 
         return $names;
-    }
-
-    private static function extension(string $path): string
-    {
-        return strtolower(pathinfo($path, \PATHINFO_EXTENSION));
     }
 }

@@ -21,6 +21,7 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginMenuSpec;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\SettingsRowKind;
+use Porta\Support\ProjectPaths;
 use Porta\Workbench\Dock\ToolRun;
 use Porta\Workbench\Menu\MenuContribution;
 use Porta\Workbench\Menu\MenuSurface;
@@ -393,7 +394,7 @@ final class PluginApi
             /** @var list<string> $list */
             $list = array_values($claims);
             $extensions = array_map(static fn (string $extension): string => strtolower($extension), $list);
-            $claims = static fn (string $path): bool => \in_array(strtolower(pathinfo($path, \PATHINFO_EXTENSION)), $extensions, strict: true);
+            $claims = static fn (string $path): bool => ProjectPaths::hasExtension($path, $extensions);
         }
         $this->viewers->add([
             'plugin' => $this->pluginName,
