@@ -17,11 +17,11 @@ use Porta\ImageViewer\ImageData;
 use Porta\ImageViewer\ImageDecoder;
 use Porta\ImageViewer\ScaledSource;
 use Porta\ImageViewer\ZoomPanModel;
+use Porta\ImageViewer\ZoomPanPane;
 use Porta\Support\DebouncedRequest;
 use Porta\Support\RevoltScheduler;
 use Porta\Support\Scheduler;
 use Porta\Support\Text;
-use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\NavigablePaneWidget;
@@ -55,6 +55,8 @@ use Symfony\Component\Tui\Render\RenderContext;
  */
 final class GraphViewerWidget extends NavigablePaneWidget
 {
+    use ZoomPanPane;
+
     /** The graph zoom ladder: fit scales for wide graphs sit far below the image ladder's 12.5% floor. */
     private const array ZOOM_STEPS = [0.031_25, 0.062_5, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0];
 
@@ -62,9 +64,6 @@ final class GraphViewerWidget extends NavigablePaneWidget
 
     /** 72 dpi = one point per pixel, so the bitmap shares the layout's coordinates. */
     private const int BITMAP_DPI = 72;
-
-    /** How long a zoom has to settle before dot is asked for a sharper bitmap. */
-    private const float RENDER_DEBOUNCE = 0.15;
 
     private ?string $path = null;
     private ?string $dotHash = null;
@@ -87,7 +86,6 @@ final class GraphViewerWidget extends NavigablePaneWidget
     private readonly ScaledSource $scaled;
     /** The last GOOD layout — kept on screen when a newer layout fails. */
     private ?GraphLayout $layout = null;
-    private ?ZoomPanModel $view = null;
     /** dot's stderr (or the parse failure) — the banner over the last good render. */
     private ?string $error = null;
     private bool $layingOut = false;
@@ -99,8 +97,6 @@ final class GraphViewerWidget extends NavigablePaneWidget
     private array $layoutCache = [];
     /** @var array<string, array{ZoomPanModel, int, int}> path => [view, extent w, extent h], preserved across regenerations */
     private array $viewCache = [];
-    private int $lastCols = 80;
-    private int $lastRows = 24;
     private readonly ImageDecoder $decoder;
 
     public function __construct(
@@ -225,12 +221,6 @@ final class GraphViewerWidget extends NavigablePaneWidget
         }
     }
 
-    /** The status bar's zoom text, '' when nothing is shown. */
-    public function zoomLabel(): string
-    {
-        return null === $this->view ? '' : $this->view->zoomLabel($this->lastCols, 2 * $this->lastRows);
-    }
-
     /** The status bar's graph summary: node/edge counts plus the selected node's label. */
     public function statusInfo(): string
     {
@@ -243,44 +233,10 @@ final class GraphViewerWidget extends NavigablePaneWidget
         return null !== $selected ? $info.' · '.strtr($selected->label, ["\n" => ' ']) : $info;
     }
 
-    /** Ctrl+wheel: zoom one step anchored on the pane cell under the pointer. */
-    /** This pane's status segment: extent, zoom, and its own keys (n/p select, unlike the image pane's). */
-    public function statusRight(): string
+    /** This pane's status-segment key hints (n/p select, unlike the image pane's). */
+    protected function keysHint(): string
     {
-        return trim(\sprintf('%s  %s  %s', $this->statusInfo(), $this->zoomLabel(), $this->translator->trans('+/- zoom  0 fit  n/p select  Ctrl+Q quit')));
-    }
-
-    public function zoomAt(int $dir, int $relCol, int $relRow): void
-    {
-        if (null === $this->view) {
-            return;
-        }
-        $this->view->zoomAt($dir, $relCol, (2 * $relRow) + 1, $this->lastCols, 2 * $this->lastRows);
-        $this->afterViewChange();
-    }
-
-    /**
-     * The continuous half of the same gesture: zoom by a factor on the same
-     * anchor, for the burst of notches a trackpad's Ctrl+scroll delivers
-     * ({@see \Porta\Input\ZoomGesture}).
-     */
-    public function magnifyAt(float $factor, int $relCol, int $relRow): void
-    {
-        if (null === $this->view) {
-            return;
-        }
-        $this->view->magnifyAt($factor, $relCol, (2 * $relRow) + 1, $this->lastCols, 2 * $this->lastRows);
-        $this->afterViewChange();
-    }
-
-    /** Pan by wheel/drag (in half-rows vertically, columns horizontally). */
-    public function scrollBy(int $dxCells, int $dyHalfRows): void
-    {
-        if (null === $this->view) {
-            return;
-        }
-        $this->view->panBy($dxCells, $dyHalfRows, $this->lastCols, 2 * $this->lastRows);
-        $this->afterViewChange();
+        return $this->translator->trans('+/- zoom  0 fit  n/p select  Ctrl+Q quit');
     }
 
     /**
@@ -329,8 +285,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         // error (or in-flight hint) must never hide behind focus chrome.
         if (null !== $this->layout) {
             if (null !== $this->error) {
-                $banner = ' ✗ '.Text::firstLine($this->error).' ';
-                $lines[0] = AnsiUtils::truncateToWidth($this->styles->of(Role::DiagError)->apply($banner), $cols, pad: true);
+                $lines[0] = $this->errorBanner($this->error, $cols);
             }
             if ($this->layingOut) {
                 $lines[0] = AnsiUtils::truncateToWidth($this->styles->of(Role::Dim)->apply(' ⏳ '.$this->translator->trans('layout…').' '), $cols, pad: true);
@@ -545,21 +500,6 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $this->handler?->viewChanged();
     }
 
-    private function zoom(int $dir): void
-    {
-        $this->withView(fn (ZoomPanModel $v) => $dir > 0 ? $v->zoomIn($this->lastCols, 2 * $this->lastRows) : $v->zoomOut($this->lastCols, 2 * $this->lastRows));
-    }
-
-    /** Shift+arrow pans a 5× larger step. */
-    private function pan(int $dx, int $dy, string $data): void
-    {
-        $factor = str_starts_with($data, "\x1b[1;2") ? 5 : 1; // CSI 1;2 = shift-modified arrow
-        if (null !== $this->view) {
-            $this->view->panBy($dx * $factor, $dy * $factor, $this->lastCols, 2 * $this->lastRows);
-            $this->afterViewChange();
-        }
-    }
-
     /** n/p: walk the (y, x)-ordered node list, panning the selection into view. */
     private function cycleSelection(int $dir): void
     {
@@ -580,15 +520,6 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $dy = (int) round(($node->y - ($rect['srcY'] + ($this->lastRows / $scale))) * $scale);
         $this->view->panBy($dx, $dy, $this->lastCols, 2 * $this->lastRows);
         $this->afterViewChange();
-    }
-
-    /** @param \Closure(ZoomPanModel): mixed $mutate */
-    private function withView(\Closure $mutate): void
-    {
-        if (null !== $this->view) {
-            $mutate($this->view);
-            $this->afterViewChange();
-        }
     }
 
     protected function afterViewChange(): void
@@ -623,7 +554,6 @@ final class GraphViewerWidget extends NavigablePaneWidget
         if (null !== $this->layout && null !== $this->view) {
             return GraphRenderer::render($this->layout, $this->view, $this->selected, $cols, $rows, $this->styles);
         }
-        $blank = array_fill(0, max(1, $rows), str_repeat(' ', max(1, $cols)));
         $message = match (true) {
             'missing-binary' === $this->error => $this->translator->trans('graphviz not found — install graphviz, or set the "dotPath" setting'),
             'missing-plantuml' === $this->error => $this->translator->trans('plantuml not found — install it, or set the "plantuml" setting'),
@@ -631,37 +561,8 @@ final class GraphViewerWidget extends NavigablePaneWidget
             $this->layingOut => '⏳ '.$this->translator->trans('layout…'),
             default => '',
         };
-        if ('' === $message) {
-            return $blank;
-        }
-        $row = intdiv($rows, num2: 2);
-        $text = AnsiUtils::truncateToWidth($message, $cols);
-        $pad = max(0, intdiv($cols - AnsiUtils::visibleWidth($text), num2: 2));
         $style = 'missing-binary' === $this->error || null !== $this->error && !$this->layingOut ? Role::DiagError : Role::Dim;
-        $blank[$row] = str_repeat(' ', $pad).$this->styles->of($style)->apply($text).str_repeat(' ', max(0, $cols - $pad - AnsiUtils::visibleWidth($text)));
 
-        return $blank;
-    }
-
-    /**
-     * The image viewer's focus cue, same shape: a box-drawing frame over the
-     * outer ring while focused, every line kept exactly $cols wide.
-     *
-     * @param list<string> $lines
-     *
-     * @return list<string>
-     */
-    private function focusFrame(array $lines, int $cols, int $rows): array
-    {
-        $accent = $this->styles->of(Role::TabAccent);
-        $span = max(0, $cols - 2);
-        $lines[0] = $accent->apply(Glyphs::FRAME_TOP_LEFT.str_repeat(Glyphs::FRAME_HORIZONTAL, $span).Glyphs::FRAME_TOP_RIGHT);
-        $lines[$rows - 1] = $accent->apply(Glyphs::FRAME_BOTTOM_LEFT.str_repeat(Glyphs::FRAME_HORIZONTAL, $span).Glyphs::FRAME_BOTTOM_RIGHT);
-        $rail = $accent->apply(Glyphs::FRAME_VERTICAL);
-        for ($r = 1; $r < ($rows - 1); ++$r) {
-            $lines[$r] = $rail.AnsiUtils::sliceByColumn($lines[$r], 1, $cols - 2).$rail;
-        }
-
-        return $lines;
+        return $this->messagePane($message, $style, $cols, $rows);
     }
 }
