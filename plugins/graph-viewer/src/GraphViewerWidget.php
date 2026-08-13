@@ -20,6 +20,7 @@ use Porta\ImageViewer\ZoomPanModel;
 use Porta\Support\DebouncedRequest;
 use Porta\Support\RevoltScheduler;
 use Porta\Support\Scheduler;
+use Porta\Support\Text;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
@@ -328,7 +329,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         // error (or in-flight hint) must never hide behind focus chrome.
         if (null !== $this->layout) {
             if (null !== $this->error) {
-                $banner = ' ✗ '.explode("\n", $this->error)[0].' ';
+                $banner = ' ✗ '.Text::firstLine($this->error).' ';
                 $lines[0] = AnsiUtils::truncateToWidth($this->styles->of(Role::DiagError)->apply($banner), $cols, pad: true);
             }
             if ($this->layingOut) {
@@ -626,7 +627,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $message = match (true) {
             'missing-binary' === $this->error => $this->translator->trans('graphviz not found — install graphviz, or set the "dotPath" setting'),
             'missing-plantuml' === $this->error => $this->translator->trans('plantuml not found — install it, or set the "plantuml" setting'),
-            null !== $this->error => explode("\n", $this->error)[0],
+            null !== $this->error => Text::firstLine($this->error),
             $this->layingOut => '⏳ '.$this->translator->trans('layout…'),
             default => '',
         };
