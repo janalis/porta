@@ -23,7 +23,7 @@ use Porta\Widget\Support\ArrowScrollTrait;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\HoverTrait;
 use Porta\Widget\Support\InputHook;
-use Porta\Widget\Support\StylesDefault;
+use Porta\Widget\Support\PanelRowStyle;
 use Porta\Widget\Support\WheelScrollable;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Input\Key;
@@ -52,7 +52,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     use KeybindingsTrait;
     use MenuOverlayHostTrait;
     use PaneNavigationCallbacks;
-    use StylesDefault;
+    use PanelRowStyle;
 
     /** @var list<KeybindingRow> */
     private array $rows = [];
@@ -209,11 +209,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             $labelWidth = max(0, $width - $rightWidth - 2);
             $label = AnsiText::truncate(' '.$entry->label, $labelWidth, pad: true);
             $text = $label.' '.$right.' ';
-            $lines[] = match (true) {
-                $index === $this->list->selected() => $this->applyElement('selected', $text),
-                $index === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg)->apply($text),
-                default => $text,
-            };
+            $lines[] = $this->shadeRow($text, $index === $this->list->selected(), $index === $this->hoveredIndex);
         }
 
         return $this->withMenuOverlay($lines, $width);

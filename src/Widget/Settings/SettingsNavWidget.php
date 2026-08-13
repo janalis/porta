@@ -20,8 +20,8 @@ use Porta\Widget\Support\ArrowScrollTrait;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\HoverTrait;
 use Porta\Widget\Support\InputHook;
+use Porta\Widget\Support\PanelRowStyle;
 use Porta\Widget\Support\PanelWidth;
-use Porta\Widget\Support\StylesDefault;
 use Porta\Widget\Support\WheelScrollable;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -52,7 +52,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     use MenuOverlayHostTrait;
     use PanelWidth;
     use PaneNavigationCallbacks;
-    use StylesDefault;
+    use PanelRowStyle;
 
     private const array SECTIONS = ['general' => 'General', 'interface' => 'Interface', 'highlighting' => 'Highlighting', 'keybindings' => 'Keybindings', 'plugins' => 'Plugins'];
 
@@ -281,11 +281,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
             // and keep their own (untranslated) names.
             $text = \in_array($entry['kind'], [NavEntryKind::Language, NavEntryKind::Plugin], strict: true) ? '   '.$entry['label'] : ' '.$this->translator->trans($entry['label']);
             $text = AnsiText::truncate($text, $width, pad: true);
-            $lines[] = match (true) {
-                $index === $this->list->selected() => $this->applyElement('selected', $text),
-                $index === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg)->apply($text),
-                default => $text,
-            };
+            $lines[] = $this->shadeRow($text, $index === $this->list->selected(), $index === $this->hoveredIndex);
         }
 
         return $this->withMenuOverlay($lines, $width);

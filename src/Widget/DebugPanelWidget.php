@@ -25,7 +25,7 @@ use Porta\Widget\Support\DebugRow;
 use Porta\Widget\Support\DebugRowKind;
 use Porta\Widget\Support\ListPanelInteraction;
 use Porta\Widget\Support\PanelRows;
-use Porta\Widget\Support\StylesDefault;
+use Porta\Widget\Support\PanelRowStyle;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -53,7 +53,7 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
     use ListPanelInteraction;
     use MenuOverlayHostTrait;
     use PanelRows;
-    use StylesDefault;
+    use PanelRowStyle;
 
     private string $title = '';
     private DebugState $state = DebugState::Idle;
@@ -249,12 +249,7 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
 
         $scroll = $this->list->follow($this->visibleRows);
         foreach (\array_slice($this->rows, $scroll, $this->visibleRows) as $i => $row) {
-            // The selection shade comes from the theme's .list::selected(:focus) rules.
-            $bg = match (true) {
-                $this->list->isSelected($scroll + $i) => $this->resolveElement('selected'),
-                ($scroll + $i) === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg),
-                default => $this->styles->of(Role::Toolbar),
-            };
+            $bg = $this->rowStyle($this->list->isSelected($scroll + $i), ($scroll + $i) === $this->hoveredIndex);
             $lines[] = $bg->apply(AnsiText::truncate($this->rowText($row), $columns, pad: true));
         }
 

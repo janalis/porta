@@ -28,12 +28,12 @@ use Porta\Widget\Support\DisplayRow;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\ListPanelInteraction;
 use Porta\Widget\Support\PanelRows;
+use Porta\Widget\Support\PanelRowStyle;
 use Porta\Widget\Support\ResultGrouping;
 use Porta\Widget\Support\ResultIdentity;
 use Porta\Widget\Support\ResultLayout;
 use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Widget\Support\ResultsViewState;
-use Porta\Widget\Support\StylesDefault;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -56,7 +56,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     use ListPanelInteraction;
     use MenuOverlayHostTrait;
     use PanelRows;
-    use StylesDefault;
+    use PanelRowStyle;
 
     private bool $withFilter = false;
     private string $title = '';
@@ -501,13 +501,8 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
 
         foreach (\array_slice($this->displayRows, $scroll, $this->visibleRows) as $i => $row) {
             // A raw SGR prefix, not a Style: the match highlighter closes each
-            // span with the row bg so the tail keeps its colour. The selection
-            // shade comes from the theme's .list::selected(:focus) rules.
-            $bg = (match (true) {
-                $this->list->isSelected($scroll + $i) => $this->resolveElement('selected'),
-                ($scroll + $i) === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg),
-                default => $this->styles->of(Role::Toolbar),
-            })->getAnsiRestore();
+            // span with the row bg so the tail keeps its colour.
+            $bg = $this->rowStyle($this->list->isSelected($scroll + $i), ($scroll + $i) === $this->hoveredIndex)->getAnsiRestore();
             $lines[] = match (true) {
                 null !== $row->filePath => $this->headerLine($row, $bg, $columns),
                 null !== $row->contextText => $this->contextRowLine($row->contextLine, $row->contextText, $bg, $columns),
