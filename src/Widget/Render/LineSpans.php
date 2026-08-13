@@ -86,10 +86,8 @@ final class LineSpans
         foreach ($carets as $caret) {
             // Each caret's selection (possibly spanning lines), drawn before
             // the caret cell so the reverse-video cell layers on top.
-            $sl = min($caret->line, $caret->anchorLine);
-            $el = max($caret->line, $caret->anchorLine);
-            if (($caret->line !== $caret->anchorLine || $caret->col !== $caret->anchorCol) && $lineIndex >= $sl && $lineIndex <= $el) {
-                [, $startCol, , $endCol] = $caret->orderedRange();
+            [$sl, $startCol, $el, $endCol] = $caret->orderedRange();
+            if ($caret->hasSelection() && $lineIndex >= $sl && $lineIndex <= $el) {
                 $spans[] = self::selectionSpan($doc, $lineIndex, $sl, $startCol, $el, $endCol, $styles);
             }
             // The caret cell (reverse video), for the primary and extras alike.
