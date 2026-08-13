@@ -25,7 +25,7 @@ use Porta\Widget\Support\ArrowScrollTrait;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\HoverTrait;
 use Porta\Widget\Support\InputHook;
-use Porta\Widget\Support\StylesDefault;
+use Porta\Widget\Support\PanelRowStyle;
 use Porta\Widget\Support\WheelScrollable;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Input\Key;
@@ -60,7 +60,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     use KeybindingsTrait;
     use MenuOverlayHostTrait;
     use PaneNavigationCallbacks;
-    use StylesDefault;
+    use PanelRowStyle;
 
     private readonly CursorStyle $cursorStyle;
 
@@ -311,14 +311,11 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
                 $i === $this->editing && null !== $this->editField
                     ? AnsiText::scrollLineToCaret($text, $width)
                     : AnsiText::truncate($text, $width, pad: true);
-            $lines[] = match (true) {
-                // An armed destructive action (the two-press remove confirm)
-                // wears the danger shade over every other row state.
-                $row->danger => $this->styles->merge(Role::DangerBg, Role::Bright)->apply($text),
-                $i === $this->selected => $this->applyElement('selected', $text),
-                $i === $this->hoveredIndex => $this->styles->of(Role::RowHighlightBg)->apply($text),
-                default => $text,
-            };
+            // An armed destructive action (the two-press remove confirm)
+            // wears the danger shade over every other row state.
+            $lines[] = $row->danger
+                ? $this->styles->merge(Role::DangerBg, Role::Bright)->apply($text)
+                : $this->shadeRow($text, $i === $this->selected, $i === $this->hoveredIndex);
         }
 
         return $this->withMenuOverlay($lines, $width);
