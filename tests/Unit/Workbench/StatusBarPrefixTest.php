@@ -9,6 +9,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
+use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
@@ -56,7 +57,7 @@ final class StatusBarPrefixTest extends TestCase
             new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
             Styles::dark(),
             new Translator('en'),
-            sys_get_temp_dir(),
+            new ProjectPaths(sys_get_temp_dir()),
         );
     }
 

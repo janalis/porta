@@ -11,6 +11,7 @@ use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Search\ProjectSearch;
 use Porta\Support\Clipboard;
+use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RecordingChangeMarkSink;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
@@ -69,7 +70,7 @@ final class TodoScanTest extends TestCase
             new CodeEditorWidget(),
             new RecordingChangeMarkSink(),
             new \Porta\Editor\BufferManager(),
-            new DockToolController($manager, $this->dock, $project->dir),
+            new DockToolController($manager, $this->dock, new ProjectPaths($project->dir)),
             TestDockTools::replacer(),
             new CodeEditorWidget(),
             new MenuFileContext(),

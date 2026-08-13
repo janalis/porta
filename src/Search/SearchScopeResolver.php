@@ -18,7 +18,7 @@ final class SearchScopeResolver
     public function __construct(
         private readonly BufferManager $buffers,
         private readonly ActiveFileProvider $editor,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
     ) {}
 
     /** @return list<string> */
@@ -30,7 +30,7 @@ final class SearchScopeResolver
         if (ScopeKind::OpenFiles === $kind) {
             $paths = [];
             foreach ($this->buffers->all() as $buffer) {
-                $relative = ProjectPaths::relative($this->rootDir, $buffer->path);
+                $relative = $this->paths->relative($buffer->path);
                 if ('' !== $relative && !str_starts_with($relative, '/')) {
                     $paths[] = $relative;
                 }
@@ -46,7 +46,7 @@ final class SearchScopeResolver
             return $this->moduleScope($file);
         }
         $target = ScopeKind::CurrentFile === $kind ? $file : \dirname($file);
-        $relative = ProjectPaths::relative($this->rootDir, $target);
+        $relative = $this->paths->relative($target);
 
         return '' === $relative || str_starts_with($relative, '/') ? ['.'] : [$relative];
     }
@@ -62,9 +62,9 @@ final class SearchScopeResolver
     {
         // Climb the file's root-relative directory looking for a composer.json;
         // the loop stops at the project root ('.'), a blank, or an out-of-tree path.
-        $dir = \dirname(ProjectPaths::relative($this->rootDir, $file));
+        $dir = \dirname($this->paths->relative($file));
         while ('.' !== $dir && '' !== $dir && !str_starts_with($dir, '/')) {
-            if (is_file($this->rootDir.'/'.$dir.'/composer.json')) {
+            if (is_file($this->paths->absolute($dir.'/composer.json'))) {
                 return [$dir];
             }
             $dir = \dirname($dir);

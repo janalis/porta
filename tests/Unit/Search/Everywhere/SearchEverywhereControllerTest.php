@@ -15,6 +15,7 @@ use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchOverlay;
 use Porta\Search\Everywhere\SearchRow;
 use Porta\Search\Everywhere\SearchSource;
+use Porta\Support\ProjectPaths;
 use Porta\Support\Scheduler;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -105,7 +106,7 @@ final class SearchEverywhereControllerTest extends TestCase
             $async,
             $buffers,
             new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24)),
-            '/proj',
+            new ProjectPaths('/proj'),
             new class($opened) implements FileOpener {
                 /** @param list<array{string, bool}> $opened */
                 public function __construct(

@@ -31,7 +31,7 @@ final class FilesystemReconciler
         private readonly Translator $translator,
         private readonly LspSessionPool $lsp,
         private readonly EventDispatcherInterface $events,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
     ) {}
 
     /** Reconcile every open buffer and the file tree with the on-disk state. */
@@ -52,7 +52,7 @@ final class FilesystemReconciler
         if (null === $stamp) {
             if (null !== $buffer->diskStamp) {
                 $buffer->diskStamp = null; // flash once; keep the buffer so it can be re-saved
-                $this->notifier->flash($this->translator->trans('%file% deleted on disk', ['%file%' => $this->relativePath($buffer->path)]));
+                $this->notifier->flash($this->translator->trans('%file% deleted on disk', ['%file%' => $this->paths->relative($buffer->path)]));
             }
 
             return;
@@ -73,7 +73,7 @@ final class FilesystemReconciler
             return; // unreadable / too large / binary now — leave the buffer untouched
         }
         if ($buffer->isDirty()) {
-            $this->notifier->flash($this->translator->trans('%file% changed on disk', ['%file%' => $this->relativePath($buffer->path)]));
+            $this->notifier->flash($this->translator->trans('%file% changed on disk', ['%file%' => $this->paths->relative($buffer->path)]));
 
             return;
         }
@@ -104,7 +104,7 @@ final class FilesystemReconciler
         if ($buffer === $this->buffers->active()) {
             $pane->show($buffer->path, $payload);
         }
-        $this->notifier->flash($this->translator->trans('Reloaded %file%', ['%file%' => $this->relativePath($buffer->path)]));
+        $this->notifier->flash($this->translator->trans('Reloaded %file%', ['%file%' => $this->paths->relative($buffer->path)]));
     }
 
     /** Replace a clean buffer's content with the new on-disk text, keeping it clean. */
@@ -114,7 +114,7 @@ final class FilesystemReconciler
         $buffer->document->markSaved();
         $this->lsp->notifyFullChange($buffer->path, $buffer->document); // no-op when no server is running
         $this->events->dispatch(new BufferReloaded($buffer));
-        $this->notifier->flash($this->translator->trans('Reloaded %file%', ['%file%' => $this->relativePath($buffer->path)]));
+        $this->notifier->flash($this->translator->trans('Reloaded %file%', ['%file%' => $this->paths->relative($buffer->path)]));
     }
 
     /** Read a small UTF-8 text file, or null if missing, unreadable, too large or binary. */
@@ -126,10 +126,5 @@ final class FilesystemReconciler
         $content = (string) file_get_contents($path);
 
         return '' === $content || mb_check_encoding($content, encoding: 'UTF-8') ? $content : null;
-    }
-
-    private function relativePath(string $path): string
-    {
-        return ProjectPaths::relative($this->rootDir, $path);
     }
 }

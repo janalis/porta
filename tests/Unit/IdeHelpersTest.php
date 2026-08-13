@@ -214,7 +214,7 @@ final class IdeHelpersTest extends TestCase
 
     public function testRelativePathOutsideRoot(): void
     {
-        $this->assertSame('/elsewhere/file.php', ProjectPaths::relative($this->project->dir, '/elsewhere/file.php'));
+        $this->assertSame('/elsewhere/file.php', new ProjectPaths($this->project->dir)->relative('/elsewhere/file.php'));
     }
 
     public function testLineAtReadsFromDiskForUnopenedFiles(): void

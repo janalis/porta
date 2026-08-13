@@ -12,6 +12,7 @@ use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\NavigationController;
 use Porta\Support\DocsUrlOpener;
+use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestBottomDock;
@@ -50,7 +51,7 @@ final class NavigationControllerNativeDocsTest extends TestCase
             $translator,
             new BufferManager(),
             TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
-            '/p',
+            new ProjectPaths('/p'),
             new class implements FileOpener {
                 public function openFile(string $path, OpenFocus $focus = OpenFocus::Keep): void {}
             },

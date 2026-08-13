@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Workbench\Dock;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestTui;
@@ -35,7 +36,7 @@ final class DockToolControllerTest extends TestCase
         $this->results = new ResultsPanelWidget();
         $this->dock = TestBottomDock::create($this->tui, new TerminalPanelWidget(), $this->results, new DebugPanelWidget());
 
-        return new DockToolController(TestDockTools::source($tools), $this->dock, $rootDir);
+        return new DockToolController(TestDockTools::source($tools), $this->dock, new ProjectPaths($rootDir));
     }
 
     /** @return list<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}> */

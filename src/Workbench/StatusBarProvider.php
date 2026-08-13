@@ -33,7 +33,7 @@ final class StatusBarProvider
         private readonly LspSessionPool $lsp,
         private readonly Styles $styles,
         private readonly Translator $translator,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
     ) {}
 
     /**
@@ -52,9 +52,9 @@ final class StatusBarProvider
         $path = $this->editor->getFilePath();
 
         $left = match (true) {
-            null !== $active && $active->isViewer() => ProjectPaths::relative($this->rootDir, $active->path),
+            null !== $active && $active->isViewer() => $this->paths->relative($active->path),
             null === $path => $this->translator->trans('porta — open a file from the tree (Enter)'),
-            default => ProjectPaths::relative($this->rootDir, $path).($doc->isDirty() ? ' '.Glyphs::DIRTY : ''),
+            default => $this->paths->relative($path).($doc->isDirty() ? ' '.Glyphs::DIRTY : ''),
         };
 
         // Build the left prefix in visual order — [contributed segments] [branch]

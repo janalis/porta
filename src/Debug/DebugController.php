@@ -58,7 +58,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         private readonly Notifier $notifier,
         private readonly Tui $tui,
         private readonly Translator $translator,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
         private readonly FileOpener $files,
         private readonly DapClientFactory $clients,
         private readonly EventDispatcherInterface $dispatcher,
@@ -131,7 +131,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         $line = $this->state->stoppedLine();
         $text =
             $this->isPaused() && null !== $path && null !== $line
-                ? Glyphs::DEBUG_PAUSED.' '.ProjectPaths::relative($this->rootDir, $path).':'.($line + 1)
+                ? Glyphs::DEBUG_PAUSED.' '.$this->paths->relative($path).':'.($line + 1)
                 : Glyphs::DEBUG_RUNNING.' debug';
 
         return [new StatusCell($text, StatusTone::Active)];
@@ -268,7 +268,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
             $this,
             fn (array $advertised): array => $this->exceptionFilters->enabledFor($advertised),
         );
-        if (!$this->session->start(LaunchArguments::build($path, $this->rootDir, $config->launch, $config->runCommandArgv))) {
+        if (!$this->session->start(LaunchArguments::build($path, $this->paths->root(), $config->launch, $config->runCommandArgv))) {
             $this->session = null;
             $this->panel->setSessionState(DebugState::Terminated, null);
             $this->notifier->error($this->translator->trans('Could not start the debug adapter'));
@@ -387,7 +387,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         $this->revealPanel();
         $session->stackTrace(function (array $frames) use ($session): void {
             $this->frames = array_column($frames, null, 'id');
-            $display = array_map(fn (array $frame): array => [...$frame, 'path' => ProjectPaths::relative($this->rootDir, $frame['path'])], $frames);
+            $display = array_map(fn (array $frame): array => [...$frame, 'path' => $this->paths->relative($frame['path'])], $frames);
             $top = $frames[0] ?? null;
             if (null === $top || '' === $top['path']) {
                 $this->panel->setSessionState(DebugState::Paused, null);
@@ -398,7 +398,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
                 return;
             }
             $this->showStop($top['path'], $top['line']);
-            $this->panel->setSessionState(DebugState::Paused, ProjectPaths::relative($this->rootDir, $top['path']).':'.($top['line'] + 1));
+            $this->panel->setSessionState(DebugState::Paused, $this->paths->relative($top['path']).':'.($top['line'] + 1));
             $this->loadScopes($session, $top['id']);
             $this->panel->setFrames($display);
             $this->dispatcher->dispatch(new DebugStatusChanged());

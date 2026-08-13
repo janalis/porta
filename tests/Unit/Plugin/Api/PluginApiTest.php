@@ -17,6 +17,7 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Support\Clipboard;
+use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\Probe;
@@ -553,7 +554,7 @@ final class PluginApiTest extends TestCase
             new CodeEditorWidget(),
             $this->changeMarks = new RecordingChangeMarkSink(),
             new BufferManager(),
-            new DockToolController($manager, $dock, '/p'), // the manager IS the source
+            new DockToolController($manager, $dock, new ProjectPaths('/p')), // the manager IS the source
             TestDockTools::replacer(),
             new CodeEditorWidget(),
             new MenuFileContext(),

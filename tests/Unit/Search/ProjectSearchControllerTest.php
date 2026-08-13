@@ -51,11 +51,11 @@ final class ProjectSearchControllerTest extends TestCase
             $tui,
             new \Porta\I18n\Translator('en'),
             $buffers,
-            $rootDir,
+            new \Porta\Support\ProjectPaths($rootDir),
             new \Porta\Editor\DocumentReplacer($buffers, $this->editor, new \Porta\Lsp\LspSessionPool($rootDir, new \Porta\Tests\Support\FixedActiveFile(), new \Porta\I18n\Translator('en'))),
             new \Porta\History\SearchHistoryStore($rootDir),
             new \Porta\History\SearchPrefsStore($rootDir),
-            new \Porta\Search\SearchScopeResolver($buffers, $this->editor, $rootDir),
+            new \Porta\Search\SearchScopeResolver($buffers, $this->editor, new \Porta\Support\ProjectPaths($rootDir)),
             new \Porta\Search\LanguageFilter(new \Porta\Search\TokenClassifier(), $projectSearch, $rootDir),
             new \Porta\History\SearchScopeStore($rootDir),
         );

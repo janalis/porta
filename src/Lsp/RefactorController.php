@@ -29,7 +29,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
         Translator $translator,
         private readonly BufferManager $buffers,
         private readonly WorkspaceEditor $workspaceEditor,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
     ) {
         parent::__construct($lsp, $editor, $tui, $notifier, $translator);
     }
@@ -248,7 +248,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
                     $this->editor->invalidate();
                 }
                 $this->lsp->notifyFullChange($buffer->path, $buffer->document);
-                $this->flash($this->trans('Reformatted %file%', ['%file%' => ProjectPaths::relative($this->rootDir, $path)]));
+                $this->flash($this->trans('Reformatted %file%', ['%file%' => $this->paths->relative($path)]));
             }
             $this->tui->requestRender();
         });

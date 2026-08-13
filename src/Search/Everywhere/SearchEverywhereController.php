@@ -40,7 +40,7 @@ final class SearchEverywhereController
         private readonly array $asyncSources,
         private readonly BufferManager $buffers,
         private readonly Tui $tui,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
         private readonly FileOpener $files,
         private readonly Scheduler $scheduler,
         private readonly Translator $translator,
@@ -160,7 +160,7 @@ final class SearchEverywhereController
         $hits = [];
         foreach ($this->buffers->recent() as $buffer) {
             $absolute = $buffer->path;
-            $relative = ProjectPaths::relative($this->rootDir, $absolute);
+            $relative = $this->paths->relative($absolute);
             $dir = \dirname($relative);
             $hits[] = new SearchHit(
                 SearchCategory::Files,

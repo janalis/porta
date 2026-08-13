@@ -40,7 +40,7 @@ final class NavigationController extends AbstractLspController implements Editor
         Translator $translator,
         private readonly BufferManager $buffers,
         private readonly BottomDock $panels,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
         private readonly FileOpener $files,
         private readonly DocsUrlOpener $docsUrls,
     ) {
@@ -247,7 +247,7 @@ final class NavigationController extends AbstractLspController implements Editor
             }
             $line = (int) ($location['range']['start']['line'] ?? 0);
             $rows[] = [
-                'path' => ProjectPaths::relative($this->rootDir, $target),
+                'path' => $this->paths->relative($target),
                 'line' => $line,
                 'text' => trim($this->lineAt($target, $line)),
             ];
@@ -472,7 +472,7 @@ final class NavigationController extends AbstractLspController implements Editor
                 }
                 // The target line is always in range, so $items is never empty.
 
-                $title = 'Peek: '.ProjectPaths::relative($this->rootDir, $target).':'.($targetLine + 1);
+                $title = 'Peek: '.$this->paths->relative($target).':'.($targetLine + 1);
                 $this->editor->openListOverlay($title, $items, function (string $value): void {
                     [$file, $lineNo] = [substr($value, offset: 0, length: (int) strrpos($value, needle: ':')), (int) substr($value, (int) strrpos($value, needle: ':') + 1)];
                     $this->files->openFile($file, focus: OpenFocus::Editor);

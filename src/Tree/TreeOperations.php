@@ -43,7 +43,7 @@ final class TreeOperations
         private readonly Clipboard $clipboard,
         private readonly SearchActions $searchActions,
         private readonly ProjectSearchController $projectSearch,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
         private readonly Filesystem $fs = new Filesystem(),
     ) {}
 
@@ -101,11 +101,11 @@ final class TreeOperations
                 return;
             }
             $path = $dir.'/'.$name;
-            $this->withFs($this->translator->trans('Cannot create %file%', ['%file%' => $this->relativePath($path)]), function () use ($path): void {
+            $this->withFs($this->translator->trans('Cannot create %file%', ['%file%' => $this->paths->relative($path)]), function () use ($path): void {
                 $this->fs->dumpFile($path, '');
                 $this->tree->refresh();
                 $this->bufferService->openFile($path, focus: OpenFocus::Editor);
-                $this->notifier->success($this->translator->trans('Created %file%', ['%file%' => $this->relativePath($path)]));
+                $this->notifier->success($this->translator->trans('Created %file%', ['%file%' => $this->paths->relative($path)]));
             });
         });
     }
@@ -119,11 +119,11 @@ final class TreeOperations
                 return;
             }
             $path = $dir.'/'.$name;
-            $this->withFs($this->translator->trans('Cannot create %file%', ['%file%' => $this->relativePath($path)]), function () use ($path): void {
+            $this->withFs($this->translator->trans('Cannot create %file%', ['%file%' => $this->paths->relative($path)]), function () use ($path): void {
                 $this->fs->mkdir($path);
                 $this->tree->refresh();
                 $this->tui->setFocus($this->tree);
-                $this->notifier->success($this->translator->trans('Created %file%', ['%file%' => $this->relativePath($path)]));
+                $this->notifier->success($this->translator->trans('Created %file%', ['%file%' => $this->paths->relative($path)]));
             });
         });
     }
@@ -142,7 +142,7 @@ final class TreeOperations
             // so an open file's buffer is re-pointed at the new name.
             $resolvedOld = realpath($old);
             $oldKey = $resolvedOld ? $resolvedOld : $old;
-            $this->withFs($this->translator->trans('Cannot rename %file%', ['%file%' => $this->relativePath($old)]), function () use ($old, $new, $name, $oldKey): void {
+            $this->withFs($this->translator->trans('Cannot rename %file%', ['%file%' => $this->paths->relative($old)]), function () use ($old, $new, $name, $oldKey): void {
                 $this->fs->rename($old, $new); // no overwrite: a name clash is an error
                 if ($this->buffers->has($oldKey)) {
                     $this->buffers->close($oldKey);
@@ -168,7 +168,7 @@ final class TreeOperations
             // buffers are keyed by realpath()
             $resolved = realpath($path);
             $key = $resolved ? $resolved : $path;
-            $this->withFs($this->translator->trans('Cannot delete %file%', ['%file%' => $this->relativePath($path)]), function () use ($path, $key): void {
+            $this->withFs($this->translator->trans('Cannot delete %file%', ['%file%' => $this->paths->relative($path)]), function () use ($path, $key): void {
                 $this->fs->remove($path);
                 if ($this->buffers->has($key)) {
                     $next = $this->buffers->close($key);
@@ -176,7 +176,7 @@ final class TreeOperations
                 }
                 $this->tree->refresh();
                 $this->tui->setFocus($this->tree);
-                $this->notifier->flash($this->translator->trans('Deleted %file%', ['%file%' => $this->relativePath($path)]));
+                $this->notifier->flash($this->translator->trans('Deleted %file%', ['%file%' => $this->paths->relative($path)]));
             });
         });
     }
@@ -188,7 +188,7 @@ final class TreeOperations
 
     private function copyRelativePath(string $path): void
     {
-        $this->copyToClipboard($this->relativePath($path));
+        $this->copyToClipboard($this->paths->relative($path));
     }
 
     private function copyToClipboard(string $text): void
@@ -213,10 +213,5 @@ final class TreeOperations
         } catch (IOExceptionInterface) {
             $this->notifier->error($failMessage);
         }
-    }
-
-    private function relativePath(string $path): string
-    {
-        return ProjectPaths::relative($this->rootDir, $path);
     }
 }

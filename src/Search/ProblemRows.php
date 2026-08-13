@@ -19,7 +19,7 @@ final readonly class ProblemRows
 {
     public function __construct(
         private BufferManager $buffers,
-        private string $rootDir,
+        private readonly ProjectPaths $paths,
     ) {}
 
     /** @return list<array{path: string, line: int, text: string}> */
@@ -27,7 +27,7 @@ final readonly class ProblemRows
     {
         $results = [];
         foreach ($this->buffers->all() as $buffer) {
-            $rel = ProjectPaths::relative($this->rootDir, $buffer->path);
+            $rel = $this->paths->relative($buffer->path);
             foreach ($buffer->diagnostics as $line => $list) {
                 foreach ($list as $diag) {
                     $marker = DiagnosticStyle::glyph($diag['severity']);

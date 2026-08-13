@@ -16,7 +16,7 @@ final class WorkspaceSymbolClient
 {
     public function __construct(
         private readonly LspSessionPool $lsp,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
     ) {}
 
     /**
@@ -30,9 +30,9 @@ final class WorkspaceSymbolClient
             return;
         }
 
-        $rootDir = $this->rootDir;
-        $this->lsp->request('workspace/symbol', ['query' => $query], static function (mixed $result) use ($onResult, $rootDir): void {
-            $onResult(self::map($result, $rootDir));
+        $paths = $this->paths;
+        $this->lsp->request('workspace/symbol', ['query' => $query], static function (mixed $result) use ($onResult, $paths): void {
+            $onResult(self::map($result, $paths));
         });
     }
 
@@ -41,7 +41,7 @@ final class WorkspaceSymbolClient
      *
      * @return list<array{path: string, line: int, name: string, kind: int, label: string}>
      */
-    public static function map(mixed $result, string $rootDir): array
+    public static function map(mixed $result, ProjectPaths $paths): array
     {
         /** @var list<array{location?: array{uri?: mixed, range?: array{start?: array<string, mixed>}}, kind?: mixed, name?: mixed}> $symbols */
         $symbols = \is_array($result) ? $result : [];
@@ -56,7 +56,7 @@ final class WorkspaceSymbolClient
             $kindLabel = LspMapper::SYMBOL_KINDS[$kind] ?? '';
             $name = (string) ($symbol['name'] ?? '');
             $mapped[] = [
-                'path' => ProjectPaths::relative($rootDir, $target),
+                'path' => $paths->relative($target),
                 'line' => (int) ($start['line'] ?? 0),
                 'name' => $name,
                 'kind' => $kind,

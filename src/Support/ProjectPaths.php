@@ -5,20 +5,42 @@ declare(strict_types=1);
 namespace Porta\Support;
 
 /**
- * Small pure helpers for project-relative paths and language identification,
- * shared by the coordinator and the LSP feature controllers.
+ * The project root and the path arithmetic against it. One shared instance,
+ * bound to `$rootDir` by the container, replaces the `(rootDir, path)` pair
+ * that fifteen classes threaded through their constructors just to spell
+ * `relative($rootDir, $path)` — the pairing now cannot be mismatched. Bare
+ * test construction stays one `new ProjectPaths($dir)`.
+ *
+ * The path-only helpers (extension, languageId) stay static: they need no
+ * root.
  */
-final class ProjectPaths
+final readonly class ProjectPaths
 {
+    public function __construct(
+        private string $rootDir,
+    ) {}
+
+    /** The project root this instance is bound to, for the callers that hand it on raw. */
+    public function root(): string
+    {
+        return $this->rootDir;
+    }
+
     /** Path relative to the project root, or the absolute path when outside it. */
-    public static function relative(string $rootDir, string $path): string
+    public function relative(string $path): string
     {
         $realPath = realpath($path);
         $real = $realPath ? $realPath : $path;
-        $realRoot = realpath($rootDir);
-        $root = rtrim($realRoot ? $realRoot : $rootDir, characters: '/');
+        $realRoot = realpath($this->rootDir);
+        $root = rtrim($realRoot ? $realRoot : $this->rootDir, characters: '/');
 
         return str_starts_with($real, $root.'/') ? substr($real, \strlen($root) + 1) : $real;
+    }
+
+    /** The absolute path of a project-relative one. */
+    public function absolute(string $relative): string
+    {
+        return $this->rootDir.'/'.$relative;
     }
 
     /** LSP languageId for a file, by extension. See {@see LanguageMap}. */

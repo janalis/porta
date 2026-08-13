@@ -14,6 +14,7 @@ use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceSymbolClient;
 use Porta\Search\FileIndex;
 use Porta\Search\ProjectSearch;
+use Porta\Support\ProjectPaths;
 use Porta\Support\Scheduler;
 use Symfony\Component\Tui\Tui;
 
@@ -37,7 +38,7 @@ final class SearchEverywhereFactory
         private readonly LspSessionPool $lsp,
         private readonly Tui $tui,
         private readonly Scheduler $scheduler,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
         private readonly Translator $translator,
     ) {}
 
@@ -52,11 +53,11 @@ final class SearchEverywhereFactory
 
         return new SearchEverywhereController(
             $this->overlay,
-            [new FilesSource(new FileIndex($this->rootDir), $this->rootDir, $openFile)],
+            [new FilesSource(new FileIndex($this->paths->root()), $this->paths->root(), $openFile)],
             [],
             $this->buffers,
             $this->tui,
-            $this->rootDir,
+            $this->paths,
             $this->bufferService,
             $this->scheduler,
             $this->translator,
@@ -77,7 +78,7 @@ final class SearchEverywhereFactory
             [],
             $this->buffers,
             $this->tui,
-            $this->rootDir,
+            $this->paths,
             $this->bufferService,
             $this->scheduler,
             $this->translator,
@@ -94,15 +95,15 @@ final class SearchEverywhereFactory
     {
         $openFile = fn (string $path, OpenFocus $focus) => $this->bufferService->openFile($path, $focus);
         $jumpTo = fn (int $line, int $col) => $this->editorText->jumpTo($line, $col);
-        $searchSymbols = new WorkspaceSymbolClient($this->lsp, $this->rootDir)->search(...);
+        $searchSymbols = new WorkspaceSymbolClient($this->lsp, $this->paths)->search(...);
 
         return new SearchEverywhereController(
             $this->overlay,
             [],
-            [new WorkspaceSymbolSource($searchSymbols, SearchCategory::Symbols, [], $this->rootDir, $openFile, $jumpTo)],
+            [new WorkspaceSymbolSource($searchSymbols, SearchCategory::Symbols, [], $this->paths->root(), $openFile, $jumpTo)],
             $this->buffers,
             $this->tui,
-            $this->rootDir,
+            $this->paths,
             $this->bufferService,
             $this->scheduler,
             $this->translator,
@@ -115,22 +116,22 @@ final class SearchEverywhereFactory
     {
         $openFile = fn (string $path, OpenFocus $focus) => $this->bufferService->openFile($path, $focus);
         $jumpTo = fn (int $line, int $col) => $this->editorText->jumpTo($line, $col);
-        $searchSymbols = new WorkspaceSymbolClient($this->lsp, $this->rootDir)->search(...);
+        $searchSymbols = new WorkspaceSymbolClient($this->lsp, $this->paths)->search(...);
 
         return new SearchEverywhereController(
             $this->overlay,
             [
-                new FilesSource(new FileIndex($this->rootDir), $this->rootDir, $openFile),
+                new FilesSource(new FileIndex($this->paths->root()), $this->paths->root(), $openFile),
                 new ActionsSource($this->commands),
             ],
             [
-                new WorkspaceSymbolSource($searchSymbols, SearchCategory::Classes, [5, 10, 11, 23], $this->rootDir, $openFile, $jumpTo),
-                new WorkspaceSymbolSource($searchSymbols, SearchCategory::Symbols, [], $this->rootDir, $openFile, $jumpTo),
-                new TextSource(new ProjectSearch($this->rootDir), $this->rootDir, $openFile, $jumpTo),
+                new WorkspaceSymbolSource($searchSymbols, SearchCategory::Classes, [5, 10, 11, 23], $this->paths->root(), $openFile, $jumpTo),
+                new WorkspaceSymbolSource($searchSymbols, SearchCategory::Symbols, [], $this->paths->root(), $openFile, $jumpTo),
+                new TextSource(new ProjectSearch($this->paths->root()), $this->paths->root(), $openFile, $jumpTo),
             ],
             $this->buffers,
             $this->tui,
-            $this->rootDir,
+            $this->paths,
             $this->bufferService,
             $this->scheduler,
             $this->translator,

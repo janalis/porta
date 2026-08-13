@@ -22,6 +22,7 @@ use Porta\Event\DebugStatusChanged;
 use Porta\Event\DebugVariableEditRequested;
 use Porta\Event\DebugWatchRemovalRequested;
 use Porta\I18n\Translator;
+use Porta\Support\ProjectPaths;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FakeDapClient;
@@ -85,7 +86,7 @@ final class DebugControllerTest extends TestCase
             new Notifier($this->statusBar, $tui),
             $tui,
             new Translator(),
-            '/p',
+            new ProjectPaths('/p'),
             new class($opened) implements FileOpener {
                 /** @param list<string> $opened */
                 public function __construct(

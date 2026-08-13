@@ -65,7 +65,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         private readonly Tui $tui,
         private readonly LspSessionPool $lsp,
         private readonly EditorConfigResolver $editorConfigResolver,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
         private readonly Translator $translator,
         private readonly FilesystemReconciler $reconciler,
         private readonly HelpViewerWidget $helpViewer,
@@ -112,7 +112,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         }
 
         if (!is_file($path) || !is_readable($path)) {
-            $this->notifier->flash($this->translator->trans('Cannot read %file%', ['%file%' => $this->relativePath($path)]));
+            $this->notifier->flash($this->translator->trans('Cannot read %file%', ['%file%' => $this->paths->relative($path)]));
 
             return;
         }
@@ -247,7 +247,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         }
 
         if (!is_file($path) || !is_readable($path)) {
-            $this->notifier->flash($this->translator->trans('Cannot read %file%', ['%file%' => $this->relativePath($path)]));
+            $this->notifier->flash($this->translator->trans('Cannot read %file%', ['%file%' => $this->paths->relative($path)]));
 
             return;
         }
@@ -266,7 +266,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
     {
         $path = ($resolved = realpath($path)) ? $resolved : $path;
         if (!is_file($path) || !is_readable($path)) {
-            $this->notifier->flash($this->translator->trans('Cannot read %file%', ['%file%' => $this->relativePath($path)]));
+            $this->notifier->flash($this->translator->trans('Cannot read %file%', ['%file%' => $this->paths->relative($path)]));
 
             return;
         }
@@ -487,14 +487,14 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         if ($this->formatOnSave->isEnabled() && !$active->isViewer()) {
             $this->formatOnSave->formatThenSave($active, function () use ($active): void {
                 if ($this->saveBuffer($active)) {
-                    $this->notifier->success($this->translator->trans('Saved %file%', ['%file%' => $this->relativePath($active->path)]));
+                    $this->notifier->success($this->translator->trans('Saved %file%', ['%file%' => $this->paths->relative($active->path)]));
                 }
             });
 
             return;
         }
         if ($this->saveBuffer($active)) {
-            $this->notifier->success($this->translator->trans('Saved %file%', ['%file%' => $this->relativePath($active->path)]));
+            $this->notifier->success($this->translator->trans('Saved %file%', ['%file%' => $this->paths->relative($active->path)]));
         }
 
         // No trailing requestRender: every outcome that changes the screen
@@ -530,7 +530,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         try {
             $this->fs->dumpFile($buffer->path, $bytes);
         } catch (IOExceptionInterface) {
-            $this->notifier->error($this->translator->trans('Save failed: %file%', ['%file%' => $this->relativePath($buffer->path)]));
+            $this->notifier->error($this->translator->trans('Save failed: %file%', ['%file%' => $this->paths->relative($buffer->path)]));
 
             return false;
         }
@@ -652,10 +652,5 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         // Announce the change so an open Problems tab refreshes live.
         $this->dispatcher->dispatch(new DiagnosticsChanged());
         $this->tui->requestRender();
-    }
-
-    private function relativePath(string $path): string
-    {
-        return ProjectPaths::relative($this->rootDir, $path);
     }
 }

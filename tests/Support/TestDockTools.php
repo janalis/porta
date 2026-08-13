@@ -8,6 +8,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\DocumentReplacer;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
+use Porta\Support\ProjectPaths;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -34,7 +35,7 @@ final class TestDockTools
         return new DockToolController(
             self::source($tools),
             $dock ?? TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
-            $rootDir,
+            new ProjectPaths($rootDir),
         );
     }
 

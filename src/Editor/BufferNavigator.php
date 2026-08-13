@@ -31,7 +31,7 @@ final class BufferNavigator implements BufferNavigationHandler, ViewerTabHandler
         private readonly ModalHost $editor,
         private readonly StatusBarWidget $statusBar,
         private readonly Tui $tui,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
     ) {}
 
     /** Switch to the previous/next tab (+1 / -1) and focus its content. */
@@ -94,7 +94,7 @@ final class BufferNavigator implements BufferNavigationHandler, ViewerTabHandler
         }
         $items = array_map(fn (Buffer $b) => [
             'label' => basename($b->path).($b->document->isDirty() ? ' '.Glyphs::DIRTY : ''),
-            'hint' => ProjectPaths::relative($this->rootDir, $b->path),
+            'hint' => $this->paths->relative($b->path),
             'value' => $b->path,
         ], $recent);
         // Pre-select the previous file, like PhpStorm's Ctrl+E

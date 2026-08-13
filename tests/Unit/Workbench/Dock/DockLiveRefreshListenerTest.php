@@ -11,6 +11,7 @@ use Porta\Event\LspLogAppended;
 use Porta\Event\NotificationLogged;
 use Porta\Lsp\LspLog;
 use Porta\Search\ProblemRows;
+use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\DebugPanelWidget;
@@ -51,7 +52,7 @@ final class DockLiveRefreshListenerTest extends TestCase
         $this->lspLog = new LspLog(new MockClock('2026-07-16 10:00:00'), new EventDispatcher());
         $this->notificationLog = new NotificationLog(new MockClock('2026-07-16 11:00:00'), new EventDispatcher());
 
-        return new DockLiveRefreshListener($this->dock, $this->tools, new ProblemRows($this->buffers, '/p'), $this->lspLog, $this->notificationLog);
+        return new DockLiveRefreshListener($this->dock, $this->tools, new ProblemRows($this->buffers, new ProjectPaths('/p')), $this->lspLog, $this->notificationLog);
     }
 
     private function plainPanel(): string

@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Search;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Search\ProblemRows;
+use Porta\Support\ProjectPaths;
 
 final class ProblemRowsTest extends TestCase
 {
@@ -27,7 +28,7 @@ final class ProblemRowsTest extends TestCase
             0 => [['severity' => 1, 'message' => 'top error', 'col' => 0, 'endCol' => 1]],
         ];
 
-        $rows = new ProblemRows($buffers, '/p')->build();
+        $rows = new ProblemRows($buffers, new ProjectPaths('/p'))->build();
 
         $this->assertSame(
             [
@@ -44,6 +45,6 @@ final class ProblemRowsTest extends TestCase
 
     public function testNoOpenBuffersYieldNoRows(): void
     {
-        $this->assertSame([], new ProblemRows(new BufferManager(), '/p')->build());
+        $this->assertSame([], new ProblemRows(new BufferManager(), new ProjectPaths('/p'))->build());
     }
 }

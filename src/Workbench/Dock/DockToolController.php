@@ -25,7 +25,7 @@ final class DockToolController
     public function __construct(
         private readonly DockToolSource $source,
         private readonly BottomDock $dock,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
     ) {}
 
     /**
@@ -103,7 +103,7 @@ final class DockToolController
                 continue;
             }
             $clean[] = [
-                'path' => str_starts_with($row['path'], '/') ? ProjectPaths::relative($this->rootDir, $row['path']) : $row['path'],
+                'path' => str_starts_with($row['path'], '/') ? $this->paths->relative($row['path']) : $row['path'],
                 'line' => max(0, $row['line']),
                 'text' => $row['text'],
                 // Match spans, in DISPLAY columns: what makes the matched

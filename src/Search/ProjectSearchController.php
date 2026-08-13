@@ -56,7 +56,7 @@ final class ProjectSearchController
         private readonly Tui $tui,
         private readonly Translator $translator,
         private readonly BufferManager $buffers,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
         private readonly DocumentReplacer $replacer,
         private readonly SearchHistoryStore $history,
         private readonly SearchPrefsStore $prefs,
@@ -195,7 +195,7 @@ final class ProjectSearchController
      */
     private function scopedOpen(string $absDir): void
     {
-        $relative = ProjectPaths::relative($this->rootDir, $absDir);
+        $relative = $this->paths->relative($absDir);
         if ('' === $relative || str_starts_with($relative, '/')) {
             $this->open();
 
@@ -224,7 +224,7 @@ final class ProjectSearchController
      */
     public function addSearchScope(string $absDir): void
     {
-        $relative = ProjectPaths::relative($this->rootDir, $absDir);
+        $relative = $this->paths->relative($absDir);
         if ('' === $relative || str_starts_with($relative, '/')) {
             return;
         }
@@ -333,7 +333,7 @@ final class ProjectSearchController
 
         $touched = 0;
         foreach ($keptLinesByPath as $relPath => $lineIndices) {
-            $abs = $this->rootDir.'/'.$relPath;
+            $abs = $this->paths->absolute($relPath);
             $buffer = $this->buffers->get($abs) ?? $this->buffers->get(($real = realpath($abs)) ? $real : $abs);
             if (null !== $buffer) {
                 $old = $buffer->document->getText();
@@ -369,7 +369,7 @@ final class ProjectSearchController
 
         $touched = 0;
         foreach (array_unique(array_column($this->lastSearchResults, 'path')) as $relPath) {
-            $abs = $this->rootDir.'/'.$relPath;
+            $abs = $this->paths->absolute($relPath);
             $buffer = $this->buffers->get($abs) ?? $this->buffers->get(($real = realpath($abs)) ? $real : $abs);
             if (null !== $buffer) {
                 $old = $buffer->document->getText();
@@ -454,7 +454,7 @@ final class ProjectSearchController
             $lines[] = \sprintf('  %d: %s', $result['line'] + 1, $result['text']);
         }
 
-        $abs = $this->rootDir.'/.porta/search-results.txt';
+        $abs = $this->paths->absolute('.porta/search-results.txt');
         $this->fs->dumpFile($abs, implode("\n", $lines)."\n");
         $this->statusBar->flash($this->translator->trans('Exported %count% results', ['%count%' => \count($this->lastSearchResults)]));
 

@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceSymbolClient;
+use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\FixedActiveFile;
 
 final class WorkspaceSymbolClientTest extends TestCase
@@ -19,7 +20,7 @@ final class WorkspaceSymbolClientTest extends TestCase
                 ['name' => 'User', 'kind' => 5, 'location' => ['uri' => 'file:///proj/src/User.php', 'range' => ['start' => ['line' => 9]]]],
                 ['name' => 'greet', 'kind' => 12, 'location' => ['uri' => 'file:///proj/src/f.php', 'range' => ['start' => ['line' => 2]]]],
             ],
-            '/proj',
+            new ProjectPaths('/proj'),
         );
 
         $this->assertSame(
@@ -38,7 +39,7 @@ final class WorkspaceSymbolClientTest extends TestCase
                 ['name' => 'NoUri', 'kind' => 5], // no location → skipped
                 ['name' => 'Bare', 'location' => ['uri' => 'file:///proj/a.php']], // no kind → bare name; no range → line 0
             ],
-            '/proj',
+            new ProjectPaths('/proj'),
         );
 
         $this->assertCount(1, $mapped, 'the uri-less symbol is dropped');
@@ -49,13 +50,13 @@ final class WorkspaceSymbolClientTest extends TestCase
 
     public function testMapOfANonArrayResultIsEmpty(): void
     {
-        $this->assertSame([], WorkspaceSymbolClient::map('not an array', '/proj'));
+        $this->assertSame([], WorkspaceSymbolClient::map('not an array', new ProjectPaths('/proj')));
     }
 
     public function testSearchWithoutAReadyServerReturnsEmptyImmediately(): void
     {
         $pool = new LspSessionPool('/nowhere', new FixedActiveFile(), new Translator('en'));
-        $client = new WorkspaceSymbolClient($pool, '/nowhere');
+        $client = new WorkspaceSymbolClient($pool, new ProjectPaths('/nowhere'));
 
         $got = null;
         $client->search('x', static function (array $result) use (&$got): void {
