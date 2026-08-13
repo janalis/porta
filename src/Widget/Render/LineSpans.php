@@ -89,7 +89,7 @@ final class LineSpans
             $sl = min($caret->line, $caret->anchorLine);
             $el = max($caret->line, $caret->anchorLine);
             if (($caret->line !== $caret->anchorLine || $caret->col !== $caret->anchorCol) && $lineIndex >= $sl && $lineIndex <= $el) {
-                [, $startCol, , $endCol] = self::caretRange($caret);
+                [, $startCol, , $endCol] = $caret->orderedRange();
                 $spans[] = self::selectionSpan($doc, $lineIndex, $sl, $startCol, $el, $endCol, $styles);
             }
             // The caret cell (reverse video), for the primary and extras alike.
@@ -119,19 +119,5 @@ final class LineSpans
         $selectionBg = $selectionStyle->getAnsiRestore();
 
         return [$startDisp, $endDisp, $selectionBg, Sgr::resetFor($selectionStyle), $selectionBg];
-    }
-
-    /**
-     * Ordered [startLine, startCol, endLine, endCol] of a caret record's selection.
-     *
-     * @return array{int, int, int, int}
-     */
-    private static function caretRange(Caret $caret): array
-    {
-        $a = [$caret->anchorLine, $caret->anchorCol];
-        $b = [$caret->line, $caret->col];
-        [$start, $end] = $a <= $b ? [$a, $b] : [$b, $a];
-
-        return [$start[0], $start[1], $end[0], $end[1]];
     }
 }

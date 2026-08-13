@@ -32,4 +32,20 @@ final readonly class Caret
     {
         return $this->anchorLine !== $this->line || $this->anchorCol !== $this->col;
     }
+
+    /**
+     * The selection in document order — [startLine, startCol, endLine, endCol],
+     * anchor and cursor swapped as needed. A point caret yields a zero-width
+     * range at its own position.
+     *
+     * @return array{int, int, int, int}
+     */
+    public function orderedRange(): array
+    {
+        $a = [$this->anchorLine, $this->anchorCol];
+        $b = [$this->line, $this->col];
+        [$start, $end] = $a <= $b ? [$a, $b] : [$b, $a];
+
+        return [$start[0], $start[1], $end[0], $end[1]];
+    }
 }

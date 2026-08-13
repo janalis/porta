@@ -547,23 +547,9 @@ final class MultiCaret
     /** The text of a caret's selection (possibly spanning lines); '' for a point. */
     private function rangeText(Caret $record): string
     {
-        [$sl, $sc, $el, $ec] = $this->orderedRange($record);
+        [$sl, $sc, $el, $ec] = $record->orderedRange();
 
         return $this->document->getTextInRange($sl, $sc, $el, $ec);
-    }
-
-    /**
-     * Normalize a caret record to [startLine, startCol, endLine, endCol].
-     *
-     * @return array{int, int, int, int}
-     */
-    private function orderedRange(Caret $record): array
-    {
-        $a = [$record->anchorLine, $record->anchorCol];
-        $b = [$record->line, $record->col];
-        [$start, $end] = $a <= $b ? [$a, $b] : [$b, $a];
-
-        return [$start[0], $start[1], $end[0], $end[1]];
     }
 
     /** Delete every caret's selection (block cut) as one atomic undo step. */
