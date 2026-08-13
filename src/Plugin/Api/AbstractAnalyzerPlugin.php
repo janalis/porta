@@ -99,6 +99,8 @@ abstract class AbstractAnalyzerPlugin extends AbstractToolPlugin
      * targets that should read the same across analyzers.
      *
      * @param list<string> $keys default keys for the analyse command
+     *
+     * @throws PluginException
      */
     protected function registerAnalysis(PluginApi $api, string $display, array $keys): void
     {

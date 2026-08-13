@@ -8,6 +8,7 @@ use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Input\HitTester;
 use Porta\Layout\ViewRegions;
+use Porta\Plugin\Api\PluginException;
 use Porta\Support\Scheduler;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Theme\Styles;
@@ -56,7 +57,10 @@ final readonly class ViewRegistrar
                     $this->hit,
                 ));
                 if (!$view instanceof ContributedView) {
-                    throw new \RuntimeException(\sprintf('registerView("%s") must return a ContributedView', $entry['id']));
+                    // A plugin-contract violation, so it carries the type that
+                    // already means that — the barrier below reports it against
+                    // the registering plugin either way.
+                    throw new PluginException(\sprintf('registerView("%s") must return a ContributedView', $entry['id']));
                 }
                 $this->registry->register($view);
             } catch (\Throwable $error) {

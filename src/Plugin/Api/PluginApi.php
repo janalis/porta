@@ -153,6 +153,8 @@ final class PluginApi
      *
      * @param \Closure(): void $handler
      * @param list<string>     $keys
+     *
+     * @throws PluginException
      */
     public function registerCommand(string $id, string $label, \Closure $handler, array $keys = []): void
     {
@@ -188,6 +190,8 @@ final class PluginApi
      * third-party plugin from quietly becoming `save`.
      *
      * @param \Closure(): void $handler
+     *
+     * @throws PluginException
      */
     public function adoptCommand(string $id, \Closure $handler): void
     {
@@ -221,6 +225,8 @@ final class PluginApi
      * the editor's right-click menu ({@see MenuSurface}).
      *
      * @param (\Closure(): bool)|null $enabledWhen
+     *
+     * @throws PluginException
      */
     public function addMenuItem(string $commandId, ?\Closure $enabledWhen = null, MenuSurface $surface = MenuSurface::Plugins): void
     {
@@ -243,6 +249,8 @@ final class PluginApi
      * type coercion. Kinds: 'text', 'bool', 'int', 'choice' (with $options).
      *
      * @param list<string>|null $options required for 'choice'; must contain the default
+     *
+     * @throws PluginException
      */
     public function registerSetting(string $key, string $label, string $kind = 'text', bool|int|string $default = '', ?array $options = null, ?string $hint = null): void
     {
@@ -280,6 +288,8 @@ final class PluginApi
      * first available (in load order) wins.
      *
      * @param \Closure(): (list<string>|null) $resolveCommand
+     *
+     * @throws PluginException
      */
     public function registerLanguageServer(string $languageId, string $name, \Closure $resolveCommand): void
     {
@@ -327,6 +337,8 @@ final class PluginApi
      * @param \Closure(string, string, \Closure(string): void): void $highlight (content, language, deliver)
      * @param (\Closure(): bool)|null                $isAvailable
      * @param string|null                            $id          selection key in config; defaults to the plugin name
+     *
+     * @throws PluginException
      */
     public function registerHighlighter(
         string $label,
@@ -366,6 +378,8 @@ final class PluginApi
      * predicate declines the path (reported once).
      *
      * @param list<string>|\Closure(string): bool $claims
+     *
+     * @throws PluginException
      */
     public function registerViewer(string $id, array|\Closure $claims): void
     {
@@ -402,6 +416,8 @@ final class PluginApi
      * return type would put the plugin tier back in front of a widget.
      *
      * @param \Closure $factory \Closure(\Porta\Workbench\View\ViewServices): \Porta\Workbench\View\ContributedView
+     *
+     * @throws PluginException
      */
     public function registerView(string $id, \Closure $factory): void
     {
@@ -435,6 +451,8 @@ final class PluginApi
      * @param \Closure $pane  `\Closure(\Porta\Editor\PaneServices): \Porta\Widget\EditorPaneWidget` — untyped here so the
      *                        plugin tier never names a widget class (the `Plugin > Widget` edge round 18 severed)
      * @param \Closure $load  `\Closure(string $path): mixed`
+     *
+     * @throws PluginException
      */
     public function registerPane(string $id, \Closure $pane, \Closure $load): void
     {
@@ -463,6 +481,8 @@ final class PluginApi
      * @param (\Closure(): void)|null            $rerun    F5 on this tab; null leaves the key inert
      * @param (\Closure(string, int): void)|null $activate Enter on a row (path, 0-based line); null takes core's
      *                                                    open-the-file-and-jump, which is what most tools want
+     *
+     * @throws PluginException
      */
     public function registerListTool(string $id, string $title, ?\Closure $rerun = null, ?\Closure $activate = null): void
     {
@@ -496,6 +516,8 @@ final class PluginApi
      * launch configuration stays the user's, because it is theirs to tune.
      *
      * @param \Closure(): (list<string>|null) $resolveCommand
+     *
+     * @throws PluginException
      */
     public function registerDebugAdapter(string $languageId, \Closure $resolveCommand): void
     {
@@ -548,6 +570,8 @@ final class PluginApi
      * @param (\Closure(): bool)|null $visible  hides the whole group; null means always shown
      * @param string                  $viewId   the view whose open state $viewSafe applies to, '' for none
      * @param list<string>            $viewSafe command ids that stay enabled while that view is open
+     *
+     * @throws PluginException
      */
     public function registerMenu(string $title, string $after, array $items, ?\Closure $visible = null, string $viewId = '', array $viewSafe = []): void
     {
@@ -588,6 +612,8 @@ final class PluginApi
      * the id and the label, which is all the keymap page needs.
      *
      * @param array<string, string> $actions id => untranslated label
+     *
+     * @throws PluginException
      */
     public function registerActions(array $actions): void
     {
@@ -616,6 +642,8 @@ final class PluginApi
      *
      * @param list<string>|\Closure(): list<string>                                       $languages `['*']` claims everything
      * @param \Closure(string, string): (list<array{start: int, end: int}>|null)          $classify  (content, language)
+     *
+     * @throws PluginException
      */
     public function registerTokenSpans(array|\Closure $languages, \Closure $classify): void
     {
@@ -641,6 +669,8 @@ final class PluginApi
      *
      * @param \Closure(): bool                   $isAvailable
      * @param list<array{0: string, 1: string}> $via ordered [manager, package] candidates
+     *
+     * @throws PluginException
      */
     public function registerInstaller(string $tool, \Closure $isAvailable, array $via): void
     {
@@ -671,6 +701,8 @@ final class PluginApi
      * `.porta.json`/Settings-page value coerced to the declared kind, or the
      * default. Safe during activate() (the config loads before plugins), but
      * {@see registerSetting()} must have run first.
+     *
+     * @throws PluginException
      */
     public function setting(string $key): bool|int|string
     {
@@ -690,6 +722,8 @@ final class PluginApi
      * signature; a closure taking no argument is fine.
      *
      * @param \Closure(string): void $listener
+     *
+     * @throws PluginException
      */
     public function onReady(\Closure $listener): void
     {
@@ -704,19 +738,29 @@ final class PluginApi
      * Persisting something is what this is for.
      *
      * @param \Closure(string): void $listener
+     *
+     * @throws PluginException
      */
     public function onShutdown(\Closure $listener): void
     {
         $this->listen(IdeShuttingDown::class, static fn (IdeShuttingDown $event) => $listener($event->projectRoot));
     }
 
-    /** @param \Closure(string): void $listener receives the absolute path */
+    /**
+     * @param \Closure(string): void $listener receives the absolute path
+     *
+     * @throws PluginException
+     */
     public function onFileOpened(\Closure $listener): void
     {
         $this->listen(BufferOpened::class, static fn (BufferOpened $event) => $listener($event->buffer->path));
     }
 
-    /** @param \Closure(string): void $listener receives the absolute path */
+    /**
+     * @param \Closure(string): void $listener receives the absolute path
+     *
+     * @throws PluginException
+     */
     public function onFileSaved(\Closure $listener): void
     {
         $this->listen(BufferSaved::class, static fn (BufferSaved $event) => $listener($event->buffer->path));
@@ -732,6 +776,8 @@ final class PluginApi
      * without a save.
      *
      * @param \Closure(string): void $listener receives the absolute path
+     *
+     * @throws PluginException
      */
     public function onFileReloaded(\Closure $listener): void
     {
@@ -746,6 +792,8 @@ final class PluginApi
      * stays silent while core listeners still see every show.
      *
      * @param \Closure(string): void $listener receives the absolute path
+     *
+     * @throws PluginException
      */
     public function onBufferSwitched(\Closure $listener): void
     {
@@ -781,6 +829,8 @@ final class PluginApi
      * next paint uses the rebuilt engine.
      *
      * @param \Closure(string): void $listener
+     *
+     * @throws PluginException
      */
     public function onThemeChanged(\Closure $listener): void
     {
@@ -804,6 +854,8 @@ final class PluginApi
      *
      * @param class-string                  $eventClass a {@see PluginObservable} implementation
      * @param \Closure(PluginObservable): void $listener
+     *
+     * @throws PluginException
      */
     public function on(string $eventClass, \Closure $listener): void
     {
@@ -940,6 +992,8 @@ final class PluginApi
      * `plugins.<name>.<key>`, exactly like a Settings-page edit. An action
      * method: calling it during activate() throws (seed defaults via
      * {@see registerSetting()} instead).
+     *
+     * @throws PluginException
      */
     public function changeSetting(string $key, bool|int|string $value): void
     {

@@ -115,6 +115,8 @@ abstract class AbstractToolPlugin extends AbstractPlugin
      * availability predicate.
      *
      * @param list<array{0: string, 1: string}> $via ordered [manager, package] install candidates
+     *
+     * @throws PluginException
      */
     protected function registerBinarySetting(PluginApi $api, array $via, ?string $hint = null): void
     {
@@ -122,7 +124,11 @@ abstract class AbstractToolPlugin extends AbstractPlugin
         $api->registerInstaller($this->binaryName, $this->binaryAvailable($api), $via);
     }
 
-    /** A persisted on/off setting exposed as a palette command that flips and reports it. */
+    /**
+     * A persisted on/off setting exposed as a palette command that flips and reports it.
+     *
+     * @throws PluginException
+     */
     protected function registerToggle(PluginApi $api, string $id, string $label, string $settingKey, string $phrase): void
     {
         $api->registerCommand($id, $label, static function () use ($api, $settingKey, $phrase): void {
