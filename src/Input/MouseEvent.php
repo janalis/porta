@@ -12,24 +12,24 @@ namespace Porta\Input;
  * rows. This value object exposes 0-based coordinates plus decoded button
  * semantics.
  */
-final class MouseEvent
+final readonly class MouseEvent
 {
     public const int LEFT = 0;
     public const int MIDDLE = 1;
     public const int RIGHT = 2;
 
     private function __construct(
-        public readonly int $button,
-        public readonly int $col, // 0-based screen column
-        public readonly int $row, // 0-based screen row
-        public readonly bool $pressed, // true = press/motion (M), false = release (m)
-        public readonly bool $motion,
-        public readonly bool $wheel,
-        public readonly int $wheelDelta, // -1 wheel up, +1 wheel down, 0 otherwise
-        public readonly int $wheelHDelta, // -1 wheel left, +1 wheel right, 0 otherwise
-        public readonly bool $shift, // Shift held (SGR modifier bit 4)
-        public readonly bool $alt, // Alt/Option held (SGR modifier bit 8)
-        public readonly bool $ctrl, // Ctrl held (SGR modifier bit 16)
+        public int $button,
+        public int $col, // 0-based screen column
+        public int $row, // 0-based screen row
+        public bool $pressed, // true = press/motion (M), false = release (m)
+        public bool $motion,
+        public bool $wheel,
+        public int $wheelDelta, // -1 wheel up, +1 wheel down, 0 otherwise
+        public int $wheelHDelta, // -1 wheel left, +1 wheel right, 0 otherwise
+        public bool $shift, // Shift held (SGR modifier bit 4)
+        public bool $alt, // Alt/Option held (SGR modifier bit 8)
+        public bool $ctrl, // Ctrl held (SGR modifier bit 16)
     ) {}
 
     /**

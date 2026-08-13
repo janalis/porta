@@ -15,13 +15,13 @@ use Symfony\Component\Tui\Style\Style;
  * with the plain Style — so applying a theme overwrites every rule of the
  * previous one (the tui StyleSheet can only add rules, never remove them).
  */
-final class ThemeDefinition
+final readonly class ThemeDefinition
 {
     /** @var array<string, Style> selector → Style, total over the Role selectors */
-    private readonly array $rules;
+    private array $rules;
 
     /** @var array<string, Style> role name → Style, pre-indexed for the render hot path */
-    private readonly array $byRole;
+    private array $byRole;
 
     /**
      * @param array<string, Style>  $rules      stylesheet selector → Style; role selectors may be omitted (filled as plain)
@@ -29,8 +29,8 @@ final class ThemeDefinition
      */
     public function __construct(
         array $rules,
-        private readonly array $underlines,
-        private readonly bool $hasColor,
+        private array $underlines,
+        private bool $hasColor,
     ) {
         $byRole = [];
         foreach (Role::cases() as $role) {

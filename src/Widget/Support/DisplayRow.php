@@ -14,16 +14,16 @@ namespace Porta\Widget\Support;
  * `contextText = null`; a context row has both null but `contextText` set, so
  * `null !== filePath` then `null !== contextText` classifies the three.
  */
-final class DisplayRow
+final readonly class DisplayRow
 {
     private function __construct(
-        public readonly ?string $filePath,
-        public readonly int $count,
-        public readonly bool $collapsed,
-        public readonly int $matchIndex,
-        public readonly int $contextLine = -1,
-        public readonly ?string $contextText = null,
-        public readonly bool $isDirectory = false,
+        public ?string $filePath,
+        public int $count,
+        public bool $collapsed,
+        public int $matchIndex,
+        public int $contextLine = -1,
+        public ?string $contextText = null,
+        public bool $isDirectory = false,
     ) {}
 
     public static function fileHeader(string $path, int $count, HeaderState $state): self

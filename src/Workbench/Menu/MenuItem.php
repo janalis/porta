@@ -10,18 +10,18 @@ namespace Porta\Workbench\Menu;
  * An optional {@see $isEnabled} predicate greys the item out (and blocks running
  * it) when it returns false — e.g. document actions while no file is open.
  */
-final class MenuItem
+final readonly class MenuItem
 {
     /**
      * @param (\Closure(): void)|null $run
      * @param (\Closure(): bool)|null $isEnabled
      */
     public function __construct(
-        public readonly string $label,
-        public readonly string $shortcut,
-        public readonly ?\Closure $run,
-        public readonly bool $separator = false,
-        public readonly ?\Closure $isEnabled = null,
+        public string $label,
+        public string $shortcut,
+        public ?\Closure $run,
+        public bool $separator = false,
+        public ?\Closure $isEnabled = null,
     ) {}
 
     public static function separator(): self

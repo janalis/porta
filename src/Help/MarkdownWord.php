@@ -9,13 +9,13 @@ namespace Porta\Help;
  * an over-wide one) with its display width, keeping the segment's styling so
  * consecutive same-style words re-join into one styled run per line.
  */
-final class MarkdownWord
+final readonly class MarkdownWord
 {
     public function __construct(
-        public readonly string $text,
-        public readonly int $width,
-        public readonly MarkdownSpanKind $kind,
-        public readonly ?string $target,
-        public readonly int $group,
+        public string $text,
+        public int $width,
+        public MarkdownSpanKind $kind,
+        public ?string $target,
+        public int $group,
     ) {}
 }

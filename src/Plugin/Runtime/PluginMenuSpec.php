@@ -12,13 +12,13 @@ use Porta\Workbench\Menu\MenuSurface;
  * SURFACE it belongs to, and the optional enabled-closure (the item dims while
  * it returns false), already wrapped in the plugin fault barrier.
  */
-final class PluginMenuSpec
+final readonly class PluginMenuSpec
 {
     /** @param (\Closure(): bool)|null $when */
     public function __construct(
-        public readonly string $plugin,
-        public readonly string $spec,
-        public readonly ?\Closure $when = null,
-        public readonly MenuSurface $surface = MenuSurface::Plugins,
+        public string $plugin,
+        public string $spec,
+        public ?\Closure $when = null,
+        public MenuSurface $surface = MenuSurface::Plugins,
     ) {}
 }

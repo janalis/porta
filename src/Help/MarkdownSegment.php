@@ -9,12 +9,12 @@ namespace Porta\Help;
  * target and a group id so a link split across wrapped lines still reads as
  * one link (Tab focus moves per group).
  */
-final class MarkdownSegment
+final readonly class MarkdownSegment
 {
     public function __construct(
-        public readonly string $text,
-        public readonly MarkdownSpanKind $kind = MarkdownSpanKind::Plain,
-        public readonly ?string $target = null,
-        public readonly int $group = -1,
+        public string $text,
+        public MarkdownSpanKind $kind = MarkdownSpanKind::Plain,
+        public ?string $target = null,
+        public int $group = -1,
     ) {}
 }

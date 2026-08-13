@@ -15,16 +15,16 @@ namespace Porta\Config\EditorConfig;
  * applied on save by {@see DocumentWriter}; charset is surfaced for a warning
  * only (the editor is UTF-8 only).
  */
-final class ResolvedEditorConfig
+final readonly class ResolvedEditorConfig
 {
     private function __construct(
-        public readonly ?bool $usesTabs,
-        public readonly ?int $indentSize,
-        public readonly ?int $tabWidth,
-        public readonly ?string $eol,
-        public readonly ?bool $trimTrailingWhitespace,
-        public readonly ?bool $insertFinalNewline,
-        public readonly ?string $charset,
+        public ?bool $usesTabs,
+        public ?int $indentSize,
+        public ?int $tabWidth,
+        public ?string $eol,
+        public ?bool $trimTrailingWhitespace,
+        public ?bool $insertFinalNewline,
+        public ?string $charset,
     ) {}
 
     /** An all-null config: overrides nothing (used when no .editorconfig applies). */
