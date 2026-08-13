@@ -19,16 +19,16 @@ final class SearchPrefsStore
     private const int MAX_MASKS = 20;
 
     private readonly string $file;
-    private readonly Filesystem $fs;
     private string $scope;
     private string $mask;
     /** @var list<string> most-recent-first */
     private array $recentMasks;
 
-    public function __construct(string $rootDir)
-    {
+    public function __construct(
+        string $rootDir,
+        private readonly Filesystem $fs = new Filesystem(),
+    ) {
         $this->file = $rootDir.'/.porta/search-prefs.json';
-        $this->fs = new Filesystem();
         $data = JsonFile::read($this->file) ?? [];
         $this->scope = \is_string($data['scope'] ?? null) ? $data['scope'] : ScopeKind::Project->value;
         $this->mask = \is_string($data['mask'] ?? null) ? $data['mask'] : '';

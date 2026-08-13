@@ -23,6 +23,7 @@ final readonly class WorkspaceEditor
         private BufferManager $buffers,
         private EditorInvalidator $editor,
         private LspSessionPool $lsp,
+        private readonly Filesystem $fs = new Filesystem(),
     ) {}
 
     /**
@@ -70,7 +71,7 @@ final readonly class WorkspaceEditor
             if (is_file($target) && is_writable($target)) {
                 $document = new Document((string) file_get_contents($target));
                 $this->applyTextEdits($document, $edits);
-                new Filesystem()->dumpFile($target, $document->getText());
+                $this->fs->dumpFile($target, $document->getText());
                 ++$touched;
             }
         }

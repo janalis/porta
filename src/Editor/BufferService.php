@@ -75,6 +75,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         private readonly FormatOnSave $formatOnSave,
         private readonly ViewerProviderSource $viewers,
         private readonly EditorPanes $panes,
+        private readonly Filesystem $fs = new Filesystem(),
     ) {}
 
     /**
@@ -527,7 +528,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             ? DocumentWriter::render($buffer->document, $buffer->editorConfig)
             : $buffer->document->getText();
         try {
-            new Filesystem()->dumpFile($buffer->path, $bytes);
+            $this->fs->dumpFile($buffer->path, $bytes);
         } catch (IOExceptionInterface) {
             $this->notifier->error($this->translator->trans('Save failed: %file%', ['%file%' => $this->relativePath($buffer->path)]));
 

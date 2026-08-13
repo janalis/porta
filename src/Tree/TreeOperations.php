@@ -44,6 +44,7 @@ final class TreeOperations
         private readonly SearchActions $searchActions,
         private readonly ProjectSearchController $projectSearch,
         private readonly string $rootDir,
+        private readonly Filesystem $fs = new Filesystem(),
     ) {}
 
     /**
@@ -101,7 +102,7 @@ final class TreeOperations
             }
             $path = $dir.'/'.$name;
             $this->withFs($this->translator->trans('Cannot create %file%', ['%file%' => $this->relativePath($path)]), function () use ($path): void {
-                new Filesystem()->dumpFile($path, '');
+                $this->fs->dumpFile($path, '');
                 $this->tree->refresh();
                 $this->bufferService->openFile($path, focus: OpenFocus::Editor);
                 $this->notifier->success($this->translator->trans('Created %file%', ['%file%' => $this->relativePath($path)]));
@@ -119,7 +120,7 @@ final class TreeOperations
             }
             $path = $dir.'/'.$name;
             $this->withFs($this->translator->trans('Cannot create %file%', ['%file%' => $this->relativePath($path)]), function () use ($path): void {
-                new Filesystem()->mkdir($path);
+                $this->fs->mkdir($path);
                 $this->tree->refresh();
                 $this->tui->setFocus($this->tree);
                 $this->notifier->success($this->translator->trans('Created %file%', ['%file%' => $this->relativePath($path)]));
@@ -142,7 +143,7 @@ final class TreeOperations
             $resolvedOld = realpath($old);
             $oldKey = $resolvedOld ? $resolvedOld : $old;
             $this->withFs($this->translator->trans('Cannot rename %file%', ['%file%' => $this->relativePath($old)]), function () use ($old, $new, $name, $oldKey): void {
-                new Filesystem()->rename($old, $new); // no overwrite: a name clash is an error
+                $this->fs->rename($old, $new); // no overwrite: a name clash is an error
                 if ($this->buffers->has($oldKey)) {
                     $this->buffers->close($oldKey);
                     $this->bufferService->openFile($new);
@@ -168,7 +169,7 @@ final class TreeOperations
             $resolved = realpath($path);
             $key = $resolved ? $resolved : $path;
             $this->withFs($this->translator->trans('Cannot delete %file%', ['%file%' => $this->relativePath($path)]), function () use ($path, $key): void {
-                new Filesystem()->remove($path);
+                $this->fs->remove($path);
                 if ($this->buffers->has($key)) {
                     $next = $this->buffers->close($key);
                     null !== $next ? $this->bufferService->showBuffer($next) : $this->editor->showDocument('', new Document(''));

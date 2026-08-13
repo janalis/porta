@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Console;
 
+use Symfony\Component\Filesystem\Path;
+
 /**
  * Turns a CLI target (a directory, a file, or the `file:line` shorthand) into a
  * {@see Workspace}: the workspace root plus the file/line to open. A file's root
@@ -41,10 +43,10 @@ final class WorkspaceResolver
         throw new \InvalidArgumentException(\sprintf('no such file or directory: %s', $target));
     }
 
-    /** Resolve $path against $cwd unless it is already absolute. */
+    /** Resolve $path against $cwd unless it is already absolute (lexically canonicalized either way). */
     private function absolute(string $path, string $cwd): string
     {
-        return str_starts_with($path, '/') ? $path : rtrim($cwd, characters: '/').'/'.$path;
+        return Path::makeAbsolute($path, $cwd);
     }
 
     /** Nearest ancestor of $dir (inclusive) holding a composer.json, else $dir. */

@@ -16,12 +16,12 @@ use Symfony\Component\Filesystem\Filesystem;
 final readonly class SessionStore
 {
     private string $file;
-    private Filesystem $fs;
 
-    public function __construct(string $rootDir)
-    {
+    public function __construct(
+        string $rootDir,
+        private readonly Filesystem $fs = new Filesystem(),
+    ) {
         $this->file = $rootDir.'/.porta/session.json';
-        $this->fs = new Filesystem();
     }
 
     /**

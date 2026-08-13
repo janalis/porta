@@ -63,6 +63,7 @@ final class ProjectSearchController
         private readonly SearchScopeResolver $scopes,
         private readonly LanguageFilter $languageFilter,
         private readonly SearchScopeStore $scopeStore,
+        private readonly Filesystem $fs = new Filesystem(),
     ) {
         $this->searchOptions = new SearchOptions();
     }
@@ -347,7 +348,7 @@ final class ProjectSearchController
                 $old = (string) file_get_contents($abs);
                 $new = $this->replaceLines($old, $lineIndices, $replacement);
                 if ($new !== $old) {
-                    new Filesystem()->dumpFile($abs, $new);
+                    $this->fs->dumpFile($abs, $new);
                     ++$touched;
                 }
             }
@@ -383,7 +384,7 @@ final class ProjectSearchController
                 $old = (string) file_get_contents($abs);
                 $new = $this->projectSearch->applyReplacement($old, $this->lastSearchQuery, $replacement, $this->searchOptions);
                 if ($new !== $old) {
-                    new Filesystem()->dumpFile($abs, $new);
+                    $this->fs->dumpFile($abs, $new);
                     ++$touched;
                 }
             }
@@ -454,7 +455,7 @@ final class ProjectSearchController
         }
 
         $abs = $this->rootDir.'/.porta/search-results.txt';
-        new Filesystem()->dumpFile($abs, implode("\n", $lines)."\n");
+        $this->fs->dumpFile($abs, implode("\n", $lines)."\n");
         $this->statusBar->flash($this->translator->trans('Exported %count% results', ['%count%' => \count($this->lastSearchResults)]));
 
         return $abs;

@@ -42,6 +42,7 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\EventDispatcher\DependencyInjection\RegisterListenersPass;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\Style;
@@ -166,6 +167,11 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // so time-dependent services autowire it; tests inject a MockClock.
     $services->set(ClockInterface::class, NativeClock::class);
 
+    // symfony/filesystem, one shared stateless instance. Consumers declare it
+    // as a trailing promoted param with a `new Filesystem()` default (the
+    // ClockInterface pattern), so bare test construction stays one `new`.
+    $services->set(Filesystem::class);
+
     // The overlay compositor's pane bundle: built by a factory because its
     // widget lists and view-open closures aren't expressible in a dumped
     // definition. The RTL segmenter reads the floating dropdowns through the
@@ -174,7 +180,6 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // Modal region first, menus after — later regions win the segmenter's
     // per-cell owner pass, matching the paint order (menus above the modal).
     $services->alias(FloatingRegions::class, CompositeFloatingRegions::class);
-
 
     // Kept explicit on purpose: BidiTui's def is overridden to synthetic AFTER
     // the loader's load-time interface counting, so a natively derived
@@ -242,7 +247,10 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
 
     // The immutable Keybindings map. Built by a factory because plugin default
     // keys must merge in — resolving it forces the one-time plugin load.
-    $services->set(Keybindings::class)->factory([service(KeybindingsFactory::class), 'create'])->tag('porta.ide_service');
+    $services
+        ->set(Keybindings::class)
+        ->factory([service(KeybindingsFactory::class), 'create'])
+        ->tag('porta.ide_service');
 
     // The plugin subsystem triple is built by PluginHost (its scalar inputs
     // come from IdeConfig + the environment); expose the members as services.
@@ -261,7 +269,10 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // The main editor area is a chrome root too, but it is a getter service
     // (a bare ContainerWidget, not a class that can carry #[AsChromeRoot]), so
     // it is tagged here — the Keybindings/event_dispatcher exception pattern.
-    $services->set('porta.widget.main', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'main'])->tag('porta.chrome_root');
+    $services
+        ->set('porta.widget.main', ContainerWidget::class)
+        ->factory([service(WorkspaceLayout::class), 'main'])
+        ->tag('porta.chrome_root');
     $services->set('porta.widget.separator', SeparatorWidget::class)->factory([service(WorkspaceLayout::class), 'separator']);
 
     // The mouse routers (and the hover router split out of the main one) share

@@ -51,6 +51,7 @@ final class PluginInstaller
         private readonly ?string $gitBinary,
         private readonly ?string $embeddedDir = null,
         private readonly ?string $composerBinary = null,
+        private readonly Filesystem $fs = new Filesystem(),
     ) {}
 
     /** The production wiring: plugin dirs and the git/composer binaries resolved from the environment. */
@@ -123,11 +124,10 @@ final class PluginInstaller
 
             return;
         }
-        $fs = new Filesystem();
         try {
-            $fs->mirror($source, $dest);
+            $this->fs->mirror($source, $dest);
         } catch (IOExceptionInterface) {
-            $fs->remove($dest);
+            $this->fs->remove($dest);
             $this->fail($onDone, $this->translator->trans('Cannot install into %dest%', ['%dest%' => $dest]));
 
             return;
@@ -178,18 +178,18 @@ final class PluginInstaller
 
             return;
         }
-        new Filesystem()->mkdir(\dirname($dest));
+        $this->fs->mkdir(\dirname($dest));
         $this->running = new AsyncProcess([$this->gitBinary, 'clone', '--depth', '1', '--', $source, $dest], $this->rootDir);
         $started = $this->running->start(function (int $code) use ($dest, $onDone): void {
             $this->running = null;
             if (0 !== $code) {
-                new Filesystem()->remove($dest);
+                $this->fs->remove($dest);
                 $this->fail($onDone, $this->translator->trans('git clone failed (exit code %code%)', ['%code%' => $code]));
 
                 return;
             }
             if (!is_file($dest.'/plugin.php')) {
-                new Filesystem()->remove($dest);
+                $this->fs->remove($dest);
                 $this->fail($onDone, $this->translator->trans('The repository contains no plugin.php'));
 
                 return;
@@ -291,7 +291,7 @@ final class PluginInstaller
             return DependencyRemoval::Busy;
         }
         try {
-            new Filesystem()->remove($pluginDir.'/vendor');
+            $this->fs->remove($pluginDir.'/vendor');
         } catch (IOExceptionInterface) {
             return DependencyRemoval::Failed;
         }
@@ -310,7 +310,7 @@ final class PluginInstaller
             if (null === $base) {
                 throw new IOException('no global base');
             }
-            new Filesystem()->remove($base.'/'.$name);
+            $this->fs->remove($base.'/'.$name);
         } catch (IOExceptionInterface) {
             return $this->translator->trans('Cannot remove "%name%"', ['%name%' => $name]);
         }

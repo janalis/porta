@@ -19,14 +19,14 @@ final class SearchScopeStore
     private const int MAX_RECENT = 10;
 
     private readonly string $file;
-    private readonly Filesystem $fs;
     /** @var list<array{label: string, paths: list<string>, pinned: bool}> */
     private array $scopes;
 
-    public function __construct(string $rootDir)
-    {
+    public function __construct(
+        string $rootDir,
+        private readonly Filesystem $fs = new Filesystem(),
+    ) {
         $this->file = $rootDir.'/.porta/search-scopes.json';
-        $this->fs = new Filesystem();
         $this->scopes = $this->load();
     }
 

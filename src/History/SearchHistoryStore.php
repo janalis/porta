@@ -17,14 +17,14 @@ final class SearchHistoryStore
     private const int MAX = 20;
 
     private readonly string $file;
-    private readonly Filesystem $fs;
     /** @var list<string> most-recent-first */
     private array $queries;
 
-    public function __construct(string $rootDir)
-    {
+    public function __construct(
+        string $rootDir,
+        private readonly Filesystem $fs = new Filesystem(),
+    ) {
         $this->file = $rootDir.'/.porta/search-history.json';
-        $this->fs = new Filesystem();
         $this->queries = $this->load();
     }
 

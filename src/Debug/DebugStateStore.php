@@ -18,12 +18,12 @@ use Symfony\Component\Filesystem\Filesystem;
 final readonly class DebugStateStore
 {
     private string $file;
-    private Filesystem $fs;
 
-    public function __construct(string $rootDir)
-    {
+    public function __construct(
+        string $rootDir,
+        private readonly Filesystem $fs = new Filesystem(),
+    ) {
         $this->file = $rootDir.'/.porta/debug.json';
-        $this->fs = new Filesystem();
     }
 
     /**

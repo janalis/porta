@@ -36,12 +36,12 @@ use Symfony\Component\Filesystem\Filesystem;
 final readonly class OnboardingState
 {
     private string $file;
-    private Filesystem $fs;
 
-    public function __construct(string $rootDir)
-    {
+    public function __construct(
+        string $rootDir,
+        private readonly Filesystem $fs = new Filesystem(),
+    ) {
         $this->file = $rootDir.'/.porta/onboarding.json';
-        $this->fs = new Filesystem();
     }
 
     public function hasSeenWelcome(): bool
