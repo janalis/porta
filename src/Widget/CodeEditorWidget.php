@@ -1280,7 +1280,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         $middle = intdiv($rows, num2: 2);
         $lines = [];
         for ($i = 0; $i < $rows; ++$i) {
-            $lines[] = $i === $middle ? $hintRow : str_repeat(' ', max(0, $columns));
+            $lines[] = $i === $middle ? $hintRow : AnsiText::blank($columns);
         }
 
         return $lines;

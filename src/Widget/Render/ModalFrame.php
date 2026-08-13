@@ -103,7 +103,7 @@ final class ModalFrame
     {
         $accent = $styles->of(Role::TabAccent);
         $rail = $accent->apply(Glyphs::FRAME_VERTICAL);
-        $pad = $rail.str_repeat(' ', max(0, $innerWidth + 2)).$rail;
+        $pad = $rail.AnsiText::blank($innerWidth + 2).$rail;
 
         $rows = [$pad];
         foreach ($sections as $i => $section) {

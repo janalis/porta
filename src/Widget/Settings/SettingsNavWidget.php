@@ -265,7 +265,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
             $index = $scroll + $row;
             $entry = $this->entries[$index] ?? null;
             if (null === $entry) {
-                $lines[] = str_repeat(' ', max(0, $width));
+                $lines[] = AnsiText::blank($width);
                 continue;
             }
 

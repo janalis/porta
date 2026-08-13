@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Render;
 
 use Porta\Overlay\Region\SpanSlicer;
+use Porta\Support\AnsiText;
 use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -66,7 +67,7 @@ final class ModalShadow
     public static function spans(WidgetRect $rect, int $top, int $col, int $width, int $rows, Styles $styles): array
     {
         $cell = $styles->rule('.modal::shadow')->apply(' ');
-        $band = $styles->rule('.modal::shadow')->apply(str_repeat(' ', max(0, $width)));
+        $band = $styles->rule('.modal::shadow')->apply(AnsiText::blank($width));
 
         return [
             ...SpanSlicer::localSpans(array_fill(0, max(0, $rows - 1), $cell), $rect, $top + 1, $col + $width, 1),

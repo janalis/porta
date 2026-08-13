@@ -291,7 +291,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         for ($i = 0; $i < $rows; ++$i) {
             $row = $this->rows[$i] ?? null;
             if (null === $row) {
-                $lines[] = str_repeat(' ', max(0, $width));
+                $lines[] = AnsiText::blank($width);
                 continue;
             }
 

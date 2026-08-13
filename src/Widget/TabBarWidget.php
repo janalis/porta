@@ -151,7 +151,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         if ([] === $tabs) {
             // The empty strip keeps its Toolbar base: closing the last tab must
             // not drop the bar to the terminal default for one frame-height row.
-            return $this->withMenuOverlay([$this->styles->of(Role::Toolbar)->apply(str_repeat(' ', max(0, $columns)))], $columns);
+            return $this->withMenuOverlay([$this->styles->of(Role::Toolbar)->apply(AnsiText::blank($columns))], $columns);
         }
 
         // Make sure the active tab is visible: drop leading tabs if needed. Each
@@ -260,7 +260,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             }
             $start = $this->scroll;
             if ($overflow) {
-                $lines[] = $start > 0 ? $this->indicatorRow(Glyphs::SCROLL_UP, step: -3, row: 0) : str_repeat(' ', self::VERTICAL_WIDTH);
+                $lines[] = $start > 0 ? $this->indicatorRow(Glyphs::SCROLL_UP, step: -3, row: 0) : AnsiText::blank(self::VERTICAL_WIDTH);
             }
             // ' name…    ●× ': the dirty ● and the close × are right-aligned.
             $nameWidth = self::VERTICAL_WIDTH - 5;
@@ -280,11 +280,11 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
                 ];
             }
             if ($overflow) {
-                $lines[] = ($start + $budget) < \count($tabs) ? $this->indicatorRow(Glyphs::SCROLL_DOWN, step: 3, row: $rows - 1) : str_repeat(' ', self::VERTICAL_WIDTH);
+                $lines[] = ($start + $budget) < \count($tabs) ? $this->indicatorRow(Glyphs::SCROLL_DOWN, step: 3, row: $rows - 1) : AnsiText::blank(self::VERTICAL_WIDTH);
             }
         }
         while (\count($lines) < $rows) {
-            $lines[] = str_repeat(' ', self::VERTICAL_WIDTH);
+            $lines[] = AnsiText::blank(self::VERTICAL_WIDTH);
         }
 
         return $this->withMenuOverlay($lines, self::VERTICAL_WIDTH);

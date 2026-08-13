@@ -67,6 +67,16 @@ final class AnsiText
     }
 
     /**
+     * A run of $width spaces (clamped at zero) — the "nothing at this index"
+     * filler row every panel renderer hand-rolled as
+     * `str_repeat(' ', max(0, $w))`.
+     */
+    public static function blank(int $width): string
+    {
+        return str_repeat(' ', max(0, $width));
+    }
+
+    /**
      * Right-pad $text with spaces so its visible width reaches $width (a no-op
      * when it is already at least that wide). SGR codes are not counted.
      */

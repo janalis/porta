@@ -309,7 +309,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             $node = $this->visible[$index] ?? null;
 
             if (null === $node) {
-                $lines[] = str_repeat(' ', max(0, $width));
+                $lines[] = AnsiText::blank($width);
                 continue;
             }
 
@@ -318,7 +318,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
                 $this->expanded[$node->path] ?? false => Glyphs::EXPANDED.' ',
                 default => Glyphs::COLLAPSED.' ',
             };
-            $text = str_repeat(' ', max(0, $node->depth + 1)).$icon.$node->name.($node->isDir ? '/' : '');
+            $text = AnsiText::blank($node->depth + 1).$icon.$node->name.($node->isDir ? '/' : '');
             $text = AnsiText::truncate($text, $width, pad: true);
 
             // Subtle hover background beneath the pointer keeps the dir/file foreground.

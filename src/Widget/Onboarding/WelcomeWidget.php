@@ -167,7 +167,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
         }
 
         while (\count($lines) < $rows) {
-            $lines[] = str_repeat(' ', max(0, $width));
+            $lines[] = AnsiText::blank($width);
             $this->rowOwner[] = null;
         }
 
@@ -218,7 +218,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
             // A banner, not a replacement: the cards — their [x]s, and any link
             // step — stay visible and navigable beneath it.
             $body[] = $this->message($this->translator->trans('All set. Reopen this any time from Help.'), $width, $margin);
-            $body[] = [str_repeat(' ', max(0, $width)), null];
+            $body[] = [AnsiText::blank($width), null];
             $chrome += 2;
         }
 
@@ -249,9 +249,9 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
         $pad = str_repeat(' ', max(0, intdiv($width - AnsiUtils::visibleWidth($title), num2: 2)));
 
         return [
-            [str_repeat(' ', max(0, $width)), null],
+            [AnsiText::blank($width), null],
             [AnsiText::truncate($pad.$this->styles->of(Role::Bright)->withBold()->apply($title), $width, pad: true), null],
-            [str_repeat(' ', max(0, $width)), null],
+            [AnsiText::blank($width), null],
         ];
     }
 
@@ -293,7 +293,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
         foreach (AnsiText::wrap($step->detail, max(1, $content - AnsiUtils::visibleWidth($prefix))) as $chunk) {
             $rows[] = [$this->paint($margin, $indent.$dim->apply($chunk), $index, $width), $index];
         }
-        $rows[] = [str_repeat(' ', max(0, $width)), null];
+        $rows[] = [AnsiText::blank($width), null];
 
         return $rows;
     }

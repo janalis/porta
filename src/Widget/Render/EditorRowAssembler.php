@@ -10,6 +10,7 @@ use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
 use Porta\Editor\LineNumberMode;
+use Porta\Support\AnsiText;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
@@ -91,7 +92,7 @@ final readonly class EditorRowAssembler
             $lineIndex = $this->foldModel->docLineAtRow($vScroll, $row);
 
             if (null === $lineIndex) {
-                $result[] = $this->styles->of(Role::Placeholder)->apply(str_pad('~', max(0, $geo->gutterWidth))).str_repeat(' ', max(0, $geo->contentWidth)).$stripe[$stickyCount + $row];
+                $result[] = $this->styles->of(Role::Placeholder)->apply(str_pad('~', max(0, $geo->gutterWidth))).AnsiText::blank($geo->contentWidth).$stripe[$stickyCount + $row];
                 continue;
             }
 

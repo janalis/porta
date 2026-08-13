@@ -211,7 +211,7 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
         }
         // Pad to a stable height.
         for ($i = \count($window); $i < $rows; ++$i) {
-            $lines[] = str_repeat(' ', max(0, $columns));
+            $lines[] = AnsiText::blank($columns);
         }
 
         // Place the hardware cursor at the child's prompt position when the
