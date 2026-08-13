@@ -86,6 +86,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         return $this->position;
     }
 
+    #[\Override]
     public function beforeRender(): void
     {
         if (null === $this->provider) {
@@ -136,6 +137,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         return null !== $this->hoverCell && $this->hoverCell['row'] === $row && $this->hoverCell['col'] >= $startCol && $this->hoverCell['col'] < ($startCol + $width);
     }
 
+    #[\Override]
     public function render(RenderContext $context): array
     {
         $this->indicatorZones = [];

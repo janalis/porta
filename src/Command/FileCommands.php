@@ -22,6 +22,7 @@ final class FileCommands implements CommandProvider
         private readonly BufferManager $buffers,
     ) {}
 
+    #[\Override]
     public function register(CommandRegistry $commands): void
     {
         $commands

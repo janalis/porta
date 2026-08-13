@@ -327,6 +327,7 @@ final class CodeEditorWidget extends AbstractWidget implements
      * @param list<array{label: string, hint: string, value: string}> $items
      * @param callable(string): void                                  $onPick receives the picked item's value
      */
+    #[\Override]
     public function openListOverlay(string $title, array $items, callable $onPick): void
     {
         $this->closeSiblingFloaters();
@@ -345,6 +346,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->findModal->close();
     }
 
+    #[\Override]
     public function openSearch(string $title, \Closure $onQuery, \Closure $onPick, \Closure $onClose, string $emptyMessage = ''): void
     {
         $this->closeSiblingFloaters();
@@ -352,11 +354,13 @@ final class CodeEditorWidget extends AbstractWidget implements
     }
 
     /** @param list<SearchRow> $rows */
+    #[\Override]
     public function setSearchRows(array $rows): void
     {
         $this->overlayHost->setSearchRows($rows);
     }
 
+    #[\Override]
     public function closeSearch(): void
     {
         $this->overlayHost->closeSearch();
@@ -396,46 +400,55 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->findModal->scrollPreview($delta);
     }
 
+    #[\Override]
     public function enableInlineDiagnostics(): void
     {
         $this->display->setInlineDiagnostics(true);
     }
 
+    #[\Override]
     public function disableInlineDiagnostics(): void
     {
         $this->display->setInlineDiagnostics(false);
     }
 
+    #[\Override]
     public function setLineNumberMode(LineNumberMode $mode): void
     {
         $this->display->setLineNumbers($mode);
     }
 
+    #[\Override]
     public function enableStickyScroll(): void
     {
         $this->display->setStickyScroll(true);
     }
 
+    #[\Override]
     public function disableStickyScroll(): void
     {
         $this->display->setStickyScroll(false);
     }
 
+    #[\Override]
     public function enableIndentGuides(): void
     {
         $this->display->setIndentGuides(true);
     }
 
+    #[\Override]
     public function disableIndentGuides(): void
     {
         $this->display->setIndentGuides(false);
     }
 
+    #[\Override]
     public function enableVcsGutter(): void
     {
         $this->display->setVcsGutter(true);
     }
 
+    #[\Override]
     public function disableVcsGutter(): void
     {
         if ($this->display->setVcsGutter(false)) {
@@ -450,6 +463,7 @@ final class CodeEditorWidget extends AbstractWidget implements
      *
      * @param array<string, LanguageIndent> $indents
      */
+    #[\Override]
     public function setLanguageIndents(array $indents): void
     {
         $this->languageIndents = $indents;
@@ -483,11 +497,13 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->document->setIndent($usesTabs ? IndentKind::Tabs : IndentKind::Spaces, $size);
     }
 
+    #[\Override]
     public function enableAutoPairs(): void
     {
         $this->display->setAutoPairs(true);
     }
 
+    #[\Override]
     public function disableAutoPairs(): void
     {
         $this->display->setAutoPairs(false);
@@ -496,12 +512,14 @@ final class CodeEditorWidget extends AbstractWidget implements
     /**
      * Open a single-line input prompt (go to line, rename symbol).
      */
+    #[\Override]
     public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false): void
     {
         $this->closeSiblingFloaters();
         $this->overlayHost->openPrompt($label, $initial, $onSubmit, $danger);
     }
 
+    #[\Override]
     public function setSignatureHint(?string $hint): void
     {
         if ($this->signatureHint !== $hint) {
@@ -510,27 +528,32 @@ final class CodeEditorWidget extends AbstractWidget implements
         }
     }
 
+    #[\Override]
     public function fireCopy(string $text): void
     {
         $this->callbacks->file?->copy($text);
     }
 
+    #[\Override]
     public function fireSignatureHelp(int $line, int $utf16Col): void
     {
         $this->callbacks->completion?->requestSignatureHelp($line, $utf16Col);
     }
 
     /** The handler validates via prepareRename, then owns the prompt + rename. */
+    #[\Override]
     public function requestRename(int $line, int $utf16Col, string $word): void
     {
         $this->callbacks->refactor?->requestPrepareRename($line, $utf16Col, $word);
     }
 
+    #[\Override]
     public function contentRows(): int
     {
         return $this->scroll->contentRows();
     }
 
+    #[\Override]
     public function autoPairsEnabled(): bool
     {
         return $this->display->autoPairs();
@@ -539,6 +562,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     /**
      * @param array<int, list<array{start: int, end: int, current: bool}>> $byLine byte columns
      */
+    #[\Override]
     public function setSearchMatches(array $byLine): void
     {
         $this->decorations->setSearchMatches($byLine);
@@ -547,6 +571,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     /**
      * @param array<int, string> $byLine 0-based line => 'added'|'modified'|'deleted'
      */
+    #[\Override]
     public function setVcsMarks(array $byLine): void
     {
         $this->decorations->setVcsMarks($byLine);
@@ -555,6 +580,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     /**
      * @param array<int, string> $byLine 0-based line => trailing annotation (blame); [] clears
      */
+    #[\Override]
     public function setLineAnnotations(array $byLine): void
     {
         $this->decorations->setLineAnnotations($byLine);
@@ -565,12 +591,14 @@ final class CodeEditorWidget extends AbstractWidget implements
      * @param list<int> $conditionalLines the subset carrying a condition/hit-count (◆ instead of ●)
      * @param list<int> $logpointLines    the subset carrying a log message (◇ — logs instead of pausing)
      */
+    #[\Override]
     public function setBreakpointLines(array $lines, array $conditionalLines = [], array $logpointLines = []): void
     {
         $this->decorations->setBreakpointLines($lines, $conditionalLines, $logpointLines);
     }
 
     /** Highlight (or clear) the debugger's stopped line. */
+    #[\Override]
     public function setDebugLine(?int $line): void
     {
         $this->decorations->setDebugLine($line);
@@ -582,11 +610,13 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->callbacks = $callbacks;
     }
 
+    #[\Override]
     public function getDocument(): Document
     {
         return $this->document;
     }
 
+    #[\Override]
     public function getFilePath(): ?string
     {
         return $this->filePath;
@@ -744,6 +774,7 @@ final class CodeEditorWidget extends AbstractWidget implements
      * Insert text at the caret through the full change pipeline (undo history,
      * LSP didChange, invalidation) — the programmatic seam for plugins.
      */
+    #[\Override]
     public function insertText(string $text): void
     {
         $this->document->insert($text);
@@ -754,6 +785,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     /**
      * Move the cursor to an LSP position and scroll it into view.
      */
+    #[\Override]
     public function jumpTo(int $line, int $utf16Col): void
     {
         $doc = $this->document;
@@ -766,6 +798,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     }
 
     /** @param array<int, list<array{severity: int, message: string, col: int, endCol?: int}>> $byLine */
+    #[\Override]
     public function setDiagnostics(array $byLine): void
     {
         $this->decorations->setDiagnostics($byLine);
@@ -800,6 +833,7 @@ final class CodeEditorWidget extends AbstractWidget implements
 
     // --- Input -------------------------------------------------------------
 
+    #[\Override]
     public function handleInput(string $data): void
     {
         if ($this->inputHookHandled($data)) {
@@ -854,6 +888,7 @@ final class CodeEditorWidget extends AbstractWidget implements
      *
      * @param list<array{0: int, 1: int}> $regions [startLine, endLine]
      */
+    #[\Override]
     public function setFoldRegions(array $regions): void
     {
         $this->foldModel->setRegions($regions, $this->document->getVersion());
@@ -864,6 +899,7 @@ final class CodeEditorWidget extends AbstractWidget implements
      * uses so a menu item fires exactly the same logic as pressing its key.
      * Unknown ids are a safe no-op.
      */
+    #[\Override]
     public function runAction(string $action): void
     {
         if (!$this->actionRouter->run($action)) {
@@ -977,6 +1013,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     /**
      * Line-comment prefix for the current language, or null when unsupported.
      */
+    #[\Override]
     public function commentPrefix(): ?string
     {
         return match ($this->highlighter->getLanguage()) {
@@ -1000,6 +1037,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->multiCaret->clear();
     }
 
+    #[\Override]
     public function notifyChange(): void
     {
         $this->invalidate();
@@ -1012,6 +1050,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     }
 
     /** True when $data is a printable character safe to insert (not a control key). */
+    #[\Override]
     public function isInsertable(string $data): bool
     {
         return '' !== $data && !$this->hasControlBytes($data);
@@ -1091,6 +1130,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         return $result;
     }
 
+    #[\Override]
     public function render(RenderContext $context): array
     {
         $columns = $context->getColumns();
@@ -1253,6 +1293,7 @@ final class CodeEditorWidget extends AbstractWidget implements
      *
      * @param array<int, list<array{col: int, text: string}>> $hints line => byte-col hints
      */
+    #[\Override]
     public function setInlayHints(array $hints): void
     {
         $this->decorations->setInlayHints($hints);

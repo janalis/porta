@@ -110,16 +110,19 @@ final class WelcomeModalController implements ContributedView
         $frameHooks?->onBeforeFrame($this->syncBeforeFrame(...));
     }
 
+    #[\Override]
     public function viewId(): string
     {
         return 'welcome';
     }
 
+    #[\Override]
     public function ownsMainArea(): bool
     {
         return false;
     }
 
+    #[\Override]
     public function isOpen(): bool
     {
         return $this->open;
@@ -130,17 +133,20 @@ final class WelcomeModalController implements ContributedView
      * run the other way — and it does not need to. The modal is app-modal, so
      * MouseRouter answers it in its own branch before any view dispatch.
      */
+    #[\Override]
     public function pointer(): ?ViewPointer
     {
         return null;
     }
 
     /** The modal offers no context menu; a right-click over it does nothing. */
+    #[\Override]
     public function contextMenus(): ?ViewMenuSource
     {
         return null;
     }
 
+    #[\Override]
     public function focusTarget(): AbstractWidget&FocusableInterface
     {
         return $this->welcome;
@@ -150,6 +156,7 @@ final class WelcomeModalController implements ContributedView
      * No focus ring of its own: while the modal is open the dispatcher's
      * modal branch swallows every key, so the coordinator falls through.
      */
+    #[\Override]
     public function cycleFocus(int $direction): bool
     {
         return false;
@@ -166,11 +173,13 @@ final class WelcomeModalController implements ContributedView
         return $this->open ? $this->shadowRegion : null;
     }
 
+    #[\Override]
     public function toggle(): void
     {
         $this->open ? $this->close() : $this->open();
     }
 
+    #[\Override]
     public function open(): void
     {
         if ($this->open) {
@@ -204,6 +213,7 @@ final class WelcomeModalController implements ContributedView
         $this->tui->requestRender();
     }
 
+    #[\Override]
     public function close(): void
     {
         if (!$this->open) {

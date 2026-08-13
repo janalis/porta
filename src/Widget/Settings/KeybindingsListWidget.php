@@ -96,6 +96,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         $this->invalidate();
     }
 
+    #[\Override]
     public function handleInput(string $data): void
     {
         if ($this->inputHookHandled($data)) {
@@ -158,6 +159,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         $this->invalidate();
     }
 
+    #[\Override]
     public function hoverRow(int $relRow): bool
     {
         return $this->setHovered($this->rowIndexAt($relRow));
@@ -176,6 +178,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         return $this->list->rowIndexAt($relRow, \count($this->rows));
     }
 
+    #[\Override]
     public function render(RenderContext $context): array
     {
         $width = $context->getColumns();

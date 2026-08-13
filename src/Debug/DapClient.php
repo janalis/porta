@@ -33,6 +33,7 @@ final class DapClient implements DapClientInterface
         $this->transport = new JsonRpcTransport($command, $rootDir, 'debug adapter', $logger, $maxWriteBuffer);
     }
 
+    #[\Override]
     public function start(): bool
     {
         return $this->transport->start(
@@ -48,16 +49,19 @@ final class DapClient implements DapClientInterface
         );
     }
 
+    #[\Override]
     public function onEvent(string $event, callable $handler): void
     {
         $this->eventHandlers[$event] = $handler;
     }
 
+    #[\Override]
     public function onClose(callable $handler): void
     {
         $this->onClose = $handler;
     }
 
+    #[\Override]
     public function request(string $command, array $arguments = [], ?callable $onResult = null): void
     {
         $seq = $this->nextSeq++;
@@ -67,11 +71,13 @@ final class DapClient implements DapClientInterface
         $this->send(['seq' => $seq, 'type' => 'request', 'command' => $command, 'arguments' => (object) $arguments]);
     }
 
+    #[\Override]
     public function isRunning(): bool
     {
         return $this->transport->isRunning();
     }
 
+    #[\Override]
     public function stop(): void
     {
         $this->transport->stop();

@@ -102,6 +102,7 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
     }
 
     /** The dock strip's right-aligned status for the active session tab. */
+    #[\Override]
     public function statusText(): string
     {
         return $this->scrollBack > 0 ? $this->translator->trans('[scrolled +%count%]', ['%count%' => $this->scrollBack]) : '';
@@ -126,6 +127,7 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
     }
 
     /** Wheel over the terminal: up goes INTO the scrollback, so the sign flips. */
+    #[\Override]
     public function wheelBy(int $rows): void
     {
         $this->scroll(-$rows);
@@ -135,8 +137,10 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
      * No-op: a terminal body click only refocuses the pane. Selection and the
      * shell's own mouse reporting are handled on the raw-input path, not here.
      */
+    #[\Override]
     public function clickRow(int $row): void {}
 
+    #[\Override]
     public function handleInput(string $data): void
     {
         if ($this->inputHookHandled($data)) {
@@ -185,6 +189,7 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
         }
     }
 
+    #[\Override]
     public function render(RenderContext $context): array
     {
         if (!$this->isVisible()) {

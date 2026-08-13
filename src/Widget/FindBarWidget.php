@@ -102,6 +102,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $this->invalidate();
     }
 
+    #[\Override]
     protected function resetState(): void
     {
         $this->matches = [];
@@ -128,6 +129,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         return $byLine;
     }
 
+    #[\Override]
     public function handleInput(string $data): void
     {
         if ($this->inputHookHandled($data)) {
@@ -267,6 +269,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         return $this->optionZones->at($col);
     }
 
+    #[\Override]
     public function render(RenderContext $context): array
     {
         if (!$this->open) {

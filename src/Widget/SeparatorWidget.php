@@ -67,6 +67,7 @@ final class SeparatorWidget extends AbstractWidget implements MenuOverlayHost, V
         return true;
     }
 
+    #[\Override]
     public function render(RenderContext $context): array
     {
         $rows = max(1, $context->getRows() > 0 ? $context->getRows() : 1);

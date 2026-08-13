@@ -15,6 +15,7 @@ use Porta\Widget\EditorCompletionHandler;
 final class CompletionController extends AbstractLspController implements EditorCompletionHandler
 {
     /** Debounce a didChange for $doc, then refresh inlay hints. */
+    #[\Override]
     public function scheduleDidChange(Document $doc): void
     {
         $this->lsp->scheduleDidChange(
@@ -24,6 +25,7 @@ final class CompletionController extends AbstractLspController implements Editor
         );
     }
 
+    #[\Override]
     public function requestCompletion(int $line, int $utf16Col): void
     {
         if (null === ($path = $this->ready())) {
@@ -81,6 +83,7 @@ final class CompletionController extends AbstractLspController implements Editor
      *
      * @param array<string, mixed> $item the raw LSP CompletionItem
      */
+    #[\Override]
     public function resolveCompletion(array $item): void
     {
         $path = (string) $this->editor->getFilePath();
@@ -101,6 +104,7 @@ final class CompletionController extends AbstractLspController implements Editor
         });
     }
 
+    #[\Override]
     public function requestSignatureHelp(int $line, int $col): void
     {
         if (null === ($path = $this->ready())) {

@@ -48,6 +48,7 @@ final class BufferNavigator implements BufferNavigationHandler, ViewerTabHandler
         $this->bufferService->closeActiveBuffer($mode);
     }
 
+    #[\Override]
     public function openGotoFile(): void
     {
         // The picker composites over the editor pane, so ensure it is the active
@@ -58,28 +59,33 @@ final class BufferNavigator implements BufferNavigationHandler, ViewerTabHandler
         $this->tui->requestRender();
     }
 
+    #[\Override]
     public function saveAll(): void
     {
         $this->bufferService->saveAllBuffers();
     }
 
+    #[\Override]
     public function viewChanged(): void
     {
         $this->statusBar->invalidate();
         $this->tui->requestRender();
     }
 
+    #[\Override]
     public function cycleBuffer(int $offset): void
     {
         $this->cycle($offset);
     }
 
+    #[\Override]
     public function closeBuffer(): void
     {
         $this->closeActive();
     }
 
     /** The recent-files switcher in the editor's list overlay (Ctrl+E). */
+    #[\Override]
     public function openRecentFiles(): void
     {
         $recent = $this->buffers->recent();

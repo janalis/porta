@@ -33,6 +33,7 @@ final readonly class Notifier implements FlashSink
     ) {}
 
     /** Notify at Info severity — the historic entry point, signature unchanged. */
+    #[\Override]
     public function flash(string $message, float $seconds = 2.5): void
     {
         $this->notify($message, ToastSeverity::Info, $seconds);

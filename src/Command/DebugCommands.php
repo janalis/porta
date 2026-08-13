@@ -21,6 +21,7 @@ final class DebugCommands implements CommandProvider
         private readonly DebugController $debug,
     ) {}
 
+    #[\Override]
     public function register(CommandRegistry $commands): void
     {
         $paused = fn (): bool => $this->debug->isPaused();

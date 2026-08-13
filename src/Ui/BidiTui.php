@@ -75,6 +75,7 @@ final class BidiTui extends Tui implements FrameHooks
      *
      * @param callable(): void $hook
      */
+    #[\Override]
     public function onBeforeFrame(callable $hook): void
     {
         $this->onBeforeFrame[] = $hook;
@@ -115,6 +116,7 @@ final class BidiTui extends Tui implements FrameHooks
         return $this->reorder->logicalColumn($this->lastLines[$row], $visualCol, $this->lastRuns[$row]);
     }
 
+    #[\Override]
     public function processRender(): void
     {
         // Frame pacing: while the terminal still holds undelivered bytes, skip

@@ -17,6 +17,7 @@ final class DarkTerminalTheme implements TerminalTheme
 {
     use EscapesTerminalTheme;
 
+    #[\Override]
     public function before(TokenType $tokenType): string
     {
         return match ($tokenType) {
@@ -34,6 +35,7 @@ final class DarkTerminalTheme implements TerminalTheme
         };
     }
 
+    #[\Override]
     public function after(TokenType $tokenType): string
     {
         return Sgr::DEFAULT_FG;

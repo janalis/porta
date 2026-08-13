@@ -17,17 +17,20 @@ final readonly class HighlightingSection implements SettingsSection
         private SettingsHighlightController $highlighting,
     ) {}
 
+    #[\Override]
     public function handles(string $section): bool
     {
         return 'highlighting' === $section;
     }
 
     /** @return list<SettingsRow> */
+    #[\Override]
     public function rows(string $section): array
     {
         return $this->highlighting->rows();
     }
 
+    #[\Override]
     public function change(string $section, string $key, bool|int|string $value): void
     {
         $this->highlighting->change($key, (string) $value);

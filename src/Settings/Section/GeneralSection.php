@@ -21,17 +21,20 @@ final readonly class GeneralSection implements SettingsSection
         private SettingsController $settings,
     ) {}
 
+    #[\Override]
     public function handles(string $section): bool
     {
         return true;
     }
 
     /** @return list<SettingsRow> */
+    #[\Override]
     public function rows(string $section): array
     {
         return $this->settings->formRows();
     }
 
+    #[\Override]
     public function change(string $section, string $key, bool|int|string $value): void
     {
         $this->settings->changeSetting($key, $value);

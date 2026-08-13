@@ -85,43 +85,51 @@ final class SettingsViewController implements ContributedView
             ->onExit($exit);
     }
 
+    #[\Override]
     public function viewId(): string
     {
         return 'settings';
     }
 
+    #[\Override]
     public function ownsMainArea(): bool
     {
         return true;
     }
 
+    #[\Override]
     public function isOpen(): bool
     {
         return $this->open;
     }
 
     /** Where focus should land when a popup (e.g. the app menu) closes over the view. */
+    #[\Override]
     public function pointer(): ?ViewPointer
     {
         return $this->mouse;
     }
 
     /** No pane in the settings view offers a context menu. */
+    #[\Override]
     public function contextMenus(): ?ViewMenuSource
     {
         return null;
     }
 
+    #[\Override]
     public function focusTarget(): AbstractWidget&FocusableInterface
     {
         return $this->contentWidget();
     }
 
+    #[\Override]
     public function toggle(): void
     {
         $this->open ? $this->close() : $this->open();
     }
 
+    #[\Override]
     public function open(): void
     {
         if ($this->open) {
@@ -137,6 +145,7 @@ final class SettingsViewController implements ContributedView
         $this->host->invalidate();
     }
 
+    #[\Override]
     public function close(): void
     {
         if (!$this->open) {
@@ -253,6 +262,7 @@ final class SettingsViewController implements ContributedView
      * F6/Ctrl+F6 while the settings view is open: bounce between nav and
      * content — two stops, so the direction cannot matter and is ignored.
      */
+    #[\Override]
     public function cycleFocus(int $direction): bool
     {
         if ($this->tui->getFocus() === $this->nav) {

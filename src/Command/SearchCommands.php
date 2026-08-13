@@ -23,6 +23,7 @@ final class SearchCommands implements CommandProvider
         private readonly BufferService $bufferService,
     ) {}
 
+    #[\Override]
     public function register(CommandRegistry $commands): void
     {
         $commands

@@ -102,16 +102,19 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
     }
 
     /** The dock strip's right-aligned status: the session state plus the step-key legend. */
+    #[\Override]
     public function wheelBy(int $rows): void
     {
         $this->scrollBy($rows);
     }
 
+    #[\Override]
     public function clickRow(int $row): void
     {
         $this->handleClick($row);
     }
 
+    #[\Override]
     public function statusText(): string
     {
         $status = match ($this->state) {
@@ -197,6 +200,7 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
         $this->rebuild();
     }
 
+    #[\Override]
     public function handleInput(string $data): void
     {
         $kb = $this->getKeybindings();
@@ -234,6 +238,7 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
     }
 
     /** @return list<string> */
+    #[\Override]
     public function render(RenderContext $context): array
     {
         if (!$this->isVisible()) {
@@ -269,6 +274,7 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
         ];
     }
 
+    #[\Override]
     protected function resetState(): void
     {
         $this->state = DebugState::Idle;

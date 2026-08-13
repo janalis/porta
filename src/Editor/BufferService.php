@@ -87,6 +87,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         $this->openFile($event->path, focus: OpenFocus::Editor);
     }
 
+    #[\Override]
     public function openFile(string $path, OpenFocus $focus = OpenFocus::Keep, OpenAs $as = OpenAs::Viewer): void
     {
         $path = ($resolved = realpath($path)) ? $resolved : $path;
@@ -589,6 +590,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
     }
 
     /** Re-send didOpen for every open file, so a live LSP reconfigure relaunches its servers. */
+    #[\Override]
     public function reopenAllInLsp(): void
     {
         foreach ($this->buffers->all() as $buffer) {
@@ -609,6 +611,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
      *
      * @param array<int, string> $marks 0-based line => 'added'|'modified'|'deleted'
      */
+    #[\Override]
     public function applyChangeMarks(string $path, array $marks): void
     {
         foreach ($this->buffers->all() as $buffer) {
@@ -625,6 +628,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         }
     }
 
+    #[\Override]
     public function applyDiagnostics(string $uri, array $byLine): void
     {
         $target = null;

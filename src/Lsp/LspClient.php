@@ -54,22 +54,26 @@ final class LspClient implements LspClientInterface
         $this->transport = new JsonRpcTransport($command, $rootDir, 'LSP server', $logger, $maxWriteBuffer);
     }
 
+    #[\Override]
     public function isRunning(): bool
     {
         return $this->transport->isRunning();
     }
 
+    #[\Override]
     public function isInitialized(): bool
     {
         return $this->initialized;
     }
 
     /** @return array<string, mixed> the server's advertised capabilities (empty until initialized) */
+    #[\Override]
     public function serverCapabilities(): array
     {
         return $this->serverCapabilities;
     }
 
+    #[\Override]
     public function onNotification(string $method, callable $handler): void
     {
         $this->notificationHandlers[$method] = $handler;
@@ -78,6 +82,7 @@ final class LspClient implements LspClientInterface
     /**
      * @param callable(array): bool $handler receives the WorkspaceEdit, returns whether it was applied
      */
+    #[\Override]
     public function onApplyEdit(callable $handler): void
     {
         $this->applyEditHandler = $handler;
@@ -88,6 +93,7 @@ final class LspClient implements LspClientInterface
      *
      * @param callable(Outcome): void $onReady called with true on success
      */
+    #[\Override]
     public function start(callable $onReady): void
     {
         $started = $this->transport->start(function (array $message): void {
@@ -178,6 +184,7 @@ final class LspClient implements LspClientInterface
     /**
      * Run $action now if initialized, otherwise queue it.
      */
+    #[\Override]
     public function whenReady(callable $action): void
     {
         if ($this->initialized) {
@@ -191,6 +198,7 @@ final class LspClient implements LspClientInterface
     /**
      * @param callable(mixed, ?array): void $onResult called with (result, error)
      */
+    #[\Override]
     public function request(string $method, mixed $params, callable $onResult): void
     {
         $id = $this->nextId++;
@@ -198,11 +206,13 @@ final class LspClient implements LspClientInterface
         $this->send(['jsonrpc' => '2.0', 'id' => $id, 'method' => $method, 'params' => $params]);
     }
 
+    #[\Override]
     public function notify(string $method, mixed $params): void
     {
         $this->send(['jsonrpc' => '2.0', 'method' => $method, 'params' => $params]);
     }
 
+    #[\Override]
     public function stop(): void
     {
         if ($this->transport->isRunning()) {

@@ -17,11 +17,13 @@ final class CapturingHighlightSink implements HighlightSink
 {
     public ?string $markup = null;
 
+    #[\Override]
     public function deliver(string $documentId, int $version, string $markup): void
     {
         $this->markup = $markup;
     }
 
+    #[\Override]
     public function fail(string $documentId, int $version, \Throwable $error): void
     {
         $this->markup = null;

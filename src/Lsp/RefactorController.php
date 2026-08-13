@@ -38,6 +38,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
      * Validate a rename position with textDocument/prepareRename before opening
      * the rename prompt, pre-filling the server's placeholder when it offers one.
      */
+    #[\Override]
     public function requestPrepareRename(int $line, int $col, string $word): void
     {
         $path = $this->editor->getFilePath();
@@ -88,6 +89,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
         );
     }
 
+    #[\Override]
     public function requestCodeActions(int $line, int $col): void
     {
         if (null === ($path = $this->ready())) {
@@ -200,6 +202,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
         $this->tui->requestRender();
     }
 
+    #[\Override]
     public function requestReformat(): void
     {
         if (null === ($path = $this->ready())) {

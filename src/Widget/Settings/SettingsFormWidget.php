@@ -106,6 +106,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $this->invalidate();
     }
 
+    #[\Override]
     public function handleInput(string $data): void
     {
         if ($this->inputHookHandled($data)) {
@@ -155,6 +156,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     }
 
     /** Tint the settings row under the pointer (visual only, like the nav/keys lists). */
+    #[\Override]
     public function hoverRow(int $relRow): bool
     {
         return $this->setHovered(array_key_exists($relRow, $this->rows) ? $relRow : null);
@@ -279,6 +281,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         return IntMath::clamp((int) $row->value + $delta, $min, $max);
     }
 
+    #[\Override]
     public function render(RenderContext $context): array
     {
         $width = $context->getColumns();

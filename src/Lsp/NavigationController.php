@@ -47,6 +47,7 @@ final class NavigationController extends AbstractLspController implements Editor
         parent::__construct($lsp, $editor, $tui, $notifier, $translator);
     }
 
+    #[\Override]
     public function requestDefinition(int $line, int $utf16Col): void
     {
         // Native symbols have no project declaration to jump to — open their
@@ -117,11 +118,13 @@ final class NavigationController extends AbstractLspController implements Editor
         );
     }
 
+    #[\Override]
     public function requestImplementation(int $line, int $utf16Col): void
     {
         $this->requestGoTo('textDocument/implementation', $this->trans('No implementation found'), $line, $utf16Col);
     }
 
+    #[\Override]
     public function requestTypeDefinition(int $line, int $utf16Col): void
     {
         $this->requestGoTo('textDocument/typeDefinition', $this->trans('No type definition found'), $line, $utf16Col);
@@ -267,6 +270,7 @@ final class NavigationController extends AbstractLspController implements Editor
         }
     }
 
+    #[\Override]
     public function navigateBack(): void
     {
         $previous = array_pop($this->jumpStack);
@@ -336,6 +340,7 @@ final class NavigationController extends AbstractLspController implements Editor
         });
     }
 
+    #[\Override]
     public function requestHover(int $line, int $col): void
     {
         $this->requestAt(
@@ -358,6 +363,7 @@ final class NavigationController extends AbstractLspController implements Editor
         );
     }
 
+    #[\Override]
     public function requestReferences(int $line, int $col): void
     {
         $this->requestAt(
@@ -383,6 +389,7 @@ final class NavigationController extends AbstractLspController implements Editor
      * The callers of the symbol at the caret: prepareCallHierarchy resolves the
      * symbol, incomingCalls lists its call sites — rendered like Find Usages.
      */
+    #[\Override]
     public function requestCallHierarchy(int $line, int $col): void
     {
         $this->requestAt(
@@ -428,6 +435,7 @@ final class NavigationController extends AbstractLspController implements Editor
         );
     }
 
+    #[\Override]
     public function requestPeek(int $line, int $col): void
     {
         $this->requestAt(
@@ -479,6 +487,7 @@ final class NavigationController extends AbstractLspController implements Editor
         );
     }
 
+    #[\Override]
     public function requestFileStructure(): void
     {
         $this->requestForDocument(

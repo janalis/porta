@@ -30,12 +30,14 @@ final readonly class LanguageSection implements SettingsSection
         private SettingsDebugController $debug,
     ) {}
 
+    #[\Override]
     public function handles(string $section): bool
     {
         return str_starts_with($section, self::PREFIX);
     }
 
     /** @return list<SettingsRow> */
+    #[\Override]
     public function rows(string $section): array
     {
         $language = $this->language($section);
@@ -43,6 +45,7 @@ final readonly class LanguageSection implements SettingsSection
         return [...$this->languages->rows($language), ...$this->lsp->rows($language), ...$this->debug->rows($language)];
     }
 
+    #[\Override]
     public function change(string $section, string $key, bool|int|string $value): void
     {
         $language = $this->language($section);

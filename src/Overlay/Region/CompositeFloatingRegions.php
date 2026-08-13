@@ -27,6 +27,7 @@ final class CompositeFloatingRegions implements FloatingRegions
         private readonly MenuOverlayController $menus,
     ) {}
 
+    #[\Override]
     public function regions(): array
     {
         // The floating modals are never open together (the interlock: opening

@@ -35,6 +35,7 @@ final class WelcomeMouseRouter implements ViewPointer
     }
 
     /** Wheel while the modal is open: over the box it scrolls the cards; consumed everywhere. */
+    #[\Override]
     public function wheel(WheelGesture $gesture): bool
     {
         $mouse = $gesture->mouse;
@@ -43,6 +44,7 @@ final class WelcomeMouseRouter implements ViewPointer
     }
 
     /** A left press while the modal is open: ×/drag-arm/select, swallowed everywhere else. */
+    #[\Override]
     public function press(MouseEvent $mouse): bool
     {
         if (!$this->modal->clickAt($mouse->row, $mouse->col)) {
@@ -54,6 +56,7 @@ final class WelcomeMouseRouter implements ViewPointer
     }
 
     /** Tint the card or the × under the pointer; a miss clears the tint. */
+    #[\Override]
     public function hover(MouseEvent $mouse): void
     {
         if ($this->modal->hoverAt($mouse->row, $mouse->col)) {
@@ -62,6 +65,7 @@ final class WelcomeMouseRouter implements ViewPointer
     }
 
     /** Continue an armed title-bar drag (repositioning the box); disarms on release. */
+    #[\Override]
     public function continueDrag(MouseEvent $mouse): bool
     {
         if (!$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
@@ -72,6 +76,7 @@ final class WelcomeMouseRouter implements ViewPointer
     }
 
     /** A fresh press anywhere disarms a stale drag (the router's cancel sweep). */
+    #[\Override]
     public function cancelDrag(): void
     {
         $this->modal->cancelDrag();

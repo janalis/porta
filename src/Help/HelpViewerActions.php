@@ -32,6 +32,7 @@ final class HelpViewerActions implements HelpViewerHandler
     ) {}
 
     /** Open the find bar on the docs page (the viewer is its own FindTarget). */
+    #[\Override]
     public function openFind(): void
     {
         $this->findBar->open($this->helpViewer, FindMode::Find);
@@ -39,26 +40,31 @@ final class HelpViewerActions implements HelpViewerHandler
         $this->tui->requestRender();
     }
 
+    #[\Override]
     public function openHelp(string $path): void
     {
         $this->bufferService->showHelpPage($path);
     }
 
+    #[\Override]
     public function openFile(string $path): void
     {
         $this->bufferService->openFile($path, focus: OpenFocus::Editor);
     }
 
+    #[\Override]
     public function openUrl(string $url): void
     {
         $this->docsUrls->open($url);
     }
 
+    #[\Override]
     public function missingTarget(string $target): void
     {
         $this->notifier->flash($this->translator->trans('Cannot read %file%', ['%file%' => $target]));
     }
 
+    #[\Override]
     public function labelFor(string $path): string
     {
         return realpath($path) === realpath($this->docsDir.'/README.md')
@@ -66,26 +72,31 @@ final class HelpViewerActions implements HelpViewerHandler
             : basename($path, suffix: '.md');
     }
 
+    #[\Override]
     public function backEmpty(): void
     {
         $this->notifier->flash($this->translator->trans('Nowhere to go back to'));
     }
 
+    #[\Override]
     public function cycleBuffer(int $offset): void
     {
         $this->navigator->cycle($offset);
     }
 
+    #[\Override]
     public function closeBuffer(): void
     {
         $this->navigator->closeActive();
     }
 
+    #[\Override]
     public function openGotoFile(): void
     {
         $this->navigator->openGotoFile();
     }
 
+    #[\Override]
     public function saveAll(): void
     {
         $this->navigator->saveAll();
@@ -96,6 +107,7 @@ final class HelpViewerActions implements HelpViewerHandler
      * repaint a status segment it does not contribute — but the pane contract is
      * one interface, and the navigator already knows how to refresh the bar.
      */
+    #[\Override]
     public function viewChanged(): void
     {
         $this->navigator->viewChanged();

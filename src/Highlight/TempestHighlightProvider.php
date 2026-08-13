@@ -29,16 +29,19 @@ final class TempestHighlightProvider implements ThemeAwareHighlightProvider
         $this->highlighter = TempestBackend::newHighlighter($theme);
     }
 
+    #[\Override]
     public function id(): string
     {
         return 'tempest';
     }
 
+    #[\Override]
     public function supports(string $language): bool
     {
         return '' !== $language;
     }
 
+    #[\Override]
     public function highlight(HighlightRequest $request, HighlightSink $sink): void
     {
         $sink->deliver($request->documentId, $request->version, $this->highlighter->parse($request->text, $request->language));
@@ -50,6 +53,7 @@ final class TempestHighlightProvider implements ThemeAwareHighlightProvider
      * inner is not enough — the Highlighter itself must be rebuilt from the
      * (already-swapped) holder.
      */
+    #[\Override]
     public function refreshTheme(): void
     {
         $this->highlighter = TempestBackend::newHighlighter($this->theme);

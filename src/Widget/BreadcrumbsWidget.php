@@ -72,6 +72,7 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
     /** @var list<array{start: int, width: int, line: int}> segment layout from the last render, for hit-testing */
     private array $lastLayout = [];
 
+    #[\Override]
     public function beforeRender(): void
     {
         if (null === $this->provider) {
@@ -82,6 +83,7 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
         $this->refreshFingerprint(($this->provider)());
     }
 
+    #[\Override]
     public function render(RenderContext $context): array
     {
         $this->lastLayout = [];

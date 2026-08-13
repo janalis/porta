@@ -93,6 +93,7 @@ final class PluginLifecycle implements PluginLifecycleOps
      * its commands (the manager's registration is incremental) and refresh the
      * Plugins menu. Returns the failure message or null.
      */
+    #[\Override]
     public function activateInstalled(string $file): ?string
     {
         $error = $this->loader->loadFile($file, $this->plugins);
@@ -113,6 +114,7 @@ final class PluginLifecycle implements PluginLifecycleOps
      * same-name copy down the precedence chain (project > global > built-in),
      * so removing a project override falls back to the shadowed copy live.
      */
+    #[\Override]
     public function deactivate(string $name): void
     {
         $this->plugins->deactivate($name, $this->commands);
@@ -142,6 +144,7 @@ final class PluginLifecycle implements PluginLifecycleOps
      * deactivate every registration. The choice persists in .porta.json's
      * `disabledPlugins` list so the next boot honors it.
      */
+    #[\Override]
     public function disable(string $name): void
     {
         // Whatever needs this one cannot work without it, so it goes too — the
@@ -193,6 +196,7 @@ final class PluginLifecycle implements PluginLifecycleOps
      * choice persists in .porta.json's `disabledPlugins` list so the next boot
      * honors it.
      */
+    #[\Override]
     public function enable(string $name): void
     {
         // What it requires comes with it, transitively and in order — a plugin
@@ -517,6 +521,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         }
     }
 
+    #[\Override]
     public function onProviderSettingChanged(string $name): void
     {
         $this->reconfigureLspIf($this->plugins->providesLanguageServer($name));
@@ -529,6 +534,7 @@ final class PluginLifecycle implements PluginLifecycleOps
      * reached from the install-a-binary path, which has no key to report — and
      * an optional key would make "no key" and "some key" the same call.
      */
+    #[\Override]
     public function onPluginSettingChanged(string $name, string $key, bool|int|string $value): void
     {
         $this->plugins->notifySettingChanged($name, $key, $value);
@@ -585,6 +591,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         $this->tui->requestRender();
     }
 
+    #[\Override]
     public function isDisabled(string $name): bool
     {
         return $this->isBundled($name)
@@ -599,6 +606,7 @@ final class PluginLifecycle implements PluginLifecycleOps
      *
      * @return list<string>
      */
+    #[\Override]
     public function listedNames(): array
     {
         $names = [];
@@ -615,6 +623,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         $this->pages->refresh($this->listedNames());
     }
 
+    #[\Override]
     public function refreshView(): void
     {
         $this->events->dispatch(new SettingsRowsStale());

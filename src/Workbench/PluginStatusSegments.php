@@ -33,6 +33,7 @@ final class PluginStatusSegments implements StatusSegment
     ) {}
 
     /** @return list<StatusCell> */
+    #[\Override]
     public function statusCells(): array
     {
         $plain = [];

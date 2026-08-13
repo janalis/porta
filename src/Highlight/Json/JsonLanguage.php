@@ -26,6 +26,7 @@ use Tempest\Highlight\Languages\Json\JsonLanguage as TempestJsonLanguage;
  */
 final class JsonLanguage extends TempestJsonLanguage
 {
+    #[\Override]
     public function getPatterns(): array
     {
         return [...JsonPatterns::base(), ...JsonPatterns::core()];

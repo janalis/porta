@@ -20,16 +20,19 @@ final class CommentStringTheme implements Theme
     public const string OPEN = "\x00\x01";
     public const string CLOSE = "\x00\x02";
 
+    #[\Override]
     public function before(TokenType $tokenType): string
     {
         return $this->marks($tokenType) ? self::OPEN : '';
     }
 
+    #[\Override]
     public function after(TokenType $tokenType): string
     {
         return $this->marks($tokenType) ? self::CLOSE : '';
     }
 
+    #[\Override]
     public function escape(string $content): string
     {
         return $content; // verbatim, so offsets in the marked output match the source

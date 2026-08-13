@@ -17,11 +17,13 @@ final class ActionsSource implements SearchSource
         private readonly CommandRegistry $commands,
     ) {}
 
+    #[\Override]
     public function category(): SearchCategory
     {
         return SearchCategory::Actions;
     }
 
+    #[\Override]
     public function query(string $query, \Closure $emit): void
     {
         /** @var list<array{int, SearchHit}> $scored */
@@ -41,5 +43,6 @@ final class ActionsSource implements SearchSource
         $emit(array_map(static fn (array $entry): SearchHit => $entry[1], $scored));
     }
 
+    #[\Override]
     public function cancel(): void {}
 }

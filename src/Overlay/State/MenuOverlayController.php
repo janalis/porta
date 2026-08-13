@@ -67,6 +67,7 @@ final class MenuOverlayController implements FloatingRegions
         return $this->contextMenuDropdown;
     }
 
+    #[\Override]
     public function regions(): array
     {
         return array_values(array_filter([$this->menuShadowRegion, $this->contextShadowRegion]));

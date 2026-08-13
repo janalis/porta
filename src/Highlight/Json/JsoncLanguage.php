@@ -21,11 +21,13 @@ use Tempest\Highlight\Languages\Json\JsonLanguage as TempestJsonLanguage;
  */
 final class JsoncLanguage extends TempestJsonLanguage
 {
+    #[\Override]
     public function getName(): string
     {
         return 'jsonc';
     }
 
+    #[\Override]
     public function getPatterns(): array
     {
         return [...JsonPatterns::base(), ...JsonPatterns::core(), ...JsonPatterns::comments()];

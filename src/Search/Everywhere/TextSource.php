@@ -25,11 +25,13 @@ final class TextSource implements SearchSource
         private readonly \Closure $jumpTo,
     ) {}
 
+    #[\Override]
     public function category(): SearchCategory
     {
         return SearchCategory::Text;
     }
 
+    #[\Override]
     public function query(string $query, \Closure $emit): void
     {
         $this->search->search($query, function (array $results) use ($emit): void {
@@ -52,6 +54,7 @@ final class TextSource implements SearchSource
         });
     }
 
+    #[\Override]
     public function cancel(): void
     {
         $this->search->cancel();

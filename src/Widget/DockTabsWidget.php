@@ -80,6 +80,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
     }
 
     /** Repaint whenever the alive tabs / labels / active tool change. */
+    #[\Override]
     public function beforeRender(): void
     {
         if (null === $this->provider) {
@@ -257,6 +258,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
     }
 
     /** @return list<string> */
+    #[\Override]
     public function render(RenderContext $context): array
     {
         $tabs = null !== $this->provider ? ($this->provider)() : [];

@@ -43,6 +43,7 @@ final class WorkbenchCommands implements CommandProvider
         private readonly FindBarWidget $findBar,
     ) {}
 
+    #[\Override]
     public function register(CommandRegistry $commands): void
     {
         // Key-bound only (not offered in the palette).

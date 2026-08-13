@@ -117,6 +117,7 @@ final class StatusBarWidget extends AbstractWidget
         $this->invalidate();
     }
 
+    #[\Override]
     public function beforeRender(): void
     {
         $now = $this->nowSeconds();
@@ -140,6 +141,7 @@ final class StatusBarWidget extends AbstractWidget
         }
     }
 
+    #[\Override]
     public function render(RenderContext $context): array
     {
         $columns = $context->getColumns();

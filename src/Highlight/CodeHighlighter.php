@@ -235,6 +235,7 @@ final class CodeHighlighter implements HighlightSink
      * waiting on is dropped — that one check covers a stale result, a request
      * we abandoned, and a delivery nobody asked for.
      */
+    #[\Override]
     public function deliver(string $documentId, int $version, string $markup): void
     {
         if ($version !== $this->inFlightVersion) {
@@ -270,6 +271,7 @@ final class CodeHighlighter implements HighlightSink
         }
     }
 
+    #[\Override]
     public function fail(string $documentId, int $version, \Throwable $error): void
     {
         if ($version !== $this->inFlightVersion) {

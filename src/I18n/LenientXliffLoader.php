@@ -20,6 +20,7 @@ use Symfony\Component\Translation\MessageCatalogue;
  */
 final class LenientXliffLoader extends XliffFileLoader
 {
+    #[\Override]
     public function load(mixed $resource, string $locale, string $domain = 'messages'): MessageCatalogue
     {
         try {

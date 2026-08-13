@@ -11,6 +11,7 @@ final class ProcessDapClientFactory implements DapClientFactory
         private readonly string $rootDir,
     ) {}
 
+    #[\Override]
     public function create(array $argv): DapClientInterface
     {
         return new DapClient($argv, $this->rootDir);

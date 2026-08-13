@@ -25,6 +25,7 @@ abstract class AbstractPlugin implements PortaPlugin
         private readonly string $name,
     ) {}
 
+    #[\Override]
     final public function name(): string
     {
         return $this->name;

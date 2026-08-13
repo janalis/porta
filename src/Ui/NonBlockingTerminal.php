@@ -54,6 +54,7 @@ final class NonBlockingTerminal implements TerminalInterface
         $this->stream = $stream ?? \STDOUT;
     }
 
+    #[\Override]
     public function start(callable $onInput, callable $onResize, callable $onKittyProtocolActivated): void
     {
         // The inner terminal's boot writes (bracketed paste, kitty query) run
@@ -67,6 +68,7 @@ final class NonBlockingTerminal implements TerminalInterface
         $this->nonBlockingActive = true;
     }
 
+    #[\Override]
     public function stop(): void
     {
         if (null !== $this->writer) {
@@ -96,6 +98,7 @@ final class NonBlockingTerminal implements TerminalInterface
         return $this->writer?->pendingBytes() ?? 0;
     }
 
+    #[\Override]
     public function write(string $data): void
     {
         if (null !== $this->writer) {
@@ -112,21 +115,25 @@ final class NonBlockingTerminal implements TerminalInterface
         $this->inner->write($data); // before start() / after stop(): blocking pass-through
     }
 
+    #[\Override]
     public function getColumns(): int
     {
         return $this->inner->getColumns();
     }
 
+    #[\Override]
     public function getRows(): int
     {
         return $this->inner->getRows();
     }
 
+    #[\Override]
     public function isKittyProtocolActive(): bool
     {
         return $this->inner->isKittyProtocolActive();
     }
 
+    #[\Override]
     public function moveBy(int $lines): void
     {
         if ($lines > 0) {
@@ -139,42 +146,50 @@ final class NonBlockingTerminal implements TerminalInterface
         }
     }
 
+    #[\Override]
     public function hideCursor(): void
     {
         $this->write("\x1b[?25l");
     }
 
+    #[\Override]
     public function showCursor(): void
     {
         $this->write("\x1b[?25h");
     }
 
+    #[\Override]
     public function clearLine(): void
     {
         $this->write("\x1b[2K");
     }
 
+    #[\Override]
     public function clearFromCursor(): void
     {
         $this->write("\x1b[0J");
     }
 
+    #[\Override]
     public function clearScreen(): void
     {
         $this->write("\x1b[2J\x1b[H");
     }
 
+    #[\Override]
     public function setTitle(string $title): void
     {
         $safe = (string) preg_replace("/[\x00-\x1f\x7f]|\xc2[\x80-\x9f]/", replacement: '', subject: $title);
         $this->write("\x1b]0;{$safe}\x07");
     }
 
+    #[\Override]
     public function bell(): void
     {
         $this->write("\x07");
     }
 
+    #[\Override]
     public function isVirtual(): bool
     {
         return $this->inner->isVirtual();

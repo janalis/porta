@@ -34,11 +34,13 @@ final class WorkspaceSymbolSource implements SearchSource
         private readonly \Closure $jumpTo,
     ) {}
 
+    #[\Override]
     public function category(): SearchCategory
     {
         return $this->category;
     }
 
+    #[\Override]
     public function query(string $query, \Closure $emit): void
     {
         $token = ++$this->token;
@@ -69,6 +71,7 @@ final class WorkspaceSymbolSource implements SearchSource
         });
     }
 
+    #[\Override]
     public function cancel(): void
     {
         ++$this->token;

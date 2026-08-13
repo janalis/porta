@@ -17,16 +17,19 @@ namespace Porta\Highlight;
  */
 final class PlainTextHighlightProvider implements SyntaxHighlightProvider
 {
+    #[\Override]
     public function id(): string
     {
         return 'plain';
     }
 
+    #[\Override]
     public function supports(string $language): bool
     {
         return true;
     }
 
+    #[\Override]
     public function highlight(HighlightRequest $request, HighlightSink $sink): void
     {
         $sink->deliver($request->documentId, $request->version, $request->text);

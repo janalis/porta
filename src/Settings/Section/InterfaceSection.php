@@ -17,17 +17,20 @@ final readonly class InterfaceSection implements SettingsSection
         private SettingsController $settings,
     ) {}
 
+    #[\Override]
     public function handles(string $section): bool
     {
         return 'interface' === $section;
     }
 
     /** @return list<SettingsRow> */
+    #[\Override]
     public function rows(string $section): array
     {
         return $this->settings->interfaceRows();
     }
 
+    #[\Override]
     public function change(string $section, string $key, bool|int|string $value): void
     {
         $this->settings->changeSetting($key, $value);

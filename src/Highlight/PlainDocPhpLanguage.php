@@ -22,6 +22,7 @@ use Tempest\Highlight\Languages\Php\PhpLanguage;
  */
 final class PlainDocPhpLanguage extends PhpLanguage
 {
+    #[\Override]
     public function getInjections(): array
     {
         return array_values(array_filter(

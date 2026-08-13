@@ -29,6 +29,7 @@ final readonly class JsonPattern implements Pattern
         return $this->pattern;
     }
 
+    #[\Override]
     public function getTokenType(): TokenType
     {
         return $this->tokenType;

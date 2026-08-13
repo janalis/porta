@@ -122,16 +122,19 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         $this->invalidate();
     }
 
+    #[\Override]
     public function minWidth(): int
     {
         return 14;
     }
 
+    #[\Override]
     public function maxWidth(): int
     {
         return 60;
     }
 
+    #[\Override]
     public function maxRatio(): float
     {
         return 0.5;
@@ -165,6 +168,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         }
     }
 
+    #[\Override]
     public function handleInput(string $data): void
     {
         if ($this->inputHookHandled($data)) {
@@ -201,6 +205,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         }
     }
 
+    #[\Override]
     public function hoverRow(int $relRow): bool
     {
         $index = $this->rowIndexAt($relRow);
@@ -248,6 +253,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         return $this->list->rowIndexAt($relRow, \count($this->entries), headerRows: 0);
     }
 
+    #[\Override]
     public function render(RenderContext $context): array
     {
         $width = min($this->width, $context->getColumns());

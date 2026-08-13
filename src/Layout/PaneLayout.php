@@ -46,6 +46,7 @@ final class PaneLayout implements EditorAreaPanes
      *
      * @return list<AbstractWidget>
      */
+    #[\Override]
     public function orderedEditorPanes(): array
     {
         return $this->order($this->currentEditorPanes());

@@ -17,11 +17,13 @@ final class PlainTerminalTheme implements TerminalTheme
 {
     use EscapesTerminalTheme;
 
+    #[\Override]
     public function before(TokenType $tokenType): string
     {
         return '';
     }
 
+    #[\Override]
     public function after(TokenType $tokenType): string
     {
         return '';

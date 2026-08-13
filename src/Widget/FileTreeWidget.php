@@ -115,11 +115,13 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         return $this->list->selected() - $this->list->scroll() + 1;
     }
 
+    #[\Override]
     public function minWidth(): int
     {
         return 12;
     }
 
+    #[\Override]
     public function maxRatio(): float
     {
         return 0.6;
@@ -185,6 +187,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         }
     }
 
+    #[\Override]
     public function handleInput(string $data): void
     {
         if ($this->inputHookHandled($data)) {
@@ -282,11 +285,13 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      * (the header/empty rows clear it). Returns whether the highlight changed, so
      * the caller re-renders only on change under the flood of motion events.
      */
+    #[\Override]
     public function hoverRow(int $relRow): bool
     {
         return $this->setHovered($this->list->rowIndexAt($relRow, \count($this->visible)));
     }
 
+    #[\Override]
     public function render(RenderContext $context): array
     {
         $width = min($this->width, $context->getColumns());

@@ -31,11 +31,13 @@ final class CallableHighlightProvider implements SyntaxHighlightProvider
         private readonly ?\Closure $isAvailable = null,
     ) {}
 
+    #[\Override]
     public function id(): string
     {
         return $this->id;
     }
 
+    #[\Override]
     public function supports(string $language): bool
     {
         if ('' === $language) {
@@ -50,6 +52,7 @@ final class CallableHighlightProvider implements SyntaxHighlightProvider
         return \in_array('*', $claimed, strict: true) || \in_array($language, $claimed, strict: true);
     }
 
+    #[\Override]
     public function highlight(HighlightRequest $request, HighlightSink $sink): void
     {
         ($this->highlight)($request->text, $request->language, static function (string $markup) use ($request, $sink): void {

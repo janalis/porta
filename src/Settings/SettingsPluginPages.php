@@ -19,6 +19,7 @@ final class SettingsPluginPages implements PluginPagesSync
         private readonly SettingsNavWidget $nav,
     ) {}
 
+    #[\Override]
     public function refresh(array $names): void
     {
         $this->nav->setPluginEntries($names);

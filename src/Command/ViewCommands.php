@@ -36,6 +36,7 @@ final class ViewCommands implements CommandProvider
         private readonly string $docsDir,
     ) {}
 
+    #[\Override]
     public function register(CommandRegistry $commands): void
     {
         $commands

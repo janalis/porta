@@ -19,6 +19,7 @@ final class PluginCommandProvider implements CommandProvider
         private readonly PluginManager $plugins,
     ) {}
 
+    #[\Override]
     public function register(CommandRegistry $commands): void
     {
         $this->plugins->registerCommands($commands);

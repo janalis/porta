@@ -121,6 +121,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
      *
      * @return list<StatusCell>
      */
+    #[\Override]
     public function statusCells(): array
     {
         if (!$this->isActive()) {
@@ -376,6 +377,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         $this->tui->requestRender();
     }
 
+    #[\Override]
     public function onStopped(string $reason): void
     {
         $session = $this->session;
@@ -526,6 +528,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         }
     }
 
+    #[\Override]
     public function onContinued(): void
     {
         $this->state->clear();
@@ -535,6 +538,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         $this->tui->requestRender();
     }
 
+    #[\Override]
     public function onOutput(string $category, string $text): void
     {
         $session = $this->sessions->find('debug');
@@ -545,6 +549,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         $this->tui->requestRender();
     }
 
+    #[\Override]
     public function onTerminated(): void
     {
         $this->state->clear();
@@ -555,6 +560,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         $this->tui->requestRender();
     }
 
+    #[\Override]
     public function onError(string $message): void
     {
         $this->notifier->flash($this->translator->trans('Could not start the debug adapter').' — '.$message, 5.0);

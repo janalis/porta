@@ -74,6 +74,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
     }
 
     /** Show a page from the top; the back history survives page changes. */
+    #[\Override]
     public function paneId(): string
     {
         return 'help';
@@ -84,6 +85,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
      * status bar keeps showing the editor's diagnostics/LSP legend — which is
      * exactly what it did when this was a branch in the provider.
      */
+    #[\Override]
     public function statusRight(): string
     {
         return '';
@@ -97,6 +99,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
      * here, where "what this pane is showing" is known. A live refresh of the
      * page on disk goes through {@see refreshPage()} instead.
      */
+    #[\Override]
     public function show(string $path, mixed $payload): void
     {
         if (null !== $this->path) {
@@ -124,12 +127,14 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
      * ever one help tab, and after navigation this pane's own path is the page
      * the user walked to rather than the tab's.
      */
+    #[\Override]
     public function forget(string $path): void
     {
         $this->clear();
     }
 
     /** Drop everything, including the back/forward history (the help tab closed). */
+    #[\Override]
     public function clear(): void
     {
         $this->path = null;
@@ -164,6 +169,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
     }
 
     /** Rendered lines bake palette codes: drop the memo on a theme switch. */
+    #[\Override]
     public function refreshTheme(): void
     {
         $this->doc = null;
@@ -171,6 +177,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
     }
 
     /** The wheel scrolls the page, in whole rows — this pane has no zoom to anchor. */
+    #[\Override]
     public function wheelBy(int $rows): void
     {
         $this->scrollBy($rows);
@@ -183,6 +190,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
     }
 
     /** A press follows what is under it — a header zone or a link — and arms no drag. */
+    #[\Override]
     public function press(int $relRow, int $relCol): bool
     {
         $this->clickAt($relRow, $relCol);
@@ -229,6 +237,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
     }
 
     /** @return list<string> */
+    #[\Override]
     public function render(RenderContext $context): array
     {
         $cols = $context->getColumns();
@@ -366,6 +375,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
         return $crumbs;
     }
 
+    #[\Override]
     public function handleInput(string $data): void
     {
         $kb = $this->getKeybindings();
@@ -391,6 +401,7 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
     }
 
     /** @return array<string, string[]> */
+    #[\Override]
     protected static function getDefaultKeybindings(): array
     {
         return [
@@ -534,26 +545,31 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
 
     // --- FindTarget: the in-file find bar searches the rendered page ---------
 
+    #[\Override]
     public function findLines(): array
     {
         return array_map(AnsiUtils::stripAnsiCodes(...), $this->doc->lines ?? []);
     }
 
+    #[\Override]
     public function findVersion(): int
     {
         return $this->findVersion;
     }
 
+    #[\Override]
     public function findCaretLine(): int
     {
         return $this->scrollTop; // "nearest match" anchors to the top of the viewport
     }
 
+    #[\Override]
     public function findCaretCol(): int
     {
         return 0;
     }
 
+    #[\Override]
     public function revealMatch(int $line, int $startByte, int $endByte): void
     {
         // Scroll the match's line into view (the match itself is highlighted via
@@ -566,12 +582,14 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
         $this->invalidate();
     }
 
+    #[\Override]
     public function showSearchMatches(array $byLine): void
     {
         $this->searchMatches = $byLine;
         $this->invalidate();
     }
 
+    #[\Override]
     public function replaceDocument(): ?Document
     {
         return null; // documentation is read-only

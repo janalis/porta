@@ -78,6 +78,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         $this->afterNavigate();
     }
 
+    #[\Override]
     protected function resetState(): void
     {
         $this->selected = 0;
@@ -119,6 +120,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         return true;
     }
 
+    #[\Override]
     public function render(RenderContext $context): array
     {
         // Only the title row — never the dropdown — so opening a menu never
@@ -189,6 +191,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         return MenuPanel::segments($this->menus[$this->openIndex]->items, $this->selected, $panelWidth, $this->styles);
     }
 
+    #[\Override]
     public function handleInput(string $data): void
     {
         if (!$this->open) {

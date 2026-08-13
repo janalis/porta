@@ -59,6 +59,7 @@ final class ContextMenu extends OverlayWidget
         $this->afterNavigate();
     }
 
+    #[\Override]
     protected function resetState(): void
     {
         $this->items = [];
@@ -81,6 +82,7 @@ final class ContextMenu extends OverlayWidget
         return $this->open ? MenuPanel::segments($this->items, $this->selected, $panelWidth, $this->styles) : [];
     }
 
+    #[\Override]
     public function render(RenderContext $context): array
     {
         return []; // floats via the overlay; never occupies a layout row

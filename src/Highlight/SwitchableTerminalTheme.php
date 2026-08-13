@@ -26,16 +26,19 @@ final class SwitchableTerminalTheme implements TerminalTheme
         $this->current = $theme;
     }
 
+    #[\Override]
     public function before(TokenType $tokenType): string
     {
         return $this->current->before($tokenType);
     }
 
+    #[\Override]
     public function after(TokenType $tokenType): string
     {
         return $this->current->after($tokenType);
     }
 
+    #[\Override]
     public function escape(string $content): string
     {
         return $this->current->escape($content);

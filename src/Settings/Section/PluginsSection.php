@@ -23,17 +23,20 @@ final readonly class PluginsSection implements SettingsSection
         private SettingsPluginsController $plugins,
     ) {}
 
+    #[\Override]
     public function handles(string $section): bool
     {
         return 'plugins' === $section || str_starts_with($section, self::PREFIX);
     }
 
     /** @return list<SettingsRow> */
+    #[\Override]
     public function rows(string $section): array
     {
         return 'plugins' === $section ? $this->plugins->rows() : $this->plugins->pluginRows($this->name($section));
     }
 
+    #[\Override]
     public function change(string $section, string $key, bool|int|string $value): void
     {
         if ('plugins' === $section) {

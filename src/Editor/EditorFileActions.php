@@ -25,27 +25,32 @@ final class EditorFileActions implements EditorFileActionHandler
         private readonly Tui $tui,
     ) {}
 
+    #[\Override]
     public function save(): void
     {
         $this->bufferService->saveCurrentFile();
     }
 
+    #[\Override]
     public function saveAll(): void
     {
         $this->bufferService->saveAllBuffers();
     }
 
     /** Mirror editor copies to the system clipboard via OSC 52. */
+    #[\Override]
     public function copy(string $text): void
     {
         $this->clipboard->copy($text);
     }
 
+    #[\Override]
     public function openFind(): void
     {
         $this->openFindBar(FindMode::Find);
     }
 
+    #[\Override]
     public function openFindReplace(): void
     {
         $this->openFindBar(FindMode::Replace);
@@ -63,6 +68,7 @@ final class EditorFileActions implements EditorFileActionHandler
         $this->tui->requestRender();
     }
 
+    #[\Override]
     public function openGotoFile(): void
     {
         $this->navigator->openGotoFile();

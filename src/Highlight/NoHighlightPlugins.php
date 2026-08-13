@@ -11,6 +11,7 @@ namespace Porta\Highlight;
  */
 final class NoHighlightPlugins implements SyntaxHighlightProviderSource
 {
+    #[\Override]
     public function highlightProviders(): array
     {
         return [];

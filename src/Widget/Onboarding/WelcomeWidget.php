@@ -151,6 +151,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
         return $this;
     }
 
+    #[\Override]
     public function render(RenderContext $context): array
     {
         $width = $context->getColumns();
@@ -320,6 +321,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
         return $this->applyElement('selected', $text);
     }
 
+    #[\Override]
     public function handleInput(string $data): void
     {
         if ($this->inputHookHandled($data)) {
@@ -355,6 +357,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
     }
 
     /** Spacer and message rows own no step, so hovering them clears the tint. */
+    #[\Override]
     public function hoverRow(int $relRow): bool
     {
         return $this->setHovered($this->rowOwner[$relRow] ?? null);

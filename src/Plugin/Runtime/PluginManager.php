@@ -241,6 +241,7 @@ final class PluginManager implements
      *
      * @return array<string, array{command: list<string>, name: string}>
      */
+    #[\Override]
     public function languageServers(): array
     {
         $servers = [];
@@ -442,6 +443,7 @@ final class PluginManager implements
      *
      * @return list<SyntaxHighlightProvider>
      */
+    #[\Override]
     public function highlightProviders(): array
     {
         $providers = [];
@@ -483,6 +485,7 @@ final class PluginManager implements
      *
      * @return list<array{start: int, end: int}>|null
      */
+    #[\Override]
     public function commentStringSpans(string $content, string $language): ?array
     {
         foreach ($this->tokenSpans as $spans) {
@@ -512,6 +515,7 @@ final class PluginManager implements
      *
      * @return list<array{plugin: string, id: string, pane: \Closure, load: \Closure}>
      */
+    #[\Override]
     public function panes(): array
     {
         return $this->panes;
@@ -524,6 +528,7 @@ final class PluginManager implements
      *
      * @return array<string, list<string>>
      */
+    #[\Override]
     public function debugAdapters(): array
     {
         $adapters = [];
@@ -554,6 +559,7 @@ final class PluginManager implements
      *
      * @return list<string|StatusCell>
      */
+    #[\Override]
     public function statusSegments(): array
     {
         $segments = [];
@@ -591,6 +597,7 @@ final class PluginManager implements
      *
      * @return list<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}>
      */
+    #[\Override]
     public function listTools(): array
     {
         return array_map(fn (array $tool): array => [
@@ -607,6 +614,7 @@ final class PluginManager implements
      *
      * @return array<string, string>
      */
+    #[\Override]
     public function rebindableActions(): array
     {
         $labels = [];
@@ -622,6 +630,7 @@ final class PluginManager implements
      * $path, or null. A throwing claim declines and reports once per plugin —
      * this runs on every file open.
      */
+    #[\Override]
     public function viewerFor(string $path): ?string
     {
         foreach ($this->viewers as $viewer) {
@@ -650,11 +659,13 @@ final class PluginManager implements
     }
 
     /** A pane that could not be built — {@see EditorPaneSource}'s half of the fault barrier. */
+    #[\Override]
     public function reportPaneFailure(string $plugin, \Throwable $error): void
     {
         $this->reportFailure($plugin, $error);
     }
 
+    #[\Override]
     public function reportViewFailure(string $plugin, \Throwable $error): void
     {
         $this->reportFailure($plugin, $error);
@@ -682,12 +693,14 @@ final class PluginManager implements
     }
 
     /** @return list<MenuContribution> */
+    #[\Override]
     public function contributedMenus(): array
     {
         return array_map(static fn (array $entry): MenuContribution => $entry['contribution'], $this->menus);
     }
 
     /** @return list<array{plugin: string, id: string, factory: \Closure}> */
+    #[\Override]
     public function contributedViews(): array
     {
         return $this->views;

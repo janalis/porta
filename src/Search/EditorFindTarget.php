@@ -19,36 +19,43 @@ final class EditorFindTarget implements FindTarget
         private readonly EditorDecorationSink $editor,
     ) {}
 
+    #[\Override]
     public function findLines(): array
     {
         return array_values($this->document->getLines());
     }
 
+    #[\Override]
     public function findVersion(): int
     {
         return $this->document->getVersion();
     }
 
+    #[\Override]
     public function findCaretLine(): int
     {
         return $this->document->getCursorLine();
     }
 
+    #[\Override]
     public function findCaretCol(): int
     {
         return $this->document->getCursorCol();
     }
 
+    #[\Override]
     public function revealMatch(int $line, int $startByte, int $endByte): void
     {
         $this->document->setCursor($line, $startByte);
     }
 
+    #[\Override]
     public function showSearchMatches(array $byLine): void
     {
         $this->editor->setSearchMatches($byLine);
     }
 
+    #[\Override]
     public function replaceDocument(): ?Document
     {
         return $this->document;

@@ -42,6 +42,7 @@ final class SettingsMouseRouter implements ViewPointer
         $this->separator = $regions->mint('settings')->separator();
     }
 
+    #[\Override]
     public function wheel(WheelGesture $gesture): bool
     {
         if (WheelAxis::Horizontal === $gesture->axis) {
@@ -65,6 +66,7 @@ final class SettingsMouseRouter implements ViewPointer
     }
 
     /** A left press on a settings pane (rects exist only while the view is swapped in). */
+    #[\Override]
     public function press(MouseEvent $mouse): bool
     {
         if (null !== ($rel = $this->hit->hit($this->nav, $mouse->row, $mouse->col))) {
@@ -97,13 +99,16 @@ final class SettingsMouseRouter implements ViewPointer
      * them. Called after the menu bar has had its turn.
      */
     /** Nothing in the settings view arms a drag; the stage exists for the views that do. */
+    #[\Override]
     public function continueDrag(MouseEvent $mouse): bool
     {
         return false;
     }
 
+    #[\Override]
     public function cancelDrag(): void {}
 
+    #[\Override]
     public function hover(MouseEvent $mouse): void
     {
         $listsChanged = $this->hit->hover($mouse->row, $mouse->col, $this->nav, $this->form, $this->keys);

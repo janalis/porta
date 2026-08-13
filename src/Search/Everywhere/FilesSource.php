@@ -22,11 +22,13 @@ final class FilesSource implements SearchSource
         private readonly \Closure $openFile,
     ) {}
 
+    #[\Override]
     public function category(): SearchCategory
     {
         return SearchCategory::Files;
     }
 
+    #[\Override]
     public function query(string $query, \Closure $emit): void
     {
         $hits = [];
@@ -45,5 +47,6 @@ final class FilesSource implements SearchSource
         $emit($hits);
     }
 
+    #[\Override]
     public function cancel(): void {}
 }

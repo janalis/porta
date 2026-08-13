@@ -324,11 +324,13 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         $this->invalidate();
     }
 
+    #[\Override]
     protected function resetState(): void
     {
         $this->results = [];
     }
 
+    #[\Override]
     public function handleInput(string $data): void
     {
         if ($this->inputHookHandled($data)) {
@@ -472,6 +474,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         return $this->withFilter ? 1 : 0;
     }
 
+    #[\Override]
     public function render(RenderContext $context): array
     {
         if (!$this->isVisible()) {
@@ -524,16 +527,19 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     }
 
     /** The dock strip's right-aligned status (result/shown counts). */
+    #[\Override]
     public function wheelBy(int $rows): void
     {
         $this->scrollBy($rows);
     }
 
+    #[\Override]
     public function clickRow(int $row): void
     {
         $this->handleClick($row);
     }
 
+    #[\Override]
     public function statusText(): string
     {
         return $this->buildStatus();
