@@ -40,10 +40,10 @@ final class ViewRegions
     {
         return $this->regions[$id] ??= new ViewRegion(
             $id,
-            $this->container($id.'-area', new Style(direction: Direction::Horizontal, gap: 0)),
-            $this->container($id.'-left', new Style(flex: 0)),
-            $this->separator($id.'-separator'),
-            $this->container($id.'-content', new Style(flex: 1)),
+            LayoutWidgets::container($id.'-area', new Style(direction: Direction::Horizontal, gap: 0)),
+            LayoutWidgets::container($id.'-left', new Style(flex: 0)),
+            LayoutWidgets::separator($this->styles, $id.'-separator'),
+            LayoutWidgets::container($id.'-content', new Style(flex: 1)),
         );
     }
 
@@ -61,23 +61,5 @@ final class ViewRegions
     public function all(): array
     {
         return array_values($this->regions);
-    }
-
-    private function container(string $id, Style $style): ContainerWidget
-    {
-        $container = new ContainerWidget();
-        $container->setId($id);
-        $container->setStyle($style);
-        $container->expandVertically(true);
-
-        return $container;
-    }
-
-    private function separator(string $id): SeparatorWidget
-    {
-        $separator = new SeparatorWidget($this->styles);
-        $separator->setId($id)->setStyle(new Style(flex: 0));
-
-        return $separator;
     }
 }

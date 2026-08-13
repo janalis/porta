@@ -68,14 +68,14 @@ final class WorkspaceLayout
         // BufferService's content swaps only remove + re-append the viewer, so
         // the breadcrumbs and the find bar stay put across the editor↔help↔image
         // swaps regardless of where the tab strip sits around the body.
-        $this->editorBody = $this->container('editor-body', new Style(flex: 1));
+        $this->editorBody = LayoutWidgets::container('editor-body', new Style(flex: 1));
         $this->editorBody->add($breadcrumbs)->add($this->findBar)->add($editor);
 
-        $this->editorPane = $this->container('editor-pane', new Style(flex: 1));
+        $this->editorPane = LayoutWidgets::container('editor-pane', new Style(flex: 1));
         $this->editorPane->add($tabBar)->add($this->editorBody);
 
-        $this->separator = $this->separatorWidget('separator');
-        $this->main = $this->container('main', new Style(direction: Direction::Horizontal, gap: 0));
+        $this->separator = LayoutWidgets::separator($this->styles, 'separator');
+        $this->main = LayoutWidgets::container('main', new Style(direction: Direction::Horizontal, gap: 0));
     }
 
     /** The floating chrome Z-order: later adds composite over earlier ones. */
@@ -128,23 +128,5 @@ final class WorkspaceLayout
     public function separator(): SeparatorWidget
     {
         return $this->separator;
-    }
-
-    private function container(string $id, Style $style): ContainerWidget
-    {
-        $container = new ContainerWidget();
-        $container->setId($id);
-        $container->setStyle($style);
-        $container->expandVertically(true);
-
-        return $container;
-    }
-
-    private function separatorWidget(string $id): SeparatorWidget
-    {
-        $separator = new SeparatorWidget($this->styles);
-        $separator->setId($id)->setStyle(new Style(flex: 0));
-
-        return $separator;
     }
 }
