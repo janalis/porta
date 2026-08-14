@@ -41,6 +41,9 @@ final class PluginInstaller
      */
     public const string MARKER = 'vendor/.porta-installed';
 
+    /** Generous for a --depth 1 clone; a stall past it frees the install slot. */
+    public const float CLONE_TIMEOUT = 300.0;
+
     /** Single-flight: the clone in progress, if any. */
     private ?AsyncProcess $running = null;
 
@@ -179,7 +182,15 @@ final class PluginInstaller
             return;
         }
         $this->fs->mkdir(\dirname($dest));
-        $this->running = new AsyncProcess([$this->gitBinary, 'clone', '--depth', '1', '--', $source, $dest], $this->rootDir);
+        // Never let a clone sit on a credential prompt — there is no terminal
+        // to answer it — and give a dead network a deadline instead of pinning
+        // the install slot for the rest of the session.
+        $this->running = new AsyncProcess(
+            [$this->gitBinary, 'clone', '--depth', '1', '--', $source, $dest],
+            $this->rootDir,
+            env: ['GIT_TERMINAL_PROMPT' => '0'] + getenv(),
+            timeout: self::CLONE_TIMEOUT,
+        );
         $started = $this->running->start(function (int $code) use ($dest, $onDone): void {
             $this->running = null;
             if (0 !== $code) {

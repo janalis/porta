@@ -53,6 +53,64 @@ final class AsyncProcessTest extends TestCase
         $this->assertSame("a\nb\n", implode('', $chunks));
     }
 
+    public function testAChildNeverInheritsTheParentsStdin(): void
+    {
+        // Without an explicit fd 0 the child would share the IDE's raw-mode
+        // terminal and a prompting child would steal the user's keystrokes;
+        // /dev/null answers any read with immediate EOF instead.
+        $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo false === fgets(STDIN) ? "eof" : "data";'], getcwd());
+        $exit = null;
+        $process->start(static function (int $code) use (&$exit): void {
+            $exit = $code;
+        });
+
+        $this->await(static function () use (&$exit): bool {
+            return null !== $exit;
+        });
+        $this->assertSame('eof', $process->output());
+    }
+
+    public function testTheTimeoutCancelsAHungChildAndReportsFailure(): void
+    {
+        $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo "start\n"; sleep(5);'], getcwd(), timeout: 0.15);
+        $exits = [];
+        $process->start(static function (int $code) use (&$exits): void {
+            $exits[] = $code;
+        });
+
+        $this->await(static function () use (&$exits): bool {
+            return [] !== $exits;
+        });
+        $this->pump(0.2); // a cancelled watcher or a second timer firing would double-report
+        $this->assertSame([-1], $exits, 'the deadline reported exactly one failure exit');
+        $this->assertSame("start\n", $process->output(), 'output up to the deadline is kept');
+    }
+
+    public function testAChildThatOutlivesItsPipesIsReapedWithoutBlockingTheLoop(): void
+    {
+        // The child closes stdout and lingers: EOF fires while it still runs,
+        // where a plain proc_close would park the whole event loop.
+        $process = new AsyncProcess([\PHP_BINARY, '-r', 'fclose(STDOUT); usleep(300000); exit(7);'], getcwd());
+        $exit = null;
+        $process->start(static function (int $code) use (&$exit): void {
+            $exit = $code;
+        });
+
+        $ticks = 0;
+        $ticker = EventLoop::repeat(0.02, static function () use (&$ticks): void {
+            ++$ticks;
+        });
+        try {
+            $this->await(static function () use (&$exit): bool {
+                return null !== $exit;
+            });
+        } finally {
+            EventLoop::cancel($ticker);
+        }
+        $this->assertSame(7, $exit, 'the straggler was reaped and its real exit code reported');
+        $this->assertGreaterThan(5, $ticks, 'the loop kept turning while the child lingered');
+    }
+
     public function testCancelMidRunStopsTheCallbacks(): void
     {
         $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo "start\n"; sleep(5); echo "never\n";'], getcwd());

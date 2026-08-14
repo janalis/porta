@@ -32,13 +32,21 @@ final class AsyncProcess
 
     private int $openStreams = 0;
 
+    private ?string $timeoutTimer = null;
+
     /**
      * @param list<string>               $command
      * @param string|null                $stdin         payload written to the child's stdin, which is
      *                                                  then closed (e.g. a patch for `git apply -`);
-     *                                                  null leaves stdin unattached
+     *                                                  null attaches /dev/null — never the parent's
+     *                                                  terminal, whose raw-mode keystrokes belong to
+     *                                                  the editor, not to a child that prompts
      * @param bool                       $captureStderr drain stderr into errorOutput() instead of /dev/null
      * @param array<string, string>|null $env           the child's full environment; null inherits the parent's
+     * @param float|null                 $timeout       deadline in seconds; on expiry the child is
+     *                                                  cancelled and $onExit fires with exit code -1,
+     *                                                  so a hung subprocess cannot pin its owner's
+     *                                                  slot for the rest of the session
      */
     public function __construct(
         private readonly array $command,
@@ -46,6 +54,7 @@ final class AsyncProcess
         private readonly ?string $stdin = null,
         private readonly bool $captureStderr = false,
         private readonly ?array $env = null,
+        private readonly ?float $timeout = null,
     ) {}
 
     /**
@@ -60,10 +69,11 @@ final class AsyncProcess
         $pipes = [];
         /** @var non-empty-string $cwd */
         $cwd = $this->cwd;
-        $descriptors = [1 => ['pipe', 'w'], 2 => $this->captureStderr ? ['pipe', 'w'] : ['file', '/dev/null', 'w']];
-        if (null !== $this->stdin) {
-            $descriptors[0] = ['pipe', 'r'];
-        }
+        $descriptors = [
+            0 => null !== $this->stdin ? ['pipe', 'r'] : ['file', '/dev/null', 'r'],
+            1 => ['pipe', 'w'],
+            2 => $this->captureStderr ? ['pipe', 'w'] : ['file', '/dev/null', 'w'],
+        ];
         // @mago-expect lint:no-error-control-operator -- proc_open on a nonexistent/unusable binary emits a spawn ("posix_spawn() failed") warning that guarding the inputs cannot reliably prevent; the false return is handled below.
         $process = @proc_open($this->command, $descriptors, $pipes, $cwd, $this->env);
         if (!\is_resource($process)) {
@@ -92,6 +102,13 @@ final class AsyncProcess
         if ($this->captureStderr && array_key_exists(2, $pipes)) {
             $this->watch($pipes[2], $onExit, function (string $chunk): void {
                 $this->stderr .= $chunk;
+            });
+        }
+        if (null !== $this->timeout) {
+            $this->timeoutTimer = EventLoop::delay($this->timeout, function () use ($onExit): void {
+                $this->timeoutTimer = null;
+                $this->cancel();
+                $onExit(-1, $this->stdout);
             });
         }
 
@@ -161,14 +178,61 @@ final class AsyncProcess
                 if (--$this->openStreams > 0) {
                     return; // the other pipe is still draining
                 }
+                $this->cancelTimeout();
                 // cancel() also cancels the watchers, so the process is still
                 // owned (a resource) whenever this EOF path runs.
                 /** @var resource $process */
                 $process = $this->process;
                 $this->process = null;
-                $onExit(\is_resource($process) ? proc_close($process) : -1, $this->stdout);
+                $this->closeWhenDead($process, function (int $code) use ($onExit): void {
+                    $onExit($code, $this->stdout);
+                });
             }
         });
+    }
+
+    /**
+     * Reap and close $process without ever blocking the loop: `proc_close`
+     * waits for the child, and a child that outlives its pipes (or shrugs off
+     * a terminate) would park the whole event loop inside it. Already-dead —
+     * the overwhelmingly common case, a child's pipes close when it exits —
+     * reaps instantly; a straggler is polled dead on a timer.
+     *
+     * @param resource                  $process
+     * @param (\Closure(int): void)|null $onReaped receives proc_get_status's exit code
+     */
+    private function closeWhenDead($process, ?\Closure $onReaped = null): void
+    {
+        $status = proc_get_status($process);
+        if (!$status['running']) {
+            proc_close($process); // the status read above already reaped it — instant
+            if (null !== $onReaped) {
+                $onReaped($status['exitcode']);
+            }
+
+            return;
+        }
+        $timer = EventLoop::repeat(0.05, static function (string $timerId) use ($process, $onReaped): void {
+            $status = proc_get_status($process);
+            if ($status['running']) {
+                return;
+            }
+            EventLoop::cancel($timerId);
+            proc_close($process);
+            if (null !== $onReaped) {
+                $onReaped($status['exitcode']);
+            }
+        });
+        // Never keeps an otherwise-finished loop alive just to reap a zombie.
+        EventLoop::unreference($timer);
+    }
+
+    private function cancelTimeout(): void
+    {
+        if (null !== $this->timeoutTimer) {
+            EventLoop::cancel($this->timeoutTimer);
+            $this->timeoutTimer = null;
+        }
     }
 
     /** All stdout accumulated so far (complete once $onExit has fired). */
@@ -190,9 +254,10 @@ final class AsyncProcess
             EventLoop::cancel($watcher);
         }
         $this->watchers = [];
+        $this->cancelTimeout();
         if (\is_resource($this->process)) {
             proc_terminate($this->process);
-            proc_close($this->process);
+            $this->closeWhenDead($this->process);
         }
         $this->process = null;
     }
