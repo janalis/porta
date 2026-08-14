@@ -19,11 +19,10 @@
     },
     "bin": ["bin/porta"],
     "require": {
-        "php": ">=8.4",
-        "ext-gd": "*",
+        "php": ">=8.4 <9",
+        "ext-ctype": "*",
         "ext-mbstring": "*",
         "ext-pcntl": "*",
-        "ext-simplexml": "*",
         "revolt/event-loop": "^1.0",
         "symfony/clock": "^8.1",
         "symfony/config": "^8.1",
@@ -41,7 +40,11 @@
     "require-dev": {
         "brianium/paratest": "^7.23",
         "carthage-software/mago": "1.45.*",
+        "ext-simplexml": "*",
         "phpunit/phpunit": "^13.2"
+    },
+    "suggest": {
+        "ext-gd": "Lets the bundled image-viewer (and graph-viewer) plugins decode images"
     },
     "scripts": {
         "dev": "@php bin/porta",

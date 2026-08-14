@@ -58,7 +58,9 @@ final class PortaCommand extends Command
     {
         parent::__construct();
         $this->launch = $launch ?? self::launchIde(...);
-        $this->isInteractive = $isInteractive ?? static fn (): bool => \function_exists('posix_isatty') && posix_isatty(\STDIN) && posix_isatty(\STDOUT);
+        // stream_isatty is core PHP — the posix_isatty it replaced needed
+        // ext-posix, and a box without it was refused as "not interactive".
+        $this->isInteractive = $isInteractive ?? static fn (): bool => stream_isatty(\STDIN) && stream_isatty(\STDOUT);
     }
 
     public function __invoke(
