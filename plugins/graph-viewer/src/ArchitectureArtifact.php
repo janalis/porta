@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\GraphViewer;
 
 use Porta\Support\AsyncProcess;
+use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
+use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * Produces the project's architecture DOT and writes it as `architecture.dot`
@@ -33,6 +35,7 @@ final class ArchitectureArtifact
     public function __construct(
         private readonly string $rootDir,
         private readonly string $outputDir = '',
+        private readonly Filesystem $fs = new Filesystem(),
     ) {}
 
     /** Where this run will write, created on demand by {@see generate()}. */
@@ -90,16 +93,16 @@ final class ArchitectureArtifact
     private function publish(string $dot, \Closure $done): void
     {
         $path = $this->path();
-        $dir = \dirname($path);
-        // A configured output directory need not exist yet, so create it (with
-        // parents — the setting may name a nested one).
-        // @mago-expect lint:no-error-control-operator -- a concurrent mkdir (or a file squatting on the name) warns; the is_dir recheck handles both.
-        if (!is_dir($dir) && !@mkdir($dir, permissions: 0o755, recursive: true) && !is_dir($dir)) {
+        try {
+            // dumpFile creates the directory chain (a configured output dir
+            // need not exist yet, and may be nested) and writes atomically via
+            // temp-file+rename — which retires the mkdir-race dance it replaced.
+            $this->fs->dumpFile($path, $dot);
+        } catch (IOExceptionInterface) {
             $done('Cannot write '.$path, null);
 
             return;
         }
-        file_put_contents($path, $dot);
         $done(null, ($resolved = realpath($path)) ? $resolved : $path);
     }
 }
