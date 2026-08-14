@@ -82,6 +82,20 @@ final class PluginLoaderTest extends TestCase
         $this->assertTrue($manager->hasPlugin('extra'), 'non-colliding global plugins load');
     }
 
+    public function testATypoedComposerJsonWarnsWithTheDecoderReason(): void
+    {
+        $project = new TempProject([
+            '.porta/plugins/typo/plugin.php' => $this->pluginSource('typo'),
+            '.porta/plugins/typo/composer.json' => '{"autoload": ',
+        ]);
+        $manager = $this->load($project);
+
+        $warnings = implode("\n", $manager->warnings());
+        $this->assertStringContainsString('Plugin "typo" has an unreadable composer.json', $warnings);
+        $this->assertStringContainsString('Syntax error', $warnings, 'the decoder names the reason');
+        $this->assertTrue($manager->hasPlugin('typo'), 'the plugin still loads on the defaults');
+    }
+
     public function testFailuresAreContainedPerPluginAndSiblingsStillLoad(): void
     {
         $project = new TempProject([

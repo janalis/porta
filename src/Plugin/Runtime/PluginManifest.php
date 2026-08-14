@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin\Runtime;
 
 use Composer\InstalledVersions;
+use Porta\Support\JsonFile;
 
 /**
  * What a plugin declares about ITSELF, in an optional `composer.json` beside its
@@ -118,9 +119,8 @@ final readonly class PluginManifest
     {
         $vendorDir = $this->vendorDir();
         $path = null === $vendorDir ? null : $vendorDir.'/composer/installed.json';
-        /** @var array<array-key, mixed>|scalar|null $data */
-        $data = null !== $path && is_file($path) ? json_decode((string) file_get_contents($path), associative: true) : null;
-        $packages = \is_array($data) && \is_array($data['packages'] ?? null) ? $data['packages'] : [];
+        $data = null === $path ? null : JsonFile::read($path);
+        $packages = \is_array($data['packages'] ?? null) ? $data['packages'] : [];
 
         $ours = array_fill_keys(InstalledVersions::getInstalledPackages(), value: true);
         $shadowed = [];
@@ -158,26 +158,22 @@ final readonly class PluginManifest
      * also when there is one that is unreadable or malformed: a plugin that
      * worked yesterday must not vanish because its metadata has a typo, and the
      * failure is visible either way (its classes will not resolve).
+     *
+     * @param string|null $manifestError the decoder's reason when a composer.json exists but
+     *                                   was ignored — the loader turns it into a boot warning
      */
-    public static function beside(string $pluginFile): self
+    public static function beside(string $pluginFile, ?string &$manifestError = null): self
     {
         $directory = \dirname($pluginFile);
         $name = basename($directory);
-        /** @var array<array-key, mixed>|scalar|null $data */
-        $data = self::read($directory.'/composer.json');
-        if (!\is_array($data)) {
+        $data = JsonFile::read($directory.'/composer.json', $manifestError);
+        if (null === $data) {
             return new self($name, $directory);
         }
         $autoload = \is_array($data['autoload'] ?? null) ? $data['autoload'] : [];
         $facts = self::composerFacts($autoload, $data);
 
         return new self($name, $directory, self::psr4($autoload), self::requires($data), ...$facts);
-    }
-
-    /** A JSON file's decoded contents, or null when it is absent or unreadable. */
-    private static function read(string $path): mixed
-    {
-        return is_file($path) ? json_decode((string) file_get_contents($path), associative: true) : null;
     }
 
     /**

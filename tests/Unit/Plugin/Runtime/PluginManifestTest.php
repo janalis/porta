@@ -111,6 +111,16 @@ final class PluginManifestTest extends TestCase
         $this->assertSame([], PluginManifest::beside($file)->autoload);
     }
 
+    public function testATypoedComposerJsonSaysWhy(): void
+    {
+        $project = new TempProject();
+        $error = null;
+        $manifest = PluginManifest::beside($this->pluginDir($project, 'typo', '{"autoload": '), $error);
+
+        $this->assertSame([], $manifest->autoload, 'defaults still apply — degrade, never decline');
+        $this->assertStringContainsString('Syntax error', (string) $error, 'the decoder reason surfaces instead of being discarded');
+    }
+
     public function testMalformedOrJunkMetadataFallsBackToTheDefaults(): void
     {
         // A plugin that worked yesterday must not vanish because its metadata

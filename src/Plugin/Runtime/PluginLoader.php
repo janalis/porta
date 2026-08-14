@@ -73,7 +73,14 @@ final class PluginLoader
         // cannot be discovered by loading, since loading is what they order.
         $manifests = [];
         foreach ($this->discover() as $file) {
-            $manifest = PluginManifest::beside($file);
+            $manifestError = null;
+            $manifest = PluginManifest::beside($file, $manifestError);
+            if (null !== $manifestError) {
+                // The plugin still loads on the defaults (degrade, never
+                // decline) — but a typo'd manifest used to lose its classes
+                // with nothing anywhere saying why.
+                $manager->addWarning(\sprintf('Plugin "%s" has an unreadable composer.json (%s) — its manifest is ignored', $manifest->name, $manifestError));
+            }
             if ($manifest->needsInstall()) {
                 // Not loaded now — its classes are not there — but recorded, so
                 // the drain that runs once the IDE is up installs it and
