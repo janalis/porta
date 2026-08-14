@@ -1,0 +1,20 @@
+{
+    // The automation of the manual mutation-sweep doctrine (testing.md):
+    // judged against the Unit suite ONLY — the full suite is exactly what the
+    // doctrine warns about ("five of six mutations looked killed" by suites
+    // that cannot be about the mutated code), and the loop/subprocess E2e
+    // budgets would burn minutes per mutant. Diff-scoped by default via
+    // `composer mutate`; non-gating — read the survivors like a review, not
+    // like a threshold.
+    "$schema": "vendor/infection/infection/resources/schema.json",
+    "source": {
+        "directories": ["src"]
+    },
+    "timeout": 45,
+    "logs": {
+        "text": "coverage/infection.log"
+    },
+    "mutators": {
+        "@default": true
+    }
+}

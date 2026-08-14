@@ -85,6 +85,20 @@ re-run the failing class alone; and note that `coverage:check` passing while
 `composer test` fails is the tell, since it runs the same tests. A *different*
 handful failing on each run is load; the *same* test failing every run is not.
 
+**`composer mutate` automates the mutation sweep for the code you just
+changed.** It builds Unit-suite coverage, then mutates the working tree's
+uncommitted `src/` lines (diff vs HEAD — run `vendor/bin/infection` directly
+with another `--git-diff-base` for a committed range) and reports the
+survivors inline. Non-gating by design: read survivors like a review. Three
+shapes are inevitably harmless — a literal nothing observes (a mkdir mode), a
+cast that exists for the analyzer, an equivalent flags value — and decisions.md
+already documents the redundancy-not-gap verdict for two hand-found ones.
+Judged against the **Unit suite only**, deliberately: the full suite is what
+the manual-sweep doctrine warns about (kills that cannot be about the mutated
+code), and the loop/subprocess budgets would burn minutes per mutant. The
+corollary: a line only E2e observes reports as uncovered here, and plugin
+`src/` is out of scope — the MANUAL sweep doctrine still owns both.
+
 **Method order is randomized** (`executionOrder="random"` in phpunit.xml.dist —
 formalizing what paratest's method distribution never guaranteed anyway). A
 failure that only reproduces in-suite may therefore be order coupling, not

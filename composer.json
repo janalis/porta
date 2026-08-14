@@ -39,9 +39,10 @@
         "tempest/highlight": "^2.16"
     },
     "require-dev": {
+        "ext-simplexml": "*",
         "brianium/paratest": "^7.23",
         "carthage-software/mago": "1.45.*",
-        "ext-simplexml": "*",
+        "infection/infection": "^0.34.2",
         "phpunit/phpunit": "^13.2"
     },
     "suggest": {
@@ -64,10 +65,17 @@
             "@php bin/porta-dev coverage:check coverage/plugins-clover.xml 100 --only=/plugins/ --require=plugins"
         ],
         "arch": "@php bin/porta-dev arch",
-        "container": "@php bin/porta-dev container"
+        "container": "@php bin/porta-dev container",
+        "mutate": [
+            "@php -d pcov.enabled=1 vendor/bin/phpunit --testsuite=Unit --order-by=default --coverage-xml=coverage/infection/coverage-xml --log-junit=coverage/infection/junit.xml",
+            "@php vendor/bin/infection --coverage=coverage/infection --skip-initial-tests --git-diff-lines --git-diff-base=HEAD --threads=max --test-framework-options=--testsuite=Unit --show-mutations"
+        ]
     },
     "minimum-stability": "stable",
     "config": {
+        "allow-plugins": {
+            "infection/extension-installer": true
+        },
         "process-timeout": 0,
         "sort-packages": true,
         "optimize-autoloader": true,
