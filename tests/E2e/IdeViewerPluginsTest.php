@@ -164,6 +164,84 @@ final class IdeViewerPluginsTest extends TestCase
         );
     }
 
+    public function testALoaderBugFlashesGenericWordsWhileARefusalSpeaksVerbatim(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            'a.php' => "<?php\n",
+            'polite.demo' => 'refused politely',
+            'buggy.demo' => 'explodes',
+        ]);
+        $this->throwingLoaderPlugin($project);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $service = Services::resolve($ide, BufferService::class);
+
+                    // A RuntimeException is the pane's polite no: verbatim flash.
+                    $service->openFile($project->path('polite.demo'));
+                    $this->awaitPainted($tui, $terminal, 'politely refused');
+
+                    // Anything else is a BUG: generic words on screen, the
+                    // internals only in error.log.
+                    $service->openFile($project->path('buggy.demo'));
+                    $this->awaitPainted($tui, $terminal, 'Internal error');
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringNotContainsString('secret internals', $screen, 'a TypeError-style message never reaches the status bar');
+                    $this->assertStringContainsString('secret internals', (string) file_get_contents($project->path('.porta/error.log')), 'the trace survives where a maintainer can read it');
+                },
+            ],
+        );
+    }
+
+    /** A plugin whose loader refuses one file politely and BLOWS UP on another. */
+    private function throwingLoaderPlugin(TempProject $project): void
+    {
+        $dir = $project->path('.porta/plugins/throwing-pane');
+        mkdir($dir, permissions: 0o777, recursive: true);
+        file_put_contents($dir.'/plugin.php', data: <<<'PHP'
+            <?php
+
+            declare(strict_types=1);
+
+            use Porta\Plugin\Api\AbstractPlugin;
+            use Porta\Editor\PaneServices;
+            use Porta\Plugin\Api\PluginApi;
+            use Porta\Widget\EditorPaneWidget;
+            use Symfony\Component\Tui\Render\RenderContext;
+
+            return new class('throwing-pane') extends AbstractPlugin {
+                public function activate(PluginApi $api): void
+                {
+                    $api->registerViewer('demo', ['demo']);
+                    $api->registerPane(
+                        'demo',
+                        static fn (PaneServices $services): EditorPaneWidget => new class extends EditorPaneWidget {
+                            public function paneId(): string { return 'demo'; }
+                            public function show(string $path, mixed $payload): void {}
+                            public function clear(): void {}
+                            public function statusRight(): string { return ''; }
+                            public function handleInput(string $data): void {}
+                            public function render(RenderContext $context): array
+                            {
+                                return $this->withMenuOverlay([str_repeat(' ', $context->getColumns())], $context->getColumns());
+                            }
+                        },
+                        static function (string $path): string {
+                            if (str_contains($path, 'polite')) {
+                                throw new \RuntimeException('politely refused');
+                            }
+                            throw new \TypeError('secret internals leaked from a buggy loader');
+                        },
+                    );
+                }
+            };
+            PHP);
+    }
+
     /** A project plugin that claims an extension AND supplies the pane for it. */
     private function demoPanePlugin(TempProject $project): void
     {

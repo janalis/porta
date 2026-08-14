@@ -18,6 +18,7 @@ use Porta\Lsp\BufferReopener;
 use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\Uri;
+use Porta\Support\DiagnosticLog;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
@@ -195,18 +196,25 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
      * the buffer carries it, and the pane shows it. No editorconfig, no LSP
      * didOpen, no git marks — a pane tab holds an empty document.
      *
-     * A loader THROWS to refuse the file (too large, not decodable, not UTF-8)
-     * and its message is flashed as-is. That is the pane's last word on a file
-     * its claim already accepted.
-     *
+     * A loader throws a RuntimeException to refuse the file (too large, not
+     * decodable, not UTF-8) and its message is flashed as-is — that is the
+     * pane's last word on a file its claim already accepted. Anything else a
+     * loader throws is a BUG, not a refusal: a third-party TypeError must not
+     * paint its internals into the status bar, so it flashes generic words
+     * and leaves its trace in error.log instead.
      */
     private function openInPane(string $path, string $paneId, OpenFocus $focus): void
     {
         try {
             /** @var mixed $payload */
             $payload = $this->panes->load($paneId, $path);
-        } catch (\Throwable $refusal) {
+        } catch (\RuntimeException $refusal) {
             $this->notifier->flash($refusal->getMessage());
+
+            return;
+        } catch (\Throwable $bug) {
+            new DiagnosticLog($this->paths->absolute('.porta/error.log'))->append(\sprintf("%s: %s\n%s", $bug::class, $bug->getMessage(), $bug->getTraceAsString()));
+            $this->notifier->flash($this->translator->trans('Internal error — details in .porta/error.log'));
 
             return;
         }

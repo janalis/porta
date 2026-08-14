@@ -432,8 +432,11 @@ $api->registerPane(
   a pane is hand-built, because a plugin class cannot be a container service.
 - **The loader** runs on every open of a claimed path and returns whatever your
   pane understands — decoded pixels, source text, a parsed model. The buffer
-  carries it untouched; the IDE never looks inside. **Throw to refuse a file**
-  (too large, undecodable, wrong encoding) and your message is flashed.
+  carries it untouched; the IDE never looks inside. **Throw a `RuntimeException`
+  to refuse a file** (too large, undecodable, wrong encoding) and its message is
+  flashed to the user as-is. Anything else your loader throws is treated as a
+  bug, not a refusal: the user sees a generic message and the trace goes to
+  `.porta/error.log`.
 
 Your widget extends `EditorPaneWidget`, or `NavigablePaneWidget` if the pointer
 can pan and zoom it:
