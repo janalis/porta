@@ -41,6 +41,17 @@ final class LegacyCoreSettingsTest extends TestCase
         $this->assertSame(['toggle' => false], $legacy->adoptions(), 'only what was adopted is written through');
     }
 
+    public function testEveryScalarTypeAdoptsAndAllMappedKeysTravel(): void
+    {
+        // bool, int and string are each a legitimate pre-move value (git's map
+        // carries all three), and adoption walks the WHOLE map — dropping to
+        // the first entry would strand every later key silently.
+        $project = new TempProject(['.porta.json' => (string) json_encode(['settings' => ['coreToggle' => true, 'corePath' => '/opt/tool', 'coreSize' => 9]])]);
+        $legacy = new LegacyCoreSettings($project->dir, 'demo', ['toggle' => 'coreToggle', 'path' => 'corePath', 'size' => 'coreSize']);
+
+        $this->assertSame(['toggle' => true, 'path' => '/opt/tool', 'size' => 9], $legacy->adoptions());
+    }
+
     public function testTheNewKeyWinsWhereBothExist(): void
     {
         // A file mid-migration: adopting the old key here would undo whatever

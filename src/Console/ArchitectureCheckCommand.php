@@ -629,11 +629,13 @@ final class ArchitectureCheckCommand extends Command
         $files = [];
         // Dot files and VCS dirs stay visible, matching the raw walker this
         // replaced — the scanned trees carry neither, and a gate must not
-        // narrow its input set silently.
+        // narrow its input set silently. The regex name form on purpose:
+        // Finder's '*.php' glob follows shell semantics, where a leading *
+        // never matches a leading dot, ignoreDotFiles(false) notwithstanding.
         foreach (new Finder()
             ->files()
             ->in($dir)
-            ->name('*.php')
+            ->name('/\.php$/')
             ->ignoreDotFiles(false)
             ->ignoreVCS(false) as $file) {
             $files[] = $file->getPathname();

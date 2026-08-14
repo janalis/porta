@@ -181,6 +181,9 @@ final class CoverageCheckCommandTest extends TestCase
         $project = new TempProject([
             'plugins/demo/src/Graded.php' => "<?php\n",
             'plugins/demo/src/Ghost.php' => "<?php\n",
+            // Hidden-name faithfulness: the walker this replaced saw dot
+            // files, so the presence check must too.
+            'plugins/demo/src/.Hidden.php' => "<?php\n",
         ]);
         $project->write('clover.xml', $this->clover(
             [(string) realpath($project->path('plugins/demo/src/Graded.php')) => [5, 5]],
@@ -202,6 +205,7 @@ final class CoverageCheckCommandTest extends TestCase
         // which files the failure itself names.
         $named = substr($display, offset: (int) strpos($display, needle: 'absent from the report'));
         $this->assertStringContainsString('Ghost.php', $named, 'the ungraded file is named');
+        $this->assertStringContainsString('.Hidden.php', $named, 'a dot-named file is a coverage subject too');
         $this->assertStringNotContainsString('Graded.php', $named, 'and the graded one is not');
     }
 

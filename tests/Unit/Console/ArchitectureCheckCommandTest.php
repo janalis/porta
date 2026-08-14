@@ -113,17 +113,36 @@ final class ArchitectureCheckCommandTest extends TestCase
 
     public function testAnOversizedE2eSuiteFails(): void
     {
-        $methods = str_repeat("    public function testMany(): void {}\n", times: 61);
+        // AaFineTest sits exactly AT the cap and sorts first: the boundary
+        // must pass, and grading must WALK PAST it to reach the oversized one.
         $project = new TempProject([
             'src/Alpha/One.php' => $this->file('Alpha', 'One'),
-            'tests/E2e/HugeTest.php' => "<?php\n".$methods,
+            'tests/E2e/AaFineTest.php' => "<?php\n".str_repeat("    public function testMany(): void {}\n", times: 60),
+            'tests/E2e/HugeTest.php' => "<?php\n".str_repeat("    public function testMany(): void {}\n", times: 61),
         ]);
 
         $tester = $this->tester();
         $status = $tester->execute(['path' => $project->dir], ['capture_stderr_separately' => true]);
 
         $this->assertSame(Command::FAILURE, $status);
-        $this->assertStringContainsString('has 61 test methods (max 60)', $tester->getErrorOutput());
+        $this->assertStringContainsString('HugeTest.php has 61 test methods (max 60)', $tester->getErrorOutput(), 'the failure names the file');
+        $this->assertStringNotContainsString('AaFineTest', $tester->getErrorOutput(), 'exactly at the cap is not over it');
+    }
+
+    public function testADotNamedFileIsStillScanned(): void
+    {
+        // ignoreDotFiles(false)/ignoreVCS(false) is deliberate faithfulness to
+        // the raw walker this replaced: a hidden file's imports are edges too.
+        // The edge is pinned, so BOTH directions prove the file was read —
+        // skipping it would fail as a vanished edge.
+        $project = new TempProject([
+            'src/Alpha/.Hidden.php' => $this->file('Alpha', 'Hidden', '    public function f(): void { new Two(); }', "use Porta\\Beta\\Two;\n"),
+            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+        ]);
+
+        $tester = $this->tester(['Alpha>Beta']);
+
+        $this->assertSame(Command::SUCCESS, $tester->execute(['path' => $project->dir]), $tester->getDisplay());
     }
 
     public function testAnOversizedPluginSuiteFailsAndAttributedTestsCount(): void

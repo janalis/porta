@@ -191,11 +191,13 @@ final class CoverageCheckCommand extends Command
         $root = getcwd();
         $absent = [];
         // Segment-anchored, so a class merely *named* Vendor/Tests stays a
-        // coverage subject; dot files stay visible like the raw walker's did.
+        // coverage subject; dot files stay visible like the raw walker's did
+        // (the regex name form, because Finder's '*.php' glob follows shell
+        // semantics and never matches a leading dot).
         $tree = new Finder()
             ->files()
             ->in($directory)
-            ->name('*.php')
+            ->name('/\.php$/')
             ->ignoreDotFiles(false)
             ->ignoreVCS(false)
             ->notPath('~(^|/)vendor/~')

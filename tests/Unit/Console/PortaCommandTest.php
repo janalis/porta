@@ -170,6 +170,7 @@ final class PortaCommandTest extends TestCase
         $this->assertSame(Command::FAILURE, $tester->execute(['path' => $project->dir]));
         $this->assertStringContainsString('porta: fatal: You have requested a synthetic service', $tester->getDisplay());
         $this->assertStringContainsString('delete ~/.cache/porta', $tester->getDisplay(), 'the remedy is named, not just the failure');
+        $this->assertStringNotContainsString('porta crashed', $tester->getDisplay(), 'a boot failure never falls through to the mid-session arm');
     }
 
     public function testACrashAfterBootBlamesTheSessionNotTheCache(): void

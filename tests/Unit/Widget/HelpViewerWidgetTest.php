@@ -85,8 +85,11 @@ final class HelpViewerWidgetTest extends TestCase
     public function testALinkThatEscapesTheDocsRootIsRefused(): void
     {
         $docs = new TempProject([
-            'pages/README.md' => "# Home\n\nSee [escape](../secret.php) and [abs](/etc/hosts).\n",
+            'pages/README.md' => "# Home\n\nSee [escape](../secret.php) and [abs](/etc/hosts) and [sibling](../pages-evil/secret.md).\n",
             'secret.php' => "<?php\n",
+            // The classic prefix bug: a SIBLING whose name merely starts with
+            // the root's must not pass the containment test.
+            'pages-evil/secret.md' => "# Not docs\n",
         ]);
         $viewer = new HelpViewerWidget();
         $viewer->setFocused(true);
@@ -100,8 +103,10 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->handleInput("\r");
         $viewer->handleInput("\t"); // abs (an absolute filesystem path)
         $viewer->handleInput("\r");
+        $viewer->handleInput("\t"); // sibling (prefix-sharing directory)
+        $viewer->handleInput("\r");
 
-        $this->assertSame(['missing:../secret.php', 'missing:/etc/hosts'], $handler->events, 'a target outside the docs root never opens a buffer');
+        $this->assertSame(['missing:../secret.php', 'missing:/etc/hosts', 'missing:../pages-evil/secret.md'], $handler->events, 'a target outside the docs root never opens a buffer');
     }
 
     public function testTabCyclesLinksHighlightsAndScrollsIntoView(): void

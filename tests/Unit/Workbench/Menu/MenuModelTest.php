@@ -78,13 +78,16 @@ final class MenuModelTest extends TestCase
     {
         // A contributed menu need not belong to a view ('' viewId): it still
         // places after its anchor, and contributes nothing to the view-safe
-        // map — there is no view whose active state it could gate.
+        // map — there is no view whose active state it could gate. It comes
+        // FIRST so a skip that stopped the walk would strand the git one.
         $ideKeys = new Keybindings([]);
         $viewless = new MenuContribution(title: 'Tools', after: 'Run', items: [], viewId: '', viewSafe: ['ide_help']);
 
-        $menus = MenuModel::build(new CommandRegistry(), new CodeEditorWidget(), $ideKeys, new Translator('en'), contributions: [$viewless]);
+        $menus = MenuModel::build(new CommandRegistry(), new CodeEditorWidget(), $ideKeys, new Translator('en'), contributions: [$viewless, self::gitContribution()]);
 
-        $this->assertContains('Tools', array_map(static fn (Menu $m) => $m->title, $menus), 'the viewless menu still places');
+        $titles = array_map(static fn (Menu $m) => $m->title, $menus);
+        $this->assertContains('Tools', $titles, 'the viewless menu still places');
+        $this->assertContains('Git', $titles, 'and the contribution after it is not skipped over');
     }
 
     public function testPluginSpecsInsertAPluginsMenuBetweenCodeAndRun(): void
@@ -214,6 +217,45 @@ final class MenuModelTest extends TestCase
             ->add('git_stage', static function (): void {}, label: 'Git: Stage Current File')
             ->add('git_commit', static function (): void {}, label: 'Git: Commit…')
             ->add('git_blame', static function (): void {}, label: 'Git: Blame Current Line');
+    }
+
+    public function testAContributedViewsSafeListGatesWhileItsViewIsActive(): void
+    {
+        // The view-safe merge is what lets a CONTRIBUTED view gate the menus
+        // the way core's own do: its listed items stay usable while it owns
+        // the main area, everything else greys out.
+        $menus = MenuModel::build(
+            $this->gitCommands(),
+            new CodeEditorWidget(),
+            new Keybindings([]),
+            new Translator('en'),
+            activeView: static fn (): ?string => 'git',
+            contributions: [self::gitContribution()],
+        );
+
+        $this->assertTrue($this->item($menus, 'Git', 'Git: Commit…')->enabled(), "the contribution's viewSafe list is honored");
+        $this->assertFalse($this->item($menus, 'Git', 'Git: Stage Current File')->enabled(), 'an unlisted item is gated while the view is active');
+    }
+
+    public function testTwoContributionsToOneViewMergeTheirSafeLists(): void
+    {
+        // The ?? [] merge exists for exactly this: a second contribution to
+        // the same view EXTENDS its safe list — losing either half would
+        // silently grey out the other's items while the view is active.
+        $commands = $this->gitCommands()->add('git_extra', static function (): void {}, label: 'Git: Extra Verb');
+        $extension = new MenuContribution(title: 'Git Extras', after: 'Help', items: ['i:git_extra'], viewId: 'git', viewSafe: ['git_extra']);
+
+        $menus = MenuModel::build(
+            $commands,
+            new CodeEditorWidget(),
+            new Keybindings([]),
+            new Translator('en'),
+            activeView: static fn (): ?string => 'git',
+            contributions: [self::gitContribution(), $extension],
+        );
+
+        $this->assertTrue($this->item($menus, 'Git', 'Git: Commit…')->enabled(), "the first contribution's safe list survives the merge");
+        $this->assertTrue($this->item($menus, 'Git Extras', 'Git: Extra Verb')->enabled(), "the second's extends it");
     }
 
     public function testFileScopedItemsDisabledWhenNoFileOpen(): void

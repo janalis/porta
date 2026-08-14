@@ -70,7 +70,9 @@ final class JsonRpcFramerTest extends TestCase
             $overflows[] = $reason;
         }, maxFrame: 64);
 
-        $this->assertSame([], $framer->feed(str_repeat('x', times: 100)), 'garbage decodes nothing');
+        $this->assertSame([], $framer->feed(str_repeat('x', times: 64)), 'exactly at the cap: retained, not yet an overflow');
+        $this->assertSame([], $overflows, 'no report at the boundary');
+        $this->assertSame([], $framer->feed(str_repeat('x', times: 36)), 'past the cap now');
         $this->assertCount(1, $overflows, 'the overflow was reported');
         $this->assertStringContainsString('no frame header', $overflows[0]);
         // The flood was discarded, so a well-formed frame decodes right after.

@@ -114,6 +114,34 @@ final class PluginLoaderTest extends TestCase
         $this->assertTrue($manager->hasPlugin('current'), 'a met platform and a matching API major load normally');
     }
 
+    public function testTheLiveLoadPathRegistersThePluginsOwnClasses(): void
+    {
+        // A just-installed plugin's classes have to resolve from the first
+        // line of its plugin.php, exactly like the boot pre-pass — this
+        // activate() only works through the manifest's autoload registration.
+        $project = new TempProject([
+            'live/plugin.php' => <<<'PHP'
+                <?php
+                use Porta\Plugin\Api\AbstractPlugin;
+                use Porta\Plugin\Api\PluginApi;
+
+                return new class('live') extends AbstractPlugin {
+                    public function activate(PluginApi $api): void
+                    {
+                        \Porta\LiveDemo\Greeting::hello();
+                    }
+                };
+                PHP,
+            'live/composer.json' => '{"autoload": {"psr-4": {"Porta\\\\LiveDemo\\\\": "src/"}}}',
+            'live/src/Greeting.php' => "<?php\n\nnamespace Porta\\LiveDemo;\n\nfinal class Greeting\n{\n    public static function hello(): string\n    {\n        return 'hi';\n    }\n}\n",
+        ]);
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
+        $loader = new PluginLoader($project->dir, null, new PluginSettings($project->dir, []));
+
+        $this->assertNull($loader->loadFile($project->path('live/plugin.php'), $manager));
+        $this->assertTrue($manager->hasPlugin('live'));
+    }
+
     public function testTheLiveLoadPathAppliesTheSameCompatibilityCheck(): void
     {
         // loadFile is the just-installed/re-enabled door — a plugin declined
