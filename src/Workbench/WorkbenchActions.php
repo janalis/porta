@@ -42,9 +42,7 @@ final class WorkbenchActions
         $now = Clocks::seconds($this->clock);
         if ($dirty > 0 && ($now - $this->lastQuitPress) > 3.0) {
             $this->lastQuitPress = $now;
-            $noun = 1 === $dirty
-                ? $this->translator->trans('1 file has')
-                : $this->translator->trans('%count% files have', ['%count%' => $dirty]);
+            $noun = $this->translator->trans('1 file has|%count% files have', ['%count%' => $dirty]);
             $this->notifier->flash($this->translator->trans('Unsaved changes — %noun% edits. Ctrl+Q again to quit, Ctrl+S to save', ['%noun%' => $noun]), 3.0);
 
             return;

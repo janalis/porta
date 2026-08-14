@@ -11,12 +11,8 @@
         <target>  Commit to branch  </target>
       </trans-unit>
       <trans-unit id="3">
-        <source> %count% changed file</source>
-        <target> %count% changed file</target>
-      </trans-unit>
-      <trans-unit id="4">
-        <source> %count% changed files</source>
-        <target> %count% changed files</target>
+        <source> %count% changed file| %count% changed files</source>
+        <target> %count% changed file| %count% changed files</target>
       </trans-unit>
       <trans-unit id="6">
         <source> Commit  ·  Alt+M amend </source>
@@ -46,10 +42,6 @@
         <source>&quot;%title%&quot; failed: %message%</source>
         <target>&quot;%title%&quot; failed: %message%</target>
       </trans-unit>
-      <trans-unit id="13">
-        <source>%count% files have</source>
-        <target>%count% files have</target>
-      </trans-unit>
       <trans-unit id="14">
         <source>%count% unsaved tab kept open|%count% unsaved tabs kept open</source>
         <target>%count% unsaved tab kept open|%count% unsaved tabs kept open</target>
@@ -67,8 +59,8 @@
         <target>.editorconfig charset &quot;%charset%&quot; ignored (UTF-8 only)</target>
       </trans-unit>
       <trans-unit id="19">
-        <source>1 file has</source>
-        <target>1 file has</target>
+        <source>1 file has|%count% files have</source>
+        <target>1 file has|%count% files have</target>
       </trans-unit>
       <trans-unit id="20">
         <source>Applied &quot;%title%&quot; to %count% file|Applied &quot;%title%&quot; to %count% files</source>
@@ -135,12 +127,8 @@
         <target>Committed: %summary%</target>
       </trans-unit>
       <trans-unit id="38">
-        <source>Copied %count% line</source>
-        <target>Copied %count% line</target>
-      </trans-unit>
-      <trans-unit id="39">
-        <source>Copied %count% lines</source>
-        <target>Copied %count% lines</target>
+        <source>Copied %count% line|Copied %count% lines</source>
+        <target>Copied %count% line|Copied %count% lines</target>
       </trans-unit>
       <trans-unit id="40">
         <source>Copied %text%</source>
@@ -435,12 +423,8 @@
         <target>Replace:</target>
       </trans-unit>
       <trans-unit id="114">
-        <source>Replaced in %count% file</source>
-        <target>Replaced in %count% file</target>
-      </trans-unit>
-      <trans-unit id="115">
-        <source>Replaced in %count% files</source>
-        <target>Replaced in %count% files</target>
+        <source>Replaced in %count% file|Replaced in %count% files</source>
+        <target>Replaced in %count% file|Replaced in %count% files</target>
       </trans-unit>
       <trans-unit id="116">
         <source>Restored from local history</source>

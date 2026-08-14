@@ -11,11 +11,7 @@
         <target>  ブランチにコミット  </target>
       </trans-unit>
       <trans-unit id="3">
-        <source> %count% changed file</source>
-        <target> %count% 件の変更ファイル</target>
-      </trans-unit>
-      <trans-unit id="4">
-        <source> %count% changed files</source>
+        <source> %count% changed file| %count% changed files</source>
         <target> %count% 件の変更ファイル</target>
       </trans-unit>
       <trans-unit id="6">
@@ -46,10 +42,6 @@
         <source>&quot;%title%&quot; failed: %message%</source>
         <target>「%title%」が失敗しました: %message%</target>
       </trans-unit>
-      <trans-unit id="13">
-        <source>%count% files have</source>
-        <target>%count% 件のファイルに</target>
-      </trans-unit>
       <trans-unit id="14">
         <source>%count% unsaved tab kept open|%count% unsaved tabs kept open</source>
         <target>未保存のタブ %count% 件を開いたままにしました</target>
@@ -67,8 +59,8 @@
         <target>.editorconfig の文字コード「%charset%」は無視されます (UTF-8 のみ)</target>
       </trans-unit>
       <trans-unit id="19">
-        <source>1 file has</source>
-        <target>1 件のファイルに</target>
+        <source>1 file has|%count% files have</source>
+        <target>%count% 件のファイルに</target>
       </trans-unit>
       <trans-unit id="20">
         <source>Applied &quot;%title%&quot; to %count% file|Applied &quot;%title%&quot; to %count% files</source>
@@ -135,11 +127,7 @@
         <target>コミットしました: %summary%</target>
       </trans-unit>
       <trans-unit id="38">
-        <source>Copied %count% line</source>
-        <target>%count% 行をコピーしました</target>
-      </trans-unit>
-      <trans-unit id="39">
-        <source>Copied %count% lines</source>
+        <source>Copied %count% line|Copied %count% lines</source>
         <target>%count% 行をコピーしました</target>
       </trans-unit>
       <trans-unit id="40">
@@ -435,11 +423,7 @@
         <target>置換:</target>
       </trans-unit>
       <trans-unit id="114">
-        <source>Replaced in %count% file</source>
-        <target>%count% 件のファイルで置換しました</target>
-      </trans-unit>
-      <trans-unit id="115">
-        <source>Replaced in %count% files</source>
+        <source>Replaced in %count% file|Replaced in %count% files</source>
         <target>%count% 件のファイルで置換しました</target>
       </trans-unit>
       <trans-unit id="116">

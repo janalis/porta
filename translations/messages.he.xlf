@@ -11,12 +11,8 @@
         <target>  בצע קומיט לענף  </target>
       </trans-unit>
       <trans-unit id="3">
-        <source> %count% changed file</source>
-        <target> %count% קובץ ששונה</target>
-      </trans-unit>
-      <trans-unit id="4">
-        <source> %count% changed files</source>
-        <target> %count% קבצים ששונו</target>
+        <source> %count% changed file| %count% changed files</source>
+        <target> %count% קובץ ששונה| %count% קבצים ששונו</target>
       </trans-unit>
       <trans-unit id="6">
         <source> Commit  ·  Alt+M amend </source>
@@ -46,10 +42,6 @@
         <source>&quot;%title%&quot; failed: %message%</source>
         <target>‏&quot;%title%&quot; נכשל: %message%</target>
       </trans-unit>
-      <trans-unit id="13">
-        <source>%count% files have</source>
-        <target>%count% קבצים</target>
-      </trans-unit>
       <trans-unit id="14">
         <source>%count% unsaved tab kept open|%count% unsaved tabs kept open</source>
         <target>לשונית אחת שלא נשמרה נשארה פתוחה (%count%)|%count% לשוניות שלא נשמרו נשארו פתוחות</target>
@@ -67,8 +59,8 @@
         <target>ערכת התווים ‏&quot;%charset%&quot; ב-.editorconfig לא נתמכת (UTF-8 בלבד)</target>
       </trans-unit>
       <trans-unit id="19">
-        <source>1 file has</source>
-        <target>קובץ אחד</target>
+        <source>1 file has|%count% files have</source>
+        <target>קובץ אחד|%count% קבצים</target>
       </trans-unit>
       <trans-unit id="20">
         <source>Applied &quot;%title%&quot; to %count% file|Applied &quot;%title%&quot; to %count% files</source>
@@ -135,12 +127,8 @@
         <target>בוצע קומיט: %summary%</target>
       </trans-unit>
       <trans-unit id="38">
-        <source>Copied %count% line</source>
-        <target>הועתקה %count% שורה</target>
-      </trans-unit>
-      <trans-unit id="39">
-        <source>Copied %count% lines</source>
-        <target>הועתקו %count% שורות</target>
+        <source>Copied %count% line|Copied %count% lines</source>
+        <target>הועתקה %count% שורה|הועתקו %count% שורות</target>
       </trans-unit>
       <trans-unit id="40">
         <source>Copied %text%</source>
@@ -435,12 +423,8 @@
         <target>החלפה:</target>
       </trans-unit>
       <trans-unit id="114">
-        <source>Replaced in %count% file</source>
-        <target>הוחלף ב-%count% קובץ</target>
-      </trans-unit>
-      <trans-unit id="115">
-        <source>Replaced in %count% files</source>
-        <target>הוחלף ב-%count% קבצים</target>
+        <source>Replaced in %count% file|Replaced in %count% files</source>
+        <target>הוחלף ב-%count% קובץ|הוחלף ב-%count% קבצים</target>
       </trans-unit>
       <trans-unit id="116">
         <source>Restored from local history</source>

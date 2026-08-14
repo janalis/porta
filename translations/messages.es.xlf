@@ -11,12 +11,8 @@
         <target>  Confirmar en la rama  </target>
       </trans-unit>
       <trans-unit id="3">
-        <source> %count% changed file</source>
-        <target> %count% archivo modificado</target>
-      </trans-unit>
-      <trans-unit id="4">
-        <source> %count% changed files</source>
-        <target> %count% archivos modificados</target>
+        <source> %count% changed file| %count% changed files</source>
+        <target> %count% archivo modificado| %count% archivos modificados</target>
       </trans-unit>
       <trans-unit id="6">
         <source> Commit  ·  Alt+M amend </source>
@@ -46,10 +42,6 @@
         <source>&quot;%title%&quot; failed: %message%</source>
         <target>«%title%» falló: %message%</target>
       </trans-unit>
-      <trans-unit id="13">
-        <source>%count% files have</source>
-        <target>%count% archivos tienen</target>
-      </trans-unit>
       <trans-unit id="14">
         <source>%count% unsaved tab kept open|%count% unsaved tabs kept open</source>
         <target>%count% pestaña sin guardar mantenida abierta|%count% pestañas sin guardar mantenidas abiertas</target>
@@ -67,8 +59,8 @@
         <target>Conjunto de caracteres .editorconfig «%charset%» ignorado (solo UTF-8)</target>
       </trans-unit>
       <trans-unit id="19">
-        <source>1 file has</source>
-        <target>1 archivo tiene</target>
+        <source>1 file has|%count% files have</source>
+        <target>1 archivo tiene|%count% archivos tienen</target>
       </trans-unit>
       <trans-unit id="20">
         <source>Applied &quot;%title%&quot; to %count% file|Applied &quot;%title%&quot; to %count% files</source>
@@ -135,12 +127,8 @@
         <target>Confirmado: %summary%</target>
       </trans-unit>
       <trans-unit id="38">
-        <source>Copied %count% line</source>
-        <target>%count% línea copiada</target>
-      </trans-unit>
-      <trans-unit id="39">
-        <source>Copied %count% lines</source>
-        <target>%count% líneas copiadas</target>
+        <source>Copied %count% line|Copied %count% lines</source>
+        <target>%count% línea copiada|%count% líneas copiadas</target>
       </trans-unit>
       <trans-unit id="40">
         <source>Copied %text%</source>
@@ -435,12 +423,8 @@
         <target>Reemplazar:</target>
       </trans-unit>
       <trans-unit id="114">
-        <source>Replaced in %count% file</source>
-        <target>Reemplazado en %count% archivo</target>
-      </trans-unit>
-      <trans-unit id="115">
-        <source>Replaced in %count% files</source>
-        <target>Reemplazado en %count% archivos</target>
+        <source>Replaced in %count% file|Replaced in %count% files</source>
+        <target>Reemplazado en %count% archivo|Reemplazado en %count% archivos</target>
       </trans-unit>
       <trans-unit id="116">
         <source>Restored from local history</source>

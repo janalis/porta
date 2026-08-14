@@ -11,12 +11,8 @@
         <target>  Auf Branch committen  </target>
       </trans-unit>
       <trans-unit id="3">
-        <source> %count% changed file</source>
-        <target> %count% geänderte Datei</target>
-      </trans-unit>
-      <trans-unit id="4">
-        <source> %count% changed files</source>
-        <target> %count% geänderte Dateien</target>
+        <source> %count% changed file| %count% changed files</source>
+        <target> %count% geänderte Datei| %count% geänderte Dateien</target>
       </trans-unit>
       <trans-unit id="6">
         <source> Commit  ·  Alt+M amend </source>
@@ -46,10 +42,6 @@
         <source>&quot;%title%&quot; failed: %message%</source>
         <target>„%title%“ fehlgeschlagen: %message%</target>
       </trans-unit>
-      <trans-unit id="13">
-        <source>%count% files have</source>
-        <target>%count% Dateien haben</target>
-      </trans-unit>
       <trans-unit id="14">
         <source>%count% unsaved tab kept open|%count% unsaved tabs kept open</source>
         <target>%count% ungespeicherter Tab bleibt offen|%count% ungespeicherte Tabs bleiben offen</target>
@@ -67,8 +59,8 @@
         <target>.editorconfig-Zeichensatz „%charset%“ ignoriert (nur UTF-8)</target>
       </trans-unit>
       <trans-unit id="19">
-        <source>1 file has</source>
-        <target>1 Datei hat</target>
+        <source>1 file has|%count% files have</source>
+        <target>1 Datei hat|%count% Dateien haben</target>
       </trans-unit>
       <trans-unit id="20">
         <source>Applied &quot;%title%&quot; to %count% file|Applied &quot;%title%&quot; to %count% files</source>
@@ -135,12 +127,8 @@
         <target>Committet: %summary%</target>
       </trans-unit>
       <trans-unit id="38">
-        <source>Copied %count% line</source>
-        <target>%count% Zeile kopiert</target>
-      </trans-unit>
-      <trans-unit id="39">
-        <source>Copied %count% lines</source>
-        <target>%count% Zeilen kopiert</target>
+        <source>Copied %count% line|Copied %count% lines</source>
+        <target>%count% Zeile kopiert|%count% Zeilen kopiert</target>
       </trans-unit>
       <trans-unit id="40">
         <source>Copied %text%</source>
@@ -435,12 +423,8 @@
         <target>Ersetzen:</target>
       </trans-unit>
       <trans-unit id="114">
-        <source>Replaced in %count% file</source>
-        <target>In %count% Datei ersetzt</target>
-      </trans-unit>
-      <trans-unit id="115">
-        <source>Replaced in %count% files</source>
-        <target>In %count% Dateien ersetzt</target>
+        <source>Replaced in %count% file|Replaced in %count% files</source>
+        <target>In %count% Datei ersetzt|In %count% Dateien ersetzt</target>
       </trans-unit>
       <trans-unit id="116">
         <source>Restored from local history</source>
