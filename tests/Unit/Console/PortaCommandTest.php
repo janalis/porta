@@ -26,7 +26,8 @@ final class PortaCommandTest extends TestCase
         $this->launched = null;
 
         return new PortaCommand(
-            launch: function (Workspace $workspace, ?string $lsp, LspMode $noLsp, Ansi $ansi): void {
+            launch: function (Workspace $workspace, ?string $lsp, LspMode $noLsp, Ansi $ansi, \Closure $onBooted): void {
+                $onBooted();
                 $this->launched = [$workspace, $lsp, $noLsp, $ansi];
             },
             isInteractive: static fn (): bool => Presence::With === $interactive,
@@ -159,7 +160,7 @@ final class PortaCommandTest extends TestCase
     {
         $project = new TempProject(['a.php' => '']);
         $command = new PortaCommand(
-            launch: static function (Workspace $workspace, ?string $lsp, LspMode $mode, Ansi $ansi): void {
+            launch: static function (Workspace $workspace, ?string $lsp, LspMode $mode, Ansi $ansi, \Closure $onBooted): void {
                 throw new \RuntimeException('You have requested a synthetic service ("renderer").');
             },
             isInteractive: static fn (): bool => true,
@@ -171,11 +172,30 @@ final class PortaCommandTest extends TestCase
         $this->assertStringContainsString('delete ~/.cache/porta', $tester->getDisplay(), 'the remedy is named, not just the failure');
     }
 
+    public function testACrashAfterBootBlamesTheSessionNotTheCache(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $command = new PortaCommand(
+            launch: static function (Workspace $workspace, ?string $lsp, LspMode $mode, Ansi $ansi, \Closure $onBooted): void {
+                $onBooted(); // the IDE constructed fine — the session died later
+                throw new \RuntimeException('poll tick exploded');
+            },
+            isInteractive: static fn (): bool => true,
+        );
+        $tester = new CommandTester($command);
+
+        $this->assertSame(Command::FAILURE, $tester->execute(['path' => $project->dir]));
+        $this->assertStringContainsString('porta: fatal: poll tick exploded', $tester->getDisplay());
+        $this->assertStringNotContainsString('delete ~/.cache/porta', $tester->getDisplay(), 'a mid-session crash must not send the user to delete a healthy cache');
+        $this->assertStringContainsString('.porta/error.log', $tester->getDisplay());
+        $this->assertStringContainsString('poll tick exploded', (string) file_get_contents($project->dir.'/.porta/error.log'), 'the trace survives the crash');
+    }
+
     public function testVerboseModeRethrowsForTheFullTrace(): void
     {
         $project = new TempProject(['a.php' => '']);
         $command = new PortaCommand(
-            launch: static function (Workspace $workspace, ?string $lsp, LspMode $mode, Ansi $ansi): void {
+            launch: static function (Workspace $workspace, ?string $lsp, LspMode $mode, Ansi $ansi, \Closure $onBooted): void {
                 throw new \RuntimeException('boom');
             },
             isInteractive: static fn (): bool => true,

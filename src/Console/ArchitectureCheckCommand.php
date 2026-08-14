@@ -67,6 +67,7 @@ final class ArchitectureCheckCommand extends Command
         'Config>Plugin',
         'Config>Support',
         'Console>Container',
+        'Console>Support',
         'Container>Config',
         'Debug>Container',
         'Debug>Editor',

@@ -7,6 +7,7 @@ namespace Porta\Console;
 use Porta\Container\Ansi;
 use Porta\Container\LspMode;
 use Porta\Ide;
+use Porta\Support\DiagnosticLog;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
@@ -42,15 +43,16 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 final class PortaCommand extends Command
 {
-    /** @var callable(Workspace, ?string, LspMode, Ansi): void */
+    /** @var callable(Workspace, ?string, LspMode, Ansi, \Closure): void */
     private $launch;
 
     /** @var callable(): bool */
     private $isInteractive;
 
     /**
-     * @param (callable(Workspace, ?string, LspMode, Ansi): void)|null $launch        defaults to booting a real {@see Ide}
-     * @param (callable(): bool)|null                                  $isInteractive defaults to a POSIX tty check
+     * @param (callable(Workspace, ?string, LspMode, Ansi, \Closure): void)|null $launch        defaults to booting a real {@see Ide}; the trailing closure is
+     *                                                                                          called between boot and run, so a crash can say which half died
+     * @param (callable(): bool)|null                                            $isInteractive defaults to a POSIX tty check
      */
     public function __construct(?callable $launch = null, ?callable $isInteractive = null)
     {
@@ -107,17 +109,29 @@ final class PortaCommand extends Command
         }
         // --ansi/--no-ansi are Symfony's global options; they resolve into the
         // output decoration, which we thread to the IDE as its color mode.
+        $booted = false;
         try {
-            ($this->launch)($workspace, $lsp, $noLsp ? LspMode::Disabled : LspMode::Enabled, $output->isDecorated() ? Ansi::Enabled : Ansi::Disabled);
+            ($this->launch)($workspace, $lsp, $noLsp ? LspMode::Disabled : LspMode::Enabled, $output->isDecorated() ? Ansi::Enabled : Ansi::Disabled, static function () use (&$booted): void {
+                $booted = true;
+            });
         } catch (\Throwable $e) {
             if ($output->isVerbose()) {
                 throw $e; // -v: let the console runner render the full trace
             }
-            // The likeliest boot failure is a container that no longer
-            // compiles against a stale dump; say the remedy instead of dumping
-            // a stack trace at someone who just typed `porta .`.
             $errors->writeln(\sprintf('<error>porta: fatal: %s</error>', $e->getMessage()));
-            $errors->writeln('A stale container cache can break startup — delete ~/.cache/porta (or $PORTA_CACHE_DIR) and retry. Run with -v for the full trace.');
+            if (!$booted) {
+                // The likeliest BOOT failure is a container that no longer
+                // compiles against a stale dump; say the remedy instead of
+                // dumping a stack trace at someone who just typed `porta .`.
+                $errors->writeln('A stale container cache can break startup — delete ~/.cache/porta (or $PORTA_CACHE_DIR) and retry. Run with -v for the full trace.');
+
+                return Command::FAILURE;
+            }
+            // A crash mid-session has nothing to do with the cache. Keep the
+            // evidence where the in-session error handler keeps its own — the
+            // crash took the trace with it, and a -v rerun reproduces nothing.
+            new DiagnosticLog($workspace->rootDir.'/.porta/error.log')->append(\sprintf("%s: %s\n%s", $e::class, $e->getMessage(), $e->getTraceAsString()));
+            $errors->writeln('porta crashed — the trace was appended to .porta/error.log. Run with -v to see it here.');
 
             return Command::FAILURE;
         }
@@ -131,15 +145,17 @@ final class PortaCommand extends Command
      *
      * @codeCoverageIgnore
      */
-    private static function launchIde(Workspace $workspace, ?string $lspCommand, LspMode $lsp, Ansi $ansi): void
+    private static function launchIde(Workspace $workspace, ?string $lspCommand, LspMode $lsp, Ansi $ansi, \Closure $onBooted): void
     {
-        new Ide(
+        $ide = new Ide(
             rootDir: $workspace->rootDir,
             initialFile: $workspace->initialFile,
             initialLine: $workspace->line,
             lspCommand: $lspCommand,
             lspDisabled: LspMode::Disabled === $lsp,
             ansi: Ansi::Enabled === $ansi,
-        )->run();
+        );
+        $onBooted();
+        $ide->run();
     }
 }
