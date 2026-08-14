@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace Porta\Tests\Support;
 
 /**
- * Whether a real git binary is reachable on the current PATH — the skip
- * guard for E2e suites that drive git subprocesses. Extracted with the
- * IdeEdgeCasesTest split (it also absorbed the pristine-PATH variant, which
- * was equivalent at every call site: they all run before any PATH mutation).
+ * Whether a real git binary is reachable — the skip guard for E2e suites
+ * that drive git subprocesses. Resolution walks PORTA_TEST_PRISTINE_PATH
+ * (the bootstrap's pre-mutation snapshot), never the live PATH: the answer
+ * must not depend on where in a test — or in a randomized order — the call
+ * happens relative to a `putenv('PATH=/nonexistent')`.
  */
 trait GitBinary
 {
@@ -30,7 +31,7 @@ trait GitBinary
 
     private function whichGit(): ?string
     {
-        foreach (explode(\PATH_SEPARATOR, (string) getenv('PATH')) as $d) {
+        foreach (explode(\PATH_SEPARATOR, (string) PORTA_TEST_PRISTINE_PATH) as $d) {
             if (is_file($d.'/git') && is_executable($d.'/git')) {
                 return $d.'/git';
             }

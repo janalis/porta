@@ -53,7 +53,7 @@
         "lint": "mago lint",
         "analyze": "mago analyze",
         "test": "@php vendor/bin/paratest --processes=auto --functional",
-        "test:serial": "@php vendor/bin/phpunit",
+        "test:serial": "@php vendor/bin/phpunit --order-by=default",
         "coverage": "@php -d pcov.enabled=1 -d pcov.directory=. -d pcov.exclude='#/(vendor|tests)/#' vendor/bin/paratest --processes=auto --functional --passthru-php=\"'-d' 'pcov.enabled=1' '-d' 'pcov.directory=.' '-d' 'pcov.exclude=#/(vendor|tests)/#'\" --coverage-clover coverage/clover.xml",
         "coverage:plugins": "@php -d pcov.enabled=1 -d pcov.directory=. -d pcov.exclude='#/(vendor|tests)/#' vendor/bin/phpunit --testsuite Plugins --coverage-filter plugins --coverage-clover coverage/plugins-clover.xml",
         "coverage:check": [
@@ -67,6 +67,7 @@
     },
     "minimum-stability": "stable",
     "config": {
+        "process-timeout": 0,
         "sort-packages": true,
         "optimize-autoloader": true,
         "platform": {

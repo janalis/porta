@@ -4,6 +4,8 @@
          bootstrap="tests/bootstrap.php"
          cacheDirectory=".phpunit.cache"
          colors="true"
+         executionOrder="random"
+         beStrictAboutOutputDuringTests="true"
          failOnRisky="true"
          failOnAllIssues="true"
          failOnIncomplete="true"
@@ -16,7 +18,15 @@
          PhpunitDeprecation/Notice flags spelled out, plus whatever issue kinds
          PHPUnit adds later. failOnSkipped is DELIBERATELY absent:
          skipWithoutGit()/skipWithoutBinary() are load-bearing on machines
-         without the wrapped tool. -->
+         without the wrapped tool.
+
+         executionOrder="random" formalizes what the parallel gate already
+         relies on (paratest distributes METHODS across workers, so
+         cross-method order was never guaranteed). PHPUnit prints the seed;
+         reproduce an order-coupled failure with the same file scope plus the
+         `random-order-seed` CLI option. `composer test:serial` pins the
+         `order-by=default` option — it is the only way to read the
+         [loop-leak]/[env-leak] reports, and those need a reproducible order. -->
     <php>
         <!-- The suite asserts on git log/blame output and session timestamps;
              a laptop's local timezone must not be an input to any of it. -->

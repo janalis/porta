@@ -85,6 +85,18 @@ re-run the failing class alone; and note that `coverage:check` passing while
 `composer test` fails is the tell, since it runs the same tests. A *different*
 handful failing on each run is load; the *same* test failing every run is not.
 
+**Method order is randomized** (`executionOrder="random"` in phpunit.xml.dist —
+formalizing what paratest's method distribution never guaranteed anyway). A
+failure that only reproduces in-suite may therefore be order coupling, not
+load: PHPUnit prints `Random Seed: N` at the top of the run, and
+`vendor/bin/phpunit tests/E2e/TheClass.php --random-order-seed=N` replays that
+exact order. `composer test:serial` pins `--order-by=default` on purpose — it
+is the only way to read the `[loop-leak]`/`[env-leak]` reports, and those need
+a reproducible order. Never resolve a binary off the live `PATH` in a helper
+(`GitBinary::whichGit()` walks `PORTA_TEST_PRISTINE_PATH` for exactly this
+reason): under a random order, "runs before any PATH mutation" is not a fact
+anyone can promise.
+
 Before accepting that verdict, though, check the wait itself: a hand-rolled loop
 with its own smaller budget, or a poll that starts after a flash which fires when
 the subprocess is *spawned*, is a real defect wearing load's clothes. Both were
