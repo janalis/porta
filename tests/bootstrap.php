@@ -51,3 +51,9 @@ $_ENV['PORTA_CACHE_DIR'] = $portaCacheDir;
 if ('1' === ini_get('pcov.enabled')) {
     putenv('PORTA_CONTAINER_CACHE=off');
 }
+
+// A loop-callback throw must fail a test loudly. Ide::run() installs its
+// production handler (toast + error.log, loop survives) only when none is
+// present — and under test this one is, so a throwing await() stays a
+// failure instead of becoming a toast over a hung worker.
+Revolt\EventLoop::setErrorHandler(Porta\Tests\Support\LoopErrors::rethrow());

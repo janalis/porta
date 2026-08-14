@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\LoopErrors;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
@@ -12,6 +13,7 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
 use Porta\Workbench\Notifier;
+use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -73,6 +75,38 @@ final class IdeToastsTest extends TestCase
                 },
             ],
         );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testALoopCallbackThrowBecomesAToastAndTheSessionSurvives(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        try {
+            // Clear the suite's rethrow policy so Ide::run() installs its
+            // production handler — the behavior under test.
+            EventLoop::setErrorHandler(null);
+            $this->runIde(
+                $project,
+                $project->path('a.php'),
+                [
+                    200 => static function (): void {
+                        EventLoop::queue(static function (): void {
+                            throw new \RuntimeException('boom-in-callback');
+                        });
+                    },
+                    300 => function ($tui, $terminal, $ide) use ($project): void {
+                        $this->awaitPainted($tui, $terminal, 'Internal error');
+                        $this->assertStringContainsString('boom-in-callback', (string) file_get_contents($project->dir.'/.porta/error.log'), 'the throwable landed in error.log');
+                        $this->assertTrue($tui->isRunning(), 'the loop survived the throw');
+                    },
+                ],
+            );
+        } finally {
+            EventLoop::setErrorHandler(LoopErrors::rethrow());
+        }
 
         $this->addToAssertionCount(1);
     }

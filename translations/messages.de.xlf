@@ -2438,6 +2438,10 @@
         <source>%tool%: %count% %noun% in %file%|%tool%: %count% %nouns% in %file%</source>
         <target>%tool%: %count% %noun% in %file%|%tool%: %count% %nouns% in %file%</target>
       </trans-unit>
+      <trans-unit id="617">
+        <source>Internal error — details in .porta/error.log</source>
+        <target>Interner Fehler — Details in .porta/error.log</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

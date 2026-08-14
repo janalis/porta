@@ -22,6 +22,7 @@ use Porta\Editor\PaneRegistrar;
 use Porta\Event\IdeReady;
 use Porta\Event\IdeShuttingDown;
 use Porta\History\SessionRestorer;
+use Porta\I18n\Translator;
 use Porta\Input\InputDispatcher;
 use Porta\Layout\LayoutController;
 use Porta\Layout\PaneLayout;
@@ -34,6 +35,7 @@ use Porta\Run\RunController;
 use Porta\Search\SearchUiWiring;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsLanguageController;
+use Porta\Support\DiagnosticLog;
 use Porta\Support\FreezeWatchdog;
 use Porta\Ui\BidiTui;
 use Porta\Ui\NonBlockingTerminal;
@@ -302,6 +304,20 @@ final class Ide
         $restorer = new TerminalRestorer();
         $restorer->arm($this->tui->getTerminal());
 
+        // One throwing loop callback — a keypress handler, a poll tick, a
+        // subprocess exit — must not take the session and its unsaved buffers
+        // with it: log the evidence, flash, and keep the loop alive. Deferring
+        // to a pre-installed handler is what lets the test rig keep its
+        // rethrow-and-fail policy underneath the same run() path.
+        $ownsErrorHandler = null === EventLoop::getErrorHandler();
+        if ($ownsErrorHandler) {
+            $errors = new DiagnosticLog($this->rootDir.'/.porta/error.log');
+            EventLoop::setErrorHandler(function (\Throwable $error) use ($errors): void {
+                $errors->append(\sprintf("%s: %s\n%s", $error::class, $error->getMessage(), $error->getTraceAsString()));
+                $this->notifier->error($this->service(Translator::class)->trans('Internal error — details in .porta/error.log'));
+            });
+        }
+
         try {
             // Enter the alternate screen so quitting restores the terminal exactly
             // as it was before launch (like vim/htop). Plus SGR mouse reporting:
@@ -352,6 +368,9 @@ final class Ide
             EventLoop::cancel($watcher);
             foreach ($signals as $signal) {
                 EventLoop::cancel($signal);
+            }
+            if ($ownsErrorHandler) {
+                EventLoop::setErrorHandler(null);
             }
             // Disable mouse reporting, then leave the alternate screen (restoring
             // the pre-launch terminal). Guaranteed even if startup above threw.
