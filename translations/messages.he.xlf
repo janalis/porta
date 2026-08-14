@@ -1263,8 +1263,8 @@
         <target>התקנת תוסף</target>
       </trans-unit>
       <trans-unit id="325">
-        <source>git URL or local path</source>
-        <target>כתובת git או נתיב מקומי</target>
+        <source>git URL, local path, or vendor/name package</source>
+        <target>כתובת git, נתיב מקומי או חבילת vendor/name</target>
       </trans-unit>
       <trans-unit id="326">
         <source>Remove</source>
@@ -2425,6 +2425,30 @@
       <trans-unit id="617">
         <source>Internal error — details in .porta/error.log</source>
         <target>שגיאה פנימית — פרטים ב-.porta/error.log</target>
+      </trans-unit>
+      <trans-unit id="618">
+        <source>"%source%" is not a git URL, a local directory, or a vendor/name package</source>
+        <target>„%source%” אינה כתובת git, ספרייה מקומית או חבילת vendor/name</target>
+      </trans-unit>
+      <trans-unit id="619">
+        <source>No installable plugin package found in %source% (needs a composer.json with "name" and "type": "porta-plugin")</source>
+        <target>לא נמצאה חבילת תוסף להתקנה ב־%source% (נדרש composer.json עם "name" ו־"type": "porta-plugin")</target>
+      </trans-unit>
+      <trans-unit id="620">
+        <source>composer is not available</source>
+        <target>composer אינו זמין</target>
+      </trans-unit>
+      <trans-unit id="621">
+        <source>composer require failed (exit code %code%)</source>
+        <target>composer require נכשל (קוד יציאה %code%)</target>
+      </trans-unit>
+      <trans-unit id="622">
+        <source>"%source%" is not a Porta plugin package</source>
+        <target>„%source%” אינה חבילת תוסף של Porta</target>
+      </trans-unit>
+      <trans-unit id="623">
+        <source>Cannot determine the branch to install from %source%</source>
+        <target>לא ניתן לקבוע את הענף להתקנה מתוך %source%</target>
       </trans-unit>
     </body>
   </file>

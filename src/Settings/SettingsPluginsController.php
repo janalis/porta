@@ -15,12 +15,12 @@ use Porta\Workbench\Notifier;
 
 /**
  * The Plugins section of the settings view: a scope choice (project/global),
- * an install field (git URL or local path, handed to {@see PluginInstaller})
- * and one row per installed plugin — a removal button, or an inert "Built-in"
- * marker for the plugins bundled with Porta. A successful install is activated
- * live through {@see PluginLifecycleOps} — its commands, menu entries AND
- * default keybindings land immediately (the lifecycle rebuilds the live
- * keymap). Removal deletes the directory AND
+ * an install field (a git URL, a local path, or a vendor/name package, handed
+ * to {@see PluginInstaller}) and one row per installed plugin — a removal
+ * button, or an inert "Built-in" marker for the plugins bundled with Porta. A
+ * successful install is activated live through {@see PluginLifecycleOps} —
+ * its commands, menu entries AND default keybindings land immediately (the
+ * lifecycle rebuilds the live keymap). Removal deletes the directory AND
  * deactivates the plugin live (menu, palette, keys, hooks). Removal is guarded
  * by a two-press confirm ($armed). Each active plugin also gets its own
  * settings page ({@see pluginRows}) fed by {@see PluginSettings}.
@@ -64,7 +64,7 @@ final class SettingsPluginsController
                 kind: SettingsRowKind::Text,
                 value: '',
                 restart: false,
-                hint: $this->translator->trans('git URL or local path'),
+                hint: $this->translator->trans('git URL, local path, or vendor/name package'),
             ),
         ];
         foreach ($this->installer->installed() as $plugin) {
@@ -230,12 +230,14 @@ final class SettingsPluginsController
             return;
         }
         $this->armed = null;
-        $error = $this->installer->remove($name, $scope);
-        // Flash before deactivating: a failing shadow-fallback reload flashes
-        // its own error, which must win over the removal confirmation.
-        null !== $error ? $this->notifier->error($error) : $this->notifier->success($this->translator->trans('Plugin "%name%" removed', ['%name%' => $name]), 5.0);
-        if (null === $error) {
-            $this->lifecycle->deactivate($name);
-        }
+        $this->installer->remove($name, $scope, function (?string $error) use ($name): void {
+            // Flash before deactivating: a failing shadow-fallback reload
+            // flashes its own error, which must win over the removal
+            // confirmation.
+            null !== $error ? $this->notifier->error($error) : $this->notifier->success($this->translator->trans('Plugin "%name%" removed', ['%name%' => $name]), 5.0);
+            if (null === $error) {
+                $this->lifecycle->deactivate($name);
+            }
+        });
     }
 }

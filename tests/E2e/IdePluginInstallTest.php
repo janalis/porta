@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\FakeComposer;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\PreservesPath;
@@ -17,9 +18,11 @@ use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
- * Settings → Plugins: installing (local path copy, git clone) with live
- * activation, and two-press removal. Drives the real settings view with
- * synthetic keys: Tab between nav and form, arrows, inline text editing.
+ * Settings → Plugins: installing (local path, git URL) with live activation,
+ * and two-press removal — every source kind resolved through composer (a
+ * fake `composer` on PATH; real network/Packagist is not this suite's
+ * business). Drives the real settings view with synthetic keys: Tab between
+ * nav and form, arrows, inline text editing.
  */
 final class IdePluginInstallTest extends TestCase
 {
@@ -30,12 +33,14 @@ final class IdePluginInstallTest extends TestCase
     use RunsIde;
 
     private ?string $portaHome = null;
+    private string $composerBin;
 
     protected function setUp(): void
     {
         $portaHome = getenv('PORTA_HOME');
         $this->portaHome = $portaHome ? $portaHome : null;
-        putenv('PATH=/nonexistent');
+        $this->composerBin = FakeComposer::write(sys_get_temp_dir().'/porta-e2e-fakebin-'.bin2hex(random_bytes(4)));
+        putenv('PATH='.$this->composerBin);
     }
 
     protected function tearDown(): void
@@ -43,7 +48,7 @@ final class IdePluginInstallTest extends TestCase
         putenv(null !== $this->portaHome ? 'PORTA_HOME='.$this->portaHome : 'PORTA_HOME');
     }
 
-    /** A plugin source registering one flashing command. */
+    /** A plugin source registering one flashing command, with a composer.json declaring it a Porta plugin package. */
     private function pluginSource(string $name): string
     {
         return <<<PHP
@@ -62,6 +67,12 @@ final class IdePluginInstallTest extends TestCase
                 }
             };
             PHP;
+    }
+
+    /** The composer.json a plugin source dir needs for a path/vcs install to find it. */
+    private function pluginManifest(string $name): string
+    {
+        return (string) json_encode(['name' => 'test/'.$name, 'type' => 'porta-plugin']);
     }
 
     /** Open settings and select the Plugins section, leaving focus on the form. */
@@ -85,7 +96,9 @@ final class IdePluginInstallTest extends TestCase
     {
         $project = new TempProject([
             'plugin-src/installee/plugin.php' => $this->pluginSource('installee'),
+            'plugin-src/installee/composer.json' => $this->pluginManifest('installee'),
             'plugin-src/broken/plugin.php' => "<?php\nreturn 42;\n",
+            'plugin-src/broken/composer.json' => $this->pluginManifest('broken'),
             'a.php' => "<?php\n",
         ]);
 
@@ -98,12 +111,13 @@ final class IdePluginInstallTest extends TestCase
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Install into  < This project >', $screen);
-                    $this->assertStringContainsString('git URL or local path', $screen, 'the empty install field shows its hint');
+                    $this->assertStringContainsString('git URL, local path, or vendor/name package', $screen, 'the empty install field shows its hint');
 
                     $tui->handleInput("\x1b[B"); // → the install row
                     $tui->handleInput("\r"); // start inline editing
                     $this->type($tui, $project->path('plugin-src/installee'));
-                    $tui->handleInput("\r"); // commit → copy + live activation
+                    $tui->handleInput("\r"); // commit → async composer require + live activation
+                    $this->await(static fn (): bool => str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed'));
                     $tui->tick();
 
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -131,6 +145,7 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\r"); // the install row is still selected
                     $this->type($tui, $project->path('plugin-src/broken'));
                     $tui->handleInput("\r");
+                    $this->await(static fn (): bool => str_contains(\Porta\Tests\Support\Toasts::last($ide), 'failed to load'));
                     $tui->tick();
                     $this->assertStringContainsString('Plugin "broken" failed to load: plugin.php must return a PortaPlugin instance', \Porta\Tests\Support\Toasts::last($ide));
                 },
@@ -166,6 +181,7 @@ final class IdePluginInstallTest extends TestCase
         $project = new TempProject([
             '.porta/plugins/demo/plugin.php' => $this->pluginSource('demo'),
             'plugin-src/demo/plugin.php' => $this->pluginSource('demo'),
+            'plugin-src/demo/composer.json' => $this->pluginManifest('demo'),
             'a.php' => "<?php\n",
         ]);
 
@@ -207,6 +223,7 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\r");
                     $this->type($tui, $project->path('plugin-src/demo'));
                     $tui->handleInput("\r");
+                    $this->await(static fn (): bool => str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed'));
                     $tui->tick();
                     $this->assertContains('Hi from demo', array_column($commands->paletteCommands(), 'label'), 'reinstalled live');
                     $commands->run('demo:hi');
@@ -221,14 +238,19 @@ final class IdePluginInstallTest extends TestCase
 
     public function testGitUrlInstallClonesAndActivates(): void
     {
-        putenv('PATH='.PORTA_TEST_PRISTINE_PATH); // the installer needs a real git
+        // The installer needs a real git to peek the repository, AND the fake
+        // composer to actually require the package once peeked — both on PATH.
+        putenv('PATH='.$this->composerBin.\PATH_SEPARATOR.PORTA_TEST_PRISTINE_PATH);
         if (null === new ExecutableFinder()->find('git')) {
             self::markTestSkipped('git binary not available');
         }
 
-        // The clone name derives from the URL basename, so host the repo in a
-        // subdirectory with a valid plugin name.
-        $host = new TempProject(['cloned/plugin.php' => $this->pluginSource('cloned')]);
+        // The installed name derives from the repo's OWN composer.json "name",
+        // so host the repo in a subdirectory with a valid plugin name too.
+        $host = new TempProject([
+            'cloned/plugin.php' => $this->pluginSource('cloned'),
+            'cloned/composer.json' => $this->pluginManifest('cloned'),
+        ]);
         $dir = escapeshellarg($host->path('cloned'));
         exec("git -C {$dir} init -q 2>/dev/null && git -C {$dir} config user.email t@t && git -C {$dir} config user.name t && git -C {$dir} add -A && git -C {$dir} commit -qm init 2>/dev/null");
         $project = new TempProject(['a.php' => "<?php\n"]);
@@ -269,6 +291,7 @@ final class IdePluginInstallTest extends TestCase
         putenv('PORTA_HOME='.$home->dir);
         $project = new TempProject([
             'plugin-src/worldwide/plugin.php' => $this->pluginSource('worldwide'),
+            'plugin-src/worldwide/composer.json' => $this->pluginManifest('worldwide'),
             'a.php' => "<?php\n",
         ]);
 
@@ -286,6 +309,7 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\r");
                     $this->type($tui, $project->path('plugin-src/worldwide'));
                     $tui->handleInput("\r");
+                    $this->await(static fn (): bool => str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed'));
                     $tui->tick();
 
                     $this->assertFileExists($home->dir.'/.porta/plugins/worldwide/plugin.php');

@@ -13,6 +13,7 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\SettingsPluginsController;
 use Porta\Settings\SettingsRowKind;
+use Porta\Tests\Support\FakeComposer;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
@@ -33,6 +34,7 @@ final class SettingsPluginsControllerTest extends TestCase
     private StatusBarWidget $status;
     private FakePluginLifecycle $lifecycle;
     private ?string $embeddedDir = null;
+    private ?string $composerBinary = null;
     /** @var array<string, string|null> manager name => fake binary path */
     private array $managerBinaries = [];
     private PluginSettings $pluginSettings;
@@ -52,7 +54,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->installerTool = new ToolInstaller($this->project->dir, $this->managerBinaries);
 
         return new SettingsPluginsController(
-            new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, $this->embeddedDir),
+            new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, $this->embeddedDir, $this->composerBinary),
             $this->pluginSettings,
             new Notifier($this->status, $tui),
             new Translator('en'),
@@ -80,14 +82,20 @@ final class SettingsPluginsControllerTest extends TestCase
         file_put_contents($base->dir.'/.porta/plugins/'.$name.'/plugin.php', data: "<?php\n");
     }
 
-    /** A plugin source dir outside the scope bases. */
+    /** A plugin source dir outside the scope bases, with a valid composer.json for a path install. */
     private function sourceDir(string $name): string
     {
         $dir = $this->project->dir.'/src/'.$name;
         mkdir($dir, permissions: 0o777, recursive: true);
         file_put_contents($dir.'/plugin.php', data: "<?php\n");
+        file_put_contents($dir.'/composer.json', data: (string) json_encode(['name' => 'test/'.$name, 'type' => 'porta-plugin']));
 
         return $dir;
+    }
+
+    private function fakeComposer(int $exitCode = 0): string
+    {
+        return FakeComposer::write(sys_get_temp_dir().'/porta-fakebin-'.bin2hex(random_bytes(4)), $exitCode);
     }
 
     public function testRowsShapeScopeChoiceInstallFieldAndRemoveButtons(): void
@@ -102,7 +110,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->assertSame('project', $rows[0]->value);
         $this->assertSame(['project', 'global'], $rows[0]->options);
         $this->assertSame('This project', $rows[0]->optionLabels['project'] ?? null);
-        $this->assertSame('git URL or local path', $rows[1]->hint);
+        $this->assertSame('git URL, local path, or vendor/name package', $rows[1]->hint);
         $this->assertSame('local (project)', $rows[2]->label);
         $this->assertSame('shared (global)', $rows[3]->label);
         $this->assertSame('Remove', $rows[3]->value);
@@ -177,6 +185,7 @@ final class SettingsPluginsControllerTest extends TestCase
 
     public function testScopeChangeRoutesInstallsAndAnEmptyInstallIsANoOp(): void
     {
+        $this->composerBinary = $this->fakeComposer();
         $controller = $this->controller();
         $controller->change('pluginInstall', '   ');
         $this->assertSame(0, $this->lifecycle->refreshed, 'an empty source does nothing');
@@ -185,6 +194,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->assertSame('global', $controller->rows()[0]->value);
 
         $controller->change('pluginInstall', $this->sourceDir('demo'));
+        $this->await(fn (): bool => 0 < $this->lifecycle->refreshed, what: 'the install to land');
         $this->assertSame([$this->global->dir.'/.porta/plugins/demo/plugin.php'], $this->lifecycle->activated, 'installed into the chosen scope and activated');
         $this->assertStringContainsString('Plugin installed', $this->statusRow($this->status, 120));
         $this->assertSame(1, $this->lifecycle->refreshed);
@@ -192,14 +202,20 @@ final class SettingsPluginsControllerTest extends TestCase
 
     public function testInstallAndActivationErrorsFlashInstead(): void
     {
+        $this->composerBinary = $this->fakeComposer();
         $controller = $this->controller();
         $controller->change('pluginInstall', $this->project->dir.'/missing');
-        $this->assertStringContainsString('git is not available', $this->statusRow($this->status, 120), 'a nonexistent path falls through to the clone branch');
+        $this->assertStringContainsString(
+            'is not a git URL, a local directory, or a vendor/name package',
+            $this->statusRow($this->status, 240),
+            'a nonexistent path matches none of the three source kinds',
+        );
         $this->assertSame([], $this->lifecycle->activated);
         $this->assertSame(1, $this->lifecycle->refreshed, 'the section still refreshes after a failure');
 
         $this->lifecycle->activateResult = 'Plugin "demo" failed to load: nope';
         $controller->change('pluginInstall', $this->sourceDir('demo'));
+        $this->await(fn (): bool => 2 === $this->lifecycle->refreshed, what: 'the second install to land');
         $this->assertStringContainsString('Plugin "demo" failed to load: nope', $this->statusRow($this->status, 120));
     }
 

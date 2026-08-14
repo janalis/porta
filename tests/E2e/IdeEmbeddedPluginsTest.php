@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\FakeComposer;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
@@ -393,12 +394,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
     private function fakeComposerPath(TempProject $project, int $exitCode = 0): string
     {
         $bin = $project->path('fakebin');
-        mkdir($bin, permissions: 0o777, recursive: true);
-        file_put_contents($bin.'/composer', data: '#!'.\PHP_BINARY.' -n'."\n<?php\n".<<<'PHP'
-            @mkdir(getcwd().'/vendor/composer', 0o777, true);
-            file_put_contents(getcwd().'/vendor/composer/autoload_psr4.php', "<?php return [];\n");
-            PHP."\nexit({$exitCode});\n");
-        chmod($bin.'/composer', permissions: 0o755);
+        FakeComposer::write($bin, $exitCode);
         symlink(\PHP_BINARY, $bin.'/php');
 
         return $bin;

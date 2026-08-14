@@ -1263,8 +1263,8 @@
         <target>プラグインをインストール</target>
       </trans-unit>
       <trans-unit id="325">
-        <source>git URL or local path</source>
-        <target>git URLまたはローカルパス</target>
+        <source>git URL, local path, or vendor/name package</source>
+        <target>git URL、ローカルパス、またはvendor/nameパッケージ</target>
       </trans-unit>
       <trans-unit id="326">
         <source>Remove</source>
@@ -2425,6 +2425,30 @@
       <trans-unit id="617">
         <source>Internal error — details in .porta/error.log</source>
         <target>内部エラー — 詳細は .porta/error.log を参照</target>
+      </trans-unit>
+      <trans-unit id="618">
+        <source>"%source%" is not a git URL, a local directory, or a vendor/name package</source>
+        <target>「%source%」はgit URL、ローカルディレクトリ、vendor/nameパッケージのいずれでもありません</target>
+      </trans-unit>
+      <trans-unit id="619">
+        <source>No installable plugin package found in %source% (needs a composer.json with "name" and "type": "porta-plugin")</source>
+        <target>%source% にインストール可能なプラグインパッケージが見つかりません（"name" と "type": "porta-plugin" を含む composer.json が必要です）</target>
+      </trans-unit>
+      <trans-unit id="620">
+        <source>composer is not available</source>
+        <target>composerが利用できません</target>
+      </trans-unit>
+      <trans-unit id="621">
+        <source>composer require failed (exit code %code%)</source>
+        <target>composer requireが失敗しました（終了コード %code%）</target>
+      </trans-unit>
+      <trans-unit id="622">
+        <source>"%source%" is not a Porta plugin package</source>
+        <target>「%source%」はPortaプラグインパッケージではありません</target>
+      </trans-unit>
+      <trans-unit id="623">
+        <source>Cannot determine the branch to install from %source%</source>
+        <target>%source% からインストールするブランチを特定できません</target>
       </trans-unit>
     </body>
   </file>

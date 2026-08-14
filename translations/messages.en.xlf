@@ -1263,8 +1263,8 @@
         <target>Install plugin</target>
       </trans-unit>
       <trans-unit id="325">
-        <source>git URL or local path</source>
-        <target>git URL or local path</target>
+        <source>git URL, local path, or vendor/name package</source>
+        <target>git URL, local path, or vendor/name package</target>
       </trans-unit>
       <trans-unit id="326">
         <source>Remove</source>
@@ -2425,6 +2425,30 @@
       <trans-unit id="617">
         <source>Internal error — details in .porta/error.log</source>
         <target>Internal error — details in .porta/error.log</target>
+      </trans-unit>
+      <trans-unit id="618">
+        <source>"%source%" is not a git URL, a local directory, or a vendor/name package</source>
+        <target>"%source%" is not a git URL, a local directory, or a vendor/name package</target>
+      </trans-unit>
+      <trans-unit id="619">
+        <source>No installable plugin package found in %source% (needs a composer.json with "name" and "type": "porta-plugin")</source>
+        <target>No installable plugin package found in %source% (needs a composer.json with "name" and "type": "porta-plugin")</target>
+      </trans-unit>
+      <trans-unit id="620">
+        <source>composer is not available</source>
+        <target>composer is not available</target>
+      </trans-unit>
+      <trans-unit id="621">
+        <source>composer require failed (exit code %code%)</source>
+        <target>composer require failed (exit code %code%)</target>
+      </trans-unit>
+      <trans-unit id="622">
+        <source>"%source%" is not a Porta plugin package</source>
+        <target>"%source%" is not a Porta plugin package</target>
+      </trans-unit>
+      <trans-unit id="623">
+        <source>Cannot determine the branch to install from %source%</source>
+        <target>Cannot determine the branch to install from %source%</target>
       </trans-unit>
     </body>
   </file>

@@ -284,12 +284,23 @@ bus from a plugin, and that is deliberate.
 Open **Settings → Plugins** and use the form:
 
 - **Install into** — choose the project or the global directory.
-- **Install plugin** — type a **git URL** (cloned with `git clone --depth 1`)
-  or a **local directory path** (copied recursively). The directory's
-  basename becomes the plugin directory name.
+- **Install plugin** — type a **`vendor/name` package** (installed straight
+  from Packagist), a **git URL** (peeked to learn its package name and
+  branch, then required from a `vcs` repository), or a **local directory
+  path** (required from a `path` repository, which composer symlinks — so a
+  plugin you're actively developing is picked up live, no reinstall needed
+  on edit). Every source kind is resolved by a Porta-owned Composer project
+  at `.porta/composer.json` (or the global equivalent), and
+  `.porta/plugins/<name>` ends up a **symlink** into wherever composer
+  actually installed the package. The directory name is the package's own
+  `composer.json` — it must declare `"name": "vendor/name"` and
+  `"type": "porta-plugin"`, or the install is refused.
 - Each installed plugin lists with a **[Remove]** button — press Enter twice
-  (a confirm flash arrives after the first press) to delete its directory.
-  Bundled plugins list as **(built-in)** and cannot be removed.
+  (a confirm flash arrives after the first press). A composer-managed entry
+  runs `composer remove` in the driving project first, then unlinks the
+  symlink — the real installed copy under `.porta/vendor/` is untouched by
+  anything else that references it. Bundled plugins list as **(built-in)**
+  and cannot be removed.
 
 A successful install **activates the plugin immediately**: its commands
 appear in the command palette and the Plugins menu (between Code and Run)
@@ -306,8 +317,11 @@ Plugins in the settings sidebar). Disabling deactivates it live and persists
 as a `disabledPlugins` list in `.porta.json`, so it stays off across
 restarts until re-enabled.
 
-You can always skip the UI and copy/delete plugin directories by hand; they
-are picked up on the next launch.
+You can still hand-place a plugin directory (or one a previous Porta version
+git-cloned/copied) directly under `.porta/plugins/<name>` — it is picked up
+on the next launch and removes with a plain directory delete, exactly as
+before. That legacy path coexists with composer-managed installs; a plugin
+only becomes composer-managed by going through the install form above.
 
 ## Writing a plugin
 

@@ -9,6 +9,7 @@ use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\DependencyInstall;
 use Porta\Plugin\Lifecycle\DependencyRemoval;
 use Porta\Plugin\Lifecycle\PluginInstaller;
+use Porta\Tests\Support\FakeComposer;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\PumpsLoop;
@@ -34,20 +35,11 @@ final class PluginInstallerTest extends TestCase
     }
 
     /**
-     * A stub standing in for composer: it writes the vendor tree a real
-     * `composer install` would, then exits with $exitCode. Real composer is not
-     * in the suite's business — network, minutes, and a resolver we do not own.
+     * @param array<string, array{plugin?: string, composerJson?: string}> $packages
      */
-    private function composerStub(int $exitCode): string
+    private function fakeComposer(int $exitCode = 0, array $packages = []): string
     {
-        $path = $this->project->dir.'/fake-composer';
-        file_put_contents($path, '#!'.\PHP_BINARY.' -n'."\n<?php\n".<<<'PHP'
-            @mkdir(getcwd().'/vendor/composer', 0o777, true);
-            file_put_contents(getcwd().'/vendor/composer/autoload_psr4.php', "<?php return [];\n");
-            PHP."\nexit({$exitCode});\n");
-        chmod($path, permissions: 0o755);
-
-        return $path;
+        return FakeComposer::write($this->project->dir.'/fakebin-'.bin2hex(random_bytes(3)), $exitCode, $packages);
     }
 
     /** Runs install() and pumps the loop until the callback fires; returns [error, file]. */
@@ -68,13 +60,37 @@ final class PluginInstallerTest extends TestCase
         return $result;
     }
 
-    /** A plugin source dir outside any scope base. */
-    private function sourceDir(string $name, Presence $withPluginPhp = Presence::With): string
+    /** Runs remove() and pumps the loop until the callback fires; returns the translated error, or null on success. */
+    private function remove(PluginInstaller $installer, string $name, string $scope = 'project'): ?string
+    {
+        $done = false;
+        $result = null;
+        $installer->remove($name, $scope, static function (?string $error) use (&$done, &$result): void {
+            $done = true;
+            $result = $error;
+        });
+        $this->await(static function () use (&$done): bool {
+            return $done;
+        }, what: 'the remove callback');
+
+        return $result;
+    }
+
+    /**
+     * A plugin source dir outside any scope base: `plugin.php`, and — unless
+     * opted out — a `composer.json` declaring package `test/$name` with
+     * `type: "porta-plugin"`, so the installed directory name derives to
+     * `$name` exactly like the old copy-by-directory-basename behaviour did.
+     */
+    private function sourceDir(string $name, Presence $withPluginPhp = Presence::With, Presence $withManifest = Presence::With): string
     {
         $dir = $this->project->dir.'/src-plugins/'.$name;
         mkdir($dir, permissions: 0o777, recursive: true);
         if (Presence::With === $withPluginPhp) {
             file_put_contents($dir.'/plugin.php', "<?php\n// {$name}\n");
+        }
+        if (Presence::With === $withManifest) {
+            file_put_contents($dir.'/composer.json', (string) json_encode(['name' => 'test/'.$name, 'type' => 'porta-plugin']));
         }
 
         return $dir;
@@ -87,7 +103,7 @@ final class PluginInstallerTest extends TestCase
         return (string) $this->whichGit();
     }
 
-    /** A local git repo usable as a clone URL. */
+    /** A local git repo, with a valid plugin composer.json, usable as a clone URL. */
     private function repo(Presence $withPluginPhp): string
     {
         $dir = $this->sourceDir('repo-plugin', $withPluginPhp);
@@ -97,63 +113,213 @@ final class PluginInstallerTest extends TestCase
         return $dir;
     }
 
-    public function testCopyInstallLandsInTheChosenScope(): void
+    // --- install by local directory path ------------------------------------------------------
+
+    public function testPathInstallLandsInTheChosenScopeAsASymlink(): void
     {
         $source = $this->sourceDir('demo');
-        [$error, $file] = $this->install($this->installer(), $source);
+        [$error, $file] = $this->install($this->installer(composer: $this->fakeComposer()), $source);
         $this->assertNull($error);
         $this->assertSame($this->project->dir.'/.porta/plugins/demo/plugin.php', $file);
         $this->assertFileExists((string) $file);
+        $this->assertTrue(is_link($this->project->dir.'/.porta/plugins/demo'), 'a composer-managed install is a symlink');
 
-        [$error, $file] = $this->install($this->installer(), $source, 'global');
+        [$error, $file] = $this->install($this->installer(composer: $this->fakeComposer()), $source, 'global');
         $this->assertNull($error);
         $this->assertSame($this->global->dir.'/.porta/plugins/demo/plugin.php', $file);
     }
 
-    public function testCopyGuards(): void
+    public function testPathInstallGuards(): void
     {
-        [$error] = $this->install($this->installer(), $this->sourceDir('empty', withPluginPhp: Presence::Without));
+        [$error] = $this->install($this->installer(composer: $this->fakeComposer()), $this->sourceDir('empty', withPluginPhp: Presence::Without));
         $this->assertStringContainsString('No plugin.php found in', (string) $error);
 
+        [$error] = $this->install($this->installer(composer: $this->fakeComposer()), $this->sourceDir('nomanifest', withManifest: Presence::Without));
+        $this->assertStringContainsString('No installable plugin package found in', (string) $error);
+
         $source = $this->sourceDir('demo');
-        $this->install($this->installer(), $source);
-        [$error] = $this->install($this->installer(), $source);
+        $this->install($this->installer(composer: $this->fakeComposer()), $source);
+        [$error] = $this->install($this->installer(composer: $this->fakeComposer()), $source);
         $this->assertSame('Plugin "demo" is already installed', $error);
 
-        [$error] = $this->install($this->installer(), $this->sourceDir('.hidden'));
+        [$error] = $this->install($this->installer(composer: $this->fakeComposer()), $this->sourceDir('.hidden'));
         $this->assertSame('".hidden" is not a valid plugin name', $error);
 
-        [$error] = $this->install($this->installer(globalBase: null), $source, 'global');
+        [$error] = $this->install($this->installer(globalBase: null, composer: $this->fakeComposer()), $source, 'global');
         $this->assertSame('Cannot install globally (no home directory)', $error);
     }
 
-    public function testCopyFailureCleansUpTheDestination(): void
+    public function testPathInstallWithoutComposerFails(): void
     {
-        // The plugins base is an existing *file*: mirror() cannot create the dir.
-        mkdir($this->project->dir.'/.porta', permissions: 0o777, recursive: true);
-        file_put_contents($this->project->dir.'/.porta/plugins', data: '');
         [$error] = $this->install($this->installer(), $this->sourceDir('demo'));
-        $this->assertStringContainsString('Cannot install into', (string) $error);
-        $this->assertFileDoesNotExist($this->project->dir.'/.porta/plugins/demo');
+        $this->assertSame('composer is not available', $error);
     }
 
-    public function testUrlSourcesRequireGitAndDeriveTheNameFromTheUrl(): void
+    public function testPathInstallReportsAComposerFailure(): void
+    {
+        [$error] = $this->install($this->installer(composer: $this->fakeComposer(3)), $this->sourceDir('demo'));
+        $this->assertStringContainsString('composer require failed (exit code 3)', (string) $error);
+    }
+
+    // --- install by vendor/name package --------------------------------------------------------
+
+    public function testNameInstallLandsAsASymlink(): void
+    {
+        [$error, $file] = $this->install($this->installer(composer: $this->fakeComposer()), 'acme/mylint');
+        $this->assertNull($error);
+        $this->assertSame($this->project->dir.'/.porta/plugins/mylint/plugin.php', $file);
+        $this->assertFileExists((string) $file);
+        $this->assertTrue(is_link($this->project->dir.'/.porta/plugins/mylint'));
+    }
+
+    public function testNameInstallGuards(): void
+    {
+        $installer = $this->installer(composer: $this->fakeComposer());
+        $this->install($installer, 'acme/mylint');
+        [$error] = $this->install($installer, 'acme/mylint');
+        $this->assertSame('Plugin "mylint" is already installed', $error);
+
+        // A dotted project segment passes the vendor/name classification but
+        // fails the plugin directory-name pattern, which forbids dots.
+        [$error] = $this->install($this->installer(composer: $this->fakeComposer()), 'acme/a.b');
+        $this->assertSame('"a.b" is not a valid plugin name', $error);
+    }
+
+    public function testNameInstallRollsBackAPackageThatIsNotAPortaPlugin(): void
+    {
+        $composer = $this->fakeComposer(packages: ['acme/wrong' => ['composerJson' => (string) json_encode(['name' => 'acme/wrong', 'type' => 'library'])]]);
+        [$error, $file] = $this->install($this->installer(composer: $composer), 'acme/wrong');
+
+        $this->assertSame('"acme/wrong" is not a Porta plugin package', $error);
+        $this->assertNull($file);
+        $this->assertFileDoesNotExist($this->project->dir.'/.porta/plugins/wrong', 'nothing was ever symlinked');
+        // The rollback `composer remove` is fire-and-forget — $onDone fires
+        // before it necessarily finishes — so await its effect rather than
+        // asserting on it immediately.
+        $this->await(fn (): bool => !is_dir($this->project->dir.'/.porta/vendor/acme/wrong'), what: 'the best-effort rollback removing what composer landed');
+    }
+
+    public function testNameInstallReportsAComposerFailure(): void
+    {
+        [$error] = $this->install($this->installer(composer: $this->fakeComposer(3)), 'acme/mylint');
+        $this->assertStringContainsString('composer require failed (exit code 3)', (string) $error);
+    }
+
+    public function testNameInstallWithoutComposerFails(): void
+    {
+        [$error] = $this->install($this->installer(), 'acme/mylint');
+        $this->assertSame('composer is not available', $error);
+    }
+
+    // --- source classification -------------------------------------------------------------
+
+    public function testAnUnrecognizedSourceIsRefusedWithoutTouchingComposer(): void
+    {
+        [$error] = $this->install($this->installer(), 'not a valid source at all');
+        $this->assertSame('"not a valid source at all" is not a git URL, a local directory, or a vendor/name package', $error);
+    }
+
+    // --- install by git URL --------------------------------------------------------------------
+
+    public function testGitUrlInstallPeeksThenRequiresTheCheckedOutBranch(): void
+    {
+        $git = $this->git();
+        $repo = $this->repo(withPluginPhp: Presence::With);
+        $branch = trim((string) shell_exec('git -C '.escapeshellarg($repo).' rev-parse --abbrev-ref HEAD'));
+
+        $composer = $this->fakeComposer();
+        [$error, $file] = $this->install($this->installer(git: $git, composer: $composer), 'file://'.$repo);
+
+        $this->assertNull($error);
+        $this->assertSame($this->project->dir.'/.porta/plugins/repo-plugin/plugin.php', $file);
+        $this->assertTrue(is_link($this->project->dir.'/.porta/plugins/repo-plugin'));
+        $composerJson = json_decode((string) file_get_contents($this->project->dir.'/.porta/composer.json'), associative: true);
+        $this->assertSame('dev-'.$branch, $composerJson['require']['test/repo-plugin'] ?? null, 'requires the exact peeked branch, not a released version');
+    }
+
+    public function testGitUrlInstallGuards(): void
+    {
+        $git = $this->git();
+
+        [$error] = $this->install($this->installer(git: $git, composer: $this->fakeComposer()), 'file:///nonexistent/nowhere');
+        $this->assertStringContainsString('git clone failed (exit code', (string) $error);
+
+        $repoNoPlugin = $this->repo(withPluginPhp: Presence::Without);
+        [$error] = $this->install($this->installer(git: $git, composer: $this->fakeComposer()), 'file://'.$repoNoPlugin);
+        $this->assertSame('The repository contains no plugin.php', $error);
+    }
+
+    /** A local git repo whose composer.json is $manifestJson, usable as a clone URL. */
+    private function repoWithManifest(string $manifestJson): string
+    {
+        $dir = $this->project->dir.'/src-plugins/manifest-'.bin2hex(random_bytes(3));
+        mkdir($dir, permissions: 0o777, recursive: true);
+        file_put_contents($dir.'/plugin.php', data: "<?php\n");
+        file_put_contents($dir.'/composer.json', $manifestJson);
+        $q = escapeshellarg($dir);
+        exec("git -C {$q} init -q 2>/dev/null && git -C {$q} config user.email t@t && git -C {$q} config user.name t && git -C {$q} add -A && git -C {$q} commit -qm init --allow-empty 2>/dev/null");
+
+        return $dir;
+    }
+
+    public function testGitUrlInstallRejectsAnInvalidNameOrAnAlreadyInstalledOne(): void
+    {
+        $git = $this->git();
+
+        $badName = $this->repoWithManifest((string) json_encode(['name' => 'acme/a.b', 'type' => 'porta-plugin']));
+        [$error] = $this->install($this->installer(git: $git, composer: $this->fakeComposer()), 'file://'.$badName);
+        $this->assertSame('"a.b" is not a valid plugin name', $error);
+
+        $dup = $this->repoWithManifest((string) json_encode(['name' => 'acme/demo', 'type' => 'porta-plugin']));
+        $installer = $this->installer(git: $git, composer: $this->fakeComposer());
+        $this->install($installer, 'file://'.$dup);
+        [$error] = $this->install($installer, 'file://'.$dup);
+        $this->assertSame('Plugin "demo" is already installed', $error);
+    }
+
+    public function testGitUrlInstallRefusesARepositoryWithNoValidManifest(): void
+    {
+        $git = $this->git();
+        $dir = $this->project->dir.'/src-plugins/bad-manifest';
+        mkdir($dir, permissions: 0o777, recursive: true);
+        file_put_contents($dir.'/plugin.php', data: "<?php\n");
+        $q = escapeshellarg($dir);
+        exec("git -C {$q} init -q 2>/dev/null && git -C {$q} config user.email t@t && git -C {$q} config user.name t && git -C {$q} add -A && git -C {$q} commit -qm init --allow-empty 2>/dev/null");
+
+        [$error] = $this->install($this->installer(git: $git, composer: $this->fakeComposer()), 'file://'.$dir);
+        $this->assertStringContainsString('No installable plugin package found in', (string) $error);
+    }
+
+    public function testUrlSourcesRequireGit(): void
     {
         [$error] = $this->install($this->installer(git: null), 'https://example.com/x/demo.git');
         $this->assertSame('git is not available', $error);
-
-        // Name derivation: trailing slash and .git suffix are stripped before validation.
-        [$error] = $this->install($this->installer(git: null), 'https://example.com/x/-bad-name.git/');
-        $this->assertSame('"-bad-name" is not a valid plugin name', $error);
     }
 
-    public function testCloneInstallsAndRejectsAConcurrentOne(): void
+    public function testGitUrlInstallReportsAComposerFailure(): void
     {
         $git = $this->git();
         $repo = $this->repo(withPluginPhp: Presence::With);
 
-        // A plain local path would take the copy branch, so use file://.
-        $installer = $this->installer(git: $git);
+        [$error] = $this->install($this->installer(git: $git, composer: $this->fakeComposer(3)), 'file://'.$repo);
+        $this->assertStringContainsString('composer require failed (exit code 3)', (string) $error);
+    }
+
+    public function testGitUrlInstallWithoutComposerFails(): void
+    {
+        $git = $this->git();
+        $repo = $this->repo(withPluginPhp: Presence::With);
+
+        [$error] = $this->install($this->installer(git: $git), 'file://'.$repo);
+        $this->assertSame('composer is not available', $error);
+    }
+
+    public function testConcurrentInstallsAreRejected(): void
+    {
+        $git = $this->git();
+        $repo = $this->repo(withPluginPhp: Presence::With);
+
+        $installer = $this->installer(git: $git, composer: $this->fakeComposer());
         $first = null;
         $installer->install('file://'.$repo, 'project', static function (?string $error, ?string $file) use (&$first): void {
             $first = [$error, $file];
@@ -162,45 +328,123 @@ final class PluginInstallerTest extends TestCase
         $installer->install('file://'.$repo, 'project', static function (?string $error) use (&$second): void {
             $second = $error;
         });
-        $this->assertSame('Another install is already running', $second, 'single-flight while the clone runs');
+        $this->assertSame('Another install is already running', $second, 'single-flight while the clone/require runs');
 
         $this->await(static function () use (&$first): bool {
             return null !== $first;
         }, what: 'the first install to finish');
         $this->assertSame([null, $this->project->dir.'/.porta/plugins/repo-plugin/plugin.php'], $first);
-        $this->assertFileExists($this->project->dir.'/.porta/plugins/repo-plugin/plugin.php');
     }
 
-    public function testCloneFailureAndPluginlessRepoAreRemoved(): void
+    // --- remove ------------------------------------------------------------------------------
+
+    public function testRemovingAComposerManagedPluginRunsComposerRemoveAndUnlinksOnlyTheSymlink(): void
     {
-        $git = $this->git();
+        $source = $this->sourceDir('demo');
+        $installer = $this->installer(composer: $this->fakeComposer());
+        $this->install($installer, $source);
+        $landed = $this->project->dir.'/.porta/vendor/test/demo';
+        $this->assertFileExists($landed.'/plugin.php', 'sanity: composer "landed" the package');
 
-        [$error] = $this->install($this->installer(git: $git), 'file:///nonexistent/nowhere');
-        $this->assertStringContainsString('git clone failed (exit code', (string) $error);
-        $this->assertDirectoryDoesNotExist($this->project->dir.'/.porta/plugins/nowhere');
+        $error = $this->remove($installer, 'demo', 'project');
 
-        $repo = $this->repo(withPluginPhp: Presence::Without);
-        [$error] = $this->install($this->installer(git: $git), 'file://'.$repo);
-        $this->assertSame('The repository contains no plugin.php', $error);
-        $this->assertDirectoryDoesNotExist($this->project->dir.'/.porta/plugins/repo-plugin');
+        $this->assertNull($error);
+        $this->assertFileDoesNotExist($this->project->dir.'/.porta/plugins/demo', 'the symlink is gone');
+        $this->assertFileExists($source.'/plugin.php', 'removal never touches the original source — only the symlink chain composer built');
+    }
+
+    public function testRemovingAComposerManagedPluginReportsAComposerFailure(): void
+    {
+        $source = $this->sourceDir('demo');
+        $installer = $this->installer(composer: $this->fakeComposer());
+        $this->install($installer, $source);
+
+        // A fresh installer pointed at a composer stub that now fails.
+        $installer2 = $this->installer(composer: $this->fakeComposer(3));
+        $error = $this->remove($installer2, 'demo', 'project');
+
+        $this->assertSame('Cannot remove "demo"', $error);
+        $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/demo', 'a failed composer remove leaves the plugin standing');
+    }
+
+    public function testRemovingASymlinkWithNoReadableTargetManifestFails(): void
+    {
+        // A symlink whose target has no readable composer.json "name" — should
+        // not happen through this class's own install() path, but remove()
+        // must fail safely rather than guess a package to `composer remove`.
+        $target = $this->project->dir.'/elsewhere/broken';
+        mkdir($target, permissions: 0o777, recursive: true);
+        file_put_contents($target.'/plugin.php', data: "<?php\n");
+        $dest = $this->project->dir.'/.porta/plugins/broken';
+        mkdir(\dirname($dest), permissions: 0o777, recursive: true);
+        symlink($target, $dest);
+
+        $error = $this->remove($this->installer(), 'broken', 'project');
+
+        $this->assertSame('Cannot remove "broken"', $error);
+        $this->assertTrue(is_link($dest), 'left standing — nothing safe to do');
+    }
+
+    public function testRemovingASymlinkedPluginWithoutComposerFails(): void
+    {
+        $source = $this->sourceDir('demo');
+        $installer = $this->installer(composer: $this->fakeComposer());
+        $this->install($installer, $source);
+
+        $error = $this->remove($this->installer(), 'demo', 'project');
+
+        $this->assertSame('Cannot remove "demo"', $error);
+        $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/demo');
+    }
+
+    public function testRemovingALegacyDirectoryInstallDeletesItDirectlyWithoutComposer(): void
+    {
+        // A pre-existing git-clone/copy install from before composer-managed
+        // installs: a real directory, not a symlink.
+        $dir = $this->project->dir.'/.porta/plugins/legacy';
+        mkdir($dir, permissions: 0o777, recursive: true);
+        file_put_contents($dir.'/plugin.php', data: "<?php\n");
+
+        $error = $this->remove($this->installer(), 'legacy', 'project');
+
+        $this->assertNull($error);
+        $this->assertDirectoryDoesNotExist($dir);
+    }
+
+    public function testARemovalThatWillNotDeleteIsReportedNotSwallowed(): void
+    {
+        if (0 === posix_geteuid()) {
+            $this->markTestSkipped('root deletes anything');
+        }
+        $dir = $this->project->dir.'/.porta/plugins/stuck';
+        mkdir($dir, permissions: 0o777, recursive: true);
+        file_put_contents($dir.'/plugin.php', data: "<?php\n");
+        // No write bit on the PARENT: the entry itself cannot be unlinked
+        // however writable the tree below it is.
+        chmod($this->project->dir.'/.porta/plugins', permissions: 0o555);
+
+        try {
+            $error = $this->remove($this->installer(), 'stuck', 'project');
+            $this->assertSame('Cannot remove "stuck"', $error);
+            $this->assertDirectoryExists($dir);
+        } finally {
+            chmod($this->project->dir.'/.porta/plugins', permissions: 0o777);
+        }
     }
 
     public function testRemoveAndItsErrors(): void
     {
-        $installer = $this->installer();
-        $this->install($installer, $this->sourceDir('demo'));
-        $this->assertNull($installer->remove('demo', 'project'));
-        $this->assertDirectoryDoesNotExist($this->project->dir.'/.porta/plugins/demo');
-
-        $this->assertNull($installer->remove('gone', 'project'), 'removing a missing dir is a quiet success');
-        $this->assertSame('Cannot remove "x"', $this->installer(globalBase: null)->remove('x', 'global'));
+        $this->assertNull($this->remove($this->installer(), 'gone', 'project'), 'removing a missing dir is a quiet success');
+        $this->assertSame('Cannot remove "x"', $this->remove($this->installer(globalBase: null), 'x', 'global'));
     }
 
     public function testEmbeddedPluginsListNonRemovableAndRefuseRemoval(): void
     {
         $embedded = new TempProject(['bundled/plugin.php' => "<?php\n"]);
         $installer = new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, $embedded->dir);
-        $this->install($installer, $this->sourceDir('mine'));
+        $source = $this->sourceDir('mine');
+        $withComposer = new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, $embedded->dir, $this->fakeComposer());
+        $this->install($withComposer, $source);
 
         $this->assertSame(
             [
@@ -210,7 +454,7 @@ final class PluginInstallerTest extends TestCase
             $installer->installed(),
         );
 
-        $this->assertSame('Built-in plugins cannot be removed', $installer->remove('bundled', 'embedded'));
+        $this->assertSame('Built-in plugins cannot be removed', $this->remove($installer, 'bundled', 'embedded'));
         $this->assertDirectoryExists($embedded->dir.'/bundled');
     }
 
@@ -235,9 +479,9 @@ final class PluginInstallerTest extends TestCase
         $this->assertSame([], $installer->installed());
 
         $source = $this->sourceDir('both');
-        $this->install($installer, $source);
-        $this->install($installer, $source, 'global');
-        $this->install($installer, $this->sourceDir('worldwide'), 'global');
+        $this->install($this->installer(composer: $this->fakeComposer()), $source);
+        $this->install($this->installer(composer: $this->fakeComposer()), $source, 'global');
+        $this->install($this->installer(composer: $this->fakeComposer()), $this->sourceDir('worldwide'), 'global');
 
         $this->assertSame(
             [
@@ -255,30 +499,64 @@ final class PluginInstallerTest extends TestCase
         );
     }
 
+    // --- a plugin's OWN dependencies (installDependencies/removeDependencies) — unaffected by the
+    // outer install mechanism, and driven directly against a directory rather than through install().
+
     public function testInstallingAPluginInstallsItsComposerDependencies(): void
     {
         // In the PLUGIN's directory, never the user's project — that tree is
         // ToolInstaller's, and a plugin's libraries have no business in it.
         $source = $this->sourceDir('needy');
-        file_put_contents($source.'/composer.json', data: '{"require":{"vend/lib":"^1.0"}}');
+        file_put_contents($source.'/composer.json', data: '{"name":"test/needy","type":"porta-plugin","require":{"vend/lib":"^1.0"}}');
 
-        [$error, $file] = $this->install($this->installer(composer: $this->composerStub(0)), $source);
+        [$error, $file] = $this->install($this->installer(composer: $this->fakeComposer()), $source);
 
         $this->assertNull($error);
         $this->assertSame($this->project->dir.'/.porta/plugins/needy/plugin.php', $file);
         $this->assertFileExists($this->project->dir.'/.porta/plugins/needy/vendor/composer/autoload_psr4.php');
-        $this->assertDirectoryDoesNotExist($this->project->dir.'/vendor', 'nothing was installed into the project');
     }
 
     public function testAFailedDependencyInstallKeepsThePluginAndSaysSo(): void
     {
         // The directory is what the user asked for; the next boot declines the
-        // plugin by name with the command to run. Removing a good clone over a
+        // plugin by name with the command to run. Removing a good install over a
         // transient network error would be the worse trade.
+        //
+        // The require itself must succeed (exit 0) so the plugin lands; only the
+        // INNER `composer install --no-dev` inside the plugin directory fails.
+        // A single fake composer binary answers both, so this exercises the
+        // ordinary case: a composer that can `require` but chokes on the
+        // plugin's OWN dependency install.
         $source = $this->sourceDir('flaky');
-        file_put_contents($source.'/composer.json', data: '{"require":{"vend/lib":"^1.0"}}');
+        file_put_contents($source.'/composer.json', data: '{"name":"test/flaky","type":"porta-plugin","require":{"vend/lib":"^1.0"}}');
 
-        [$error, $file] = $this->install($this->installer(composer: $this->composerStub(3)), $source);
+        $composer = $this->project->dir.'/fakebin-inner/composer';
+        mkdir(\dirname($composer), permissions: 0o777, recursive: true);
+        file_put_contents($this->project->dir.'/fakebin-inner/composer-recipe.json', data: '[]');
+        file_put_contents($composer, '#!'.\PHP_BINARY.' -n'."\n<?php\n".<<<'PHP'
+            $cmd = $argv[1] ?? '';
+            if ('install' === $cmd) {
+                exit(3);
+            }
+            $spec = $argv[2] ?? '';
+            $pkg = strtok($spec, ':');
+            $composerJsonPath = getcwd().'/composer.json';
+            $composerJson = json_decode((string) file_get_contents($composerJsonPath), associative: true) ?: [];
+            $repo = $composerJson['repositories'][$pkg] ?? null;
+            $dest = getcwd().'/vendor/'.$pkg;
+            @mkdir(\dirname($dest), 0o777, true);
+            if ('require' === $cmd) {
+                if (\is_array($repo) && 'path' === ($repo['type'] ?? null)) {
+                    symlink((string) $repo['url'], $dest);
+                }
+                $composerJson['require'][$pkg] = explode(':', $spec, limit: 2)[1] ?? '*';
+                file_put_contents($composerJsonPath, json_encode($composerJson, \JSON_PRETTY_PRINT));
+            }
+            exit(0);
+            PHP);
+        chmod($composer, permissions: 0o755);
+
+        [$error, $file] = $this->install($this->installer(composer: $composer), $source);
 
         $this->assertNotNull($error);
         $this->assertStringContainsString('composer install failed (exit code 3)', (string) $error);
@@ -288,46 +566,17 @@ final class PluginInstallerTest extends TestCase
 
     public function testWithoutComposerADependentPluginInstallsButSaysWhatIsMissing(): void
     {
+        // No composer binary at all is caught before any require ever runs.
         $source = $this->sourceDir('needy');
-        file_put_contents($source.'/composer.json', data: '{"require":{"vend/lib":"^1.0"}}');
+        file_put_contents($source.'/composer.json', data: '{"name":"test/needy","type":"porta-plugin","require":{"vend/lib":"^1.0"}}');
 
         [$error, $file] = $this->install($this->installer(), $source);
 
-        $this->assertStringContainsString('composer is not available', (string) $error);
+        $this->assertSame('composer is not available', $error);
         $this->assertNull($file);
     }
 
-    public function testAPluginThatShippedItsVendorIsNotReinstalled(): void
-    {
-        // A copied source that already has vendor/ skips the step entirely — no
-        // subprocess, so an install stays synchronous. It must declare a REAL
-        // package, or the predicate answers no on the requirement alone and the
-        // vendor/ half of this test proves nothing.
-        $source = $this->sourceDir('prevendored');
-        file_put_contents($source.'/composer.json', data: '{"require":{"vend/lib":"^1.0"}}');
-        mkdir($source.'/vendor', permissions: 0o777, recursive: true);
-
-        [$error, $file] = $this->install($this->installer(composer: '/nonexistent/composer'), $source);
-
-        $this->assertNull($error, 'composer was never needed');
-        $this->assertSame($this->project->dir.'/.porta/plugins/prevendored/plugin.php', $file);
-    }
-
-    public function testAPluginWhoseOnlyRequirementIsThePlatformNeedsNoInstall(): void
-    {
-        // composer.json is on its way to being every plugin's manifest, so
-        // "has a composer.json" cannot mean "owes an install" — shelling out
-        // for `php: >=8.4` would be a subprocess to answer no.
-        $source = $this->sourceDir('platform');
-        file_put_contents($source.'/composer.json', data: '{"require":{"php":">=8.4"}}');
-
-        [$error, $file] = $this->install($this->installer(composer: '/nonexistent/composer'), $source);
-
-        $this->assertNull($error, 'composer was never needed');
-        $this->assertSame($this->project->dir.'/.porta/plugins/platform/plugin.php', $file);
-    }
-
-    /** A plugin directory with $json as its composer.json. */
+    /** A plugin directory with $json as its composer.json — for exercising installDependencies()/removeDependencies() directly. */
     private function pluginDir(string $name, string $json): string
     {
         $dir = $this->project->dir.'/.porta/plugins/'.$name;
@@ -342,7 +591,7 @@ final class PluginInstallerTest extends TestCase
     {
         // The caller has to know whether to wait BEFORE the subprocess could
         // possibly finish — that is what the return value is for.
-        $installer = $this->installer(composer: $this->composerStub(0));
+        $installer = $this->installer(composer: $this->fakeComposer());
         $never = static function (int $code): void {
             self::fail('composer ran for a plugin that owes nothing');
         };
@@ -358,7 +607,7 @@ final class PluginInstallerTest extends TestCase
 
     public function testInstallingDependenciesRunsComposerAndReportsItsExitCode(): void
     {
-        $installer = $this->installer(composer: $this->composerStub(0));
+        $installer = $this->installer(composer: $this->fakeComposer());
         $dir = $this->pluginDir('needy', '{"require":{"vend/lib":"^1.0"}}');
 
         $code = null;
@@ -378,7 +627,7 @@ final class PluginInstallerTest extends TestCase
 
     public function testAFailingComposerReportsItsCodeToTheCaller(): void
     {
-        $installer = $this->installer(composer: $this->composerStub(3));
+        $installer = $this->installer(composer: $this->fakeComposer(3));
 
         $code = null;
         $installer->installDependencies($this->pluginDir('flaky', '{"require":{"vend/lib":"^1.0"}}'), static function (int $exit) use (&$code): void {
@@ -393,9 +642,10 @@ final class PluginInstallerTest extends TestCase
 
     public function testInstallingDependenciesIsRefusedWhileAnotherInstallRuns(): void
     {
-        // One slot for the whole class, shared with the clone — a caller that
-        // wants several installs has to serialize them itself.
-        $installer = $this->installer(git: $this->git(), composer: $this->composerStub(0));
+        // One slot for the whole class, shared with every git/composer
+        // subprocess — a caller that wants several installs has to serialize
+        // them itself.
+        $installer = $this->installer(git: $this->git(), composer: $this->fakeComposer());
         $repo = $this->repo(Presence::With);
         $done = false;
         $installer->install('file://'.$repo, 'project', static function (?string $error, ?string $file) use (&$done): void {
@@ -414,10 +664,10 @@ final class PluginInstallerTest extends TestCase
             $installer->installDependencies($this->pluginDir('nodeps', '{}'), static fn (int $exit) => null),
         );
 
-        // Let the clone finish rather than ending on an armed stream watcher.
+        // Let the install finish rather than ending on an armed stream watcher.
         $this->await(static function () use (&$done): bool {
             return $done;
-        }, what: 'the clone that held the slot');
+        }, what: 'the install that held the slot');
     }
 
     public function testASuccessfulInstallMarksTheTreeAsOurs(): void
@@ -425,7 +675,7 @@ final class PluginInstallerTest extends TestCase
         // The marker is the only thing that authorises deleting a vendor tree
         // later, so it is written on success and only on success: a
         // half-installed tree is not one we should claim we made.
-        $installer = $this->installer(composer: $this->composerStub(0));
+        $installer = $this->installer(composer: $this->fakeComposer());
         $dir = $this->pluginDir('needy', '{"require":{"vend/lib":"^1.0"}}');
 
         $code = null;
@@ -443,7 +693,7 @@ final class PluginInstallerTest extends TestCase
 
     public function testAFailedInstallLeavesNoClaimOnTheTree(): void
     {
-        $installer = $this->installer(composer: $this->composerStub(3));
+        $installer = $this->installer(composer: $this->fakeComposer(3));
         $dir = $this->pluginDir('flaky', '{"require":{"vend/lib":"^1.0"}}');
 
         $code = null;
@@ -482,7 +732,7 @@ final class PluginInstallerTest extends TestCase
     {
         // Deleting a tree composer is writing into leaves a half-vendor that
         // needsInstall() would then call complete.
-        $installer = $this->installer(git: $this->git(), composer: $this->composerStub(0));
+        $installer = $this->installer(git: $this->git(), composer: $this->fakeComposer());
         $dir = $this->pluginDir('marked', '{"require":{"vend/lib":"^1.0"}}');
         mkdir($dir.'/vendor', permissions: 0o777, recursive: true);
         file_put_contents($dir.'/'.PluginInstaller::MARKER, data: "x\n");
@@ -497,7 +747,7 @@ final class PluginInstallerTest extends TestCase
 
         $this->await(static function () use (&$done): bool {
             return $done;
-        }, what: 'the clone that held the slot');
+        }, what: 'the install that held the slot');
     }
 
     public function testAVendorTreeThatWillNotDeleteIsReportedNotSwallowed(): void

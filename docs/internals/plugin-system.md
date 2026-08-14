@@ -128,6 +128,54 @@ Two boot reports exist for this: a plugin that needs an install is declined by
 name, and `shadowedPackages()` names each package whose plugin copy will never
 be reached.
 
+## A plugin PACKAGE arrives through composer
+
+`PluginInstaller::install()` is the outer mechanism — how a new plugin
+directory gets onto disk in the first place, as opposed to
+`installDependencies()` below, which is about a plugin's OWN dependencies
+once it's already there. Every source kind the Settings → Plugins form
+accepts (`vendor/name`, a git URL, a local directory) is resolved by
+requiring a real Composer package into a Porta-owned Composer project at
+`<scopeBase>/.porta/composer.json` ({@see `PluginComposerProject`}), scaffolded
+on first use. Composer installs at its own default location,
+`.porta/vendor/<vendor>/<project>`, and `PluginInstaller` symlinks
+`.porta/plugins/<name>` to it afterward — every downstream consumer
+(directory scanning, `PluginManifest`, load ordering) is unaffected, since
+PHP's filesystem functions traverse a symlink transparently and identity is
+still the symlink's own basename.
+
+There is deliberately no `composer/installers`-style custom install-path
+plugin in play: `composer/installers`' own top-level installer only
+recognizes a fixed, hardcoded list of package types and refuses to route an
+unregistered one like `porta-plugin`, and the one package that adds that
+support (`composer-installers-extender`) is unmaintained and pinned to a
+`composer/installers` major this project doesn't want to depend on.
+Composer's plain default location plus a symlink gets the same practical
+result — a real, versioned, `composer.lock`-pinned package — without it.
+
+A directory path or git URL needs its own `composer.json` declaring
+`"name": "vendor/project"` and `"type": "porta-plugin"` — read directly
+(never through `PluginManifest`, whose `name` field is deliberately "read by
+nothing" for identity purposes; this is a one-time transient read, purely to
+learn what package to `require`). A git URL is peeked first: a shallow clone
+to a scratch directory OUTSIDE `.porta` (discarded once read), purely to
+learn the package name, type, and checked-out branch, since composer cannot
+resolve a package from a bare URL. It's then required as `vendor/project:dev-<branch>`
+from a registered `vcs` repository — pinned to the peeked branch, not left to
+composer's own version resolution, for parity with "clone whatever HEAD is"
+rather than a new "pick a release" capability. A local path is required as
+`vendor/project:@dev` from a registered `path` repository (`options.symlink:
+true`), so a plugin under active local development is picked up live. A bare
+`vendor/name` is required directly against Packagist, then verified
+post-hoc — the one flow with no way to check before the network round-trip —
+rolling back with a best-effort `composer remove` on a mismatch.
+
+Removing a composer-managed plugin (`.porta/plugins/<name>` is a symlink)
+runs `composer remove` in the driving project, then unlinks the symlink —
+never `Filesystem::remove()`'s recursive delete, which would otherwise
+recurse into the real target. A pre-existing git-clone/hand-placed directory
+(not a symlink) keeps the old direct delete, unaffected.
+
 ## Dependencies follow the enabled state
 
 `composer install --no-dev` runs at three moments — install, enable, and a boot
