@@ -314,6 +314,23 @@ hold. Do not write a test that cannot fail.
 
 ## Leave it alone
 
+**The 56/56 `mb_strwidth` vs `AnsiUtils::visibleWidth` split — measured and
+rejected (2026-08-14).** The premise was that `visibleWidth`'s grapheme path
+(via `UnicodeString::width`) collapses multi-codepoint clusters where
+`mb_strwidth` sums components, so the sites feeding click/hover geometry
+(BreadcrumbsWidget's hit zones, ResultsPanel's match offsets, MenuPanel's
+dropdown sizing) were measuring wrong. Measured on the shipped symfony/string:
+the two functions **agree on every cluster class** — ZWJ emoji (👩‍💻: both 5),
+skin tones (both 4), decomposed accents (both 2), flags (both 2). The vendored
+`graphemeWidth` docblock's "where `mb_strwidth()` overcounts" describes a
+difference `UnicodeString::width` does not deliver. A 56-site swap would change
+nothing observable, and no test could pin it — do not write a test that cannot
+fail.
+
+*Re-opens on:* symfony/string's `width()` actually collapsing ZWJ/modifier
+clusters (re-run the four-probe comparison), at which point the geometry-feeding
+sites are the ones to convert first.
+
 **`PaneSegmenter` per-frame memoization — measured and rejected.** With RTL
 active every frame re-segments the whole widget tree while the vendor
 renderer's per-widget caching makes a warm `render()` almost free, so the
