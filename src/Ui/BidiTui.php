@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Ui;
 
 use Porta\I18n\PaneReorder;
+use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\ScreenWriter;
 use Symfony\Component\Tui\Tui;
@@ -23,6 +24,11 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  * {@see PaneReorder} flips each within its own span), reading the parent's
  * private collaborators reflectively (the class is pinned).
  */
+// Declared, not loader-derived: BidiTui's definition is overridden to
+// synthetic AFTER the loader's load-time interface counting, so a derived
+// FrameHooks alias would be a load-order accident — and the presenters'
+// nullable FrameHooks dep fails silently, so this seam must not hang on one.
+#[AsAlias(FrameHooks::class)]
 final class BidiTui extends Tui implements FrameHooks
 {
     private ?PaneSegmenter $segmenter = null;

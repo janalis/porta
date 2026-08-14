@@ -26,6 +26,7 @@ use Porta\Workbench\Menu\MenuSurface;
 use Porta\Workbench\StatusCell;
 use Porta\Workbench\StatusSegmentSource;
 use Porta\Workbench\View\ContributedViewSource;
+use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -37,6 +38,11 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
  * an action method used before that (i.e. during activate()) hits the
  * {@see runtime()} gate.
  */
+// Of the many source roles this class plays, SyntaxHighlightProviderSource is
+// the one with a second implementation, so the loader derives no alias and the
+// class names itself. The Highlight subsystem autowires the interface it owns
+// and never depends on Porta\Plugin.
+#[AsAlias(SyntaxHighlightProviderSource::class)]
 final class PluginManager implements
     ContributedMenuSource,
     ContributedViewSource,

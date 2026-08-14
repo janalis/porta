@@ -6,15 +6,11 @@ use Porta\Bootstrap\EagerServices;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
 use Porta\Container\AsWidget;
-use Porta\Editor\BufferNavigator;
 use Porta\Editor\BufferService;
 use Porta\Highlight\ColorMode;
 use Porta\Highlight\SwitchableTerminalTheme;
-use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\Layout\WorkspaceLayout;
-use Porta\Overlay\Region\CompositeFloatingRegions;
-use Porta\Overlay\Region\FloatingRegions;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Overlay\State\MenuOverlayPanesFactory;
 use Porta\Plugin\Runtime\PluginHost;
@@ -24,11 +20,9 @@ use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
 use Porta\Ui\BidiTui;
-use Porta\Ui\FrameHooks;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\Themes;
 use Porta\Widget\SeparatorWidget;
-use Porta\Widget\ViewerTabHandler;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface as PsrEventDispatcherInterface;
 use Symfony\Component\Clock\NativeClock;
@@ -102,8 +96,10 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // Single-impl Porta\ interface aliases are derived by the LOADER itself:
     // PhpFileLoader::load() ends in registerAliasesForSinglyImplementedInterfaces(),
     // which aliases every interface with exactly one discovered implementation
-    // and skips any interface that gains a second one — those stay explicit
-    // alias() calls below (FloatingRegions, SyntaxHighlightProviderSource).
+    // and skips any interface that gains a second one — those name their
+    // implementation with #[AsAlias] on the class (the loader honors it and
+    // the declaration beats the derivation), so membership travels with the
+    // class like every other porta attribute.
 
     // The porta.* tag attributes (#[AsIdeService], #[AsEager], #[AsChromeRoot])
     // and the tagged interfaces (CommandProvider, SettingsSection) carry their
@@ -177,15 +173,6 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // definition. The RTL segmenter reads the floating dropdowns through the
     // FloatingRegions seam (fakes in tests).
     $services->set(MenuOverlayPanes::class)->factory([service(MenuOverlayPanesFactory::class), 'create']);
-    // Modal region first, menus after — later regions win the segmenter's
-    // per-cell owner pass, matching the paint order (menus above the modal).
-    $services->alias(FloatingRegions::class, CompositeFloatingRegions::class);
-
-    // Kept explicit on purpose: BidiTui's def is overridden to synthetic AFTER
-    // the loader's load-time interface counting, so a natively derived
-    // FrameHooks alias here would be a load-order accident — and the presenters'
-    // nullable FrameHooks dep fails silently, so this seam must not hang on one.
-    $services->alias(FrameHooks::class, BidiTui::class);
 
     // The app event bus. The id must be exactly 'event_dispatcher' — the
     // RegisterListenersPass hard-codes it. Emitters autowire the PSR interface
@@ -206,27 +193,17 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->factory([Themes::class, 'createSwitchable'])
         ->args([env('enum:'.ColorMode::class.':PORTA_ANSI'), env('PORTA_THEME')]);
 
-    // The syntax-highlighting theme, likewise a live-swappable holder. Buffers and
-    // the editor/diff widgets autowire TerminalTheme via the alias; Ide resolves
-    // the holder by id to switch it.
+    // The syntax-highlighting theme, likewise a live-swappable holder (its
+    // TerminalTheme alias rides #[AsAlias] on the class; this set() replaces
+    // only the definition, never the alias).
     $services
         ->set(SwitchableTerminalTheme::class)
         ->factory([TerminalThemeFactory::class, 'createSwitchable'])
         ->args([env('enum:'.ColorMode::class.':PORTA_ANSI'), env('PORTA_THEME')]);
-    $services->alias(TerminalTheme::class, SwitchableTerminalTheme::class);
 
     // Which highlighting backend serves which language: HighlightPreferences
     // self-declares its #[Autoconfigure(constructor: 'fromConfig')] + env arg on
-    // the class. The plugin-supplied backends come from PluginManager through the
-    // interface Porta\Highlight owns, so the subsystem never depends on Porta\Plugin.
-    $services->alias(SyntaxHighlightProviderSource::class, PluginManager::class);
-
-    // ViewerTabHandler gained a second implementation when HelpViewerHandler
-    // started extending it (the help pane needs the same four tab verbs), so the
-    // loader derives no alias and one has to be named. BufferNavigator is the
-    // general answer: HelpViewerActions is the help pane's own superset, reached
-    // by that widget alone.
-    $services->alias(ViewerTabHandler::class, BufferNavigator::class);
+    // the class.
 
     // The single public boundary: Ide resolves every service through this
     // locator, so the entries stay private (alive because referenced) and the

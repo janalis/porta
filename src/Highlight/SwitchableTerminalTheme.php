@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Highlight;
 
+use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 use Tempest\Highlight\TerminalTheme;
 use Tempest\Highlight\Tokens\TokenType;
 
@@ -14,6 +15,9 @@ use Tempest\Highlight\Tokens\TokenType;
  * {@see before()}/{@see after()} at parse time, so {@see switchTo()} re-colors
  * all syntax on the next (re-)highlight without rebuilding the highlighters.
  */
+// Buffers and the editor/diff widgets autowire the tempest TerminalTheme
+// interface through this alias; Ide resolves the holder by id to switch it.
+#[AsAlias(TerminalTheme::class)]
 final class SwitchableTerminalTheme implements TerminalTheme
 {
     public function __construct(

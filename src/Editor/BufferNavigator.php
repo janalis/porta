@@ -10,6 +10,7 @@ use Porta\Ui\Glyphs;
 use Porta\Widget\BufferNavigationHandler;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\ViewerTabHandler;
+use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Tui\Tui;
 
@@ -21,6 +22,12 @@ use Symfony\Component\Tui\Tui;
  * actions, and the fifth ({@see viewChanged}) is the status-bar ping the
  * viewer's zoom label rides.
  */
+// ViewerTabHandler gained a second implementation when HelpViewerHandler
+// started extending it (the help pane needs the same four tab verbs), so the
+// loader derives no alias and one has to be named. BufferNavigator is the
+// general answer: HelpViewerActions is the help pane's own superset, reached
+// by that widget alone.
+#[AsAlias(ViewerTabHandler::class)]
 final class BufferNavigator implements BufferNavigationHandler, ViewerTabHandler
 {
     public function __construct(

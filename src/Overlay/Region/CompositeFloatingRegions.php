@@ -9,6 +9,7 @@ use Porta\Overlay\Presenter\PickerModalPresenter;
 use Porta\Overlay\Presenter\ToastPresenter;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\State\MenuOverlayController;
+use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 
 /**
  * Every floating region of the current frame: the modal boxes first (Welcome
@@ -17,6 +18,7 @@ use Porta\Overlay\State\MenuOverlayController;
  * exactly the paint order (dropdowns render above every modal, so they own
  * the overlapping cells).
  */
+#[AsAlias(FloatingRegions::class)] // the seam has fakes in tests, so the loader derives nothing
 final class CompositeFloatingRegions implements FloatingRegions
 {
     public function __construct(
