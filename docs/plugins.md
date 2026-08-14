@@ -93,6 +93,12 @@ before there was one.
   somewhere far from the cause. Declare what you actually use. A constraint
   Porta cannot parse is trusted rather than refused, and `php-64bit`/`lib-*`
   are not checked.
+- **`require`'s package half** behaves like composer's: a `vendor/name`
+  package Porta does not ship makes the plugin count as needing
+  `composer install`, which Porta runs for you on install/enable. A package
+  Porta **does** ship (the symfony components, `tempest/highlight`) asks for
+  nothing — the host's copy is the one your code gets either way — so declare
+  what you import: it costs nothing and documents reality.
 - **`extra.porta.api`** — the plugin-API **major** you wrote against, an
   integer (currently `1`). Optional: undeclared trusts the current API. When a
   future Porta breaks the `PluginApi` surface it will bump the major, and a

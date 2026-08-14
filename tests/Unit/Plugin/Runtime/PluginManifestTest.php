@@ -120,6 +120,23 @@ final class PluginManifestTest extends TestCase
         $this->assertSame(['vendor/pkg'], $manifest->packages, 'slashed ones stay installable packages');
     }
 
+    public function testAHostShippedPackageAsksForNoInstall(): void
+    {
+        // symfony/filesystem ships with Porta: installing it would produce the
+        // never-used vendor copy shadowedPackages() warns about, so declaring
+        // it — the honest manifest every bundled plugin now carries — asks
+        // for nothing. A package the host does not ship still installs.
+        $project = new TempProject();
+
+        $shipped = $this->composerPlugin($project, 'shipped', '{"require": {"symfony/filesystem": "^8.1"}}');
+        $this->assertSame([], $shipped->installablePackages());
+        $this->assertFalse($shipped->needsInstall());
+
+        $vendoring = $this->composerPlugin($project, 'vendoring', '{"require": {"symfony/filesystem": "^8.1", "acme/unknown": "^1"}}');
+        $this->assertSame(['acme/unknown'], $vendoring->installablePackages(), 'only the half the host does not ship');
+        $this->assertTrue($vendoring->needsInstall());
+    }
+
     public function testUnmetPlatformNamesWhatThisHostLacksAndTrustsTheRest(): void
     {
         $project = new TempProject();

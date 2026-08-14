@@ -151,11 +151,29 @@ final readonly class PluginManifest
      * A PLATFORM requirement (`php`, `ext-*`, `composer-runtime-api`) installs
      * nothing, so a plugin whose composer.json says only `php: >=8.4` has
      * nothing missing — which matters because that file is on its way to being
-     * every plugin's manifest, not just a vendoring one's.
+     * every plugin's manifest, not just a vendoring one's. A HOST-SHIPPED
+     * package installs nothing either ({@see installablePackages()}), which is
+     * what lets a plugin declare the symfony components it actually imports.
      */
     public function needsInstall(): bool
     {
-        return ([] !== $this->packages || $this->dumpsAutoload) && null === $this->vendorDir();
+        return ([] !== $this->installablePackages() || $this->dumpsAutoload) && null === $this->vendorDir();
+    }
+
+    /**
+     * The required packages an install would actually DELIVER: {@see packages}
+     * minus those Porta itself ships. Installing a host-shipped one would
+     * produce exactly the vendor copy {@see shadowedPackages()} warns about —
+     * a copy that is never used, because the host's autoloader prepends — so
+     * declaring it asks for nothing. Self-healing by construction: if Porta
+     * ever drops the package, it becomes installable here and the install
+     * fires.
+     *
+     * @return list<string>
+     */
+    public function installablePackages(): array
+    {
+        return array_values(array_filter($this->packages, static fn (string $package): bool => !InstalledVersions::isInstalled($package)));
     }
 
     /**
