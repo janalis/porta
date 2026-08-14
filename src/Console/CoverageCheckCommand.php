@@ -10,6 +10,7 @@ use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Output\ConsoleOutputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Finder\Finder;
 
 /**
  * The coverage gate: parses a Clover XML report, prints the per-file table and
@@ -163,13 +164,18 @@ final class CoverageCheckCommand extends Command
 
         $root = getcwd();
         $absent = [];
-        $tree = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory, \FilesystemIterator::SKIP_DOTS));
+        // Segment-anchored, so a class merely *named* Vendor/Tests stays a
+        // coverage subject; dot files stay visible like the raw walker's did.
+        $tree = new Finder()
+            ->files()
+            ->in($directory)
+            ->name('*.php')
+            ->ignoreDotFiles(false)
+            ->ignoreVCS(false)
+            ->notPath('~(^|/)vendor/~')
+            ->notPath('~(^|/)tests/~');
         foreach ($tree as $entry) {
-            /** @var \SplFileInfo $entry */
             $path = $entry->getPathname();
-            if ('php' !== $entry->getExtension() || str_contains($path, needle: '/vendor/') || str_contains($path, needle: '/tests/')) {
-                continue;
-            }
             $relative = false === $root ? $path : str_replace($root.'/', '', $path);
             // Suffix-matched, not equality: the gate runs from the project root
             // where the path is already relative, but nothing should depend on

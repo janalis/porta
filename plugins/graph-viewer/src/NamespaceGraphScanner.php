@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer;
 
+use Symfony\Component\Finder\Finder;
+
 /**
  * The built-in architecture source for PHP projects: walks the composer PSR-4
  * roots, extracts each file's namespace and imports ({@see UseScanner}),
@@ -94,20 +96,14 @@ final class NamespaceGraphScanner
     private function phpFiles(string $dir): array
     {
         $files = [];
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveCallbackFilterIterator(
-                new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
-                static function (\RecursiveDirectoryIterator|\SplFileInfo|string $file): bool {
-                    $basename = $file instanceof \SplFileInfo ? $file->getBasename() : basename($file);
-
-                    return !\in_array($basename, self::SKIP_DIRS, strict: true) && !str_starts_with($basename, '.');
-                },
-            ),
-        );
-        foreach ($iterator as $file) {
-            if (!$file instanceof \SplFileInfo || !$file->isFile() || 'php' !== $file->getExtension()) {
-                continue;
-            }
+        // Finder's dot-file default covers the hidden-name skip; SKIP_DIRS is
+        // anchored per segment so a nested vendor/ is skipped at any depth.
+        $finder = new Finder()
+            ->files()
+            ->in($dir)
+            ->name('*.php')
+            ->notPath('~(^|/)(?:'.implode('|', self::SKIP_DIRS).')/~');
+        foreach ($finder as $file) {
             $files[] = $file->getPathname();
         }
         sort($files);

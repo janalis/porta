@@ -9,6 +9,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Output\ConsoleOutputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Finder\Finder;
 
 /**
  * The architecture gate: the structural facts the six-round SOLID audit
@@ -607,13 +608,20 @@ final class ArchitectureCheckCommand extends Command
             return [];
         }
         $files = [];
-        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS));
-        foreach ($iterator as $file) {
-            if (!$file instanceof \SplFileInfo || !$file->isFile() || 'php' !== $file->getExtension()) {
-                continue;
-            }
+        // Dot files and VCS dirs stay visible, matching the raw walker this
+        // replaced — the scanned trees carry neither, and a gate must not
+        // narrow its input set silently.
+        foreach (new Finder()
+            ->files()
+            ->in($dir)
+            ->name('*.php')
+            ->ignoreDotFiles(false)
+            ->ignoreVCS(false) as $file) {
             $files[] = $file->getPathname();
         }
+        // Explicit pathname sort, not Finder::sortByName() — that key is the
+        // realpath, which diverges under symlinks, and gate output is a byte
+        // contract.
         sort($files);
 
         return $files;
