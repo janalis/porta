@@ -4,61 +4,134 @@ on:
   push:
     branches: [main]
   pull_request:
+  # A red gate should be re-runnable after a flake fix without pushing a no-op.
+  workflow_dispatch:
+  # Advisories land against an unchanged lock too: without this, a new CVE
+  # surfaces only when someone next opens a PR. Schedule runs execute the
+  # audit job alone.
+  schedule:
+    - cron: '17 6 * * 1'
+
+# Read-only token: every job only checks out and uploads an artifact.
+permissions:
+  contents: read
 
 # A superseded push to the same PR cancels the run it obsoleted.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# The extension list is pinned, not inherited from the runner image: gd, pcntl
+# and simplexml are declared requirements that the image merely happens to
+# bundle today. `intl` is deliberately NOT a requirement — the grapheme calls
+# ride symfony/polyfill-intl-grapheme — so the test matrix grades both the
+# native path and the polyfill every no-intl user actually runs.
+env:
+  PHP_EXTENSIONS: mbstring, gd, pcntl, simplexml, ctype
+
 jobs:
-  gates:
+  audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          coverage: pcov
-          extensions: mbstring, intl
-
-      - uses: actions/cache@v4
-        with:
-          path: ~/.composer/cache
-          key: composer-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-
-
-      - run: composer install --no-interaction --no-progress --classmap-authoritative
-
+          coverage: none
       - name: Manifest check
         run: |
           composer validate --strict
           for manifest in plugins/*/composer.json; do
             composer validate --no-check-publish --no-check-lock "$manifest"
           done
-
       - name: Dependency audit
         run: composer audit
 
+  static:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: ${{ env.PHP_EXTENSIONS }}, intl
+      - uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+      - run: composer install --no-interaction --no-progress --classmap-authoritative
       - name: Format check
         run: composer format:check
-
       - name: Lint
         run: composer lint
-
       - name: Static analysis
         run: composer analyze
-
       - name: Architecture gate
         run: composer arch
 
+  tests:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: intl
+            extensions: intl
+          - name: polyfill (no intl)
+            extensions: ':intl'
+    name: tests (${{ matrix.name }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: ${{ env.PHP_EXTENSIONS }}, ${{ matrix.extensions }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+      # The PHPUnit cache dir holds the result cache AND the shared test
+      # container dump (tests/bootstrap.php pins PORTA_CACHE_DIR into it);
+      # cold, every worker recompiles the container instead of sharing one.
+      - uses: actions/cache@v4
+        with:
+          path: .phpunit.cache
+          key: phpunit-${{ matrix.name }}-${{ github.run_id }}
+          restore-keys: phpunit-${{ matrix.name }}-
+      - run: composer install --no-interaction --no-progress --classmap-authoritative
       - name: Tests
         run: composer test
 
+  coverage:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: pcov
+          extensions: ${{ env.PHP_EXTENSIONS }}, intl
+      - uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+      - run: composer install --no-interaction --no-progress --classmap-authoritative
+      # Kept as its own run beside `tests`, not instead of it — testing.md's
+      # flake doctrine reads their divergence as the machine-load tell.
       - name: Coverage gate (100% lines)
         run: composer coverage:check
-
       - name: Coverage report artifact
         if: always()
         uses: actions/upload-artifact@v4
