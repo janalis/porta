@@ -297,6 +297,35 @@ final class IdeFilesystemSessionTest extends TestCase
         $this->assertStringContainsString("\x1b[?1000l", $out, 'mouse tracking disabled on quit');
     }
 
+    public function testSigtermStopsTheSessionAndRestoresTheTerminal(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $terminal = new VirtualTerminal(columns: 80, rows: 20);
+        new OnboardingState($project->dir)->markWelcomeSeen();
+        $ide = new Ide($project->dir, $project->path('a.php'), $terminal);
+        $tui = Services::resolve($ide, Tui::class);
+
+        // An outside kill, not an in-process call: the real delivery path.
+        // `kill` is a shell builtin, so the poisoned PATH above cannot hide it.
+        EventLoop::delay(0.2, static function (): void {
+            exec('kill -s TERM '.getmypid());
+        });
+        $watchdog = EventLoop::delay(5.0, static function () use ($tui): void {
+            $tui->stop();
+            throw new \RuntimeException('SIGTERM did not stop the app');
+        });
+        $ide->run();
+        EventLoop::cancel($watchdog);
+
+        $out = $terminal->getOutput();
+        // The signal unwound through the ordinary teardown: alternate screen
+        // left, mouse reporting off — the user's shell is intact.
+        $this->assertStringContainsString("\x1b[?1049l", $out, 'left the alternate screen on SIGTERM');
+        $this->assertStringContainsString("\x1b[?1003l", $out, 'mouse tracking disabled on SIGTERM');
+        $this->assertFileExists($project->dir.'/.porta/session.json', 'the session was saved on the way out');
+    }
+
     public function testInitialLineJumpsCaretOnBoot(): void
     {
         putenv('PATH=/nonexistent');

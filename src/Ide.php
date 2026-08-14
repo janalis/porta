@@ -37,6 +37,7 @@ use Porta\Settings\SettingsLanguageController;
 use Porta\Support\FreezeWatchdog;
 use Porta\Ui\BidiTui;
 use Porta\Ui\NonBlockingTerminal;
+use Porta\Ui\TerminalRestorer;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\EditorArea;
@@ -282,6 +283,25 @@ final class Ide
         // .porta/freeze.log (drift lines + a backtrace on a hard hang).
         $this->watchdog->start();
 
+        // A termination signal must unwind through the finally below, not kill
+        // the process mid-alternate-screen with mouse reporting still on:
+        // stopping the Tui resumes its run suspension, so run() returns and
+        // the ordinary teardown executes. Unreferenced, because a referenced
+        // signal watcher would keep an otherwise-finished loop alive.
+        $signals = [];
+        foreach ([\SIGTERM, \SIGINT, \SIGHUP] as $signal) {
+            $id = EventLoop::onSignal($signal, function (): void {
+                $this->tui->stop();
+            });
+            EventLoop::unreference($id);
+            $signals[] = $id;
+        }
+        // The net for what no finally can catch — a fatal error kills the
+        // engine without unwinding: process shutdown re-emits the teardown
+        // sequence unless the finally disarmed the net first.
+        $restorer = new TerminalRestorer();
+        $restorer->arm($this->tui->getTerminal());
+
         try {
             // Enter the alternate screen so quitting restores the terminal exactly
             // as it was before launch (like vim/htop). Plus SGR mouse reporting:
@@ -330,9 +350,13 @@ final class Ide
             $this->service(ViewRegistry::class)->closeAll();
             $this->watchdog->stop();
             EventLoop::cancel($watcher);
+            foreach ($signals as $signal) {
+                EventLoop::cancel($signal);
+            }
             // Disable mouse reporting, then leave the alternate screen (restoring
             // the pre-launch terminal). Guaranteed even if startup above threw.
-            $this->tui->getTerminal()->write("\x1b[?1000l\x1b[?1003l\x1b[?1006l\x1b[?1049l");
+            $this->tui->getTerminal()->write(TerminalRestorer::RESTORE);
+            $restorer->disarm();
             $this->sessionRestorer->save();
             $this->debugState->save();
             $this->notifier->dismissAll(); // cancel pending toast timers — nothing may outlive the loop

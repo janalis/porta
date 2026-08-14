@@ -61,13 +61,13 @@ final class FreezeWatchdogTest extends TestCase
         $this->assertSame(0, pcntl_alarm(0), 'stop() disarmed the pending alarm');
     }
 
-    public function testSignalAvailabilityIsAutoDetectedWhenNotInjected(): void
+    public function testSignalsArmByDefault(): void
     {
         $project = new TempProject();
         $watchdog = new FreezeWatchdog($project->dir, new MockClock(), alarmSeconds: 30);
 
-        $watchdog->start(); // resolves the null to \function_exists('pcntl_alarm') — true on this PHP
-        $this->assertGreaterThan(0, pcntl_alarm(0), 'the alarm was armed by auto-detection');
+        $watchdog->start(); // ext-pcntl is a hard requirement, so the default arms the alarm
+        $this->assertGreaterThan(0, pcntl_alarm(0), 'the alarm was armed by default');
         $watchdog->stop();
     }
 
