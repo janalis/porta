@@ -45,7 +45,7 @@ final class ProjectSearchTest extends TestCase
             $timeout,
             'the search to complete',
         );
-        \assert(null !== $results);
+        \assert(null !== $results, description: 'the search delivered results');
 
         return $results;
     }

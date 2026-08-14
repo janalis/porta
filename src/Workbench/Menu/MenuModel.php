@@ -147,9 +147,11 @@ final class MenuModel
     ): array {
         $viewSafe = self::VIEW_SAFE;
         foreach ($contributions as $contribution) {
-            if ('' !== $contribution->viewId) {
-                $viewSafe[$contribution->viewId] = [...($viewSafe[$contribution->viewId] ?? []), ...$contribution->viewSafe];
+            if ('' === $contribution->viewId) {
+                continue;
             }
+
+            $viewSafe[$contribution->viewId] = [...($viewSafe[$contribution->viewId] ?? []), ...$contribution->viewSafe];
         }
 
         $menus = [];

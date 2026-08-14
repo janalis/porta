@@ -39,7 +39,7 @@ final readonly class OnboardingState
 
     public function __construct(
         string $rootDir,
-        private readonly Filesystem $fs = new Filesystem(),
+        private Filesystem $fs = new Filesystem(),
     ) {
         $this->file = $rootDir.'/.porta/onboarding.json';
     }

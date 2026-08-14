@@ -15,9 +15,7 @@ use Porta\Tests\Support\RendersRoot;
 use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
 use Porta\Widget\Render\MenuOverlayHost;
-use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Input\Keybindings;
-use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -120,8 +118,8 @@ final class ToastPresenterTest extends TestCase
     {
         $presenter = $this->presenter();
         $this->frame();
-        foreach (range(1, 5) as $i) {
-            $this->toasts->push(str_repeat("very long message {$i} ", 12), ToastSeverity::Info);
+        foreach (range(1, end: 5) as $i) {
+            $this->toasts->push(str_repeat("very long message {$i} ", times: 12), ToastSeverity::Info);
         }
 
         $presenter->sync();

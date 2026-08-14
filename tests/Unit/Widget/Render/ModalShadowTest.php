@@ -20,7 +20,7 @@ final class ModalShadowTest extends TestCase
     /** @return list<string> a 10×20 pane of dots */
     private function pane(): array
     {
-        return array_fill(0, 10, str_repeat('.', 20));
+        return array_fill(start_index: 0, count: 10, value: str_repeat('.', times: 20));
     }
 
     public function testBlitCastsTheOffsetBands(): void
@@ -33,7 +33,7 @@ final class ModalShadowTest extends TestCase
         $this->assertSame(' ', $lines[4][10]);
         // Bottom band: row 5 (= 2 + 3), cols 5..10 — one column in, its last
         // cell under the right band's column (the classic +1/+1 corner).
-        $this->assertSame('.'.str_repeat(' ', 6).str_repeat('.', 9), substr($lines[5], 4), 'the bottom band sits one column in');
+        $this->assertSame('.'.str_repeat(' ', times: 6).str_repeat('.', times: 9), substr($lines[5], offset: 4), 'the bottom band sits one column in');
         // Every composited row keeps the pane width.
         foreach ($lines as $i => $line) {
             $this->assertSame(20, AnsiUtils::visibleWidth(ModalShadow::blit($this->pane(), 2, 4, 6, 3, 20, Styles::dark())[$i]), "row {$i}");
@@ -45,7 +45,7 @@ final class ModalShadowTest extends TestCase
         // Box flush against the right and bottom edges: nothing to cast.
         $lines = array_map(AnsiUtils::stripAnsiCodes(...), ModalShadow::blit($this->pane(), 7, 14, 6, 3, 20, Styles::dark()));
 
-        $this->assertSame(array_fill(0, 10, str_repeat('.', 20)), $lines, 'no band painted outside the pane');
+        $this->assertSame(array_fill(start_index: 0, count: 10, value: str_repeat('.', times: 20)), $lines, 'no band painted outside the pane');
     }
 
     /**
@@ -57,7 +57,7 @@ final class ModalShadowTest extends TestCase
     {
         $marker = AnsiUtils::cursorMarker();
         $pane = $this->pane();
-        $pane[3] = 'ab'.$marker.str_repeat('.', 18); // a caret on a right-band row
+        $pane[3] = 'ab'.$marker.str_repeat('.', times: 18); // a caret on a right-band row
 
         $lines = ModalShadow::blit($pane, 2, 4, 6, 3, 20, Styles::dark());
 

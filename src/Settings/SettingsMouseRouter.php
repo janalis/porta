@@ -15,7 +15,6 @@ use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Workbench\View\ViewPointer;
 use Porta\Workbench\View\WheelAxis;
 use Porta\Workbench\View\WheelGesture;
-use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 
 /**

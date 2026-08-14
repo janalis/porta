@@ -27,7 +27,7 @@ final class ToastCardTest extends TestCase
     public function testEveryRowIsExactlyTheBoxWidth(): void
     {
         foreach ([12, 20, 42] as $inner) {
-            foreach ($this->card(str_repeat('wide message ', 10), inner: $inner) as $i => $row) {
+            foreach ($this->card(str_repeat('wide message ', times: 10), inner: $inner) as $i => $row) {
                 $this->assertSame($inner + PopupFrame::CHROME_COLS, AnsiUtils::visibleWidth($row), "inner {$inner}, row {$i}");
             }
         }
@@ -53,7 +53,7 @@ final class ToastCardTest extends TestCase
 
     public function testALongMessageWrapsAndCapsWithAnEllipsis(): void
     {
-        $rows = $this->card(str_repeat('word ', 60));
+        $rows = $this->card(str_repeat('word ', times: 60));
 
         $this->assertCount(ToastCard::MAX_MESSAGE_ROWS + 2, $rows, 'the wrap cap plus the two border rows');
         $this->assertStringContainsString('…', AnsiUtils::stripAnsiCodes($rows[ToastCard::MAX_MESSAGE_ROWS]), 'the last message row ellipsizes');

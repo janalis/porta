@@ -8,7 +8,6 @@ use PHPUnit\Framework\TestCase;
 use Porta\Debug\DapClient;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
-use Revolt\EventLoop;
 
 final class DapClientTest extends TestCase
 {

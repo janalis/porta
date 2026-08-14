@@ -6,7 +6,6 @@ namespace Porta\Tests\Support;
 
 use Porta\Ui\BidiTui;
 use Symfony\Component\Tui\Render\Renderer;
-use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\ContainerWidget;
 
 /**
@@ -25,7 +24,7 @@ trait RendersRoot
     private function frame(int $columns = 100, int $rows = 24): void
     {
         $root = Probe::object($this->tui, 'root');
-        \assert($root instanceof ContainerWidget);
+        \assert($root instanceof ContainerWidget, description: 'the Tui root is the container widget');
         $this->renderer->render($root, $columns, $rows);
     }
 }

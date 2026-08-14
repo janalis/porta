@@ -74,14 +74,14 @@ final class EditorActionRouter
     public function run(string $action): bool
     {
         $simple = $this->simpleHandlers();
-        if (isset($simple[$action])) {
+        if (\array_key_exists($action, $simple)) {
             $simple[$action](($this->callbacks)());
 
             return true;
         }
 
         $positional = $this->positionalHandlers();
-        if (isset($positional[$action])) {
+        if (\array_key_exists($action, $positional)) {
             [$line, $col] = ($this->caret)();
             $positional[$action](($this->callbacks)(), $line, $col);
 

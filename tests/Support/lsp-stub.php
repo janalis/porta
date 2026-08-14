@@ -29,15 +29,15 @@ function readFrames($in): Generator
 {
     $buffer = '';
     while (!feof($in)) {
-        $chunk = fread($in, 8192);
+        $chunk = fread($in, length: 8192);
         if (false === $chunk) {
             break;
         }
         $buffer .= $chunk;
 
         while (true) {
-            $headerEnd = strpos($buffer, "\r\n\r\n");
-            if (false === $headerEnd || !preg_match('/Content-Length:\s*(\d+)/i', substr($buffer, 0, $headerEnd), $m)) {
+            $headerEnd = strpos($buffer, needle: "\r\n\r\n");
+            if (false === $headerEnd || !preg_match('/Content-Length:\s*(\d+)/i', substr($buffer, offset: 0, length: $headerEnd), $m)) {
                 break;
             }
             $length = (int) $m[1];
@@ -45,7 +45,7 @@ function readFrames($in): Generator
             if (strlen($buffer) < ($bodyStart + $length)) {
                 break;
             }
-            $message = json_decode(substr($buffer, $bodyStart, $length), true);
+            $message = json_decode(substr($buffer, $bodyStart, $length), associative: true);
             $buffer = substr($buffer, $bodyStart + $length);
             if (is_array($message)) {
                 yield $message;

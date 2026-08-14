@@ -70,6 +70,7 @@ final class PortaCommand extends Command
         #[Option('Language server command (overrides .porta.json and $PORTA_LSP)')]
         ?string $lsp = null,
         #[Option('Start with no language server')]
+        // @mago-expect lint:no-boolean-flag-parameter -- Symfony Console's #[Option] shape: a bool option IS a flag.
         bool $noLsp = false,
         #[Option('Open the file scrolled to this line', shortcut: 'l')]
         ?string $line = null,

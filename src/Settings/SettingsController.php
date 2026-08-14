@@ -9,7 +9,6 @@ use Porta\Container\AsIdeService;
 use Porta\Editor\EditorViewOptions;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
-use Porta\Settings\LiveSettingsApplier;
 use Porta\Ui\Theme\Theme;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Workbench\Notifier;

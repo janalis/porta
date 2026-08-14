@@ -154,13 +154,13 @@ final class BidiTui extends Tui implements FrameHooks
             return;
         }
 
-        $privates =
-            $this->tuiPrivates ??= [
-                'requested' => new \ReflectionProperty(Tui::class, 'renderRequested'),
-                'root' => new \ReflectionProperty(Tui::class, 'root'),
-                'renderer' => new \ReflectionProperty(Tui::class, 'renderer'),
-                'screenWriter' => new \ReflectionProperty(Tui::class, 'screenWriter'),
-            ];
+        $this->tuiPrivates ??= [
+            'requested' => new \ReflectionProperty(Tui::class, 'renderRequested'),
+            'root' => new \ReflectionProperty(Tui::class, 'root'),
+            'renderer' => new \ReflectionProperty(Tui::class, 'renderer'),
+            'screenWriter' => new \ReflectionProperty(Tui::class, 'screenWriter'),
+        ];
+        $privates = $this->tuiPrivates;
 
         $requested = $privates['requested'];
         if (true !== $requested->getValue($this)) {

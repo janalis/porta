@@ -6,7 +6,6 @@ namespace Porta\Tests\Support;
 
 use Porta\Ide;
 use Porta\Overlay\State\ToastCenter;
-use Porta\Tests\Support\Services;
 use Porta\Workbench\Notifier;
 
 /**
@@ -30,7 +29,7 @@ final class Toasts
     {
         $notifier = Services::resolve($ide, Notifier::class);
         $center = Probe::object($notifier, 'toasts'); // src carries no test-only getter
-        \assert($center instanceof ToastCenter);
+        \assert($center instanceof ToastCenter, description: 'the notifier holds the toast center');
 
         return array_map(static fn ($t): string => $t->message, $center->toasts());
     }

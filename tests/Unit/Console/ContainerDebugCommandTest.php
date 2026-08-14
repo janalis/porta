@@ -112,10 +112,12 @@ final class ContainerDebugCommandTest extends TestCase
         /** @var array<string, mixed> $saved */
         $saved = [];
         foreach ($_ENV as $key => $value) {
-            if (\is_string($key) && str_starts_with($key, 'PORTA_')) {
-                $saved[$key] = $value;
-                unset($_ENV[$key]);
+            if (!(\is_string($key) && str_starts_with($key, 'PORTA_'))) {
+                continue;
             }
+
+            $saved[$key] = $value;
+            unset($_ENV[$key]);
         }
         putenv('PORTA_CONTAINER_CACHE=off');
 
@@ -123,15 +125,18 @@ final class ContainerDebugCommandTest extends TestCase
             new IdeContainerFactory()->build('/tmp/porta-env-contract-test', IdeConfig::load('/tmp/porta-env-contract-test'), Ansi::Enabled);
             $seeded = [];
             foreach (array_keys($_ENV) as $key) {
-                if (\is_string($key) && str_starts_with($key, 'PORTA_')) {
-                    $seeded[] = $key;
+                if (!(\is_string($key) && str_starts_with($key, 'PORTA_'))) {
+                    continue;
                 }
+
+                $seeded[] = $key;
             }
         } finally {
-            foreach (array_keys($_ENV) as $key) {
-                if (\is_string($key) && str_starts_with($key, 'PORTA_')) {
-                    unset($_ENV[$key]);
-                }
+            // No `continue` in a finally block (the lint gate forbids control
+            // flow there): filter first, then sweep.
+            $portaKeys = array_filter(array_keys($_ENV), static fn (int|string $key): bool => \is_string($key) && str_starts_with($key, 'PORTA_'));
+            foreach ($portaKeys as $key) {
+                unset($_ENV[$key]);
             }
             foreach ($saved as $key => $value) {
                 $_ENV[$key] = $value;

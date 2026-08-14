@@ -17,6 +17,7 @@ interface EditorHost
     /** Fire the app-level change hooks (dirty marker, LSP didChange, …). */
     public function notifyChange(): void;
 
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false): void;
 
     public function jumpTo(int $line, int $utf16Col): void;

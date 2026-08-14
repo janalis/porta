@@ -928,7 +928,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         $host = Probe::get($editor, 'overlayHost');
         $box = Probe::get($host, 'promptBox');
-        \assert($box instanceof \Porta\Overlay\Region\ModalBox);
+        \assert($box instanceof \Porta\Overlay\Region\ModalBox, description: 'the overlay laid out a modal box');
 
         $this->assertTrue($editor->handlePickerHover($box->startRow, $box->col + $box->width - 2), 'onto the ×');
         $this->assertFalse($editor->handlePickerHover($box->startRow, $box->col + $box->width - 2), 'unchanged on the same cell');

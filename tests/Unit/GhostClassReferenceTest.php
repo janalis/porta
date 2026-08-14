@@ -50,7 +50,7 @@ final class GhostClassReferenceTest extends TestCase
                 if (self::exists($fqcn)) {
                     continue;
                 }
-                $ghosts[] = str_replace(\dirname(__DIR__, levels: 2).'/', '', $path).': '.$fqcn;
+                $ghosts[] = str_replace(\dirname(__DIR__, levels: 2).'/', replace: '', subject: $path).': '.$fqcn;
             }
         }
 
@@ -76,7 +76,7 @@ final class GhostClassReferenceTest extends TestCase
         foreach (['src', 'tests', 'plugins'] as $dir) {
             $tree = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root.'/'.$dir, \FilesystemIterator::SKIP_DOTS));
             foreach ($tree as $entry) {
-                \assert($entry instanceof \SplFileInfo);
+                \assert($entry instanceof \SplFileInfo, description: 'the iterator yields file entries');
                 $path = $entry->getPathname();
                 // Vendored code is not ours, and the fixtures are deliberately
                 // malformed — both would report on someone else's decisions.

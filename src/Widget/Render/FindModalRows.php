@@ -87,6 +87,7 @@ final class FindModalRows
      *
      * @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result
      */
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     public static function previewMatch(array $result, RowSelection $selected, bool $excluded, string $replacement, int $width, Styles $styles): string
     {
         $bg = $styles->of(ModalRowStyle::role($selected))->getAnsiRestore();

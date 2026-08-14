@@ -44,6 +44,7 @@ trait MenuOverlayHostTrait
         $this->invalidate();
     }
 
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     public function setModalBackdrop(bool $on): void
     {
         if ($on === $this->modalBackdrop) {

@@ -63,7 +63,7 @@ final class LayoutController
     /** The resize state for a view's region, or null when it declared no resizable sidebar. */
     private function viewResize(string $id): ?SidebarResizeState
     {
-        if (isset($this->viewResizes[$id])) {
+        if (\array_key_exists($id, $this->viewResizes)) {
             return $this->viewResizes[$id];
         }
         $panes = $this->regions->find($id)?->sidebarPanes();
@@ -92,9 +92,11 @@ final class LayoutController
 
         // Plain width fields: safe to set even while a view's widgets are detached.
         foreach ($this->sidebarResizes() as $state) {
-            if (null !== $state->widthPercent) {
-                $this->applyPercent($state->sidebar, $state->widthPercent, $cols);
+            if (null === $state->widthPercent) {
+                continue;
             }
+
+            $this->applyPercent($state->sidebar, $state->widthPercent, $cols);
         }
         if (null !== $this->bottomPanelHeightPercent) {
             $this->resizeBottomPanels($this->clampPanel((int) round(($this->bottomPanelHeightPercent * $rows) / 100), $rows));

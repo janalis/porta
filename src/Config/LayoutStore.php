@@ -18,7 +18,7 @@ final readonly class LayoutStore
 
     public function __construct(
         string $rootDir,
-        private readonly Filesystem $fs = new Filesystem(),
+        private Filesystem $fs = new Filesystem(),
     ) {
         $this->file = $rootDir.'/.porta/layout.json';
     }

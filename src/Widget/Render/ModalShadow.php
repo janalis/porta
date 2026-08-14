@@ -7,7 +7,6 @@ namespace Porta\Widget\Render;
 use Porta\Overlay\Region\SpanSlicer;
 use Porta\Support\AnsiText;
 use Porta\Ui\Theme\Styles;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\WidgetRect;
 
 /**

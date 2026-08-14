@@ -200,7 +200,7 @@ final class CoverageCheckCommandTest extends TestCase
         $this->assertStringContainsString('100.00%', $display, 'the percentage was green the whole time — that is the point');
         // The graded file still appears in the table above; what matters is
         // which files the failure itself names.
-        $named = substr($display, (int) strpos($display, 'absent from the report'));
+        $named = substr($display, offset: (int) strpos($display, needle: 'absent from the report'));
         $this->assertStringContainsString('Ghost.php', $named, 'the ungraded file is named');
         $this->assertStringNotContainsString('Graded.php', $named, 'and the graded one is not');
     }

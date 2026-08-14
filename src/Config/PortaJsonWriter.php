@@ -50,9 +50,11 @@ final readonly class PortaJsonWriter
                 unset($settings[$obsolete]);
             }
             foreach (IdeConfig::SUPERSEDED_BY as $legacy => $successor) {
-                if ($key === $successor) {
-                    unset($settings[$legacy]);
+                if ($key !== $successor) {
+                    continue;
                 }
+
+                unset($settings[$legacy]);
             }
             $config['settings'] = $settings;
         });

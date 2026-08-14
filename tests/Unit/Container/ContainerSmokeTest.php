@@ -47,7 +47,7 @@ final class ContainerSmokeTest extends ContainerTestCase
             $resolved = 0;
             $removed = $container->getRemovedIds();
             foreach ($container->getServiceIds() as $id) {
-                if (isset($removed[$id])) {
+                if (\array_key_exists($id, $removed)) {
                     continue; // private and inlined — reachable only through its consumers
                 }
                 $this->assertNotNull($container->get($id), \sprintf('service "%s" resolves', $id));

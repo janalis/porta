@@ -66,8 +66,10 @@ final class ContainerDebugCommand extends Command
     public function __invoke(
         OutputInterface $output,
         #[Option('Show the pre-compile definitions instead of the compiled ones', name: 'loaded')]
+        // @mago-expect lint:no-boolean-flag-parameter -- Symfony Console's #[Option] shape: a bool option IS a flag.
         bool $loadedView = false,
         #[Option('List interface → id aliases (always pre-compile)', name: 'aliases')]
+        // @mago-expect lint:no-boolean-flag-parameter -- Symfony Console's #[Option] shape: a bool option IS a flag.
         bool $aliasView = false,
         #[Option('List the services carrying this tag', name: 'tag')]
         ?string $tagView = null,

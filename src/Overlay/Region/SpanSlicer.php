@@ -51,8 +51,12 @@ final class SpanSlicer
                 // one hardware-cursor marker per pane the panel crosses, and
                 // the ScreenWriter's marker conversion mangles the row at the
                 // duplicates (visible as the row truncating at a pane seam).
-                if ($clipOffset > 0 && false !== ($markerAt = strpos($segment, AnsiUtils::CURSOR_MARKER_PREFIX)) && AnsiUtils::visibleWidth(substr($segment, 0, $markerAt)) < $clipOffset) {
-                    $slice = (string) preg_replace('/\x1b_pi:c;[^\x07]*\x07/', '', $slice);
+                if (
+                    $clipOffset > 0
+                    && false !== ($markerAt = strpos($segment, AnsiUtils::CURSOR_MARKER_PREFIX))
+                    && AnsiUtils::visibleWidth(substr($segment, offset: 0, length: $markerAt)) < $clipOffset
+                ) {
+                    $slice = (string) preg_replace('/\x1b_pi:c;[^\x07]*\x07/', replacement: '', subject: $slice);
                 }
                 $spans[] = [
                     'row' => $localRow,

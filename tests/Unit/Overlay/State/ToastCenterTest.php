@@ -49,7 +49,7 @@ final class ToastCenterTest extends TestCase
     public function testTheStackCapEvictsTheOldestAndCancelsItsTimer(): void
     {
         $center = $this->center();
-        foreach (range(1, 6) as $i) {
+        foreach (range(1, end: 6) as $i) {
             $center->push("t{$i}", ToastSeverity::Info);
         }
 

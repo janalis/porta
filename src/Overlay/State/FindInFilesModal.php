@@ -13,9 +13,7 @@ use Porta\Support\IntMath;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\ClickZones;
 use Porta\Ui\CursorStyle;
-use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\FindModalRows;
@@ -290,11 +288,13 @@ final class FindInFilesModal
             return;
         }
         foreach (self::keyHandlers() as $action => $handler) {
-            if ($kb->matches($data, $action)) {
-                $handler($this);
-
-                return;
+            if (!$kb->matches($data, $action)) {
+                continue;
             }
+
+            $handler($this);
+
+            return;
         }
         if ($this->activeTextField()->insert($data)) {
             $this->notifyField();
@@ -853,6 +853,7 @@ final class FindInFilesModal
      * tracks it with the grab offset, clamped at the next composite. False
      * when nothing is armed, so the router chain falls through.
      */
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     public function continueDragTo(int $relRow, int $relCol, bool $release): bool
     {
         $box = $this->box;

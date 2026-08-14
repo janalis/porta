@@ -43,6 +43,7 @@ final readonly class Notifier implements FlashSink
     public function notify(string $message, ToastSeverity $severity, float $seconds = 2.5): void
     {
         $this->log?->append($message, $severity);
+        // @mago-expect lint:no-else-clause -- genuine two-way choice with a shared tail below; an early return would duplicate it.
         if (null !== $this->toasts) {
             $this->toasts->push($message, $severity, $seconds);
         } else {

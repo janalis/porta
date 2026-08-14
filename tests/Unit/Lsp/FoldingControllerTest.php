@@ -15,11 +15,6 @@ use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
-use Symfony\Component\Tui\Input\Keybindings;
-use Symfony\Component\Tui\Render\Renderer;
-use Symfony\Component\Tui\Style\StyleSheet;
-use Symfony\Component\Tui\Terminal\VirtualTerminal;
-use Symfony\Component\Tui\Tui;
 
 final class FoldingControllerTest extends TestCase
 {

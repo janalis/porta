@@ -9,7 +9,6 @@ use Porta\I18n\Translator;
 use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class SettingsNavWidgetTest extends TestCase

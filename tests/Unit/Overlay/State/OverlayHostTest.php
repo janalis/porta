@@ -194,7 +194,7 @@ final class OverlayHostTest extends TestCase
         $host->openList('Title', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn () => null);
         $lines = $this->canvas($host, 80, 20);
         $box = Probe::get($host, 'overlayBox');
-        \assert($box instanceof \Porta\Overlay\Region\ModalBox);
+        \assert($box instanceof \Porta\Overlay\Region\ModalBox, description: 'the overlay laid out a modal box');
         $normalBar = $lines[$box->startRow];
 
         $this->assertTrue($host->hoverAt($box->startRow, $box->col + $box->width - 2), 'onto the ×');
@@ -215,7 +215,7 @@ final class OverlayHostTest extends TestCase
         $host->openPrompt('Go to line', '', static fn () => null);
         $host->layout([0, 0, 8, 40]);
         $box = Probe::get($host, 'promptBox');
-        \assert($box instanceof \Porta\Overlay\Region\ModalBox);
+        \assert($box instanceof \Porta\Overlay\Region\ModalBox, description: 'the overlay laid out a modal box');
 
         $this->assertTrue($host->promptHoverAt($box->startRow, $box->col + $box->width - 2), 'onto the ×');
         $this->assertTrue($host->promptHoverAt($box->startRow + 2, $box->col + 2), 'off it');
@@ -228,7 +228,7 @@ final class OverlayHostTest extends TestCase
         $host->openList('Title', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn () => null);
         $host->layout([0, 0, 20, 80]);
         $box = Probe::get($host, 'overlayBox');
-        \assert($box instanceof \Porta\Overlay\Region\ModalBox);
+        \assert($box instanceof \Porta\Overlay\Region\ModalBox, description: 'the overlay laid out a modal box');
 
         $this->assertTrue($host->clickAt($box->startRow, $box->col + $box->width - 2), 'the title bar ×');
         $this->assertFalse(null !== Probe::get($host, 'overlay'));
@@ -243,7 +243,7 @@ final class OverlayHostTest extends TestCase
         });
         $host->layout([0, 0, 20, 80]);
         $box = Probe::get($host, 'searchBox');
-        \assert($box instanceof \Porta\Overlay\Region\ModalBox);
+        \assert($box instanceof \Porta\Overlay\Region\ModalBox, description: 'the overlay laid out a modal box');
 
         $this->assertTrue($host->searchClickAt($box->startRow, $box->col + $box->width - 2), 'the title bar ×');
         $this->assertTrue($closed);

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Workbench\View;
 
 use Porta\Workbench\Menu\ViewMenuSource;
-use Porta\Workbench\View\ViewPointer;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 

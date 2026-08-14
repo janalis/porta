@@ -91,7 +91,7 @@ sort-uses = true
 # deliberately — no rule is disabled; everything runs at full strength.
 # The mock LSP/DAP servers are standalone procedural scripts, not codebase
 # code — they keep their script idioms (camelCase helpers, `global`).
-excludes = ["tests/Support/slow-reading-lsp-server.php", "tests/Support/demanding-lsp-server.php", "tests/Support/incremental-lsp-server.php", "tests/Support/mock-lsp-server.php", "tests/Support/command-lsp-server.php", "tests/Support/mock-dap-adapter.php"]
+excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server.php", "tests/Support/demanding-lsp-server.php", "tests/Support/incremental-lsp-server.php", "tests/Support/mock-lsp-server.php", "tests/Support/command-lsp-server.php", "tests/Support/mock-dap-adapter.php"]
 
 # [linter.rules] — every rule runs (no disables). The size/complexity metric
 # rules stay enabled but are calibrated to this TUI codebase's maxima: the

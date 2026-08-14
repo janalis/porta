@@ -179,6 +179,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         [$this->contextExpanded, $this->contextCache] = ResultIdentity::thawContext($this->results, $expanded, $cache);
 
         $this->rebuildView();
+        // @mago-expect lint:no-else-clause -- genuine two-way choice with a shared tail below; an early return would duplicate it.
         if (null !== $selectedPath || null !== $selectedGroupKey) {
             $this->relocateSelection($selectedPath, $selectedLine, $selectedGroupKey, $this->list->selected());
         } else {
@@ -238,20 +239,25 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     {
         if (null !== $path && null !== $line) {
             foreach ($this->displayRows as $i => $row) {
-                if ($row->matchIndex >= 0 && null !== ($result = $this->results[$row->matchIndex] ?? null) && $result['path'] === $path && $result['line'] === $line) {
-                    $this->list->select($i);
-
-                    return;
+                $result = $row->matchIndex >= 0 ? $this->results[$row->matchIndex] ?? null : null;
+                if (null === $result || $result['path'] !== $path || $result['line'] !== $line) {
+                    continue;
                 }
+
+                $this->list->select($i);
+
+                return;
             }
         }
         if (null !== $groupKey) {
             foreach ($this->displayRows as $i => $row) {
-                if ($row->filePath === $groupKey) {
-                    $this->list->select($i);
-
-                    return;
+                if ($row->filePath !== $groupKey) {
+                    continue;
                 }
+
+                $this->list->select($i);
+
+                return;
             }
         }
         $count = \count($this->displayRows);

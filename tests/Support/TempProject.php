@@ -105,8 +105,9 @@ final class TempProject
         } catch (\Throwable) {
             try {
                 $this->fs->remove($this->dir);
+
+                // @mago-expect lint:no-empty-catch-clause -- deliberately abandoned to /var/folders cleanup: a leftover dir is harmless, a crashed worker fails the suite.
             } catch (\Throwable) {
-                // Abandoned to /var/folders cleanup.
             }
         }
     }

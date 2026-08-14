@@ -458,7 +458,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     ]);
                     $this->assertTrue($editor->isCompletionOpen());
                 },
-                320 => function ($tui, $terminal, $ide): void {
+                320 => static function ($tui, $terminal, $ide): void {
                     $tui->requestRender();
                     $tui->tick(); // paint the popup so its box geometry is recorded
                     $editor = $tui->getById('editor');
@@ -469,7 +469,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     // the INNER item box, one row below the frame's top border.
                     $completion = Probe::get($editor, 'completion');
                     $box = Probe::get($completion, 'box');
-                    \assert($box instanceof \Porta\Editor\CompletionBox);
+                    \assert($box instanceof \Porta\Editor\CompletionBox, description: 'the completion overlay laid out its box');
                     $x = $rect->col + $box->col + 2;
                     $y = $rect->row + $box->startRow;
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $x + 1, $y + 1)); // hover tints it

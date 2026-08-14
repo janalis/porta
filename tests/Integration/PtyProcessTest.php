@@ -9,7 +9,6 @@ use Porta\Terminal\PtyProcess;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
-use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 final class PtyProcessTest extends TestCase

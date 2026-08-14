@@ -195,8 +195,8 @@ final class IdeContainerFactoryTest extends TestCase
         // Foreign generations carry a different install key in the filename.
         $project = new TempProject();
         putenv('PORTA_CACHE_DIR='.$project->dir);
-        file_put_contents($project->path('container-feedf00d-abc123.php'), '<?php // another install');
-        file_put_contents($project->path('container-feedf00d-abc123.php.meta'), 'meta');
+        file_put_contents($project->path('container-feedf00d-abc123.php'), data: '<?php // another install');
+        file_put_contents($project->path('container-feedf00d-abc123.php.meta'), data: 'meta');
 
         $this->build();
 
@@ -212,9 +212,9 @@ final class IdeContainerFactoryTest extends TestCase
         // forever. The old naming is globally obsolete, so it is fair game.
         $project = new TempProject();
         putenv('PORTA_CACHE_DIR='.$project->dir);
-        file_put_contents($project->path('container-353c64d8016a114fe6c3e529dd2d34ea.php'), '<?php // legacy');
-        file_put_contents($project->path('container-353c64d8016a114fe6c3e529dd2d34ea.php.meta'), 'meta');
-        file_put_contents($project->path('container-353c64d8016a114fe6c3e529dd2d34ea.php.meta.json'), '{}');
+        file_put_contents($project->path('container-353c64d8016a114fe6c3e529dd2d34ea.php'), data: '<?php // legacy');
+        file_put_contents($project->path('container-353c64d8016a114fe6c3e529dd2d34ea.php.meta'), data: 'meta');
+        file_put_contents($project->path('container-353c64d8016a114fe6c3e529dd2d34ea.php.meta.json'), data: '{}');
 
         $this->build();
 

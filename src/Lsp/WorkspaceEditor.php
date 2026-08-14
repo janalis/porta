@@ -23,7 +23,7 @@ final readonly class WorkspaceEditor
         private BufferManager $buffers,
         private EditorInvalidator $editor,
         private LspSessionPool $lsp,
-        private readonly Filesystem $fs = new Filesystem(),
+        private Filesystem $fs = new Filesystem(),
     ) {}
 
     /**

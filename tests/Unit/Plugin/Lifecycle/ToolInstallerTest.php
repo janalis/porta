@@ -9,7 +9,6 @@ use Porta\Plugin\Lifecycle\InstallOutcome;
 use Porta\Plugin\Lifecycle\ToolInstaller;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
-use Revolt\EventLoop;
 
 final class ToolInstallerTest extends TestCase
 {

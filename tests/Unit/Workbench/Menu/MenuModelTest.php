@@ -74,6 +74,19 @@ final class MenuModelTest extends TestCase
         $this->assertSame(['File', 'Edit', 'Navigate', 'Code', 'Run', 'Git', 'View', 'Help'], $titles);
     }
 
+    public function testAViewlessContributionAddsItsMenuAndNoViewSafeEntry(): void
+    {
+        // A contributed menu need not belong to a view ('' viewId): it still
+        // places after its anchor, and contributes nothing to the view-safe
+        // map — there is no view whose active state it could gate.
+        $ideKeys = new Keybindings([]);
+        $viewless = new MenuContribution(title: 'Tools', after: 'Run', items: [], viewId: '', viewSafe: ['ide_help']);
+
+        $menus = MenuModel::build(new CommandRegistry(), new CodeEditorWidget(), $ideKeys, new Translator('en'), contributions: [$viewless]);
+
+        $this->assertContains('Tools', array_map(static fn (Menu $m) => $m->title, $menus), 'the viewless menu still places');
+    }
+
     public function testPluginSpecsInsertAPluginsMenuBetweenCodeAndRun(): void
     {
         $commands = new CommandRegistry();

@@ -14,7 +14,6 @@ use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Terminal\TerminalSessions;
 use Porta\Ui\Glyphs;
-use Porta\Ui\Role;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelCallbacks;
 use Porta\Widget\DebugPanelWidget;

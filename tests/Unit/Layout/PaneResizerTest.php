@@ -39,6 +39,7 @@ final class PaneResizerTest extends TestCase
     private ViewRegions $regions;
     private SettingsNavWidget $nav;
 
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     private function resizer(bool $declareSidebar = true): PaneResizer
     {
         $project = new TempProject();

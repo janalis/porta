@@ -493,7 +493,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $lifecycle->disable('app');
                     $lifecycle->enable('app');
                     $this->assertContains('App Run', array_column($commands->paletteCommands(), 'label'));
-                    $this->assertSame(['Plugin "app" enabled'], array_slice(Toasts::all($ide), 0, 1), 'nothing to also-enable');
+                    $this->assertSame(['Plugin "app" enabled'], array_slice(Toasts::all($ide), offset: 0, length: 1), 'nothing to also-enable');
 
                     // Disabling the requirement takes the dependent with it: it
                     // cannot work without what it declared it needs.

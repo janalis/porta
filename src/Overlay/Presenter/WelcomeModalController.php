@@ -338,6 +338,7 @@ final class WelcomeModalController implements ContributedView
      * the pane union, size to the 20×5 floors and the union's extent)
      * happens in compose, the single geometry authority.
      */
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     public function continueDragTo(int $row, int $col, bool $release): bool
     {
         if ($this->resizing) {

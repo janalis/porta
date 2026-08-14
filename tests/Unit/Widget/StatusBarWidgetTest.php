@@ -15,6 +15,7 @@ use Symfony\Component\Tui\Render\RenderContext;
 final class StatusBarWidgetTest extends TestCase
 {
     /** A status row with one clickable cell spanning cols [0,6) of `left`. */
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     private static function provider(bool $menus, string $right = 'R'): callable
     {
         $spans = $menus ? [new StatusMenuSpan(0, 6, static fn (): array => [new MenuItem('Switch', '', static fn () => null)])] : [];

@@ -25,7 +25,7 @@ final class IdeLocatorMembershipTest extends ContainerTestCase
         preg_match_all('/^use ([\w\\\\]+)(?: as (\w+))?;/m', $ideSource, $useMatches, \PREG_SET_ORDER);
         foreach ($useMatches as $u) {
             $fqcn = $u[1];
-            $short = $u[2] ?? substr((string) strrchr('\\'.$fqcn, '\\'), 1);
+            $short = $u[2] ?? substr((string) strrchr('\\'.$fqcn, needle: '\\'), offset: 1);
             $imports[$short] = $fqcn;
         }
         preg_match_all('/->service\((\w+)::class\)/', $ideSource, $calls);

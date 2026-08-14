@@ -9,7 +9,6 @@ use Porta\Terminal\PtyProcess;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
-use Revolt\EventLoop;
 
 final class TerminalSessionsTest extends TestCase
 {

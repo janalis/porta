@@ -115,10 +115,12 @@ final class ActionCatalogTest extends TestCase
         /** @var array<string, array<string, mixed>> $actions */
         $actions = Probe::getStatic(ActionCatalog::class, 'ACTIONS');
         foreach ($actions as $id => $action) {
-            if (str_starts_with((string) $id, 'git_')) {
-                $actual[$id] = ActionCatalog::label((string) $id);
-                $this->assertTrue(ActionCatalog::isAdoptable((string) $id), $id.' must be adoptable before the plugin can implement it');
+            if (!str_starts_with((string) $id, 'git_')) {
+                continue;
             }
+
+            $actual[$id] = ActionCatalog::label((string) $id);
+            $this->assertTrue(ActionCatalog::isAdoptable((string) $id), $id.' must be adoptable before the plugin can implement it');
         }
         ksort($actual);
 

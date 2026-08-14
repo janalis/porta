@@ -7,7 +7,6 @@ namespace Porta\Tests\Unit\Ui;
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Ui\NonBlockingTerminal;
-use Revolt\EventLoop;
 use Symfony\Component\Tui\Terminal\TerminalInterface;
 
 final class NonBlockingTerminalTest extends TestCase

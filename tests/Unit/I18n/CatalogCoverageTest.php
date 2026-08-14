@@ -133,14 +133,17 @@ final class CatalogCoverageTest extends TestCase
     /** @return list<string> every .php file under src/ and plugins/<name>/src/ */
     private function phpFiles(): array
     {
-        $roots = [self::ROOT.'/src', ...(glob(self::ROOT.'/plugins/*/src') ?: [])];
+        $pluginSrc = glob(self::ROOT.'/plugins/*/src');
+        $roots = [self::ROOT.'/src', ...(\is_array($pluginSrc) ? $pluginSrc : [])];
         $files = [];
         foreach ($roots as $root) {
             $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS));
             foreach ($iterator as $file) {
-                if ($file instanceof \SplFileInfo && $file->isFile() && str_ends_with($file->getPathname(), '.php')) {
-                    $files[] = $file->getPathname();
+                if (!($file instanceof \SplFileInfo && $file->isFile() && str_ends_with($file->getPathname(), '.php'))) {
+                    continue;
                 }
+
+                $files[] = $file->getPathname();
             }
         }
 
@@ -155,7 +158,7 @@ final class CatalogCoverageTest extends TestCase
      */
     private function unquote(string $literal): string
     {
-        $body = substr($literal, 1, -1);
+        $body = substr($literal, offset: 1, length: -1);
 
         return "'" === $literal[0] ? str_replace(['\\\\', "\\'"], ['\\', "'"], $body) : stripcslashes($body);
     }

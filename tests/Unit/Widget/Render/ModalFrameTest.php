@@ -49,8 +49,8 @@ final class ModalFrameTest extends TestCase
         ] as [$title, $width]) {
             $bar = $this->plainBar($title, $width);
 
-            $this->assertSame(Glyphs::CLOSE, mb_substr($bar, $width - 2, 1), "width {$width}");
-            $this->assertSame(Glyphs::MODAL_TOP_RIGHT, mb_substr($bar, $width - 1, 1));
+            $this->assertSame(Glyphs::CLOSE, mb_substr($bar, $width - 2, length: 1), "width {$width}");
+            $this->assertSame(Glyphs::MODAL_TOP_RIGHT, mb_substr($bar, $width - 1, length: 1));
         }
     }
 
@@ -100,7 +100,7 @@ final class ModalFrameTest extends TestCase
 
     public function testEveryWrappedRowIsExactlyTheBoxWidth(): void
     {
-        foreach (ModalFrame::wrap(['a', str_repeat('x', 50)], 20, Styles::dark()) as $i => $row) {
+        foreach (ModalFrame::wrap(['a', str_repeat('x', times: 50)], 20, Styles::dark()) as $i => $row) {
             $this->assertSame(20 + ModalFrame::CHROME_COLS, AnsiUtils::visibleWidth($row), "row {$i}");
         }
     }
@@ -123,6 +123,6 @@ final class ModalFrameTest extends TestCase
 
         $this->assertSame(1 + ModalFrame::CHROME_ROWS, 1 + \count($body), 'title bar + body = content + chrome rows');
         $this->assertSame(8 + ModalFrame::CHROME_COLS, AnsiUtils::visibleWidth($body[0]));
-        $this->assertSame('x', trim(AnsiUtils::stripAnsiCodes($body[ModalFrame::CHROME_ROWS_TOP - 1]), ' │'), 'content starts CHROME_ROWS_TOP below the box top');
+        $this->assertSame('x', trim(AnsiUtils::stripAnsiCodes($body[ModalFrame::CHROME_ROWS_TOP - 1]), characters: ' │'), 'content starts CHROME_ROWS_TOP below the box top');
     }
 }

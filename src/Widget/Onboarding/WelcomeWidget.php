@@ -305,6 +305,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
      * width, the wrap widths and the card heights never depend on which card
      * is selected. Selection outranks hover, as everywhere.
      */
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     private function paint(string $margin, string $body, int $index, int $width, bool $isTitle = false): string
     {
         if (!$this->list->isSelected($index)) {

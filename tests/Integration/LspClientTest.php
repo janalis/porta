@@ -440,7 +440,7 @@ final class LspClientTest extends TestCase
         $this->assertGreaterThan($baseline, \count(\Revolt\EventLoop::getIdentifiers()), 'the pipe watchers are armed');
 
         // The crashing server exits immediately; EOF must retire the watchers.
-        $this->await(static fn (): bool => \count(\Revolt\EventLoop::getIdentifiers()) <= ($baseline + 0), 5.0, 'the EOF path to cancel both pipe watchers');
+        $this->await(static fn (): bool => \count(\Revolt\EventLoop::getIdentifiers()) <= $baseline, 5.0, 'the EOF path to cancel both pipe watchers');
         $this->assertSame($baseline, \count(\Revolt\EventLoop::getIdentifiers()), 'no watcher survives the peer');
     }
 }

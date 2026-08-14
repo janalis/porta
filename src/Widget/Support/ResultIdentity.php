@@ -32,15 +32,19 @@ final class ResultIdentity
     {
         $frozenExpanded = [];
         foreach ($expanded as $matchIndex => $on) {
-            if (null !== ($result = $results[$matchIndex] ?? null)) {
-                $frozenExpanded[self::key($result)] = $on;
+            if (null === ($result = $results[$matchIndex] ?? null)) {
+                continue;
             }
+
+            $frozenExpanded[self::key($result)] = $on;
         }
         $frozenCache = [];
         foreach ($cache as $matchIndex => $lines) {
-            if (null !== ($result = $results[$matchIndex] ?? null)) {
-                $frozenCache[self::key($result)] = $lines;
+            if (null === ($result = $results[$matchIndex] ?? null)) {
+                continue;
             }
+
+            $frozenCache[self::key($result)] = $lines;
         }
 
         return [$frozenExpanded, $frozenCache];
@@ -64,15 +68,19 @@ final class ResultIdentity
         }
         $thawedExpanded = [];
         foreach ($expanded as $identity => $on) {
-            if (null !== ($index = $byIdentity[$identity] ?? null)) {
-                $thawedExpanded[$index] = $on;
+            if (null === ($index = $byIdentity[$identity] ?? null)) {
+                continue;
             }
+
+            $thawedExpanded[$index] = $on;
         }
         $thawedCache = [];
         foreach ($cache as $identity => $lines) {
-            if (null !== ($index = $byIdentity[$identity] ?? null)) {
-                $thawedCache[$index] = $lines;
+            if (null === ($index = $byIdentity[$identity] ?? null)) {
+                continue;
             }
+
+            $thawedCache[$index] = $lines;
         }
 
         return [$thawedExpanded, $thawedCache];

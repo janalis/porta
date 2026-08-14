@@ -45,7 +45,8 @@ final class ResponsiveLayoutTest extends TestCase
         $this->editor = new CodeEditorWidget();
         $this->editor->setId('editor');
         $this->layout = TestWorkspaceLayout::create(rootDir: $this->project->dir, tree: $this->tree, editor: $this->editor);
-        $this->renderer = $renderer = new Renderer(new StyleSheet());
+        $renderer = new Renderer(new StyleSheet());
+        $this->renderer = $renderer;
         $this->bidi = new BidiTui(terminal: new VirtualTerminal(columns: 100, rows: 30), renderer: $renderer);
         $this->layout->mount($this->bidi);
 

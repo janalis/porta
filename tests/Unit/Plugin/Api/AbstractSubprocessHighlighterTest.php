@@ -245,11 +245,11 @@ final class AbstractSubprocessHighlighterTest extends TestCase
             PHP);
 
         // One per language, so debouncing cannot collapse them into one.
-        $highlight('one', 'rust');
+        $highlight('one', language: 'rust');
         $this->pump(0.05);
-        $highlight('two', 'go');
+        $highlight('two', language: 'go');
         $this->pump(0.05);
-        $highlight('three', 'zig');
+        $highlight('three', language: 'zig');
 
         $this->awaitDelivery(2);
         $this->await(fn (): bool => 0 === Probe::get($this->plugin, 'running'), what: 'both processes to drain');

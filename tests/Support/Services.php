@@ -32,12 +32,12 @@ final class Services
     public static function resolve(Ide $ide, string $class): object
     {
         $container = Probe::object($ide, 'container');
-        \assert($container instanceof ContainerInterface);
+        \assert($container instanceof ContainerInterface, description: 'the Ide holds the compiled container');
         $locator = $container->get('porta.ide');
-        \assert($locator instanceof ServiceLocator);
+        \assert($locator instanceof ServiceLocator, description: 'porta.ide is the ServiceLocator boundary');
         /** @var object $service the locator serves objects; the assert below pins the class */
         $service = $locator->has($class) ? $locator->get($class) : $container->get($class);
-        \assert($service instanceof $class);
+        \assert($service instanceof $class, description: 'the locator entry matches the requested type');
 
         return $service;
     }

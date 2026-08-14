@@ -14,9 +14,7 @@ use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\Render\MenuOverlayHost;
-use Porta\Widget\Render\MenuOverlayHostTrait;
 use Symfony\Component\Tui\Input\Keybindings;
-use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -36,6 +34,7 @@ final class PickerModalPresenterTest extends TestCase
     private OverlayHost $overlays;
     private AbstractWidget&MenuOverlayHost $pane;
 
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     private function presenter(bool $attachEditor = true): PickerModalPresenter
     {
         $this->renderer = new Renderer(new StyleSheet());

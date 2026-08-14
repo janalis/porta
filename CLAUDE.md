@@ -27,8 +27,8 @@ paging it: `composer analyze > /tmp/x.log 2>&1; echo "exit=$?"`.
 - `composer coverage:check` — **100% line coverage**, over `src/` AND every plugin's own
   `src/`. Plugin code must be covered by that plugin's OWN tests.
 - `composer analyze` — zero issues, warnings or help messages.
-- `composer lint` — **exit 0, which is not zero findings.** A standing tail of warning and
-  help findings is expected; the gate forbids a NEW one, so compare against the last run.
+- `composer lint` — **zero findings** (the standing tail was retired 2026-08). Fix a new
+  finding, or suppress it in place with a reasoned `// @mago-expect lint:<rule> -- why`.
 - `composer arch` — fails on drift in EITHER direction. A new edge is added to the
   allowlist in the same commit; a vanished edge is removed from it.
 - `composer format:check` — clean.

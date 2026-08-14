@@ -33,7 +33,7 @@ final class EditorState
     public static function display(object $editor): EditorDisplayOptions
     {
         $display = Probe::object($editor, 'display');
-        \assert($display instanceof EditorDisplayOptions);
+        \assert($display instanceof EditorDisplayOptions, description: 'the editor holds its display options');
 
         return $display;
     }
@@ -42,7 +42,7 @@ final class EditorState
     public static function scroll(object $editor): EditorScroll
     {
         $scroll = Probe::object($editor, 'scroll');
-        \assert($scroll instanceof EditorScroll);
+        \assert($scroll instanceof EditorScroll, description: 'the editor holds its scroll state');
 
         return $scroll;
     }
@@ -51,7 +51,7 @@ final class EditorState
     public static function multiCaret(object $editor): MultiCaret
     {
         $multiCaret = Probe::object($editor, 'multiCaret');
-        \assert($multiCaret instanceof MultiCaret);
+        \assert($multiCaret instanceof MultiCaret, description: 'the editor holds its multi-caret state');
 
         return $multiCaret;
     }
@@ -59,7 +59,7 @@ final class EditorState
     private static function host(object $editor): OverlayHost
     {
         $host = Probe::object($editor, 'overlayHost');
-        \assert($host instanceof OverlayHost);
+        \assert($host instanceof OverlayHost, description: 'the editor holds its overlay host');
 
         return $host;
     }

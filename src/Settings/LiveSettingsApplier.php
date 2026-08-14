@@ -75,9 +75,11 @@ final class LiveSettingsApplier
         // panes rebake on a theme switch without being listed.
         foreach ($this->regions->all() as $region) {
             foreach ([...$region->sidebar()->all(), ...$region->content()->all()] as $widget) {
-                if ($widget instanceof ThemeRefreshable) {
-                    $widget->refreshTheme();
+                if (!$widget instanceof ThemeRefreshable) {
+                    continue;
                 }
+
+                $widget->refreshTheme();
             }
         }
         foreach ($this->panes->all() as $pane) {

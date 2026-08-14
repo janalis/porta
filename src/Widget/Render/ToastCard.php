@@ -29,6 +29,7 @@ final class ToastCard
     /**
      * @return list<string> the framed card rows
      */
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     public static function render(Toast $toast, int $innerWidth, Styles $styles, bool $closeHovered = false): array
     {
         $accent = $styles->of($toast->severity->role());
@@ -51,7 +52,7 @@ final class ToastCard
         $rows = [AnsiText::truncate($top, max(0, $innerWidth + PopupFrame::CHROME_COLS), pad: true)];
         $lines = AnsiText::wrap($toast->message, max(1, $innerWidth - 2));
         if (\count($lines) > self::MAX_MESSAGE_ROWS) {
-            $lines = \array_slice($lines, 0, self::MAX_MESSAGE_ROWS);
+            $lines = \array_slice($lines, offset: 0, length: self::MAX_MESSAGE_ROWS);
             $lines[self::MAX_MESSAGE_ROWS - 1] = AnsiText::truncate($lines[self::MAX_MESSAGE_ROWS - 1].'…', max(1, $innerWidth - 2));
         }
         foreach ($lines as $line) {

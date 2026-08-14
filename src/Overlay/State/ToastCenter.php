@@ -150,7 +150,7 @@ final class ToastCenter
                 continue;
             }
             $this->scheduler->cancel($toast->timerId);
-            array_splice($this->toasts, $i, 1);
+            array_splice($this->toasts, $i, length: 1);
 
             return;
         }

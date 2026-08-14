@@ -28,5 +28,6 @@ interface ModalHost
     /**
      * Open a single-line input prompt (go to line, rename symbol).
      */
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false): void;
 }

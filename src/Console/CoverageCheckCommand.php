@@ -202,12 +202,12 @@ final class CoverageCheckCommand extends Command
             ->notPath('~(^|/)tests/~');
         foreach ($tree as $entry) {
             $path = $entry->getPathname();
-            $relative = false === $root ? $path : str_replace($root.'/', '', $path);
+            $relative = false === $root ? $path : str_replace($root.'/', replace: '', subject: $path);
             // Suffix-matched, not equality: the gate runs from the project root
             // where the path is already relative, but nothing should depend on
             // the caller's working directory to decide what is excused.
             $excused = array_filter($this->mayBeAbsent, static fn (string $tail): bool => str_ends_with($relative, $tail));
-            if (isset($graded[(string) realpath($path)]) || [] !== $excused) {
+            if (\array_key_exists((string) realpath($path), $graded) || [] !== $excused) {
                 continue;
             }
             $absent[] = $relative;

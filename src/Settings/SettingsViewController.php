@@ -5,18 +5,13 @@ declare(strict_types=1);
 namespace Porta\Settings;
 
 use Porta\Container\AsEager;
-use Porta\Container\LayoutSlot;
 use Porta\Event\SettingsRowsStale;
 use Porta\Event\SettingsSectionRequested;
-use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\ViewRegion;
 use Porta\Layout\ViewRegions;
-use Porta\Settings\SettingsMouseRouter;
-use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
-use Porta\Workbench\EditorArea;
 use Porta\Workbench\Menu\ViewMenuSource;
 use Porta\Workbench\View\ContributedView;
 use Porta\Workbench\View\ViewHost;
@@ -26,7 +21,6 @@ use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
-use Symfony\Component\Tui\Widget\ContainerWidget;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 
 /**

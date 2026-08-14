@@ -59,9 +59,7 @@ final class NavigationControllerNativeDocsTest extends TestCase
         );
 
         /** @var string|null $url */
-        $url = Probe::invoke($controller, 'nativeDocsUrl', $line, $col);
-
-        return $url;
+        return Probe::invoke($controller, 'nativeDocsUrl', $line, $col);
     }
 
     public function testABareNativeFunctionStillAnswersWithItsDocs(): void

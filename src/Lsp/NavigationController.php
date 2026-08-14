@@ -92,7 +92,7 @@ final class NavigationController extends AbstractLspController implements Editor
      */
     private function boundToProjectSymbol(string $lineText, int $startCol, int $endCol, string $word): bool
     {
-        $before = rtrim(substr($lineText, 0, $startCol));
+        $before = rtrim(substr($lineText, offset: 0, length: $startCol));
         if (str_ends_with($before, '->') || str_ends_with($before, '::')) {
             return true;
         }
@@ -113,7 +113,7 @@ final class NavigationController extends AbstractLspController implements Editor
         // A qualified `use App\...\Word;` (or `... as Word;`) rebinds the bare
         // name for the whole file, so the import's target must answer.
         return 1 === preg_match(
-            '/^[ \t]*use\s+(?:function\s+|const\s+)?(?:[\w\\\\]*\\\\'.preg_quote($word, '/').'|[^;\n]*\bas\s+'.preg_quote($word, '/').')\s*;/mi',
+            '/^[ \t]*use\s+(?:function\s+|const\s+)?(?:[\w\\\\]*\\\\'.preg_quote($word, delimiter: '/').'|[^;\n]*\bas\s+'.preg_quote($word, delimiter: '/').')\s*;/mi',
             $this->editor->getDocument()->getText(),
         );
     }

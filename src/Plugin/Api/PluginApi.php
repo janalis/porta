@@ -1244,9 +1244,11 @@ final class PluginApi
             // Normalised at the boundary, like setDiagnostics' severity: an
             // unknown kind has no Role behind it, so dropping it here is what
             // stops it reaching the renderer as a colour nobody chose.
-            if (\in_array($kind, ['added', 'modified', 'deleted'], strict: true)) {
-                $known[max(0, $line)] = $kind;
+            if (!\in_array($kind, ['added', 'modified', 'deleted'], strict: true)) {
+                continue;
             }
+
+            $known[max(0, $line)] = $kind;
         }
         $runtime->changeMarks->applyChangeMarks($path, $known);
     }
@@ -1264,6 +1266,7 @@ final class PluginApi
      * Hiding drops whatever marks were showing, so nothing lingers under a
      * strip that is no longer painted.
      */
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     public function showChangeMarkGutter(bool $on): void
     {
         $runtime = $this->manager->runtime();

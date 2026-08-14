@@ -11,7 +11,6 @@ use Porta\Event\DockTabCloseRequested;
 use Porta\Event\DockTabMoveRequested;
 use Porta\I18n\Translator;
 use Porta\Terminal\TerminalSessions;
-use Porta\Tests\Support\FakeRasterizer;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;

@@ -279,7 +279,7 @@ final class WelcomeScreenTest extends TestCase
     public function testTheToolStepsTargetMagoWhenTheProjectShipsIt(): void
     {
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
-        chmod($project->write('vendor/bin/mago', "#!/bin/sh\nexit 0\n"), 0o755);
+        chmod($project->write('vendor/bin/mago', "#!/bin/sh\nexit 0\n"), permissions: 0o755);
 
         $this->runIde($project, $project->path('a.php'), [
             120 => function ($tui, $terminal) use ($project): void {

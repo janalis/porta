@@ -68,12 +68,12 @@ final class ArchitectureArtifact
             }
             if (0 !== $code) {
                 $stderr = trim($process->errorOutput());
-                $done('Architecture command failed: '.('' !== $stderr ? $stderr : "exit {$code}"), null);
+                self::fail($done, 'Architecture command failed: '.('' !== $stderr ? $stderr : "exit {$code}"));
 
                 return;
             }
             if ('' === trim($stdout)) {
-                $done('Architecture command produced no output', null);
+                self::fail($done, 'Architecture command produced no output');
 
                 return;
             }
@@ -83,10 +83,21 @@ final class ArchitectureArtifact
             // proc_open spawns even unusable binaries — unreachable in tests.
             // @codeCoverageIgnoreStart
             $this->running = null;
-            $done('Architecture command failed: could not start', null);
+            self::fail($done, 'Architecture command failed: could not start');
 
             // @codeCoverageIgnoreEnd
         }
+    }
+
+    /**
+     * The failure half of the `$done` protocol: an error and no path.
+     *
+     * @param \Closure(?string $error, ?string $path): void $done
+     */
+    private static function fail(\Closure $done, string $error): void
+    {
+        // @mago-expect lint:literal-named-argument -- a named argument on a closure binds to the CALLER's parameter names, which this seam does not pin.
+        $done($error, null);
     }
 
     /** @param \Closure(?string $error, ?string $path): void $done */
@@ -99,7 +110,7 @@ final class ArchitectureArtifact
             // temp-file+rename — which retires the mkdir-race dance it replaced.
             $this->fs->dumpFile($path, $dot);
         } catch (IOExceptionInterface) {
-            $done('Cannot write '.$path, null);
+            self::fail($done, 'Cannot write '.$path);
 
             return;
         }

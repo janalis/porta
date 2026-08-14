@@ -63,7 +63,7 @@ final class WelcomeStepsTest extends TestCase
     /** Ship an executable mago in the project, flipping both tool steps' target. */
     private function withMago(): void
     {
-        chmod($this->project->write('vendor/bin/mago', "#!/bin/sh\nexit 0\n"), 0o755);
+        chmod($this->project->write('vendor/bin/mago', "#!/bin/sh\nexit 0\n"), permissions: 0o755);
     }
 
     /** A source with one real backend, i.e. highlighting is configured. */

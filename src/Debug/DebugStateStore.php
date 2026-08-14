@@ -21,7 +21,7 @@ final readonly class DebugStateStore
 
     public function __construct(
         string $rootDir,
-        private readonly Filesystem $fs = new Filesystem(),
+        private Filesystem $fs = new Filesystem(),
     ) {
         $this->file = $rootDir.'/.porta/debug.json';
     }

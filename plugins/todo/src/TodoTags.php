@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Todo;
 
+// @mago-expect lint:tagged-todo -- the tags named below are this plugin's subject matter, not a note to self.
 /**
  * The comment tags {@see TodoScan} greps for, as a regex alternation.
  *

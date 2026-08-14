@@ -6,7 +6,6 @@ namespace Porta\Workbench\View;
 
 use Porta\Container\AsIdeService;
 use Porta\Workbench\Menu\ViewMenuSources;
-use Porta\Workbench\View\ViewPointers;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
@@ -141,9 +140,11 @@ final class ViewRegistry
     private function closeOthers(string $target): void
     {
         foreach ($this->views as $id => $view) {
-            if ($id !== $target) {
-                $view->close();
+            if ($id === $target) {
+                continue;
             }
+
+            $view->close();
         }
     }
 

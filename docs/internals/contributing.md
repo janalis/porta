@@ -55,15 +55,17 @@ plugin half cannot ride the parallel run.
 
 **`composer analyze`** — mago reports zero issues, warnings or help messages.
 
-**`composer lint`** — **exit 0, which is not zero findings.** The metric rules
-report at two severities and only the error-level ones (cyclomatic,
-`too-many-*`, `excessive-parameter-list`, `kan-defect`) flip the exit code. A
-standing tail of warning and help findings is expected; what the gate forbids is
-a *new* one, so compare against the previous run rather than reading the count.
-`[linter.rules]` disables nothing — every rule runs, calibrated to this
-codebase's maxima. `excludes` drops paths: the six mock LSP/DAP servers, which
-are procedural scripts by design. The threshold rationale, and which class pins
-each number, is in `mago.toml` itself.
+**`composer lint`** — **zero findings** (the 2026-08 burn-down retired the
+standing tail, so the count IS the contract now — no comparing against a
+previous run). A new finding is fixed, or, where the rule is structurally wrong
+at that site (a Symfony Console bool `#[Option]`, a listener adapter a
+first-class callable would `TypeError`, a plugin whose subject matter is the
+TODO tag), suppressed in place with `// @mago-expect lint:<rule> -- reason` —
+the reason is mandatory prose the next reader can re-judge. `[linter.rules]`
+disables nothing — every rule runs, calibrated to this codebase's maxima.
+`excludes` drops paths: the six mock LSP/DAP servers, which are procedural
+scripts by design. The threshold rationale, and which class pins each number,
+is in `mago.toml` itself.
 
 **`composer arch`** — the architecture ratchet
 (`src/Console/ArchitectureCheckCommand`): the exact namespace import graph,

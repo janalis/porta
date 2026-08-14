@@ -56,6 +56,7 @@ final class JsonFile
      *
      * @param array<array-key, mixed> $data
      */
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     public static function write(Filesystem $fs, string $path, array $data, bool $trailingNewline = false): bool
     {
         try {

@@ -11,7 +11,6 @@ use Porta\Layout\WorkspaceLayout;
 use Porta\Onboarding\OnboardingState;
 use Porta\Settings\SettingsViewController;
 use Porta\Tests\Support\GitBinary;
-use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UsesBundledPlugins;

@@ -254,6 +254,7 @@ final class DapSession
             'stackTrace',
             ['threadId' => $this->threadId ?? 1],
             'stackFrames',
+            // @mago-expect lint:prefer-arrow-function -- the body carries the @var narrowing of the wire shape, which an arrow fn cannot hold
             static function (array $frame): array {
                 /** @var array{id?: int, name?: string, line?: int, source?: array{path?: string}} $frame */
                 return [
@@ -278,6 +279,7 @@ final class DapSession
             'scopes',
             ['frameId' => $frameId],
             'scopes',
+            // @mago-expect lint:prefer-arrow-function -- the body carries the @var narrowing of the wire shape, which an arrow fn cannot hold
             static function (array $scope): array {
                 /** @var array{name?: string, variablesReference?: int} $scope */
                 return ['name' => $scope['name'] ?? '?', 'variablesReference' => $scope['variablesReference'] ?? 0];
@@ -297,6 +299,7 @@ final class DapSession
             'variables',
             ['variablesReference' => $reference],
             'variables',
+            // @mago-expect lint:prefer-arrow-function -- the body carries the @var narrowing of the wire shape, which an arrow fn cannot hold
             static function (array $variable): array {
                 /** @var array{name?: string, value?: string, variablesReference?: int} $variable */
                 return [

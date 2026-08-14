@@ -30,6 +30,7 @@ final class ModalFrame
      * chrome (and the hint yields entirely on a narrow box) so the `×` stays
      * put at {@see \Porta\Overlay\Region\ModalBox::CLOSE_OFFSET} from the right edge.
      */
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     public static function titleBar(string $title, int $width, Styles $styles, bool $closeHovered = false, string $hint = 'Esc'): string
     {
         $accent = $styles->of(Role::TabAccent);
@@ -99,6 +100,7 @@ final class ModalFrame
      *
      * @return list<string>
      */
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     public static function wrapSections(array $sections, int $innerWidth, Styles $styles, bool $resizeCornerHot = false): array
     {
         $accent = $styles->of(Role::TabAccent);

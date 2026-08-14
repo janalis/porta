@@ -15,8 +15,6 @@ use Porta\Debug\DebugAdapters;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\Event\SettingsSectionRequested;
-use Porta\GitPlugin\GitInfo;
-use Porta\GitPlugin\Widget\DiffViewWidget;
 use Porta\Highlight\ColorMode;
 use Porta\Highlight\HighlightPreferences;
 use Porta\Highlight\HighlightRegistry;

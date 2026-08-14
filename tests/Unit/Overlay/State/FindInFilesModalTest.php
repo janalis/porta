@@ -56,7 +56,7 @@ final class FindInFilesModalTest extends TestCase
             return $lines;
         }
         $box = $modal->lastBox();
-        \assert(null !== $box);
+        \assert(null !== $box, description: 'the modal laid out a box');
 
         return $this->placeAt($lines, $placed['rows'], $placed['top'], $placed['col'], $box->width, $columns);
     }
@@ -382,7 +382,7 @@ final class FindInFilesModalTest extends TestCase
             $this->compose($modal);
 
             $box = $modal->lastBox();
-            \assert($box instanceof \Porta\Overlay\Region\ModalBox);
+            \assert($box instanceof \Porta\Overlay\Region\ModalBox, description: 'the overlay laid out a modal box');
 
             return $box;
         };
@@ -410,7 +410,7 @@ final class FindInFilesModalTest extends TestCase
             $this->compose($modal);
 
             $box = $modal->lastBox();
-            \assert($box instanceof \Porta\Overlay\Region\ModalBox);
+            \assert($box instanceof \Porta\Overlay\Region\ModalBox, description: 'the overlay laid out a modal box');
 
             return $box;
         };
@@ -443,7 +443,7 @@ final class FindInFilesModalTest extends TestCase
             $this->compose($modal);
 
             $box = $modal->lastBox();
-            \assert($box instanceof \Porta\Overlay\Region\ModalBox);
+            \assert($box instanceof \Porta\Overlay\Region\ModalBox, description: 'the overlay laid out a modal box');
 
             return $box;
         };
@@ -635,7 +635,7 @@ final class FindInFilesModalTest extends TestCase
         $screen = (function () use ($modal, &$normalBar): string {
             $lines = $this->compose($modal);
             $box = $modal->lastBox();
-            \assert(null !== $box);
+            \assert(null !== $box, description: 'the modal laid out a box');
             $normalBar = $lines[$box->startRow];
 
             return '';
