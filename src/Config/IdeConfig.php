@@ -40,10 +40,6 @@ final class IdeConfig
         'formatOnSave' => false,
         'cursorShape' => 'bar',
         'tabBarPosition' => 'top',
-        'dotPath' => '',
-        'graphRender' => 'bitmap',
-        'svgConverter' => '',
-        'plantuml' => '',
     ];
 
     /**
@@ -55,7 +51,10 @@ final class IdeConfig
      * The eight `git*` keys are here because git became a bundled PLUGIN: they
      * live under `plugins.git.*` now, on that plugin's own settings page. The
      * plugin adopts whatever value the old key held, once, so silence here is
-     * not "ignored" — it is "already read, by their new owner".
+     * not "ignored" — it is "already read, by their new owner". The four
+     * viewer-tool keys made the same move: `dotPath`/`graphRender`/`plantuml`
+     * to `plugins.graph-viewer.*` (as dotPath/renderMode/plantumlPath) and
+     * `svgConverter` to `plugins.image-viewer.svgConverter`.
      */
     public const array LEGACY_SETTINGS = [
         'editorConfig',
@@ -68,6 +67,10 @@ final class IdeConfig
         'gitSignoff',
         'gitRefreshInterval',
         'gitPath',
+        'dotPath',
+        'graphRender',
+        'svgConverter',
+        'plantuml',
     ];
 
     /**
@@ -110,7 +113,6 @@ final class IdeConfig
         'lineNumbers' => ['off', 'absolute', 'relative'],
         'cursorShape' => ['bar', 'block', 'underline'],
         'tabBarPosition' => ['top', 'bottom', 'left', 'right'],
-        'graphRender' => ['bitmap', 'cells'],
     ];
 
     /** An empty `highlight` block: no global default, no per-language overrides. */

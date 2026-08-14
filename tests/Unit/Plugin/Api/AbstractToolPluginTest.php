@@ -332,11 +332,6 @@ final class AbstractToolPluginTest extends TestCase
             {
                 return $this->claimedLanguages($api);
             }
-
-            public function callCoreSetting(string $name): ?string
-            {
-                return $this->coreSetting($name);
-            }
         };
 
         $api->registerSetting('languages', 'Languages', 'text', '');
@@ -346,13 +341,6 @@ final class AbstractToolPluginTest extends TestCase
         $this->assertSame([], $plugin->callClaimed($api), 'an unset claim list claims nothing');
         $api->changeSetting('languages', ' rust , go ,, zig ');
         $this->assertSame(['rust', 'go', 'zig'], $plugin->callClaimed($api), 'trimmed, blanks dropped');
-
-        $_ENV['PORTA_DOT_PATH'] = '/usr/local/bin/dot';
-        $this->assertSame('/usr/local/bin/dot', $plugin->callCoreSetting('dotPath'), 'camelCase maps to the PORTA_ env channel');
-        $_ENV['PORTA_DOT_PATH'] = '';
-        $this->assertNull($plugin->callCoreSetting('dotPath'), 'an empty core setting reads as unset');
-        unset($_ENV['PORTA_DOT_PATH']);
-        $this->assertNull($plugin->callCoreSetting('dotPath'));
     }
 
     public function testApplyingAFormattersOutputOnlyTouchesTheBufferItRanOn(): void

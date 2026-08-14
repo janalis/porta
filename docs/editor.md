@@ -95,7 +95,7 @@ the pixels it covers, so a downscaled image keeps its thin lines instead of
 shimmering; magnifying stays pixel-crisp.
 
 `.svg` files open here too, rasterized by an external converter — the
-`svgConverter` setting if you set one, otherwise `rsvg-convert`, `magick` or
+image-viewer plugin's `svgConverter` setting if you set one, otherwise `rsvg-convert`, `magick` or
 `convert`, whichever is installed. Zooming in re-renders the drawing rather
 than magnifying pixels, so it stays sharp, and the status bar reports the
 document's own size (100% means 100% of the SVG). With no converter
@@ -123,7 +123,7 @@ active.
 
 Opening a `.dot` or `.gv` file renders the Graphviz graph as an interactive
 tab, showing **the picture `dot` itself draws** — real splines, arrowheads,
-fills and fonts (install graphviz, or point the `dotPath` setting at it).
+fills and fonts (install graphviz, or point the graph-viewer plugin's `dotPath` setting at it).
 Zoom with `=`/`-`, `0`/`f` fit, `1` actual size, or `Ctrl+wheel` at the
 pointer — including the trackpad's Ctrl+two-finger-scroll, which glides (see
 the image viewer above for why that is as close to a pinch as a terminal

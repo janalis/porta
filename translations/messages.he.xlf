@@ -2399,8 +2399,8 @@
         <target>לא מוגדר</target>
       </trans-unit>
       <trans-unit id="611">
-        <source>plantuml not found — install it, or set the "plantuml" setting</source>
-        <target>plantuml לא נמצא — התקינו אותו או הגדירו את ההגדרה "plantuml"</target>
+        <source>plantuml not found — install it, or set the "plantumlPath" setting</source>
+        <target>plantuml לא נמצא — התקינו אותו או הגדירו את ההגדרה "plantumlPath"</target>
       </trans-unit>
       <trans-unit id="612">
         <source>rendering…</source>

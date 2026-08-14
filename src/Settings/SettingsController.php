@@ -23,12 +23,10 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  *
  * Every setting applies live: its `apply` closure mutates the running UI (the
  * editor, the theme, the cursor shape, or the locale) the instant it
- * changes, and the value is persisted — except the Graphviz `dotPath`, which
- * is `restart: true` like the per-language `runCommand`
- * rows: it resolves through the compiled env channel, and
- * {@see \Porta\Widget\Settings\SettingsFormWidget} renders its
- * "applies on restart" note. (The architecture generator command lives on the
- * graph-viewer PLUGIN's settings page, not here.)
+ * changes, and the value is persisted. (The viewer-tool paths — Graphviz,
+ * SVG converter, PlantUML — live on their PLUGINS' settings pages now, with
+ * the graph generator command; they were the table's only restart-required
+ * rows.)
  *
  * @phpstan-type Descriptor array{label: string, kind: SettingsRowKind, group: 'general'|'interface', restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, optionLabels?: array<string, string>, min?: int, max?: int}
  */
@@ -137,35 +135,6 @@ final class SettingsController
                 'group' => 'general',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => (bool) $v ? $applier->enableFormatOnSave() : $applier->disableFormatOnSave(),
-            ],
-            'dotPath' => [
-                'label' => 'Graphviz dot path',
-                'kind' => SettingsRowKind::Text,
-                'group' => 'general',
-                'restart' => true, // the engine resolves its binary from the compiled env channel
-                'apply' => null,
-            ],
-            'svgConverter' => [
-                'label' => 'SVG converter path',
-                'kind' => SettingsRowKind::Text,
-                'group' => 'general',
-                'restart' => true, // the rasterizer resolves its binary from the compiled env channel
-                'apply' => null,
-            ],
-            'plantuml' => [
-                'label' => 'PlantUML path (or .jar)',
-                'kind' => SettingsRowKind::Text,
-                'group' => 'general',
-                'restart' => true, // the engine resolves its tool from the compiled env channel
-                'apply' => null,
-            ],
-            'graphRender' => [
-                'label' => 'Graph rendering',
-                'kind' => SettingsRowKind::Choice,
-                'options' => ['bitmap', 'cells'],
-                'group' => 'general',
-                'restart' => true, // the pane reads its default from the compiled env channel
-                'apply' => null,
             ],
         ];
     }

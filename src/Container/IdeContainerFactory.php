@@ -64,10 +64,6 @@ final class IdeContainerFactory
         $_ENV['PORTA_LSP_COMMAND'] = $lspCommand ?? ''; // '' resolves to null via env(default::…)
         $_ENV['PORTA_LSP_DISABLED'] = LspMode::Disabled === $lsp ? '1' : '0';
         $_ENV['PORTA_DOCS_DIR'] = $docsDir;
-        $_ENV['PORTA_DOT_PATH'] = (string) ($config->settings['dotPath'] ?? ''); // '' → auto-discover
-        $_ENV['PORTA_GRAPH_RENDER'] = (string) ($config->settings['graphRender'] ?? 'bitmap');
-        $_ENV['PORTA_SVG_CONVERTER'] = (string) ($config->settings['svgConverter'] ?? ''); // '' → auto-discover
-        $_ENV['PORTA_PLANTUML'] = (string) ($config->settings['plantuml'] ?? ''); // '' → auto-discover
         // The per-project config arrays travel JSON-encoded through the env
         // channel (each consumer reads its own via env(json:PORTA_…)); one map,
         // one encode shape.

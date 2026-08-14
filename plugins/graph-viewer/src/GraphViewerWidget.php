@@ -549,7 +549,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         }
         $message = match (true) {
             'missing-binary' === $this->error => $this->translator->trans('graphviz not found — install graphviz, or set the "dotPath" setting'),
-            'missing-plantuml' === $this->error => $this->translator->trans('plantuml not found — install it, or set the "plantuml" setting'),
+            'missing-plantuml' === $this->error => $this->translator->trans('plantuml not found — install it, or set the "plantumlPath" setting'),
             null !== $this->error => Text::firstLine($this->error),
             $this->layingOut => '⏳ '.$this->translator->trans('layout…'),
             default => '',

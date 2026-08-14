@@ -145,14 +145,13 @@ final class SettingsControllerTest extends TestCase
         $byKey = array_column($rows, null, 'key');
 
         $this->assertSame(
-            ['inlineDiagnostics', 'autoPairs', 'formatOnSave', 'dotPath', 'svgConverter', 'plantuml', 'graphRender'],
+            ['inlineDiagnostics', 'autoPairs', 'formatOnSave'],
             array_column($rows, 'key'),
-            'General holds editor behavior (incl. the restart-required converter rows); appearance moved to Interface',
+            'General holds editor behavior (the viewer-tool paths live on their plugins\' pages now); appearance moved to Interface',
         );
         $this->assertFalse($byKey['autoPairs']->value);
         $this->assertSame(SettingsRowKind::Bool, $byKey['autoPairs']->kind);
         $this->assertFalse($byKey['inlineDiagnostics']->restart, 'live toggles need no restart');
-        $this->assertSame(SettingsRowKind::Text, $byKey['dotPath']->kind, 'a path is a free-text row');
     }
 
     public function testInterfaceRowsExposeTheAppearanceSettings(): void

@@ -13,6 +13,7 @@ use Porta\GraphViewer\Graph\PlantUmlEngine;
 use Porta\GraphViewer\GraphViewerWidget;
 use Porta\ImageViewer\ImageDecoder;
 use Porta\Plugin\Api\AbstractPlugin;
+use Porta\Plugin\Api\LegacyCoreSettings;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Widget\EditorPaneWidget;
 
@@ -36,14 +37,30 @@ return new class('graph-viewer') extends AbstractPlugin {
     public function activate(PluginApi $api): void
     {
         $api->registerSetting('plantuml', 'Render PlantUML diagrams', 'bool', true);
+        // The three tool knobs were CORE settings until this plugin owned
+        // them (the git-keys precedent): `dotPath`, `graphRender` and the
+        // core `plantuml` PATH — renamed, since this plugin's `plantuml` was
+        // already the bool above. The engines read them once, here, which is
+        // why each is restart-to-apply.
+        $api->registerSetting('dotPath', 'Graphviz dot path', hint: 'empty = discover on PATH; takes effect on restart');
+        $api->registerSetting('renderMode', 'Graph rendering', 'choice', 'bitmap', ['bitmap', 'cells'], hint: 'takes effect on restart');
+        $api->registerSetting('plantumlPath', 'PlantUML path (or .jar)', hint: 'empty = discover; takes effect on restart');
         $api->registerViewer('graph', fn (string $path): bool => DotFiles::isDotPath($path) || $this->claimsPlantUml($path));
+        // A value written under the pre-move core key is adopted once and
+        // written through from onReady (persisting is an IDE action).
+        $legacy = new LegacyCoreSettings($api->projectRoot(), 'graph-viewer', ['dotPath' => 'dotPath', 'renderMode' => 'graphRender', 'plantumlPath' => 'plantuml']);
+        $values = $legacy->seed($api->setting(...));
+        $api->onReady(static function () use ($api, $legacy): void {
+            foreach ($legacy->adoptions() as $key => $value) {
+                $api->changeSetting($key, $value);
+            }
+        });
         // The two diagram tools are built here rather than inside the factory:
-        // both read CORE settings through the env channel, which is seeded
-        // before any plugin activates, and one statement per engine keeps them
-        // legible (and individually attributable in coverage).
-        $dot = new DotLayoutEngine($api->projectRoot(), $this->coreSetting('dotPath'));
-        $plantUml = new PlantUmlEngine($api->projectRoot(), $this->coreSetting('plantuml'));
-        $renderMode = $this->coreSetting('graphRender');
+        // one statement per engine keeps them legible (and individually
+        // attributable in coverage).
+        $dot = new DotLayoutEngine($api->projectRoot(), self::path($values['dotPath']));
+        $plantUml = new PlantUmlEngine($api->projectRoot(), self::path($values['plantumlPath']));
+        $renderMode = (string) $values['renderMode'];
         $api->registerActions([
             'graph_zoom_in' => 'Graph: Zoom In',
             'graph_zoom_out' => 'Graph: Zoom Out',
@@ -94,15 +111,18 @@ return new class('graph-viewer') extends AbstractPlugin {
         });
         $api->addMenuItem('architecture');
 
-        $export = function (GraphExportFormat $format) use ($api): void {
+        $export = static function (GraphExportFormat $format) use ($api): void {
             $file = $api->activeFile();
             if (null === $file || !DotFiles::isDotPath($file)) {
                 return; // palette self-guard: only a graph tab exports
             }
             $out = \sprintf('%s/%s.%s', \dirname($file), pathinfo($file, \PATHINFO_FILENAME), $format->extension());
-            // The dot binary follows the CORE dotPath setting: two knobs for
-            // one path would be worse ({@see AbstractPlugin::coreSetting}).
-            new DotLayoutEngine($api->projectRoot(), $this->coreSetting('dotPath'))->export((string) file_get_contents($file), $format, $out, static function (?string $error) use ($api, $out): void {
+            // The export follows the same dotPath setting the pane's engine
+            // read at activate — one knob, read live here.
+            new DotLayoutEngine($api->projectRoot(), self::path($api->setting('dotPath')))->export((string) file_get_contents($file), $format, $out, static function (?string $error) use (
+                $api,
+                $out,
+            ): void {
                 null === $error
                     ? $api->flash('Exported '.basename($out))
                     : $api->flash('Export failed: '.$error, 5.0);
@@ -118,9 +138,8 @@ return new class('graph-viewer') extends AbstractPlugin {
     /**
      * A PlantUML document is the viewer's only if the user wants it AND
      * something can draw it — otherwise it stays the editable text it has
-     * always been. The tool is a CORE setting, so it is read through
-     * coreSetting(): a plugin setting can only be read by its own plugin, and
-     * the engine that needs the path is a core service.
+     * always been. Both knobs are this plugin's own settings now: the bool
+     * toggle and the tool path.
      */
     private function claimsPlantUml(string $path): bool
     {
@@ -128,7 +147,13 @@ return new class('graph-viewer') extends AbstractPlugin {
             null !== DiagramKind::forPath($path)
             && !DotFiles::isDotPath($path)
             && true === (bool) $this->api?->setting('plantuml')
-            && null !== PlantUmlCommand::tool($this->coreSetting('plantuml'))
+            && null !== PlantUmlCommand::tool(self::path($this->api?->setting('plantumlPath') ?? ''))
         );
+    }
+
+    /** A path setting's '' -to-null: empty means "discover", which the engines spell as null. */
+    private static function path(bool|int|string $value): ?string
+    {
+        return '' !== (string) $value ? (string) $value : null;
     }
 };

@@ -72,15 +72,20 @@ final class AsyncProcessTest extends TestCase
 
     public function testTheTimeoutCancelsAHungChildAndReportsFailure(): void
     {
-        $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo "start\n"; sleep(5);'], getcwd(), timeout: 0.15);
+        // The deadline is generous relative to the child's first write, so
+        // the output-kept assertion cannot race the cancel under load.
+        $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo "start\n"; sleep(30);'], getcwd(), timeout: 2.5);
         $exits = [];
         $process->start(static function (int $code) use (&$exits): void {
             $exits[] = $code;
         });
 
+        $this->await(static function () use ($process): bool {
+            return '' !== $process->output();
+        }, what: 'the child to speak before its deadline');
         $this->await(static function () use (&$exits): bool {
             return [] !== $exits;
-        });
+        }, what: 'the deadline to cancel the hung child');
         $this->pump(0.2); // a cancelled watcher or a second timer firing would double-report
         $this->assertSame([-1], $exits, 'the deadline reported exactly one failure exit');
         $this->assertSame("start\n", $process->output(), 'output up to the deadline is kept');

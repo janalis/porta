@@ -8,7 +8,6 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Editor\LineNumberMode;
-use Porta\GraphViewer\Graph\GraphRenderMode;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\CursorStyle;
@@ -640,10 +639,9 @@ final class IdeConfigTest extends TestCase
             array_map(static fn (TabBarPosition $position): string => $position->value, TabBarPosition::cases()),
             IdeConfig::CHOICE_SETTINGS['tabBarPosition'],
         );
-        $this->assertSame(
-            array_map(static fn (GraphRenderMode $mode): string => $mode->value, GraphRenderMode::cases()),
-            IdeConfig::CHOICE_SETTINGS['graphRender'],
-        );
+        // graphRender's pin retired with the setting: it is the graph-viewer
+        // plugin's `renderMode` now, registered one file away from its enum
+        // (and PluginSettings' coerce() clamps any drift to the default).
         // cursorShape has no enum of setting ids; its authority is the mapper.
         // The three ids must reach three DISTINCT shapes (a dropped or repeated
         // id collapses the count), and anything else falls back to Bar.

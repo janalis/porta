@@ -714,7 +714,7 @@ final class GraphViewerWidgetTest extends TestCase
 
         $screen = self::plain($widget->render(new RenderContext(80, 10)));
         $this->assertStringContainsString('plantuml not found', $screen);
-        $this->assertStringContainsString('"plantuml" setting', $screen, 'and says what to do about it');
+        $this->assertStringContainsString('"plantumlPath" setting', $screen, 'and says what to do about it');
     }
 
     public function testADotTabAfterAPlantUmlOneStillLaysOut(): void

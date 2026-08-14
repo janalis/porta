@@ -2399,8 +2399,8 @@
         <target>nicht konfiguriert</target>
       </trans-unit>
       <trans-unit id="611">
-        <source>plantuml not found — install it, or set the "plantuml" setting</source>
-        <target>plantuml nicht gefunden — installieren Sie es oder setzen Sie die Einstellung "plantuml"</target>
+        <source>plantuml not found — install it, or set the "plantumlPath" setting</source>
+        <target>plantuml nicht gefunden — installieren Sie es oder setzen Sie die Einstellung "plantumlPath"</target>
       </trans-unit>
       <trans-unit id="612">
         <source>rendering…</source>

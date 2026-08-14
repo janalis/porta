@@ -69,7 +69,7 @@ final class IdeViewerPluginsTest extends TestCase
     public function testLiveToggleRoutesSubsequentOpensAndKeepsOpenTabs(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) json_encode(['settings' => ['dotPath' => \dirname(__DIR__).'/Support/fake-dot']]),
+            '.porta.json' => (string) json_encode(['plugins' => ['graph-viewer' => ['dotPath' => \dirname(__DIR__).'/Support/fake-dot']]]),
             'a.dot' => self::SMALL_DOT,
             'b.dot' => self::SMALL_DOT,
             'c.dot' => self::SMALL_DOT,

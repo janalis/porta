@@ -47,22 +47,4 @@ abstract class AbstractPlugin implements PortaPlugin
 
         return array_values(array_filter(array_map(trim(...), explode(',', $raw))));
     }
-
-    /**
-     * A CORE IDE setting, read from the env channel the container itself
-     * reads ({@see \Porta\Container\IdeContainerFactory} seeds `PORTA_*`).
-     *
-     * Deliberately narrow and bundled-plugin territory: {@see PluginApi} can
-     * only read settings a plugin registered itself, and duplicating an IDE
-     * setting as a plugin one would give the user two knobs for one thing
-     * (the graph viewer needs the core `dotPath`). A third-party plugin has
-     * no business here — it cannot know which keys exist.
-     */
-    protected function coreSetting(string $name): ?string
-    {
-        $snake = preg_replace('/(?<!^)[A-Z]/', replacement: '_$0', subject: $name) ?? $name;
-        $value = $_ENV['PORTA_'.strtoupper($snake)] ?? null;
-
-        return \is_string($value) && '' !== $value ? $value : null;
-    }
 }
