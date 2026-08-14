@@ -132,14 +132,17 @@ which is why there are no central binds and two same-type same-name
 **Interface aliases are auto-derived by the loader itself.** `PhpFileLoader::load()`
 ends in `registerAliasesForSinglyImplementedInterfaces()`, which aliases every
 `Porta\` interface with exactly one discovered implementation and skips any that
-gains a second. A multi-implementation interface stays an explicit `alias()`, as
-do cross-vendor ones (`ClockInterface`, `TerminalTheme`,
-`EventDispatcherInterface`).
+gains a second. A multi-implementation interface names its winner with
+`#[AsAlias]` **on the implementing class** — the loader honors the attribute
+during `registerClasses()` and the declaration beats the derivation, so
+membership travels with the class like every other porta attribute. The
+cross-vendor aliases the discovery never sees (`ClockInterface`,
+`EventDispatcherInterface`) stay explicit `alias()` calls in services.php.
 
-`Ui/FrameHooks` is aliased explicitly on purpose: `BidiTui`'s definition is
-overridden to synthetic *after* the loader's load-time interface counting, so a
-natively derived alias there would be a load-order accident — and a nullable
-dependency fails silently.
+`Ui/FrameHooks` carries the load-order rationale on `BidiTui`'s attribute:
+its definition is overridden to synthetic *after* the loader's load-time
+interface counting, so a natively derived alias there would be a load-order
+accident — and a nullable dependency fails silently.
 
 **Static self-factories declare themselves on the class** with
 `#[Autoconfigure(constructor: '…')]` rather than a central `->factory()`

@@ -71,12 +71,23 @@ plugin that vendors packages needs the file anyway.
 - `name` is read by nothing. Identity is the directory name, which
   `enabledPlugins`, `disabledPlugins`, `requires` and the `plugins.<name>.<key>`
   settings all assume.
+- **The platform half of `require` is checked, not dropped**:
+  `unmetPlatform()` grades the `php` constraint (composer/semver; an
+  unparseable constraint is trusted, never refused) and `ext-*` against the
+  running host, and both load doors decline by name — a plugin needing PHP 8.5
+  or a missing extension used to load and fatal far from the cause.
+- `extra.porta.api` pins the **plugin-API major** the plugin targets
+  (`PluginApi::API_VERSION`); a mismatch declines by name, undeclared trusts
+  the current one. Bumped only on a breaking `PluginApi` change.
 
-`needsInstall()` means "declares something an install would produce" — an
-installable requirement (the name contains a `/`, which is composer's own
-discriminator) or an `autoload.classmap`/`files` entry. It deliberately does not
-mean "has a composer.json and no `vendor/`", which would decline the entire
-bundled set now that every plugin has one.
+`needsInstall()` means "declares something an install would actually DELIVER" —
+an installable requirement the host does not already ship
+(`installablePackages()`: the `/`-named half of `require` minus
+`InstalledVersions`' set, since installing a host-shipped package produces only
+the never-used vendor copy `shadowedPackages()` warns about) or an
+`autoload.classmap`/`files` entry. It deliberately does not mean "has a
+composer.json and no `vendor/`", which would decline the entire bundled set —
+every bundled plugin declares the symfony components it imports.
 
 ## Load order
 
@@ -226,7 +237,7 @@ whole Git group is hidden in the same case.
 ## A plugin file wires; `src/` implements
 
 Four abstract bases in `Plugin/Api/` hold what plugin files used to copy:
-`AbstractPlugin` (name, claimed languages, `coreSetting()`),
+`AbstractPlugin` (name, claimed languages),
 `AbstractToolPlugin` (binary discovery, the single-flight slot, the active-file
 guard, the report verbs), `AbstractAnalyzerPlugin` (the whole
 run → decode → `setDiagnostics` → count flash) and
