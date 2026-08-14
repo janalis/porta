@@ -5,16 +5,22 @@
          cacheDirectory=".phpunit.cache"
          colors="true"
          failOnRisky="true"
-         failOnWarning="true"
-         failOnDeprecation="true"
-         failOnPhpunitDeprecation="true"
-         failOnNotice="true"
+         failOnAllIssues="true"
+         failOnIncomplete="true"
          failOnEmptyTestSuite="true"
          displayDetailsOnTestsThatTriggerWarnings="true"
          displayDetailsOnTestsThatTriggerNotices="true"
          displayDetailsOnTestsThatTriggerDeprecations="true"
 >
+    <!-- failOnAllIssues covers what the four failOnWarning/Deprecation/
+         PhpunitDeprecation/Notice flags spelled out, plus whatever issue kinds
+         PHPUnit adds later. failOnSkipped is DELIBERATELY absent:
+         skipWithoutGit()/skipWithoutBinary() are load-bearing on machines
+         without the wrapped tool. -->
     <php>
+        <!-- The suite asserts on git log/blame output and session timestamps;
+             a laptop's local timezone must not be an input to any of it. -->
+        <ini name="date.timezone" value="UTC"/>
         <!-- Keep tests away from the developer's real ~/.porta/plugins, while
              installing the bundled `tempest` highlighter as a *global* plugin so
              every booted Ide is coloured. Global plugins are opt-out, so this
