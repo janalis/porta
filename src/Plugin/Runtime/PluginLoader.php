@@ -81,6 +81,16 @@ final class PluginLoader
                 // with nothing anywhere saying why.
                 $manager->addWarning(\sprintf('Plugin "%s" has an unreadable composer.json (%s) — its manifest is ignored', $manifest->name, $manifestError));
             }
+            // Before the install check: a plugin this host cannot RUN is not
+            // one an install would fix. Never entering $manifests is what
+            // makes its dependents skip through PluginOrder like any other
+            // absent requirement.
+            $unmet = $this->unmet($manifest);
+            if (null !== $unmet) {
+                $manager->addWarning($unmet);
+
+                continue;
+            }
             if ($manifest->needsInstall()) {
                 // Not loaded now — its classes are not there — but recorded, so
                 // the drain that runs once the IDE is up installs it and
@@ -186,11 +196,34 @@ final class PluginLoader
      * Load, activate and commit one plugin entry file (also used for a plugin
      * installed after boot). Returns the failure message, or null on success.
      */
+    /**
+     * The one sentence saying why this host cannot run the plugin, or null
+     * when it can: unmet platform requirements (`php`, `ext-*`) and a
+     * mismatched plugin-API major, combined so the user reads one line.
+     */
+    private function unmet(PluginManifest $manifest): ?string
+    {
+        $needs = $manifest->unmetPlatform();
+        if (null !== $manifest->api && PluginApi::API_VERSION !== $manifest->api) {
+            $needs[] = \sprintf('plugin API %d (this Porta speaks %d)', $manifest->api, PluginApi::API_VERSION);
+        }
+        if ([] === $needs) {
+            return null;
+        }
+
+        return \sprintf('Plugin "%s" needs %s — not loaded', $manifest->name, implode(', ', $needs));
+    }
+
     public function loadFile(string $file, PluginManager $manager): ?string
     {
         // The live path too (a just-installed or re-enabled plugin never went
-        // through loadInto's pre-pass).
-        PluginAutoloader::register(PluginManifest::beside($file));
+        // through loadInto's pre-pass) — including the compatibility check.
+        $manifest = PluginManifest::beside($file);
+        $unmet = $this->unmet($manifest);
+        if (null !== $unmet) {
+            return $unmet;
+        }
+        PluginAutoloader::register($manifest);
         try {
             /** @var mixed $plugin */
             $plugin = (static fn (): mixed => require $file)();

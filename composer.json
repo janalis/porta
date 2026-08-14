@@ -23,6 +23,7 @@
         "ext-ctype": "*",
         "ext-mbstring": "*",
         "ext-pcntl": "*",
+        "composer/semver": "^3.4",
         "revolt/event-loop": "^1.0",
         "symfony/clock": "^8.1",
         "symfony/config": "^8.1",

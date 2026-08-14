@@ -82,6 +82,56 @@ final class PluginLoaderTest extends TestCase
         $this->assertTrue($manager->hasPlugin('extra'), 'non-colliding global plugins load');
     }
 
+    public function testAnUnmetPlatformRequirementDeclinesByNameAndTakesDependentsAlong(): void
+    {
+        $project = new TempProject([
+            '.porta/plugins/future/plugin.php' => $this->pluginSource('future'),
+            '.porta/plugins/future/composer.json' => '{"require": {"php": ">=99.0", "ext-porta_nonexistent": "*"}}',
+            '.porta/plugins/rider/plugin.php' => $this->pluginSource('rider'),
+            '.porta/plugins/rider/composer.json' => '{"extra": {"porta": {"requires": ["future"]}}}',
+        ]);
+        $manager = $this->load($project);
+
+        $warnings = implode("\n", $manager->warnings());
+        $this->assertFalse($manager->hasPlugin('future'), 'a plugin this host cannot run never loads');
+        $this->assertStringContainsString('Plugin "future" needs PHP >=99.0 (this is '.\PHP_VERSION.'), ext-porta_nonexistent — not loaded', $warnings);
+        $this->assertFalse($manager->hasPlugin('rider'), 'its dependents skip like any absent requirement');
+        $this->assertStringContainsString('"rider"', $warnings);
+    }
+
+    public function testAMismatchedPluginApiMajorDeclinesAndAMatchingOneLoads(): void
+    {
+        $project = new TempProject([
+            '.porta/plugins/oldapi/plugin.php' => $this->pluginSource('oldapi'),
+            '.porta/plugins/oldapi/composer.json' => '{"extra": {"porta": {"api": 999}}}',
+            '.porta/plugins/current/plugin.php' => $this->pluginSource('current'),
+            '.porta/plugins/current/composer.json' => '{"require": {"php": ">=8.4"}, "extra": {"porta": {"api": 1}}}',
+        ]);
+        $manager = $this->load($project);
+
+        $this->assertFalse($manager->hasPlugin('oldapi'));
+        $this->assertStringContainsString('Plugin "oldapi" needs plugin API 999 (this Porta speaks 1) — not loaded', implode("\n", $manager->warnings()));
+        $this->assertTrue($manager->hasPlugin('current'), 'a met platform and a matching API major load normally');
+    }
+
+    public function testTheLiveLoadPathAppliesTheSameCompatibilityCheck(): void
+    {
+        // loadFile is the just-installed/re-enabled door — a plugin declined
+        // at boot must not slip in through it.
+        $project = new TempProject([
+            'future/plugin.php' => $this->pluginSource('future'),
+            'future/composer.json' => '{"require": {"php": ">=99.0"}}',
+        ]);
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
+        $loader = new PluginLoader($project->dir, null, new PluginSettings($project->dir, []));
+
+        $error = $loader->loadFile($project->path('future/plugin.php'), $manager);
+
+        $this->assertNotNull($error);
+        $this->assertStringContainsString('needs PHP >=99.0', $error);
+        $this->assertFalse($manager->hasPlugin('future'));
+    }
+
     public function testATypoedComposerJsonWarnsWithTheDecoderReason(): void
     {
         $project = new TempProject([

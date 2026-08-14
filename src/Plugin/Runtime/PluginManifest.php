@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin\Runtime;
 
 use Composer\InstalledVersions;
+use Composer\Semver\Semver;
 use Porta\Support\JsonFile;
 
 /**
@@ -50,6 +51,8 @@ final readonly class PluginManifest
      * @param list<string> $requires plugin names that must load, and load FIRST (`extra.porta.requires`)
      * @param list<string> $packages the INSTALLABLE composer packages it requires — `vendor/name`, never a platform requirement
      * @param bool $dumpsAutoload whether its composer.json declares an autoload mode only a dump can satisfy
+     * @param array<string, string> $platform the PLATFORM requirements (`php`, `ext-*`, …) — the half {@see packages()} drops
+     * @param int|null $api the plugin-API major it targets (`extra.porta.api`); null trusts the current one
      */
     public function __construct(
         public string $name,
@@ -58,6 +61,8 @@ final readonly class PluginManifest
         public array $requires = [],
         public array $packages = [],
         public bool $dumpsAutoload = false,
+        public array $platform = [],
+        public ?int $api = null,
     ) {}
 
     /**
@@ -256,7 +261,7 @@ final readonly class PluginManifest
      * @param array<array-key, mixed> $autoload
      * @param array<array-key, mixed> $data
      *
-     * @return array{packages: list<string>, dumpsAutoload: bool}
+     * @return array{packages: list<string>, dumpsAutoload: bool, platform: array<string, string>, api: int|null}
      */
     private static function composerFacts(array $autoload, array $data): array
     {
@@ -267,7 +272,82 @@ final readonly class PluginManifest
             // else through composer's generated maps. Declaring one is
             // therefore a request for an install, even with no dependencies.
             'dumpsAutoload' => [] !== ($autoload['classmap'] ?? []) || [] !== ($autoload['files'] ?? []),
+            'platform' => self::platform($data),
+            'api' => self::api($data),
         ];
+    }
+
+    /**
+     * The platform half of `require` — the exact complement of
+     * {@see packages()}: `php`, `ext-*` and friends. Not installable, but
+     * checkable, which is what {@see unmetPlatform()} does with them.
+     *
+     * @param array<array-key, mixed> $data
+     *
+     * @return array<string, string>
+     */
+    private static function platform(array $data): array
+    {
+        $platform = [];
+        /** @var mixed $constraint */
+        foreach (\is_array($data['require'] ?? null) ? $data['require'] : [] as $need => $constraint) {
+            if (!\is_string($need) || str_contains($need, needle: '/') || !\is_string($constraint)) {
+                continue;
+            }
+            $platform[$need] = $constraint;
+        }
+
+        return $platform;
+    }
+
+    /** `extra.porta.api` — the plugin-API major the plugin targets; anything but an int reads as undeclared. */
+    private static function api(array $data): ?int
+    {
+        $extra = \is_array($data['extra'] ?? null) ? $data['extra'] : [];
+        $porta = \is_array($extra['porta'] ?? null) ? $extra['porta'] : [];
+        /** @var mixed $api */
+        $api = $porta['api'] ?? null;
+
+        return \is_int($api) ? $api : null;
+    }
+
+    /**
+     * The platform requirements this host cannot meet, as human fragments.
+     *
+     * Checked at load, because a plugin declaring `php: >=8.5` or `ext-gd`
+     * used to load anyway and fatal on the first missing symbol, far from the
+     * cause — the exact failure the rest of this tier declines by name.
+     * `php-64bit`/`lib-*`/`composer-*` are not checked (none predicts a fatal
+     * Porta can name), and a constraint Semver cannot parse is trusted rather
+     * than refused: an unreadable manifest must degrade, never decline.
+     *
+     * @return list<string>
+     */
+    public function unmetPlatform(): array
+    {
+        $unmet = [];
+        foreach ($this->platform as $need => $constraint) {
+            if ('php' === $need && !self::phpSatisfies($constraint)) {
+                $unmet[] = \sprintf('PHP %s (this is %s)', $constraint, \PHP_VERSION);
+
+                continue;
+            }
+            $extension = str_starts_with($need, 'ext-') ? substr($need, offset: 4) : '';
+            if ('' !== $extension && !\extension_loaded($extension)) {
+                $unmet[] = $need;
+            }
+        }
+
+        return $unmet;
+    }
+
+    private static function phpSatisfies(string $constraint): bool
+    {
+        try {
+            return Semver::satisfies(\PHP_VERSION, $constraint);
+        } catch (\UnexpectedValueException) {
+            return true; // an unreadable constraint is trusted, never refused
+        }
     }
 
     /**

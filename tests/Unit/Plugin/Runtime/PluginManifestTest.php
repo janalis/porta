@@ -111,6 +111,44 @@ final class PluginManifestTest extends TestCase
         $this->assertSame([], PluginManifest::beside($file)->autoload);
     }
 
+    public function testPlatformRequirementsAreTheComplementOfPackages(): void
+    {
+        $project = new TempProject();
+        $manifest = PluginManifest::beside($this->pluginDir($project, 'plat', '{"require": {"php": ">=8.4", "ext-gd": "*", "vendor/pkg": "^1"}}'));
+
+        $this->assertSame(['php' => '>=8.4', 'ext-gd' => '*'], $manifest->platform, 'no-slash requirements are platform');
+        $this->assertSame(['vendor/pkg'], $manifest->packages, 'slashed ones stay installable packages');
+    }
+
+    public function testUnmetPlatformNamesWhatThisHostLacksAndTrustsTheRest(): void
+    {
+        $project = new TempProject();
+        $manifest = PluginManifest::beside($this->pluginDir(
+            $project,
+            'needs',
+            \sprintf(
+                '{"require": {"php": ">=99.0", "ext-porta_nonexistent": "*", "ext-mbstring": "*", "php-64bit": "*", "lib-icu": "*"}}',
+            ),
+        ));
+
+        $unmet = $manifest->unmetPlatform();
+        $this->assertContains('PHP >=99.0 (this is '.\PHP_VERSION.')', $unmet);
+        $this->assertContains('ext-porta_nonexistent', $unmet);
+        $this->assertCount(2, $unmet, 'a loaded extension is met, and php-64bit/lib-* are not checked at all');
+
+        $garbled = PluginManifest::beside($this->pluginDir($project, 'garbled', '{"require": {"php": "certainly not a constraint"}}'));
+        $this->assertSame([], $garbled->unmetPlatform(), 'an unreadable constraint is trusted, never refused');
+    }
+
+    public function testTheApiMajorReadsOnlyAnInt(): void
+    {
+        $project = new TempProject();
+
+        $this->assertSame(2, PluginManifest::beside($this->pluginDir($project, 'api-int', '{"extra": {"porta": {"api": 2}}}'))->api);
+        $this->assertNull(PluginManifest::beside($this->pluginDir($project, 'api-str', '{"extra": {"porta": {"api": "2"}}}'))->api, 'a string reads as undeclared');
+        $this->assertNull(PluginManifest::beside($this->pluginDir($project, 'api-none', '{}'))->api);
+    }
+
     public function testATypoedComposerJsonSaysWhy(): void
     {
         $project = new TempProject();

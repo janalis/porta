@@ -36,6 +36,16 @@ use Tempest\Highlight\TerminalTheme;
  */
 final class PluginApi
 {
+    /**
+     * The plugin-API major this Porta speaks. A plugin may pin the major it
+     * was written against in its manifest (`extra.porta.api`); a mismatch is
+     * declined by name at load, the way an uninstalled dependency is — the
+     * alternative is a TypeError deep inside a render pass with nothing
+     * pointing at the cause. Bump ONLY on a breaking change to this class's
+     * surface; additive growth (new verbs) is not a bump.
+     */
+    public const int API_VERSION = 1;
+
     private const string ID_PATTERN = '/^[a-z0-9][a-z0-9_-]*$/i';
     private const array SETTING_KINDS = ['bool', 'choice', 'text', 'int'];
 

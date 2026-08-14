@@ -86,6 +86,18 @@ before there was one.
 
   They cannot go in composer's own `require`: those are plugin directory names,
   and composer would go looking for them on Packagist.
+- **`require`'s platform half is checked, not ignored.** A `php` constraint the
+  running PHP does not satisfy, or an `ext-*` that is not loaded, declines the
+  plugin **by name at startup** ("needs PHP >=8.5 (this is 8.4.1) — not
+  loaded") instead of loading it and fataling on the first missing symbol,
+  somewhere far from the cause. Declare what you actually use. A constraint
+  Porta cannot parse is trusted rather than refused, and `php-64bit`/`lib-*`
+  are not checked.
+- **`extra.porta.api`** — the plugin-API **major** you wrote against, an
+  integer (currently `1`). Optional: undeclared trusts the current API. When a
+  future Porta breaks the `PluginApi` surface it will bump the major, and a
+  plugin pinning the old one is declined by name instead of failing somewhere
+  inside a render pass. Additive API growth never bumps it.
 - **`name`** is not read by Porta. A plugin's identity is its **directory name**
   everywhere it matters — `enabledPlugins`, `disabledPlugins`, `requires`, and
   its `plugins.<name>.<key>` settings. Give it one anyway so `composer install`
