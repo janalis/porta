@@ -25,6 +25,36 @@ final class JsonRpcFramerTest extends TestCase
         $this->assertSame((int) $m[1], \strlen($body), 'length is the UTF-8 byte count');
     }
 
+    public function testEncodeKeepsSlashesPlainAndSubstitutesInvalidUtf8(): void
+    {
+        // The wire flags are the contract: URIs stay readable (no \/ noise),
+        // and a stray invalid byte becomes U+FFFD instead of aborting the
+        // frame mid-conversation.
+        $this->assertStringContainsString('"file:///p/a.php"', JsonRpcFramer::encode(['uri' => 'file:///p/a.php']));
+        $this->assertStringContainsString('ok\\ufffd', JsonRpcFramer::encode(['text' => "ok\xB1"]), 'invalid UTF-8 is substituted, not thrown on');
+    }
+
+    public function testHeaderNameMatchingIsCaseInsensitive(): void
+    {
+        // The spec spells Content-Length; a server that spells it otherwise
+        // is still speaking the protocol.
+        $framer = new JsonRpcFramer();
+        $json = '{"ok":1}';
+
+        $this->assertSame([['ok' => 1]], $framer->feed('content-length: '.\strlen($json)."\r\n\r\n".$json));
+    }
+
+    public function testCompleteFramesDeliverEvenWhileATailIsPartial(): void
+    {
+        // Two complete frames followed by a half-received third: both decoded
+        // messages come out NOW — holding them back (or delivering only one)
+        // would stall the conversation until the peer's next write.
+        $framer = new JsonRpcFramer();
+        $data = JsonRpcFramer::encode(['n' => 1]).JsonRpcFramer::encode(['n' => 2])."Content-Length: 5\r\n\r\n{\"a";
+
+        $this->assertSame([['n' => 1], ['n' => 2]], $framer->feed($data));
+    }
+
     public function testFeedDecodesFramesSplitAcrossArbitraryChunks(): void
     {
         $framer = new JsonRpcFramer();

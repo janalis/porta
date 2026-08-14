@@ -99,6 +99,15 @@ code), and the loop/subprocess budgets would burn minutes per mutant. The
 corollary: a line only E2e observes reports as uncovered here, and plugin
 `src/` is out of scope — the MANUAL sweep doctrine still owns both.
 
+**A survivor is a candidate, not a verdict.** Hand-verify before writing a
+test: apply the mutation with an edit, run the class's suite, restore. The
+escape list overstates — Infection's junit test-selection has missed tests
+that demonstrably kill a mutant (NonBlockingWriter's write-flush removal
+"escaped" while `testASmallWriteIsFlushedImmediately` fails it outright), a
+subprocess-driven test can never kill an in-process mutant (the child loads
+pristine source from disk), and the three harmless shapes above recur
+constantly. The MSI is therefore a floor, and never a gate.
+
 **Method order is randomized** (`executionOrder="random"` in phpunit.xml.dist —
 formalizing what paratest's method distribution never guaranteed anyway). A
 failure that only reproduces in-suite may therefore be order coupling, not
