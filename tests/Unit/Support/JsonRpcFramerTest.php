@@ -62,4 +62,42 @@ final class JsonRpcFramerTest extends TestCase
 
         $this->assertSame([['ok' => 1]], $framer->feed($data));
     }
+
+    public function testAHeaderlessFloodIsDiscardedAtTheCapAndTheStreamResyncs(): void
+    {
+        $overflows = [];
+        $framer = new JsonRpcFramer(static function (string $reason) use (&$overflows): void {
+            $overflows[] = $reason;
+        }, maxFrame: 64);
+
+        $this->assertSame([], $framer->feed(str_repeat('x', times: 100)), 'garbage decodes nothing');
+        $this->assertCount(1, $overflows, 'the overflow was reported');
+        $this->assertStringContainsString('no frame header', $overflows[0]);
+        // The flood was discarded, so a well-formed frame decodes right after.
+        $this->assertSame([['ok' => true]], $framer->feed(JsonRpcFramer::encode(['ok' => true])));
+    }
+
+    public function testAnAbsurdDeclaredLengthIsDroppedLikeACorruptHeader(): void
+    {
+        $overflows = [];
+        $framer = new JsonRpcFramer(static function (string $reason) use (&$overflows): void {
+            $overflows[] = $reason;
+        }, maxFrame: 64);
+
+        // Without the cap this header would park the parser accumulating
+        // "body" bytes forever; with it, corrupt-header semantics: drop, resync.
+        $this->assertSame([['ok' => 1]], $framer->feed("Content-Length: 9999999999\r\n\r\n".JsonRpcFramer::encode(['ok' => 1])));
+        $this->assertCount(1, $overflows);
+        $this->assertStringContainsString('exceeds the 64 cap', $overflows[0]);
+    }
+
+    public function testAFrameExactlyAtTheCapStillDecodes(): void
+    {
+        $framer = new JsonRpcFramer(static function (string $reason): void {
+            throw new \RuntimeException('no overflow expected: '.$reason);
+        }, maxFrame: 64);
+        $json = '{"a":"'.str_repeat('b', times: 56).'"}'; // exactly 64 bytes — at the cap, not past it
+
+        $this->assertSame([['a' => str_repeat('b', times: 56)]], $framer->feed('Content-Length: 64'."\r\n\r\n".$json));
+    }
 }

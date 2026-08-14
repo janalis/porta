@@ -9,10 +9,28 @@ namespace Porta\Support;
  * is `Content-Length: N\r\n\r\n<N bytes of JSON>`. `feed()` is a stateful
  * incremental parser — bytes may arrive split or batched arbitrarily — that
  * drops corrupt header blocks and resyncs on the next one.
+ *
+ * The read buffer is capped: a peer that never sends a header (a wrapper
+ * script spewing plain text) or declares an absurd Content-Length would
+ * otherwise accumulate bytes without bound — the write side has
+ * {@see NonBlockingWriter}'s limit, and this is its mirror.
  */
 final class JsonRpcFramer
 {
+    /** Past any real LSP/DAP payload; a declaration above it is treated as corrupt. */
+    public const int MAX_FRAME = 16_777_216;
+
     private string $buffer = '';
+
+    /** @var (callable(string): void)|null */
+    private $onOverflow;
+
+    public function __construct(
+        ?callable $onOverflow = null,
+        private readonly int $maxFrame = self::MAX_FRAME,
+    ) {
+        $this->onOverflow = $onOverflow;
+    }
 
     /** Encode one message as a wire frame. */
     public static function encode(array $message): string
@@ -35,6 +53,13 @@ final class JsonRpcFramer
         while (true) {
             $headerEnd = strpos($this->buffer, needle: "\r\n\r\n");
             if (false === $headerEnd) {
+                if (\strlen($this->buffer) > $this->maxFrame) {
+                    // Not speaking the protocol at all: discard, resync on
+                    // whatever header eventually arrives.
+                    $this->overflow(\sprintf('%d buffered bytes with no frame header — discarded', \strlen($this->buffer)));
+                    $this->buffer = '';
+                }
+
                 return $messages;
             }
 
@@ -47,6 +72,13 @@ final class JsonRpcFramer
             }
 
             $length = (int) $m[1];
+            if ($length > $this->maxFrame) {
+                // An absurd declaration must not park the parser accumulating
+                // "body" bytes forever — corrupt-header semantics instead.
+                $this->overflow(\sprintf('declared Content-Length %d exceeds the %d cap — resyncing', $length, $this->maxFrame));
+                $this->buffer = substr($this->buffer, $headerEnd + 4);
+                continue;
+            }
             $bodyStart = $headerEnd + 4;
             if (\strlen($this->buffer) < ($bodyStart + $length)) {
                 return $messages; // wait for more data
@@ -60,6 +92,13 @@ final class JsonRpcFramer
             if (\is_array($message)) {
                 $messages[] = $message;
             }
+        }
+    }
+
+    private function overflow(string $reason): void
+    {
+        if (null !== $this->onOverflow) {
+            ($this->onOverflow)($reason);
         }
     }
 }

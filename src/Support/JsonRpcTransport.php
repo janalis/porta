@@ -47,7 +47,9 @@ final class JsonRpcTransport
         private readonly int $maxWriteBuffer = NonBlockingWriter::DEFAULT_LIMIT,
     ) {
         $this->logger = $logger;
-        $this->framer = new JsonRpcFramer();
+        $this->framer = new JsonRpcFramer(function (string $reason): void {
+            $this->log($this->peerName.' overflowed the read buffer: '.$reason);
+        });
     }
 
     /**
