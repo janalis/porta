@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Support;
 
+use Symfony\Component\Filesystem\Path;
+
 /**
  * The project root and the path arithmetic against it. One shared instance,
  * bound to `$rootDir` by the container, replaces the `(rootDir, path)` pair
@@ -56,7 +58,7 @@ final readonly class ProjectPaths
     /** The path's extension, lowercased; '' when it has none. */
     public static function extension(string $path): string
     {
-        return strtolower(pathinfo($path, \PATHINFO_EXTENSION));
+        return Path::getExtension($path, forceLowerCase: true);
     }
 
     /**
@@ -67,6 +69,6 @@ final readonly class ProjectPaths
      */
     public static function hasExtension(string $path, array $extensions): bool
     {
-        return \in_array(self::extension($path), $extensions, strict: true);
+        return Path::hasExtension($path, $extensions, ignoreCase: true);
     }
 }

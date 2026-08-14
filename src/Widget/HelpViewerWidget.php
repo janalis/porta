@@ -465,8 +465,12 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
 
             return;
         }
-        $resolved = str_starts_with($target, '/') ? $target : realpath(\dirname((string) $this->path).'/'.$target);
-        if (false === $resolved || !is_file($resolved)) {
+        $resolved = realpath(str_starts_with($target, '/') ? $target : \dirname((string) $this->path).'/'.$target);
+        // Containment mirrors hierarchyCrumbs(): every page — plugin pages
+        // sync under the docs root too — must resolve inside it, so a link
+        // that escapes (an absolute path, a ../ chain) is not a doc target.
+        $root = $this->docsRoot;
+        if (false === $resolved || !is_file($resolved) || null === $root || !str_starts_with($resolved, $root.'/')) {
             $this->docs()?->missingTarget($target);
 
             return;

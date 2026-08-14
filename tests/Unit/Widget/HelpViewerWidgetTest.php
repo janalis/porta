@@ -82,6 +82,28 @@ final class HelpViewerWidgetTest extends TestCase
         $this->assertStringContainsString('Paragraph 30.', implode("\n", $this->screen($viewer)), 'end clamps to the last page');
     }
 
+    public function testALinkThatEscapesTheDocsRootIsRefused(): void
+    {
+        $docs = new TempProject([
+            'pages/README.md' => "# Home\n\nSee [escape](../secret.php) and [abs](/etc/hosts).\n",
+            'secret.php' => "<?php\n",
+        ]);
+        $viewer = new HelpViewerWidget();
+        $viewer->setFocused(true);
+        $handler = new RecordingHelpViewerHandler();
+        $viewer->setHandler($handler);
+        $viewer->setDocsRoot($docs->path('pages'));
+        $viewer->refreshPage($docs->path('pages/README.md'), (string) file_get_contents($docs->path('pages/README.md')));
+        $this->screen($viewer); // establish width so the links exist
+
+        $viewer->handleInput("\t"); // escape (../ chain out of the root)
+        $viewer->handleInput("\r");
+        $viewer->handleInput("\t"); // abs (an absolute filesystem path)
+        $viewer->handleInput("\r");
+
+        $this->assertSame(['missing:../secret.php', 'missing:/etc/hosts'], $handler->events, 'a target outside the docs root never opens a buffer');
+    }
+
     public function testTabCyclesLinksHighlightsAndScrollsIntoView(): void
     {
         $viewer = $this->viewer();
