@@ -24,9 +24,11 @@ use Symfony\Component\Finder\Finder;
  *      may exist except the pinned ones below. Docblocks and comments are
  *      stripped before an import counts as used, so {@see}-only imports
  *      (the SpanSlicer/FloatingRegions prose references) form no edge.
- *   3. E2e suite size — no tests/E2e file may exceed E2E_MAX_TESTS methods.
- *      The retired IdeEdgeCasesTest monolith had 187 and pinned two lint
- *      ratchets; the largest suite today has 42.
+ *   3. Suite size — no tests/E2e or plugins/<name>/tests file may exceed
+ *      E2E_MAX_TESTS methods. The retired IdeEdgeCasesTest monolith had 187
+ *      and pinned two lint ratchets; the plugin roots are graded too because
+ *      testing.md SENDS plugin-driving E2e tests there — the documented
+ *      migration path must not be the ratchet's blind spot.
  *
  * Runs from the dev console (`bin/porta-dev`, via `composer arch`): a
  * maintainer gate over Porta\'s own tree, which is why the vendor prefix and
@@ -332,7 +334,7 @@ final class ArchitectureCheckCommand extends Command
         $failures = [
             ...$this->edgeDrift($current),
             ...$this->cycleDrift($sccs),
-            ...$this->oversizedSuites($root.'/tests/E2e'),
+            ...$this->oversizedSuites($root.'/tests/E2e', ...$this->pluginTestDirs($root.'/plugins')),
         ];
 
         if ([] !== $failures) {
@@ -501,18 +503,35 @@ final class ArchitectureCheckCommand extends Command
     }
 
     /** @return list<string> */
-    private function oversizedSuites(string $e2eDir): array
+    private function oversizedSuites(string ...$suiteDirs): array
     {
         $failures = [];
-        foreach ($this->phpFiles($e2eDir) as $path) {
-            $count = (int) preg_match_all('/^    public function test/m', (string) file_get_contents($path));
-            if ($count <= self::E2E_MAX_TESTS) {
-                continue;
+        foreach ($suiteDirs as $dir) {
+            foreach ($this->phpFiles($dir) as $path) {
+                // #[Test] counts too — one attributed method would otherwise
+                // silently zero a file's count.
+                $count = (int) preg_match_all('/^    (?:public function test|#\[Test\])/m', (string) file_get_contents($path));
+                if ($count <= self::E2E_MAX_TESTS) {
+                    continue;
+                }
+                $failures[] = "e2e: {$path} has {$count} test methods (max ".self::E2E_MAX_TESTS.') — split it before it regrows the monolith';
             }
-            $failures[] = "e2e: {$path} has {$count} test methods (max ".self::E2E_MAX_TESTS.') — split it before it regrows the monolith';
         }
 
         return $failures;
+    }
+
+    /**
+     * Every plugin's own tests directory — the suites the size ratchet grades
+     * beside tests/E2e, since that is where a plugin-driving E2e belongs.
+     *
+     * @return list<string>
+     */
+    private function pluginTestDirs(string $pluginsDir): array
+    {
+        $dirs = glob($pluginsDir.'/*/tests', \GLOB_ONLYDIR);
+
+        return false === $dirs ? [] : $dirs;
     }
 
     /**

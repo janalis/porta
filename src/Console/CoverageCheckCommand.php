@@ -26,6 +26,16 @@ use Symfony\Component\Finder\Finder;
 #[AsCommand(name: 'coverage:check', description: 'Fail when Clover line coverage is below a threshold')]
 final class CoverageCheckCommand extends Command
 {
+    /** @var list<string> */
+    private readonly array $mayBeAbsent;
+
+    /** @param list<string>|null $mayBeAbsent the excuse list; null uses {@see MAY_BE_ABSENT} (the ArchitectureCheckCommand pin-injection pattern) */
+    public function __construct(?array $mayBeAbsent = null)
+    {
+        parent::__construct();
+        $this->mayBeAbsent = $mayBeAbsent ?? self::MAY_BE_ABSENT;
+    }
+
     /**
      * Files whose absence from the report is not a gap.
      *
@@ -121,6 +131,22 @@ final class CoverageCheckCommand extends Command
             return Command::FAILURE;
         }
 
+        // The arch gate's doctrine applies to this allowlist too: an excuse
+        // whose file is gone from the tree entirely is dead config, and a
+        // stale allowlist is not a gate. (An entry merely PRESENT in this
+        // run's report stays legitimate — a machine without the wrapped
+        // binary still needs it.)
+        $stale = null === $require ? [] : array_values(array_filter($this->mayBeAbsent, static fn (string $path): bool => !is_file($path)));
+        if ([] !== $stale) {
+            $errors->writeln('');
+            $errors->writeln('coverage-check: FAILED — MAY_BE_ABSENT excuses files that no longer exist; remove the entries:');
+            foreach ($stale as $path) {
+                $errors->writeln('  '.$path);
+            }
+
+            return Command::FAILURE;
+        }
+
         $absent = null === $require ? [] : $this->absentFrom($xml, $require);
         if ([] !== $absent) {
             $errors->writeln('');
@@ -180,7 +206,7 @@ final class CoverageCheckCommand extends Command
             // Suffix-matched, not equality: the gate runs from the project root
             // where the path is already relative, but nothing should depend on
             // the caller's working directory to decide what is excused.
-            $excused = array_filter(self::MAY_BE_ABSENT, static fn (string $tail): bool => str_ends_with($relative, $tail));
+            $excused = array_filter($this->mayBeAbsent, static fn (string $tail): bool => str_ends_with($relative, $tail));
             if (isset($graded[(string) realpath($path)]) || [] !== $excused) {
                 continue;
             }

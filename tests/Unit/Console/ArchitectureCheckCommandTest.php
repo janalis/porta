@@ -126,6 +126,24 @@ final class ArchitectureCheckCommandTest extends TestCase
         $this->assertStringContainsString('has 61 test methods (max 60)', $tester->getErrorOutput());
     }
 
+    public function testAnOversizedPluginSuiteFailsAndAttributedTestsCount(): void
+    {
+        // The documented migration path — a plugin-driving E2e belongs under
+        // plugins/<name>/tests — must not be the ratchet's blind spot, and a
+        // #[Test]-attributed method must not silently zero a file's count.
+        $methods = str_repeat("    public function testMany(): void {}\n", times: 60)."    #[Test]\n    public function attributedStyle(): void {}\n";
+        $project = new TempProject([
+            'src/Alpha/One.php' => $this->file('Alpha', 'One'),
+            'plugins/thing/tests/HugeTest.php' => "<?php\n".$methods,
+        ]);
+
+        $tester = $this->tester();
+        $status = $tester->execute(['path' => $project->dir], ['capture_stderr_separately' => true]);
+
+        $this->assertSame(Command::FAILURE, $status);
+        $this->assertStringContainsString('has 61 test methods (max 60)', $tester->getErrorOutput());
+    }
+
     public function testAnEmptyTreeIsCleanAndNeedsNoDirectories(): void
     {
         // Neither src/ nor tests/E2e exists: nothing to check, nothing to fail.

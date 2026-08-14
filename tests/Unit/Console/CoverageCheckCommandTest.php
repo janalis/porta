@@ -258,4 +258,31 @@ final class CoverageCheckCommandTest extends TestCase
         $this->assertStringContainsString('demo/plugin.php', $display, 'an ordinary plugin entry point is still required');
         $this->assertStringNotContainsString('psalm', $display, 'the external-tool one is excused');
     }
+
+    public function testADeadMayBeAbsentEntryFailsTheGate(): void
+    {
+        // The arch gate's both-directions doctrine, applied to this allowlist:
+        // an excuse whose file is gone from the tree is dead config. (Presence
+        // in the report is NOT staleness — a machine without the wrapped
+        // binary still needs the excuse.)
+        $project = new TempProject(['plugins/demo/src/Graded.php' => "<?php\n"]);
+        $project->write('clover.xml', $this->clover(
+            [(string) realpath($project->path('plugins/demo/src/Graded.php')) => [5, 5]],
+            totalCovered: 5,
+            totalStatements: 5,
+        ));
+
+        $tester = new CommandTester(new CoverageCheckCommand(mayBeAbsent: ['plugins/ghost/plugin.php']));
+        $status = $tester->execute([
+            'clover' => $project->path('clover.xml'),
+            'threshold' => '100',
+            '--only' => '/plugins/',
+            '--require' => $project->path('plugins'),
+        ]);
+        $display = $tester->getDisplay();
+
+        $this->assertSame(Command::FAILURE, $status, $display);
+        $this->assertStringContainsString('no longer exist', $display);
+        $this->assertStringContainsString('plugins/ghost/plugin.php', $display, 'the dead entry is named');
+    }
 }
