@@ -100,11 +100,14 @@ corollary: a line only E2e observes reports as uncovered here, and plugin
 `src/` is out of scope — the MANUAL sweep doctrine still owns both.
 
 **A survivor is a candidate, not a verdict.** Hand-verify before writing a
-test: apply the mutation with an edit, run the class's suite, restore. The
-escape list overstates — Infection's junit test-selection has missed tests
-that demonstrably kill a mutant (NonBlockingWriter's write-flush removal
-"escaped" while `testASmallWriteIsFlushedImmediately` fails it outright), a
-subprocess-driven test can never kill an in-process mutant (the child loads
+test: apply the mutation with an edit, run the class's suite, restore. Two
+confirmed sources of FALSE escapes, plus the inherent ones: colored phpunit
+output blinded Infection's verdict parser (`--colors=never` rides in the
+composer script now — a proven-killable mutant "escaped" until it did), and
+verdicts flip run-to-run under wide parallelism (the same mutant died 58/58
+in a solo `--filter` run and "escaped" inside a whole-directory sweep) — so a
+FOCUSED single-file run is the authoritative grade. Inherently unkillable:
+a subprocess-driven test never kills an in-process mutant (the child loads
 pristine source from disk), and the three harmless shapes above recur
 constantly. The MSI is therefore a floor, and never a gate.
 
