@@ -22,6 +22,12 @@ final class DiagnosticLog
         private readonly int $maxBytes = self::MAX_BYTES,
     ) {}
 
+    /** The channel's log under $rootDir's `.porta/` directory — the shared naming convention for error/dap/freeze logs. */
+    public static function forRoot(string $rootDir, string $channel): self
+    {
+        return new self($rootDir.'/.porta/'.$channel.'.log');
+    }
+
     public function path(): string
     {
         return $this->path;

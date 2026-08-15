@@ -10,6 +10,13 @@ use Porta\Tests\Support\TempProject;
 
 final class DiagnosticLogTest extends TestCase
 {
+    public function testForRootBuildsThePortaChannelPath(): void
+    {
+        $log = DiagnosticLog::forRoot('/tmp/proj', 'error');
+
+        $this->assertSame('/tmp/proj/.porta/error.log', $log->path());
+    }
+
     public function testAppendCreatesTheDirectoryAndAppendsLines(): void
     {
         $project = new TempProject();

@@ -311,7 +311,7 @@ final class Ide
         // rethrow-and-fail policy underneath the same run() path.
         $ownsErrorHandler = null === EventLoop::getErrorHandler();
         if ($ownsErrorHandler) {
-            $errors = new DiagnosticLog($this->rootDir.'/.porta/error.log');
+            $errors = DiagnosticLog::forRoot($this->rootDir, 'error');
             EventLoop::setErrorHandler(function (\Throwable $error) use ($errors): void {
                 $errors->append(\sprintf("%s: %s\n%s", $error::class, $error->getMessage(), $error->getTraceAsString()));
                 $this->notifier->error($this->service(Translator::class)->trans('Internal error — details in .porta/error.log'));

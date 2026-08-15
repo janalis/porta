@@ -137,7 +137,7 @@ final class PortaCommand extends Command
             // A crash mid-session has nothing to do with the cache. Keep the
             // evidence where the in-session error handler keeps its own — the
             // crash took the trace with it, and a -v rerun reproduces nothing.
-            new DiagnosticLog($workspace->rootDir.'/.porta/error.log')->append(\sprintf("%s: %s\n%s", $e::class, $e->getMessage(), $e->getTraceAsString()));
+            DiagnosticLog::forRoot($workspace->rootDir, 'error')->append(\sprintf("%s: %s\n%s", $e::class, $e->getMessage(), $e->getTraceAsString()));
             $errors->writeln('porta crashed — the trace was appended to .porta/error.log. Run with -v to see it here.');
 
             return Command::FAILURE;

@@ -14,7 +14,7 @@ final class ProcessDapClientFactory implements DapClientFactory
     public function __construct(
         private readonly string $rootDir,
     ) {
-        $this->log = new DiagnosticLog($this->rootDir.'/.porta/dap.log');
+        $this->log = DiagnosticLog::forRoot($this->rootDir, 'dap');
     }
 
     #[\Override]

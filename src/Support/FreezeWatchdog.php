@@ -40,7 +40,7 @@ final class FreezeWatchdog
         private readonly int $alarmSeconds = 5,
         private readonly bool $signalsAvailable = true,
     ) {
-        $this->log = new DiagnosticLog($rootDir.'/.porta/freeze.log');
+        $this->log = DiagnosticLog::forRoot($rootDir, 'freeze');
     }
 
     public function start(): void
