@@ -8,8 +8,10 @@ use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\ConsoleOutputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Finder\Finder;
 
 /**
@@ -62,6 +64,7 @@ final class CoverageCheckCommand extends Command
     ];
 
     public function __invoke(
+        InputInterface $input,
         OutputInterface $output,
         #[Argument('Path to the Clover XML report', name: 'clover')]
         string $cloverPath = 'coverage/clover.xml',
@@ -96,16 +99,11 @@ final class CoverageCheckCommand extends Command
         }
 
         $rows = $this->rows($xml, $only);
-        $width = ([] === $rows ? 0 : max(array_map(static fn (array $row): int => \strlen($row['name']), $rows))) + 2;
-        foreach ($rows as $row) {
-            $output->writeln(\sprintf(
-                "  %-{$width}s %7.2f%% (%d/%d)",
-                $row['name'],
-                (100 * $row['covered']) / $row['statements'],
-                $row['covered'],
-                $row['statements'],
-            ));
-        }
+        $io = new SymfonyStyle($input, $output);
+        $io->table(['File', 'Coverage'], array_map(static fn (array $row): array => [
+            $row['name'],
+            \sprintf('%.2f%% (%d/%d)', (100 * $row['covered']) / $row['statements'], $row['covered'], $row['statements']),
+        ], $rows));
 
         // A scoped run sums the rows it kept; an unscoped one reads the
         // report's own totals, which also count files with nothing executable.

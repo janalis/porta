@@ -12,8 +12,10 @@ use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\ConsoleOutputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
  * The `porta` command: resolves the target path/options and launches the IDE.
@@ -64,6 +66,7 @@ final class PortaCommand extends Command
     }
 
     public function __invoke(
+        InputInterface $input,
         OutputInterface $output,
         #[Argument('File or directory to open (accepts the file:line shorthand)')]
         ?string $path = null,
@@ -79,15 +82,16 @@ final class PortaCommand extends Command
         // CoverageCheckCommand pattern); CommandTester's plain output has no
         // error channel and falls back to the one stream.
         $errors = $output instanceof ConsoleOutputInterface ? $output->getErrorOutput() : $output;
+        $io = new SymfonyStyle($input, $errors);
 
         if (null !== $lsp && $noLsp) {
-            $errors->writeln('<error>porta: --lsp and --no-lsp contradict each other; pass one.</error>');
+            $io->error('porta: --lsp and --no-lsp contradict each other; pass one.');
 
             return Command::INVALID;
         }
 
         if (null !== $line && !ctype_digit($line)) {
-            $errors->writeln(\sprintf('<error>porta: --line expects a line number, got "%s".</error>', $line));
+            $io->error(\sprintf('porta: --line expects a line number, got "%s".', $line));
 
             return Command::INVALID;
         }
@@ -96,7 +100,7 @@ final class PortaCommand extends Command
         try {
             $workspace = new WorkspaceResolver()->resolve($target, (string) getcwd());
         } catch (\InvalidArgumentException $e) {
-            $errors->writeln('<error>porta: '.$e->getMessage().'</error>');
+            $io->error('porta: '.$e->getMessage());
 
             return Command::FAILURE;
         }
@@ -106,7 +110,7 @@ final class PortaCommand extends Command
         $workspace = new Workspace($workspace->rootDir, $workspace->initialFile, $openAt);
 
         if (!($this->isInteractive)()) {
-            $errors->writeln('<error>porta: an interactive terminal is required.</error>');
+            $io->error('porta: an interactive terminal is required.');
 
             return Command::FAILURE;
         }
@@ -121,7 +125,7 @@ final class PortaCommand extends Command
             if ($output->isVerbose()) {
                 throw $e; // -v: let the console runner render the full trace
             }
-            $errors->writeln(\sprintf('<error>porta: fatal: %s</error>', $e->getMessage()));
+            $io->error(\sprintf('porta: fatal: %s', $e->getMessage()));
             if (!$booted) {
                 // The likeliest BOOT failure is a container that no longer
                 // compiles against a stale dump; say the remedy instead of
