@@ -251,6 +251,33 @@ final class IdeFilesystemSessionTest extends TestCase
         $this->assertStringContainsString('Save failed', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
     }
 
+    public function testSaveAllDoesNotClaimNothingToSaveWhenEverySaveFails(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['dir/locked.php' => "<?php\n"]);
+
+        $terminal = $this->runIde(
+            $project,
+            $project->path('dir/locked.php'),
+            [
+                200 => static function ($tui) use ($project): void {
+                    $tui->handleInput('x'); // dirty it
+                    chmod($project->path('dir/locked.php'), permissions: 0o444);
+                    chmod($project->path('dir'), permissions: 0o555);
+                    $tui->handleInput("\x1b\x13"); // ctrl+alt+s: save all, the only dirty buffer fails
+                },
+                400 => static function ($tui) use ($project): void {
+                    chmod($project->path('dir'), permissions: 0o755);
+                    chmod($project->path('dir/locked.php'), permissions: 0o644);
+                },
+            ],
+        );
+
+        $output = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+        $this->assertStringContainsString('Save failed', $output);
+        $this->assertStringNotContainsString('Nothing to save', $output, 'every dirty buffer already flashed its own failure — the aggregate must not claim there was nothing to do');
+    }
+
     public function testQuitWithoutDirtyBuffersStopsImmediately(): void
     {
         putenv('PATH=/nonexistent');

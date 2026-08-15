@@ -512,19 +512,28 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
 
     public function saveAllBuffers(): void
     {
+        $dirty = 0;
         $saved = 0;
         foreach ($this->buffers->all() as $buffer) {
-            if (!($buffer->isDirty() && $this->saveBuffer($buffer))) {
+            if (!$buffer->isDirty()) {
                 continue;
             }
-
-            ++$saved;
+            ++$dirty;
+            if ($this->saveBuffer($buffer)) {
+                ++$saved;
+            }
         }
-        $this->notifier->flash(
-            0 === $saved
-                ? $this->translator->trans('Nothing to save')
-                : $this->translator->trans('Saved %count% file|Saved %count% files', ['%count%' => $saved]),
-        );
+        if (0 === $dirty) {
+            $this->notifier->flash($this->translator->trans('Nothing to save'));
+
+            return;
+        }
+        if ($saved > 0) {
+            $this->notifier->flash($this->translator->trans('Saved %count% file|Saved %count% files', ['%count%' => $saved]));
+        }
+
+        // $saved === 0 here means every dirty buffer already flashed its own
+        // "Save failed: %file%" error via saveBuffer() — nothing to add.
     }
 
     public function saveBuffer(Buffer $buffer): bool
