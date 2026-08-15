@@ -374,3 +374,32 @@ Dense by nature, measured, and not to be "simplified":
   stages after all, because the LAYOUT seam changed what the pointer seam had to
   describe. The rejection was right about the shape proposed, not about the
   possibility.
+
+**A 2026-08-15 sweep of every 8+-parameter method measured five candidates,
+fixed two, rejected three.** The two fixed shared one shape: a caller had
+already destructured an existing VO — `Widget/Render/EditorDecorations`,
+whose own docblock says it exists "so the row-assembly helper does not take
+five more positional arguments" — back into positional parameters one call
+deeper.
+`EditorRowAssembler::decoratedLine()` (9 params) and `LineSpans::forLine()`
+(9 params) now both take `EditorDecorations` directly instead of its
+`selection`/`carets`/`occurrences`/`brackets` fields spread out; each drops to
+6 params, and `multiActive`'s "suppress the primary selection" rule lives in
+one place (`forLine`) instead of being applied by the caller before the call.
+No new type was invented — the VO already had a second and third consumer
+once it was allowed to reach them.
+
+Rejected, each for the reason the extraction audit already established:
+
+- `EditorRowAssembler::assemble()`'s remaining 8 (of 10) params, after its two
+  already-VO'd ones (`EditorGeometry`, `EditorDecorations`) — one call site,
+  and `$sticky`/`$highlighted`/`$stripe`/the four scroll-and-cursor ints share
+  no second consumer to justify a new VO.
+- `EditorRenderer::completionPopup()` (9 params) — one call site
+  (`CodeEditorWidget`), no existing VO groups any subset of `$columns`,
+  `$rows`, `$cursorScreenRow`, `$anchorCol`, `$items`, `$selected`,
+  `$hovered`.
+- `Workbench\Menu\MenuModel::item()` (8 params) — a private helper called only
+  by `items()`, which already owns every one of those params itself; wrapping
+  them travels the same data through a new object with no consumer outside
+  this one file.

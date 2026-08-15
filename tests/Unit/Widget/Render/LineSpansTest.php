@@ -10,6 +10,7 @@ use Porta\Editor\Document;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\EditorDecorations;
 use Porta\Widget\Render\LineDecorator;
 use Porta\Widget\Render\LineSpans;
 
@@ -22,11 +23,14 @@ final class LineSpansTest extends TestCase
         $result = LineSpans::forLine(
             $doc,
             0,
-            ['startLine' => 0, 'startCol' => 0, 'endLine' => 0, 'endCol' => 5],
-            [new Caret(0, 3, 0, 3)],
+            new EditorDecorations(
+                multiActive: false,
+                selection: ['startLine' => 0, 'startCol' => 0, 'endLine' => 0, 'endCol' => 5],
+                carets: [new Caret(0, 3, 0, 3)],
+                occurrences: [[0, 0, 5]],
+                brackets: [[0, 4]],
+            ),
             [['start' => 6, 'end' => 11, 'current' => true]],
-            [[0, 0, 5]],
-            [[0, 4]],
             [['severity' => 1, 'message' => 'boom', 'col' => 0, 'endCol' => 5]],
             $styles,
         );
@@ -49,11 +53,14 @@ final class LineSpansTest extends TestCase
             $viaSelection = LineSpans::forLine(
                 $doc,
                 $line,
-                ['startLine' => 0, 'startCol' => 2, 'endLine' => 2, 'endCol' => 4],
+                new EditorDecorations(
+                    multiActive: false,
+                    selection: ['startLine' => 0, 'startCol' => 2, 'endLine' => 2, 'endCol' => 4],
+                    carets: [],
+                    occurrences: [],
+                    brackets: null,
+                ),
                 [],
-                [],
-                [],
-                null,
                 [],
                 $styles,
             );
@@ -62,11 +69,14 @@ final class LineSpansTest extends TestCase
             $viaCaret = LineSpans::forLine(
                 $doc,
                 $line,
-                null,
-                [new Caret(0, 2, 2, 4)],
+                new EditorDecorations(
+                    multiActive: false,
+                    selection: null,
+                    carets: [new Caret(0, 2, 2, 4)],
+                    occurrences: [],
+                    brackets: null,
+                ),
                 [],
-                [],
-                null,
                 [],
                 $styles,
             );
@@ -78,7 +88,14 @@ final class LineSpansTest extends TestCase
     public function testCollapsedCaretDrawsOnlyItsCell(): void
     {
         $doc = new Document("ab\n");
-        $result = LineSpans::forLine($doc, 0, null, [new Caret(0, 2, 0, 2)], [], [], null, [], new Styles(DarkTheme::definition()));
+        $result = LineSpans::forLine(
+            $doc,
+            0,
+            new EditorDecorations(multiActive: false, selection: null, carets: [new Caret(0, 2, 0, 2)], occurrences: [], brackets: null),
+            [],
+            [],
+            new Styles(DarkTheme::definition()),
+        );
 
         $this->assertCount(1, $result['spans'], 'no selection span for a collapsed caret');
         $this->assertSame([2, 3, "\x1b[7m", "\x1b[27m", null], $result['spans'][0]);
@@ -91,11 +108,14 @@ final class LineSpansTest extends TestCase
         $result = LineSpans::forLine(
             $doc,
             1,
-            ['startLine' => 0, 'startCol' => 0, 'endLine' => 0, 'endCol' => 2],
-            [new Caret(0, 1, 0, 1)],
+            new EditorDecorations(
+                multiActive: false,
+                selection: ['startLine' => 0, 'startCol' => 0, 'endLine' => 0, 'endCol' => 2],
+                carets: [new Caret(0, 1, 0, 1)],
+                occurrences: [[0, 0, 3]],
+                brackets: [[0, 1]],
+            ),
             [],
-            [[0, 0, 3]],
-            [[0, 1]],
             [],
             new Styles(DarkTheme::definition()),
         );

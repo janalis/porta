@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
-use Porta\Editor\Caret;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Ui\Role;
@@ -22,27 +21,23 @@ use Porta\Ui\Theme\Styles;
 final class LineSpans
 {
     /**
-     * @param array{startLine: int, startCol: int, endLine: int, endCol: int}|null $selection   primary selection (null with multiple carets:
-     *                                                                                          every caret then draws uniformly via $carets)
-     * @param list<Caret>    $carets      all carets incl. the primary (multi-caret mode)
-     * @param list<array{start: int, end: int, current: bool}>                     $matches     search matches on this line (byte cols)
-     * @param list<array{0: int, 1: int, 2: int}>                                  $occurrences [line, startDisp, endDisp] identifier occurrences
-     * @param list<array{0: int, 1: int}>|null                                     $brackets    [line, displayCol] matching-bracket cells
-     * @param list<array{severity: int, message: string, col: int, endCol?: int}>  $diags       diagnostics on this line (utf16 cols)
+     * @param list<array{start: int, end: int, current: bool}>                     $matches search matches on this line (byte cols)
+     * @param list<array{severity: int, message: string, col: int, endCol?: int}>  $diags   diagnostics on this line (utf16 cols)
      *
      * @return array{spans: list<array{0: int, 1: int, 2: string, 3: string, 4: ?string}>, padTo: int}
      */
     public static function forLine(
         Document $doc,
         int $lineIndex,
-        ?array $selection,
-        array $carets,
+        EditorDecorations $decorations,
         array $matches,
-        array $occurrences,
-        ?array $brackets,
         array $diags,
         Styles $styles,
     ): array {
+        $selection = $decorations->multiActive ? null : $decorations->selection;
+        $occurrences = $decorations->occurrences;
+        $brackets = $decorations->brackets;
+        $carets = $decorations->carets;
         $spans = [];
         $padTo = 0;
 

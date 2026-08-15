@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
-use Porta\Editor\Caret;
 use Porta\Editor\DecorationStore;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
@@ -103,10 +102,7 @@ final readonly class EditorRowAssembler
             $hlLine = $this->decoratedLine(
                 $lineIndex,
                 $highlighted[$lineIndex] ?? '',
-                $decorations->multiActive ? null : $decorations->selection,
-                $decorations->carets,
-                $decorations->occurrences,
-                $decorations->brackets,
+                $decorations,
                 $lineDiags,
                 $hScroll,
                 $geo->contentWidth,
@@ -216,19 +212,12 @@ final readonly class EditorRowAssembler
      * layered selection/caret/search/occurrence/bracket/diagnostic spans,
      * inlay hints, and the collapsed-fold marker.
      *
-     * @param array{startLine: int, startCol: int, endLine: int, endCol: int}|null $selection null with multiple carets: every caret draws uniformly through the records
-     * @param list<Caret>    $carets
-     * @param list<array{0: int, 1: int, 2: int}>                                  $occurrences
-     * @param array{0: array{0: int, 1: int}, 1: array{0: int, 1: int}}|null       $brackets
-     * @param list<array{col: int, endCol?: int, message: string, severity: int}>  $lineDiags
+     * @param list<array{col: int, endCol?: int, message: string, severity: int}> $lineDiags
      */
     private function decoratedLine(
         int $lineIndex,
         string $highlighted,
-        ?array $selection,
-        array $carets,
-        array $occurrences,
-        ?array $brackets,
+        EditorDecorations $decorations,
         array $lineDiags,
         int $hScroll,
         int $contentWidth,
@@ -241,11 +230,8 @@ final readonly class EditorRowAssembler
         ['spans' => $spans, 'padTo' => $padTo] = LineSpans::forLine(
             $doc,
             $lineIndex,
-            $selection,
-            $carets,
+            $decorations,
             $this->store->searchMatches()[$lineIndex] ?? [],
-            $occurrences,
-            $brackets,
             $lineDiags,
             $this->styles,
         );
