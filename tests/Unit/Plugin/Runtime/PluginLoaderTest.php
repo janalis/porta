@@ -214,6 +214,44 @@ final class PluginLoaderTest extends TestCase
         $this->assertSame(['good:hello' => ['f8']], $manager->defaultKeys(), 'atomicity: failed plugins contributed nothing');
     }
 
+    public function testACorruptedVendorAutoloadDumpDoesNotCrashBootAndSiblingsStillLoad(): void
+    {
+        // PluginAutoloader::register() `require`s composer's generated map
+        // files; an install interrupted mid-write leaves one truncated, which
+        // throws a \ParseError. That must degrade to this plugin contributing
+        // nothing, exactly like any other loadInto() failure — not escape the
+        // fault barrier and take the whole boot down.
+        $project = new TempProject([
+            '.porta/plugins/corrupt/plugin.php' => $this->pluginSource('corrupt'),
+            '.porta/plugins/corrupt/composer.json' => '{"autoload": {"psr-4": {"Corrupt\\\\": "src/"}}}',
+            '.porta/plugins/corrupt/vendor/composer/autoload_psr4.php' => '<?php this is not valid php syntax {{{',
+            '.porta/plugins/good/plugin.php' => $this->pluginSource('good'),
+        ]);
+
+        $manager = $this->load($project);
+
+        $this->assertFalse($manager->hasPlugin('corrupt'), 'a corrupted autoload dump degrades to a warning, not a crash');
+        $this->assertStringContainsString('Plugin "corrupt" failed to load', self::renderAll($manager->warnings()));
+        $this->assertTrue($manager->hasPlugin('good'), 'the sibling still loads');
+    }
+
+    public function testTheLiveLoadPathAlsoContainsACorruptedVendorAutoloadDump(): void
+    {
+        $project = new TempProject([
+            'corrupt/plugin.php' => $this->pluginSource('corrupt'),
+            'corrupt/composer.json' => '{"autoload": {"psr-4": {"Corrupt\\\\": "src/"}}}',
+            'corrupt/vendor/composer/autoload_psr4.php' => '<?php this is not valid php syntax {{{',
+        ]);
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
+        $loader = new PluginLoader($project->dir, null, new PluginSettings($project->dir, []));
+
+        $error = $loader->loadFile($project->path('corrupt/plugin.php'), $manager);
+
+        $this->assertNotNull($error);
+        $this->assertStringContainsString('Plugin "corrupt" failed to load', self::render($error));
+        $this->assertFalse($manager->hasPlugin('corrupt'));
+    }
+
     public function testLoadFileReturnsTheErrorInsteadOfWarning(): void
     {
         $project = new TempProject([

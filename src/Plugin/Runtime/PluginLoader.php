@@ -119,7 +119,13 @@ final class PluginLoader
             foreach ($manifest->shadowedPackages() as $package) {
                 $manager->addWarning(new ConfigWarning('Plugin "%name%" vendors %package%, which Porta ships — Porta\'s copy is used', ['%name%' => $manifest->name, '%package%' => $package]));
             }
-            PluginAutoloader::register($manifest);
+            try {
+                PluginAutoloader::register($manifest);
+            } catch (\Throwable $error) {
+                $manager->addWarning(new ConfigWarning('Plugin "%name%" failed to load: %message%', ['%name%' => $manifest->name, '%message%' => $error->getMessage()]));
+
+                continue;
+            }
             $manifests[] = $manifest;
         }
 
@@ -231,8 +237,8 @@ final class PluginLoader
         if (null !== $unmet) {
             return $unmet;
         }
-        PluginAutoloader::register($manifest);
         try {
+            PluginAutoloader::register($manifest);
             /** @var mixed $plugin */
             $plugin = (static fn (): mixed => require $file)();
             if (!$plugin instanceof PortaPlugin) {
