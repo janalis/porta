@@ -7,8 +7,10 @@ namespace Porta\Console;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\ConsoleOutputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Finder\Finder;
 
 /**
@@ -320,6 +322,7 @@ final class ArchitectureCheckCommand extends Command
     }
 
     public function __invoke(
+        InputInterface $input,
         OutputInterface $output,
         #[Argument('Project root to scan (defaults to the working directory)')]
         ?string $path = null,
@@ -339,10 +342,9 @@ final class ArchitectureCheckCommand extends Command
 
         if ([] !== $failures) {
             $errors = $output instanceof ConsoleOutputInterface ? $output->getErrorOutput() : $output;
-            $errors->writeln('architecture-check: FAILED');
-            foreach ($failures as $failure) {
-                $errors->writeln('  '.$failure);
-            }
+            $io = new SymfonyStyle($input, $errors);
+            $io->error('architecture-check: FAILED');
+            $io->listing($failures);
 
             return Command::FAILURE;
         }

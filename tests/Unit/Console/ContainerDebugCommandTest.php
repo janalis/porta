@@ -61,7 +61,7 @@ final class ContainerDebugCommandTest extends TestCase
 
         $this->assertSame(Command::SUCCESS, $status);
         $this->assertStringContainsString('tagged porta.eager', $display);
-        $this->assertStringContainsString('Porta\Layout\ResponsiveLayout {"priority":600}', $display, 'priority is contractual and shown');
+        $this->assertMatchesRegularExpression('/Porta\\\\Layout\\\\ResponsiveLayout\s+\{"priority":600\}/', $display, 'priority is contractual and shown');
     }
 
     public function testATagNobodyCarriesListsNothing(): void
@@ -80,7 +80,7 @@ final class ContainerDebugCommandTest extends TestCase
 
         $this->assertSame(Command::SUCCESS, $status);
         $this->assertStringContainsString('alias(es) — loaded (pre-compile) view', $display);
-        $this->assertStringContainsString('Porta\Editor\FileOpener -> Porta\Editor\BufferService', $display, 'the loader-derived single-impl aliases');
+        $this->assertMatchesRegularExpression('/Porta\\\\Editor\\\\FileOpener\s+Porta\\\\Editor\\\\BufferService/', $display, 'the loader-derived single-impl aliases');
     }
 
     public function testAnUnknownOptionIsSymfonysOwnError(): void

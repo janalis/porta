@@ -8,8 +8,11 @@ use Symfony\Component\Config\FileLocator;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 
 /**
@@ -64,6 +67,7 @@ final class ContainerDebugCommand extends Command
     }
 
     public function __invoke(
+        InputInterface $input,
         OutputInterface $output,
         #[Option('Show the pre-compile definitions instead of the compiled ones', name: 'loaded')]
         // @mago-expect lint:no-boolean-flag-parameter -- Symfony Console's #[Option] shape: a bool option IS a flag.
@@ -85,65 +89,78 @@ final class ContainerDebugCommand extends Command
             $container->compile(resolveEnvPlaceholders: true);
         }
         $view = $loadedView || $aliasView ? 'loaded (pre-compile)' : 'compiled (runtime)';
+        $io = new SymfonyStyle($input, $output);
 
         if (null !== $tagView) {
-            $this->printTagged($output, $container, $tagView, $view);
+            $this->printTagged($output, $io, $container, $tagView, $view);
 
             return Command::SUCCESS;
         }
         if ($aliasView) {
-            $this->printAliases($output, $container, $view);
+            $this->printAliases($output, $io, $container, $view);
 
             return Command::SUCCESS;
         }
-        $this->printServices($output, $container, $view);
+        $this->printServices($output, $io, $container, $view);
 
         return Command::SUCCESS;
     }
 
-    private function printTagged(OutputInterface $output, ContainerBuilder $container, string $tag, string $view): void
+    private function printTagged(OutputInterface $output, SymfonyStyle $io, ContainerBuilder $container, string $tag, string $view): void
     {
         $tagged = $container->findTaggedServiceIds($tag);
         $output->writeln(\sprintf('# %d service(s) tagged %s — %s view', \count($tagged), $tag, $view));
+        if ([] === $tagged) {
+            return;
+        }
+        $rows = [];
         foreach ($tagged as $id => $tags) {
             /** @var mixed $attributes */
             foreach ($tags as $attributes) {
-                $extra = [] === $attributes ? '' : ' '.(string) json_encode($attributes);
-                $output->writeln($id.$extra);
+                $rows[] = [$id, [] === $attributes ? '' : (string) json_encode($attributes)];
             }
         }
+        $io->table(['Service', 'Tag attributes'], $rows);
     }
 
-    private function printAliases(OutputInterface $output, ContainerBuilder $container, string $view): void
+    private function printAliases(OutputInterface $output, SymfonyStyle $io, ContainerBuilder $container, string $view): void
     {
         $aliases = $container->getAliases();
         ksort($aliases);
         $output->writeln(\sprintf('# %d alias(es) — %s view', \count($aliases), $view));
+        $rows = [];
         foreach ($aliases as $alias => $target) {
-            $output->writeln($alias.' -> '.(string) $target);
+            $rows[] = [$alias, (string) $target];
         }
+        $io->table(['Alias', 'Target'], $rows);
     }
 
-    private function printServices(OutputInterface $output, ContainerBuilder $container, string $view): void
+    private function printServices(OutputInterface $output, SymfonyStyle $io, ContainerBuilder $container, string $view): void
     {
         $definitions = $container->getDefinitions();
         ksort($definitions);
         $output->writeln(\sprintf('# %d service(s) — %s view', \count($definitions), $view));
+        $rows = [];
         foreach ($definitions as $id => $definition) {
             $class = $definition->getClass() ?? '?';
-            $flags = [];
-            if ($definition->isSynthetic()) {
-                $flags[] = 'synthetic';
-            }
-            if ($definition->isPublic()) {
-                $flags[] = 'public';
-            }
-            if (null !== $definition->getFactory()) {
-                $flags[] = 'factory';
-            }
-            $suffix = [] === $flags ? '' : ' ['.implode(',', $flags).']';
-            $shownClass = $id === $class ? '' : " ({$class})";
-            $output->writeln($id.$shownClass.$suffix);
+            $rows[] = [$id, $id === $class ? '' : $class, $this->flags($definition)];
         }
+        $io->table(['Service', 'Class', 'Flags'], $rows);
+    }
+
+    private function flags(Definition $definition): string
+    {
+        $flags = [];
+        if ($definition->isSynthetic()) {
+            $flags[] = 'synthetic';
+        }
+        if ($definition->isPublic()) {
+            $flags[] = 'public';
+        }
+        if (null !== $definition->getFactory()) {
+            $flags[] = 'factory';
+        }
+
+        return [] === $flags ? '' : '['.implode(',', $flags).']';
     }
 }
