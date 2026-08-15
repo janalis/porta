@@ -464,7 +464,7 @@ final class PluginInstaller
             // the plugin works either way, and the next disable leaves the
             // tree standing rather than deleting what it cannot prove is ours.
             if (0 === $code && is_dir($pluginDir.'/vendor')) {
-                file_put_contents($pluginDir.'/'.self::MARKER, data: "Porta installed this directory; disabling the plugin removes it.\n");
+                $this->fs->dumpFile($pluginDir.'/'.self::MARKER, "Porta installed this directory; disabling the plugin removes it.\n");
             }
             $onExit($code);
         });
