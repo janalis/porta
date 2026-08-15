@@ -59,4 +59,42 @@ final class DiagnosticLogTest extends TestCase
 
         $this->assertFileDoesNotExist($log->path());
     }
+
+    /**
+     * A permission-denied mkdir() emits a native PHP warning; phpunit.xml.dist
+     * turns any triggered warning into a test failure, so this only passes if
+     * append()'s own error handler actually suppresses it (never throws, never
+     * leaks) — exactly the "must not break the app it is diagnosing" contract.
+     */
+    public function testANativeMkdirWarningIsSuppressedNotLeaked(): void
+    {
+        $project = new TempProject();
+        chmod($project->dir, permissions: 0o555); // exists, but mkdir() inside it fails
+        $log = new DiagnosticLog($project->dir.'/.porta/diag.log');
+
+        try {
+            $log->append('lost');
+        } finally {
+            chmod($project->dir, permissions: 0o755);
+        }
+
+        $this->assertFileDoesNotExist($log->path());
+    }
+
+    /** Same guarantee as above, for the write itself once the directory already exists. */
+    public function testANativeFilePutContentsWarningIsSuppressedNotLeaked(): void
+    {
+        $project = new TempProject();
+        mkdir($project->dir.'/.porta', permissions: 0o777, recursive: true);
+        chmod($project->dir.'/.porta', permissions: 0o555); // exists, but is not writable
+        $log = new DiagnosticLog($project->dir.'/.porta/diag.log');
+
+        try {
+            $log->append('lost');
+        } finally {
+            chmod($project->dir.'/.porta', permissions: 0o755);
+        }
+
+        $this->assertFileDoesNotExist($log->path());
+    }
 }

@@ -36,14 +36,19 @@ final class DiagnosticLog
     /** Append one entry, creating the parent directory on first use. */
     public function append(string $entry): void
     {
-        $dir = \dirname($this->path);
-        if (!is_dir($dir) && is_dir(\dirname($dir))) {
-            mkdir($dir, permissions: 0o755, recursive: true);
+        set_error_handler(static fn (): bool => true);
+        try {
+            $dir = \dirname($this->path);
+            if (!is_dir($dir) && is_dir(\dirname($dir))) {
+                mkdir($dir, permissions: 0o755, recursive: true);
+            }
+            if (!is_dir($dir)) {
+                return; // unwritable location: stay silent by contract
+            }
+            $oversized = is_file($this->path) && (int) filesize($this->path) > $this->maxBytes;
+            file_put_contents($this->path, $entry."\n", $oversized ? 0 : \FILE_APPEND);
+        } finally {
+            restore_error_handler();
         }
-        if (!is_dir($dir)) {
-            return; // unwritable location: stay silent by contract
-        }
-        $oversized = is_file($this->path) && (int) filesize($this->path) > $this->maxBytes;
-        file_put_contents($this->path, $entry."\n", $oversized ? 0 : \FILE_APPEND);
     }
 }
