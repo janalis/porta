@@ -377,8 +377,11 @@ final class ProjectSearch
         // replacement so foo→bar, Foo→Bar and FOO→BAR in one pass.
         if ($options->preserveCase && !$options->regex) {
             set_error_handler(static fn (): bool => true);
-            $result = preg_replace_callback($pattern, fn (array $m): string => $this->applyCasePattern($m[0], $replacement), $content);
-            restore_error_handler();
+            try {
+                $result = preg_replace_callback($pattern, fn (array $m): string => $this->applyCasePattern($m[0], $replacement), $content);
+            } finally {
+                restore_error_handler();
+            }
 
             return null === $result ? $content : $result;
         }
