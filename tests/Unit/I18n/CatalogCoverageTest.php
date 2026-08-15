@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\I18n;
 
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Finder\Finder;
 
 /**
  * The missing direction of {@see CatalogCompletenessTest}: that test guards
@@ -137,12 +138,13 @@ final class CatalogCoverageTest extends TestCase
         $roots = [self::ROOT.'/src', ...(\is_array($pluginSrc) ? $pluginSrc : [])];
         $files = [];
         foreach ($roots as $root) {
-            $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS));
-            foreach ($iterator as $file) {
-                if (!($file instanceof \SplFileInfo && $file->isFile() && str_ends_with($file->getPathname(), '.php'))) {
-                    continue;
-                }
-
+            $tree = new Finder()
+                ->files()
+                ->in($root)
+                ->name('/\.php$/')
+                ->ignoreDotFiles(false)
+                ->ignoreVCS(false);
+            foreach ($tree as $file) {
                 $files[] = $file->getPathname();
             }
         }
