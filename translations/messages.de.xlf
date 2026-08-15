@@ -2450,6 +2450,86 @@
         <source>Cannot determine the branch to install from %source%</source>
         <target>Der zu installierende Branch von %source% kann nicht bestimmt werden</target>
       </trans-unit>
+      <trans-unit id="624">
+        <source>run command</source>
+        <target>Ausführungsbefehl</target>
+      </trans-unit>
+      <trans-unit id="625">
+        <source>.porta.json is not valid JSON</source>
+        <target>.porta.json ist kein gültiges JSON</target>
+      </trans-unit>
+      <trans-unit id="626">
+        <source>.porta.json is not valid JSON (%error%)</source>
+        <target>.porta.json ist kein gültiges JSON (%error%)</target>
+      </trans-unit>
+      <trans-unit id="627">
+        <source>Keymap action "%action%" must map to a key or list of keys</source>
+        <target>Tastenkürzel-Aktion „%action%" muss auf eine Taste oder Liste von Tasten abgebildet werden</target>
+      </trans-unit>
+      <trans-unit id="628">
+        <source>Unknown setting "%key%" in .porta.json</source>
+        <target>Unbekannte Einstellung „%key%" in .porta.json</target>
+      </trans-unit>
+      <trans-unit id="629">
+        <source>Setting "%key%" must be one of %choices%, got "%value%"</source>
+        <target>Einstellung „%key%" muss eine von %choices% sein, erhalten „%value%"</target>
+      </trans-unit>
+      <trans-unit id="630">
+        <source>"highlight" in .porta.json must be an object</source>
+        <target>„highlight" in .porta.json muss ein Objekt sein</target>
+      </trans-unit>
+      <trans-unit id="631">
+        <source>Highlighter for "%language%" in .porta.json must be a non-empty string</source>
+        <target>Hervorhebung für „%language%" in .porta.json muss eine nicht leere Zeichenkette sein</target>
+      </trans-unit>
+      <trans-unit id="632">
+        <source>Plugin settings for "%plugin%" must be an object</source>
+        <target>Plugin-Einstellungen für „%plugin%" müssen ein Objekt sein</target>
+      </trans-unit>
+      <trans-unit id="633">
+        <source>Unknown language "%lang%" in .porta.json</source>
+        <target>Unbekannte Sprache „%lang%" in .porta.json</target>
+      </trans-unit>
+      <trans-unit id="634">
+        <source>Language "%lang%" must map to an object of indent settings</source>
+        <target>Sprache „%lang%" muss auf ein Objekt mit Einrückungseinstellungen abgebildet werden</target>
+      </trans-unit>
+      <trans-unit id="635">
+        <source>Unknown keymap action "%action%" in .porta.json</source>
+        <target>Unbekannte Tastenkürzel-Aktion „%action%" in .porta.json</target>
+      </trans-unit>
+      <trans-unit id="636">
+        <source>Plugin "%name%" has an unreadable composer.json (%error%) — its manifest is ignored</source>
+        <target>Plugin „%name%" hat eine unlesbare composer.json (%error%) — sein Manifest wird ignoriert</target>
+      </trans-unit>
+      <trans-unit id="637">
+        <source>Plugin "%name%" needs %needs% — not loaded</source>
+        <target>Plugin „%name%" benötigt %needs% — nicht geladen</target>
+      </trans-unit>
+      <trans-unit id="638">
+        <source>Plugin "%name%" still has a plugin.json — its fields moved to composer.json (autoload.psr-4, extra.porta.requires)</source>
+        <target>Plugin „%name%" hat noch eine plugin.json — ihre Felder sind nach composer.json umgezogen (autoload.psr-4, extra.porta.requires)</target>
+      </trans-unit>
+      <trans-unit id="639">
+        <source>Plugin "%name%" vendors %package%, which Porta ships — Porta's copy is used</source>
+        <target>Plugin „%name%" bringt %package% mit, das Porta bereits mitliefert — Portas eigene Kopie wird verwendet</target>
+      </trans-unit>
+      <trans-unit id="640">
+        <source>Plugin "%name%" failed to load: %message%</source>
+        <target>Plugin „%name%" konnte nicht geladen werden: %message%</target>
+      </trans-unit>
+      <trans-unit id="641">
+        <source>Plugin "%name%" is part of a dependency cycle</source>
+        <target>Plugin „%name%" ist Teil eines Abhängigkeitszyklus</target>
+      </trans-unit>
+      <trans-unit id="642">
+        <source>Plugin "%name%" needs "%required%", which is not installed or is disabled</source>
+        <target>Plugin „%name%" benötigt „%required%", das nicht installiert oder deaktiviert ist</target>
+      </trans-unit>
+      <trans-unit id="643">
+        <source>Plugin "%name%" needs "%required%", which could not load</source>
+        <target>Plugin „%name%" benötigt „%required%", das nicht geladen werden konnte</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

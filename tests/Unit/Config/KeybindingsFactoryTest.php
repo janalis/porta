@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Config;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ActionRegistry;
+use Porta\Config\ConfigWarning;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
 use Porta\Plugin\Runtime\PluginHost;
@@ -64,7 +65,7 @@ final class KeybindingsFactoryTest extends TestCase
 
         $this->assertSame([], $keys->getBindings('nobody_declares_this'));
         $this->assertSame(['f8'], $keys->getBindings('save'), "core's own actions still bind");
-        $this->assertSame(['Unknown keymap action "nobody_declares_this" in .porta.json'], $host->manager()->warnings());
+        $this->assertEquals([new ConfigWarning('Unknown keymap action "%action%" in .porta.json', ['%action%' => 'nobody_declares_this'])], $host->manager()->warnings());
 
         // LiveKeybindings::rebuild() re-enters this on every keymap edit, and
         // the boot warnings are flashed from one array — reporting per call
@@ -96,6 +97,6 @@ final class KeybindingsFactoryTest extends TestCase
 
         $this->assertSame([], $keys->getBindings('still_nothing'));
         $this->assertSame(['f5'], $keys->getBindings('save'));
-        $this->assertSame(['Unknown keymap action "still_nothing" in .porta.json'], $host->manager()->warnings());
+        $this->assertEquals([new ConfigWarning('Unknown keymap action "%action%" in .porta.json', ['%action%' => 'still_nothing'])], $host->manager()->warnings());
     }
 }

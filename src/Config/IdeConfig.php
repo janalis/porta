@@ -130,7 +130,7 @@ final class IdeConfig
      * @param list<string>                                                                                                                   $disabledPlugins plugin names skipped at boot (project/global plugins are on unless listed here)
      * @param list<string>                                                                                                                   $enabledPlugins  bundled (embedded) plugin names to load — {@see DEFAULT_ENABLED_PLUGINS} unless the key is present (an explicit list, even empty, replaces the default)
      * @param array{default: string, languages: array<string, string>}                                                                      $highlight  the top-level `highlight` block: grammar name => backend id
-     * @param list<string>                                                                                                                   $warnings
+     * @param list<ConfigWarning>                                                                                                            $warnings
      */
     private function __construct(
         public readonly array $keymap,
@@ -155,7 +155,9 @@ final class IdeConfig
         $config = JsonFile::read($file, $jsonError);
         if (null === $config) {
             return new self([], self::DEFAULT_SETTINGS, [], [], [], [], self::DEFAULT_ENABLED_PLUGINS, self::NO_HIGHLIGHT, [
-                '.porta.json is not valid JSON'.(null !== $jsonError ? ' ('.$jsonError.')' : ''),
+                null !== $jsonError
+                    ? new ConfigWarning('.porta.json is not valid JSON (%error%)', ['%error%' => $jsonError])
+                    : new ConfigWarning('.porta.json is not valid JSON'),
             ]);
         }
 
@@ -171,7 +173,7 @@ final class IdeConfig
             // asks that once the catalog is complete, and warns there.
             $keys = \is_string($keys) ? [$keys] : $keys;
             if (!\is_array($keys)) {
-                $warnings[] = \sprintf('Keymap action "%s" must map to a key or list of keys', $action);
+                $warnings[] = new ConfigWarning('Keymap action "%action%" must map to a key or list of keys', ['%action%' => $action]);
                 continue;
             }
             $keymap[$action] = array_values(array_map('strval', $keys));
@@ -185,7 +187,7 @@ final class IdeConfig
                 continue;
             }
             if (!\array_key_exists($key, self::DEFAULT_SETTINGS)) {
-                $warnings[] = \sprintf('Unknown setting "%s" in .porta.json', $key);
+                $warnings[] = new ConfigWarning('Unknown setting "%key%" in .porta.json', ['%key%' => $key]);
                 continue;
             }
             // Coerce to the default's type (bool, int, or string).
@@ -200,7 +202,11 @@ final class IdeConfig
             // whatever fallback its consumer happens to apply, silently.
             $allowed = self::CHOICE_SETTINGS[$key] ?? null;
             if (null !== $allowed && !\in_array($coerced, $allowed, strict: true)) {
-                $warnings[] = \sprintf('Setting "%s" must be one of %s, got "%s"', $key, implode('|', $allowed), (string) $coerced);
+                $warnings[] = new ConfigWarning('Setting "%key%" must be one of %choices%, got "%value%"', [
+                    '%key%' => $key,
+                    '%choices%' => implode('|', $allowed),
+                    '%value%' => (string) $coerced,
+                ]);
                 continue;
             }
             $settings[$key] = $coerced;
@@ -241,7 +247,7 @@ final class IdeConfig
      * against loaded plugins later, by the registry, since plugins have not
      * loaded when the config is parsed.
      *
-     * @param list<string> $warnings
+     * @param list<ConfigWarning> $warnings
      *
      * @return array{default: string, languages: array<string, string>}
      */
@@ -251,7 +257,7 @@ final class IdeConfig
             return self::NO_HIGHLIGHT;
         }
         if (!\is_array($highlight)) {
-            $warnings[] = '"highlight" in .porta.json must be an object';
+            $warnings[] = new ConfigWarning('"highlight" in .porta.json must be an object');
 
             return self::NO_HIGHLIGHT;
         }
@@ -271,7 +277,7 @@ final class IdeConfig
     /**
      * The per-grammar highlighter overrides from the block's `languages` map.
      *
-     * @param list<string> $warnings
+     * @param list<ConfigWarning> $warnings
      *
      * @return array<string, string>
      */
@@ -285,7 +291,7 @@ final class IdeConfig
         foreach (array_keys($raw) as $language) {
             $id = self::highlighterId($raw[$language]);
             if (null === $id) {
-                $warnings[] = \sprintf('Highlighter for "%s" in .porta.json must be a non-empty string', (string) $language);
+                $warnings[] = new ConfigWarning('Highlighter for "%language%" in .porta.json must be a non-empty string', ['%language%' => (string) $language]);
                 continue;
             }
             $languages[(string) $language] = $id;
@@ -300,7 +306,7 @@ final class IdeConfig
      * {@see \Porta\Plugin\Runtime\PluginSettings} coerces at read time.
      *
      * @param array<array-key, mixed> $config
-     * @param list<string>            $warnings
+     * @param list<ConfigWarning>     $warnings
      *
      * @return array<string, array<string, bool|int|string>>
      */
@@ -310,7 +316,7 @@ final class IdeConfig
         /** @var mixed $values */
         foreach ($config as $plugin => $values) {
             if (!\is_array($values)) {
-                $warnings[] = \sprintf('Plugin settings for "%s" must be an object', $plugin);
+                $warnings[] = new ConfigWarning('Plugin settings for "%plugin%" must be an object', ['%plugin%' => (string) $plugin]);
                 continue;
             }
             /** @var mixed $value */
@@ -374,7 +380,7 @@ final class IdeConfig
      * entries are dropped with a warning.
      *
      * @param array<array-key, mixed> $config
-     * @param list<string>            $warnings
+     * @param list<ConfigWarning>     $warnings
      *
      * @return array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}>
      */
@@ -384,12 +390,12 @@ final class IdeConfig
         foreach (array_keys($config) as $lang) {
             $lang = (string) $lang;
             if (!LanguageCatalog::isKnown($lang)) {
-                $warnings[] = \sprintf('Unknown language "%s" in .porta.json', $lang);
+                $warnings[] = new ConfigWarning('Unknown language "%lang%" in .porta.json', ['%lang%' => $lang]);
                 continue;
             }
             $entry = self::languageEntry($config[$lang]);
             if (null === $entry) {
-                $warnings[] = \sprintf('Language "%s" must map to an object of indent settings', $lang);
+                $warnings[] = new ConfigWarning('Language "%lang%" must map to an object of indent settings', ['%lang%' => $lang]);
                 continue;
             }
             if ([] !== $entry) {

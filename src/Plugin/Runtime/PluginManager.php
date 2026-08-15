@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin\Runtime;
 
 use Porta\Config\CommandRegistry;
+use Porta\Config\ConfigWarning;
 use Porta\Config\KeyDispatch;
 use Porta\Config\RebindableActionSource;
 use Porta\Container\ListenerPriority;
@@ -88,7 +89,7 @@ final class PluginManager implements
     private array $statusSegments = [];
     /** @var list<array{plugin: string, languageId: string, resolve: \Closure(): (list<string>|null)}> committed debug adapters, in load order */
     private array $debugAdapters = [];
-    /** @var list<string> */
+    /** @var list<ConfigWarning> */
     private array $warnings = [];
 
     /** @var list<string> enabled plugins whose composer packages are missing */
@@ -331,7 +332,7 @@ final class PluginManager implements
         $this->settings->removeFor($name);
     }
 
-    public function addWarning(string $warning): void
+    public function addWarning(ConfigWarning $warning): void
     {
         $this->warnings[] = $warning;
     }
@@ -373,7 +374,7 @@ final class PluginManager implements
         return $this->deferred;
     }
 
-    /** @return list<string> */
+    /** @return list<ConfigWarning> */
     public function warnings(): array
     {
         return $this->warnings;
@@ -721,7 +722,7 @@ final class PluginManager implements
     {
         $runtime = $this->runtime;
         if (null === $runtime) {
-            $this->addWarning(\sprintf('Plugin "%s" failed: %s', $plugin, $error->getMessage()));
+            $this->addWarning(new ConfigWarning('Plugin "%name%" failed: %message%', ['%name%' => $plugin, '%message%' => $error->getMessage()]));
 
             return;
         }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Config;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ConfigWarning;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Editor\LineNumberMode;
@@ -72,7 +73,7 @@ final class IdeConfigTest extends TestCase
         $this->assertSame('light', $config->settings['theme']);
         $this->assertSame('left', $config->settings['tabBarPosition']);
         $this->assertTrue($config->settings['autoPairs'], 'default preserved when unset');
-        $this->assertContains('Unknown setting "bogusSetting" in .porta.json', $config->warnings);
+        $this->assertContainsEquals(new ConfigWarning('Unknown setting "%key%" in .porta.json', ['%key%' => 'bogusSetting']), $config->warnings);
     }
 
     public function testLegacySettingKeysAreSkippedWithoutWarning(): void
@@ -90,7 +91,7 @@ final class IdeConfigTest extends TestCase
 
         $this->assertArrayNotHasKey('editorConfig', $config->settings, 'the legacy key never reaches the settings');
         $this->assertArrayNotHasKey('gitShowBranch', $config->settings, 'nor does a key that moved to a plugin');
-        $this->assertSame(['Unknown setting "bogusSetting" in .porta.json'], $config->warnings, 'no warning for a superseded key; unknown keys still warn');
+        $this->assertEquals([new ConfigWarning('Unknown setting "%key%" in .porta.json', ['%key%' => 'bogusSetting'])], $config->warnings, 'no warning for a superseded key; unknown keys still warn');
     }
 
     public function testLanguagesParsingAndValidation(): void
@@ -114,8 +115,8 @@ final class IdeConfigTest extends TestCase
         $this->assertArrayNotHasKey('klingon', $config->languages, 'unknown language dropped');
         $this->assertArrayNotHasKey('python', $config->languages, 'non-object dropped');
         $this->assertArrayNotHasKey('yaml', $config->languages, 'invalid size (< 1) dropped');
-        $this->assertContains('Unknown language "klingon" in .porta.json', $config->warnings);
-        $this->assertContains('Language "python" must map to an object of indent settings', $config->warnings);
+        $this->assertContainsEquals(new ConfigWarning('Unknown language "%lang%" in .porta.json', ['%lang%' => 'klingon']), $config->warnings);
+        $this->assertContainsEquals(new ConfigWarning('Language "%lang%" must map to an object of indent settings', ['%lang%' => 'python']), $config->warnings);
     }
 
     public function testAutoIndentSizeIsPreserved(): void
@@ -319,8 +320,7 @@ final class IdeConfigTest extends TestCase
         $this->assertSame(['ctrl+shift+d'], $config->keymap['duplicate_line']);
         $this->assertSame(['f10'], $config->keymap['save'], 'string normalized to list');
         $this->assertArrayNotHasKey('copy', $config->keymap, 'non-list value rejected');
-        $this->assertCount(1, $config->warnings);
-        $this->assertStringContainsString('copy', $config->warnings[0]);
+        $this->assertEquals([new ConfigWarning('Keymap action "%action%" must map to a key or list of keys', ['%action%' => 'copy'])], $config->warnings);
 
         // Whether an id EXISTS is not asked here: this runs before the
         // container, so the catalog is still missing every plugin pane's
@@ -455,7 +455,7 @@ final class IdeConfigTest extends TestCase
 
         $this->assertSame(['binary' => '/opt/phpstan', 'strict' => true, 'level' => 7], $config->plugins['phpstan'], 'scalars kept raw, non-scalars dropped');
         $this->assertArrayNotHasKey('broken', $config->plugins);
-        $this->assertContains('Plugin settings for "broken" must be an object', $config->warnings);
+        $this->assertContainsEquals(new ConfigWarning('Plugin settings for "%plugin%" must be an object', ['%plugin%' => 'broken']), $config->warnings);
         $this->assertSame(['psalm', '42'], $config->disabledPlugins, 'scalar names kept, stringified');
     }
 
@@ -493,7 +493,7 @@ final class IdeConfigTest extends TestCase
         $this->assertSame(['f8'], $config->keymap['demo:hello'], 'a plugin command id binds if its plugin loads');
         $this->assertSame(['f9'], $config->keymap['still_unknown'], 'membership is the factory\'s question, not this class\'s');
         $this->assertArrayNotHasKey('demo:bad_value', $config->keymap, 'the value-shape check still applies');
-        $this->assertContains('Keymap action "demo:bad_value" must map to a key or list of keys', $config->warnings);
+        $this->assertContainsEquals(new ConfigWarning('Keymap action "%action%" must map to a key or list of keys', ['%action%' => 'demo:bad_value']), $config->warnings);
     }
 
     public function testHighlightBlockParsesDefaultAndPerLanguageOverrides(): void
@@ -520,7 +520,7 @@ final class IdeConfigTest extends TestCase
         $config = IdeConfig::load($project->dir);
 
         $this->assertSame(['default' => '', 'languages' => []], $config->highlight);
-        $this->assertContains('"highlight" in .porta.json must be an object', $config->warnings);
+        $this->assertContainsEquals(new ConfigWarning('"highlight" in .porta.json must be an object'), $config->warnings);
     }
 
     /** A non-string or empty id is dropped with a warning, not silently kept. */
@@ -531,7 +531,7 @@ final class IdeConfigTest extends TestCase
 
         $this->assertSame('', $config->highlight['default'], 'a non-string default is no preference');
         $this->assertSame(['php' => 'chroma'], $config->highlight['languages']);
-        $this->assertCount(2, array_filter($config->warnings, static fn (string $w): bool => str_contains($w, 'must be a non-empty string')));
+        $this->assertCount(2, array_filter($config->warnings, static fn (ConfigWarning $w): bool => str_contains($w->key, 'must be a non-empty string')));
     }
 
     public function testNonObjectHighlightLanguagesIsIgnored(): void
@@ -602,8 +602,8 @@ final class IdeConfigTest extends TestCase
 
         [$warning] = IdeConfig::load($project->dir)->warnings;
 
-        $this->assertStringStartsWith('.porta.json is not valid JSON (', $warning);
-        $this->assertStringContainsString('Syntax error', $warning);
+        $this->assertSame('.porta.json is not valid JSON (%error%)', $warning->key);
+        $this->assertStringContainsString('Syntax error', $warning->params['%error%']);
     }
 
     public function testAChoiceSettingRejectsAValueOutsideItsDomain(): void
@@ -619,9 +619,18 @@ final class IdeConfigTest extends TestCase
         $this->assertSame('dark', $config->settings['theme'], 'the default stands in for the rejected value');
         $this->assertSame('bar', $config->settings['cursorShape']);
         $this->assertSame('absolute', $config->settings['lineNumbers']);
-        $this->assertContains('Setting "theme" must be one of dark|light|high-contrast, got "bogus"', $config->warnings);
-        $this->assertContains('Setting "cursorShape" must be one of bar|block|underline, got "wedge"', $config->warnings);
-        $this->assertContains('Setting "lineNumbers" must be one of off|absolute|relative, got "roman"', $config->warnings);
+        $this->assertContainsEquals(
+            new ConfigWarning('Setting "%key%" must be one of %choices%, got "%value%"', ['%key%' => 'theme', '%choices%' => 'dark|light|high-contrast', '%value%' => 'bogus']),
+            $config->warnings,
+        );
+        $this->assertContainsEquals(
+            new ConfigWarning('Setting "%key%" must be one of %choices%, got "%value%"', ['%key%' => 'cursorShape', '%choices%' => 'bar|block|underline', '%value%' => 'wedge']),
+            $config->warnings,
+        );
+        $this->assertContainsEquals(
+            new ConfigWarning('Setting "%key%" must be one of %choices%, got "%value%"', ['%key%' => 'lineNumbers', '%choices%' => 'off|absolute|relative', '%value%' => 'roman']),
+            $config->warnings,
+        );
     }
 
     public function testEveryChoiceDomainMatchesItsAuthority(): void

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Runtime;
 
+use Porta\Config\ConfigWarning;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
 use Porta\Plugin\Api\PortaPlugin;
@@ -79,7 +80,10 @@ final class PluginLoader
                 // The plugin still loads on the defaults (degrade, never
                 // decline) — but a typo'd manifest used to lose its classes
                 // with nothing anywhere saying why.
-                $manager->addWarning(\sprintf('Plugin "%s" has an unreadable composer.json (%s) — its manifest is ignored', $manifest->name, $manifestError));
+                $manager->addWarning(new ConfigWarning('Plugin "%name%" has an unreadable composer.json (%error%) — its manifest is ignored', [
+                    '%name%' => $manifest->name,
+                    '%error%' => $manifestError,
+                ]));
             }
             // Before the install check: a plugin this host cannot RUN is not
             // one an install would fix. Never entering $manifests is what
@@ -108,10 +112,12 @@ final class PluginLoader
                 // plugin that ships no classes and requires nothing loses
                 // nothing at all. Saying so is the point: the alternative is a
                 // plugin whose classes silently stop resolving.
-                $manager->addWarning(\sprintf('Plugin "%s" still has a plugin.json — its fields moved to composer.json (autoload.psr-4, extra.porta.requires)', $manifest->name));
+                $manager->addWarning(new ConfigWarning('Plugin "%name%" still has a plugin.json — its fields moved to composer.json (autoload.psr-4, extra.porta.requires)', [
+                    '%name%' => $manifest->name,
+                ]));
             }
             foreach ($manifest->shadowedPackages() as $package) {
-                $manager->addWarning(\sprintf('Plugin "%s" vendors %s, which Porta ships — Porta\'s copy is used', $manifest->name, $package));
+                $manager->addWarning(new ConfigWarning('Plugin "%name%" vendors %package%, which Porta ships — Porta\'s copy is used', ['%name%' => $manifest->name, '%package%' => $package]));
             }
             PluginAutoloader::register($manifest);
             $manifests[] = $manifest;
@@ -193,15 +199,13 @@ final class PluginLoader
     }
 
     /**
-     * Load, activate and commit one plugin entry file (also used for a plugin
-     * installed after boot). Returns the failure message, or null on success.
-     */
-    /**
      * The one sentence saying why this host cannot run the plugin, or null
      * when it can: unmet platform requirements (`php`, `ext-*`) and a
-     * mismatched plugin-API major, combined so the user reads one line.
+     * mismatched plugin-API major, combined so the user reads one line. The
+     * joined `%needs%` list stays untranslated detail, like an exception
+     * message elsewhere — it names versions and extension ids, not prose.
      */
-    private function unmet(PluginManifest $manifest): ?string
+    private function unmet(PluginManifest $manifest): ?ConfigWarning
     {
         $needs = $manifest->unmetPlatform();
         if (null !== $manifest->api && PluginApi::API_VERSION !== $manifest->api) {
@@ -211,10 +215,14 @@ final class PluginLoader
             return null;
         }
 
-        return \sprintf('Plugin "%s" needs %s — not loaded', $manifest->name, implode(', ', $needs));
+        return new ConfigWarning('Plugin "%name%" needs %needs% — not loaded', ['%name%' => $manifest->name, '%needs%' => implode(', ', $needs)]);
     }
 
-    public function loadFile(string $file, PluginManager $manager): ?string
+    /**
+     * Load, activate and commit one plugin entry file (also used for a plugin
+     * installed after boot). Returns the failure, or null on success.
+     */
+    public function loadFile(string $file, PluginManager $manager): ?ConfigWarning
     {
         // The live path too (a just-installed or re-enabled plugin never went
         // through loadInto's pre-pass) — including the compatibility check.
@@ -242,7 +250,7 @@ final class PluginLoader
             $plugin->activate($api);
             $manager->commit($api); // atomic: a throwing activate() lands nothing
         } catch (\Throwable $error) {
-            return \sprintf('Plugin "%s" failed to load: %s', basename(\dirname($file)), $error->getMessage());
+            return new ConfigWarning('Plugin "%name%" failed to load: %message%', ['%name%' => basename(\dirname($file)), '%message%' => $error->getMessage()]);
         }
 
         return null;

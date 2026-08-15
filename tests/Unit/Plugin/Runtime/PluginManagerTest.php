@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Plugin\Runtime;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Config\ConfigWarning;
 use Porta\Config\KeyDispatch;
 use Porta\Editor\ActiveBufferTracker;
 use Porta\Editor\Buffer;
@@ -352,7 +353,7 @@ final class PluginManagerTest extends TestCase
         // Before the runtime exists, failures collect as boot warnings instead.
         $cold = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         $cold->reportFailure('demo', new \RuntimeException('early'));
-        $this->assertSame(['Plugin "demo" failed: early'], $cold->warnings());
+        $this->assertEquals([new ConfigWarning('Plugin "%name%" failed: %message%', ['%name%' => 'demo', '%message%' => 'early'])], $cold->warnings());
     }
 
     private function renderedStatus(): string

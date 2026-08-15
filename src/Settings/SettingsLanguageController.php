@@ -137,6 +137,6 @@ final class SettingsLanguageController
         $note = ' · '.$this->translator->trans('applies on restart');
         $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
         $shown = '' === $command ? $this->translator->trans('bundled php') : $command;
-        $this->notifier->flash(\sprintf('%s run command: %s%s%s', LanguageCatalog::displayName($language), $shown, $note, $saved));
+        $this->notifier->flash(\sprintf('%s %s: %s%s%s', LanguageCatalog::displayName($language), $this->translator->trans('run command'), $shown, $note, $saved));
     }
 }

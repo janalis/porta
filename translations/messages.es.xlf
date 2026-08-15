@@ -2450,6 +2450,86 @@
         <source>Cannot determine the branch to install from %source%</source>
         <target>No se puede determinar la rama a instalar desde %source%</target>
       </trans-unit>
+      <trans-unit id="624">
+        <source>run command</source>
+        <target>comando de ejecución</target>
+      </trans-unit>
+      <trans-unit id="625">
+        <source>.porta.json is not valid JSON</source>
+        <target>.porta.json no es un JSON válido</target>
+      </trans-unit>
+      <trans-unit id="626">
+        <source>.porta.json is not valid JSON (%error%)</source>
+        <target>.porta.json no es un JSON válido (%error%)</target>
+      </trans-unit>
+      <trans-unit id="627">
+        <source>Keymap action "%action%" must map to a key or list of keys</source>
+        <target>La acción de atajo «%action%» debe asignarse a una tecla o lista de teclas</target>
+      </trans-unit>
+      <trans-unit id="628">
+        <source>Unknown setting "%key%" in .porta.json</source>
+        <target>Ajuste desconocido «%key%» en .porta.json</target>
+      </trans-unit>
+      <trans-unit id="629">
+        <source>Setting "%key%" must be one of %choices%, got "%value%"</source>
+        <target>El ajuste «%key%» debe ser uno de %choices%, se obtuvo «%value%»</target>
+      </trans-unit>
+      <trans-unit id="630">
+        <source>"highlight" in .porta.json must be an object</source>
+        <target>«highlight» en .porta.json debe ser un objeto</target>
+      </trans-unit>
+      <trans-unit id="631">
+        <source>Highlighter for "%language%" in .porta.json must be a non-empty string</source>
+        <target>El resaltador para «%language%» en .porta.json debe ser una cadena no vacía</target>
+      </trans-unit>
+      <trans-unit id="632">
+        <source>Plugin settings for "%plugin%" must be an object</source>
+        <target>Los ajustes del complemento «%plugin%» deben ser un objeto</target>
+      </trans-unit>
+      <trans-unit id="633">
+        <source>Unknown language "%lang%" in .porta.json</source>
+        <target>Idioma desconocido «%lang%» en .porta.json</target>
+      </trans-unit>
+      <trans-unit id="634">
+        <source>Language "%lang%" must map to an object of indent settings</source>
+        <target>El idioma «%lang%» debe asignarse a un objeto de ajustes de sangría</target>
+      </trans-unit>
+      <trans-unit id="635">
+        <source>Unknown keymap action "%action%" in .porta.json</source>
+        <target>Acción de atajo desconocida «%action%» en .porta.json</target>
+      </trans-unit>
+      <trans-unit id="636">
+        <source>Plugin "%name%" has an unreadable composer.json (%error%) — its manifest is ignored</source>
+        <target>El complemento «%name%» tiene un composer.json ilegible (%error%) — su manifiesto se ignora</target>
+      </trans-unit>
+      <trans-unit id="637">
+        <source>Plugin "%name%" needs %needs% — not loaded</source>
+        <target>El complemento «%name%» necesita %needs% — no se cargó</target>
+      </trans-unit>
+      <trans-unit id="638">
+        <source>Plugin "%name%" still has a plugin.json — its fields moved to composer.json (autoload.psr-4, extra.porta.requires)</source>
+        <target>El complemento «%name%» aún tiene un plugin.json — sus campos se movieron a composer.json (autoload.psr-4, extra.porta.requires)</target>
+      </trans-unit>
+      <trans-unit id="639">
+        <source>Plugin "%name%" vendors %package%, which Porta ships — Porta's copy is used</source>
+        <target>El complemento «%name%» incluye %package%, que Porta ya proporciona — se usa la copia de Porta</target>
+      </trans-unit>
+      <trans-unit id="640">
+        <source>Plugin "%name%" failed to load: %message%</source>
+        <target>El complemento «%name%» no se pudo cargar: %message%</target>
+      </trans-unit>
+      <trans-unit id="641">
+        <source>Plugin "%name%" is part of a dependency cycle</source>
+        <target>El complemento «%name%» forma parte de un ciclo de dependencias</target>
+      </trans-unit>
+      <trans-unit id="642">
+        <source>Plugin "%name%" needs "%required%", which is not installed or is disabled</source>
+        <target>El complemento «%name%» necesita «%required%», que no está instalado o está deshabilitado</target>
+      </trans-unit>
+      <trans-unit id="643">
+        <source>Plugin "%name%" needs "%required%", which could not load</source>
+        <target>El complemento «%name%» necesita «%required%», que no se pudo cargar</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

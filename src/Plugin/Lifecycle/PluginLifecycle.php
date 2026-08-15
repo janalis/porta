@@ -98,7 +98,7 @@ final class PluginLifecycle implements PluginLifecycleOps
     {
         $error = $this->loader->loadFile($file, $this->plugins);
         if (null !== $error) {
-            return $error;
+            return $this->translator->trans($error->key, $error->params);
         }
         $this->plugins->registerCommands($this->commands);
         $this->keys->rebuild();
@@ -126,7 +126,7 @@ final class PluginLifecycle implements PluginLifecycleOps
 
             $error = $this->loader->loadFile($candidate['dir'].'/plugin.php', $this->plugins);
             if (null !== $error) {
-                $this->notifier->error($error);
+                $this->notifier->error($this->translator->trans($error->key, $error->params));
             }
             if (null === $error) {
                 $this->plugins->registerCommands($this->commands);
@@ -447,7 +447,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         }
         $error = $this->loader->loadFile($dir.'/plugin.php', $this->plugins);
         if (null !== $error) {
-            $this->notifier->error($error);
+            $this->notifier->error($this->translator->trans($error->key, $error->params));
 
             return false;
         }

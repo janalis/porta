@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Runtime;
 
+use Porta\Config\ConfigWarning;
+
 /**
  * Puts a set of discovered plugins into load order, and says which of them
  * cannot load at all.
@@ -22,7 +24,7 @@ final class PluginOrder
     /**
      * @param list<PluginManifest> $manifests in discovery (precedence) order
      *
-     * @return array{order: list<PluginManifest>, skipped: array<string, string>} the loadable ones, and why each other one is not
+     * @return array{order: list<PluginManifest>, skipped: array<string, ConfigWarning>} the loadable ones, and why each other one is not
      */
     public static function resolve(array $manifests): array
     {
@@ -48,7 +50,7 @@ final class PluginOrder
      * @param array<string, PluginManifest> $byName
      * @param array<string, string>         $state
      * @param list<PluginManifest>          $order
-     * @param array<string, string>         $skipped
+     * @param array<string, ConfigWarning>  $skipped
      */
     private static function visit(string $name, array $byName, array &$state, array &$order, array &$skipped): bool
     {
@@ -56,7 +58,7 @@ final class PluginOrder
             return !array_key_exists($name, $skipped);
         }
         if ('visiting' === ($state[$name] ?? null)) {
-            $skipped[$name] = \sprintf('Plugin "%s" is part of a dependency cycle', $name);
+            $skipped[$name] = new ConfigWarning('Plugin "%name%" is part of a dependency cycle', ['%name%' => $name]);
             $state[$name] = 'done';
 
             return false;
@@ -66,13 +68,13 @@ final class PluginOrder
         $manifest = $byName[$name];
         foreach ($manifest->requires as $required) {
             if (!array_key_exists($required, $byName)) {
-                $skipped[$name] = \sprintf('Plugin "%s" needs "%s", which is not installed or is disabled', $name, $required);
+                $skipped[$name] = new ConfigWarning('Plugin "%name%" needs "%required%", which is not installed or is disabled', ['%name%' => $name, '%required%' => $required]);
                 $state[$name] = 'done';
 
                 return false;
             }
             if (!self::visit($required, $byName, $state, $order, $skipped)) {
-                $skipped[$name] ??= \sprintf('Plugin "%s" needs "%s", which could not load', $name, $required);
+                $skipped[$name] ??= new ConfigWarning('Plugin "%name%" needs "%required%", which could not load', ['%name%' => $name, '%required%' => $required]);
                 $state[$name] = 'done';
 
                 return false;

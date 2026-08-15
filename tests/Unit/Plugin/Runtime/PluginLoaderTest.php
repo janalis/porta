@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Plugin\Runtime;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ConfigWarning;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
@@ -54,6 +55,18 @@ final class PluginLoaderTest extends TestCase
         return $manager;
     }
 
+    /** A warning rendered the way an 'en' Translator would (untranslated: identity substitution), for readable substring assertions. */
+    private static function render(ConfigWarning $warning): string
+    {
+        return strtr($warning->key, $warning->params);
+    }
+
+    /** @param list<ConfigWarning> $warnings */
+    private static function renderAll(array $warnings, string $glue = "\n"): string
+    {
+        return implode($glue, array_map(self::render(...), $warnings));
+    }
+
     public function testLoadsAValidPluginAndMissingDirsAreSilent(): void
     {
         $empty = $this->load(new TempProject());
@@ -92,7 +105,7 @@ final class PluginLoaderTest extends TestCase
         ]);
         $manager = $this->load($project);
 
-        $warnings = implode("\n", $manager->warnings());
+        $warnings = self::renderAll($manager->warnings());
         $this->assertFalse($manager->hasPlugin('future'), 'a plugin this host cannot run never loads');
         $this->assertStringContainsString('Plugin "future" needs PHP >=99.0 (this is '.\PHP_VERSION.'), ext-porta_nonexistent — not loaded', $warnings);
         $this->assertFalse($manager->hasPlugin('rider'), 'its dependents skip like any absent requirement');
@@ -110,7 +123,7 @@ final class PluginLoaderTest extends TestCase
         $manager = $this->load($project);
 
         $this->assertFalse($manager->hasPlugin('oldapi'));
-        $this->assertStringContainsString('Plugin "oldapi" needs plugin API 999 (this Porta speaks 1) — not loaded', implode("\n", $manager->warnings()));
+        $this->assertStringContainsString('Plugin "oldapi" needs plugin API 999 (this Porta speaks 1) — not loaded', self::renderAll($manager->warnings()));
         $this->assertTrue($manager->hasPlugin('current'), 'a met platform and a matching API major load normally');
     }
 
@@ -156,7 +169,7 @@ final class PluginLoaderTest extends TestCase
         $error = $loader->loadFile($project->path('future/plugin.php'), $manager);
 
         $this->assertNotNull($error);
-        $this->assertStringContainsString('needs PHP >=99.0', $error);
+        $this->assertStringContainsString('needs PHP >=99.0', self::render($error));
         $this->assertFalse($manager->hasPlugin('future'));
     }
 
@@ -168,7 +181,7 @@ final class PluginLoaderTest extends TestCase
         ]);
         $manager = $this->load($project);
 
-        $warnings = implode("\n", $manager->warnings());
+        $warnings = self::renderAll($manager->warnings());
         $this->assertStringContainsString('Plugin "typo" has an unreadable composer.json', $warnings);
         $this->assertStringContainsString('Syntax error', $warnings, 'the decoder names the reason');
         $this->assertTrue($manager->hasPlugin('typo'), 'the plugin still loads on the defaults');
@@ -187,7 +200,7 @@ final class PluginLoaderTest extends TestCase
         ]);
         $manager = $this->load($project);
 
-        $warnings = implode("\n", $manager->warnings());
+        $warnings = self::renderAll($manager->warnings());
         $this->assertStringContainsString('Plugin "a-parse-error" failed to load', $warnings);
         $this->assertStringContainsString('Plugin "b-wrong-return" failed to load: plugin.php must return a PortaPlugin instance', $warnings);
         $this->assertStringContainsString('invalid plugin name "bad:name"', $warnings);
@@ -214,7 +227,7 @@ final class PluginLoaderTest extends TestCase
         $this->assertTrue($manager->hasPlugin('demo'), 'a direct load commits like a boot load');
 
         $error = $loader->loadFile($project->path('.porta/plugins/broken/plugin.php'), $manager);
-        $this->assertSame('Plugin "broken" failed to load: plugin.php must return a PortaPlugin instance', $error);
+        $this->assertEquals(new ConfigWarning('Plugin "%name%" failed to load: %message%', ['%name%' => 'broken', '%message%' => 'plugin.php must return a PortaPlugin instance']), $error);
         $this->assertSame([], $manager->warnings(), 'the caller owns the failure, no warning is queued');
     }
 
@@ -365,7 +378,7 @@ final class PluginLoaderTest extends TestCase
         $manager = $this->load($project);
 
         $this->assertTrue($manager->hasPlugin('shadowy'), 'it still loads — this is a warning, not a refusal');
-        $warnings = implode(' | ', $manager->warnings());
+        $warnings = self::renderAll($manager->warnings(), ' | ');
         $this->assertStringContainsString('Plugin "shadowy" vendors symfony/clock, which Porta ships', $warnings);
         $this->assertStringNotContainsString('vend/lib', $warnings, 'a package Porta does not ship is not its business');
     }
@@ -384,7 +397,7 @@ final class PluginLoaderTest extends TestCase
         $manager = $this->load($project);
 
         $this->assertTrue($manager->hasPlugin('legacy'));
-        $warnings = implode(' | ', $manager->warnings());
+        $warnings = self::renderAll($manager->warnings(), ' | ');
         $this->assertStringContainsString('Plugin "legacy" still has a plugin.json', $warnings);
         $this->assertStringContainsString('autoload.psr-4', $warnings, 'and says where the fields went');
     }

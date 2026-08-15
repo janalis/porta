@@ -2450,6 +2450,86 @@
         <source>Cannot determine the branch to install from %source%</source>
         <target>%source% からインストールするブランチを特定できません</target>
       </trans-unit>
+      <trans-unit id="624">
+        <source>run command</source>
+        <target>実行コマンド</target>
+      </trans-unit>
+      <trans-unit id="625">
+        <source>.porta.json is not valid JSON</source>
+        <target>.porta.json は有効な JSON ではありません</target>
+      </trans-unit>
+      <trans-unit id="626">
+        <source>.porta.json is not valid JSON (%error%)</source>
+        <target>.porta.json は有効な JSON ではありません (%error%)</target>
+      </trans-unit>
+      <trans-unit id="627">
+        <source>Keymap action "%action%" must map to a key or list of keys</source>
+        <target>キーマップアクション「%action%」はキーまたはキーのリストにマップする必要があります</target>
+      </trans-unit>
+      <trans-unit id="628">
+        <source>Unknown setting "%key%" in .porta.json</source>
+        <target>.porta.json 内の不明な設定「%key%」</target>
+      </trans-unit>
+      <trans-unit id="629">
+        <source>Setting "%key%" must be one of %choices%, got "%value%"</source>
+        <target>設定「%key%」は %choices% のいずれかである必要がありますが、「%value%」でした</target>
+      </trans-unit>
+      <trans-unit id="630">
+        <source>"highlight" in .porta.json must be an object</source>
+        <target>.porta.json 内の「highlight」はオブジェクトである必要があります</target>
+      </trans-unit>
+      <trans-unit id="631">
+        <source>Highlighter for "%language%" in .porta.json must be a non-empty string</source>
+        <target>.porta.json 内の「%language%」用のハイライターは空でない文字列である必要があります</target>
+      </trans-unit>
+      <trans-unit id="632">
+        <source>Plugin settings for "%plugin%" must be an object</source>
+        <target>プラグイン「%plugin%」の設定はオブジェクトである必要があります</target>
+      </trans-unit>
+      <trans-unit id="633">
+        <source>Unknown language "%lang%" in .porta.json</source>
+        <target>.porta.json 内の不明な言語「%lang%」</target>
+      </trans-unit>
+      <trans-unit id="634">
+        <source>Language "%lang%" must map to an object of indent settings</source>
+        <target>言語「%lang%」はインデント設定のオブジェクトにマップする必要があります</target>
+      </trans-unit>
+      <trans-unit id="635">
+        <source>Unknown keymap action "%action%" in .porta.json</source>
+        <target>.porta.json 内の不明なキーマップアクション「%action%」</target>
+      </trans-unit>
+      <trans-unit id="636">
+        <source>Plugin "%name%" has an unreadable composer.json (%error%) — its manifest is ignored</source>
+        <target>プラグイン「%name%」の composer.json が読み取れません (%error%) — マニフェストは無視されます</target>
+      </trans-unit>
+      <trans-unit id="637">
+        <source>Plugin "%name%" needs %needs% — not loaded</source>
+        <target>プラグイン「%name%」には %needs% が必要です — 読み込まれませんでした</target>
+      </trans-unit>
+      <trans-unit id="638">
+        <source>Plugin "%name%" still has a plugin.json — its fields moved to composer.json (autoload.psr-4, extra.porta.requires)</source>
+        <target>プラグイン「%name%」にはまだ plugin.json があります — そのフィールドは composer.json に移動しました (autoload.psr-4, extra.porta.requires)</target>
+      </trans-unit>
+      <trans-unit id="639">
+        <source>Plugin "%name%" vendors %package%, which Porta ships — Porta's copy is used</source>
+        <target>プラグイン「%name%」は Porta が同梱する %package% を同梱しています — Porta のコピーが使用されます</target>
+      </trans-unit>
+      <trans-unit id="640">
+        <source>Plugin "%name%" failed to load: %message%</source>
+        <target>プラグイン「%name%」の読み込みに失敗しました: %message%</target>
+      </trans-unit>
+      <trans-unit id="641">
+        <source>Plugin "%name%" is part of a dependency cycle</source>
+        <target>プラグイン「%name%」は依存関係の循環の一部です</target>
+      </trans-unit>
+      <trans-unit id="642">
+        <source>Plugin "%name%" needs "%required%", which is not installed or is disabled</source>
+        <target>プラグイン「%name%」には「%required%」が必要ですが、インストールされていないか無効になっています</target>
+      </trans-unit>
+      <trans-unit id="643">
+        <source>Plugin "%name%" needs "%required%", which could not load</source>
+        <target>プラグイン「%name%」には「%required%」が必要ですが、読み込めませんでした</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

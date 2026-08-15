@@ -90,7 +90,7 @@ final class PaneRegistrarTest extends TestCase
         $this->drain()->register();
 
         $this->assertNull($this->registry->paneFor('demo'));
-        $this->assertStringContainsString('EditorPaneWidget', implode(' ', $this->manager->warnings()));
+        $this->assertStringContainsString('EditorPaneWidget', $this->manager->warnings()[0]->params['%message%'] ?? '');
     }
 
     public function testAThrowingFactoryCostsOnlyItsOwnPane(): void

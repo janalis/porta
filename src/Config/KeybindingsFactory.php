@@ -57,7 +57,7 @@ final class KeybindingsFactory
             if (!str_contains($action, ':') && !$this->actions->has($action)) {
                 if (!array_key_exists($action, $this->reported)) {
                     $this->reported[$action] = true;
-                    $this->plugins->manager()->addWarning(\sprintf('Unknown keymap action "%s" in .porta.json', $action));
+                    $this->plugins->manager()->addWarning(new ConfigWarning('Unknown keymap action "%action%" in .porta.json', ['%action%' => $action]));
                 }
 
                 continue;

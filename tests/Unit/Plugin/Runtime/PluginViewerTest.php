@@ -77,7 +77,7 @@ final class PluginViewerTest extends TestCase
         $this->assertNull($manager->viewerFor('/p/b.txt'));
         $warnings = $manager->warnings();
         $this->assertCount(1, $warnings, 'reported once, not per open');
-        $this->assertStringContainsString('broken', $warnings[0]);
+        $this->assertSame('broken', $warnings[0]->params['%name%']);
     }
 
     public function testDeactivateDropsTheRoutesLive(): void

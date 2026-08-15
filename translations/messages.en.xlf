@@ -2450,6 +2450,86 @@
         <source>Cannot determine the branch to install from %source%</source>
         <target>Cannot determine the branch to install from %source%</target>
       </trans-unit>
+      <trans-unit id="624">
+        <source>run command</source>
+        <target>run command</target>
+      </trans-unit>
+      <trans-unit id="625">
+        <source>.porta.json is not valid JSON</source>
+        <target>.porta.json is not valid JSON</target>
+      </trans-unit>
+      <trans-unit id="626">
+        <source>.porta.json is not valid JSON (%error%)</source>
+        <target>.porta.json is not valid JSON (%error%)</target>
+      </trans-unit>
+      <trans-unit id="627">
+        <source>Keymap action "%action%" must map to a key or list of keys</source>
+        <target>Keymap action "%action%" must map to a key or list of keys</target>
+      </trans-unit>
+      <trans-unit id="628">
+        <source>Unknown setting "%key%" in .porta.json</source>
+        <target>Unknown setting "%key%" in .porta.json</target>
+      </trans-unit>
+      <trans-unit id="629">
+        <source>Setting "%key%" must be one of %choices%, got "%value%"</source>
+        <target>Setting "%key%" must be one of %choices%, got "%value%"</target>
+      </trans-unit>
+      <trans-unit id="630">
+        <source>"highlight" in .porta.json must be an object</source>
+        <target>"highlight" in .porta.json must be an object</target>
+      </trans-unit>
+      <trans-unit id="631">
+        <source>Highlighter for "%language%" in .porta.json must be a non-empty string</source>
+        <target>Highlighter for "%language%" in .porta.json must be a non-empty string</target>
+      </trans-unit>
+      <trans-unit id="632">
+        <source>Plugin settings for "%plugin%" must be an object</source>
+        <target>Plugin settings for "%plugin%" must be an object</target>
+      </trans-unit>
+      <trans-unit id="633">
+        <source>Unknown language "%lang%" in .porta.json</source>
+        <target>Unknown language "%lang%" in .porta.json</target>
+      </trans-unit>
+      <trans-unit id="634">
+        <source>Language "%lang%" must map to an object of indent settings</source>
+        <target>Language "%lang%" must map to an object of indent settings</target>
+      </trans-unit>
+      <trans-unit id="635">
+        <source>Unknown keymap action "%action%" in .porta.json</source>
+        <target>Unknown keymap action "%action%" in .porta.json</target>
+      </trans-unit>
+      <trans-unit id="636">
+        <source>Plugin "%name%" has an unreadable composer.json (%error%) — its manifest is ignored</source>
+        <target>Plugin "%name%" has an unreadable composer.json (%error%) — its manifest is ignored</target>
+      </trans-unit>
+      <trans-unit id="637">
+        <source>Plugin "%name%" needs %needs% — not loaded</source>
+        <target>Plugin "%name%" needs %needs% — not loaded</target>
+      </trans-unit>
+      <trans-unit id="638">
+        <source>Plugin "%name%" still has a plugin.json — its fields moved to composer.json (autoload.psr-4, extra.porta.requires)</source>
+        <target>Plugin "%name%" still has a plugin.json — its fields moved to composer.json (autoload.psr-4, extra.porta.requires)</target>
+      </trans-unit>
+      <trans-unit id="639">
+        <source>Plugin "%name%" vendors %package%, which Porta ships — Porta's copy is used</source>
+        <target>Plugin "%name%" vendors %package%, which Porta ships — Porta's copy is used</target>
+      </trans-unit>
+      <trans-unit id="640">
+        <source>Plugin "%name%" failed to load: %message%</source>
+        <target>Plugin "%name%" failed to load: %message%</target>
+      </trans-unit>
+      <trans-unit id="641">
+        <source>Plugin "%name%" is part of a dependency cycle</source>
+        <target>Plugin "%name%" is part of a dependency cycle</target>
+      </trans-unit>
+      <trans-unit id="642">
+        <source>Plugin "%name%" needs "%required%", which is not installed or is disabled</source>
+        <target>Plugin "%name%" needs "%required%", which is not installed or is disabled</target>
+      </trans-unit>
+      <trans-unit id="643">
+        <source>Plugin "%name%" needs "%required%", which could not load</source>
+        <target>Plugin "%name%" needs "%required%", which could not load</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

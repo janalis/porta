@@ -159,7 +159,7 @@ final class PluginHighlighterTest extends TestCase
 
         $warnings = $manager->warnings();
         $this->assertCount(1, $warnings, 'reported once, not once per keystroke');
-        $this->assertStringContainsString('nope', $warnings[0]);
+        $this->assertSame('nope', $warnings[0]->params['%message%']);
     }
 
     /**
