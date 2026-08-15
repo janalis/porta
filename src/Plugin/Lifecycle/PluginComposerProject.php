@@ -28,17 +28,18 @@ final class PluginComposerProject
 
     /**
      * Create `<scopeBase>/.porta/composer.json` if it does not exist yet, and
-     * return the directory composer should run in.
+     * return the directory composer should run in — or null if the file
+     * could not be written (permissions, disk full).
      *
      * Nothing this project requires is a Composer plugin, so there is no
      * `allow-plugins` prompt to guard against.
      */
-    public function ensureScaffold(string $scopeBase): string
+    public function ensureScaffold(string $scopeBase): ?string
     {
         $dir = $scopeBase.'/.porta';
-        $path = $dir.'/composer.json';
+        $path = $this->composerJsonPath($scopeBase);
         if (!is_file($path)) {
-            JsonFile::write(
+            $written = JsonFile::write(
                 $this->fs,
                 $path,
                 [
@@ -57,9 +58,18 @@ final class PluginComposerProject
                 ],
                 trailingNewline: true,
             );
+            if (!$written) {
+                return null;
+            }
         }
 
         return $dir;
+    }
+
+    /** Where ensureScaffold() writes and addRepository() rewrites $scopeBase's plugin composer.json. */
+    public function composerJsonPath(string $scopeBase): string
+    {
+        return $scopeBase.'/.porta/composer.json';
     }
 
     /** Where composer installs a package by default: `<scopeBase>/.porta/vendor/<packageName>`. */
@@ -73,27 +83,34 @@ final class PluginComposerProject
      * so an installed-by-path plugin under active development is picked up
      * live). Keyed by package name, so reinstalling the same plugin later
      * overwrites this entry rather than accumulating one per attempt.
+     *
+     * Returns false if the rewritten composer.json could not be written.
      */
-    public function addPathRepository(string $scopeBase, string $packageName, string $absolutePath): void
+    public function addPathRepository(string $scopeBase, string $packageName, string $absolutePath): bool
     {
-        $this->addRepository($scopeBase, $packageName, ['type' => 'path', 'url' => $absolutePath, 'options' => ['symlink' => true]]);
+        return $this->addRepository($scopeBase, $packageName, ['type' => 'path', 'url' => $absolutePath, 'options' => ['symlink' => true]]);
     }
 
-    /** Point $packageName at a VCS remote (a git URL composer cannot otherwise resolve a name from). */
-    public function addVcsRepository(string $scopeBase, string $packageName, string $url): void
+    /**
+     * Point $packageName at a VCS remote (a git URL composer cannot otherwise
+     * resolve a name from). Returns false if the rewritten composer.json
+     * could not be written.
+     */
+    public function addVcsRepository(string $scopeBase, string $packageName, string $url): bool
     {
-        $this->addRepository($scopeBase, $packageName, ['type' => 'vcs', 'url' => $url]);
+        return $this->addRepository($scopeBase, $packageName, ['type' => 'vcs', 'url' => $url]);
     }
 
     /** @param array{type: string, url: string, options?: array{symlink: bool}} $repository */
-    private function addRepository(string $scopeBase, string $packageName, array $repository): void
+    private function addRepository(string $scopeBase, string $packageName, array $repository): bool
     {
-        $path = $scopeBase.'/.porta/composer.json';
+        $path = $this->composerJsonPath($scopeBase);
         $composerJson = JsonFile::read($path) ?? [];
         /** @var array<string, mixed> $repositories */
         $repositories = \is_array($composerJson['repositories'] ?? null) ? $composerJson['repositories'] : [];
         $repositories[$packageName] = $repository;
         $composerJson['repositories'] = $repositories;
-        JsonFile::write($this->fs, $path, $composerJson, trailingNewline: true);
+
+        return JsonFile::write($this->fs, $path, $composerJson, trailingNewline: true);
     }
 }

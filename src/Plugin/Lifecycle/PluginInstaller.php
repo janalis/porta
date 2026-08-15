@@ -143,6 +143,19 @@ final class PluginInstaller
     }
 
     /**
+     * Report that {@see PluginComposerProject}'s composer.json could not be
+     * written (permissions, disk full) — before any composer/git subprocess
+     * runs, so the user sees the actual cause instead of a confusing
+     * downstream composer failure.
+     *
+     * @param \Closure(?string, ?string): void $onDone
+     */
+    private function failScaffoldWrite(\Closure $onDone, string $root): void
+    {
+        $this->fail($onDone, $this->translator->trans('Could not write %file%', ['%file%' => $this->project->composerJsonPath($root)]));
+    }
+
+    /**
      * A local directory declaring its own `composer.json` (`name` +
      * `type: "porta-plugin"`): registered as a `path` repository (composer
      * symlinks it, so a plugin under active local development is picked up
@@ -174,7 +187,16 @@ final class PluginInstaller
         }
 
         $composerDir = $this->project->ensureScaffold($root);
-        $this->project->addPathRepository($root, $packageName, (string) realpath($source));
+        if (null === $composerDir) {
+            $this->failScaffoldWrite($onDone, $root);
+
+            return;
+        }
+        if (!$this->project->addPathRepository($root, $packageName, (string) realpath($source))) {
+            $this->failScaffoldWrite($onDone, $root);
+
+            return;
+        }
         $this->fs->mkdir($base);
         $ok = $this->startComposer($composerDir, ['require', $packageName.':@dev', '--no-interaction', '--no-progress', '--no-audit'], function (int $code) use (
             $root,
@@ -216,6 +238,11 @@ final class PluginInstaller
         }
 
         $composerDir = $this->project->ensureScaffold($root);
+        if (null === $composerDir) {
+            $this->failScaffoldWrite($onDone, $root);
+
+            return;
+        }
         $this->fs->mkdir($base);
         $packageName = $source;
         $ok = $this->startComposer($composerDir, ['require', $packageName, '--no-interaction', '--no-progress', '--no-audit'], function (int $code) use (
@@ -318,7 +345,16 @@ final class PluginInstaller
                 }
 
                 $composerDir = $this->project->ensureScaffold($root);
-                $this->project->addVcsRepository($root, $packageName, $source);
+                if (null === $composerDir) {
+                    $this->failScaffoldWrite($onDone, $root);
+
+                    return;
+                }
+                if (!$this->project->addVcsRepository($root, $packageName, $source)) {
+                    $this->failScaffoldWrite($onDone, $root);
+
+                    return;
+                }
                 $this->fs->mkdir($base);
                 $ok = $this->startComposer($composerDir, ['require', $packageName.':dev-'.$branch, '--no-interaction', '--no-progress', '--no-audit'], function (int $code) use (
                     $root,
@@ -551,6 +587,11 @@ final class PluginInstaller
             return;
         }
         $composerDir = $this->project->ensureScaffold($root);
+        if (null === $composerDir) {
+            $onDone($this->translator->trans('Cannot remove "%name%"', ['%name%' => $name]));
+
+            return;
+        }
         $ok = $this->startComposer($composerDir, ['remove', $packageName, '--no-interaction'], function (int $code) use ($dest, $name, $onDone): void {
             if (0 !== $code) {
                 $onDone($this->translator->trans('Cannot remove "%name%"', ['%name%' => $name]));

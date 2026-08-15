@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\DependencyInstall;
 use Porta\Plugin\Lifecycle\DependencyRemoval;
+use Porta\Plugin\Lifecycle\PluginComposerProject;
 use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Tests\Support\FakeComposer;
 use Porta\Tests\Support\GitBinary;
@@ -161,6 +162,38 @@ final class PluginInstallerTest extends TestCase
         $this->assertStringContainsString('composer require failed (exit code 3)', (string) $error);
     }
 
+    public function testPathInstallFailsClearlyWhenTheScaffoldCannotBeWritten(): void
+    {
+        $source = $this->sourceDir('demo');
+        $composer = $this->fakeComposer();
+        chmod($this->project->dir, permissions: 0o555);
+        try {
+            [$error] = $this->install($this->installer(composer: $composer), $source);
+        } finally {
+            chmod($this->project->dir, permissions: 0o755);
+        }
+        $this->assertStringContainsString('Could not write', (string) $error);
+        $this->assertStringContainsString('composer.json', (string) $error);
+    }
+
+    public function testPathInstallFailsClearlyWhenTheRepositoryCannotBeWritten(): void
+    {
+        $source = $this->sourceDir('demo');
+        $composer = $this->fakeComposer();
+        // Pre-create the scaffold (a real, prior ensureScaffold()) so THIS
+        // call's ensureScaffold() finds the file already there and succeeds —
+        // isolating the second write (addPathRepository) as the one that fails.
+        new PluginComposerProject()->ensureScaffold($this->project->dir);
+        chmod($this->project->dir.'/.porta', permissions: 0o555);
+        try {
+            [$error] = $this->install($this->installer(composer: $composer), $source);
+        } finally {
+            chmod($this->project->dir.'/.porta', permissions: 0o755);
+        }
+        $this->assertStringContainsString('Could not write', (string) $error);
+        $this->assertStringContainsString('composer.json', (string) $error);
+    }
+
     // --- install by vendor/name package --------------------------------------------------------
 
     public function testNameInstallLandsAsASymlink(): void
@@ -203,6 +236,19 @@ final class PluginInstallerTest extends TestCase
     {
         [$error] = $this->install($this->installer(composer: $this->fakeComposer(3)), 'acme/mylint');
         $this->assertStringContainsString('composer require failed (exit code 3)', (string) $error);
+    }
+
+    public function testNameInstallFailsClearlyWhenTheScaffoldCannotBeWritten(): void
+    {
+        $composer = $this->fakeComposer();
+        chmod($this->project->dir, permissions: 0o555);
+        try {
+            [$error] = $this->install($this->installer(composer: $composer), 'acme/mylint');
+        } finally {
+            chmod($this->project->dir, permissions: 0o755);
+        }
+        $this->assertStringContainsString('Could not write', (string) $error);
+        $this->assertStringContainsString('composer.json', (string) $error);
     }
 
     public function testNameInstallWithoutComposerFails(): void
@@ -312,6 +358,37 @@ final class PluginInstallerTest extends TestCase
 
         [$error] = $this->install($this->installer(git: $git), 'file://'.$repo);
         $this->assertSame('composer is not available', $error);
+    }
+
+    public function testGitUrlInstallFailsClearlyWhenTheScaffoldCannotBeWritten(): void
+    {
+        $git = $this->git();
+        $repo = $this->repo(withPluginPhp: Presence::With);
+        $composer = $this->fakeComposer();
+        chmod($this->project->dir, permissions: 0o555);
+        try {
+            [$error] = $this->install($this->installer(git: $git, composer: $composer), 'file://'.$repo);
+        } finally {
+            chmod($this->project->dir, permissions: 0o755);
+        }
+        $this->assertStringContainsString('Could not write', (string) $error);
+        $this->assertStringContainsString('composer.json', (string) $error);
+    }
+
+    public function testGitUrlInstallFailsClearlyWhenTheRepositoryCannotBeWritten(): void
+    {
+        $git = $this->git();
+        $repo = $this->repo(withPluginPhp: Presence::With);
+        $composer = $this->fakeComposer();
+        new PluginComposerProject()->ensureScaffold($this->project->dir);
+        chmod($this->project->dir.'/.porta', permissions: 0o555);
+        try {
+            [$error] = $this->install($this->installer(git: $git, composer: $composer), 'file://'.$repo);
+        } finally {
+            chmod($this->project->dir.'/.porta', permissions: 0o755);
+        }
+        $this->assertStringContainsString('Could not write', (string) $error);
+        $this->assertStringContainsString('composer.json', (string) $error);
     }
 
     public function testConcurrentInstallsAreRejected(): void
@@ -436,6 +513,26 @@ final class PluginInstallerTest extends TestCase
     {
         $this->assertNull($this->remove($this->installer(), 'gone', 'project'), 'removing a missing dir is a quiet success');
         $this->assertSame('Cannot remove "x"', $this->remove($this->installer(globalBase: null), 'x', 'global'));
+    }
+
+    public function testRemoveFailsClearlyWhenTheScaffoldCannotBeRewritten(): void
+    {
+        $source = $this->sourceDir('demo');
+        $installer = $this->installer(composer: $this->fakeComposer());
+        $this->install($installer, $source);
+
+        // Force ensureScaffold() to attempt a rewrite (it otherwise finds the
+        // file already there and succeeds regardless of directory
+        // permissions): delete it, then block the directory it would
+        // recreate it in.
+        unlink($this->project->dir.'/.porta/composer.json');
+        chmod($this->project->dir.'/.porta', permissions: 0o555);
+        try {
+            $error = $this->remove($installer, 'demo', 'project');
+        } finally {
+            chmod($this->project->dir.'/.porta', permissions: 0o755);
+        }
+        $this->assertSame('Cannot remove "demo"', $error);
     }
 
     public function testEmbeddedPluginsListNonRemovableAndRefuseRemoval(): void

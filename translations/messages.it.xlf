@@ -2530,6 +2530,10 @@
         <source>Plugin "%name%" needs "%required%", which could not load</source>
         <target>Il plugin "%name%" richiede "%required%", che non è stato possibile caricare</target>
       </trans-unit>
+      <trans-unit id="644">
+        <source>Could not write %file%</source>
+        <target>Impossibile scrivere %file%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

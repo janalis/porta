@@ -84,4 +84,30 @@ final class PluginComposerProjectTest extends TestCase
         $repositories = JsonFile::read($path)['repositories'] ?? null;
         $this->assertSame(['acme/mine' => ['type' => 'path', 'url' => '/src/acme-mine', 'options' => ['symlink' => true]]], $repositories);
     }
+
+    public function testComposerJsonPathIsUnderThePortaDirectory(): void
+    {
+        $this->assertSame($this->scope->dir.'/.porta/composer.json', $this->project->composerJsonPath($this->scope->dir));
+    }
+
+    public function testEnsureScaffoldReturnsNullWhenTheScopeIsUnwritable(): void
+    {
+        chmod($this->scope->dir, permissions: 0o555);
+        try {
+            $this->assertNull($this->project->ensureScaffold($this->scope->dir));
+        } finally {
+            chmod($this->scope->dir, permissions: 0o755);
+        }
+    }
+
+    public function testAddPathRepositoryAndAddVcsRepositoryReturnFalseWhenTheScopeIsUnwritable(): void
+    {
+        chmod($this->scope->dir, permissions: 0o555);
+        try {
+            $this->assertFalse($this->project->addPathRepository($this->scope->dir, 'acme/mine', '/src/acme-mine'));
+            $this->assertFalse($this->project->addVcsRepository($this->scope->dir, 'acme/mine', 'https://example.com/mine.git'));
+        } finally {
+            chmod($this->scope->dir, permissions: 0o755);
+        }
+    }
 }
