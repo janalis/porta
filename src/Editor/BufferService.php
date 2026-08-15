@@ -213,7 +213,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
 
             return;
         } catch (\Throwable $bug) {
-            new DiagnosticLog($this->paths->absolute('.porta/error.log'))->append(\sprintf("%s: %s\n%s", $bug::class, $bug->getMessage(), $bug->getTraceAsString()));
+            DiagnosticLog::forRoot($this->paths->root(), 'error')->append(\sprintf("%s: %s\n%s", $bug::class, $bug->getMessage(), $bug->getTraceAsString()));
             $this->notifier->flash($this->translator->trans('Internal error — details in .porta/error.log'));
 
             return;
