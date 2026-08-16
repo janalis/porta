@@ -55,9 +55,6 @@ final class PluginInstaller
      */
     public const string MARKER = 'vendor/.porta-installed';
 
-    /** Generous for a --depth 1 clone; a stall past it frees the install slot. */
-    public const float CLONE_TIMEOUT = 300.0;
-
     /** Composer's own package-name shape: `vendor/project`, lowercase. */
     private const string PACKAGE_NAME_PATTERN = '#^[a-z0-9]([_.-]?[a-z0-9]+)*/[a-z0-9]([_.-]?[a-z0-9]+)*$#';
 
@@ -294,7 +291,7 @@ final class PluginInstaller
             [$this->gitBinary, 'clone', '--depth', '1', '--', $source, $scratch],
             $this->rootDir,
             env: ['GIT_TERMINAL_PROMPT' => '0'] + getenv(),
-            timeout: self::CLONE_TIMEOUT,
+            timeout: AsyncProcess::EXTERNAL_TOOL_TIMEOUT,
         );
         $started = $this->running->start(function (int $code) use ($scratch, $base, $root, $source, $onDone): void {
             $this->running = null;
@@ -488,7 +485,7 @@ final class PluginInstaller
         if (null === $this->composerBinary) {
             return DependencyInstall::NoComposer;
         }
-        $this->running = new AsyncProcess([$this->composerBinary, 'install', '--no-dev', '--no-interaction'], $pluginDir);
+        $this->running = new AsyncProcess([$this->composerBinary, 'install', '--no-dev', '--no-interaction'], $pluginDir, timeout: AsyncProcess::EXTERNAL_TOOL_TIMEOUT);
         // The slot is cleared BEFORE the callback runs, with no loop turn in
         // between, so a caller draining a queue can start the next install from
         // inside it and never see Busy.
@@ -748,7 +745,7 @@ final class PluginInstaller
         if (null === $this->composerBinary) {
             return false;
         }
-        $this->running = new AsyncProcess([$this->composerBinary, ...$args], $cwd);
+        $this->running = new AsyncProcess([$this->composerBinary, ...$args], $cwd, timeout: AsyncProcess::EXTERNAL_TOOL_TIMEOUT);
         $started = $this->running->start(function (int $code) use ($onExit): void {
             $this->running = null;
             $onExit($code);

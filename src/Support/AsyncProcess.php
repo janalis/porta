@@ -20,6 +20,13 @@ use Revolt\EventLoop;
  */
 final class AsyncProcess
 {
+    /**
+     * Generous ceiling for a network-bound child (a git clone, a
+     * composer/brew/cargo install) — a stall past it frees the caller's
+     * single process slot rather than pinning it for the rest of the session.
+     */
+    public const float EXTERNAL_TOOL_TIMEOUT = 300.0;
+
     /** @var resource|null */
     private $process;
 

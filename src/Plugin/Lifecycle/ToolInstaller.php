@@ -88,7 +88,7 @@ final class ToolInstaller
     {
         $template = self::MANAGERS[$manager];
         $command = [$binary, ...$template['before'], $package, ...$template['after']];
-        $this->running = new AsyncProcess($command, $this->rootDir);
+        $this->running = new AsyncProcess($command, $this->rootDir, timeout: AsyncProcess::EXTERNAL_TOOL_TIMEOUT);
         $started = $this->running->start(function (int $code) use ($onDone): void {
             $this->running = null;
             $onDone(0 === $code);
