@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin\Api;
 
 use Porta\Config\ActionCatalog;
+use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\OpenFocus;
 use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferOpened;
@@ -1244,11 +1245,12 @@ final class PluginApi
             // Normalised at the boundary, like setDiagnostics' severity: an
             // unknown kind has no Role behind it, so dropping it here is what
             // stops it reaching the renderer as a colour nobody chose.
-            if (!\in_array($kind, ['added', 'modified', 'deleted'], strict: true)) {
+            $parsed = ChangeMarkKind::tryFrom($kind);
+            if (null === $parsed) {
                 continue;
             }
 
-            $known[max(0, $line)] = $kind;
+            $known[max(0, $line)] = $parsed;
         }
         $runtime->changeMarks->applyChangeMarks($path, $known);
     }

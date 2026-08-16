@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\SelectionMode;
@@ -170,7 +171,7 @@ final class EditorRenderGoldenTest extends TestCase
                 static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
-                    $e->setVcsMarks([0 => 'modified', 2 => 'added', 4 => 'deleted']);
+                    $e->setVcsMarks([0 => ChangeMarkKind::Modified, 2 => ChangeMarkKind::Added, 4 => ChangeMarkKind::Deleted]);
                 },
                 80,
                 10,

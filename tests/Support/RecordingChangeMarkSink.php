@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
+use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\ChangeMarkSink;
 
 /** Records every published change-mark batch. */
 final class RecordingChangeMarkSink implements ChangeMarkSink
 {
-    /** @var list<array{path: string, marks: array<int, string>}> */
+    /** @var list<array{path: string, marks: array<int, ChangeMarkKind>}> */
     public array $published = [];
 
     public function applyChangeMarks(string $path, array $marks): void

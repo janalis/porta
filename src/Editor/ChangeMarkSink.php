@@ -22,6 +22,6 @@ namespace Porta\Editor;
  */
 interface ChangeMarkSink
 {
-    /** @param array<int, 'added'|'modified'|'deleted'> $marks 0-based line => kind; an empty array clears */
+    /** @param array<int, ChangeMarkKind> $marks 0-based line => kind; an empty array clears */
     public function applyChangeMarks(string $path, array $marks): void;
 }

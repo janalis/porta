@@ -23,7 +23,7 @@ final class Buffer
     /** The file's resolved `.editorconfig`, applied on open and reused on save. */
     public ?ResolvedEditorConfig $editorConfig = null;
 
-    /** @var array<int, string> 0-based line => 'added'|'modified'|'deleted' vs git HEAD */
+    /** @var array<int, ChangeMarkKind> 0-based line => kind vs git HEAD */
     public array $vcsMarks = [];
 
     /** Monotonic focus stamp maintained by the BufferManager. */

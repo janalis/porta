@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Plugin\Api;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\Editor\BufferManager;
+use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\Document;
 use Porta\Event\BufferSaved;
 use Porta\Event\WorkingTreeChanged;
@@ -447,7 +448,7 @@ final class PluginApiTest extends TestCase
         $this->assertCount(1, $published);
         $this->assertSame('/p/a.php', $published[0]['path']);
         $this->assertSame(
-            [0 => 'added', 1 => 'modified', 2 => 'deleted'],
+            [0 => ChangeMarkKind::Added, 1 => ChangeMarkKind::Modified, 2 => ChangeMarkKind::Deleted],
             $published[0]['marks'],
             'an unknown kind is dropped at the boundary rather than reaching the renderer',
         );
@@ -461,7 +462,7 @@ final class PluginApiTest extends TestCase
         // strip does. The setting behind this exists to remove the empty
         // one-column indent a plugin that publishes nothing would leave.
         $api = $this->api();
-        $this->editor->setVcsMarks([0 => 'added']);
+        $this->editor->setVcsMarks([0 => ChangeMarkKind::Added]);
 
         $api->showChangeMarkGutter(false);
 
@@ -477,11 +478,11 @@ final class PluginApiTest extends TestCase
         $api = $this->api();
 
         $api->showChangeMarkGutter(true);
-        $this->editor->setVcsMarks([0 => 'added']);
+        $this->editor->setVcsMarks([0 => ChangeMarkKind::Added]);
         $api->showChangeMarkGutter(true);
 
         $this->assertTrue(Probe::get($this->editor, 'display')->vcsGutter());
-        $this->assertSame([0 => 'added'], Probe::get($this->editor, 'decorations')->vcsMarks(), 'turning on what is already on clears nothing');
+        $this->assertSame([0 => ChangeMarkKind::Added], Probe::get($this->editor, 'decorations')->vcsMarks(), 'turning on what is already on clears nothing');
     }
 
     public function testSetLineAnnotationsReachesTheEditorAndClearsWithAnEmptyMap(): void

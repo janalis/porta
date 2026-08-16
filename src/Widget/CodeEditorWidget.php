@@ -13,6 +13,7 @@ use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\AutoPairService;
 use Porta\Editor\BreadcrumbScanner;
 use Porta\Editor\CaretMotion;
+use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\DecorationStore;
 use Porta\Editor\Document;
@@ -566,7 +567,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     }
 
     /**
-     * @param array<int, string> $byLine 0-based line => 'added'|'modified'|'deleted'
+     * @param array<int, ChangeMarkKind> $byLine 0-based line => kind
      */
     #[\Override]
     public function setVcsMarks(array $byLine): void

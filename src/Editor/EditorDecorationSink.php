@@ -24,7 +24,7 @@ interface EditorDecorationSink
     public function setSearchMatches(array $byLine): void;
 
     /**
-     * @param array<int, string> $byLine 0-based line => 'added'|'modified'|'deleted'
+     * @param array<int, ChangeMarkKind> $byLine 0-based line => kind
      */
     public function setVcsMarks(array $byLine): void;
 

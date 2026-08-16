@@ -627,7 +627,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
      * them. A path with no open buffer is a silent no-op — the producer works
      * from the working tree and may answer about a file the user never opened.
      *
-     * @param array<int, string> $marks 0-based line => 'added'|'modified'|'deleted'
+     * @param array<int, ChangeMarkKind> $marks 0-based line => kind
      */
     #[\Override]
     public function applyChangeMarks(string $path, array $marks): void

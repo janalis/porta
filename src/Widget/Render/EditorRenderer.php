@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionBox;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\DiagnosticStyle;
@@ -157,15 +158,10 @@ final class EditorRenderer
         return \count($occurrences) >= 2 ? $occurrences : [];
     }
 
-    /** One-cell git change indicator for the gutter's leftmost column — shape-distinct glyphs so the states read without color. */
-    public static function vcsCell(?string $mark, Styles $styles): string
+    /** One-cell git change indicator for the gutter's leftmost column. */
+    public static function vcsCell(?ChangeMarkKind $mark, Styles $styles): string
     {
-        return match ($mark) {
-            'added' => $styles->of(Role::VcsAdded)->apply(Glyphs::VCS_ADDED), // green solid bar
-            'modified' => $styles->of(Role::VcsModified)->apply(Glyphs::VCS_MODIFIED), // blue dashed bar
-            'deleted' => $styles->of(Role::VcsDeleted)->apply(Glyphs::VCS_DELETED), // red underline
-            default => ' ',
-        };
+        return null === $mark ? ' ' : $styles->of($mark->role())->apply($mark->glyph());
     }
 
     public static function utf16ToDisplayCol(Document $doc, int $line, int $utf16Col): int

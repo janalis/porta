@@ -18,7 +18,7 @@ final class DecorationStore
     /** @var array<int, list<array{start: int, end: int, current: bool}>> search matches by line (byte cols) */
     private array $searchMatches = [];
 
-    /** @var array<int, string> 0-based line => 'added'|'modified'|'deleted' */
+    /** @var array<int, ChangeMarkKind> 0-based line => kind */
     private array $vcsMarks = [];
 
     /** @var array<int, string> 0-based line => trailing annotation (blame) */
@@ -79,14 +79,14 @@ final class DecorationStore
         return $this->searchMatches;
     }
 
-    /** @param array<int, string> $byLine 0-based line => 'added'|'modified'|'deleted' */
+    /** @param array<int, ChangeMarkKind> $byLine 0-based line => kind */
     public function setVcsMarks(array $byLine): void
     {
         $this->vcsMarks = $byLine;
         ($this->invalidate)();
     }
 
-    /** @return array<int, string> */
+    /** @return array<int, ChangeMarkKind> */
     public function vcsMarks(): array
     {
         return $this->vcsMarks;

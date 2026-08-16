@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferService;
+use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\OpenFocus;
 use Porta\Ide;
 use Porta\Lsp\Uri;
@@ -101,12 +102,12 @@ final class IdeDockToolsTest extends TestCase
                     $decorations = Probe::get($tui->getById('editor'), 'decorations');
                     $this->assertSame([], $decorations->vcsMarks(), 'nothing published yet');
 
-                    self::bufferService($ide)->applyChangeMarks((string) realpath($project->path('a.php')), [1 => 'modified']);
-                    $this->assertSame([1 => 'modified'], $decorations->vcsMarks(), 'the active file paints');
+                    self::bufferService($ide)->applyChangeMarks((string) realpath($project->path('a.php')), [1 => ChangeMarkKind::Modified]);
+                    $this->assertSame([1 => ChangeMarkKind::Modified], $decorations->vcsMarks(), 'the active file paints');
 
                     // A file with no open buffer is a silent no-op, not a crash.
-                    self::bufferService($ide)->applyChangeMarks($project->path('nope.php'), [0 => 'added']);
-                    $this->assertSame([1 => 'modified'], $decorations->vcsMarks(), 'and nothing else moved');
+                    self::bufferService($ide)->applyChangeMarks($project->path('nope.php'), [0 => ChangeMarkKind::Added]);
+                    $this->assertSame([1 => ChangeMarkKind::Modified], $decorations->vcsMarks(), 'and nothing else moved');
 
                     // The tab switch this test is named for. A subprocess that
                     // answers late names the file it diffed, so the marks must
@@ -115,12 +116,12 @@ final class IdeDockToolsTest extends TestCase
                     self::bufferService($ide)->openFile($project->path('b.php'), OpenFocus::Editor);
                     $this->assertSame([], $decorations->vcsMarks(), 'b.php has none of its own');
 
-                    self::bufferService($ide)->applyChangeMarks((string) realpath($project->path('a.php')), [0 => 'added', 1 => 'deleted']);
+                    self::bufferService($ide)->applyChangeMarks((string) realpath($project->path('a.php')), [0 => ChangeMarkKind::Added, 1 => ChangeMarkKind::Deleted]);
                     $this->assertSame([], $decorations->vcsMarks(), 'a background answer does not paint over the file on screen');
 
                     // And it was stored, not dropped: switching back replays it.
                     self::bufferService($ide)->openFile($project->path('a.php'), OpenFocus::Editor);
-                    $this->assertSame([0 => 'added', 1 => 'deleted'], $decorations->vcsMarks(), 'the switch back replays what arrived while it was hidden');
+                    $this->assertSame([0 => ChangeMarkKind::Added, 1 => ChangeMarkKind::Deleted], $decorations->vcsMarks(), 'the switch back replays what arrived while it was hidden');
                 },
             ],
         );

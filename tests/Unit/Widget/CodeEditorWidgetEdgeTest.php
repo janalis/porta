@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\LineNumberMode;
 use Porta\Tests\Support\EditorState;
@@ -803,7 +804,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testGitGutterMarksRenderForEveryChangeKind(): void
     {
         $editor = $this->editor("<?php\n\$a = 1;\n\$b = 2;\n\$c = 3;\n");
-        $editor->setVcsMarks([0 => 'modified', 1 => 'added', 2 => 'deleted']);
+        $editor->setVcsMarks([0 => ChangeMarkKind::Modified, 1 => ChangeMarkKind::Added, 2 => ChangeMarkKind::Deleted]);
 
         $rendered = $editor->render(new RenderContext(60, 6));
         $this->assertStringContainsString("\x1b[38;5;75m┆", $rendered[0], 'modified: blue dashed bar');
