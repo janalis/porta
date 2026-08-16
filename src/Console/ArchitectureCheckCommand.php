@@ -8,7 +8,6 @@ use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\ConsoleOutputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Finder\Finder;
@@ -44,6 +43,8 @@ use Symfony\Component\Finder\Finder;
 #[AsCommand(name: 'arch', description: "Enforce Porta's namespace, acyclicity and E2e-size ratchets")]
 final class ArchitectureCheckCommand extends Command
 {
+    use CommandErrorStream;
+
     /** The audited namespace import graph, sorted, as 'From>To'. */
     private const array ALLOWED_EDGES = [
         'Bootstrap>Config',
@@ -341,7 +342,7 @@ final class ArchitectureCheckCommand extends Command
         ];
 
         if ([] !== $failures) {
-            $errors = $output instanceof ConsoleOutputInterface ? $output->getErrorOutput() : $output;
+            $errors = self::errorOutput($output);
             $io = new SymfonyStyle($input, $errors);
             $io->error('architecture-check: FAILED');
             $io->listing($failures);

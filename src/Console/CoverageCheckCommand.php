@@ -9,7 +9,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\ConsoleOutputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Finder\Finder;
@@ -28,6 +27,8 @@ use Symfony\Component\Finder\Finder;
 #[AsCommand(name: 'coverage:check', description: 'Fail when Clover line coverage is below a threshold')]
 final class CoverageCheckCommand extends Command
 {
+    use CommandErrorStream;
+
     /** @var list<string> */
     private readonly array $mayBeAbsent;
 
@@ -78,7 +79,7 @@ final class CoverageCheckCommand extends Command
         // A non-numeric threshold reads as 0.0 — the same tolerance the old
         // positional-argv script had, rather than a new failure mode.
         $threshold = is_numeric($thresholdArgument) ? (float) $thresholdArgument : 0.0;
-        $errors = $output instanceof ConsoleOutputInterface ? $output->getErrorOutput() : $output;
+        $errors = self::errorOutput($output);
 
         if (!is_file($cloverPath)) {
             $errors->writeln("coverage-check: {$cloverPath} not found — run `composer coverage` first.");

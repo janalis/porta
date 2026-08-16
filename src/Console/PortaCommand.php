@@ -13,7 +13,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\ConsoleOutputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -45,6 +44,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 final class PortaCommand extends Command
 {
+    use CommandErrorStream;
+
     /** @var callable(Workspace, ?string, LspMode, Ansi, \Closure): void */
     private $launch;
 
@@ -81,7 +82,7 @@ final class PortaCommand extends Command
         // Failures speak on stderr so a piped stdout stays clean (the
         // CoverageCheckCommand pattern); CommandTester's plain output has no
         // error channel and falls back to the one stream.
-        $errors = $output instanceof ConsoleOutputInterface ? $output->getErrorOutput() : $output;
+        $errors = self::errorOutput($output);
         $io = new SymfonyStyle($input, $errors);
 
         if (null !== $lsp && $noLsp) {
