@@ -201,7 +201,7 @@ final class IdeConfig
             // would otherwise flow into the env channel and resolve to
             // whatever fallback its consumer happens to apply, silently.
             $allowed = self::CHOICE_SETTINGS[$key] ?? null;
-            if (null !== $allowed && !\in_array($coerced, $allowed, strict: true)) {
+            if (null !== $allowed && null === FieldNode::enum($allowed, $coerced)) {
                 $warnings[] = new ConfigWarning('Setting "%key%" must be one of %choices%, got "%value%"', [
                     '%key%' => $key,
                     '%choices%' => implode('|', $allowed),
@@ -469,7 +469,7 @@ final class IdeConfig
 
     private static function indentStyleValue(mixed $value): ?string
     {
-        return \is_string($value) && \in_array($value, self::INDENT_STYLES, strict: true) ? $value : null;
+        return \is_string($value) ? FieldNode::enum(self::INDENT_STYLES, $value) : null;
     }
 
     private static function indentSizeValue(mixed $value): int|string|null
