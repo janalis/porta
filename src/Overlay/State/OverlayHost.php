@@ -532,6 +532,9 @@ final class OverlayHost
      */
     public function pickerClickAt(int $row, int $col): bool
     {
+        // @mago-expect analysis:match-not-exhaustive -- PickerSurface (an implicitly-final
+        // enum) has exactly 3 cases; this covers all 3 plus the null arm, so ?PickerSurface
+        // is fully handled. Mago 1.46 misreports the subject as unresolved.
         return match ($this->topmostSurface()) {
             PickerSurface::Prompt => $this->promptClickAt($row, $col),
             PickerSurface::Search => $this->searchClickAt($row, $col),
@@ -543,6 +546,9 @@ final class OverlayHost
     /** Route a hover (screen coords) to the topmost open surface; returns whether the tint changed. */
     public function pickerHoverAt(int $row, int $col): bool
     {
+        // @mago-expect analysis:match-not-exhaustive -- PickerSurface (an implicitly-final
+        // enum) has exactly 3 cases; this covers all 3 plus the null arm, so ?PickerSurface
+        // is fully handled. Mago 1.46 misreports the subject as unresolved.
         return match ($this->topmostSurface()) {
             PickerSurface::Prompt => $this->promptHoverAt($row, $col),
             PickerSurface::Search => $this->searchHoverAt($row, $col),
