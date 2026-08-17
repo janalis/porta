@@ -204,10 +204,10 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
         if (0 === $relRow) {
             $action = $this->headerZones->at($relCol);
             if (null !== $action) {
-                match (true) {
-                    'back' === $action => $this->back(),
-                    'forward' === $action => $this->forward(),
-                    'top' === $action => $this->scrollBy(-\PHP_INT_MAX),
+                match ($action) {
+                    'back' => $this->back(),
+                    'forward' => $this->forward(),
+                    'top' => $this->scrollBy(-\PHP_INT_MAX),
                     default => $this->follow(substr($action, offset: 4)),
                 };
 

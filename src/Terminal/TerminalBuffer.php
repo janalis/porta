@@ -21,7 +21,7 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 final class TerminalBuffer
 {
     /** @var string[] committed + current line (last element is the line under construction) */
-    private array $lines = [''];
+    public private(set) array $lines = [''];
     private int $col = 0;
     private string $pending = ''; // incomplete escape sequence across chunk boundaries
     private string $pendingSgr = ''; // SGR emitted since the last text write, applied forward
@@ -29,14 +29,6 @@ final class TerminalBuffer
     public function __construct(
         private readonly int $maxLines = 5000,
     ) {}
-
-    /**
-     * @return string[] all lines, oldest first (the last is still being written)
-     */
-    public function getLines(): array
-    {
-        return $this->lines;
-    }
 
     public function lineCount(): int
     {

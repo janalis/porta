@@ -2,11 +2,9 @@
 
 declare(strict_types=1);
 
-use Porta\Bootstrap\EagerServices;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
 use Porta\Container\AsWidget;
-use Porta\Editor\BufferService;
 use Porta\Highlight\ColorMode;
 use Porta\Highlight\SwitchableTerminalTheme;
 use Porta\Highlight\TerminalThemeFactory;
@@ -42,7 +40,6 @@ use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\ContainerWidget;
-use Tempest\Highlight\TerminalTheme;
 
 use function Symfony\Component\DependencyInjection\Loader\Configurator\env;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;

@@ -82,10 +82,7 @@ final class WidgetHooks
         });
         $this->menuBar->onClose(function (): void {
             $this->overlay->refreshMenu();
-            $this->tui->setFocus(match (true) {
-                null !== ($target = $this->views->focusTarget()) => $target,
-                default => $this->editorArea->widget(),
-            });
+            $this->tui->setFocus($this->views->focusTarget() ?? $this->editorArea->widget());
             $this->tui->requestRender();
         });
         $this->contextMenu->onNavigate(function (): void {

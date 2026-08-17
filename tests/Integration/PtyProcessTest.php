@@ -43,7 +43,7 @@ final class PtyProcessTest extends TestCase
             return null !== $exit;
         });
         $this->assertSame(3, $exit);
-        $lines = array_map(AnsiUtils::stripAnsiCodes(...), $buffer->getLines());
+        $lines = array_map(AnsiUtils::stripAnsiCodes(...), $buffer->lines);
         $this->assertContains('line1', $lines);
         $this->assertContains('line2', $lines);
         $this->assertFalse($p->isRunning());
@@ -60,10 +60,10 @@ final class PtyProcessTest extends TestCase
 
         $p->write("ping\n");
         $this->await(static function () use (&$buffer): bool {
-            return str_contains(implode("\n", $buffer->getLines()), 'ping');
+            return str_contains(implode("\n", $buffer->lines), 'ping');
         });
 
-        $this->assertStringContainsString('ping', implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $buffer->getLines())));
+        $this->assertStringContainsString('ping', implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $buffer->lines)));
         $p->stop();
     }
 

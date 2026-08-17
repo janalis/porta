@@ -200,7 +200,7 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
         $rows = IntMath::clamp($this->visibleRows, 2, $context->getRows() > 0 ? $context->getRows() : $this->visibleRows);
 
         $lines = [];
-        $all = $this->buffer->getLines();
+        $all = $this->buffer->lines;
         $end = \count($all) - $this->scrollBack;
         $start = max(0, $end - $rows);
         $window = \array_slice($all, $start, $rows);

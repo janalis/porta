@@ -37,7 +37,7 @@ final class IdeTerminalTest extends TestCase
 
     private function bufferText(\Porta\Terminal\TerminalSession $session): string
     {
-        return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $session->buffer->getLines()));
+        return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $session->buffer->lines));
     }
 
     public function testTwoSessionsIsolateInputAndCycle(): void
