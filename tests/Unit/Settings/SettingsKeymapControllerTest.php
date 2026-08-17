@@ -85,7 +85,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $rows = $controller->rows();
         $byAction = array_column($rows, null, 'action');
 
-        $this->assertSame(\count(\Porta\Config\ActionCatalog::ACTIONS), \count($rows), 'one row per catalog action — no plugin registered any here');
+        $this->assertCount(\count(\Porta\Config\ActionCatalog::ACTIONS), $rows, 'one row per catalog action — no plugin registered any here');
         $this->assertSame('ctrl+d', $byAction['duplicate_line']->binding, 'editor binding wins');
         $this->assertSame('Duplicate Line or Selection', $byAction['duplicate_line']->label);
         $this->assertSame('ctrl+6', $byAction['ide_problems']->binding, 'ide binding fills in when the editor has none');

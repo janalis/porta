@@ -346,7 +346,7 @@ final class WelcomeScreenTest extends TestCase
                 // A right-press over the box is swallowed: no context menu opens.
                 $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $region->col + 4, $region->top + 5 + 1));
                 $tui->tick();
-                $this->assertTrue($this->modalRegion($ide) instanceof \Porta\Overlay\Region\DropdownRegion, 'still open');
+                $this->assertInstanceOf(\Porta\Overlay\Region\DropdownRegion::class, $this->modalRegion($ide), 'still open');
 
                 // A click outside the box (the tree pane, top-left) is swallowed too.
                 $tui->handleInput("\x1b[<0;2;3M");

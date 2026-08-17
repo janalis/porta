@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferManager;
@@ -187,29 +188,31 @@ final class IdeHelpersTest extends TestCase
         $this->assertNull(Uri::toPath('file://'));
     }
 
-    public function testLanguageIdMap(): void
+    /** @return iterable<string, array{string, string}> */
+    public static function languageIdCases(): iterable
     {
-        $cases = [
-            'x.php' => 'php',
-            'x.phtml' => 'php',
-            'x.js' => 'javascript',
-            'x.mjs' => 'javascript',
-            'x.ts' => 'typescript',
-            'x.json' => 'json',
-            'x.css' => 'css',
-            'x.html' => 'html',
-            'x.htm' => 'html',
-            'x.md' => 'markdown',
-            'x.yaml' => 'yaml',
-            'x.yml' => 'yaml',
-            'x.twig' => 'twig',
-            'x.py' => 'python',
-            'x.scss' => 'scss',
-            'x.weird' => 'plaintext',
-        ];
-        foreach ($cases as $file => $expected) {
-            $this->assertSame($expected, ProjectPaths::languageId($file), $file);
-        }
+        yield 'php' => ['x.php', 'php'];
+        yield 'phtml' => ['x.phtml', 'php'];
+        yield 'js' => ['x.js', 'javascript'];
+        yield 'mjs' => ['x.mjs', 'javascript'];
+        yield 'ts' => ['x.ts', 'typescript'];
+        yield 'json' => ['x.json', 'json'];
+        yield 'css' => ['x.css', 'css'];
+        yield 'html' => ['x.html', 'html'];
+        yield 'htm' => ['x.htm', 'html'];
+        yield 'markdown' => ['x.md', 'markdown'];
+        yield 'yaml' => ['x.yaml', 'yaml'];
+        yield 'yml' => ['x.yml', 'yaml'];
+        yield 'twig' => ['x.twig', 'twig'];
+        yield 'python' => ['x.py', 'python'];
+        yield 'scss' => ['x.scss', 'scss'];
+        yield 'unknown' => ['x.weird', 'plaintext'];
+    }
+
+    #[DataProvider('languageIdCases')]
+    public function testLanguageIdMap(string $file, string $expected): void
+    {
+        $this->assertSame($expected, ProjectPaths::languageId($file), $file);
     }
 
     public function testRelativePathOutsideRoot(): void
