@@ -38,7 +38,20 @@ use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
  *                    compiler resolves aliases away (they are all private
  *                    here), so the compiled container simply has none
  */
-#[AsCommand(name: 'container', description: 'Inspect the compiled service container (services, tags, aliases)')]
+#[AsCommand(
+    name: 'container',
+    description: 'Inspect the compiled service container (services, tags, aliases)',
+    help: <<<'HELP'
+        Kernel-less `debug:container`: builds config/services.php and prints one
+        of four views.
+
+          <info>container</info>              compiled services — every id that survives compile pruning
+          <info>container --loaded</info>     pre-compile definitions, including the ones the compiler prunes
+          <info>container --aliases</info>    interface → id aliases (always pre-compile)
+          <info>container --tag=porta.eager</info>  services carrying a tag, with its attributes
+        HELP,
+    usages: ['--loaded', '--aliases', '--tag=porta.ide_service'],
+)]
 final class ContainerDebugCommand extends Command
 {
     /** The env channel IdeContainerFactory seeds per boot; dummy values suffice — this inspects wiring, it never runs services. */

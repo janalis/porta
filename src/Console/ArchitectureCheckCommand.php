@@ -40,7 +40,20 @@ use Symfony\Component\Finder\Finder;
  * invisible to the `use Porta\…;` regex) or it grows the very edges it
  * grades.
  */
-#[AsCommand(name: 'arch', description: "Enforce Porta's namespace, acyclicity and E2e-size ratchets")]
+#[AsCommand(
+    name: 'arch',
+    description: "Enforce Porta's namespace, acyclicity and E2e-size ratchets",
+    help: <<<'HELP'
+        Scans src/ and plugins/*/src for namespace edges, class-level cycles and
+        oversized E2e suites, and fails a ratchet in EITHER direction: a new edge
+        or cycle needs justifying in this file's pins, and a pin that no longer
+        exists must be removed from it.
+
+          <info>arch</info>                scan the working directory
+          <info>arch /path/to/project</info>  scan a specific project root
+        HELP,
+    usages: ['/path/to/project'],
+)]
 final class ArchitectureCheckCommand extends Command
 {
     use CommandErrorStream;

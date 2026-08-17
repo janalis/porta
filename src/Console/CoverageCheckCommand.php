@@ -24,7 +24,21 @@ use Symfony\Component\Finder\Finder;
  * {@see number()} so a malformed report degrades to zeros instead of
  * exploding on a missing node.
  */
-#[AsCommand(name: 'coverage:check', description: 'Fail when Clover line coverage is below a threshold')]
+#[AsCommand(
+    name: 'coverage:check',
+    description: 'Fail when Clover line coverage is below a threshold',
+    help: <<<'HELP'
+        Parses a Clover XML report, prints the per-file coverage table, and fails
+        (exit 1) when total line coverage is below the threshold, or (exit 2)
+        when the report is missing or unusable.
+
+          <info>coverage:check</info>                              coverage/clover.xml against 100%
+          <info>coverage:check coverage/plugins-clover.xml 100 --only=/plugins/</info>
+                                                          grade only plugin files
+          <info>coverage:check --require=plugins</info>  fail if a .php file under plugins/ is absent from the report
+        HELP,
+    usages: ['coverage/clover.xml 100', '--only=/plugins/ --require=plugins'],
+)]
 final class CoverageCheckCommand extends Command
 {
     use CommandErrorStream;
