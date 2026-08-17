@@ -27,6 +27,13 @@ final class AsyncProcess
      */
     public const float EXTERNAL_TOOL_TIMEOUT = 300.0;
 
+    /**
+     * Ceiling for an interactive, single-file tool run (format/lint/highlight
+     * on save or on type) — generous for one file, short enough that a hang
+     * recovers within the session rather than pinning the slot for 5 minutes.
+     */
+    public const float INTERACTIVE_TOOL_TIMEOUT = 60.0;
+
     /** @var resource|null */
     private $process;
 

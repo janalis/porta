@@ -87,7 +87,7 @@ return new class('phpantom', 'phpantom_lsp', BinarySearch::PathOnly) extends Abs
             return;
         }
         $before = null === $formatted ? null : $this->textBefore($api, $formatted);
-        new AsyncProcess([$binary, ...$arguments], $api->projectRoot())->start(function (int $code) use ($api, $success, $formatted, $before): void {
+        new AsyncProcess([$binary, ...$arguments], $api->projectRoot(), timeout: AsyncProcess::INTERACTIVE_TOOL_TIMEOUT)->start(function (int $code) use ($api, $success, $formatted, $before): void {
             $this->release();
             if (null !== $formatted) {
                 $this->applyFormatted($api, $formatted, $before);

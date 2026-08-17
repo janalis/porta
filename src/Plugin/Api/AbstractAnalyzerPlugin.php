@@ -147,7 +147,7 @@ abstract class AbstractAnalyzerPlugin extends AbstractToolPlugin
      */
     final protected function analyseWith(PluginApi $api, string $binary, string $file): void
     {
-        new AsyncProcess($this->command($binary, $file), $api->projectRoot())->start(
+        new AsyncProcess($this->command($binary, $file), $api->projectRoot(), timeout: AsyncProcess::INTERACTIVE_TOOL_TIMEOUT)->start(
             function (int $code, string $stdout) use ($api, $file): void {
                 $this->release();
                 $this->publish($api, $file, $code, $stdout);

@@ -57,7 +57,7 @@ return new class('php-cs-fixer', 'php-cs-fixer') extends AbstractToolPlugin {
         $split = preg_split('/\s+/', trim((string) $api->setting('args')), -1, PREG_SPLIT_NO_EMPTY);
         $args = false === $split ? [] : $split;
         $before = $this->textBefore($api, $file);
-        new AsyncProcess([$binary, 'fix', ...$args, $file], $api->projectRoot())->start(function (int $code) use ($api, $file, $before): void {
+        new AsyncProcess([$binary, 'fix', ...$args, $file], $api->projectRoot(), timeout: AsyncProcess::INTERACTIVE_TOOL_TIMEOUT)->start(function (int $code) use ($api, $file, $before): void {
             $this->release();
             $this->applyFormatted($api, $file, $before);
             $this->flashExit($api, $code, 'php-cs-fixer: fixed '.basename($file));

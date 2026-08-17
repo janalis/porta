@@ -128,7 +128,7 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin
         }
 
         ++$this->running;
-        new AsyncProcess([$binary, ...$this->lexerArgs($language)], $api->projectRoot(), stdin: $text)
+        new AsyncProcess([$binary, ...$this->lexerArgs($language)], $api->projectRoot(), stdin: $text, timeout: AsyncProcess::INTERACTIVE_TOOL_TIMEOUT)
             ->start(function (int $code, string $stdout) use ($theme, $language, $deliver, $sequence): void {
                 --$this->running;
                 if (0 !== $code || ($this->latest[$language] ?? 0) !== $sequence) {
