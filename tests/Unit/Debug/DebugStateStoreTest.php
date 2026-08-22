@@ -67,18 +67,40 @@ final class DebugStateStoreTest extends TestCase
 
         $project->write('.porta/debug.json', json_encode([
             'breakpoints' => [
-                '/p/ok.php' => [['line' => 2], ['line' => 'nope'], 'junk'],
-                3 => [['line' => 1]], // non-string path key... json makes it "3", still a string — kept
+                // An invalid path (or entry list) must be skipped, not abort
+                // the rest of the loop — so a valid path/entry is placed
+                // AFTER each invalid one below.
                 '/p/none.php' => 'not-a-list',
+                '/p/ok.php' => [['line' => 'nope'], ['line' => 2], 'junk', ['line' => 5]],
+                3 => [['line' => 1]], // non-string path key... json round-trips it back to an int — dropped
             ],
-            'watches' => ['$x', 7, ''],
-            'exceptionFilters' => ['ok', 42],
+            'watches' => ['$a', 7, '', '$b'],
+            'exceptionFilters' => ['a', 42, 'b'],
         ]));
         $state = $store->load();
-        $this->assertSame([['line' => 2, 'condition' => null, 'hitCondition' => null, 'logMessage' => null]], $state['breakpoints']['/p/ok.php']);
+        $this->assertSame(
+            [
+                ['line' => 2, 'condition' => null, 'hitCondition' => null, 'logMessage' => null],
+                ['line' => 5, 'condition' => null, 'hitCondition' => null, 'logMessage' => null],
+            ],
+            $state['breakpoints']['/p/ok.php'],
+        );
         $this->assertArrayNotHasKey('/p/none.php', $state['breakpoints']);
-        $this->assertSame(['$x'], $state['watches'], 'non-strings and empties dropped');
-        $this->assertSame(['ok'], $state['exceptionFilters']);
+        $this->assertSame(['$a', '$b'], $state['watches'], 'non-strings and empties dropped, without leaving key gaps');
+        $this->assertSame(['a', 'b'], $state['exceptionFilters'], 'filtered out values must not leave key gaps');
+    }
+
+    public function testEmptyBreakpointsStillEncodeAsAJsonObject(): void
+    {
+        // Breakpoints keyed by path are conceptually a map, not a list — an
+        // empty map must round-trip through JSON as `{}`, not `[]`, or a
+        // strict schema reader downstream would reject it.
+        $project = new TempProject();
+        $store = new DebugStateStore($project->dir);
+        $store->save([], ['$x'], null);
+
+        $decoded = json_decode((string) file_get_contents($project->path('.porta/debug.json')), associative: false, flags: \JSON_THROW_ON_ERROR);
+        $this->assertInstanceOf(\stdClass::class, $decoded->breakpoints, 'an empty map must decode as an object, not an array');
     }
 
     public function testIoFailureReportsFalse(): void
@@ -96,8 +118,10 @@ final class DebugStateStoreTest extends TestCase
         $real = $project->path('real.php');
         $store->save(
             [
-                $real => [['line' => 0, 'condition' => '$x', 'hitCondition' => null]],
+                // The vanished file sits BEFORE the real one: restore() must
+                // skip it and keep going, not abort the rest of the loop.
                 $project->path('gone.php') => [['line' => 3, 'condition' => null, 'hitCondition' => null]],
+                $real => [['line' => 0, 'condition' => '$x', 'hitCondition' => null]],
             ],
             ['$watched'],
             ['exception'],

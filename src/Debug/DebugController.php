@@ -131,7 +131,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         $text =
             $this->isPaused() && null !== $path && null !== $line
                 ? Glyphs::DEBUG_PAUSED.' '.$this->paths->relative($path).':'.($line + 1)
-                : Glyphs::DEBUG_RUNNING.' debug';
+                : Glyphs::DEBUG_RUNNING.' '.$this->translator->trans('debug');
 
         return [new StatusCell($text, StatusTone::Active)];
     }

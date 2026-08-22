@@ -55,11 +55,16 @@ final class BreakpointStoreTest extends TestCase
     public function testLogMessageMakesALogpointDistinctFromAConditional(): void
     {
         $store = new BreakpointStore();
-        $store->setDetails('/p/a.php', 4, null, null, 'x={$x}');
+        // Inserted out of ascending order, on purpose: both accessors sort
+        // their result, and inserting in order would let a missing sort()
+        // pass unnoticed.
         $store->setDetails('/p/a.php', 8, '$x > 1', null, null);
+        $store->setDetails('/p/a.php', 2, '$y > 1', null, null);
+        $store->setDetails('/p/a.php', 4, null, null, 'x={$x}');
+        $store->setDetails('/p/a.php', 1, null, null, 'y={$y}');
 
-        $this->assertSame([4], $store->logpointLinesFor('/p/a.php'), 'only the log-message line is a logpoint');
-        $this->assertSame([8], $store->conditionalLinesFor('/p/a.php'), 'the log message alone is not "conditional"');
+        $this->assertSame([1, 4], $store->logpointLinesFor('/p/a.php'), 'ascending, not insertion order');
+        $this->assertSame([2, 8], $store->conditionalLinesFor('/p/a.php'), 'ascending, not insertion order');
         $this->assertSame('x={$x}', $store->conditionAt('/p/a.php', 4)['logMessage'] ?? null);
     }
 
@@ -67,10 +72,17 @@ final class BreakpointStoreTest extends TestCase
     {
         $store = new BreakpointStore();
         $store->toggle('/p/a.php', 1);
+        $store->toggle('/p/c.php', 5);
         $store->toggle('/p/b.php', 2);
         $store->toggle('/p/b.php', 2); // toggles off → the file disappears
 
-        $this->assertSame(['/p/a.php' => [['line' => 1, 'condition' => null, 'hitCondition' => null, 'logMessage' => null]]], $store->all());
+        $this->assertSame(
+            [
+                '/p/a.php' => [['line' => 1, 'condition' => null, 'hitCondition' => null, 'logMessage' => null]],
+                '/p/c.php' => [['line' => 5, 'condition' => null, 'hitCondition' => null, 'logMessage' => null]],
+            ],
+            $store->all(),
+        );
 
         $store->clear();
         $this->assertSame([], $store->all());

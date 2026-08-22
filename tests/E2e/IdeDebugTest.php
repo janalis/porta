@@ -105,7 +105,10 @@ final class IdeDebugTest extends TestCase
                     $tui->handleInput("\x1b[20;2~"); // shift+f9 debug
                 },
                 700 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    // Locals are their own DAP round trip behind the stop event
+                    // and the stack — await the LAST of the three to land, not
+                    // just "paused", or the panel can still be mid-populate.
+                    $this->awaitPainted($tui, $terminal, '$x = 42');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Debug: prog.php', $screen, 'the debug panel opened');
                     $this->assertStringContainsString('paused at prog.php:5', $screen, 'stopped at the breakpoint');
@@ -295,7 +298,7 @@ final class IdeDebugTest extends TestCase
                     $tui->handleInput("\r");
                 },
                 1000 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->awaitPainted($tui, $terminal, '$x = 42#1');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Watches', $screen);
                     $this->assertStringContainsString('$x = 42#1', $screen, 'the watch evaluated against the paused frame');
@@ -433,7 +436,9 @@ final class IdeDebugTest extends TestCase
                     $tui->handleInput("\x1b[20;2~"); // shift+f9 debug
                 },
                 800 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    // The restored watch's evaluation is its own DAP round trip
+                    // behind the stop event — await it, not just "paused".
+                    $this->awaitPainted($tui, $terminal, '$x = 42#1');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('paused at prog.php:5', $screen, 'the restored breakpoint stopped the program');
                     $this->assertStringContainsString('$x = 42#1', $screen, 'the restored watch evaluated');

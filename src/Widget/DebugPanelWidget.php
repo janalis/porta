@@ -75,15 +75,12 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
 
     private DebugPanelCallbacks $callbacks;
 
-    private readonly Translator $translator;
-
     public function __construct(
         ?Styles $styles = null,
-        ?Translator $translator = null,
+        private readonly Translator $translator = new Translator('en'),
         private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->initStyles($styles);
-        $this->translator = $translator ?? new Translator('en');
         $this->list = new ListSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
         $this->visibleRows = 10;

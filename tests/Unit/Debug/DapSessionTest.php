@@ -42,8 +42,11 @@ final class DapSessionTest extends TestCase
         $this->assertTrue($session->start(['program' => '/p/a.php']));
         $this->assertSame(DebugState::Starting, $session->state());
         $init = $client->argumentsOf('initialize');
+        $this->assertSame('porta', $init['clientID']);
         $this->assertSame('php', $init['adapterID']);
         $this->assertTrue($init['linesStartAt1']);
+        $this->assertTrue($init['columnsStartAt1']);
+        $this->assertTrue($init['supportsVariableType']);
         $this->assertFalse($init['supportsRunInTerminalRequest']);
 
         $client->respond('initialize', ['supportsConfigurationDoneRequest' => true]);
@@ -84,6 +87,7 @@ final class DapSessionTest extends TestCase
         $client->emit('stopped', ['reason' => 'breakpoint', 'threadId' => 7]);
         $this->assertSame(DebugState::Paused, $session->state());
         $this->assertSame(['stopped:breakpoint'], $this->events);
+        $this->assertNotContains('threads', $client->commands(), 'the event already carried a thread id — no need to ask');
 
         $session->stepOver();
         $this->assertSame(['threadId' => 7], $client->argumentsOf('next'));
@@ -119,6 +123,37 @@ final class DapSessionTest extends TestCase
         $this->assertSame(['threadId' => 3], $client->argumentsOf('next'), 'fell back to the first reported thread');
     }
 
+    public function testStoppedWithoutAThreadIdAndNoUsableThreadsResponseFallsBackToOne(): void
+    {
+        $client = new FakeDapClient();
+        $client->responses['threads'] = [['threads' => [['name' => 'main']]], null]; // no 'id' in the only thread
+        $session = $this->session($client);
+        $session->start([]);
+        $client->respond('initialize', []);
+        $client->respond('launch');
+
+        $client->emit('stopped', ['reason' => 'pause']);
+        $session->stepOver();
+        $this->assertSame(['threadId' => 1], $client->argumentsOf('next'));
+    }
+
+    public function testStepWhilePausedWithNoThreadIdYetKnownUsesTheFallback(): void
+    {
+        $client = new FakeDapClient();
+        $session = $this->session($client);
+        $session->start([]);
+        $client->respond('initialize', []);
+        $client->respond('launch');
+
+        // The 'threads' round trip is left pending: the session's own thread
+        // id stays null through the whole step.
+        $client->emit('stopped', ['reason' => 'pause']);
+        $this->assertSame(DebugState::Paused, $session->state());
+
+        $session->stepOver();
+        $this->assertSame(['threadId' => 1], $client->argumentsOf('next'));
+    }
+
     public function testLiveBreakpointEditsOutputAndTermination(): void
     {
         $client = new FakeDapClient();
@@ -147,6 +182,32 @@ final class DapSessionTest extends TestCase
         $this->assertSame([2 + 1], array_column($client->argumentsOf('setBreakpoints')['breakpoints'], 'line'), 'no sends after termination');
     }
 
+    public function testExitedAloneReportsTermination(): void
+    {
+        $client = new FakeDapClient();
+        $session = $this->session($client);
+        $session->start([]);
+        $client->respond('initialize', []);
+        $client->respond('launch');
+
+        $client->emit('exited', ['exitCode' => 0]); // no preceding 'terminated' event
+        $this->assertSame(['terminated'], $this->events);
+        $this->assertSame(DebugState::Terminated, $session->state());
+    }
+
+    public function testTransportCloseAloneReportsTermination(): void
+    {
+        $client = new FakeDapClient();
+        $session = $this->session($client);
+        $session->start([]);
+        $client->respond('initialize', []);
+        $client->respond('launch');
+
+        $client->close(); // no preceding 'terminated'/'exited' event
+        $this->assertSame(['terminated'], $this->events);
+        $this->assertSame(DebugState::Terminated, $session->state());
+    }
+
     public function testStackScopesAndVariablesConvertAndTolerateErrors(): void
     {
         $client = new FakeDapClient();
@@ -154,18 +215,25 @@ final class DapSessionTest extends TestCase
             [
                 'stackFrames' => [
                     ['id' => 1, 'name' => '{main}', 'source' => ['path' => '/p/a.php'], 'line' => 5],
-                    ['id' => 2], // sparse frame exercises the defaults
+                    ['id' => 2], // sparse frame exercises the line default
+                    ['line' => 0], // exercises the id default, and clamps line to 0 rather than going negative
                 ],
             ],
             null,
         ];
-        $client->responses['scopes'] = [['scopes' => [['name' => 'Locals', 'variablesReference' => 9]]], null];
-        $client->responses['variables'] = [['variables' => [['name' => '$x', 'value' => '42', 'variablesReference' => 0]]], null];
+        $client->responses['scopes'] = [
+            ['scopes' => [['name' => 'Locals', 'variablesReference' => 9], ['name' => 'Globals']]],
+            null,
+        ];
+        $client->responses['variables'] = [
+            ['variables' => [['name' => '$x', 'value' => '42', 'variablesReference' => 0], ['name' => '$y', 'value' => '7']]],
+            null,
+        ];
         $session = $this->session($client);
         $session->start([]);
         $client->respond('initialize', []);
         $client->respond('launch');
-        $client->emit('stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
+        $client->emit('stopped', ['reason' => 'breakpoint', 'threadId' => 5]); // not 1: distinguishes the real id from the ??1 fallback
 
         $frames = null;
         $scopes = null;
@@ -180,23 +248,50 @@ final class DapSessionTest extends TestCase
             $variables = $v;
         });
 
+        $this->assertSame(['threadId' => 5], $client->argumentsOf('stackTrace'), 'the real thread id, not the null-fallback');
+        $this->assertSame(['frameId' => 1], $client->argumentsOf('scopes'));
         $this->assertSame(
             [
                 ['id' => 1, 'name' => '{main}', 'path' => '/p/a.php', 'line' => 4],
                 ['id' => 2, 'name' => '?', 'path' => '', 'line' => 0],
+                ['id' => 0, 'name' => '?', 'path' => '', 'line' => 0],
             ],
             $frames,
-            '1-based wire lines became 0-based',
+            '1-based wire lines became 0-based; a missing id defaults to 0; a 0 wire line clamps to 0, not -1',
         );
-        $this->assertSame([['name' => 'Locals', 'variablesReference' => 9]], $scopes);
-        $this->assertSame([['name' => '$x', 'value' => '42', 'variablesReference' => 0]], $variables);
+        $this->assertSame(
+            [['name' => 'Locals', 'variablesReference' => 9], ['name' => 'Globals', 'variablesReference' => 0]],
+            $scopes,
+            'a missing variablesReference defaults to 0',
+        );
+        $this->assertSame(
+            [['name' => '$x', 'value' => '42', 'variablesReference' => 0], ['name' => '$y', 'value' => '7', 'variablesReference' => 0]],
+            $variables,
+            'a missing variablesReference defaults to 0',
+        );
 
-        // Error responses degrade to empty lists.
-        $client->responses['stackTrace'] = [[], 'no stack available'];
+        // Error responses degrade to empty lists — even when the body still
+        // carries a well-formed key, the error takes priority.
+        $client->responses['stackTrace'] = [['stackFrames' => [['id' => 1]]], 'no stack available'];
         $session->stackTrace(static function (array $f) use (&$frames): void {
             $frames = $f;
         });
         $this->assertSame([], $frames);
+    }
+
+    public function testStackTraceFallsBackToThreadIdOneWhenNoneWasEverReceived(): void
+    {
+        $client = new FakeDapClient();
+        $client->responses['stackTrace'] = [['stackFrames' => []], null];
+        $session = $this->session($client);
+        $session->start([]);
+        $client->respond('initialize', []);
+        $client->respond('launch');
+        // No 'stopped' event: the session never learned a thread id.
+
+        $session->stackTrace(static function (): void {});
+
+        $this->assertSame(['threadId' => 1], $client->argumentsOf('stackTrace'));
     }
 
     public function testSpawnAndHandshakeFailures(): void
@@ -207,6 +302,8 @@ final class DapSessionTest extends TestCase
         $this->assertFalse($session->start([]));
         $this->assertSame(DebugState::Terminated, $session->state());
         $this->assertSame([], $this->events, 'a session that never started reports nothing');
+        $session->disconnect(); // termination was already finalized at start() — must not double-report
+        $this->assertSame([], $this->events, 'still nothing: the never-started case reports no termination at all');
 
         $client = new FakeDapClient();
         $session = $this->session($client);
@@ -214,6 +311,7 @@ final class DapSessionTest extends TestCase
         $client->respond('initialize', [], 'nope');
         $this->assertSame(['error:initialize failed: nope'], $this->events);
         $this->assertTrue($client->stopped);
+        $this->assertNotContains('launch', $client->commands(), 'a failed handshake never proceeds to launch');
 
         $client = new FakeDapClient();
         $session = $this->session($client);
@@ -222,6 +320,8 @@ final class DapSessionTest extends TestCase
         $client->respond('launch', [], 'bad program');
         $this->assertSame(['error:launch failed: bad program'], $this->events);
         $this->assertSame(DebugState::Terminated, $session->state());
+        $client->close(); // a straggler close after an already-reported failure must not double-report
+        $this->assertSame(['error:launch failed: bad program'], $this->events);
     }
 
     public function testConditionFieldsAreCapabilityGatedWithAConsoleWarning(): void
@@ -387,8 +487,8 @@ final class DapSessionTest extends TestCase
             'supportsConfigurationDoneRequest' => true,
             'exceptionBreakpointFilters' => [
                 ['filter' => 'warning', 'label' => 'Warnings'],
+                ['nope' => 'malformed'], // must be skipped without aborting the entries after it
                 ['filter' => 'exception', 'default' => true], // no label: falls back to the id
-                ['nope' => 'malformed'],
             ],
         ]);
         $client->respond('launch');
@@ -475,6 +575,27 @@ final class DapSessionTest extends TestCase
         // The next stop has no temp to retire: no extra setBreakpoints either.
         $client->emit('stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
         $this->assertNotContains('setBreakpoints', $client->commands());
+    }
+
+    public function testRunToDoesNotDuplicateWhenARealBreakpointLandsOnTheTempsLine(): void
+    {
+        $client = new FakeDapClient();
+        $session = $this->session($client, ['/p/a.php' => [self::bp(2)]]);
+        $session->start([]);
+        $client->respond('initialize', []);
+        $client->respond('launch');
+        $client->emit('stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
+
+        $session->runTo('/p/a.php', 8); // sets the one-shot temp at 0-based line 8 (wire line 9)
+
+        // A real breakpoint toggle now lands on that exact same wire line.
+        $session->setBreakpoints('/p/a.php', [self::bp(2), self::bp(8)]);
+
+        $this->assertSame(
+            [3, 9],
+            array_column($client->argumentsOf('setBreakpoints')['breakpoints'], 'line'),
+            'the temp is not duplicated once a real breakpoint already covers its line',
+        );
     }
 
     /** @return array{line: int, condition: ?string, hitCondition: ?string} */

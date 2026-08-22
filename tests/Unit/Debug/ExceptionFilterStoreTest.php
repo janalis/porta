@@ -40,10 +40,28 @@ final class ExceptionFilterStoreTest extends TestCase
     public function testSelectionIntersectsWithWhatTheAdapterAdvertises(): void
     {
         $store = new ExceptionFilterStore();
-        $store->setSelection(['exception', 'vanished-filter']);
+        // The dropped id sits BEFORE the kept one: array_intersect() alone
+        // would leave the kept id at its original (non-zero) key, so a
+        // missing re-index would surface here.
+        $store->setSelection(['vanished-filter', 'exception']);
         $this->assertSame(['exception'], $store->enabledFor(self::ADVERTISED), 'ids the adapter no longer advertises are dropped');
 
         $store->setSelection(null);
         $this->assertSame(['exception'], $store->enabledFor(self::ADVERTISED), 'null returns to defaults');
+    }
+
+    public function testTogglingOnPreservesEveryAlreadyEnabledFilter(): void
+    {
+        $advertised = [
+            ['filter' => 'a', 'label' => 'A', 'default' => false],
+            ['filter' => 'b', 'label' => 'B', 'default' => false],
+            ['filter' => 'c', 'label' => 'C', 'default' => false],
+        ];
+        $store = new ExceptionFilterStore();
+        $store->setSelection(['a', 'b']);
+
+        $store->toggle('c', $advertised);
+
+        $this->assertSame(['a', 'b', 'c'], $store->enabledFor($advertised), 'turning one filter on keeps the others enabled');
     }
 }
