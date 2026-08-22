@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Config\EditorConfig;
 
+use Porta\Support\Files;
+
 /**
  * Resolves the effective EditorConfig for an absolute file path by walking up
  * the directory tree — reading every `.editorconfig` from the file's directory
@@ -24,8 +26,9 @@ final class EditorConfigResolver
         $dir = \dirname($file);
         while (true) {
             $path = ('/' === $dir ? '' : $dir).'/.editorconfig';
-            if (is_file($path)) {
-                $parsed = EditorConfigParser::parse((string) file_get_contents($path));
+            $contents = Files::read($path);
+            if ('' !== $contents) {
+                $parsed = EditorConfigParser::parse($contents);
                 $collected[] = ['dir' => $dir, 'parsed' => $parsed];
                 if ($parsed['root']) {
                     break;

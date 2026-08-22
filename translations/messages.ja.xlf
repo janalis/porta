@@ -2534,6 +2534,74 @@
         <source>Could not write %file%</source>
         <target>%file% を書き込めませんでした</target>
       </trans-unit>
+      <trans-unit id="645">
+        <source>Files</source>
+        <target>ファイル</target>
+      </trans-unit>
+      <trans-unit id="646">
+        <source>Classes</source>
+        <target>クラス</target>
+      </trans-unit>
+      <trans-unit id="647">
+        <source>Symbols</source>
+        <target>シンボル</target>
+      </trans-unit>
+      <trans-unit id="648">
+        <source>Actions</source>
+        <target>アクション</target>
+      </trans-unit>
+      <trans-unit id="649">
+        <source>Text</source>
+        <target>テキスト</target>
+      </trans-unit>
+      <trans-unit id="650">
+        <source>(Tab)</source>
+        <target>(Tab)</target>
+      </trans-unit>
+      <trans-unit id="651">
+        <source>%language% LSP: %shown%%saved%</source>
+        <target>%language% の LSP: %shown%%saved%</target>
+      </trans-unit>
+      <trans-unit id="652">
+        <source>debug</source>
+        <target>デバッグ</target>
+      </trans-unit>
+      <trans-unit id="653">
+        <source>%tool%: already running</source>
+        <target>%tool%: 実行中</target>
+      </trans-unit>
+      <trans-unit id="654">
+        <source>%tool% not found (set its binary or install it)</source>
+        <target>%tool% が見つかりません（バイナリを設定するかインストールしてください）</target>
+      </trans-unit>
+      <trans-unit id="655">
+        <source>%tool% not found (vendor/bin or PATH)</source>
+        <target>%tool% が見つかりません（vendor/bin または PATH）</target>
+      </trans-unit>
+      <trans-unit id="656">
+        <source>%tool%: open a PHP file first</source>
+        <target>%tool%: まず PHP ファイルを開いてください</target>
+      </trans-unit>
+      <trans-unit id="657">
+        <source>%tool%: exited with code %code%</source>
+        <target>%tool%: コード %code% で終了しました</target>
+      </trans-unit>
+      <trans-unit id="658">
+        <source>%tool%: formatted %file%</source>
+        <target>%tool%: %file% を整形しました</target>
+      </trans-unit>
+      <trans-unit id="659">
+        <source>%tool%: fixed %file%</source>
+        <target>%tool%: %file% を修正しました</target>
+      </trans-unit>
+      <trans-unit id="660">
+        <source>%tool%: fixed project</source>
+        <target>%tool%: プロジェクトを修正しました</target>
+      </trans-unit>
+      <trans-unit id="661">
+        <source>%tool%: generated config</source>
+        <target>%tool%: 設定を生成しました</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

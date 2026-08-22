@@ -101,7 +101,7 @@ final class PickerLayout
         ];
         foreach ($visible as $i => $row) {
             if (null !== $row->header) {
-                $popup[] = $styles->merge(Role::PopupRow, Role::Dim)->apply(AnsiText::truncate(' '.$row->header->title(), $width, pad: true));
+                $popup[] = $styles->merge(Role::PopupRow, Role::Dim)->apply(AnsiText::truncate(' '.$row->header, $width, pad: true));
 
                 continue;
             }

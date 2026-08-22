@@ -86,10 +86,25 @@ final class SourcesTest extends TestCase
         $labels = array_map(static fn (SearchHit $h): string => $h->label, $hits);
         $this->assertContains('Save File', $labels);
         $this->assertNotContains('Nothing Here', $labels, 'non-subsequence dropped');
-        $this->assertSame('Save File', $hits[0]->label, 'best score first');
         ($hits[0]->activate)();
         $this->assertSame('save', $ran);
         $source->cancel(); // no-op for a synchronous source
+    }
+
+    public function testActionsSourceOrdersMultipleMatchesByScoreDescending(): void
+    {
+        // Both labels match 'b', but with clearly different fuzzy scores (a
+        // word-boundary hit outscores a mid-word one) — with only a single
+        // match, "best first" is trivially true regardless of the sort
+        // direction, so this needs two matches to actually prove it.
+        $registry = new CommandRegistry();
+        $registry->add('low', static function (): void {}, label: 'Alpha Beta');
+        $registry->add('high', static function (): void {}, label: 'Bravo');
+        $source = new ActionsSource($registry);
+
+        $hits = $this->collect(static fn (\Closure $emit) => $source->query('b', $emit));
+
+        $this->assertSame(['Bravo', 'Alpha Beta'], array_map(static fn (SearchHit $h): string => $h->label, $hits));
     }
 
     public function testWorkspaceSymbolSourceFiltersByKindAndJumps(): void

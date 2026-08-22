@@ -243,8 +243,11 @@ final class IdeContextMenusTest extends TestCase
                         $tui->handleInput($ch); // the search term (query field)
                     }
                 },
-                760 => static function ($tui): void {
-                    $tui->tick();
+                760 => function ($tui): void {
+                    // The grep is a subprocess: await its row in the MODAL before
+                    // acting on it, instead of asserting a fixed number of ms
+                    // after the query.
+                    $this->await(fn (): bool => str_contains($this->modalText($tui), 'Inside.php'), what: 'the folder-scoped search to land');
                     $tui->handleInput("\t"); // modal: query → replace
                     foreach (str_split('renamed') as $ch) {
                         $tui->handleInput($ch);

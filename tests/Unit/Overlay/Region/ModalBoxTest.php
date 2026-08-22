@@ -41,6 +41,17 @@ final class ModalBoxTest extends TestCase
         $this->assertNull($box->itemAt(9, 15), 'the bottom border is not an item');
         $this->assertNull($box->itemAt(6, 9), 'outside the box columns');
         $this->assertNull($box->itemAt(6, 30), 'outside on the right');
+        $this->assertSame(5, $box->itemAt(6, 10), 'the left column itself is still inside the box');
+    }
+
+    public function testResizeHitOnlyMatchesTheExactBottomRightCorner(): void
+    {
+        $box = $this->box();
+
+        $this->assertTrue($box->resizeHit(9, 29), 'the bottom-right corner');
+        $this->assertFalse($box->resizeHit(9, 15), 'right row, wrong column');
+        $this->assertFalse($box->resizeHit(6, 29), 'right column, wrong row');
+        $this->assertFalse($box->resizeHit(6, 15), 'neither matches');
     }
 
     public function testInnerColShiftsPastTheRailAndPaddingColumn(): void

@@ -182,7 +182,7 @@ final class SearchEverywhereController
             if ([] === $hits) {
                 continue;
             }
-            $rows[] = SearchRow::header($category);
+            $rows[] = SearchRow::header($this->translator->trans($category->title()));
             foreach ($hits as $hit) {
                 $rows[] = SearchRow::hit($hit);
             }

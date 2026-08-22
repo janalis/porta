@@ -168,7 +168,7 @@ final class SearchEverywhereControllerTest extends TestCase
         $this->assertSame('Search Everywhere', $overlay->title, 'the title is translated (English identity here)');
         $this->assertSame('no results', $overlay->emptyMessage, 'the no-hit empty message is threaded through');
         $this->assertTrue($overlay->rows[0]->isHeader());
-        $this->assertSame(SearchCategory::Files, $overlay->rows[0]->header);
+        $this->assertSame('Files', $overlay->rows[0]->header);
         $this->assertSame(['B.php', 'A.php'], $this->labels($overlay->rows), 'most-recent first');
         $this->assertSame('', $overlay->rows[1]->hit?->detail, 'B.php is at the root → no dir');
         $this->assertSame('src', $overlay->rows[2]->hit?->detail, 'A.php shows its relative dir');

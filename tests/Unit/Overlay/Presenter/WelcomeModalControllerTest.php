@@ -22,7 +22,9 @@ use Porta\Overlay\Presenter\OverlayDelivery;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Tests\Support\FakePluginLifecycle;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersRoot;
+use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
 use Porta\Ui\Theme\Theme;
@@ -33,6 +35,7 @@ use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Workbench\ChromeInvalidator;
 use Porta\Workbench\ChromeRefreshListener;
 use Porta\Workbench\EditorArea;
+use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -55,6 +58,8 @@ final class WelcomeModalControllerTest extends TestCase
     private WelcomeWidget $welcome;
     private ViewRegistry $views;
     private AbstractWidget&MenuOverlayHost $pane;
+    private MenuBarWidget $menuBar;
+    private EditorArea $editArea;
 
     private function controller(): WelcomeModalController
     {
@@ -74,8 +79,9 @@ final class WelcomeModalControllerTest extends TestCase
 
         $this->welcome = new WelcomeWidget(new Translator('en'));
         $this->views = new ViewRegistry();
+        $this->menuBar = new MenuBarWidget();
 
-        $editArea = new EditorArea(
+        $this->editArea = new EditorArea(
             new BufferManager(),
             new CodeEditorWidget(),
             new EditorPanes(),
@@ -86,8 +92,8 @@ final class WelcomeModalControllerTest extends TestCase
             new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui),
             $this->welcome,
             new WelcomeSteps(new Translator('en'), $source ?? new NoHighlightPlugins(), $lifecycle, new CommandRegistry(), new MagoDetector('/nonexistent')),
-            new MenuBarWidget(),
-            $editArea,
+            $this->menuBar,
+            $this->editArea,
             $this->tui,
             $this->views,
             frameHooks: $this->tui,
@@ -141,6 +147,14 @@ final class WelcomeModalControllerTest extends TestCase
         $controller->close();
         $controller->close();
         $this->assertSame([], $this->pane->modalSpans);
+        $this->assertSame($this->editArea->widget(), $this->tui->getFocus());
+
+        // A redundant close() while already closed must be a true no-op —
+        // not just "spans stay empty" (already true), but "focus is left
+        // wherever it legitimately is now", not yanked back to the editor.
+        $this->tui->setFocus($this->menuBar);
+        $controller->close();
+        $this->assertSame($this->menuBar, $this->tui->getFocus(), 'closing an already-closed modal must not steal focus back');
     }
 
     public function testToggleFlipsBothWays(): void
@@ -314,6 +328,13 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertNotNull($pinned);
         $this->assertSame(24 - $pinned->count, $pinned->top, 'clamped to the pane bottom');
         $this->assertSame(80 - $pinned->width, $pinned->col, 'clamped to the pane right edge');
+        // The two lines above re-derive their expected value from the same
+        // $pinned object being checked (shadowClamped()'s own count/width
+        // are computed FROM $top/$col), so a clamp() bound that's wrong in
+        // the same direction the shadow math folds back would still pass
+        // them. Pin the literal, independently-known numbers too.
+        $this->assertSame(2, Probe::get($controller, 'top'), 'literal clamped row: boundBottom(24) - box rows(22)');
+        $this->assertSame(4, Probe::get($controller, 'col'), 'literal clamped column: boundRight(80) - box width(76)');
         $this->assertFalse($controller->continueDragTo(0, 0, release: false), 'the release disarmed the drag');
     }
 
@@ -502,6 +523,526 @@ final class WelcomeModalControllerTest extends TestCase
         new ChromeRefreshListener(new ChromeInvalidator(), $controller, $this->tui)->onSettingApplied(new ThemeChanged(Theme::Dark));
 
         $this->assertSame([], $this->pane->modalSpans);
+    }
+
+    public function testEscapeInsideTheModalClosesIt(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+
+        $controller->handleKey("\x1b");
+
+        $this->assertFalse($controller->isOpen(), 'Esc runs the widget\'s exit hook, which closes the modal');
+    }
+
+    public function testConstructedWithoutFrameHooksDoesNotThrow(): void
+    {
+        // frameHooks is nullable — the nullsafe call must guard against a
+        // truly absent scheduler, not just a happy-path presence.
+        $this->renderer = new Renderer(new StyleSheet());
+        $this->tui = new BidiTui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: $this->renderer);
+        $this->pane = new TestOverlayPane();
+        $this->tui->add($this->pane);
+        $this->welcome = new WelcomeWidget(new Translator('en'));
+        $this->views = new ViewRegistry();
+        $editArea = new EditorArea(new BufferManager(), new CodeEditorWidget(), new EditorPanes(), $this->tui);
+
+        new WelcomeModalController(
+            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui),
+            $this->welcome,
+            new WelcomeSteps(new Translator('en'), new NoHighlightPlugins(), new FakePluginLifecycle(), new CommandRegistry(), new MagoDetector('/nonexistent')),
+            new MenuBarWidget(),
+            $editArea,
+            $this->tui,
+            $this->views,
+            frameHooks: null,
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    /**
+     * WelcomeSteps::all() re-detects mago on every call (it is rebuilt on
+     * each open — see its own docblock), so the fixer/analyzer step's action
+     * label switches from php-cs-fixer/phpstan to mago the moment it becomes
+     * available. refresh() only shows that switch if it really rebuilds the
+     * steps rather than repainting the ones already held.
+     */
+    public function testRefreshPicksUpMagoBecomingAvailable(): void
+    {
+        $project = new TempProject();
+        $this->renderer = new Renderer(new StyleSheet());
+        $this->tui = new BidiTui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: $this->renderer);
+        $this->pane = new TestOverlayPane();
+        $this->tui->add($this->pane);
+        $this->welcome = new WelcomeWidget(new Translator('en'));
+        $this->views = new ViewRegistry();
+        $editArea = new EditorArea(new BufferManager(), new CodeEditorWidget(), new EditorPanes(), $this->tui);
+        $controller = new WelcomeModalController(
+            new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui),
+            $this->welcome,
+            new WelcomeSteps(new Translator('en'), new NoHighlightPlugins(), new FakePluginLifecycle(), new CommandRegistry(), new MagoDetector($project->dir)),
+            new MenuBarWidget(),
+            $editArea,
+            $this->tui,
+            $this->views,
+            frameHooks: $this->tui,
+        );
+        $this->frame(80);
+
+        $controller->open();
+        $before = implode('', array_column($this->pane->modalSpans, 'segment'));
+        $this->assertStringContainsString('php-cs-fixer', $before);
+        $this->assertStringNotContainsString('mago', $before);
+
+        $magoBinary = $project->write('vendor/bin/mago', '');
+        chmod($magoBinary, permissions: 0o755);
+        $controller->refresh();
+
+        $after = implode('', array_column($this->pane->modalSpans, 'segment'));
+        $this->assertStringContainsString('mago', $after, 'refresh() re-detected mago and rebuilt the step label');
+    }
+
+    public function testOpeningAgainWhileAlreadyOpenIsANoOp(): void
+    {
+        $lifecycle = new FakePluginLifecycle();
+        $controller = $this->controllerWith($lifecycle);
+
+        $controller->open();
+        $controller->handleKey("\x1b[B"); // park on the second step
+        $controller->open(); // already open — must leave the parked selection alone
+        $controller->handleKey("\r");
+
+        $this->assertSame(
+            [[RecommendedPlugins::LANGUAGE_SERVER, true]],
+            $lifecycle->toggled,
+            'the redundant open() did not reset the selection back to the first step',
+        );
+    }
+
+    public function testOpeningTheModalClosesAnyOpenMenuDropdown(): void
+    {
+        $controller = $this->controller();
+        $this->menuBar->setMenus([new Menu('File', [])]);
+        $this->menuBar->open();
+        $this->assertTrue($this->menuBar->isOpen());
+
+        $controller->open();
+
+        $this->assertFalse($this->menuBar->isOpen(), 'opening the modal drops any open dropdown so its tracked hit region cannot go stale');
+    }
+
+    public function testClosingTheModalClosesAnyOpenMenuDropdownToo(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $this->menuBar->setMenus([new Menu('File', [])]);
+        $this->menuBar->open();
+        $this->assertTrue($this->menuBar->isOpen());
+
+        $controller->close();
+
+        $this->assertFalse($this->menuBar->isOpen(), 'closing the modal drops any open dropdown too');
+    }
+
+    /**
+     * Opened before any frame, the box stays null even though $this->open is
+     * true ({@see testTheBeforeFrameSyncPlacesTheBoxOnceRectsExist}). Every
+     * pointer entry point must swallow the click rather than dereference a
+     * null box — the `||` in each guard is load-bearing, not `&&`.
+     */
+    public function testActionsOnAnOpenModalWithNoBoxYetAreNoOps(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+
+        $this->assertFalse($controller->clickAt(5, 5));
+        $this->assertFalse($controller->hoverAt(5, 5));
+        $this->assertFalse($controller->wheelAt(5, 5, 3));
+    }
+
+    /**
+     * Fixture geometry (80x24, default steps): box.count=18, and
+     * WelcomeWidget's row-owner map is one entry longer than the visible
+     * window ({@see \Porta\Widget\Onboarding\WelcomeWidget::render()} records
+     * every body() row before the final clip), so row 18 and row 17 own the
+     * *same* step — only the `< $box->count` boundary tells them apart.
+     */
+    public function testHoverContentRowRespectsTheWindowBoundary(): void
+    {
+        $controller = $this->controller();
+        $this->frame(80);
+        $controller->open();
+        $box = Probe::get($controller, 'box');
+        $this->assertSame(18, $box->count, 'pinning the fixture this test depends on');
+
+        $lastValidRow = $box->windowTop() + 17;
+        $onePastRow = $box->windowTop() + 18;
+
+        $this->assertTrue($controller->hoverAt($lastValidRow, $box->col + 2), 'the last row inside the window registers a hover');
+        $this->assertTrue($controller->hoverAt(0, 0), 'off the box entirely clears it');
+        $this->assertFalse($controller->hoverAt($onePastRow, $box->col + 2), 'one row past the window must not register, even though the same step owns that dead row');
+    }
+
+    /**
+     * Until a drag freezes an absolute position, top/col stay null and the
+     * box re-centers fresh every compose — including across a pane resize.
+     * If compose ever persisted the *computed* value back into $this->top/
+     * $this->col unconditionally, the box would freeze after its first
+     * placement and stop re-centering.
+     */
+    public function testAnUndraggedBoxKeepsAutoCenteringAcrossAResize(): void
+    {
+        $controller = $this->controller();
+        $this->frame(80);
+        $controller->open();
+        $before = $controller->region();
+        $this->assertNotNull($before);
+
+        // Narrow enough to floor innerWidth at 20 (24-8=16 < 20), which is
+        // the one regime where the auto-centered column isn't coincidentally
+        // 2 regardless of pane width.
+        $this->frame(columns: 24);
+        $controller->refresh();
+        $afterNarrower = $controller->region();
+        $this->assertNotNull($afterNarrower);
+        $this->assertNotSame($before->col, $afterNarrower->col, 'still auto-centering: a narrower pane re-centers the column, not frozen at the old one');
+
+        $this->frame(80);
+        $controller->refresh();
+        $afterBack = $controller->region();
+        $this->assertNotNull($afterBack);
+        $this->assertSame($before->col, $afterBack->col, 'and un-resizing lands back on the original center, not a frozen value');
+    }
+
+    public function testClosingMovesFocusOffTheWidget(): void
+    {
+        $controller = $this->controller();
+        $this->frame(80);
+        $controller->open();
+        $this->assertSame($this->welcome, $this->tui->getFocus());
+
+        $controller->close();
+
+        $this->assertSame($this->editArea->widget(), $this->tui->getFocus(), 'focus moved back to the editor, not left on the closed widget');
+    }
+
+    public function testArrowKeysRepaintTheSelectionImmediately(): void
+    {
+        $controller = $this->controller();
+        $this->frame(80);
+        $controller->open();
+        $before = $this->pane->modalSpans;
+
+        $controller->handleKey("\x1b[B"); // move down a step
+
+        $this->assertNotEquals($before, $this->pane->modalSpans, 'handleKey repainted the moved selection, not just the widget-internal state');
+    }
+
+    public function testTheCloseButtonDoesNotAlsoArmADrag(): void
+    {
+        $controller = $this->controller();
+        $this->frame(80);
+        $controller->open();
+        $region = $controller->region();
+        $this->assertNotNull($region);
+
+        $consumed = $controller->clickAt($region->top, $region->col + $region->width - 3);
+        $this->assertTrue($consumed);
+        $this->assertFalse($controller->isOpen());
+
+        $this->assertFalse($controller->continueDragTo(10, 10, release: false), 'closing via the × left no drag armed behind it');
+    }
+
+    public function testAFreshDragAfterTheBoxHasAlreadyMovedUsesTheNewOffset(): void
+    {
+        // The first drag moves the box off startRow=0; re-arming a SECOND
+        // drag from the new position must recompute the pointer offset
+        // against the box's CURRENT startRow, not the original one — a
+        // rowOffset sign flip is invisible while startRow is still 0.
+        $controller = $this->controller();
+        $this->frame(80);
+        $controller->open();
+        $region = $controller->region();
+        $this->assertNotNull($region);
+
+        // The box is 22 of 24 rows tall, leaving only 2 rows of vertical
+        // room to move in before clamping — small, deliberate deltas.
+        $this->assertTrue($controller->clickAt($region->top, $region->col + 2));
+        $this->assertTrue($controller->continueDragTo($region->top + 1, $region->col, release: true));
+        $moved = $controller->region();
+        $this->assertNotNull($moved);
+        $this->assertSame($region->top + 1, $moved->top, 'the box really did move off row 0');
+
+        $this->assertTrue($controller->clickAt($moved->top, $moved->col + 2));
+        $this->assertTrue($controller->continueDragTo($moved->top + 1, $moved->col, release: true));
+        $movedAgain = $controller->region();
+        $this->assertNotNull($movedAgain);
+        $this->assertSame($moved->top + 1, $movedAgain->top, 'the second drag tracked the pointer from its new starting row');
+    }
+
+    public function testClickingAContentRowFocusesTheWidgetAndRepaintsImmediately(): void
+    {
+        $lifecycle = new FakePluginLifecycle();
+        $controller = $this->controllerWith($lifecycle);
+        $this->frame(80);
+        $controller->open();
+        $region = $controller->region();
+        $this->assertNotNull($region);
+        $this->tui->setFocus($this->menuBar); // move focus away first
+
+        $before = $this->pane->modalSpans;
+        $controller->clickAt($region->top + 8, $region->col + 4); // the second card, per the existing content-click test
+
+        $this->assertSame($this->welcome, $this->tui->getFocus(), 'the click focused the widget');
+        $this->assertNotEquals($before, $this->pane->modalSpans, 'the click repainted the new selection immediately, before any key press');
+    }
+
+    /**
+     * HERO_MIN_ROWS=10 drops the hero on a short pane, so content row 0 is a
+     * real step row rather than a blank hero line — the only fixture where
+     * the `>= 0` boundary and the `-1` "nothing hovered" fallback are
+     * distinguishable from genuine rowOwner[0] data (with the hero present,
+     * both read as null either way).
+     */
+    public function testHoveringTheFirstContentRowRegistersWhenTheHeroIsDropped(): void
+    {
+        $controller = $this->controller();
+        $this->frame(80, rows: 12);
+        $controller->open();
+        // resetView() auto-selects the first pending step, which IS row 0 —
+        // selection outranks hover styling, so move the selection off it
+        // first or the hover tint has nothing to add to compare against.
+        $controller->handleKey("\x1b[B");
+        $box = Probe::get($controller, 'box');
+
+        $baseline = $this->pane->modalSpans;
+        $controller->hoverAt($box->windowTop(), $box->col + 2); // contentRow = 0
+
+        $this->assertNotEquals($baseline, $this->pane->modalSpans, 'the first content row is in range and must tint');
+    }
+
+    public function testHoveringOneRowAboveContentNeverTints(): void
+    {
+        $controller = $this->controller();
+        $this->frame(80, rows: 12);
+        $controller->open();
+        // Same reason as the sibling test: row 0 starts out selected.
+        $controller->handleKey("\x1b[B");
+        $box = Probe::get($controller, 'box');
+
+        $baseline = $this->pane->modalSpans;
+        $controller->hoverAt($box->windowTop() - 1, $box->col + 2); // contentRow = -1, the title bar
+
+        $this->assertSame($baseline, $this->pane->modalSpans, 'one row above the content window must not tint anything');
+    }
+
+    /**
+     * `contains() && contentRow>=0 && contentRow<count` has a hovering spot
+     * that a `||` in the WRONG place between the first two clauses can't
+     * distinguish from the real thing unless the hover is truly outside the
+     * box's columns (contains() false) while the row alone would otherwise
+     * read as valid content.
+     */
+    public function testHoveringOutsideTheBoxColumnsNeverTintsContent(): void
+    {
+        $controller = $this->controller();
+        $this->frame(80, rows: 12);
+        $controller->open();
+        $controller->handleKey("\x1b[B");
+        $box = Probe::get($controller, 'box');
+
+        $baseline = $this->pane->modalSpans;
+        // A row that owns a real step, but a column left of the box entirely.
+        $this->assertGreaterThan(0, $box->col, 'sanity: column 0 really is left of the box');
+        $controller->hoverAt($box->windowTop() + 1, 0);
+
+        $this->assertSame($baseline, $this->pane->modalSpans, 'outside the box columns must not tint content just because the row would qualify');
+    }
+
+    public function testWheelOutsideTheBoxDoesNotScrollOrRepaint(): void
+    {
+        $controller = $this->controller();
+        $this->frame(80);
+        $controller->open();
+        $before = $this->pane->modalSpans;
+
+        $controller->wheelAt(0, 79, 3); // outside the box: swallowed but must not scroll/repaint
+
+        $this->assertSame($before, $this->pane->modalSpans, 'a wheel outside the box neither scrolled nor repainted');
+    }
+
+    public function testWheelOverTheBoxRepaintsImmediately(): void
+    {
+        $controller = $this->controller();
+        $this->frame(80);
+        $controller->open();
+        $region = $controller->region();
+        $this->assertNotNull($region);
+        $before = $this->pane->modalSpans;
+
+        $controller->wheelAt($region->top + 4, $region->col + 4, 3);
+
+        $this->assertNotEquals($before, $this->pane->modalSpans, 'the scroll repainted immediately');
+    }
+
+    public function testResizingRecomputesTheUserSizeFromTheOriginalAnchor(): void
+    {
+        // The resize offset is measured against $this->col/$this->top (the
+        // anchor frozen when the resize armed) — a sign flip there is
+        // invisible while the box still sits at its auto-centered position,
+        // since anchor and pointer move together. Moving the box first,
+        // THEN resizing, is what pulls the two apart.
+        $controller = $this->controller();
+        $this->frame(80);
+        $controller->open();
+        $region = $controller->region();
+        $this->assertNotNull($region);
+
+        // Only 1 row / 4 columns of room to move in (box is 22x76 of 24x80),
+        // so a small move, then shrink (plenty of floor room at 20x5) rather
+        // than grow (which would immediately re-clamp back to the max size).
+        $this->assertTrue($controller->clickAt($region->top, $region->col + 2));
+        $this->assertTrue($controller->continueDragTo($region->top + 1, $region->col + 1, release: true));
+        $moved = $controller->region();
+        $this->assertNotNull($moved);
+
+        $box = ['top' => $moved->top, 'col' => $moved->col, 'width' => $moved->width - 1, 'rows' => $moved->count - 1];
+        $corner = [$box['top'] + $box['rows'] - 1, $box['col'] + $box['width'] - 1];
+        $this->assertTrue($controller->clickAt($corner[0], $corner[1]));
+        $this->assertTrue($controller->continueDragTo($corner[0] - 5, $corner[1] - 5, release: true));
+
+        $resized = $controller->region();
+        $this->assertNotNull($resized);
+        $this->assertSame($box['width'] - 5, $resized->width - 1, 'the width shrank by exactly the pointer delta from the anchored corner');
+        $this->assertSame($box['rows'] - 5, $resized->count - 1, 'the height shrank by exactly the pointer delta from the anchored corner');
+    }
+
+    public function testTheBeforeFrameSyncIsANoOpWhileClosed(): void
+    {
+        // syncBeforeFrame's own open-guard: invoking the real hook while
+        // closed must not throw or place a box.
+        $controller = $this->controller();
+        $this->frame(80);
+
+        $this->tui->processRender();
+
+        $this->assertNull($controller->region());
+    }
+
+    public function testASecondFrameWithUnchangedBoundsDoesNotRecompose(): void
+    {
+        // syncBeforeFrame only recomposes when the box is still null or the
+        // bounds actually changed — pin that a settled frame is a true no-op
+        // by checking the pane spans are byte-identical (not just "some box
+        // still exists"), which only compose() actually producing the exact
+        // same render also happens to satisfy — so pair it with a spy-free
+        // proxy: the modal's own top/col identity survives untouched.
+        $controller = $this->controller();
+        $controller->open();
+        $this->tui->requestRender();
+        $this->tui->processRender(); // the hook runs before the render sees any rects yet
+        $this->tui->processRender(); // this frame's hook places the box
+        $before = $this->pane->modalSpans;
+
+        $this->tui->requestRender();
+        $this->tui->processRender(); // bounds unchanged: should be a no-op recompose (same output)
+
+        $this->assertSame($before, $this->pane->modalSpans);
+    }
+
+    public function testEveryMutatingActionRequestsARender(): void
+    {
+        $controller = $this->controller();
+        $this->frame(80);
+
+        Probe::set($this->tui, 'renderRequested', false);
+        $controller->open();
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'open() requests a render');
+
+        Probe::set($this->tui, 'renderRequested', false);
+        $controller->refresh();
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'refresh() requests a render');
+
+        $region = $controller->region();
+        $this->assertNotNull($region);
+
+        Probe::set($this->tui, 'renderRequested', false);
+        $controller->wheelAt($region->top + 4, $region->col + 4, 3);
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'a wheel over the box requests a render');
+
+        $controller->clickAt($region->top, $region->col + 2); // arm a title-bar drag
+        Probe::set($this->tui, 'renderRequested', false);
+        $controller->continueDragTo($region->top + 1, $region->col + 1, release: true);
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'continuing a drag requests a render');
+
+        // The drag moved the box — re-read its geometry before arming the
+        // resize corner, or the click lands on stale coordinates.
+        $moved = $controller->region();
+        $this->assertNotNull($moved);
+        $box = ['top' => $moved->top, 'col' => $moved->col, 'width' => $moved->width - 1, 'rows' => $moved->count - 1];
+        $corner = [$box['top'] + $box['rows'] - 1, $box['col'] + $box['width'] - 1];
+        $this->assertTrue($controller->clickAt($corner[0], $corner[1]), 'the corner click was consumed (armed the resize)');
+        Probe::set($this->tui, 'renderRequested', false);
+        $controller->continueDragTo($corner[0] - 1, $corner[1] - 1, release: false);
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'continuing a resize requests a render');
+
+        Probe::set($this->tui, 'renderRequested', false);
+        $controller->close();
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'close() requests a render');
+    }
+
+    /**
+     * 80x24 union → boundTop=0, boundLeft=0, boundBottom=24, boundRight=80.
+     * Every number below is ground truth read straight off the real objects
+     * (not re-derived from the same formula the source uses, which would be
+     * tautological), so sign/operand drift anywhere in the centring, sizing
+     * or clamping arithmetic shows up as a wrong literal.
+     */
+    public function testComposePlacesTheAutoCenteredBoxAtTheExactGeometry(): void
+    {
+        $controller = $this->controller();
+        $this->frame(80);
+
+        $controller->open();
+
+        $region = $controller->region();
+        $this->assertNotNull($region);
+        $this->assertSame(0, $region->top, 'auto-centered row');
+        $this->assertSame(2, $region->col, 'auto-centered column');
+        $this->assertSame(77, $region->width, 'shadow-inclusive width (box width 76 + 1)');
+        $this->assertSame(23, $region->count, 'shadow-inclusive row count (box rows 22 + 1)');
+
+        $box = Probe::get($controller, 'box');
+        $this->assertSame(0, $box->startRow);
+        $this->assertSame(2, $box->col);
+        $this->assertSame(76, $box->width);
+        $this->assertSame(22, $box->rows);
+        $this->assertSame(2, $box->headerRows);
+        $this->assertSame(0, $box->windowStart, 'the window starts at the top of the content, not offset by one');
+        $this->assertSame(18, $box->count);
+    }
+
+    /**
+     * On the 80x24 fixture, boundTop and boundLeft are both 0, which makes
+     * several sign/divisor mistakes in the centring formula coincidentally
+     * land on the same number (0 either added or subtracted, or a small
+     * intdiv numerator truncating to 0 under more than one divisor). A much
+     * larger union (200x60) still has boundTop=boundLeft=0 (one full-width
+     * pane), but the OTHER operands are big enough that a wrong divisor or a
+     * flipped sign produces a genuinely different number.
+     */
+    public function testComposeCentersCorrectlyOnAMuchLargerUnion(): void
+    {
+        $controller = $this->controller();
+        $this->frame(200, rows: 60);
+
+        $controller->open();
+
+        $region = $controller->region();
+        $this->assertNotNull($region);
+        $this->assertSame(12, $region->top, 'boundTop(0) + intdiv(boundBottom(60)-boundTop(0)-rows(22), 3) = 12');
+        $this->assertSame(60, $region->col, 'boundLeft(0) + intdiv(boundRight(200)-boundLeft(0)-width(80), 2) = 60');
     }
 
     /** A source with one real backend, i.e. highlighting is configured. */

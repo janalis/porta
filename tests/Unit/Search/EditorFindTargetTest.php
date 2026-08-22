@@ -29,8 +29,13 @@ final class EditorFindTargetTest extends TestCase
         $this->assertSame(1, $doc->getCursorLine());
         $this->assertSame(0, $doc->getCursorCol());
 
-        // Mirroring is a no-throw pass-through to the editor's highlight.
+        // Mirroring reaches the editor's actual highlight, not just a no-throw call.
         $target->showSearchMatches([1 => [['start' => 0, 'end' => 4, 'current' => true]]]);
+        $this->assertStringContainsString(
+            "\x1b[48;5;130m",
+            $editor->render(new \Symfony\Component\Tui\Render\RenderContext(80, 10))[1],
+            'the current match background reaches the editor',
+        );
 
         // The editor is editable, so replace targets its document.
         $this->assertSame($doc, $target->replaceDocument());

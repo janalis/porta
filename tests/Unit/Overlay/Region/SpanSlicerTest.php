@@ -30,6 +30,30 @@ final class SpanSlicerTest extends TestCase
         );
     }
 
+    /**
+     * A fully-contained panel must NOT run its segment through the slicer at
+     * all — clipOffset=0 and clipWidth=panelWidth both hold, so $clipped is
+     * false. A trailing ANSI code past the last visible column proves it:
+     * the slicer's width-bounded scan drops anything after the last visible
+     * cell, so slicing (even a "no-op" full-width slice) would eat it.
+     */
+    public function testFullyContainedPanelSkipsSlicingEntirely(): void
+    {
+        $rect = new WidgetRect(row: 0, col: 0, rows: 1, columns: 40);
+
+        $spans = SpanSlicer::localSpans(["AAAA\x1b[0m"], $rect, top: 0, anchor: 0, panelWidth: 4);
+
+        $this->assertSame("AAAA\x1b[0m", $spans[0]['segment'], 'the trailing reset code survives untouched');
+    }
+
+    public function testATouchingButNonOverlappingPanelYieldsNoSpans(): void
+    {
+        $rect = new WidgetRect(row: 0, col: 0, rows: 5, columns: 10);
+
+        // Panel [10, 15) starts exactly where the rect ends — zero overlap width.
+        $this->assertSame([], SpanSlicer::localSpans(['AAAAA'], $rect, top: 0, anchor: 10, panelWidth: 5));
+    }
+
     public function testRowsOutsideTheWidgetAreDropped(): void
     {
         $rect = new WidgetRect(row: 5, col: 0, rows: 2, columns: 20);
@@ -93,6 +117,18 @@ final class SpanSlicerTest extends TestCase
 
         $this->assertCount(1, $spans);
         $this->assertStringContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, $spans[0]['segment'], 'the true marker stays in its own slice');
+    }
+
+    /** A marker sitting EXACTLY at the clip boundary is this slice's own — the < / <= edge. */
+    public function testAMarkerExactlyAtTheClipBoundaryIsKept(): void
+    {
+        $marker = AnsiUtils::cursorMarker();
+        $segment = 'abc'.$marker.'defgh'; // prefix width 3, clip offset will be 3
+
+        $rect = new WidgetRect(row: 0, col: 3, rows: 1, columns: 20);
+        $spans = SpanSlicer::localSpans([$segment], $rect, top: 0, anchor: 0, panelWidth: 8);
+
+        $this->assertStringContainsString(AnsiUtils::CURSOR_MARKER_PREFIX, $spans[0]['segment'], 'exactly-at-boundary still counts as this slice\'s own marker');
     }
 
     public function testANonOverlappingPanelYieldsNoSpans(): void

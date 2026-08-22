@@ -13,13 +13,14 @@ namespace Porta\Search\Everywhere;
 final readonly class SearchRow
 {
     private function __construct(
-        public ?SearchCategory $header,
+        /** The already-translated group label, or null for a hit row. */
+        public ?string $header,
         public ?SearchHit $hit,
     ) {}
 
-    public static function header(SearchCategory $category): self
+    public static function header(string $label): self
     {
-        return new self($category, null);
+        return new self($label, null);
     }
 
     public static function hit(SearchHit $hit): self

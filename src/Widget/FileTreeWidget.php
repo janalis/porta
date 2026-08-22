@@ -81,17 +81,14 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      */
     private const int POLL_GRACE_SECONDS = 2;
 
-    private readonly ClockInterface $clock;
-
     public function __construct(
         private readonly string $rootDir,
-        ?ClockInterface $clock = null,
+        private readonly ClockInterface $clock = new NativeClock(),
         int $width = 30,
         ?Styles $styles = null,
         private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->width = $width;
-        $this->clock = $clock ?? new NativeClock();
         $this->initStyles($styles);
         $this->list = new ListSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection

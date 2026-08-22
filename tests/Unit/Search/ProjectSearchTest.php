@@ -11,7 +11,6 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
-use Revolt\EventLoop;
 
 final class ProjectSearchTest extends TestCase
 {
@@ -416,9 +415,7 @@ final class ProjectSearchTest extends TestCase
         $search->cancel();
 
         // Give the (cancelled) watcher time to have fired if cancel failed
-        $suspension = EventLoop::getSuspension();
-        EventLoop::delay(0.3, $suspension->resume(...));
-        $suspension->suspend();
+        $this->pump(0.3);
 
         $this->assertFalse($called);
     }

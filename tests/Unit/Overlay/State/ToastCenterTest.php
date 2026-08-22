@@ -9,6 +9,7 @@ use Porta\Overlay\Region\ModalBox;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Tests\Support\FakeScheduler;
+use Porta\Tests\Support\Probe;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -20,11 +21,14 @@ final class ToastCenterTest extends TestCase
 {
     private FakeScheduler $scheduler;
 
+    private Tui $tui;
+
     private function center(): ToastCenter
     {
         $this->scheduler = new FakeScheduler();
+        $this->tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
 
-        return new ToastCenter($this->scheduler, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24)));
+        return new ToastCenter($this->scheduler, $this->tui);
     }
 
     /** @return array{box: ModalBox, id: int} a card box at rows 1-3, cols 60-79 */
@@ -39,11 +43,25 @@ final class ToastCenterTest extends TestCase
         $center->push('first', ToastSeverity::Info);
         $center->push('second', ToastSeverity::Error);
 
+        $ids = array_map(static fn ($t) => $t->id, $center->toasts());
+        $this->assertSame([2, 1], $ids, 'ids climb with each push, never fall');
         $this->assertSame(['second', 'first'], array_map(static fn ($t) => $t->message, $center->toasts()));
         $this->assertFalse($center->isEmpty());
 
+        Probe::set($this->tui, 'renderRequested', false);
         $this->scheduler->fire(); // the FIRST toast's expiry
         $this->assertSame(['second'], array_map(static fn ($t) => $t->message, $center->toasts()));
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'the timer expiry itself asks for a frame');
+    }
+
+    public function testPushRequestsARenderImmediately(): void
+    {
+        $center = $this->center();
+        Probe::set($this->tui, 'renderRequested', false);
+
+        $center->push('a', ToastSeverity::Info);
+
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'));
     }
 
     public function testTheStackCapEvictsTheOldestAndCancelsItsTimer(): void
@@ -83,8 +101,10 @@ final class ToastCenterTest extends TestCase
 
         $this->assertFalse($center->hoverAt(10, 10), 'off every card');
         $this->assertNull($center->closeHoveredId());
+        Probe::set($this->tui, 'renderRequested', false);
         $this->assertTrue($center->hoverAt(1, 77), 'over the ×');
         $this->assertSame($id, $center->closeHoveredId());
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'the × hover changed — a frame is needed to paint the tint');
         $this->assertTrue($center->hoverAt(2, 65), 'over the body clears the × tint');
         $this->assertNull($center->closeHoveredId());
     }
@@ -107,5 +127,32 @@ final class ToastCenterTest extends TestCase
         $center->push('a', ToastSeverity::Info);
         $center->dismiss(999);
         $this->assertCount(1, $center->toasts());
+    }
+
+    public function testDismissRequestsARender(): void
+    {
+        $center = $this->center();
+        $center->push('a', ToastSeverity::Info);
+        $id = $center->toasts()[0]->id;
+        Probe::set($this->tui, 'renderRequested', false);
+
+        $center->dismiss($id);
+
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'));
+    }
+
+    /** The match may not be the first entry scanned — the loop must keep going past a miss, not stop there. */
+    public function testDismissingAMiddleToastLeavesItsNeighborsIntact(): void
+    {
+        $center = $this->center();
+        $center->push('a', ToastSeverity::Info);
+        $center->push('b', ToastSeverity::Info);
+        $center->push('c', ToastSeverity::Info);
+        [$idC, $idB, $idA] = array_map(static fn ($t) => $t->id, $center->toasts());
+
+        $center->dismiss($idB);
+
+        $this->assertSame(['c', 'a'], array_map(static fn ($t) => $t->message, $center->toasts()), 'only the middle toast was removed');
+        $this->assertContains((string) $idB, $this->scheduler->cancelled);
     }
 }

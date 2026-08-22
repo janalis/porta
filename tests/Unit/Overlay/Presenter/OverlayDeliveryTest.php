@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Overlay\Presenter\OverlayDelivery;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\State\MenuOverlayPanes;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersRoot;
 use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
@@ -57,14 +58,18 @@ final class OverlayDeliveryTest extends TestCase
     public function testBoundsRequestsAFrameUntilTheFirstRectLands(): void
     {
         $delivery = $this->delivery();
+        Probe::set($this->tui, 'renderRequested', false);
         $this->assertNull($delivery->bounds(), 'no frame yet: nothing to lay out against');
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'no bounds yet — a frame is requested to try again');
 
         $this->frame();
+        Probe::set($this->tui, 'renderRequested', false);
         $bounds = $delivery->bounds();
         $this->assertNotNull($bounds);
         [$top, $left, $bottom, $right] = $bounds;
         $this->assertSame([0, 0], [$top, $left]);
         $this->assertGreaterThan(0, $bottom * $right);
+        $this->assertFalse(Probe::get($this->tui, 'renderRequested'), 'bounds already available — no need to ask for another frame');
     }
 
     public function testDeliverModalSlicesSpansAndDimsAndSkipsRectlessPanes(): void
@@ -72,8 +77,16 @@ final class OverlayDeliveryTest extends TestCase
         $delivery = $this->delivery();
         $this->frame();
 
-        $delivery->deliverModal([['rows' => ['ABC', 'DEF'], 'top' => 2, 'col' => 4, 'width' => 3]]);
+        // Two boxes: proves the per-box spans ACCUMULATE across the loop,
+        // rather than the later box overwriting the earlier one's spans.
+        $delivery->deliverModal([
+            ['rows' => ['ABC', 'DEF'], 'top' => 2, 'col' => 4, 'width' => 3],
+            ['rows' => ['XYZ'], 'top' => 10, 'col' => 4, 'width' => 3],
+        ]);
         $this->assertNotSame([], $this->pane->modalSpans, 'the box sliced into the rendered pane');
+        $rows = array_column($this->pane->modalSpans, 'row');
+        $this->assertContains(2, $rows, 'the first box contributed its spans');
+        $this->assertContains(10, $rows, 'the second box contributed its spans too, not replacing the first');
         $this->assertTrue($this->pane->backdrop, 'the modal slot dims');
         $this->assertSame([], $this->detachedPane->modalSpans, 'a pane with no rect gets empty spans');
         $this->assertTrue($this->detachedPane->backdrop, 'but still dims — it may render next frame');

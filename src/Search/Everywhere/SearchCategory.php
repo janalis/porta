@@ -16,7 +16,7 @@ enum SearchCategory
     case Actions;
     case Text;
 
-    /** The group header label (English source string; translated at render time). */
+    /** The group header label (English source string; {@see SearchEverywhereController::render()} translates it). */
     public function title(): string
     {
         return match ($this) {

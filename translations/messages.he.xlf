@@ -2534,6 +2534,74 @@
         <source>Could not write %file%</source>
         <target>לא ניתן היה לכתוב את %file%</target>
       </trans-unit>
+      <trans-unit id="645">
+        <source>Files</source>
+        <target>קבצים</target>
+      </trans-unit>
+      <trans-unit id="646">
+        <source>Classes</source>
+        <target>מחלקות</target>
+      </trans-unit>
+      <trans-unit id="647">
+        <source>Symbols</source>
+        <target>סמלים</target>
+      </trans-unit>
+      <trans-unit id="648">
+        <source>Actions</source>
+        <target>פעולות</target>
+      </trans-unit>
+      <trans-unit id="649">
+        <source>Text</source>
+        <target>טקסט</target>
+      </trans-unit>
+      <trans-unit id="650">
+        <source>(Tab)</source>
+        <target>(Tab)</target>
+      </trans-unit>
+      <trans-unit id="651">
+        <source>%language% LSP: %shown%%saved%</source>
+        <target>LSP של %language%: %shown%%saved%</target>
+      </trans-unit>
+      <trans-unit id="652">
+        <source>debug</source>
+        <target>ניפוי שגיאות</target>
+      </trans-unit>
+      <trans-unit id="653">
+        <source>%tool%: already running</source>
+        <target>%tool%: כבר רץ</target>
+      </trans-unit>
+      <trans-unit id="654">
+        <source>%tool% not found (set its binary or install it)</source>
+        <target>%tool% לא נמצא (הגדר את הקובץ הבינארי או התקן אותו)</target>
+      </trans-unit>
+      <trans-unit id="655">
+        <source>%tool% not found (vendor/bin or PATH)</source>
+        <target>%tool% לא נמצא (vendor/bin או PATH)</target>
+      </trans-unit>
+      <trans-unit id="656">
+        <source>%tool%: open a PHP file first</source>
+        <target>%tool%: פתח קודם קובץ PHP</target>
+      </trans-unit>
+      <trans-unit id="657">
+        <source>%tool%: exited with code %code%</source>
+        <target>%tool%: הסתיים עם קוד %code%</target>
+      </trans-unit>
+      <trans-unit id="658">
+        <source>%tool%: formatted %file%</source>
+        <target>%tool%: %file% עוצב</target>
+      </trans-unit>
+      <trans-unit id="659">
+        <source>%tool%: fixed %file%</source>
+        <target>%tool%: %file% תוקן</target>
+      </trans-unit>
+      <trans-unit id="660">
+        <source>%tool%: fixed project</source>
+        <target>%tool%: הפרויקט תוקן</target>
+      </trans-unit>
+      <trans-unit id="661">
+        <source>%tool%: generated config</source>
+        <target>%tool%: התצורה נוצרה</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

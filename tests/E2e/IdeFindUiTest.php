@@ -105,7 +105,9 @@ final class IdeFindUiTest extends TestCase
                     }
                 },
                 700 => function ($tui): void {
-                    $tui->tick();
+                    // The grep is a subprocess: await the matches landing
+                    // instead of a fixed gap.
+                    $this->await(fn (): bool => str_contains($this->modalText($tui), 'tok 0'), what: 'the matches to land');
                     $before = $this->modalText($tui);
                     $this->assertStringContainsString('tok 0', $before, 'the first matches show initially');
                     $this->assertStringNotContainsString('tok 18', $before, 'later matches start below the fold');
@@ -142,8 +144,10 @@ final class IdeFindUiTest extends TestCase
                     }
                 },
                 700 => function ($tui) use ($panelText): void {
-                    $tui->tick();
                     $this->promote($tui); // Alt+Enter → results tool window
+                    // The grep is a subprocess: await the matches landing
+                    // instead of a fixed gap.
+                    $this->await(static fn (): bool => str_contains($panelText($tui), 'File0.php'), what: 'the matches to land');
                     $this->assertStringContainsString('File0.php', $panelText($tui), 'the first files show initially');
                 },
                 900 => function ($tui, $terminal, $ide) use ($panelText): void {
@@ -267,7 +271,9 @@ final class IdeFindUiTest extends TestCase
                     $tui->handleInput("\x1br"); // alt+r -> enable regex, re-runs the search
                 },
                 1150 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    // Enabling regex re-runs the grep subprocess: await the
+                    // widened result instead of a fixed gap.
+                    $this->awaitPainted($tui, $terminal, '2 results');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('2 results', $screen, 'regex n..dle matches needle and noodle');
                     $this->assertStringContainsString('A.php', $screen);
@@ -293,8 +299,12 @@ final class IdeFindUiTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                700 => static function ($tui): void {
-                    $tui->tick();
+                700 => function ($tui): void {
+                    // The grep is a subprocess: await its match landing in the
+                    // MODAL before acting on it, instead of a fixed gap. (The
+                    // query field itself already echoes "foo", so await the
+                    // file path — only the results preview carries it.)
+                    $this->await(fn (): bool => str_contains($this->modalText($tui), 'B.php'), what: 'the search to land');
                     $tui->handleInput("\t"); // modal: query → replace
                     foreach (str_split('bar') as $ch) {
                         $tui->handleInput($ch);

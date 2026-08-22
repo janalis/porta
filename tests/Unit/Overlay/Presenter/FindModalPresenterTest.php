@@ -65,6 +65,20 @@ final class FindModalPresenterTest extends TestCase
         $this->assertTrue($region->ltr, 'code content: an LTR region, never mirrored');
     }
 
+    public function testFrameHookWiringAutoSyncsOnTheNextFrame(): void
+    {
+        // Every other test drives sync() by hand; this one proves the
+        // constructor's onBeforeFrame registration is what makes that
+        // automatic in the real app.
+        $this->presenter();
+        $this->frame();
+        $this->editor->findModal()->open('Find in Files');
+
+        $this->tui->processRender(); // not $presenter->sync() — the frame hook must do it
+
+        $this->assertNotSame([], $this->pane->modalSpans, 'the frame hook drove sync() automatically');
+    }
+
     /** Before any frame there are no rects — the presenter keeps asking for one. */
     public function testSyncBeforeAnyFrameRetriesWithoutPushing(): void
     {

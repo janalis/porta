@@ -60,6 +60,21 @@ final class FileIndexTest extends TestCase
         $this->assertCount(1, $index->search('user', 1), 'capped at the limit');
     }
 
+    public function testSearchTiesOnScoreBreakByShorterPath(): void
+    {
+        // Same basename match pattern relative to its own boundary, and both
+        // total lengths fall in the same /10 length-penalty bucket (10 and 12
+        // chars) — the fuzzy score itself ties, so only the explicit length
+        // tie-break in FileIndex::search() can order them. The shorter path
+        // ("z/...") is deliberately alphabetically AFTER the longer one
+        // ("aaa/...highlighted"), so a walk-order-preserving stable sort
+        // (i.e. the tie-break silently removed) would get this backwards.
+        $project = new TempProject(['aaa/User.php' => '', 'z/User.php' => '']);
+        $index = new FileIndex($project->dir);
+
+        $this->assertSame(['z/User.php', 'aaa/User.php'], $index->search('user', 2), 'tied scores fall back to the shorter path first');
+    }
+
     public function testRefreshRewalks(): void
     {
         $project = new TempProject(['a.php' => '']);

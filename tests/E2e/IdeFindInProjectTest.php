@@ -92,7 +92,11 @@ final class IdeFindInProjectTest extends TestCase
                     }
                 },
                 600 => function ($tui) use ($panelText): void {
-                    $tui->tick();
+                    // Each scope change re-runs the grep subprocess, and a
+                    // stale result set isn't cleared until the new one lands —
+                    // so await the COMBINED presence/absence the new scope
+                    // uniquely produces, not just a fixed gap after the keypress.
+                    $this->await(static fn (): bool => str_contains($panelText($tui), 'other/B.php'), what: 'the whole-project search to land');
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('src/A.php', $panel, 'whole project finds all three');
                     $this->assertStringContainsString('src/C.php', $panel);
@@ -100,7 +104,7 @@ final class IdeFindInProjectTest extends TestCase
                     $tui->handleInput("\x1bs"); // alt+s → Directory (src/)
                 },
                 800 => function ($tui) use ($panelText): void {
-                    $tui->tick();
+                    $this->await(static fn (): bool => str_contains($panelText($tui), 'src/C.php') && !str_contains($panelText($tui), 'other/B.php'), what: 'the directory-scoped search to land');
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Directory', $panel);
                     $this->assertStringContainsString('src/A.php', $panel);
@@ -109,7 +113,7 @@ final class IdeFindInProjectTest extends TestCase
                     $tui->handleInput("\x1bs"); // alt+s → Current File (src/A.php)
                 },
                 1000 => function ($tui) use ($panelText): void {
-                    $tui->tick();
+                    $this->await(static fn (): bool => str_contains($panelText($tui), 'src/A.php') && !str_contains($panelText($tui), 'src/C.php'), what: 'the current-file-scoped search to land');
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Current File', $panel);
                     $this->assertStringContainsString('src/A.php', $panel);
@@ -117,6 +121,8 @@ final class IdeFindInProjectTest extends TestCase
                     $tui->handleInput("\x1bs"); // alt+s → Open Files (only src/A.php is open)
                 },
                 1200 => function ($tui) use ($panelText): void {
+                    // Open Files and Current File show identical content here
+                    // (only src/A.php is open either way) — nothing new to await.
                     $tui->tick();
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Open Files', $panel);
@@ -125,13 +131,15 @@ final class IdeFindInProjectTest extends TestCase
                     $tui->handleInput("\x1bs"); // alt+s → Module (no composer.json → whole project)
                 },
                 1400 => function ($tui) use ($panelText): void {
-                    $tui->tick();
+                    $this->await(static fn (): bool => str_contains($panelText($tui), 'other/B.php'), what: 'the module-scoped (whole-project fallback) search to land');
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Module', $panel);
                     $this->assertStringContainsString('other/B.php', $panel, 'no package root → module falls back to the whole project');
                     $tui->handleInput("\x1bs"); // alt+s → Whole Project (wraps)
                 },
                 1600 => function ($tui) use ($panelText): void {
+                    // Module (fallback) and Whole Project show identical
+                    // content here — nothing new to await.
                     $tui->tick();
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Whole Project', $panel);
@@ -232,7 +240,12 @@ final class IdeFindInProjectTest extends TestCase
                     $tui->handleInput("\x1bs"); // → Module
                 },
                 1000 => function ($tui) use ($panelText): void {
-                    $tui->tick();
+                    // Four rapid scope changes each cancel the previous grep
+                    // (ProjectSearch::search() cancels on every call), so only
+                    // the last (Module) ever completes — await ITS combined
+                    // presence/absence, not a fixed gap, so a stale or still-
+                    // empty result set can't satisfy the assertions below.
+                    $this->await(static fn (): bool => str_contains($panelText($tui), 'pkg/src/A.php') && !str_contains($panelText($tui), 'other/B.php'), what: 'the module-scoped search to land');
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Module', $panel);
                     $this->assertStringContainsString('pkg/src/A.php', $panel, 'the module scope keeps the package');
@@ -299,7 +312,9 @@ final class IdeFindInProjectTest extends TestCase
                     $tui->handleInput("\x1bt"); // alt+t → in comments/strings
                 },
                 1000 => function ($tui) use ($panelText): void {
-                    $tui->tick();
+                    // The token-scope re-search is a subprocess: await the code
+                    // match actually dropping out instead of a fixed gap.
+                    $this->await(static fn (): bool => !str_contains($panelText($tui), '$needle = 1;'), what: 'the comments/strings scope to land');
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('// needle here', $panel, 'the comment match is kept');
                     $this->assertStringNotContainsString('$needle = 1;', $panel, 'the code match is filtered out');
@@ -325,9 +340,11 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => function ($tui): void {
-                    $tui->tick();
+                600 => function ($tui) use ($panelText): void {
                     $this->promote($tui); // modal → results pane (context lines live on the pane)
+                    // The grep is a subprocess: await the match landing before
+                    // expanding context on it.
+                    $this->await(static fn (): bool => str_contains($panelText($tui), 'tok here'), what: 'the match to land');
                     $tui->handleInput("\x1bm"); // alt+m → expand context on the first match
                 },
                 800 => function ($tui) use ($panelText): void {
@@ -357,9 +374,11 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => function ($tui): void {
-                    $tui->tick();
+                600 => function ($tui) use ($panelText): void {
                     $this->promote($tui); // modal → results pane (context lines live on the pane)
+                    // The grep is a subprocess: await the match landing before
+                    // expanding context on it.
+                    $this->await(static fn (): bool => str_contains($panelText($tui), 'tok here'), what: 'the match to land');
                     $tui->handleInput("\x1bm"); // alt+m → expand context
                 },
                 800 => function ($tui) use ($panelText): void {
@@ -549,8 +568,14 @@ final class IdeFindInProjectTest extends TestCase
                     }
                 },
                 600 => function ($tui): void {
-                    $tui->tick();
                     $this->promote($tui); // modal → results pane (export runs from the pane)
+                    // The grep is a subprocess: await both matches landing
+                    // before exporting them.
+                    $this->await(static function () use ($tui): bool {
+                        $panel = AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 20))));
+
+                        return str_contains($panel, 'src/A.php') && str_contains($panel, 'src/B.php');
+                    }, what: 'both matches to land');
                     $tui->handleInput("\x1bx"); // alt+x → export
                 },
                 900 => function ($tui) use ($project): void {
@@ -661,8 +686,12 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => static function ($tui): void {
-                    $tui->tick();
+                600 => function ($tui): void {
+                    // The grep is a subprocess: await its match landing in the
+                    // MODAL before acting on it, instead of a fixed gap. (The
+                    // query field itself already echoes "oldname", so await
+                    // the file path — only the results preview carries it.)
+                    $this->await(fn (): bool => str_contains($this->modalText($tui), 'src/A.php'), what: 'the search to land');
                     $tui->handleInput("\x1bv"); // alt+v → preserve case (modal option)
                     $tui->handleInput("\t"); // query → replace
                     foreach (str_split('newname') as $ch) {

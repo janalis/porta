@@ -11,6 +11,7 @@ use Porta\Search\ProjectSearchController;
 use Porta\Search\SearchOptions;
 use Porta\Search\SearchTabState;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Ui\ScopeKind;
@@ -29,24 +30,30 @@ use Symfony\Component\Tui\Tui;
 
 final class ProjectSearchControllerTest extends TestCase
 {
+    use PumpsLoop;
+
     private ResultsPanelWidget $panel;
     private CodeEditorWidget $editor;
     private BottomDock $dock;
+    private BufferManager $buffers;
+    private StatusBarWidget $statusBar;
 
     private function controller(string $rootDir): ProjectSearchController
     {
         $this->panel = new ResultsPanelWidget();
         $this->editor = new CodeEditorWidget();
         $projectSearch = new ProjectSearch($rootDir);
-        $buffers = new BufferManager();
+        $this->buffers = new BufferManager();
+        $buffers = $this->buffers;
         $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20));
         $this->dock = TestBottomDock::create($tui, new TerminalPanelWidget(), $this->panel, new DebugPanelWidget());
+        $this->statusBar = new StatusBarWidget();
 
         return new ProjectSearchController(
             $projectSearch,
             $this->dock,
             $this->editor,
-            new StatusBarWidget(),
+            $this->statusBar,
             $tui,
             new \Porta\I18n\Translator('en'),
             $buffers,
@@ -66,6 +73,26 @@ final class ProjectSearchControllerTest extends TestCase
         $placed = $this->editor->findModal()->layout([0, 0, 40, 100], \Porta\Ui\CaretVisibility::Shown);
 
         return null === $placed ? '' : AnsiUtils::stripAnsiCodes(implode("\n", $placed['rows']));
+    }
+
+    private function panelText(): string
+    {
+        return AnsiUtils::stripAnsiCodes(implode("\n", $this->panel->render(new \Symfony\Component\Tui\Render\RenderContext(100, 14))));
+    }
+
+    private function awaitModalShows(string $needle, float $timeout = 3.0): void
+    {
+        $this->await(fn (): bool => str_contains($this->modal(), $needle), $timeout, "the modal to show '{$needle}'");
+    }
+
+    private function awaitPanelShows(string $needle, float $timeout = 3.0): void
+    {
+        $this->await(fn (): bool => str_contains($this->panelText(), $needle), $timeout, "the results panel to show '{$needle}'");
+    }
+
+    private function flashed(): string
+    {
+        return AnsiUtils::stripAnsiCodes(implode('', $this->statusBar->render(new \Symfony\Component\Tui\Render\RenderContext(100, 1))));
     }
 
     public function testOpenShowsTheFindModal(): void
@@ -104,6 +131,169 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->cancel(); // panel closed → history recorded
 
         $this->assertSame(['needle'], new \Porta\History\SearchHistoryStore($project->dir)->all());
+    }
+
+    public function testSearchDeliversResultsToTheOpenModal(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n// needle here\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+
+        $controller->search('needle');
+        $this->awaitModalShows('needle here');
+        $this->assertStringContainsString('needle here', $this->modal());
+    }
+
+    public function testSearchRefreshesTheLivePaneOnceTheModalIsClosed(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n// needle here\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search('needle');
+        $this->awaitModalShows('needle here');
+        $controller->promoteToPane(); // closes the modal, hands rows to the dock tab
+
+        // A re-run (F5) with the modal now closed must still reach the live pane.
+        $project->write('src/A.php', "<?php\n// needle here\n// needle again\n");
+        $controller->rerun();
+
+        $this->awaitPanelShows('needle again');
+        $this->assertStringContainsString('needle again', $this->panelText());
+    }
+
+    public function testSetMaskPersistsAndReRunsTheCurrentQuery(): void
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\n// needle\n",
+            'src/B.js' => "// needle\n",
+        ]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search('needle');
+        $this->awaitModalShows('.js');
+
+        $controller->setMask('*.php');
+        $this->await(fn (): bool => !str_contains($this->modal(), '.js'), what: 'the mask-filtered re-run to land');
+        $this->assertStringContainsString('A.php', $this->modal());
+        $this->assertSame('*.php', new \Porta\History\SearchPrefsStore($project->dir)->lastMask(), 'the mask is persisted for next time');
+    }
+
+    public function testSetScopeIndexResolvesAndReRuns(): void
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\n// needle in src\n",
+            'other/B.php' => "<?php\n// needle in other\n",
+        ]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search('needle');
+        $this->awaitModalShows('other');
+
+        // OpenFiles (index 3 in BUILT_INS) narrows to exactly the buffers open
+        // right now — the most deterministic built-in scope to select here.
+        $this->buffers->open($project->path('src/A.php'), "<?php\n// needle in src\n");
+        $controller->setScopeIndex(3);
+
+        $this->await(fn (): bool => !str_contains($this->modal(), 'needle in other'), what: 'the scope-narrowed re-run to land');
+        $this->assertStringContainsString('needle in src', $this->modal());
+    }
+
+    public function testToggleOptionUpdatesTheModalAndReRuns(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$NEEDLE = 1;\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search('needle');
+        $this->awaitModalShows('NEEDLE');
+
+        $controller->toggleOption('case');
+        $this->await(fn (): bool => str_contains($this->modal(), '0 results'), what: 'the case-sensitive re-run to drop the mismatched-case hit');
+        $this->assertStringNotContainsString('NEEDLE', $this->modal());
+        // The panel checkbox reflects the new option, independent of the re-run.
+        $this->assertTrue($this->searchOptions($controller)->caseSensitive);
+    }
+
+    private function searchOptions(ProjectSearchController $controller): SearchOptions
+    {
+        return Probe::get($controller, 'searchOptions');
+    }
+
+    public function testReplaceAllRewritesAnOpenBufferInMemoryWithoutTouchingExcludedMatches(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$needle = 1;\n\$needle = 2;\n"]);
+        $controller = $this->controller($project->dir);
+        $buffer = $this->buffers->open($project->path('src/A.php'), "<?php\n\$needle = 1;\n\$needle = 2;\n");
+        $controller->open();
+        $controller->search('needle');
+        $this->awaitModalShows('$needle = 1;');
+
+        $controller->replaceAll('found', excluded: [1]); // exclude the second match (index 1)
+
+        $this->assertStringContainsString('$found = 1;', $buffer->document->getText(), 'the kept match is replaced');
+        $this->assertStringContainsString('$needle = 2;', $buffer->document->getText(), 'the excluded match is left untouched');
+        $this->assertStringContainsString('$needle = 1;', (string) file_get_contents($project->path('src/A.php')), 'an open buffer is edited in memory, not written straight to disk');
+    }
+
+    public function testReplaceAllWritesAClosedFileToDisk(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$needle = 1;\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search('needle');
+        $this->awaitModalShows('$needle = 1;');
+
+        $controller->replaceAll('found');
+
+        $this->assertStringContainsString('$found = 1;', (string) file_get_contents($project->path('src/A.php')));
+    }
+
+    public function testReplaceAllFlashesNothingToReplaceWhenTheResultSetIsEmpty(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search('nomatch');
+        $this->await(fn (): bool => str_contains($this->modal(), '0 results'), what: 'the empty search to complete');
+
+        $controller->replaceAll('anything');
+
+        $this->assertStringContainsString('Nothing to replace', $this->flashed());
+    }
+
+    public function testReplaceAllMultilineRewritesTheWholeFile(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\nfunction foo()\n{\n    return 1;\n}\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search("foo()\n{");
+        $this->awaitModalShows('foo()');
+
+        $controller->replaceAll("bar()\n{");
+
+        $this->assertStringContainsString('bar()', (string) file_get_contents($project->path('src/A.php')));
+    }
+
+    public function testExportResultsGroupsMultipleFilesWithABlankLineBetweenThem(): void
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\n// needle in A\n",
+            'src/B.php' => "<?php\n// needle in B\n",
+        ]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search('needle');
+        $this->awaitModalShows('needle in B');
+
+        $exported = $controller->exportResults();
+        $content = (string) file_get_contents($exported);
+
+        // grep does not guarantee cross-file result order, so match either
+        // ordering — the point under test is the blank-line separator itself.
+        $this->assertTrue(
+            str_contains($content, "src/A.php\n  2: // needle in A\n\nsrc/B.php\n  2: // needle in B") || str_contains($content, "src/B.php\n  2: // needle in B\n\nsrc/A.php\n  2: // needle in A"),
+            'a blank line separates each file group: '.$content,
+        );
+        $this->assertStringContainsString('(2 results)', $content);
     }
 
     public function testPromotingWithoutAQueryTitlesTheToolWindowGenerically(): void

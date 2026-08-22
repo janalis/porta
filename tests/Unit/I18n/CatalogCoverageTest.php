@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\I18n;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Search\Everywhere\SearchCategory;
 use Symfony\Component\Finder\Finder;
 
 /**
@@ -34,7 +35,7 @@ final class CatalogCoverageTest extends TestCase
 
     public function testEveryUiStringLiteralReachesTheEnglishCatalogOrTheShrinkList(): void
     {
-        $ids = array_values(array_unique([...$this->transLiterals(), ...$this->labelLiterals()]));
+        $ids = array_values(array_unique([...$this->transLiterals(), ...$this->labelLiterals(), ...$this->categoryLiterals()]));
         $missing = array_values(array_diff($ids, $this->englishSources()));
         sort($missing);
 
@@ -108,6 +109,18 @@ final class CatalogCoverageTest extends TestCase
         }
 
         return $labels;
+    }
+
+    /**
+     * The five Search Everywhere category header labels, translated with a
+     * dynamic ->trans($category->title()) argument the transLiterals()
+     * scanner cannot see.
+     *
+     * @return list<string>
+     */
+    private function categoryLiterals(): array
+    {
+        return array_map(static fn (SearchCategory $c): string => $c->title(), SearchCategory::cases());
     }
 
     /** @return list<string> the en catalog's <source> texts */

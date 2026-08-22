@@ -664,7 +664,7 @@ final class FindInFilesModal
                 $this->translator->trans('Mask'),
                 $this->mask,
                 CaretVisibility::Shown === $focused && 'mask' === $this->activeField ? CaretVisibility::Shown : CaretVisibility::Hidden,
-                '  (Tab)',
+                '  '.$this->translator->trans('(Tab)'),
                 $width,
             ),
         ];

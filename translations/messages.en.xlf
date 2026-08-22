@@ -2534,6 +2534,74 @@
         <source>Could not write %file%</source>
         <target>Could not write %file%</target>
       </trans-unit>
+      <trans-unit id="645">
+        <source>Files</source>
+        <target>Files</target>
+      </trans-unit>
+      <trans-unit id="646">
+        <source>Classes</source>
+        <target>Classes</target>
+      </trans-unit>
+      <trans-unit id="647">
+        <source>Symbols</source>
+        <target>Symbols</target>
+      </trans-unit>
+      <trans-unit id="648">
+        <source>Actions</source>
+        <target>Actions</target>
+      </trans-unit>
+      <trans-unit id="649">
+        <source>Text</source>
+        <target>Text</target>
+      </trans-unit>
+      <trans-unit id="650">
+        <source>(Tab)</source>
+        <target>(Tab)</target>
+      </trans-unit>
+      <trans-unit id="651">
+        <source>%language% LSP: %shown%%saved%</source>
+        <target>%language% LSP: %shown%%saved%</target>
+      </trans-unit>
+      <trans-unit id="652">
+        <source>debug</source>
+        <target>debug</target>
+      </trans-unit>
+      <trans-unit id="653">
+        <source>%tool%: already running</source>
+        <target>%tool%: already running</target>
+      </trans-unit>
+      <trans-unit id="654">
+        <source>%tool% not found (set its binary or install it)</source>
+        <target>%tool% not found (set its binary or install it)</target>
+      </trans-unit>
+      <trans-unit id="655">
+        <source>%tool% not found (vendor/bin or PATH)</source>
+        <target>%tool% not found (vendor/bin or PATH)</target>
+      </trans-unit>
+      <trans-unit id="656">
+        <source>%tool%: open a PHP file first</source>
+        <target>%tool%: open a PHP file first</target>
+      </trans-unit>
+      <trans-unit id="657">
+        <source>%tool%: exited with code %code%</source>
+        <target>%tool%: exited with code %code%</target>
+      </trans-unit>
+      <trans-unit id="658">
+        <source>%tool%: formatted %file%</source>
+        <target>%tool%: formatted %file%</target>
+      </trans-unit>
+      <trans-unit id="659">
+        <source>%tool%: fixed %file%</source>
+        <target>%tool%: fixed %file%</target>
+      </trans-unit>
+      <trans-unit id="660">
+        <source>%tool%: fixed project</source>
+        <target>%tool%: fixed project</target>
+      </trans-unit>
+      <trans-unit id="661">
+        <source>%tool%: generated config</source>
+        <target>%tool%: generated config</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

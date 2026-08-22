@@ -80,6 +80,20 @@ final class PickerModalPresenterTest extends TestCase
         $this->assertTrue($regions[0]->ltr, 'paths/code content: LTR regions, never mirrored');
     }
 
+    public function testFrameHookWiringAutoSyncsOnTheNextFrame(): void
+    {
+        // Every other test drives sync() by hand; this one proves the
+        // constructor's onBeforeFrame registration is what makes that
+        // automatic in the real app.
+        $this->presenter();
+        $this->frame();
+        $this->openList();
+
+        $this->tui->processRender(); // not $presenter->sync() — the frame hook must do it
+
+        $this->assertNotSame([], $this->pane->modalSpans, 'the frame hook drove sync() automatically');
+    }
+
     /** Every open surface paints — the prompt stacks over the search modal. */
     public function testEveryOpenSurfaceGetsARegion(): void
     {

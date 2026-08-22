@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\BufferService;
+use Porta\Editor\OpenFocus;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\ClearsPortaLsp;
@@ -65,6 +67,7 @@ final class IdeFilesystemSessionTest extends TestCase
         $project = new TempProject(['ok.php' => "<?php\n"]);
         $unreadable = $project->write('secret.php', 'nope');
         chmod($unreadable, permissions: 0o000);
+        $project->write('exactly.bin', str_repeat("x\n", 1024 * 1024)); // exactly MAX_TEXT_BYTES, many short lines
         $project->write('huge.bin', str_repeat('x', (2 * 1024 * 1024) + 1));
         $project->write('latin1.txt', "caf\xE9");
 
@@ -72,8 +75,15 @@ final class IdeFilesystemSessionTest extends TestCase
             $project,
             $project->path('ok.php'),
             [
-                200 => static function ($tui): void {
-                    $tui->handleInput("\x14"); // focus tree: entries huge.bin, latin1.txt, ok.php, secret.php
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    // A file at exactly the cap still opens (boundary is >, not
+                    // >=) — checked directly, independent of the tree's
+                    // click-navigation flow below.
+                    Services::resolve($ide, BufferService::class)->openFile($project->path('exactly.bin'), OpenFocus::Editor);
+                    $this->assertStringEndsWith('exactly.bin', (string) $tui->getById('editor')->getFilePath(), 'a file at exactly the cap still opens');
+
+                    $tui->handleInput("\x14"); // focus tree: entries exactly.bin, huge.bin, latin1.txt, ok.php, secret.php
+                    $tui->handleInput("\x1b[B"); // skip past exactly.bin
                     $tui->handleInput("\r"); // huge.bin
                     $tui->tick(); // render the flash before it is replaced
                     $tui->handleInput("\x1b[B");

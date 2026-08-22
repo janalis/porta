@@ -18,6 +18,7 @@ final class DropdownRegionTest extends TestCase
     {
         $region = new DropdownRegion(top: 5, col: 10, width: 8, count: 3);
 
+        $this->assertFalse($region->ltr, 'mirrored prose by default, not code-carrying LTR content');
         $this->assertSame(0, $region->itemAt(5, 10), 'the first row is item 0');
         $this->assertSame(2, $region->itemAt(7, 17), 'the last row and column still hit');
         $this->assertNull($region->itemAt(8, 10), 'below the box');

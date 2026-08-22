@@ -10,6 +10,7 @@ use Porta\History\SearchHistoryStore;
 use Porta\History\SearchPrefsStore;
 use Porta\History\SearchScopeStore;
 use Porta\I18n\Translator;
+use Porta\Support\Files;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\ScopeKind;
 use Porta\Widget\CodeEditorWidget;
@@ -344,8 +345,8 @@ final class ProjectSearchController
 
                 continue;
             }
-            if (is_file($abs) && is_writable($abs)) {
-                $old = (string) file_get_contents($abs);
+            $old = Files::readWritable($abs);
+            if (null !== $old) {
                 $new = $this->replaceLines($old, $lineIndices, $replacement);
                 if ($new !== $old) {
                     $this->fs->dumpFile($abs, $new);
@@ -380,8 +381,8 @@ final class ProjectSearchController
 
                 continue;
             }
-            if (is_file($abs) && is_writable($abs)) {
-                $old = (string) file_get_contents($abs);
+            $old = Files::readWritable($abs);
+            if (null !== $old) {
                 $new = $this->projectSearch->applyReplacement($old, $this->lastSearchQuery, $replacement, $this->searchOptions);
                 if ($new !== $old) {
                     $this->fs->dumpFile($abs, $new);
