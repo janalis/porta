@@ -200,4 +200,13 @@ final class SnippetParserTest extends TestCase
         $this->assertSame('${123abc}', $result['text']);
         $this->assertSame([], $result['stops']);
     }
+
+    public function testEscapedClosingBraceInsideADefaultDoesNotEndTheMatch(): void
+    {
+        // matchingBrace() must skip the char right after a `\` — otherwise
+        // this `\}` is misread as the real closer, one character early.
+        $result = SnippetParser::parse('${1:x\\}y}');
+        $this->assertSame('x}y', $result['text']);
+        $this->assertEquals([new SnippetTabStop(1, 0, 3)], $result['stops']);
+    }
 }
