@@ -129,7 +129,10 @@ final class IdeTerminalRunTest extends TestCase
                     $tui->handleInput("\x1b[13u"); // kitty Enter → must become "\r" so the command runs
                 },
                 900 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    // Await the shell's echo: spawning /bin/sh and round-tripping
+                    // the command is real subprocess latency, and a fixed delay
+                    // races it under pcov + machine load.
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'hi'), what: 'the shell echo');
                     // Only reachable if the release was dropped and Enter was translated.
                     $this->assertStringContainsString('hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },

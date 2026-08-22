@@ -62,16 +62,13 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     use PaneNavigationCallbacks;
     use PanelRowStyle;
 
-    private readonly CursorStyle $cursorStyle;
-
     public function __construct(
         private readonly Translator $translator,
         ?Styles $styles = null,
-        ?CursorStyle $cursorStyle = null,
+        private readonly CursorStyle $cursorStyle = new CursorStyle(),
         private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->initStyles($styles);
-        $this->cursorStyle = $cursorStyle ?? new CursorStyle();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
     }
 

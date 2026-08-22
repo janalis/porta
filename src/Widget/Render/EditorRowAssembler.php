@@ -38,8 +38,6 @@ final readonly class EditorRowAssembler
     /** @var array<int, true> */
     private array $logpointSet;
 
-    private CursorStyle $cursorStyle;
-
     public function __construct(
         private Document $document,
         private FoldModel $foldModel,
@@ -51,13 +49,12 @@ final readonly class EditorRowAssembler
         private bool $focused,
         private bool $showCaret,
         ?Styles $styles = null,
-        ?CursorStyle $cursorStyle = null,
+        private CursorStyle $cursorStyle = new CursorStyle(),
     ) {
         $this->styles = $styles ?? Styles::dark();
         $this->breakpointSet = array_fill_keys($store->breakpointLines(), value: true);
         $this->conditionalBreakpointSet = array_fill_keys($store->conditionalBreakpointLines(), value: true);
         $this->logpointSet = array_fill_keys($store->logpointLines(), value: true);
-        $this->cursorStyle = $cursorStyle ?? new CursorStyle();
     }
 
     /**

@@ -647,7 +647,7 @@ final class CodeEditorWidgetTest extends TestCase
     private function searchRows(): array
     {
         return [
-            SearchRow::header(SearchCategory::Files),
+            SearchRow::header('Files'),
             SearchRow::hit(new SearchHit(SearchCategory::Files, 'alpha.php', 'src', static fn () => null)),
             SearchRow::hit(new SearchHit(SearchCategory::Files, 'beta.php', 'src', static fn () => null)),
         ];
@@ -670,6 +670,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         $placed = $editor->layoutPickers([0, 0, 20, 80]);
         $this->assertStringContainsString('Search Everywhere', implode("\n", $placed[0]['rows']), 'the floating box carries the title');
+        $this->assertStringContainsString('Files', implode("\n", $placed[0]['rows']), 'the category header row renders its label');
         $this->assertExactWidth($editor->render(new RenderContext(80, 20)), 80);
 
         $editor->handleSearchOverlayInput("\x1b[B"); // down → beta.php

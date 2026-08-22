@@ -499,6 +499,51 @@ final class IdeHelpersTest extends TestCase
         $this->assertLessThan(strpos($rendered, needle: 'warn here'), strpos($rendered, needle: 'top error'));
     }
 
+    public function testGoToTestWithNoFileOpenFlashesNoTestFound(): void
+    {
+        Services::resolve($this->ide, SearchActions::class)->goToTest();
+
+        $this->assertStringContainsString('No test found', \Porta\Tests\Support\Toasts::last($this->ide));
+    }
+
+    public function testGoToTestFromATestFileWithNoSubjectFlashesTheTestVariant(): void
+    {
+        $buffers = Services::resolve($this->ide, BufferService::class);
+        $buffers->openFile($this->project->write('tests/OrphanTest.php', "<?php\n"), focus: OpenFocus::Editor);
+
+        Services::resolve($this->ide, SearchActions::class)->goToTest();
+
+        $this->assertStringContainsString('No test subject found', \Porta\Tests\Support\Toasts::last($this->ide), 'from a test file, the message names the subject, not the test');
+    }
+
+    public function testGoToTestWithExactlyOneCandidateOpensItDirectly(): void
+    {
+        $buffers = Services::resolve($this->ide, BufferService::class);
+        $this->project->write('tests/FooTest.php', "<?php\n");
+        $buffers->openFile($this->project->write('src/Foo.php', "<?php\n"), focus: OpenFocus::Editor);
+
+        Services::resolve($this->ide, SearchActions::class)->goToTest();
+
+        $this->assertStringEndsWith('FooTest.php', (string) Services::resolve($this->ide, Tui::class)->getById('editor')->getFilePath());
+    }
+
+    public function testGoToTestWithMultipleCandidatesOpensAChooserList(): void
+    {
+        $buffers = Services::resolve($this->ide, BufferService::class);
+        $this->project->write('tests/Unit/BarTest.php', "<?php\n");
+        $this->project->write('tests/E2e/BarTest.php', "<?php\n");
+        $buffers->openFile($this->project->write('src/Bar.php', "<?php\n"), focus: OpenFocus::Editor);
+
+        Services::resolve($this->ide, SearchActions::class)->goToTest();
+
+        $panel = Services::resolve($this->ide, Tui::class)->getById('results');
+        $this->assertTrue($panel->isOpen());
+        $this->assertSame('Choose target', $panel->getTitle());
+        $rendered = \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new \Symfony\Component\Tui\Render\RenderContext(120, 14))));
+        $this->assertStringContainsString('tests/E2e/BarTest.php', $rendered);
+        $this->assertStringContainsString('tests/Unit/BarTest.php', $rendered);
+    }
+
     public function testRequestReformatWithoutLspIsNoOp(): void
     {
         $this->refactor()->requestReformat();

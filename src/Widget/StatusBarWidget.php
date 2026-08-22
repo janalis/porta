@@ -53,12 +53,11 @@ final class StatusBarWidget extends AbstractWidget
     /** @var array{text: string, until: float}|null */
     private ?array $flash = null;
 
-    private readonly ClockInterface $clock;
-
     /** The clock is injected by the container; a MockClock makes flash expiry testable. */
-    public function __construct(?ClockInterface $clock = null, ?Styles $styles = null)
-    {
-        $this->clock = $clock ?? new NativeClock();
+    public function __construct(
+        private readonly ClockInterface $clock = new NativeClock(),
+        ?Styles $styles = null,
+    ) {
         $this->initStyles($styles);
     }
 

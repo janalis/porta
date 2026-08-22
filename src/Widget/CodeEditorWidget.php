@@ -181,26 +181,15 @@ final class CodeEditorWidget extends AbstractWidget implements
     /** Editor-level action dispatch (keymap actions + menu items). */
     private readonly EditorActionRouter $actionRouter;
 
-    private readonly TerminalTheme $syntaxTheme;
-
-    /** Shared hardware-cursor shape holder (the `cursorShape` setting swaps it live). */
-    private readonly CursorStyle $cursorStyle;
-
-    /** For the empty-state hint; the English fallback keeps direct (test) construction working. */
-    private readonly Translator $translator;
-
     public function __construct(
         ?Styles $styles = null,
-        ?TerminalTheme $syntaxTheme = null,
-        ?CursorStyle $cursorStyle = null,
-        ?Translator $translator = null,
+        private readonly TerminalTheme $syntaxTheme = new DarkTerminalTheme(),
+        private readonly CursorStyle $cursorStyle = new CursorStyle(),
+        private readonly Translator $translator = new Translator('en'),
         private readonly ?ViewRegistry $views = null,
         ?OverlayHost $overlayHost = null,
     ) {
         $this->initStyles($styles);
-        $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
-        $this->cursorStyle = $cursorStyle ?? new CursorStyle();
-        $this->translator = $translator ?? new Translator('en');
         $this->callbacks = new EditorCallbacks();
         $this->display = new EditorDisplayOptions($this->invalidate(...));
         $this->decorations = new DecorationStore($this->invalidate(...));

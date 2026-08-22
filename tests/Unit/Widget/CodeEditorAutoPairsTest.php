@@ -168,6 +168,17 @@ final class CodeEditorAutoPairsTest extends TestCase
         $this->assertSame("(a\n(b\n", $editor->getDocument()->getText());
     }
 
+    public function testBackspaceAtStartOfLineIsNeverTreatedAsAnEmptyPair(): void
+    {
+        // Column 0 has no preceding char to pair with — ")(" at the very start
+        // must not be misread as an empty pair straddling the cursor.
+        $editor = $this->editor(")(\n");
+        $editor->getDocument()->setCursor(0, 0);
+        $editor->handleInput("\x7f");
+
+        $this->assertSame(')(', $editor->getDocument()->getLine(0), 'backspace at column 0 is a no-op');
+    }
+
     public function testTypeOverForQuote(): void
     {
         $editor = $this->editor();

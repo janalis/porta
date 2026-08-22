@@ -54,16 +54,11 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
     /** @var (callable(string): void)|null forwards input bytes to the process */
     private $onInputForward = null;
 
-    private readonly CursorStyle $cursorStyle;
-    private readonly Translator $translator;
-
     public function __construct(
-        ?CursorStyle $cursorStyle = null,
-        ?Translator $translator = null,
+        private readonly CursorStyle $cursorStyle = new CursorStyle(),
+        private readonly Translator $translator = new Translator('en'),
         private readonly ?EventDispatcherInterface $events = null,
     ) {
-        $this->cursorStyle = $cursorStyle ?? new CursorStyle();
-        $this->translator = $translator ?? new Translator('en');
         $this->buffer = new TerminalBuffer();
         $this->visibleRows = 12;
     }

@@ -80,16 +80,13 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     /** @var (\Closure(string, int): list<array{line: int, text: string}>)|null neighbouring source lines around a match (path, line) => lines */
     private $contextProvider = null;
 
-    private readonly Translator $translator;
-
     public function __construct(
         ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
-        ?Translator $translator = null,
+        private readonly Translator $translator = new Translator('en'),
         private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->initStyles($styles);
-        $this->translator = $translator ?? new Translator('en');
         $this->list = new ListSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
         $this->filter = new TextField(style: $cursorStyle);
