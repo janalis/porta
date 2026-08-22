@@ -80,13 +80,13 @@ return new class('graph-viewer') extends AbstractPlugin {
             // The pane's payload is the DOT (or PlantUML) source. The size guard
             // is the plugin's own: core has no opinion about how big a diagram
             // may be, and this is the same constant the claim reads.
-            static function (string $path): string {
+            static function (string $path) use ($api): string {
                 if ((int) filesize($path) > DotFiles::MAX_BYTES) {
-                    throw new \RuntimeException('Graph file too large (> 10 MB)');
+                    throw new \RuntimeException($api->trans('Graph file too large (> 10 MB)'));
                 }
                 $dot = (string) file_get_contents($path);
                 if ('' !== $dot && !mb_check_encoding($dot, encoding: 'UTF-8')) {
-                    throw new \RuntimeException('Not a UTF-8 text file');
+                    throw new \RuntimeException($api->trans('Not a UTF-8 text file'));
                 }
 
                 return $dot;
@@ -124,8 +124,8 @@ return new class('graph-viewer') extends AbstractPlugin {
                 $out,
             ): void {
                 null === $error
-                    ? $api->flash('Exported '.basename($out))
-                    : $api->flash('Export failed: '.$error, 5.0);
+                    ? $api->flash($api->trans('Exported %file%', ['%file%' => basename($out)]))
+                    : $api->flash($api->trans('Export failed: %error%', ['%error%' => $error]), 5.0);
             });
         };
         $api->registerCommand('export-svg', 'Graph: Export SVG', static fn () => $export(GraphExportFormat::Svg));

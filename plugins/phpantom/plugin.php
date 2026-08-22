@@ -5,7 +5,6 @@ declare(strict_types=1);
 use Porta\Plugin\Api\AbstractToolPlugin;
 use Porta\Plugin\Api\BinarySearch;
 use Porta\Plugin\Api\PluginApi;
-use Porta\Support\AsyncProcess;
 
 /**
  * phpantom (github.com/PHPantom-dev/phpantom_lsp) as the default PHP language
@@ -43,16 +42,16 @@ return new class('phpantom', 'phpantom_lsp', BinarySearch::PathOnly) extends Abs
             function () use ($api): void {
                 $file = $this->activeFileOrFlash($api);
                 if (null !== $file) {
-                    $this->run($api, ['fix', $file], 'fixed '.basename($file), $file);
+                    $this->runAndApply($api, ['fix', $file], $api->trans('%tool%: fixed %file%', ['%tool%' => $this->name(), '%file%' => basename($file)]), $file);
                 }
             },
             ['ctrl+alt+m'],
         );
         $api->registerCommand('fix-project', 'PHPantom: Fix Project', function () use ($api): void {
-            $this->run($api, ['fix'], 'fixed project');
+            $this->runAndApply($api, ['fix'], $api->trans('%tool%: fixed project', ['%tool%' => $this->name()]));
         });
         $api->registerCommand('init', 'PHPantom: Generate Config', function () use ($api): void {
-            $this->run($api, ['init'], 'generated config');
+            $this->runAndApply($api, ['init'], $api->trans('%tool%: generated config', ['%tool%' => $this->name()]));
         });
         $this->registerToggle($api, 'toggle-auto-fix', 'PHPantom: Toggle Fix on Save', 'autoFix', 'phpantom fix on save');
 
@@ -64,35 +63,8 @@ return new class('phpantom', 'phpantom_lsp', BinarySearch::PathOnly) extends Abs
 
         $api->onFileSaved(function (string $path) use ($api): void {
             if ((bool) $api->setting('autoFix') && str_ends_with($path, '.php')) {
-                $this->run($api, ['fix', $path], 'fixed '.basename($path));
+                $this->runAndApply($api, ['fix', $path], $api->trans('%tool%: fixed %file%', ['%tool%' => $this->name(), '%file%' => basename($path)]));
             }
-        });
-    }
-
-    /**
-     * One CLI invocation under the shared single-flight slot.
-     *
-     * $formatted names the ONE file this run rewrites, so its result can be
-     * applied into the buffer — one Ctrl+Z away, and without waiting for a poll
-     * tick. "Fix Project" passes null on purpose: it touches many files, and
-     * the filesystem poller is the right answer for the ones the user is not
-     * looking at.
-     *
-     * @param list<string> $arguments
-     */
-    private function run(PluginApi $api, array $arguments, string $success, ?string $formatted = null): void
-    {
-        $binary = $this->acquire($api);
-        if (null === $binary) {
-            return;
-        }
-        $before = null === $formatted ? null : $this->textBefore($api, $formatted);
-        new AsyncProcess([$binary, ...$arguments], $api->projectRoot(), timeout: AsyncProcess::INTERACTIVE_TOOL_TIMEOUT)->start(function (int $code) use ($api, $success, $formatted, $before): void {
-            $this->release();
-            if (null !== $formatted) {
-                $this->applyFormatted($api, $formatted, $before);
-            }
-            $this->flashExit($api, $code, 'phpantom: '.$success);
         });
     }
 };

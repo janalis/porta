@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Porta\Plugin\Api\AbstractToolPlugin;
 use Porta\Plugin\Api\PluginApi;
-use Porta\Support\AsyncProcess;
 
 /**
  * php-cs-fixer integration: "Fix Current File" (Ctrl+Alt+F) and a persisted
@@ -50,17 +49,13 @@ return new class('php-cs-fixer', 'php-cs-fixer') extends AbstractToolPlugin {
 
     private function fix(PluginApi $api, string $file): void
     {
-        $binary = $this->acquire($api);
-        if (null === $binary) {
-            return;
-        }
         $split = preg_split('/\s+/', trim((string) $api->setting('args')), -1, PREG_SPLIT_NO_EMPTY);
         $args = false === $split ? [] : $split;
-        $before = $this->textBefore($api, $file);
-        new AsyncProcess([$binary, 'fix', ...$args, $file], $api->projectRoot(), timeout: AsyncProcess::INTERACTIVE_TOOL_TIMEOUT)->start(function (int $code) use ($api, $file, $before): void {
-            $this->release();
-            $this->applyFormatted($api, $file, $before);
-            $this->flashExit($api, $code, 'php-cs-fixer: fixed '.basename($file));
-        });
+        $this->runAndApply(
+            $api,
+            ['fix', ...$args, $file],
+            $api->trans('%tool%: fixed %file%', ['%tool%' => $this->name(), '%file%' => basename($file)]),
+            $file,
+        );
     }
 };

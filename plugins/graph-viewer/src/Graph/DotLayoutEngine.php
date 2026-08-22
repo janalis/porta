@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Graph;
 
-use Porta\Support\AsyncProcess;
+use Porta\Support\SingleSlotProcess;
 use Symfony\Component\Process\ExecutableFinder;
 
 /**
@@ -25,16 +25,13 @@ use Symfony\Component\Process\ExecutableFinder;
  */
 final class DotLayoutEngine implements LayoutEngine
 {
-    private ?AsyncProcess $running = null;
-
-    private ?AsyncProcess $exporting = null;
-
-    private ?AsyncProcess $rendering = null;
-
     public function __construct(
         private readonly string $rootDir,
         // The "Graphviz dot path" setting; '' resolves to null (auto-discover).
         private readonly ?string $dotPath = null,
+        private readonly SingleSlotProcess $layoutSlot = new SingleSlotProcess(),
+        private readonly SingleSlotProcess $renderSlot = new SingleSlotProcess(),
+        private readonly SingleSlotProcess $exportSlot = new SingleSlotProcess(),
     ) {}
 
     public function baseDpi(): int
@@ -62,34 +59,20 @@ final class DotLayoutEngine implements LayoutEngine
 
             return;
         }
-        $this->running?->cancel();
-        $process = new AsyncProcess([$binary, '-Tjson0'], $this->rootDir, stdin: $dot, captureStderr: true);
-        $this->running = $process;
-        $started = $process->start(function (int $code, string $stdout) use ($process, $onDone, $onError): void {
-            if ($this->running === $process) {
-                $this->running = null;
-            }
-            if (0 !== $code) {
-                $stderr = trim($process->errorOutput());
-                $onError('' !== $stderr ? $stderr : "dot failed (exit {$code})");
-
-                return;
-            }
-            try {
-                $onDone(DotJsonParser::parse($stdout));
-            } catch (GraphParseException $e) {
-                $onError($e->getMessage());
-            }
-        });
-        if (!$started) {
-            // proc_open spawns even unusable binaries (exec failure surfaces
-            // as an exit code), so this is unreachable in tests.
-            // @codeCoverageIgnoreStart
-            $this->running = null;
-            $onError('could not start dot');
-
-            // @codeCoverageIgnoreEnd
-        }
+        $this->layoutSlot->run(
+            [$binary, '-Tjson0'],
+            $this->rootDir,
+            $dot,
+            'dot',
+            static function (string $stdout) use ($onDone, $onError): void {
+                try {
+                    $onDone(DotJsonParser::parse($stdout));
+                } catch (GraphParseException $e) {
+                    $onError($e->getMessage());
+                }
+            },
+            $onError,
+        );
     }
 
     public function render(string $source, int $dpi, \Closure $onPng, \Closure $onError): void
@@ -100,35 +83,14 @@ final class DotLayoutEngine implements LayoutEngine
 
             return;
         }
-        $this->rendering?->cancel();
         // -Gpad=0 is what makes the pixel grid line up with the layout: dot pads
         // a bitmap by 4 points a side by default (measured — `margin` is NOT the
         // knob, it leaves the canvas untouched), which would shift every
         // coordinate the viewer hit-tests against. With pad 0 the PNG is exactly
-        // ceil(bb) × dpi/72 pixels.
-        $process = new AsyncProcess([$binary, '-Tpng', '-Gdpi='.$dpi, '-Gpad=0'], $this->rootDir, stdin: $source, captureStderr: true);
-        $this->rendering = $process;
-        $started = $process->start(function (int $code, string $stdout) use ($process, $onPng, $onError): void {
-            if ($this->rendering === $process) {
-                $this->rendering = null;
-            }
-            if (0 !== $code) {
-                // A dot built without libgd has no PNG support and says so here;
-                // the viewer treats that as "fall back to the cell rendering".
-                $stderr = trim($process->errorOutput());
-                $onError('' !== $stderr ? $stderr : "dot failed (exit {$code})");
-
-                return;
-            }
-            $onPng($stdout);
-        });
-        if (!$started) {
-            // @codeCoverageIgnoreStart
-            $this->rendering = null;
-            $onError('could not start dot');
-
-            // @codeCoverageIgnoreEnd
-        }
+        // ceil(bb) × dpi/72 pixels. A dot built without libgd has no PNG support
+        // and says so on stderr; the viewer treats that as "fall back to the
+        // cell rendering".
+        $this->renderSlot->run([$binary, '-Tpng', '-Gdpi='.$dpi, '-Gpad=0'], $this->rootDir, $source, 'dot', $onPng, $onError);
     }
 
     public function export(string $dot, GraphExportFormat $format, string $outPath, \Closure $onDone): void
@@ -139,38 +101,23 @@ final class DotLayoutEngine implements LayoutEngine
 
             return;
         }
-        $this->exporting?->cancel();
-        $process = new AsyncProcess([$binary, $format->flag(), '-o', $outPath], $this->rootDir, stdin: $dot, captureStderr: true);
-        $this->exporting = $process;
-        $started = $process->start(function (int $code) use ($process, $onDone): void {
-            if ($this->exporting === $process) {
-                $this->exporting = null;
-            }
-            if (0 === $code) {
+        $this->exportSlot->run(
+            [$binary, $format->flag(), '-o', $outPath],
+            $this->rootDir,
+            $dot,
+            'dot',
+            static function () use ($onDone): void {
                 $onDone(null);
-
-                return;
-            }
-            $stderr = trim($process->errorOutput());
-            $onDone('' !== $stderr ? $stderr : "dot failed (exit {$code})");
-        });
-        if (!$started) {
-            // @codeCoverageIgnoreStart
-            $this->exporting = null;
-            $onDone('could not start dot');
-
-            // @codeCoverageIgnoreEnd
-        }
+            },
+            $onDone,
+        );
     }
 
     /** Stop any in-flight processes (viewer teardown; idempotent). */
     public function cancel(): void
     {
-        $this->running?->cancel();
-        $this->running = null;
-        $this->exporting?->cancel();
-        $this->exporting = null;
-        $this->rendering?->cancel();
-        $this->rendering = null;
+        $this->layoutSlot->cancel();
+        $this->renderSlot->cancel();
+        $this->exportSlot->cancel();
     }
 }

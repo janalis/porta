@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Graph;
 
-use Porta\Support\AsyncProcess;
+use Porta\Support\SingleSlotProcess;
 
 /**
  * The PlantUML-backed {@see DiagramEngine}: the diagram on stdin, PNG off
@@ -24,12 +24,11 @@ use Porta\Support\AsyncProcess;
  */
 final class PlantUmlEngine implements DiagramEngine
 {
-    private ?AsyncProcess $running = null;
-
     public function __construct(
         private readonly string $rootDir,
         // The "PlantUML" setting: a launcher, a .jar, or '' to auto-discover.
         private readonly ?string $toolPath = null,
+        private readonly SingleSlotProcess $slot = new SingleSlotProcess(),
     ) {}
 
     public function baseDpi(): int
@@ -50,37 +49,13 @@ final class PlantUmlEngine implements DiagramEngine
 
             return;
         }
-        $this->running?->cancel();
-        $process = new AsyncProcess(PlantUmlCommand::argv($tool, $dpi), $this->rootDir, stdin: $source, captureStderr: true);
-        $this->running = $process;
-        $started = $process->start(function (int $code, string $stdout) use ($process, $onPng, $onError): void {
-            if ($this->running === $process) {
-                $this->running = null;
-            }
-            if (0 !== $code) {
-                // -failfast2 puts syntax errors here rather than in the picture.
-                $stderr = trim($process->errorOutput());
-                $onError('' !== $stderr ? $stderr : "plantuml failed (exit {$code})");
-
-                return;
-            }
-            $onPng($stdout);
-        });
-        if (!$started) {
-            // proc_open spawns even unusable binaries (exec failure surfaces as
-            // an exit code), so this is unreachable in tests.
-            // @codeCoverageIgnoreStart
-            $this->running = null;
-            $onError('could not start plantuml');
-
-            // @codeCoverageIgnoreEnd
-        }
+        // -failfast2 puts syntax errors on stderr rather than in the picture.
+        $this->slot->run(PlantUmlCommand::argv($tool, $dpi), $this->rootDir, $source, 'plantuml', $onPng, $onError);
     }
 
     /** Stop any in-flight render (viewer teardown; idempotent). */
     public function cancel(): void
     {
-        $this->running?->cancel();
-        $this->running = null;
+        $this->slot->cancel();
     }
 }
