@@ -96,7 +96,7 @@ final class IdePhpLspPluginsTest extends TestCase
             $project->path('a.php'),
             [
                 300 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->awaitPainted($tui, $terminal, 'LSP:');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('LSP:', $screen);
                     $this->assertStringNotContainsString('enable a PHP server', $screen, 'phpantom serves PHP, so no install hint');
@@ -130,7 +130,7 @@ final class IdePhpLspPluginsTest extends TestCase
                     $this->assertStringContainsString('Plugin "phpantom" enabled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
                 750 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->awaitPainted($tui, $terminal, 'LSP:');
                     $this->assertStringNotContainsString('enable a PHP server', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpantom serves PHP again');
                 },
             ],

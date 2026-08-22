@@ -78,6 +78,45 @@ final class ServerLocatorTest extends TestCase
         $this->assertSame('php', ServerLocator::locateAll($project->dir)['*']['name']);
     }
 
+    public function testDisplayNameRecognizesAnInterpreterRegardlessOfCase(): void
+    {
+        // "PHP" (as some shells / user configs write it) must still be skipped
+        // as an interpreter token, not mistaken for the server binary itself.
+        $project = new TempProject(['.porta.json' => json_encode(['lsp' => 'PHP phpactor.phar language-server'])]);
+
+        $this->assertSame('phpactor', ServerLocator::locateAll($project->dir)['*']['name']);
+    }
+
+    public function testMapCommandValuesCastToStrings(): void
+    {
+        // A JSON argv list can carry non-string scalars (e.g. a bare port
+        // number); every element must reach the server definition as a string.
+        $project = new TempProject(['.porta.json' => json_encode(['lsp' => ['typescript' => ['ls', 9229]]])]);
+
+        $servers = ServerLocator::locateAll($project->dir);
+
+        $this->assertSame(['ls', '9229'], $servers['typescript']['command']);
+    }
+
+    public function testMapCommandValuesAreReindexedIntoAPlainList(): void
+    {
+        // A JSON object with numeric-but-gapped keys (e.g. {"0": "ls", "2": "x"})
+        // decodes to a PHP array with a gap; the command must still come out
+        // as a plain 0..n list, not carry that gap through.
+        $project = new TempProject(['.porta.json' => json_encode(['lsp' => ['typescript' => [0 => 'ls', 2 => '--stdio']]])]);
+
+        $servers = ServerLocator::locateAll($project->dir);
+
+        $this->assertSame(['ls', '--stdio'], $servers['typescript']['command']);
+    }
+
+    public function testArgvListCommandValuesCastToStrings(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode(['lsp' => ['ls', 9229]])]);
+
+        $this->assertSame(['ls', '9229'], ServerLocator::locateAll($project->dir)['*']['command']);
+    }
+
     public function testMissingOrMalformedConfigDoesNotCrash(): void
     {
         putenv('PATH=/nonexistent');
@@ -151,7 +190,9 @@ final class ServerLocatorTest extends TestCase
 
         $this->assertSame('typescript-language-server', $servers['javascript']['name']);
         $this->assertSame($servers['javascript'], $servers['typescript'], 'JS and TS share one server');
+        $this->assertSame([$tools->path('typescript-language-server'), '--stdio'], $servers['javascript']['command']);
         $this->assertSame('pyright', $servers['python']['name']);
+        $this->assertSame([$tools->path('pyright-langserver'), '--stdio'], $servers['python']['command']);
         $this->assertArrayNotHasKey('php', $servers);
     }
 
@@ -166,6 +207,7 @@ final class ServerLocatorTest extends TestCase
 
         $this->assertSame(['python'], array_keys($servers));
         $this->assertSame('pylsp', $servers['python']['name']);
+        $this->assertSame([$tools->path('pylsp')], $servers['python']['command'], 'no --stdio arg for pylsp, unlike pyright');
     }
 
     public function testNothingInstalledAndNoPluginIsEmpty(): void

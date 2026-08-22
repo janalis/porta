@@ -48,6 +48,42 @@ final class WorkspaceSymbolClientTest extends TestCase
         $this->assertSame(0, $mapped[0]['kind']);
     }
 
+    public function testMapHasARangeButNoLineIsAlsoZero(): void
+    {
+        // The 'start' key IS present (unlike the "missing range" case above),
+        // just without its own 'line' — a different fallback path to the same 0.
+        $mapped = WorkspaceSymbolClient::map(
+            [['name' => 'X', 'location' => ['uri' => 'file:///proj/a.php', 'range' => ['start' => []]]]],
+            new ProjectPaths('/proj'),
+        );
+
+        $this->assertSame(0, $mapped[0]['line']);
+    }
+
+    public function testMapCastsRawKindNameAndLineToTheirDeclaredTypes(): void
+    {
+        // A server that sends numeric strings instead of ints (seen in the
+        // wild) must not leak the raw type into the mapped row.
+        $mapped = WorkspaceSymbolClient::map(
+            [['name' => 123, 'kind' => '5', 'location' => ['uri' => 'file:///proj/a.php', 'range' => ['start' => ['line' => '9']]]]],
+            new ProjectPaths('/proj'),
+        );
+
+        $this->assertSame(5, $mapped[0]['kind'], 'cast to int, not left as the string "5"');
+        $this->assertSame('123', $mapped[0]['name'], 'cast to string, not left as the int 123');
+        $this->assertSame(9, $mapped[0]['line'], 'cast to int, not left as the string "9"');
+    }
+
+    public function testMapTrimsTheLabelWhenTheNameIsEmpty(): void
+    {
+        $mapped = WorkspaceSymbolClient::map(
+            [['name' => '', 'kind' => 5, 'location' => ['uri' => 'file:///proj/a.php', 'range' => ['start' => ['line' => 0]]]]],
+            new ProjectPaths('/proj'),
+        );
+
+        $this->assertSame('[class]', $mapped[0]['label'], 'no trailing space from the empty name');
+    }
+
     public function testMapOfANonArrayResultIsEmpty(): void
     {
         $this->assertSame([], WorkspaceSymbolClient::map('not an array', new ProjectPaths('/proj')));

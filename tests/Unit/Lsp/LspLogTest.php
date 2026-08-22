@@ -15,7 +15,9 @@ final class LspLogTest extends TestCase
     public function testSplitsChunksIntoTrimmedNonEmptyLines(): void
     {
         $log = new LspLog(new MockClock('2026-07-14 10:00:00'), new EventDispatcher());
-        $log->append("first line\n  second line  \n\n");
+        // A blank line in the MIDDLE of the chunk: skipping it must not abort
+        // the loop before "second line" (which follows it) is reached.
+        $log->append("first line\n\n  second line  \n");
         $log->append('partial');
 
         $this->assertSame(['first line', 'second line', 'partial'], array_column($log->entries(), 'text'));

@@ -162,6 +162,78 @@ final class LspSessionPoolTest extends TestCase
         $this->assertSame('workspace/symbol', $this->clients[0]['client']->requests[0]['method'] ?? null);
     }
 
+    public function testWhenReadyRunsAgainstTheActiveFilesSession(): void
+    {
+        $pool = $this->pool(self::SERVERS);
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $this->activeFile->set('/tmp/proj/a.php');
+
+        $ran = false;
+        $pool->whenReady(static function () use (&$ran): void {
+            $ran = true;
+        });
+
+        $this->assertTrue($ran, 'FakeLspClient initializes synchronously, so a ready action runs immediately');
+    }
+
+    public function testWhenReadyWithoutAnActiveSessionIsInert(): void
+    {
+        $pool = $this->pool(self::SERVERS);
+
+        $ran = false;
+        $pool->whenReady(static function () use (&$ran): void {
+            $ran = true;
+        });
+
+        $this->assertFalse($ran, 'no active file — no session to become ready');
+    }
+
+    public function testIsInitializedTracksTheActiveSession(): void
+    {
+        $pool = $this->pool(self::SERVERS);
+        $this->assertFalse($pool->isInitialized(), 'nothing open yet');
+
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $this->activeFile->set('/tmp/proj/a.php');
+        $this->assertTrue($pool->isInitialized(), 'FakeLspClient initializes synchronously');
+    }
+
+    public function testNotifyFullChangeWithNoMatchingSessionIsSilent(): void
+    {
+        $pool = $this->pool(self::SERVERS);
+
+        $pool->notifyFullChange('/tmp/proj/notes.md', new Document('x')); // unmatched language: no session
+
+        $this->assertCount(0, $this->clients);
+    }
+
+    public function testFlushPendingChangeReachesTheMatchingSession(): void
+    {
+        $pool = $this->pool(self::SERVERS);
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $doc = new Document('x');
+        $before = \count(\Revolt\EventLoop::getIdentifiers());
+        $pool->scheduleDidChange($doc, static fn (): string => '/tmp/proj/a.php', static function (): void {});
+        $this->assertGreaterThan($before, \count(\Revolt\EventLoop::getIdentifiers()), 'the debounce armed');
+
+        $pool->flushPendingChange('/tmp/proj/a.php', $doc);
+
+        $this->assertSame($before, \count(\Revolt\EventLoop::getIdentifiers()), 'flushing cancelled the pending debounce');
+    }
+
+    public function testWorkspaceLevelRequestsFallBackToTheCatchAllOverPhp(): void
+    {
+        // Only '*' is configured (no explicit 'php' entry): with no active
+        // file, a workspace-level request must still reach it.
+        $pool = $this->pool(['*' => ['command' => ['any-ls'], 'name' => 'any-ls']]);
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1); // starts the catch-all session
+        $this->activeFile->set(null);
+
+        $pool->request('workspace/symbol', ['query' => 'x'], static function (): void {});
+
+        $this->assertSame('workspace/symbol', $this->clients[0]['client']->requests[0]['method'] ?? null);
+    }
+
     public function testStatusForTracksLifecyclePerServer(): void
     {
         $pool = $this->pool(self::SERVERS);
@@ -171,6 +243,43 @@ final class LspSessionPoolTest extends TestCase
 
         $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
         $this->assertSame('php-ls', $pool->statusFor('/tmp/proj/a.php'), 'FakeLspClient initializes synchronously');
+    }
+
+    public function testStatusForReflectsAFailedStartRatherThanTheStaticName(): void
+    {
+        $pool = new LspSessionPool(
+            '/tmp/proj',
+            new FixedActiveFile(),
+            new Translator('en'),
+            static fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => new class extends FakeLspClient {
+                #[\Override]
+                public function start(callable $onReady): void
+                {
+                    $onReady(\Porta\Support\Outcome::Failed);
+                }
+            },
+        );
+        $pool->configure(
+            self::SERVERS,
+            static function (string $line): void {},
+            static function (array $params): void {},
+            static fn (array $edit): bool => false,
+        );
+
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+
+        $this->assertSame('failed', $pool->statusFor('/tmp/proj/a.php'), 'not the server\'s static name');
+    }
+
+    public function testIsActiveAndRequestAreInertWithNoSessionAnywhere(): void
+    {
+        $pool = $this->pool(self::SERVERS);
+        // Nothing ever opened, and no active file: activeSession() is null.
+
+        $this->assertFalse($pool->isActive());
+        $pool->request('workspace/symbol', ['query' => 'x'], static function (): void {});
+
+        $this->assertSame([], $this->clients, 'nothing to route the request to — silent, not a crash');
     }
 
     public function testStatusForPhpWithoutAServerPointsAtSettings(): void
@@ -232,6 +341,59 @@ final class LspSessionPoolTest extends TestCase
             ['textDocument/didOpen', 'textDocument/didSave', 'textDocument/didChange', 'textDocument/didClose'],
             $methods,
         );
+    }
+
+    public function testConfiguredDiagnosticsAndApplyEditHooksReachTheSession(): void
+    {
+        $diagnostics = [];
+        $applied = [];
+        $pool = new LspSessionPool(
+            '/tmp/proj',
+            new FixedActiveFile(),
+            new Translator('en'),
+            function (array $command, string $rootDir, \Closure $onLog): FakeLspClient {
+                $client = new FakeLspClient();
+                $this->clients[] = ['command' => $command, 'client' => $client, 'onLog' => $onLog];
+
+                return $client;
+            },
+        );
+        $pool->configure(
+            self::SERVERS,
+            static function (string $line): void {},
+            static function (array $params) use (&$diagnostics): void {
+                $diagnostics[] = $params;
+            },
+            static function (array $edit) use (&$applied): bool {
+                $applied[] = $edit;
+
+                return true;
+            },
+        );
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $client = $this->clients[0]['client'];
+
+        $client->notificationHandlers['textDocument/publishDiagnostics'](['uri' => 'file:///tmp/proj/a.php', 'diagnostics' => []]);
+        $this->assertCount(1, $diagnostics, 'the configured diagnostics hook received it, not the no-op default');
+
+        $result = ($client->applyEditHandler)(['changes' => []]);
+        $this->assertCount(1, $applied, 'the configured apply-edit hook received it, not the no-op default');
+        $this->assertTrue($result, 'and its return value is the one the pool was configured with');
+    }
+
+    public function testReconfigureWithoutAPriorConfigureFallsBackToTheNoOpHooks(): void
+    {
+        // reconfigure() sets the server map directly, without going through
+        // configure() — so a pool that was reconfigure()d but never
+        // configure()d has null onDiagnostics/onApplyEdit hooks, and every
+        // session it starts must fall back to the safe no-op defaults.
+        $pool = $this->pool([], configure: Presence::Without);
+        $pool->reconfigure(self::SERVERS);
+
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $client = $this->clients[0]['client'];
+
+        $this->assertFalse(($client->applyEditHandler)(['changes' => []]), 'the default apply-edit hook refuses the edit');
     }
 
     public function testReconfigureStopsSessionsAndRelaunchesUnderTheNewCommand(): void

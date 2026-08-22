@@ -35,6 +35,45 @@ final class LspClientTest extends TestCase
         );
     }
 
+    public function testInitializeParamsAdvertiseTheFullClientCapabilitySet(): void
+    {
+        // No process spawned: initializeParams()/clientCapabilities() are pure,
+        // so this reflects the handshake payload directly and cheaply.
+        $client = new LspClient(['unused'], '/tmp/proj');
+
+        $params = Probe::invoke($client, 'initializeParams');
+
+        $this->assertSame(getmypid(), $params['processId']);
+        $this->assertSame('file:///tmp/proj', $params['rootUri']);
+        $this->assertSame([['uri' => 'file:///tmp/proj', 'name' => 'proj']], $params['workspaceFolders']);
+        $this->assertSame(['name' => 'porta', 'version' => '0.1.0'], $params['clientInfo']);
+        $this->assertSame(
+            [
+                'textDocument' => [
+                    'synchronization' => ['didSave' => true],
+                    'completion' => [
+                        'completionItem' => ['snippetSupport' => true, 'documentationFormat' => ['plaintext', 'markdown']],
+                    ],
+                    'publishDiagnostics' => ['relatedInformation' => false],
+                    'hover' => ['contentFormat' => ['plaintext', 'markdown']],
+                    'definition' => ['linkSupport' => false],
+                    'references' => ['dynamicRegistration' => false],
+                    'rename' => ['prepareSupport' => true],
+                    'signatureHelp' => ['signatureInformation' => ['documentationFormat' => ['plaintext']]],
+                    'codeAction' => [
+                        'codeActionLiteralSupport' => ['codeActionKind' => ['valueSet' => ['quickfix', 'refactor', 'source']]],
+                    ],
+                    'documentSymbol' => ['hierarchicalDocumentSymbolSupport' => true],
+                    'foldingRange' => ['lineFoldingOnly' => true],
+                    'callHierarchy' => ['dynamicRegistration' => false],
+                    'formatting' => ['dynamicRegistration' => false],
+                ],
+                'workspace' => ['configuration' => false, 'workspaceFolders' => true, 'symbol' => ['dynamicRegistration' => false]],
+            ],
+            $params['capabilities'],
+        );
+    }
+
     /**
      * Run the event loop until $done() is true or the timeout elapses.
      */
@@ -133,6 +172,9 @@ final class LspClientTest extends TestCase
         });
 
         $this->assertSame(['queued', 'init', 'immediate'], $order);
+        // An immediate call must not also queue the action — it already ran,
+        // and there is nothing left to ever drain it a second time.
+        $this->assertSame([], Probe::get($client, 'whenReady'));
     }
 
     public function testRenameHoverReferencesSignature(): void
@@ -362,6 +404,130 @@ final class LspClientTest extends TestCase
 
         $client->stop();
         $this->assertFalse($client->isRunning());
+    }
+
+    public function testStopReapsAStragglerThatIgnoresSigtermWithoutBlockingTheLoop(): void
+    {
+        // The freeze regression: JsonRpcTransport::stop() used to proc_close()
+        // the child, which blocks until it actually exits — so a server that
+        // shrugs off SIGTERM parked the whole IDE for its remaining lifetime.
+        // The server never speaks the protocol, so this never awaits readiness.
+        $client = $this->client('stubborn-lsp-server.php');
+        $client->start(static function (): void {});
+        $this->assertTrue($client->isRunning(), 'the child is up before stop() is exercised');
+
+        $before = microtime(true);
+        $client->stop();
+        $this->assertLessThan(0.5, microtime(true) - $before, 'stop() returns immediately, the reap happens in the background');
+        $this->assertFalse($client->isRunning());
+    }
+
+    public function testStopSendsThePoliteShutdownSequenceBeforeTerminating(): void
+    {
+        // isRunning() clears the moment stop() is called (it just nulls the
+        // held process resource) — it cannot tell a graceful exit from a
+        // still-alive orphan, so this checks the real OS process. The server
+        // ignores SIGTERM entirely and only exits on the JSON-RPC `exit`
+        // notification, so it only dies here if stop() actually sent it.
+        $client = new LspClient([\PHP_BINARY, __DIR__.'/../Support/sigterm-immune-lsp-server.php'], \dirname(__DIR__, levels: 2));
+        $this->clients[] = $client;
+        $ready = false;
+        $client->start(static function () use (&$ready): void {
+            $ready = true;
+        });
+        $this->await(static function () use (&$ready): bool {
+            return $ready;
+        });
+
+        $transport = Probe::get($client, 'transport');
+        $process = Probe::get($transport, 'process');
+        \assert(\is_resource($process), description: 'the transport holds the spawned process');
+        $pid = proc_get_status($process)['pid'];
+
+        $client->stop();
+
+        $this->await(static fn (): bool => false === posix_kill($pid, signal: 0), timeout: 3.0, what: 'the child to exit via the polite shutdown, not linger ignoring SIGTERM');
+        $this->assertFalse(posix_kill($pid, signal: 0), 'the child process no longer exists');
+    }
+
+    public function testRequestAndNotifyEnvelopesCarryTheJsonRpcVersionAndId(): void
+    {
+        $log = tempnam(sys_get_temp_dir(), prefix: 'lsplog');
+        $this->assertNotFalse($log);
+        try {
+            $client = new LspClient([\PHP_BINARY, __DIR__.'/../Support/logging-lsp-server.php', $log], \dirname(__DIR__, levels: 2));
+            $this->clients[] = $client;
+            $ready = false;
+            $client->start(static function () use (&$ready): void {
+                $ready = true;
+            });
+            $this->await(static function () use (&$ready): bool {
+                return $ready;
+            });
+            // $ready fires once the initialize RESPONSE is processed, but the
+            // client's own `initialized` notify() is a separate, independent
+            // write — await its arrival in the log too, or this races (and is
+            // markedly more likely to lose under coverage/PCOV instrumentation).
+            $this->await(
+                static fn (): bool => 2 === substr_count((string) file_get_contents($log), needle: "\n"),
+                timeout: 15.0,
+                what: 'both the initialize request and the initialized notify to be logged',
+            );
+
+            $lines = array_values(array_filter(explode("\n", (string) file_get_contents($log))));
+            $messages = array_map(static fn (string $l): mixed => json_decode($l, associative: true), $lines);
+
+            $this->assertSame(['jsonrpc', 'id', 'method', 'params'], array_keys($messages[0] ?? []), 'the initialize request()');
+            $this->assertSame('2.0', $messages[0]['jsonrpc'] ?? null);
+            $this->assertSame(1, $messages[0]['id'] ?? null, 'the first id ever allocated');
+            $this->assertSame(['jsonrpc' => '2.0', 'method' => 'initialized', 'params' => []], $messages[1] ?? null, 'the initialized notify()');
+        } finally {
+            is_file($log) && unlink($log);
+        }
+    }
+
+    public function testStopSendsShutdownThenExitWithTheCorrectEnvelopes(): void
+    {
+        $log = tempnam(sys_get_temp_dir(), prefix: 'lsplog');
+        $this->assertNotFalse($log);
+        try {
+            $client = new LspClient([\PHP_BINARY, __DIR__.'/../Support/logging-lsp-server.php', $log], \dirname(__DIR__, levels: 2));
+            $this->clients[] = $client;
+            $ready = false;
+            $client->start(static function () use (&$ready): void {
+                $ready = true;
+            });
+            $this->await(static function () use (&$ready): bool {
+                return $ready;
+            });
+            // $ready fires once the initialize RESPONSE is processed, but the
+            // client's own `initialized` notify() is a separate, independent
+            // write — await its arrival before clearing the log, or a slow
+            // delivery can land it AFTER the clear, corrupting the "shutdown
+            // is sent first" assertion below with a stray `initialized` line.
+            $this->await(
+                static fn (): bool => 2 === substr_count((string) file_get_contents($log), needle: "\n"),
+                timeout: 30.0,
+                what: 'the initialize handshake to fully land before clearing the log',
+            );
+            file_put_contents($log, data: ''); // drop the initialize entry — only the stop() sequence matters here
+
+            $client->stop();
+            // A generous timeout: under the full paratest+PCOV coverage run
+            // (many parallel workers, each spawning its own child process),
+            // this child's scheduling and this log file's write/read round
+            // trip have both been observed to take well over 10s — 20s still
+            // was not always enough.
+            $this->await(static fn (): bool => 2 === substr_count((string) file_get_contents($log), needle: "\n"), timeout: 90.0, what: 'the shutdown and exit notifications to both arrive');
+
+            $lines = array_values(array_filter(explode("\n", (string) file_get_contents($log))));
+            $messages = array_map(static fn (string $l): mixed => json_decode($l, associative: true), $lines);
+
+            $this->assertSame(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'shutdown', 'params' => null], $messages[0] ?? null, 'shutdown is sent first, with its own id');
+            $this->assertSame(['jsonrpc' => '2.0', 'method' => 'exit', 'params' => null], $messages[1] ?? null, 'exit follows, as a notification (no id)');
+        } finally {
+            is_file($log) && unlink($log);
+        }
     }
 
     public function testQueuedFramesArriveIntactAndInOrderAcrossPartialWrites(): void

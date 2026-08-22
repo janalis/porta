@@ -7,6 +7,7 @@ namespace Porta\Lsp;
 use Porta\Editor\Buffer;
 use Porta\Editor\EditorInvalidator;
 use Porta\I18n\Translator;
+use Porta\Support\RequestRound;
 use Porta\Support\Scheduler;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Tui;
@@ -29,9 +30,6 @@ final class FormatOnSave
 {
     private bool $enabled = false;
 
-    /** The current round's token; bumping it invalidates any pending response/timeout. */
-    private int $round = 0;
-
     public function __construct(
         private readonly LspSessionPool $lsp,
         private readonly WorkspaceEditor $workspaceEditor,
@@ -40,6 +38,7 @@ final class FormatOnSave
         private readonly Translator $translator,
         private readonly Scheduler $scheduler,
         private readonly Tui $tui,
+        private readonly RequestRound $round = new RequestRound(),
     ) {}
 
     public function enable(): void
@@ -69,7 +68,7 @@ final class FormatOnSave
             return;
         }
 
-        $token = ++$this->round;
+        $token = $this->round->start();
         $doc = $buffer->document;
         $version = $doc->getVersion();
         $options = ['tabSize' => $doc->usesTabs() ? $doc->tabWidth() : $doc->indentSize(), 'insertSpaces' => !$doc->usesTabs()];
@@ -78,11 +77,9 @@ final class FormatOnSave
         // the late response is dropped — with a flash, so a skipped format is
         // distinguishable from an already-clean file.
         $timer = $this->scheduler->delay(2.0, function () use ($token, $save): void {
-            // @mago-expect lint:no-insecure-comparison -- $token is a round-generation counter, not sensitive data
-            if ($token !== $this->round) {
+            if (!$this->round->supersede($token)) {
                 return;
             }
-            ++$this->round;
             $this->notifier->warn($this->translator->trans('Formatting timed out — saved unformatted'));
             $save();
         });
@@ -91,11 +88,9 @@ final class FormatOnSave
             'textDocument/formatting',
             ['textDocument' => Uri::textDocument($path), 'options' => $options],
             function (mixed $result, ?array $error) use ($token, $timer, $buffer, $version, $save): void {
-                // @mago-expect lint:no-insecure-comparison -- $token is a round-generation counter, not sensitive data
-                if ($token !== $this->round) {
+                if (!$this->round->supersede($token)) {
                     return; // superseded by the timeout or a newer save
                 }
-                ++$this->round;
                 $this->scheduler->cancel($timer);
                 // Edits computed against stale text must never apply — the
                 // version guard skips them and the save keeps the user's text.

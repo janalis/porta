@@ -14,16 +14,21 @@ use Porta\Lsp\WorkspaceEditor;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 
 final class FormatOnSaveTest extends TestCase
 {
     private FakeLspClient $client;
     private FakeScheduler $scheduler;
     private LspSessionPool $pool;
+    private CodeEditorWidget $editor;
+    private \Symfony\Component\Tui\Tui $tui;
     private int $saves = 0;
     private StatusBarWidget $status;
 
@@ -32,7 +37,8 @@ final class FormatOnSaveTest extends TestCase
         $this->client = new FakeLspClient();
         $this->scheduler = new FakeScheduler();
         $this->saves = 0;
-        $editor = new CodeEditorWidget();
+        $this->editor = new CodeEditorWidget();
+        $editor = $this->editor;
         $this->pool = new LspSessionPool(
             '/tmp/proj',
             new FixedActiveFile('/tmp/proj/a.php'),
@@ -55,7 +61,7 @@ final class FormatOnSaveTest extends TestCase
             ),
             new Translator('en'),
             $this->scheduler,
-            TestTui::create(80, 24),
+            $this->tui = TestTui::create(80, 24),
         );
         $formatOnSave->enable();
 
@@ -119,6 +125,11 @@ final class FormatOnSaveTest extends TestCase
 
         $formatOnSave->formatThenSave($buffer, $this->save());
         $this->assertSame(0, $this->saves, 'the save waits for the response');
+        $this->assertSame(
+            ['textDocument' => ['uri' => 'file:///tmp/proj/a.php'], 'options' => ['tabSize' => 4, 'insertSpaces' => true]],
+            $this->client->requests[0]['params'],
+            'the request carries the document, tab size and space-vs-tab option',
+        );
 
         $this->respond([[
             'range' => ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 11]],
@@ -128,6 +139,28 @@ final class FormatOnSaveTest extends TestCase
         $this->assertSame("<?php \$a = 1;\n", $buffer->document->getText(), 'the server edit applied');
         $this->assertSame(1, $this->saves);
         $this->assertSame([], $this->scheduler->scheduled, 'the timeout was cancelled');
+    }
+
+    public function testAppliedEditsNotifyThePoolInvalidateTheEditorAndRequestARender(): void
+    {
+        $formatOnSave = $this->formatOnSave();
+        $buffer = $this->buffer("<?php \$a=1;\n");
+        $this->editor->showDocument($buffer->path, $buffer->document);
+
+        $formatOnSave->formatThenSave($buffer, $this->save());
+        Probe::set($this->tui, 'renderRequested', false);
+        $notificationsBefore = \count($this->client->notifications);
+
+        $this->respond([[
+            'range' => ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 11]],
+            'newText' => '<?php $a = 1;',
+        ]]);
+
+        $this->assertGreaterThan($notificationsBefore, \count($this->client->notifications), 'the pool was told about the full change');
+        $this->assertSame('textDocument/didChange', end($this->client->notifications)['method']);
+        $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'), 'a render was requested');
+        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(80, 8))));
+        $this->assertStringContainsString('<?php $a = 1;', $screen, 'the invalidated editor repaints the new text');
     }
 
     public function testTimeoutSavesUnformattedAndDropsTheLateResponse(): void
@@ -179,6 +212,23 @@ final class FormatOnSaveTest extends TestCase
         $formatOnSave->formatThenSave($buffer, $this->save());
         $this->respond(null, ['code' => -32_601, 'message' => 'unsupported']);
         $this->assertSame(2, $this->saves, 'an error result just saves');
+    }
+
+    public function testAnErrorAlongsideAWellFormedResultStillSkipsTheEdits(): void
+    {
+        // A malformed adapter can send both a non-null result and an error;
+        // the error must win — both conditions are required, not either.
+        $formatOnSave = $this->formatOnSave();
+        $buffer = $this->buffer("<?php \$a=1;\n");
+
+        $formatOnSave->formatThenSave($buffer, $this->save());
+        $this->respond([[
+            'range' => ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 11]],
+            'newText' => 'SHOULD_NOT_APPLY',
+        ]], ['code' => -32_000, 'message' => 'partial failure']);
+
+        $this->assertSame("<?php \$a=1;\n", $buffer->document->getText(), 'edits alongside an error never apply');
+        $this->assertSame(1, $this->saves);
     }
 
     public function testAReentrantSaveSupersedesThePendingRound(): void

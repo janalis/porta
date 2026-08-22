@@ -22,6 +22,7 @@ final class FoldingControllerTest extends TestCase
     private FakeScheduler $scheduler;
     private LspSessionPool $pool;
     private CodeEditorWidget $editor;
+    private \Symfony\Component\Tui\Tui $tui;
 
     /** Three lines of a block: the LSP says fold 0-2, the brace scan says 1-3. */
     private const string TEXT = "head\nopen {\n    body;\n}\ntail\n";
@@ -48,7 +49,7 @@ final class FoldingControllerTest extends TestCase
             $this->pool,
             $this->editor,
             $this->scheduler,
-            TestTui::create(80, 24),
+            $this->tui = TestTui::create(80, 24),
         );
     }
 
@@ -86,8 +87,12 @@ final class FoldingControllerTest extends TestCase
     public function testNoOpenFileIsANoOp(): void
     {
         $controller = $this->controller();
+        Probe::set($this->tui, 'renderRequested', false);
+
         $controller->foldAll();
+
         $this->assertSame([], $this->client->requests);
+        $this->assertFalse((bool) Probe::get($this->tui, 'renderRequested'), 'no file open — not even the brace-scan fallback runs');
     }
 
     public function testNoReadyServerFoldsByBraceScan(): void
@@ -107,6 +112,11 @@ final class FoldingControllerTest extends TestCase
         $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), 'php', 1);
 
         $controller->foldAll();
+        $this->assertSame(
+            ['textDocument' => ['uri' => 'file:///tmp/proj/a.php']],
+            $this->client->requests[0]['params'],
+            'the request names the document being folded',
+        );
         $this->respond([
             ['startLine' => 0, 'endLine' => 2, 'kind' => 'region'],
             ['startLine' => 4, 'endLine' => 4], // single-line: dropped
@@ -117,8 +127,36 @@ final class FoldingControllerTest extends TestCase
         $this->assertNull($this->foldEndAt(1), 'the brace region was superseded');
         $this->assertSame([], $this->scheduler->scheduled, 'the timeout was cancelled');
 
+        Probe::set($this->tui, 'renderRequested', false);
         $controller->unfoldAll();
         $this->assertNull($this->foldEndAt(0));
+        $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'), 'unfolding requests a render');
+    }
+
+    public function testMalformedRangesAreDroppedWithoutAbortingTheOnesAfterThem(): void
+    {
+        $controller = $this->controller();
+        $doc = $this->showDocument();
+        $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), 'php', 1);
+
+        $controller->foldAll();
+        $this->respond([
+            // Numeric-STRING lines (not int): is_int() rejects them, but a
+            // naive fix that only half-guards would let PHP8's numeric-string
+            // comparison downstream (`4 > '2'`) accept them anyway — so a
+            // non-int start/end must never survive to become a fold.
+            ['startLine' => '2', 'endLine' => 4], // bad start
+            ['startLine' => 6, 'endLine' => '9'], // bad end
+            ['startLine' => 'x', 'endLine' => 1], // bad start, non-numeric too
+            ['startLine' => 2, 'endLine' => 2], // single-line — dropped (endLine must be strictly greater)
+            ['startLine' => 0, 'endLine' => 1],
+            ['startLine' => 3, 'endLine' => 4],
+        ]);
+
+        $this->assertSame(1, $this->foldEndAt(0), 'the first valid region folded, despite the malformed entries before it');
+        $this->assertSame(4, $this->foldEndAt(3), 'the second valid region folded too — the result list is not truncated to one');
+        $this->assertNull($this->foldEndAt(2), 'a single-line range never folds');
+        $this->assertNull($this->foldEndAt(6), 'a non-int end line never folds, numeric-looking or not');
     }
 
     public function testErrorResponseFallsBackToBraces(): void

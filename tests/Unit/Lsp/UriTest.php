@@ -35,6 +35,11 @@ final class UriTest extends TestCase
         $this->assertStringContainsString('/does%20not%20exist/', $uri);
     }
 
+    public function testTextDocumentWrapsTheUriUnderTheUriKey(): void
+    {
+        $this->assertSame(['uri' => 'file:///tmp/a.php'], Uri::textDocument('/tmp/a.php'));
+    }
+
     public function testRoundTripThroughRealPath(): void
     {
         $file = tempnam(sys_get_temp_dir(), prefix: 'uri');

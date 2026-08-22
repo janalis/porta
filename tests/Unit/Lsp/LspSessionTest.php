@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Lsp;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
+use Porta\Lsp\FlushMode;
 use Porta\Lsp\LspClientInterface;
 use Porta\Lsp\LspSession;
 use Porta\Support\Outcome;
@@ -46,6 +47,35 @@ final class LspSessionTest extends TestCase
         $this->assertTrue($client->started);
         $this->assertTrue($session->isActive());
         $this->assertTrue($session->isInitialized());
+    }
+
+    public function testDiagnosticsAndApplyEditHooksAreWiredToTheClient(): void
+    {
+        $client = new FakeLspClient();
+        $session = $this->session($client);
+        $diagnostics = [];
+        $applied = [];
+        $noop = static function (): void {};
+        $session->start(
+            ['fake'],
+            $noop,
+            static function (array $p) use (&$diagnostics): void {
+                $diagnostics[] = $p;
+            },
+            static function (array $e) use (&$applied): bool {
+                $applied[] = $e;
+
+                return true;
+            },
+            $noop,
+        );
+
+        $client->notificationHandlers['textDocument/publishDiagnostics'](['uri' => 'file:///x.php', 'diagnostics' => []]);
+        $this->assertCount(1, $diagnostics, 'the onDiagnostics hook reached the client');
+
+        $result = ($client->applyEditHandler)(['changes' => []]);
+        $this->assertCount(1, $applied, 'the onApplyEdit hook reached the client');
+        $this->assertTrue($result);
     }
 
     public function testWindowLogMessagesFeedTheLogHook(): void
@@ -97,15 +127,66 @@ final class LspSessionTest extends TestCase
         $sent = $client->notifications[0];
         $this->assertSame('textDocument/didChange', $sent['method']);
         $this->assertSame([['text' => "<?php\necho 1;\n"]], $sent['params']['contentChanges']);
+        $this->assertSame('file:///tmp/x.php', $sent['params']['textDocument']['uri']);
+        $this->assertSame($doc->getVersion(), $sent['params']['textDocument']['version']);
+    }
+
+    public function testNotifyDidCloseSendsTheDocumentIdentifier(): void
+    {
+        $client = new FakeLspClient();
+        $session = $this->session($client);
+        $this->start($session);
+
+        $session->notifyDidClose('/tmp/x.php');
+
+        $sent = $client->notifications[0];
+        $this->assertSame('textDocument/didClose', $sent['method']);
+        $this->assertSame(['textDocument' => ['uri' => 'file:///tmp/x.php']], $sent['params']);
+    }
+
+    public function testNotifyDidSaveSendsTheDocumentIdentifier(): void
+    {
+        $client = new FakeLspClient();
+        $session = $this->session($client);
+        $this->start($session);
+
+        $session->notifyDidSave('/tmp/x.php');
+
+        $sent = $client->notifications[0];
+        $this->assertSame('textDocument/didSave', $sent['method']);
+        $this->assertSame(['textDocument' => ['uri' => 'file:///tmp/x.php']], $sent['params']);
     }
 
     public function testScheduleDidChangeWithoutAClientIsANoOp(): void
     {
         $session = $this->session(new FakeLspClient());
+        $before = \count(\Revolt\EventLoop::getIdentifiers());
         // Never started: no client, so nothing to debounce against.
         $session->scheduleDidChange(new Document('x'), static fn (): ?string => '/tmp/project/a.php', static function (): void {});
 
         $this->assertFalse($session->isActive());
+        $this->assertSame($before, \count(\Revolt\EventLoop::getIdentifiers()), 'no debounce timer is armed without a client');
+    }
+
+    public function testEveryTransportCallIsInertBeforeStart(): void
+    {
+        // None of these guard with an early return before touching $this->client
+        // — they all lean on the nullsafe operator. A never-started session
+        // (client still null) must survive every one of them without crashing.
+        $client = new FakeLspClient();
+        $session = $this->session($client);
+
+        $session->stop();
+        $session->request('textDocument/hover', [], static function (): void {});
+        $session->whenReady(static function (): void {});
+        $session->notifyDidOpen('/tmp/x.php', 'text', 'php', 1);
+        $session->notifyDidClose('/tmp/x.php');
+        $session->notifyDidSave('/tmp/x.php');
+        $session->notifyFullChange('/tmp/x.php', new Document('x'));
+
+        $this->assertFalse($session->isActive());
+        $this->assertSame([], $client->notifications, 'the client was never started — nothing to notify');
+        $this->assertSame([], $client->requests);
     }
 
     public function testReadyRequiresInitializedServerAndFlushesNothingPending(): void
@@ -120,6 +201,25 @@ final class LspSessionTest extends TestCase
         $this->start($session);
         $this->assertSame('/tmp/x.php', $session->ready('/tmp/x.php', $doc));
         $this->assertNull($session->ready(null, $doc), 'null path short-circuits');
+    }
+
+    public function testReadyFlushesAPendingDebounceUnlessToldToKeepIt(): void
+    {
+        $client = new FakeLspClient();
+        $session = $this->session($client);
+        $this->start($session);
+        $doc = new Document('x');
+
+        $session->scheduleDidChange($doc, static fn (): ?string => '/tmp/project/a.php', static function (): void {});
+        $before = \count(\Revolt\EventLoop::getIdentifiers());
+
+        $session->ready('/tmp/project/a.php', $doc, FlushMode::Keep);
+        $this->assertSame($before, \count(\Revolt\EventLoop::getIdentifiers()), 'Keep leaves the debounce armed');
+        $this->assertSame([], array_column($client->notifications, 'method'), 'and sends nothing yet');
+
+        $session->ready('/tmp/project/a.php', $doc, FlushMode::Flush);
+        $this->assertLessThan($before, \count(\Revolt\EventLoop::getIdentifiers()), 'Flush (the default) cancels the pending debounce');
+        $this->assertSame(['textDocument/didChange'], array_column($client->notifications, 'method'), 'and sends the pending edit immediately');
     }
 
     public function testRequestAndStopDelegateToClient(): void
@@ -149,6 +249,17 @@ final class LspSessionTest extends TestCase
         $this->start($session);
 
         $this->assertFalse($session->isActive(), 'failed start nulls the client');
+    }
+
+    public function testFlushPendingChangeNoOpsWithNothingPending(): void
+    {
+        $client = new FakeLspClient();
+        $session = $this->session($client);
+        $this->start($session);
+
+        $session->flushPendingChange('/tmp/x.php', new Document('x'));
+
+        $this->assertSame([], $client->notifications, 'nothing was scheduled — nothing to flush');
     }
 
     public function testStopCancelsAnArmedChangeDebounce(): void

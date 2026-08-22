@@ -405,6 +405,9 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->handleInput("\x1b[98;6u"); // ctrl+shift+b -> type definition (single -> jump)
                 },
                 1050 => function ($tui): void {
+                    // The type-definition jump is an LSP round trip: await it
+                    // landing instead of a fixed gap.
+                    $this->await(static fn (): bool => str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'), what: 'the type-definition jump to land');
                     $this->assertStringEndsWith('Target.php', (string) $tui->getById('editor')->getFilePath(), 'single type definition jumped');
                     // No implementation at a high line -> flash.
                     $tui->getById('editor')->getDocument()->setCursor(0, 0);
@@ -487,8 +490,8 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->handleInput("\x1b[17;2~"); // shift+f6
                 },
                 700 => function ($tui, $terminal): void {
-                    $tui->tick();
                     // A flash (not a prompt) proves prepareRename was rejected.
+                    $this->awaitPainted($tui, $terminal, 'Cannot rename this element');
                     $this->assertStringContainsString('Cannot rename this element', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -597,7 +600,9 @@ final class IdeLspFeaturesTest extends TestCase
                 600 => function ($tui, $terminal): void {
                     $editor = $tui->getById('editor');
                     $this->assertTrue(EditorState::pickerOpen($editor));
-                    $tui->tick();
+                    // The symbols are an LSP round trip: await them landing in
+                    // the picker instead of a fixed gap.
+                    $this->awaitPainted($tui, $terminal, 'greet');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('File Structure', $screen);
                     $this->assertStringContainsString('Demo', $screen);
@@ -658,7 +663,9 @@ final class IdeLspFeaturesTest extends TestCase
                 },
                 750 => function ($tui, $terminal): void {
                     $this->assertTrue($tui->getById('editor')->isSearchOverlayOpen(), 'go-to-symbol opens the centered picker');
-                    $tui->tick();
+                    // The workspace-symbol query is an LSP round trip: await it
+                    // landing instead of a fixed gap.
+                    $this->awaitPainted($tui, $terminal, 'Greeter');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Go to Symbol', $screen);
                     $this->assertStringContainsString('Greeter', $screen);
@@ -699,7 +706,13 @@ final class IdeLspFeaturesTest extends TestCase
                 },
                 750 => function ($tui, $terminal): void {
                     $this->assertSame('results', $tui->getFocus()?->getId());
-                    $tui->tick();
+                    // Diagnostics for both buffers are async LSP notifications:
+                    // await them landing instead of a fixed gap.
+                    $this->await(static function () use ($terminal): bool {
+                        $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+
+                        return str_contains($screen, 'Mock diagnostic') && str_contains($screen, 'A.php') && str_contains($screen, 'B.php');
+                    }, what: "both buffers' diagnostics to land");
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Problems', $screen);
                     // Both buffers carry the mock server's line-0 diagnostic
@@ -831,7 +844,19 @@ final class IdeLspFeaturesTest extends TestCase
         Probe::set($navigation, 'jumpStack', array_fill(0, count: 50, value: ['path' => $project->path('src/Demo.php'), 'line' => 0, 'col' => 0]));
 
         EventLoop::delay(0.4, static fn () => $tui->handleInput("\x1b[24~")); // F12
-        EventLoop::delay(0.8, $tui->stop(...));
+        // The jump is an LSP round trip: poll for it landing instead of a
+        // fixed delay, which races the mock server under pcov + machine load.
+        $poll = EventLoop::repeat(0.02, static function (string $watcherId) use ($tui, &$safety): void {
+            if (str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php')) {
+                EventLoop::cancel($watcherId);
+                EventLoop::cancel($safety);
+                $tui->stop();
+            }
+        });
+        $safety = EventLoop::delay(10.0, static function () use ($poll, $tui): void {
+            EventLoop::cancel($poll);
+            $tui->stop(); // the jump never landed; stop so the assertion below fails cleanly
+        });
         $ide->run();
 
         $this->assertCount(50, Probe::get($navigation, 'jumpStack'), 'oldest entry evicted at the cap');

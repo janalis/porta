@@ -9,6 +9,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\Editor\EditorInvalidator;
 use Porta\Editor\SelectionMode;
+use Porta\Support\Files;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -68,8 +69,9 @@ final readonly class WorkspaceEditor
                 ++$touched;
                 continue;
             }
-            if (is_file($target) && is_writable($target)) {
-                $document = new Document((string) file_get_contents($target));
+            $contents = Files::readWritable($target);
+            if (null !== $contents) {
+                $document = new Document($contents);
                 $this->applyTextEdits($document, $edits);
                 $this->fs->dumpFile($target, $document->getText());
                 ++$touched;

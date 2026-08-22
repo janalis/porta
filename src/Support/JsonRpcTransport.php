@@ -137,7 +137,7 @@ final class JsonRpcTransport
             }
             if (\is_resource($process)) {
                 proc_terminate($process);
-                proc_close($process);
+                ProcessReaper::closeWhenDead($process);
             }
             $this->process = null;
         }

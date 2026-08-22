@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Support\RequestRound;
 use Porta\Support\Scheduler;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Tui;
@@ -18,14 +19,12 @@ use Symfony\Component\Tui\Tui;
  */
 final class FoldingController
 {
-    /** The current round's token; bumping it drops the pending response/timeout. */
-    private int $round = 0;
-
     public function __construct(
         private readonly LspSessionPool $lsp,
         private readonly CodeEditorWidget $editor,
         private readonly Scheduler $scheduler,
         private readonly Tui $tui,
+        private readonly RequestRound $round = new RequestRound(),
     ) {}
 
     public function foldAll(): void
@@ -42,14 +41,12 @@ final class FoldingController
             return;
         }
 
-        $token = ++$this->round;
+        $token = $this->round->start();
         $version = $doc->getVersion();
         $timer = $this->scheduler->delay(2.0, function () use ($token): void {
-            // @mago-expect lint:no-insecure-comparison -- $token is a round-generation counter, not sensitive data
-            if ($token !== $this->round) {
+            if (!$this->round->supersede($token)) {
                 return;
             }
-            ++$this->round;
             $this->apply('fold_all'); // brace fallback — the late response is dropped
         });
 
@@ -57,11 +54,9 @@ final class FoldingController
             'textDocument/foldingRange',
             ['textDocument' => Uri::textDocument($path)],
             function (mixed $result, ?array $error) use ($token, $timer, $doc, $version): void {
-                // @mago-expect lint:no-insecure-comparison -- $token is a round-generation counter, not sensitive data
-                if ($token !== $this->round) {
+                if (!$this->round->supersede($token)) {
                     return; // superseded by the timeout or a newer command
                 }
-                ++$this->round;
                 $this->scheduler->cancel($timer);
                 $regions = null === $error && $doc->getVersion() === $version ? self::regions($result) : [];
                 if ([] !== $regions) {
