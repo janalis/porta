@@ -25,12 +25,10 @@ final class TerminalKeyEncoder
     /** @var array<string, int> editing keys → CSI "~" number */
     private const CSI_TILDE = ['insert' => 2, 'delete' => 3, 'page_up' => 5, 'page_down' => 6];
 
-    private KeyParser $parser;
-
     public function __construct(
         private readonly Tui $tui,
+        private readonly KeyParser $parser = new KeyParser(),
     ) {
-        $this->parser = new KeyParser();
         $this->parser->setKittyProtocolActive(true);
     }
 
