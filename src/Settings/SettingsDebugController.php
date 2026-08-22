@@ -68,7 +68,7 @@ final class SettingsDebugController
         $this->adapters->set($language, $command, $this->adapters->launchOverrides($language));
 
         $shown = '' === $command ? $this->translator->trans('not configured') : $command;
-        $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
+        $saved = SettingsFlash::savedSuffix($this->translator, $persisted);
         $this->notifier->flash(\sprintf('%s: %s%s', LanguageCatalog::displayName($language), $shown, $saved));
     }
 
@@ -90,7 +90,7 @@ final class SettingsDebugController
         $persisted = $this->writer->persistLanguageDebug($this->rootDir, $language, 'launch', [] === $launch ? null : $launch);
         $this->adapters->set($language, $this->adapters->adapterCommand($language), $launch);
 
-        $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
+        $saved = SettingsFlash::savedSuffix($this->translator, $persisted);
         $this->notifier->flash(\sprintf('%s: %s%s', LanguageCatalog::displayName($language), $this->translator->trans('Launch config (JSON)'), $saved));
     }
 }

@@ -81,8 +81,12 @@ final class SettingsLspController
         $this->reconfigurer->reconfigure();
 
         $shown = '' === $command ? $this->translator->trans('auto-detect') : $command;
-        $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
-        $this->flash(\sprintf('%s LSP: %s%s', LanguageCatalog::displayName($language), $shown, $saved));
+        $saved = SettingsFlash::savedSuffix($this->translator, $persisted);
+        $this->flash($this->translator->trans('%language% LSP: %shown%%saved%', [
+            '%language%' => LanguageCatalog::displayName($language),
+            '%shown%' => $shown,
+            '%saved%' => $saved,
+        ]));
     }
 
     private function flash(string $message): void

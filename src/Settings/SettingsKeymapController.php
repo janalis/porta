@@ -103,7 +103,7 @@ final class SettingsKeymapController
             $this->ideKeys->rebuild();
             $this->menuRebuilder->rebuild();
         }
-        $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
+        $saved = SettingsFlash::savedSuffix($this->translator, $persisted);
         // Two dispatch paths, and only one of them re-reads the rebuilt map:
         // `InputDispatcher` matches every key-bound COMMAND against it before
         // any widget sees the key, and IDE-scope catalog actions ride the same

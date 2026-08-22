@@ -122,7 +122,7 @@ final class SettingsLanguageController
         $persisted = $this->writer->persistLanguageSetting($this->rootDir, $language, $key, $stored);
         $this->applyToEditor();
         $label = $this->translator->trans('indentSize' === $key ? 'indent size' : 'indent style');
-        $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
+        $saved = SettingsFlash::savedSuffix($this->translator, $persisted);
         $this->notifier->flash(\sprintf('%s %s: %s%s', LanguageCatalog::displayName($language), $label, $stored, $saved));
     }
 
@@ -135,7 +135,7 @@ final class SettingsLanguageController
         $this->runCommand[$language] = $command;
         $persisted = $this->writer->persistLanguageSetting($this->rootDir, $language, 'runCommand', $command);
         $note = ' · '.$this->translator->trans('applies on restart');
-        $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
+        $saved = SettingsFlash::savedSuffix($this->translator, $persisted);
         $shown = '' === $command ? $this->translator->trans('bundled php') : $command;
         $this->notifier->flash(\sprintf('%s %s: %s%s%s', LanguageCatalog::displayName($language), $this->translator->trans('run command'), $shown, $note, $saved));
     }

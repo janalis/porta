@@ -245,7 +245,7 @@ final class SettingsController
         $persisted = $this->writer->persistSetting($this->rootDir, $key, $value);
         $state = \is_bool($value) ? $this->translator->trans($value ? 'on' : 'off') : (string) $value;
         $note = $descriptor['restart'] ? ' · '.$this->translator->trans('applies on restart') : '';
-        $saved = $persisted ? '' : ' ('.$this->translator->trans('not saved').')';
+        $saved = SettingsFlash::savedSuffix($this->translator, $persisted);
         $this->notifier->flash(\sprintf('%s %s%s%s', $this->translator->trans($descriptor['label']), $state, $note, $saved));
     }
 }
