@@ -7,6 +7,7 @@ namespace Porta\Editor;
 use Porta\Event\BufferReloaded;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
+use Porta\Support\Files;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\Notifier;
@@ -120,7 +121,7 @@ final class FilesystemReconciler
     /** Read a small UTF-8 text file, or null if missing, unreadable, too large or binary. */
     private function readTextFile(string $path): ?string
     {
-        if (!is_file($path) || !is_readable($path) || (int) filesize($path) > (2 * 1024 * 1024)) {
+        if (!is_file($path) || !is_readable($path) || (int) filesize($path) > Files::MAX_TEXT_BYTES) {
             return null;
         }
         $content = (string) file_get_contents($path);

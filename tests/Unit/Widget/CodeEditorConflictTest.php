@@ -109,4 +109,77 @@ final class CodeEditorConflictTest extends TestCase
         $this->assertFalse(EditorState::pickerOpen($editor));
         $this->assertStringContainsString('<<<<<<< a', $editor->getDocument()->getText());
     }
+
+    private const THREE_REGIONS = "before\n<<<<<<< a\no1\n=======\nt1\n>>>>>>> b\nmid1\n<<<<<<< c\no2\n=======\nt2\n>>>>>>> d\nmid2\n<<<<<<< e\no3\n=======\nt3\n>>>>>>> f\nafter";
+
+    public function testNextConflictSkipsPastTheCurrentRegionThenWrapsToTheFirst(): void
+    {
+        // Regions start at lines 1, 7, 13. Two hops from inside the first
+        // region must land on the second, not re-trigger the first (this is
+        // the "dir > 0" boundary, not just its "wrap past the last" tail).
+        $editor = $this->editor(self::THREE_REGIONS);
+        $editor->getDocument()->setCursor(0, 0);
+
+        $editor->handleInput("\x1b[18~");
+        $this->assertSame(1, $editor->getDocument()->getCursorLine());
+        $editor->handleInput("\x1b[18~");
+        $this->assertSame(7, $editor->getDocument()->getCursorLine(), 'skips past the current region to the next one');
+        $editor->handleInput("\x1b[18~");
+        $this->assertSame(13, $editor->getDocument()->getCursorLine());
+        $editor->handleInput("\x1b[18~"); // past the last region: wraps
+        $this->assertSame(1, $editor->getDocument()->getCursorLine());
+    }
+
+    public function testNextConflictLandsAtColumnZero(): void
+    {
+        $editor = $this->editor(self::TWO_REGIONS);
+        $editor->getDocument()->setCursor(0, 0);
+
+        $editor->handleInput("\x1b[18~");
+
+        $this->assertSame(0, $editor->getDocument()->getCursorCol());
+    }
+
+    public function testPrevConflictJumpsToTheClosestRegionBeforeTheCaretNotTheFirstOne(): void
+    {
+        // With regions before the caret at lines 1, 7 and 13, "previous" must
+        // land on 13 (the closest), which a non-reversed backward scan would
+        // get wrong (it would find 1 first).
+        $editor = $this->editor(self::THREE_REGIONS);
+        $editor->getDocument()->setCursor(18, 0); // "after", past every region
+
+        $editor->handleInput("\x1b[18;2~");
+        $this->assertSame(13, $editor->getDocument()->getCursorLine());
+        $editor->handleInput("\x1b[18;2~");
+        $this->assertSame(7, $editor->getDocument()->getCursorLine());
+        $editor->handleInput("\x1b[18;2~");
+        $this->assertSame(1, $editor->getDocument()->getCursorLine());
+        $editor->handleInput("\x1b[18;2~"); // before every region: wraps to the last
+        $this->assertSame(13, $editor->getDocument()->getCursorLine());
+    }
+
+    public function testGotoConflictClearsAnyExistingSelection(): void
+    {
+        $editor = $this->editor(self::TWO_REGIONS);
+        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->beginSelect();
+        $editor->getDocument()->setCursor(0, 3, selection: \Porta\Editor\SelectionMode::Keep);
+
+        $editor->handleInput("\x1b[18~"); // F7
+
+        $this->assertFalse($editor->getDocument()->hasSelection(), 'jumping to a conflict clears a stray selection');
+    }
+
+    public function testResolveMenuItemsCarryALabelKeyThePickerLayoutReadsDirectly(): void
+    {
+        $editor = $this->editor("top\n<<<<<<< a\no1\n=======\nt1\n>>>>>>> b\nbot");
+        $editor->getDocument()->setCursor(2, 0);
+
+        $editor->handleInput("\x1bm"); // open the resolve-conflict menu
+
+        $host = \Porta\Tests\Support\Probe::object($editor, 'overlayHost');
+        $host->layout([0, 0, 24, 80]);
+
+        $this->assertTrue(true, 'laying out the open picker must not warn on a missing label key');
+    }
 }

@@ -112,4 +112,92 @@ final class SnippetParserTest extends TestCase
         $this->assertSame('a}b', $result['text']);
         $this->assertEquals([new SnippetTabStop(1, 0, 3)], $result['stops']);
     }
+
+    public function testTrailingBackslashIsLiteral(): void
+    {
+        // A backslash as the very last byte has nothing left to escape; it
+        // must not read past the end of the string.
+        $result = SnippetParser::parse('x\\');
+        $this->assertSame('x\\', $result['text']);
+        $this->assertSame([], $result['stops']);
+    }
+
+    public function testTrailingDollarIsLiteral(): void
+    {
+        // A `$` as the very last byte has no `{`/digit to look ahead at; it
+        // must not read past the end of the string.
+        $result = SnippetParser::parse('x$');
+        $this->assertSame('x$', $result['text']);
+        $this->assertSame([], $result['stops']);
+    }
+
+    public function testNestedPlaceholderOffsetsAreRelativeToOuterStart(): void
+    {
+        // The nested stop must actually be recorded, and its offsets shifted
+        // by how much literal text precedes it inside the outer default.
+        $result = SnippetParser::parse('${1:x${2:inner}}');
+        $this->assertSame('xinner', $result['text']);
+        $byIndex = [];
+        foreach ($result['stops'] as $stop) {
+            $byIndex[$stop->index] = $stop;
+        }
+        $this->assertCount(2, $byIndex);
+        $this->assertSame(1, $byIndex[2]->start);
+        $this->assertSame(6, $byIndex[2]->end);
+    }
+
+    public function testUnmatchedBraceWithNoClosingEverStaysLiteral(): void
+    {
+        // No closing brace anywhere in the snippet: matchingBrace's -1
+        // sentinel must be trusted exactly, or the parser mistakes trailing
+        // garbage for a real stop (and can even loop forever re-scanning
+        // from the start).
+        $snippet = '${1:'.str_repeat('b', times: 20);
+        $result = SnippetParser::parse($snippet);
+        $this->assertSame($snippet, $result['text']);
+        $this->assertSame([], $result['stops']);
+    }
+
+    public function testColonFormRequiresIndexAtStart(): void
+    {
+        // A leading non-digit before the index means this isn't `${N:...}`
+        // syntax at all — it must stay fully literal.
+        $result = SnippetParser::parse('${x1:default}');
+        $this->assertSame('${x1:default}', $result['text']);
+        $this->assertSame([], $result['stops']);
+    }
+
+    public function testColonFormDefaultMayContainNewlines(): void
+    {
+        $result = SnippetParser::parse("\${1:line1\nline2}");
+        $this->assertSame("line1\nline2", $result['text']);
+        $this->assertEquals([new SnippetTabStop(1, 0, 11)], $result['stops']);
+    }
+
+    public function testChoiceFormRequiresExactClosingPipe(): void
+    {
+        // Trailing content after the closing `|` breaks the choice syntax —
+        // it must not silently truncate and still parse as a placeholder.
+        $result = SnippetParser::parse('${1|a,b,c|extra}');
+        $this->assertSame('${1|a,b,c|extra}', $result['text']);
+        $this->assertSame([], $result['stops']);
+    }
+
+    public function testBraceIndexRequiresPureDigitsAnchoredAtStart(): void
+    {
+        // A leading non-digit means it is not a plain index placeholder — it
+        // must stay literal, not silently parse via a loose `(int)` cast.
+        $result = SnippetParser::parse('${x123}');
+        $this->assertSame('${x123}', $result['text']);
+        $this->assertSame([], $result['stops']);
+    }
+
+    public function testBraceIndexRequiresPureDigitsAnchoredAtEnd(): void
+    {
+        // Trailing garbage after the digits means it is not a plain index
+        // placeholder either.
+        $result = SnippetParser::parse('${123abc}');
+        $this->assertSame('${123abc}', $result['text']);
+        $this->assertSame([], $result['stops']);
+    }
 }

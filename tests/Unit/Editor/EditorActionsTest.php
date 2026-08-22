@@ -120,6 +120,7 @@ final class EditorActionsTest extends TestCase
         $actions = $this->actions();
         $actions->run('copy');
         $this->assertArrayNotHasKey('fireCopy', $this->calls);
+        $this->assertSame(0, $this->count_('invalidate'), 'nothing was captured, so nothing repaints');
     }
 
     public function testRunPasteInsertsTheClipboard(): void
@@ -192,15 +193,19 @@ final class EditorActionsTest extends TestCase
         $actions = $this->actions("code\n");
         $actions->run('toggle_comment');
         $this->assertSame("// code\n", $this->doc->getText());
+        $this->assertSame(1, $this->count_('notifyChange'));
         $actions->run('toggle_comment');
         $this->assertSame("code\n", $this->doc->getText());
+        $this->assertSame(2, $this->count_('notifyChange'));
     }
 
     public function testRunToggleFoldInvalidates(): void
     {
         $actions = $this->actions("if {\n  a\n}\n");
+        $this->doc->setCursor(1, 0); // unambiguously inside the block, not on a boundary line
         $actions->run('toggle_fold');
         $this->assertSame(1, $this->count_('invalidate'));
+        $this->assertNotNull($this->foldModel->foldEndAt(0), 'the fold model actually toggled a fold');
     }
 
     public function testRunSelectAll(): void
@@ -235,6 +240,7 @@ final class EditorActionsTest extends TestCase
         $this->doc->setCursor(1, 0);
         $actions->run('add_caret_below');
         $this->assertTrue($this->multiCaret->hasMultiple());
+        $this->assertSame(2, $this->doc->getCursorLine(), 'the new caret is exactly one line below');
 
         $actions = $this->actions("one\ntwo\nthree\n");
         $this->doc->setCursor(1, 0);
@@ -323,6 +329,9 @@ final class EditorActionsTest extends TestCase
         $this->assertSame("foo\nfoo", $actions->clipboardValue(), 'one clipboard line per caret');
         $this->assertSame([["foo\nfoo"]], $this->calls['fireCopy']);
         $this->assertTrue($this->multiCaret->hasMultiple(), 'copy keeps the carets');
+        // selectBothFoos()'s setExtras() already fired one invalidate(); the
+        // copy branch must fire exactly one more.
+        $this->assertSame(2, $this->count_('invalidate'));
     }
 
     public function testBlockCutDeletesEveryCaretSelection(): void
@@ -412,6 +421,7 @@ final class EditorActionsTest extends TestCase
         $actions->handleKey('a', $kb);
         $this->assertStringStartsWith('a', $this->doc->getText());
         $this->assertArrayNotHasKey('requestCompletion', $this->calls);
+        $this->assertSame(1, $this->count_('notifyChange'));
 
         $actions->handleKey('-', $kb);
         $actions->handleKey('>', $kb);
@@ -425,6 +435,8 @@ final class EditorActionsTest extends TestCase
 
         $actions->handleKey('(', $kb);
         $this->assertSame(1, $this->count_('fireSignatureHelp'));
+        $this->assertSame("()\n", $this->doc->getText(), 'the auto-pair branch ran, not a plain insert');
+        $this->assertSame(1, $this->count_('notifyChange'));
         $actions->handleKey(')', $kb);
         $this->assertSame([[null]], $this->calls['setSignatureHint']);
     }
@@ -495,5 +507,285 @@ final class EditorActionsTest extends TestCase
         $actions->run('goto_matching_bracket');
         $this->assertSame([1, 0], [$this->doc->getCursorLine(), $this->doc->getCursorCol()], 'no bracket → no move');
         $this->assertSame(2, $this->count_('invalidate'), 'no invalidate on the no-op');
+    }
+
+    // --- Mutation-gap coverage --------------------------------------------
+
+    public function testRunFirstMatchChecksEveryActionInTheList(): void
+    {
+        // 'toggle_fold' is the LAST action in CLIPBOARD_LINE_ACTIONS: a loop
+        // that quits on the first non-match (instead of continuing) would
+        // never reach it.
+        $kb = new Keybindings(['toggle_fold' => ['q']]);
+        $actions = $this->actions("if {\n  a\n}\n");
+        $this->doc->setCursor(1, 0); // unambiguously inside the block, not on a boundary line
+        $actions->handleKey('q', $kb);
+
+        $this->assertNotNull($this->foldModel->foldEndAt(0), 'toggle_fold matched despite being last in the list');
+        $this->assertSame("if {\n  a\n}\n", $this->doc->getText(), 'no fallthrough insert of the bound letter');
+    }
+
+    public function testBlockCopyCutRequiresAMatchingVerbEvenWithMultipleCarets(): void
+    {
+        $actions = $this->actions("foo x\nfoo y\n");
+        $this->selectBothFoos();
+
+        $kb = new Keybindings([]); // neither copy nor cut bound
+        $actions->handleKey('q', $kb);
+
+        $this->assertArrayNotHasKey('fireCopy', $this->calls, 'multiple carets alone must not trigger the block copy/cut path');
+    }
+
+    public function testCopyIsANoOpWithoutASelectionOrMultipleCarets(): void
+    {
+        $kb = new Keybindings(['copy' => ['q']]);
+        $actions = $this->actions("alpha\n");
+        $actions->handleKey('q', $kb);
+
+        $this->assertArrayNotHasKey('fireCopy', $this->calls, 'a matching verb alone must not trigger the block copy/cut path');
+    }
+
+    public function testBlockCutReturnsImmediatelyWithoutFallingThrough(): void
+    {
+        $actions = $this->actions("foo x\nfoo y\n");
+        $this->selectBothFoos();
+
+        // 'undo' shares the key with 'cut': if the block-cut branch fell
+        // through (or reported "not consumed") the cascade would reach undo
+        // next and revert the cut.
+        $kb = new Keybindings(['cut' => ['ctrl+x'], 'undo' => ['ctrl+x']]);
+        // selectBothFoos()'s setExtras() already fired one invalidate().
+        $before = $this->count_('invalidate');
+        $actions->handleKey("\x18", $kb);
+
+        $this->assertSame(" x\n y\n", $this->doc->getText(), 'cut applied; a broken return would fall through to undo it');
+        $this->assertSame($before, $this->count_('invalidate'), 'cut returns before the invalidate() call');
+    }
+
+    public function testMultiCaretConsumedMovementStopsTheCascade(): void
+    {
+        $actions = $this->actions("xy\nxy\n");
+        $this->multiCaret->setExtras([Caret::point(1, 0)]);
+
+        $kb = new Keybindings(['cursor_right' => ['q']]);
+        $actions->handleKey('q', $kb);
+
+        $this->assertSame(1, $this->doc->getCursorCol(), 'the multi-caret handler alone must move the caret exactly once');
+    }
+
+    public function testMoveStatementUpMovesTheStatementUpward(): void
+    {
+        $kb = new Keybindings(['move_statement_up' => ['ctrl+shift+up']]);
+        $actions = $this->actions("one\n\ntwo\n");
+        $this->doc->setCursor(2, 0);
+        $actions->handleKey("\x1b[1;6A", $kb);
+
+        $this->assertSame("one\ntwo\n\n", $this->doc->getText(), 'the statement moved up over the blank-line gap');
+        $this->assertSame(1, $this->count_('notifyChange'));
+    }
+
+    public function testMoveStatementConsumedKeyStopsTheCascade(): void
+    {
+        $kb = new Keybindings(['move_statement_down' => ['q']]);
+        $actions = $this->actions("one\n\ntwo\n");
+        $actions->handleKey('q', $kb);
+
+        $this->assertSame("\none\ntwo\n", $this->doc->getText(), 'statement moved once, no fallthrough insert of the bound letter');
+        $this->assertSame(1, $this->count_('notifyChange'));
+    }
+
+    public function testHistoryAndStructureConsumedKeysDoNotFallThroughToInsertion(): void
+    {
+        $kb = new Keybindings(['expand_selection' => ['q']]);
+        $actions = $this->actions("(alpha)\n");
+        $this->doc->setCursor(0, 2);
+        $actions->handleKey('q', $kb);
+
+        $this->assertTrue($this->doc->hasSelection(), 'expand_selection ran');
+        $this->assertSame("(alpha)\n", $this->doc->getText(), 'no fallthrough insert of the bound letter');
+    }
+
+    public function testConflictNavigationRespondsToEitherDirectionAlone(): void
+    {
+        $text = "a\n<<<<<<< ours\nx\n=======\ny\n>>>>>>> theirs\nb\n";
+        // Only 'next_conflict' is bound: an '&&' in place of the real '||'
+        // would require 'prev_conflict' to match too, and never fire.
+        $kb = new Keybindings(['next_conflict' => ['q']]);
+        $actions = $this->actions($text);
+        $actions->handleKey('q', $kb);
+
+        $this->assertSame(1, $this->doc->getCursorLine(), 'jumped to the conflict start');
+    }
+
+    public function testCursorHorizontalMovementDoesNotClearTheSignatureHint(): void
+    {
+        $kb = new Keybindings(['cursor_right' => ['right']]);
+        $actions = $this->actions("ab\n");
+        $actions->handleKey("\x1b[C", $kb);
+
+        $this->assertArrayNotHasKey('setSignatureHint', $this->calls, 'only vertical movement clears the signature hint');
+    }
+
+    public function testMovementClearsSelectionInvalidatesAndStopsTheCascade(): void
+    {
+        $kb = new Keybindings(['cursor_right' => ['q']]);
+        $actions = $this->actions("abcdef\n");
+        $this->doc->setSelectionRange(0, 0, 0, 3);
+        $actions->handleKey('q', $kb);
+
+        $this->assertSame(4, $this->doc->getCursorCol(), 'moved right exactly once from the selection end');
+        $this->assertFalse($this->doc->hasSelection(), 'the pre-existing selection was cleared');
+        $this->assertSame(1, $this->count_('invalidate'));
+        $this->assertSame("abcdef\n", $this->doc->getText(), 'no fallthrough insert of the bound letter');
+    }
+
+    public function testSelectVariantInvalidatesAndStopsTheCascade(): void
+    {
+        $kb = new Keybindings(['select_right' => ['q']]);
+        $actions = $this->actions("abcdef\n");
+        $actions->handleKey('q', $kb);
+
+        $this->assertSame('a', $this->doc->getSelectedText());
+        $this->assertSame(1, $this->count_('invalidate'));
+        $this->assertSame("abcdef\n", $this->doc->getText(), 'no fallthrough insert of the bound letter');
+    }
+
+    public function testPageMovementClearsSelectionInvalidatesAndStopsTheCascade(): void
+    {
+        $kb = new Keybindings(['page_down' => ['q']]);
+        $actions = $this->actions(str_repeat("line\n", times: 20));
+        $this->doc->setSelectionRange(0, 0, 0, 2);
+        $actions->handleKey('q', $kb);
+
+        $this->assertSame(5, $this->doc->getCursorLine());
+        $this->assertFalse($this->doc->hasSelection());
+        $this->assertSame(1, $this->count_('invalidate'));
+        $this->assertSame('line', $this->doc->getLine($this->doc->getCursorLine()), 'no fallthrough insert of the bound letter');
+    }
+
+    public function testIndentWithSelectionNotifiesAndStopsTheCascade(): void
+    {
+        $kb = new Keybindings(['indent' => ['q']]);
+        $actions = $this->actions("one\ntwo\n");
+        $this->doc->setSelectionRange(0, 0, 1, 3);
+        $actions->handleKey('q', $kb);
+
+        $this->assertSame("    one\n    two\n", $this->doc->getText(), 'indented once, no fallthrough insert of the bound letter');
+        $this->assertSame(1, $this->count_('notifyChange'));
+    }
+
+    public function testPlainIndentNotifiesAndStopsTheCascade(): void
+    {
+        $kb = new Keybindings(['indent' => ['q']]);
+        $actions = $this->actions("one\n");
+        $actions->handleKey('q', $kb);
+
+        $this->assertSame("    one\n", $this->doc->getText(), 'plain indent, no fallthrough insert of the bound letter');
+        $this->assertSame(1, $this->count_('notifyChange'));
+    }
+
+    public function testAutoPairBackspaceCollapsesOnlyTheEmptyPair(): void
+    {
+        $kb = new Keybindings(['delete_char_backward' => ['q']]);
+        $actions = $this->actions("y()\n");
+        $this->doc->setCursor(0, 2); // between the empty pair
+        $actions->handleKey('q', $kb);
+
+        $this->assertSame("y\n", $this->doc->getText(), 'only the empty pair collapses, no extra backward delete');
+        $this->assertSame(1, $this->count_('notifyChange'));
+    }
+
+    public function testDeleteCharBackwardRemovesThePrecedingChar(): void
+    {
+        $kb = new Keybindings(['delete_char_backward' => ['ctrl+b']]);
+        $actions = $this->actions("ab\n");
+        $this->doc->setCursor(0, 2);
+        $actions->handleKey("\x02", $kb);
+
+        $this->assertSame("a\n", $this->doc->getText());
+    }
+
+    public function testDeleteCharForwardRemovesTheFollowingChar(): void
+    {
+        $kb = new Keybindings(['delete_char_forward' => ['ctrl+d']]);
+        $actions = $this->actions("ab\n");
+        $this->doc->setCursor(0, 0);
+        $actions->handleKey("\x04", $kb);
+
+        $this->assertSame("b\n", $this->doc->getText());
+    }
+
+    public function testDeleteWordBackwardRemovesThePrecedingWord(): void
+    {
+        $kb = new Keybindings(['delete_word_backward' => ['ctrl+w']]);
+        $actions = $this->actions("foo bar\n");
+        $this->doc->setCursor(0, 7);
+        $actions->handleKey("\x17", $kb);
+
+        $this->assertSame("foo \n", $this->doc->getText());
+    }
+
+    public function testDeleteToLineEndRemovesTheRestOfTheLine(): void
+    {
+        $kb = new Keybindings(['delete_to_line_end' => ['ctrl+k']]);
+        $actions = $this->actions("foo bar\n");
+        $this->doc->setCursor(0, 3);
+        $actions->handleKey("\x0b", $kb);
+
+        $this->assertSame("foo\n", $this->doc->getText());
+    }
+
+    public function testEditingConsumedKeysDoNotFallThroughToInsertion(): void
+    {
+        $kb = new Keybindings(['select_cancel' => ['q']]);
+        $actions = $this->actions("ab\n");
+        $this->doc->setSelectionRange(0, 0, 0, 2);
+        $actions->handleKey('q', $kb);
+
+        $this->assertFalse($this->doc->hasSelection());
+        $this->assertSame("ab\n", $this->doc->getText(), 'no fallthrough insert of the bound letter');
+    }
+
+    public function testRunGotoLinePromptTrimsSurroundingWhitespace(): void
+    {
+        $actions = $this->actions();
+        $actions->run('goto_line');
+        [, , $onSubmit] = $this->calls['openPrompt'][0];
+
+        $onSubmit(' 5 ');
+        $this->assertSame([[4, 0]], $this->calls['jumpTo'], 'surrounding whitespace is trimmed before parsing');
+    }
+
+    public function testRunGotoLinePromptClampsNegativeColumnToZero(): void
+    {
+        $actions = $this->actions();
+        $actions->run('goto_line');
+        [, , $onSubmit] = $this->calls['openPrompt'][0];
+
+        $onSubmit('5:0'); // column 0 (1-based) - 1 would be negative
+        $this->assertSame([[4, 0]], $this->calls['jumpTo'], 'the column clamps to 0, never negative');
+    }
+
+    public function testRunGotoLinePromptCastsBeforeArithmeticOnOverflow(): void
+    {
+        $actions = $this->actions();
+        $actions->run('goto_line');
+        [, , $onSubmit] = $this->calls['openPrompt'][0];
+
+        // Bigger than PHP_INT_MAX: without the (int) cast, arithmetic on the
+        // numeric string promotes to float, and jumpTo()'s strict int params
+        // would throw a TypeError.
+        $onSubmit('99999999999999999999:99999999999999999999');
+        $this->assertSame([[9_223_372_036_854_775_806, 9_223_372_036_854_775_806]], $this->calls['jumpTo']);
+    }
+
+    public function testAutoTriggerIgnoresTextAfterTheCursor(): void
+    {
+        $kb = new Keybindings([]);
+        $actions = $this->actions("XYZ\n");
+        $actions->handleKey('-', $kb);
+        $actions->handleKey('>', $kb);
+
+        $this->assertSame(1, $this->count_('requestCompletion'), 'the prefix must stop at the cursor, not include the rest of the line');
     }
 }

@@ -134,6 +134,44 @@ final class StructuralSelectionTest extends TestCase
         $this->assertNull($next, 'clamped range already spans the document');
     }
 
+    public function testBracketsAfterAnEarlierStringLiteralAreStillScanned(): void
+    {
+        // Finishing a string literal must resume scanning, not stop the whole
+        // pass: a bracket pair that comes later in the text must still be found.
+        $this->assertSame([4, 7], StructuralSelection::expand("'x' (y)", 5, 6));
+    }
+
+    public function testEscapeSkipAdvancesByExactlyTwoBytes(): void
+    {
+        // Skipping one byte too many after a backslash escape would overshoot
+        // the real closing quote entirely — text between the escape and a
+        // second, unrelated quote right after it must not be swallowed.
+        $this->assertSame([1, 4], StructuralSelection::expand("'+\\''+++", 2, 2));
+    }
+
+    public function testEmptyStringLiteralIsStillRecognizedAsAPair(): void
+    {
+        // The scan must start checking for the closing quote at the very next
+        // byte: skipping it would miss a zero-length '' literal entirely.
+        $this->assertSame([1, 3], StructuralSelection::expand("a''b", 2, 2));
+    }
+
+    public function testCaretRightBeforeAnOpeningBracketDoesNotTreatItAsEnclosing(): void
+    {
+        // The caret sits exactly AT the opening "(" (offset 1), not inside it.
+        // A non-strict comparison would wrongly treat that bracket pair as
+        // enclosing the caret and jump straight to its contents, skipping the
+        // line-level step of the ladder.
+        $this->assertSame([0, 7], StructuralSelection::expand(' (abc)y'."\n".'def', 1, 1));
+    }
+
+    public function testNegativeStartClampsToZeroNotNegativeOne(): void
+    {
+        // A start clamped to -1 instead of 0 would make later substr() calls
+        // count from the end of the string, silently corrupting the range.
+        $this->assertSame([0, 5], StructuralSelection::expand('hello', -3, 2));
+    }
+
     public function testEscapedQuoteInsideStringIsSkipped(): void
     {
         $text = "s = 'a\\'b'";

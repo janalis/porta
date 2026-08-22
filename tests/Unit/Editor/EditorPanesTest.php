@@ -80,4 +80,23 @@ final class EditorPanesTest extends TestCase
         $this->assertSame($theirs, $panes->paneFor('theirs'));
         $this->assertSame($core, $panes->paneFor('help'), 'core registrations have no owner and survive');
     }
+
+    public function testForgettingAPluginRemovesItsPaneEvenWhenAnEarlierEntryBelongsToSomeoneElse(): void
+    {
+        // A `continue`/`break` mix-up in the loop would stop scanning as soon
+        // as it hit an owner it must skip — silently keeping every later
+        // match. Registering the non-matching owner FIRST is what would
+        // expose that: `mine` must still be dropped even though it comes
+        // after `theirs` in iteration order.
+        $panes = new EditorPanes();
+        $theirs = new TestPane('theirs');
+        $mine = new TestPane('mine');
+        $panes->register($theirs, static fn (): string => '', 'their-plugin');
+        $panes->register($mine, static fn (): string => '', 'my-plugin');
+
+        $panes->forget('my-plugin');
+
+        $this->assertNull($panes->paneFor('mine'), 'a match after a non-match must still be dropped');
+        $this->assertSame($theirs, $panes->paneFor('theirs'));
+    }
 }

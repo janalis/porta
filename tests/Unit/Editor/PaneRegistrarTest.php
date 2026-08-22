@@ -104,4 +104,46 @@ final class PaneRegistrarTest extends TestCase
         $this->assertNull($this->registry->paneFor('demo'));
         $this->assertNotSame([], $this->manager->warnings(), 'the failure is reported, not swallowed');
     }
+
+    public function testAFailingRegistrationDoesNotStopLaterOnesFromLanding(): void
+    {
+        // A `continue`/`break` mix-up in the loop would abandon every
+        // registration after the first failure instead of only skipping it.
+        // Committing a throwing plugin BEFORE a good one is what would
+        // expose that: the second pane must still register.
+        $settings = new PluginSettings('/p', []);
+        $this->manager = new PluginManager(new EventDispatcher(), $settings);
+        $bad = new PluginApi('bad-plugin', $this->manager, '/p', $settings);
+        $bad->registerPane('bad', static fn (PaneServices $services): EditorPaneWidget => throw new \RuntimeException('no pane today'), static fn (string $path): string => '');
+        $this->manager->commit($bad);
+        $pane = new TestPane('good');
+        $good = new PluginApi('good-plugin', $this->manager, '/p', $settings);
+        $good->registerPane('good', static fn (PaneServices $services): EditorPaneWidget => $pane, static fn (string $path): string => '');
+        $this->manager->commit($good);
+
+        $this->drain()->register();
+
+        $this->assertNull($this->registry->paneFor('bad'));
+        $this->assertSame($pane, $this->registry->paneFor('good'), 'a later registration must still land after an earlier failure');
+    }
+
+    public function testAWronglyTypedFactoryDoesNotStopLaterOnesFromLanding(): void
+    {
+        // Same `continue`/`break` risk, at the other refusal site: a factory
+        // that returns the wrong type must only cost its own pane.
+        $settings = new PluginSettings('/p', []);
+        $this->manager = new PluginManager(new EventDispatcher(), $settings);
+        $bad = new PluginApi('bad-plugin', $this->manager, '/p', $settings);
+        $bad->registerPane('bad', static fn (PaneServices $services): string => 'not a pane', static fn (string $path): string => '');
+        $this->manager->commit($bad);
+        $pane = new TestPane('good');
+        $good = new PluginApi('good-plugin', $this->manager, '/p', $settings);
+        $good->registerPane('good', static fn (PaneServices $services): EditorPaneWidget => $pane, static fn (string $path): string => '');
+        $this->manager->commit($good);
+
+        $this->drain()->register();
+
+        $this->assertNull($this->registry->paneFor('bad'));
+        $this->assertSame($pane, $this->registry->paneFor('good'), 'a later registration must still land after an earlier type refusal');
+    }
 }

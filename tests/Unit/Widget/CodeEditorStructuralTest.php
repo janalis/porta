@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\SelectionMode;
+use Porta\Tests\Support\Probe;
 use Porta\Widget\CodeEditorWidget;
 
 final class CodeEditorStructuralTest extends TestCase
@@ -47,6 +48,21 @@ final class CodeEditorStructuralTest extends TestCase
         $this->assertFalse($doc->hasSelection());
         $editor->handleInput("\x1b[119;6u"); // stack empty: no-op
         $this->assertFalse($doc->hasSelection());
+    }
+
+    public function testExpandAndShrinkEachRequestARender(): void
+    {
+        $editor = $this->editor("foo(bar)\nbaz");
+        $doc = $editor->getDocument();
+        $doc->setCursor(0, 5); // inside "bar"
+
+        $revision = $editor->getRenderRevision();
+        $editor->handleInput("\x17"); // ctrl+w: expand
+        $this->assertGreaterThan($revision, $editor->getRenderRevision(), 'expanding must request a redraw');
+
+        $revision = $editor->getRenderRevision();
+        $editor->handleInput("\x1b[119;6u"); // ctrl+shift+w: shrink
+        $this->assertGreaterThan($revision, $editor->getRenderRevision(), 'shrinking must request a redraw');
     }
 
     public function testExpandResetsAfterManualCaretMove(): void
@@ -119,6 +135,46 @@ final class CodeEditorStructuralTest extends TestCase
         $editor->handleInput("\r"); // accept
 
         $this->assertStringContainsString('if (doStuff();) {', $doc->getText());
+    }
+
+    public function testSurroundSelectionWithTryCatch(): void
+    {
+        // The last item in the menu: a removal that shifts only trailing
+        // entries would not be caught by the earlier "if" snippet test, which
+        // only navigates partway down the list.
+        $editor = $this->editor('doStuff();');
+        $doc = $editor->getDocument();
+        $doc->selectAll();
+
+        $editor->handleInput("\x1b\x14"); // open menu
+        $editor->handleInput("\x1b[B"); // parens -> brackets
+        $editor->handleInput("\x1b[B"); // -> braces
+        $editor->handleInput("\x1b[B"); // -> single quotes
+        $editor->handleInput("\x1b[B"); // -> double quotes
+        $editor->handleInput("\x1b[B"); // -> if
+        $editor->handleInput("\x1b[B"); // -> foreach
+        $editor->handleInput("\x1b[B"); // -> try/catch
+        $editor->handleInput("\r"); // accept
+
+        $this->assertStringContainsString("try {\ndoStuff();\n} catch", $doc->getText());
+    }
+
+    public function testSurroundMenuItemsCarryAHintKeyThePickerLayoutReadsDirectly(): void
+    {
+        // PickerLayout reads $item['hint'] unguarded; a surround item missing
+        // that key would only surface as a warning once the picker is actually
+        // laid out, not from picking an item.
+        $editor = $this->editor('hello world');
+        $doc = $editor->getDocument();
+        $doc->beginSelect();
+        $doc->setCursor(0, 5, selection: SelectionMode::Keep);
+
+        $editor->handleInput("\x1b\x14"); // open the surround menu
+
+        $host = Probe::object($editor, 'overlayHost');
+        $host->layout([0, 0, 24, 80]);
+
+        $this->assertTrue(true, 'laying out the open picker must not warn on a missing hint key');
     }
 
     public function testSurroundWithNoSelectionDoesNothing(): void

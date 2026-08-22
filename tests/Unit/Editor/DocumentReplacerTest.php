@@ -10,6 +10,7 @@ use Porta\Editor\DocumentReplacer;
 use Porta\Editor\EditorInvalidator;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
+use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
@@ -142,5 +143,42 @@ final class DocumentReplacerTest extends TestCase
 
         $this->assertTrue($replacer->replace($buffer, "edited\n"));
         $this->assertTrue($buffer->document->isDirty());
+    }
+
+    public function testTheServerHearsAboutTheSwapAsADidChange(): void
+    {
+        // The other half of the contract this class exists to keep: a whole-
+        // document swap must reach the language server, or its copy silently
+        // drifts from ours.
+        $this->buffers = new BufferManager();
+        $client = null;
+        $lsp = new LspSessionPool(
+            '/p',
+            new FixedActiveFile(),
+            new Translator('en'),
+            static function () use (&$client): FakeLspClient {
+                return $client = new FakeLspClient();
+            },
+        );
+        $lsp->configure(
+            ['php' => ['command' => ['php-ls'], 'name' => 'php-ls']],
+            static function (string $line): void {},
+            static function (array $params): void {},
+            static fn (array $edit): bool => false,
+        );
+        $invalidations = new class implements EditorInvalidator {
+            public function invalidate(): void {}
+        };
+        $replacer = new DocumentReplacer($this->buffers, $invalidations, $lsp);
+        $buffer = $this->buffers->open('/p/a.php', "one\n");
+        $lsp->notifyDidOpen('/p/a.php', "one\n", 'php', 1); // starts the session
+
+        $replacer->replace($buffer, "two\n");
+
+        $this->assertNotNull($client);
+        $this->assertSame(
+            ['textDocument/didOpen', 'textDocument/didChange'],
+            array_column($client->notifications, 'method'),
+        );
     }
 }

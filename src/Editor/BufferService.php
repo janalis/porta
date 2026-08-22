@@ -19,6 +19,7 @@ use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\Uri;
 use Porta\Support\DiagnosticLog;
+use Porta\Support\Files;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
@@ -127,7 +128,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
 
             return;
         }
-        if ((int) filesize($path) > (2 * 1024 * 1024)) {
+        if ((int) filesize($path) > Files::MAX_TEXT_BYTES) {
             $this->notifier->flash($this->translator->trans('File too large (> 2 MB)'));
 
             return;

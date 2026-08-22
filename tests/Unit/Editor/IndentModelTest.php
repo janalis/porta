@@ -39,6 +39,30 @@ final class IndentModelTest extends TestCase
         $this->assertSame(1, $indent->tabWidth());
     }
 
+    public function testSetWithTabsKindSwitchesToTabs(): void
+    {
+        $indent = new IndentModel(usesTabs: false, indentSize: 4, tabWidth: 4);
+        $indent->set(IndentKind::Tabs, 4);
+
+        $this->assertTrue($indent->usesTabs());
+    }
+
+    public function testUnitForAZeroIndentSizeIsEmpty(): void
+    {
+        // Not reachable through set() (which clamps to >=1), but the field is
+        // otherwise a plain int — unit() must not turn 0 into a phantom space.
+        $indent = new IndentModel(usesTabs: false, indentSize: 0, tabWidth: 1);
+
+        $this->assertSame('', $indent->unit());
+    }
+
+    public function testUnitForANegativeIndentSizeIsStillEmptyNotNegativeRepeat(): void
+    {
+        $indent = new IndentModel(usesTabs: false, indentSize: -1, tabWidth: 1);
+
+        $this->assertSame('', $indent->unit());
+    }
+
     public function testApplyEditorConfigOverridesOnlySpecifiedFields(): void
     {
         $indent = new IndentModel(usesTabs: false, indentSize: 4, tabWidth: 4);

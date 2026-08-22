@@ -81,6 +81,29 @@ final class TextDiffTest extends TestCase
         $this->assertSame(['line' => 0, 'character' => 4], $change['range']['end']);
     }
 
+    public function testALeadingStrayContinuationByteDoesNotBackUpPastZero(): void
+    {
+        // `$new` starts with a stray UTF-8 continuation byte (invalid on its
+        // own) and `$old` is empty, so the common prefix is already 0 — the
+        // "back up onto a lead byte" loop must not decrement past that.
+        $change = TextDiff::incrementalChange('', "\x80abc");
+
+        $this->assertSame(0, $change['rangeLength']);
+        $this->assertSame("\x80abc", $change['text']);
+    }
+
+    public function testAContinuationByteWithItsLowBitSetStillBacksUpThePrefix(): void
+    {
+        // 0x81 (10000001) is a continuation byte by its top two bits alone;
+        // a mask that also examines the low bit would wrongly treat it as a
+        // lead byte and stop backing up one byte too early.
+        $change = TextDiff::incrementalChange('ab', "a\x81");
+
+        $this->assertSame(['line' => 0, 'character' => 0], $change['range']['start']);
+        $this->assertSame(2, $change['rangeLength']);
+        $this->assertSame("a\x81", $change['text']);
+    }
+
     public function testMultibyteCharsSharingTrailingByteAreNotMisaligned(): void
     {
         // "é" (0xC3 0xA9) -> "ĩ" (0xC4 0xA9): the shared trailing 0xA9 byte is a

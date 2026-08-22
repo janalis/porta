@@ -138,6 +138,55 @@ final class UndoHistoryTest extends TestCase
         $this->assertNull($h->redo($this->snap(9)));
     }
 
+    public function testEachSeparateCompoundTakesItsOwnSnapshot(): void
+    {
+        // A stale `compoundSnapshotted` flag from an earlier compound must not
+        // survive into a later, unrelated one — each begin/end group is its
+        // own undo step.
+        $h = new UndoHistory();
+        $h->beginCompound();
+        $h->push($this->snap(1), 'k');
+        $h->endCompound();
+        $h->beginCompound();
+        $h->push($this->snap(2), 'k');
+        $h->endCompound();
+
+        $this->assertSame($this->snap(2), $h->undo($this->snap(9)));
+        $this->assertSame($this->snap(1), $h->undo($this->snap(9)), 'the second compound stored its own snapshot');
+    }
+
+    public function testAnUnmatchedEndCompoundDoesNotUnderflowDepth(): void
+    {
+        // endCompound() guards against going negative; an unbalanced extra
+        // call must not leave depth corrupted for the next begin/end pair.
+        $h = new UndoHistory();
+        $h->endCompound(); // no matching begin — must be a no-op
+        $h->beginCompound();
+
+        $this->assertTrue($h->inCompound());
+    }
+
+    public function testEditsExactlyOneSecondApartDoNotCoalesce(): void
+    {
+        $clock = new MockClock('@1000.000000');
+        $h = new UndoHistory($clock);
+
+        $h->push($this->snap(1), 'insert');
+        $clock->sleep(1.0); // exactly the coalescing boundary — must NOT merge
+        $h->push($this->snap(2), 'insert');
+
+        $this->assertSame($this->snap(2), $h->undo($this->snap(9)));
+        $this->assertSame($this->snap(1), $h->undo($this->snap(9)), 'both edits landed as separate steps');
+    }
+
+    public function testRedoOnAnEmptyStackDoesNotPushOntoUndo(): void
+    {
+        $h = new UndoHistory();
+        $this->assertNull($h->redo($this->snap(9)));
+
+        $this->assertNull($h->undo($this->snap(1)), 'a no-op redo must not have pushed onto the undo stack');
+    }
+
     public function testCapEvictsOldestBeyondLimit(): void
     {
         $clock = new MockClock('@0.000000');
