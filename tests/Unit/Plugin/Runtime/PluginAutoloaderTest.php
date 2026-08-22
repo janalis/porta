@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Plugin\Runtime\PluginAutoloader;
 use Porta\Plugin\Runtime\PluginManifest;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\TempProject;
 
 /** Classes shipped by a plugin, from a directory composer knows nothing about. */
 final class PluginAutoloaderTest extends TestCase
@@ -137,6 +138,19 @@ final class PluginAutoloaderTest extends TestCase
         PluginAutoloader::register(PluginManifest::beside(self::vendored()));
 
         $this->assertCount(1, self::registered()['Acme\\Vendored\\'] ?? [], 'the manifest and the dump agree on one directory');
+    }
+
+    public function testAClassAlreadyClaimedByAnEarlierPluginsClassmapKeepsItsFirstFile(): void
+    {
+        $project = new TempProject();
+        $project->write('a/vendor/composer/autoload_classmap.php', "<?php\nreturn ['Acme\\\\Shared\\\\Thing' => __DIR__.'/../../real.php'];\n");
+        $project->write('a/real.php', "<?php\nnamespace Acme\\Shared;\nfinal class Thing { public static function text(): string { return 'first-plugin-wins'; } }\n");
+        $project->write('b/vendor/composer/autoload_classmap.php', "<?php\nreturn ['Acme\\\\Shared\\\\Thing' => __DIR__.'/../../does-not-exist.php'];\n");
+
+        PluginAutoloader::register(new PluginManifest('a', $project->path('a')));
+        PluginAutoloader::register(new PluginManifest('b', $project->path('b')));
+
+        $this->assertSame('first-plugin-wins', \Acme\Shared\Thing::text(), 'the later plugin cannot steal a class name the first already claimed');
     }
 
     public function testAMapShapeComposerNeverEmitsIsIgnoredEntryByEntry(): void

@@ -250,4 +250,36 @@ final class PluginManifestTest extends TestCase
         $this->assertFalse($this->composerPlugin($project, 'junk', 'not json at all')->needsInstall());
         $this->assertFalse($this->composerPlugin($project, 'scalar', '"a string"')->needsInstall());
     }
+
+    public function testHasLegacyManifestDetectsAStalePluginJson(): void
+    {
+        $project = new TempProject();
+        $manifest = PluginManifest::beside($this->pluginDir($project, 'nolegacy', null));
+        $this->assertFalse($manifest->hasLegacyManifest());
+
+        file_put_contents($project->path('plugins/nolegacy/plugin.json'), data: '{}');
+        $this->assertTrue($manifest->hasLegacyManifest(), 'a plugin.json beside it, even discovered after construction, is still a stale file on disk');
+    }
+
+    public function testShadowedPackagesNamesOnlyThePackagesTheHostAlsoShips(): void
+    {
+        $project = new TempProject();
+        $manifest = $this->composerPlugin($project, 'vendoring', '{}', 'vendor/composer');
+        file_put_contents(
+            $project->path('plugins/vendoring/vendor/composer/installed.json'),
+            data: json_encode(['packages' => [['name' => 'symfony/filesystem'], ['name' => 'acme/unknown'], ['not' => 'a package']]]),
+        );
+
+        $this->assertSame(['symfony/filesystem'], $manifest->shadowedPackages(), 'only the host-shipped one, and a malformed entry is skipped rather than crashing');
+    }
+
+    public function testShadowedPackagesIsEmptyWithoutAVendorDirOrAReadableInstalledJson(): void
+    {
+        $project = new TempProject();
+        $this->assertSame([], $this->composerPlugin($project, 'novendor', '{}')->shadowedPackages(), 'no vendor/ at all');
+
+        $withVendor = $this->composerPlugin($project, 'badjson', '{}', 'vendor/composer');
+        file_put_contents($project->path('plugins/badjson/vendor/composer/installed.json'), data: 'not json at all');
+        $this->assertSame([], $withVendor->shadowedPackages(), 'an unreadable installed.json degrades to none, not a crash');
+    }
 }

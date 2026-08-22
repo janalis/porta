@@ -6,12 +6,20 @@ namespace Porta\Tests\Unit\Plugin\Api;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\Document;
+use Porta\Event\ActiveBufferChanged;
+use Porta\Event\BufferOpened;
+use Porta\Event\BufferReloaded;
 use Porta\Event\BufferSaved;
+use Porta\Event\ThemeChanged;
 use Porta\Event\WorkingTreeChanged;
+use Porta\Highlight\DarkTerminalTheme;
 use Porta\I18n\Translator;
+use Porta\Overlay\State\ToastCenter;
+use Porta\Overlay\State\ToastSeverity;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
 use Porta\Plugin\Runtime\PluginManager;
@@ -20,6 +28,7 @@ use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Support\Clipboard;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\EditorState;
+use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RecordingChangeMarkSink;
@@ -30,6 +39,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestTui;
+use Porta\Ui\Theme\Theme;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -664,5 +674,377 @@ final class PluginApiTest extends TestCase
         $this->expectException(PluginException::class);
         $this->expectExceptionMessage('Listeners must be registered during activate()');
         $api->onFileSaved(static fn () => null);
+    }
+
+    /** A manually-wired runtime for tests that need a collaborator the shared {@see api()} helper does not expose. */
+    private function wiredApi(Notifier $notifier, MenuFileContext $menuFile, BufferManager $buffers, CodeEditorWidget $editor, PluginManager $manager, ?StatusBarWidget $statusBar = null): PluginApi
+    {
+        $tui = TestTui::create(100, 24);
+        $manager->wireRuntime(new PluginRuntime(
+            $notifier,
+            new Translator('en'),
+            $editor,
+            new RecordingFileOpener(),
+            $tui,
+            new RecordingDiagnosticsSink(),
+            $editor,
+            new RecordingChangeMarkSink(),
+            $buffers,
+            TestDockTools::controller(),
+            TestDockTools::replacer($buffers),
+            $editor,
+            $menuFile,
+            new ViewRegistry(),
+            new Clipboard($tui),
+            $statusBar ?? new StatusBarWidget(),
+            $editor,
+        ));
+
+        return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
+    }
+
+    public function testSyntaxThemeReturnsTheGivenThemeOrDefaultsToDark(): void
+    {
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
+        $noTheme = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
+        $this->assertInstanceOf(DarkTerminalTheme::class, $noTheme->syntaxTheme(), 'no theme given: falls back to the default');
+
+        $theme = new DarkTerminalTheme();
+        $withTheme = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []), $theme);
+        $this->assertSame($theme, $withTheme->syntaxTheme(), 'a given theme is returned as-is, not wrapped');
+    }
+
+    public function testAdoptCommandTakesACoreAdoptableIdBareWithCoreLabelAndValidates(): void
+    {
+        $api = $this->api(wired: Presence::Without);
+        $api->adoptCommand('ide_todo', static function (): void {});
+
+        $this->assertSame('ide_todo', $api->bufferedCommands()[0]['id'], 'bare, not namespaced');
+        $this->assertSame('Show TODOs', $api->bufferedCommands()[0]['label'], 'the label comes from the core catalog');
+        $this->assertSame([], $api->bufferedCommands()[0]['keys'], 'defaults already live in ActionCatalog::ideDefaults()');
+
+        $api->addMenuItem('ide_todo');
+        $this->assertSame('ide_todo', $api->bufferedMenuItems()[0]['id'], 'an adopted id is not namespaced in its menu spec either');
+
+        try {
+            $api->adoptCommand('ide_todo', static function (): void {});
+            $this->fail('a duplicate adopted id must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('Duplicate command id', $e->getMessage());
+        }
+        try {
+            $api->adoptCommand('cursor_up', static function (): void {});
+            $this->fail('a non-adoptable core id must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('not adoptable', $e->getMessage());
+        }
+    }
+
+    public function testRegisterHighlighterDefaultsToPluginNameValidatesAndSupportsBothLanguageShapes(): void
+    {
+        $api = $this->api(wired: Presence::Without);
+        $highlight = static function (string $content, string $language, \Closure $deliver): void {};
+
+        $api->registerHighlighter('Demo', ['php', 'JS'], $highlight);
+        $buffered = $api->bufferedHighlighters();
+        $this->assertSame('demo', $buffered[0]['id'], 'no id given: defaults to the plugin name');
+        $this->assertSame(['php', 'JS'], $buffered[0]['languages'](), 'an array is wrapped in a closure returning it verbatim');
+
+        $closureLangs = static fn (): array => ['python'];
+        $api->registerHighlighter('Demo2', $closureLangs, $highlight, id: 'demo2');
+        $this->assertSame($closureLangs, $api->bufferedHighlighters()[1]['languages'], 'a closure is passed through, not re-wrapped');
+
+        try {
+            $api->registerHighlighter('Bad', ['x'], $highlight, id: 'bad id');
+            $this->fail('an invalid highlighter id must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('Invalid highlighter id', $e->getMessage());
+        }
+        try {
+            $api->registerHighlighter('Empty', [], $highlight);
+            $this->fail('an empty language list must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('at least one language', $e->getMessage());
+        }
+    }
+
+    public function testRegisterViewerValidatesAndTranslatesAnArrayClaimIntoACaseInsensitivePredicate(): void
+    {
+        $api = $this->api(wired: Presence::Without);
+        $claimsFn = static fn (string $path): bool => true;
+
+        $api->registerViewer('img', ['PNG', 'jpg']);
+        $buffered = $api->bufferedViewers();
+        $this->assertTrue($buffered[0]['claims']('a.PNG'), 'matches case-insensitively despite the declared case');
+        $this->assertTrue($buffered[0]['claims']('a.jpg'));
+        $this->assertFalse($buffered[0]['claims']('a.gif'));
+
+        $api->registerViewer('closurey', $claimsFn);
+        $this->assertSame($claimsFn, $api->bufferedViewers()[1]['claims'], 'a closure predicate is passed through, not wrapped');
+
+        try {
+            $api->registerViewer('bad id', ['x']);
+            $this->fail('an invalid viewer id must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('Invalid viewer id', $e->getMessage());
+        }
+        try {
+            $api->registerViewer('empty', []);
+            $this->fail('an empty claims list must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('at least one file extension', $e->getMessage());
+        }
+    }
+
+    public function testRegisterPaneValidatesTheId(): void
+    {
+        $api = $this->api(wired: Presence::Without);
+        $pane = static fn (): ?object => null;
+        $load = static fn (string $path): mixed => null;
+
+        $api->registerPane('graph', $pane, $load);
+        $this->assertSame('graph', $api->bufferedPanes()[0]['id']);
+
+        try {
+            $api->registerPane('bad id', $pane, $load);
+            $this->fail('an invalid pane id must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('Invalid pane id', $e->getMessage());
+        }
+    }
+
+    public function testRegisterListToolValidatesIdDuplicateAndTitle(): void
+    {
+        $api = $this->api(wired: Presence::Without);
+        $api->registerListTool('todo', 'TODO');
+
+        try {
+            $api->registerListTool('bad id', 'X');
+            $this->fail('an invalid list tool id must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('Invalid list tool id', $e->getMessage());
+        }
+        try {
+            $api->registerListTool('todo', 'Again');
+            $this->fail('a duplicate list tool id must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('Duplicate list tool id', $e->getMessage());
+        }
+        try {
+            $api->registerListTool('other', '   ');
+            $this->fail('a whitespace-only title must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('needs a title', $e->getMessage());
+        }
+    }
+
+    public function testRegisterDebugAdapterBuffersAndValidatesTheLanguageId(): void
+    {
+        $api = $this->api(wired: Presence::Without);
+        $resolve = static fn (): array => ['/bin/dap'];
+        $api->registerDebugAdapter('php', $resolve);
+
+        $buffered = $api->bufferedDebugAdapters();
+        $this->assertSame('php', $buffered[0]['languageId']);
+        $this->assertSame(['/bin/dap'], $buffered[0]['resolve']());
+
+        try {
+            $api->registerDebugAdapter('bad:id', static fn (): ?array => null);
+            $this->fail('an invalid language id must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('Invalid language id', $e->getMessage());
+        }
+    }
+
+    public function testRegisterMenuBuffersAContributionAndRequiresATitle(): void
+    {
+        $api = $this->api(wired: Presence::Without);
+        $visible = static fn (): bool => true;
+
+        $api->registerMenu('Tools', 'View', ['i:demo:hello'], $visible, 'vcs', ['i:demo:hello']);
+
+        $contribution = $api->bufferedMenus()[0]['contribution'];
+        $this->assertSame('Tools', $contribution->title);
+        $this->assertSame('View', $contribution->after);
+        $this->assertSame(['i:demo:hello'], $contribution->items);
+        $this->assertSame($visible, $contribution->visible);
+        $this->assertSame('vcs', $contribution->viewId);
+        $this->assertSame(['i:demo:hello'], $contribution->viewSafe);
+
+        try {
+            $api->registerMenu('', 'View', []);
+            $this->fail('an empty title must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('needs a title', $e->getMessage());
+        }
+    }
+
+    public function testRefreshStatusSegmentsInvalidatesTheBar(): void
+    {
+        $tui = TestTui::create(100, 24);
+        $statusBar = new StatusBarWidget();
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
+        $api = $this->wiredApi(new Notifier(new StatusBarWidget(), $tui), new MenuFileContext(), new BufferManager(), new CodeEditorWidget(), $manager, $statusBar);
+        $before = $statusBar->getRenderRevision();
+
+        $api->refreshStatusSegments();
+
+        $this->assertGreaterThan($before, $statusBar->getRenderRevision(), 'the cached bar line is dropped so the next frame re-pulls segments');
+    }
+
+    public function testRegisterActionsValidatesEachIdAndRejectsACoreCollision(): void
+    {
+        $api = $this->api(wired: Presence::Without);
+        $api->registerActions(['zoom_in' => 'Zoom In', 'zoom_out' => 'Zoom Out']);
+
+        $buffered = $api->bufferedActions();
+        $this->assertSame(['zoom_in', 'zoom_out'], array_column($buffered, 'id'));
+        $this->assertSame(['Zoom In', 'Zoom Out'], array_column($buffered, 'label'));
+
+        try {
+            $api->registerActions(['bad id' => 'X']);
+            $this->fail('an invalid action id must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('Invalid action id', $e->getMessage());
+        }
+        try {
+            $api->registerActions(['cursor_up' => 'X']);
+            $this->fail('a core action id must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('is a core action', $e->getMessage());
+        }
+    }
+
+    public function testRegisterTokenSpansValidatesAndSupportsBothLanguageShapes(): void
+    {
+        $api = $this->api(wired: Presence::Without);
+        $classify = static fn (string $content, string $language): ?array => null;
+
+        $api->registerTokenSpans(['php'], $classify);
+        $buffered = $api->bufferedTokenSpans();
+        $this->assertSame(['php'], $buffered[0]['languages']());
+        $this->assertSame($classify, $buffered[0]['classify']);
+
+        $closureLangs = static fn (): array => ['*'];
+        $api->registerTokenSpans($closureLangs, $classify);
+        $this->assertSame($closureLangs, $api->bufferedTokenSpans()[1]['languages'], 'a closure is passed through, not re-wrapped');
+
+        try {
+            $api->registerTokenSpans([], $classify);
+            $this->fail('an empty language list must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('at least one language', $e->getMessage());
+        }
+    }
+
+    public function testContextFilePrefersTheRightClickedPathOverTheActiveFile(): void
+    {
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
+        $editor = new CodeEditorWidget();
+        $buffers = new BufferManager();
+        $menuFile = new MenuFileContext();
+        $tui = TestTui::create(100, 24);
+        $api = $this->wiredApi(new Notifier(new StatusBarWidget(), $tui), $menuFile, $buffers, $editor, $manager);
+
+        $this->assertNull($api->contextFile(), 'nothing open at all');
+
+        $editor->showDocument('/p/a.php', new Document("x\n"));
+        $buffers->open('/p/a.php', "x\n");
+        $this->assertSame('/p/a.php', $api->contextFile(), 'falls back to the active file outside a context-menu invocation');
+
+        $menuFile->with('/p/other.php', function () use ($api): void {
+            $this->assertSame('/p/other.php', $api->contextFile(), 'the right-clicked path wins over the active file');
+        });
+
+        $this->assertSame('/p/a.php', $api->contextFile(), 'and reverts to the active file once the invocation ends');
+    }
+
+    public function testNotifySendsTheGivenSeverityToTheToastCenter(): void
+    {
+        $tui = TestTui::create(100, 24);
+        $toasts = new ToastCenter(new FakeScheduler(), $tui);
+        $notifier = new Notifier(new StatusBarWidget(), $tui, toasts: $toasts);
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
+        $api = $this->wiredApi($notifier, new MenuFileContext(), new BufferManager(), new CodeEditorWidget(), $manager);
+
+        $api->notify('careful', ToastSeverity::Warn);
+
+        $pushed = $toasts->toasts();
+        $this->assertCount(1, $pushed);
+        $this->assertSame('careful', $pushed[0]->message);
+        $this->assertSame(ToastSeverity::Warn, $pushed[0]->severity, 'the given severity travels, not always Info');
+    }
+
+    public function testOnRejectsAnEventClassThatIsNotPluginObservable(): void
+    {
+        $api = $this->api(wired: Presence::Without);
+
+        try {
+            $api->on(BufferOpened::class, static function (): void {});
+            $this->fail('a non-observable event class must throw');
+        } catch (PluginException $e) {
+            $this->assertStringContainsString('not a plugin-observable event', $e->getMessage());
+        }
+
+        $api->on(WorkingTreeChanged::class, static function (): void {});
+        $this->assertSame(WorkingTreeChanged::class, $api->bufferedHooks()[0][0], 'an observable class is accepted verbatim');
+    }
+
+    public function testNamedEventHooksMapTheirEventToTheDocumentedListenerArgument(): void
+    {
+        $api = $this->api(wired: Presence::Without);
+        $received = [];
+
+        $api->onFileOpened(static function (string $path) use (&$received): void {
+            $received['opened'] = $path;
+        });
+        $api->onFileReloaded(static function (string $path) use (&$received): void {
+            $received['reloaded'] = $path;
+        });
+        $api->onBufferSwitched(static function (string $path) use (&$received): void {
+            $received['switched'] = $path;
+        });
+        $api->onThemeChanged(static function (string $theme) use (&$received): void {
+            $received['theme'] = $theme;
+        });
+
+        $byClass = [];
+        foreach ($api->bufferedHooks() as [$class, $listener]) {
+            $byClass[$class] = $listener;
+        }
+
+        $buffer = new Buffer('/p/a.php', new Document("x\n"));
+        $byClass[BufferOpened::class](new BufferOpened($buffer));
+        $byClass[BufferReloaded::class](new BufferReloaded($buffer));
+        $byClass[ActiveBufferChanged::class](new ActiveBufferChanged('/p/b.php'));
+        $byClass[ThemeChanged::class](new ThemeChanged(Theme::Dark));
+
+        $this->assertSame(
+            [
+                'opened' => '/p/a.php',
+                'reloaded' => '/p/a.php',
+                'switched' => '/p/b.php',
+                'theme' => 'dark',
+            ],
+            $received,
+        );
+    }
+
+    public function testEmitDispatchesOnTheLiveBusOnceWired(): void
+    {
+        $dispatcher = new EventDispatcher();
+        $manager = new PluginManager($dispatcher, new PluginSettings('/p', []));
+        $tui = TestTui::create(100, 24);
+        $api = $this->wiredApi(new Notifier(new StatusBarWidget(), $tui), new MenuFileContext(), new BufferManager(), new CodeEditorWidget(), $manager);
+
+        $received = null;
+        $dispatcher->addListener(WorkingTreeChanged::class, static function (WorkingTreeChanged $event) use (&$received): void {
+            $received = $event;
+        });
+
+        $event = new WorkingTreeChanged();
+        $api->emit($event);
+
+        $this->assertSame($event, $received, 'the event reached the dispatcher, not just the not-during-activate() gate');
     }
 }

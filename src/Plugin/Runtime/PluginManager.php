@@ -427,7 +427,6 @@ final class PluginManager implements
         $this->runtime = $runtime;
     }
 
-    /** The live IDE seams; guarded so activate()-time action calls fail as plugin errors. */
     /**
      * Put a plugin's event on the bus.
      *
@@ -442,6 +441,7 @@ final class PluginManager implements
         $this->events->dispatch($event);
     }
 
+    /** The live IDE seams; guarded so activate()-time action calls fail as plugin errors. */
     public function runtime(): PluginRuntime
     {
         return $this->runtime ?? throw new PluginException('IDE actions are unavailable during activate() — call them from a command handler or event hook');
@@ -524,7 +524,6 @@ final class PluginManager implements
         return null;
     }
 
-    /** Report a highlighting fault at most once per plugin — this runs while typing. */
     /**
      * Every committed pane registration, in load order — drained once by
      * {@see PluginPanes} into the core registry that actually holds them.

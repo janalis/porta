@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Api;
 
+use Porta\Support\AsyncProcess;
 use Symfony\Component\Process\ExecutableFinder;
 
 /**
@@ -76,13 +77,13 @@ abstract class AbstractToolPlugin extends AbstractPlugin
     protected function acquire(PluginApi $api): ?string
     {
         if ($this->running) {
-            $api->flash($this->name().': already running');
+            $api->flash($api->trans('%tool%: already running', ['%tool%' => $this->name()]));
 
             return null;
         }
         $binary = $this->binary($api);
         if (null === $binary) {
-            $api->flash($this->missingBinaryMessage(), 4.0);
+            $api->flash($this->missingBinaryMessage($api), 4.0);
 
             return null;
         }
@@ -102,7 +103,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
     {
         $file = $api->activeFile();
         if (null === $file || !str_ends_with($file, $extension)) {
-            $api->flash($this->name().': open a PHP file first');
+            $api->flash($api->trans('%tool%: open a PHP file first', ['%tool%' => $this->name()]));
 
             return null;
         }
@@ -134,7 +135,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
         $api->registerCommand($id, $label, static function () use ($api, $settingKey, $phrase): void {
             $next = !(bool) $api->setting($settingKey);
             $api->changeSetting($settingKey, $next);
-            $api->flash($phrase.': '.($next ? 'on' : 'off'));
+            $api->flash($phrase.': '.$api->trans($next ? 'on' : 'off'));
         });
     }
 
@@ -183,13 +184,38 @@ abstract class AbstractToolPlugin extends AbstractPlugin
     }
 
     /**
+     * Acquire the slot, run $arguments to completion, apply the result into
+     * $formatted's buffer (if given), then flash $success or the failure —
+     * the single-file-formatter shape php-cs-fixer and phpantom both run.
+     * A plugin whose control flow branches on the exit code (mago's
+     * format→lint chain) still assembles the run by hand instead.
+     *
+     * @param list<string> $arguments argv after the binary
+     */
+    final protected function runAndApply(PluginApi $api, array $arguments, string $success, ?string $formatted = null): void
+    {
+        $binary = $this->acquire($api);
+        if (null === $binary) {
+            return;
+        }
+        $before = null === $formatted ? null : $this->textBefore($api, $formatted);
+        new AsyncProcess([$binary, ...$arguments], $api->projectRoot(), timeout: AsyncProcess::INTERACTIVE_TOOL_TIMEOUT)->start(function (int $code) use ($api, $success, $formatted, $before): void {
+            $this->release();
+            if (null !== $formatted) {
+                $this->applyFormatted($api, $formatted, $before);
+            }
+            $this->flashExit($api, $code, $success);
+        });
+    }
+
+    /**
      * The failure half on its own — for a run that failed for a reason the
      * exit code alone does not carry (mago exits 0 with an unparseable
      * report), where {@see flashExit()} would wrongly report success.
      */
     protected function flashFailure(PluginApi $api, int $code): void
     {
-        $api->flash($this->name().': exited with code '.$code, 4.0);
+        $api->flash($api->trans('%tool%: exited with code %code%', ['%tool%' => $this->name(), '%code%' => $code]), 4.0);
     }
 
     /**
@@ -222,10 +248,13 @@ abstract class AbstractToolPlugin extends AbstractPlugin
             : 'empty = vendor/bin, then PATH';
     }
 
-    private function missingBinaryMessage(): string
+    private function missingBinaryMessage(PluginApi $api): string
     {
-        return BinarySearch::PathOnly === $this->search
-            ? \sprintf('%s not found (set its binary or install it)', $this->name())
-            : \sprintf('%s not found (vendor/bin or PATH)', $this->name());
+        return $api->trans(
+            BinarySearch::PathOnly === $this->search
+                ? '%tool% not found (set its binary or install it)'
+                : '%tool% not found (vendor/bin or PATH)',
+            ['%tool%' => $this->name()],
+        );
     }
 }

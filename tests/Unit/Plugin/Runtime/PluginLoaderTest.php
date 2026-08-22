@@ -421,6 +421,22 @@ final class PluginLoaderTest extends TestCase
         $this->assertStringNotContainsString('vend/lib', $warnings, 'a package Porta does not ship is not its business');
     }
 
+    public function testDisabledPluginNamesAreSkippedInBothTheOptOutAndEmbeddedTiers(): void
+    {
+        $embedded = new TempProject(['bundled/plugin.php' => $this->pluginSource('bundled')]);
+        $project = new TempProject([
+            '.porta/plugins/demo/plugin.php' => $this->pluginSource('demo'),
+            '.porta/plugins/keep/plugin.php' => $this->pluginSource('keep'),
+        ]);
+
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
+        new PluginLoader($project->dir, null, new PluginSettings($project->dir, []), $embedded->dir, ['demo', 'bundled'], ['bundled'])->loadInto($manager);
+
+        $this->assertFalse($manager->hasPlugin('demo'), 'a disabled project plugin is skipped');
+        $this->assertTrue($manager->hasPlugin('keep'), 'a non-disabled sibling still loads');
+        $this->assertFalse($manager->hasPlugin('bundled'), 'disabling an embedded plugin wins even though it is also opted in via enabledPlugins');
+    }
+
     public function testALeftoverPluginJsonIsNamedRatherThanIgnored(): void
     {
         // Its fields moved to composer.json and it is not read any more. The
