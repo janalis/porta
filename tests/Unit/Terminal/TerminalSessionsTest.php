@@ -86,6 +86,22 @@ final class TerminalSessionsTest extends TestCase
         $this->assertNotSame($c, $sessions->active());
     }
 
+    public function testClosingANonTrailingSessionRemovesOnlyThatOne(): void
+    {
+        // Closing index 0 with two sessions still after it must not sweep up
+        // its neighbour too — array_splice's length must be exactly 1.
+        $sessions = new TerminalSessions();
+        $sessions->create('a', 'a');
+        $b = $sessions->create('b', 'b');
+        $c = $sessions->create('c', 'c');
+
+        $sessions->close(0); // drop 'a', both 'b' and 'c' must survive
+
+        $remaining = Probe::get($sessions, 'sessions');
+        $this->assertCount(2, $remaining);
+        $this->assertSame([$b, $c], $remaining);
+    }
+
     public function testMoveReordersKeepingTheActivePointerOnItsSession(): void
     {
         $sessions = new TerminalSessions();

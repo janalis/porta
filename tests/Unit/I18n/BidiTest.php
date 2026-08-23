@@ -194,4 +194,181 @@ final class BidiTest extends TestCase
         // logical column (1), just past the leading "a".
         self::assertSame(1, Bidi::visualToLogicalColumn("a\u{65E5}b", 1, BaseDirection::Rtl));
     }
+
+    /**
+     * classify()'s codepoint boundaries, probed indirectly: a Hebrew prefix
+     * plus the probe char plus a trailing 'x', under an RTL base. A
+     * strong-or-neutral char (R or N) ends up grouped with the Hebrew side
+     * ("x CHAR שלום"-shaped); a plain L char stays put ahead of it
+     * ("CHAR x שלום"-shaped) — reordering only fully cancels out for a
+     * uniformly-L line, so this construction reliably tells the two apart.
+     */
+    private const array MIRROR_PAIRS = ['[' => ']', '{' => '}'];
+
+    private static function classifiesAsNonL(string $char): bool
+    {
+        $plain = self::strip(Bidi::reorder("\u{05E9}{$char}x", BaseDirection::Rtl));
+        // A neutral char resolving 'R' also mirrors under L4 (self::MIRROR_PAIRS
+        // covers the two boundary chars this provider probes that are mirror
+        // pairs), so look for whichever form actually landed in the output.
+        $needle = self::MIRROR_PAIRS[$char] ?? $char;
+        $charPos = mb_strpos($plain, needle: $needle, encoding: 'UTF-8');
+        $xPos = mb_strpos($plain, needle: 'x', encoding: 'UTF-8');
+        \assert(false !== $charPos && false !== $xPos, description: 'both the probe char and the x marker must appear in the output');
+
+        return $charPos > $xPos;
+    }
+
+    /** @return iterable<string, array{int, bool}> codepoint => expected classifiesAsNonL() */
+    public static function classifyBoundaryProvider(): iterable
+    {
+        yield 'R1 start-1 (0x058F)' => [0x058F, false];
+        yield 'R1 start (0x0590)' => [0x0590, true];
+        yield 'R1/R2 boundary (0x05FF)' => [0x05FF, true];
+        // 0x0600 itself is skipped: it's a Unicode "prepended concatenation
+        // mark" (ARABIC NUMBER SIGN) that this probe's own 3-cell
+        // construction can't isolate cleanly. R2's coverage comes from its
+        // own end boundary below plus R1's end just above.
+        yield 'R2/R3 boundary end (0x06FF)' => [0x06FF, true];
+        yield 'R3 start (0x0700)' => [0x0700, true];
+        yield 'R3 end (0x08FF)' => [0x08FF, true];
+        yield 'R3 end+1 (0x0980)' => [0x0980, false];
+        yield 'R4 start-1 (0xFB1C)' => [0xFB1C, false];
+        yield 'R4 start (0xFB1D)' => [0xFB1D, true];
+        yield 'R4 end (0xFDFF)' => [0xFDFF, true];
+        yield 'R4 end+1 (0xFE10)' => [0xFE10, false];
+        yield 'R5 start-1 (0xFE6F)' => [0xFE6F, false];
+        yield 'R5 start (0xFE70)' => [0xFE70, true];
+        yield 'R5 end (0xFEFF)' => [0xFEFF, true];
+        yield 'R5 end+1 (0xFF10)' => [0xFF10, false];
+        yield 'space exact (0x20)' => [0x20, true];
+        yield 'nbsp exact (0xA0)' => [0xA0, true];
+        yield 'N1 start ! (0x21)' => [0x21, true];
+        yield 'N1 end / (0x2F)' => [0x2F, true];
+        yield 'N2 start : (0x3A)' => [0x3A, true];
+        yield 'N2 end @ (0x40)' => [0x40, true];
+        yield 'N3 start [ (0x5B)' => [0x5B, true];
+        yield 'N3 end ` (0x60)' => [0x60, true];
+        yield 'N4 start { (0x7B)' => [0x7B, true];
+        yield 'N4 end ~ (0x7E)' => [0x7E, true];
+        yield 'N5 start (0x2000)' => [0x2000, true];
+        yield 'N5 end (0x206F)' => [0x206F, true];
+        yield 'N6 start (0x2500)' => [0x2500, true];
+        yield 'N6 end (0x257F)' => [0x257F, true];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('classifyBoundaryProvider')]
+    public function testClassifyBoundary(int $codepoint, bool $expectedNonL): void
+    {
+        $char = mb_chr($codepoint, encoding: 'UTF-8');
+        \assert(false !== $char, description: 'the data provider only feeds valid codepoints');
+        self::assertSame($expectedNonL, self::classifiesAsNonL($char), \sprintf('codepoint 0x%04X', $codepoint));
+    }
+
+    /**
+     * 0x0600 (R2's start) and 0x08FF (R3's end) are themselves Unicode
+     * combining/format marks, so the 3-cell indirect probe above can't
+     * isolate them (they attach to whatever base character precedes them
+     * instead of standing as their own cell). classify() is reflected
+     * directly here instead — the one pair this file needs it for.
+     */
+    public function testClassifyBoundaryForCombiningMarkCodepoints(): void
+    {
+        $classify = new \ReflectionMethod(Bidi::class, 'classify');
+        self::assertSame('R', $classify->invoke(null, mb_chr(0x0600, encoding: 'UTF-8')), 'R2 start');
+        self::assertSame('R', $classify->invoke(null, mb_chr(0x08FF, encoding: 'UTF-8')), 'R3 end');
+    }
+
+    /**
+     * The EN (digit) boundary can't use the R/N probe above — a digit embeds
+     * at the SAME level as plain text, so misclassifying it as L doesn't
+     * change ITS OWN grouping. But EN is treated as 'R' when resolving an
+     * ADJACENT neutral run: Hebrew + digit + space + 'x' pulls the space to
+     * the Hebrew side only if the digit is really EN.
+     */
+    private static function digitPullsTheFollowingSpaceRtlward(string $char): bool
+    {
+        return 'x '.$char."\u{05E9}" === self::strip(Bidi::reorder("\u{05E9}{$char} x", BaseDirection::Rtl));
+    }
+
+    public function testEnBoundaryDigitsPullAnAdjacentSpaceToTheRtlSide(): void
+    {
+        self::assertTrue(self::digitPullsTheFollowingSpaceRtlward('0'), '0x30, the EN range start');
+        self::assertTrue(self::digitPullsTheFollowingSpaceRtlward('9'), '0x39, the EN range end');
+    }
+
+    public function testALetterDoesNotPullAnAdjacentSpaceToTheRtlSide(): void
+    {
+        self::assertFalse(self::digitPullsTheFollowingSpaceRtlward('q'), 'a plain L char leaves the space on its own side');
+    }
+
+    public function testConsecutiveStyleChangesBothAccumulateIntoTheActiveState(): void
+    {
+        // Two SGR codes in a row (no reset between) must both be part of the
+        // active style carried forward, not just the last one seen.
+        $out = Bidi::reorder("\x1b[31m\x1b[1mAB", BaseDirection::Rtl);
+        self::assertStringContainsString("\x1b[31m", $out);
+        self::assertStringContainsString("\x1b[1m", $out);
+        self::assertSame("\x1b[0m\x1b[31m\x1b[1mAB\x1b[0m", $out);
+    }
+
+    public function testLtrBaseWithSgrAndNoRtlContentIsReturnedByteIdentical(): void
+    {
+        // The LTR/no-RTL shortcut must return the ORIGINAL bytes verbatim —
+        // routing SGR-styled content through the full reorder pipeline
+        // anyway would re-derive a leading reset that was never there.
+        $line = "\x1b[31mred\x1b[0m";
+        self::assertSame($line, Bidi::reorder($line, BaseDirection::Ltr));
+    }
+
+    public function testVisualToLogicalColumnSkipsAnSgrSequenceNotJustTheCursorMarker(): void
+    {
+        // An SGR code must never be counted as a column-occupying glyph —
+        // exercised with real Hebrew content so a broken skip shifts the
+        // mapped column, not just the raw token count.
+        $line = "\x1b[31m\u{05E9}\u{05DC}"; // styled, 2 Hebrew chars, reversed under RTL
+        self::assertSame(1, Bidi::visualToLogicalColumn($line, 0, BaseDirection::Rtl));
+        self::assertSame(0, Bidi::visualToLogicalColumn($line, 1, BaseDirection::Rtl));
+    }
+
+    public function testVisualToLogicalColumnMarkerWidthBoundaryIsExactlyZero(): void
+    {
+        // The cursor marker's width must be exactly 0, not merely "not
+        // positive" or "not exactly 1" — pinned via a marker sandwiched
+        // between two Hebrew chars, where an off-by-one on its own width
+        // shifts which side of the marker a given visual column lands on.
+        $marker = "\x1b_pi:c;5\x07";
+        $line = "\u{05E9}{$marker}\u{05DC}";
+        self::assertSame(1, Bidi::visualToLogicalColumn($line, 0, BaseDirection::Rtl));
+        self::assertSame(0, Bidi::visualToLogicalColumn($line, 1, BaseDirection::Rtl));
+    }
+
+    public function testClassifyTreatsTheCursorMarkerAsNeutralNotLtr(): void
+    {
+        // Misclassifying the \x1b-prefixed marker as 'L' (instead of 'N')
+        // would keep it on the LTR side of a following 'x' instead of
+        // letting it join the Hebrew run it's adjacent to.
+        $marker = "\x1b_pi:c;5\x07";
+        $out = self::strip(Bidi::reorder("\u{05E9}\u{05DC}{$marker}x", BaseDirection::Rtl));
+        self::assertSame("x{$marker}\u{05DC}\u{05E9}", $out);
+    }
+
+    public function testABaseCodepointFromAMultiCharGraphemeClusterIsTheFirstOne(): void
+    {
+        // classify() reads the grapheme's BASE codepoint — for a combining
+        // sequence that must be the leading character (Hebrew aleph), not
+        // the trailing combining mark, or the cluster would misclassify as
+        // neutral/L and land on the wrong side of the reorder.
+        $cluster = "\u{05D0}\u{0301}"; // aleph + combining acute, one grapheme
+        self::assertSame('b'.$cluster, self::strip(Bidi::reorder($cluster.'b', BaseDirection::Rtl)));
+    }
+
+    public function testStyleChangeMidRunEmitsResetBeforeTheNewCode(): void
+    {
+        // Each style transition re-opens with an explicit RESET before the
+        // new SGR code, so a reordered run never inherits a stale style from
+        // whatever preceded it in visual order.
+        $out = Bidi::reorder("\x1b[31mA\x1b[0mB", BaseDirection::Rtl);
+        self::assertSame("\x1b[0m\x1b[31mA\x1b[0mB", $out);
+    }
 }

@@ -45,6 +45,10 @@ final class TerminalKeyEncoderTest extends TestCase
         yield 'home' => ["\x1b[H", "\x1b[H"];
         yield 'delete' => ["\x1b[3~", "\x1b[3~"];
         yield 'shift+delete (modified tilde)' => ["\x1b[3;2~", "\x1b[3;2~"];
+        yield 'alt+up arrow gets modifier 3, not 4' => ["\x1b[1;3A", "\x1b[1;3A"];
+        yield 'ctrl+alt+digit with no control byte drops entirely, no bare ESC' => ["\x1b[49;7u", ''];
+        yield 'ctrl+a hits the lower boundary of the letter range' => ["\x1b[97;5u", "\x01"];
+        yield 'ctrl+z hits the upper boundary of the letter range' => ["\x1b[122;5u", "\x1a"];
     }
 
     #[DataProvider('kittyCases')]

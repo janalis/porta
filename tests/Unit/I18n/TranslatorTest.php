@@ -70,6 +70,19 @@ final class TranslatorTest extends TestCase
         $this->assertSame('Save File', $translator->trans('Save File'), 'the id (English) serves as the answer');
     }
 
+    public function testTheEnglishCatalogVanishingAfterBootStillDegradesGracefully(): void
+    {
+        // Unlike a non-English locale (which falls back to 'en' and lets
+        // Symfony's own Translator swallow the NotFoundResourceException),
+        // English IS the fallback — nothing catches it upstream, so this is
+        // the one scenario where LenientXliffLoader's own catch is load-bearing.
+        $project = new TempProject(['messages.en.xlf' => $this->xliff('en', $this->unit('Save File', 'Save File'))]);
+        $translator = new Translator('en', $project->dir);
+        unlink($project->path('messages.en.xlf'));
+
+        $this->assertSame('Save File', $translator->trans('Save File'), 'the id serves as the answer, no throw');
+    }
+
     public function testAnEmptyTargetFallsBackToTheSource(): void
     {
         $project = new TempProject(['messages.de.xlf' => $this->xliff('de', $this->unit('Save File', ''))]);

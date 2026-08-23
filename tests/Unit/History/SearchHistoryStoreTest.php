@@ -81,6 +81,27 @@ final class SearchHistoryStoreTest extends TestCase
         $this->assertSame(['ok'], new SearchHistoryStore($mixed->dir)->all());
     }
 
+    public function testAnInvalidEntryDoesNotAbortTheRestOfTheList(): void
+    {
+        // The invalid entry comes FIRST here — a loop that wrongly stops
+        // scanning (instead of skipping just that one entry) would drop the
+        // valid entry that follows it.
+        $project = new TempProject([]);
+        $project->write('.porta/search-history.json', (string) json_encode(['queries' => [123, 'ok']]));
+
+        $this->assertSame(['ok'], new SearchHistoryStore($project->dir)->all());
+    }
+
+    public function testANonArrayQueriesValueOnAPresentFileIsIgnoredNotFatal(): void
+    {
+        // `null === $data` is false here (the file parses), so this only
+        // exercises the second half of the guard — a non-array `queries`.
+        $project = new TempProject([]);
+        $project->write('.porta/search-history.json', (string) json_encode(['queries' => 'not-an-array']));
+
+        $this->assertSame([], new SearchHistoryStore($project->dir)->all());
+    }
+
     public function testAnUnencodableQueryStaysLiveAndPersistenceDegradesSilently(): void
     {
         // Searching for an invalid-UTF-8 needle must not crash the IDE:

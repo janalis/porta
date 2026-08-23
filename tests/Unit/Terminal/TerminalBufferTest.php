@@ -206,4 +206,87 @@ final class TerminalBufferTest extends TestCase
 
         $this->assertSame(['a', 'b', ''], $this->rows($b->lines));
     }
+
+    public function testClearResetsCursorColumnToExactlyZero(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed('abc');
+        $b->clear();
+
+        $this->assertSame(0, $b->cursorColumn());
+    }
+
+    public function testBackspaceAtColumnZeroStaysAtZero(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed("\r\x08"); // carriage return puts col at 0, then backspace
+        $this->assertSame(0, $b->cursorColumn());
+
+        $b->feed('x');
+        $this->assertSame(1, $b->cursorColumn(), 'a stray backspace at col 0 must not push the next write off-column');
+    }
+
+    public function testSingleBackspaceFromColumnOneReachesZero(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed('a');
+        $this->assertSame(1, $b->cursorColumn());
+
+        $b->feed("\x08");
+        $this->assertSame(0, $b->cursorColumn());
+    }
+
+    public function testTabAtColumnSevenAddsOneSpaceToReachTheNextStop(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed('1234567'); // 7 chars: col=7, one short of the 8-column stop
+        $b->feed("\t");
+
+        $this->assertSame(8, $b->cursorColumn());
+        $this->assertSame(['1234567 '], $this->rows($b->lines));
+    }
+
+    public function testTabExactlyOnAStopAdvancesAFullEightColumns(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed('12345678'); // 8 chars: col=8, exactly on a tab stop
+        $b->feed("\t");
+
+        $this->assertSame(16, $b->cursorColumn());
+    }
+
+    public function testAccumulatingSgrCodesConcatenateInOrderInsteadOfOverwriting(): void
+    {
+        $b = new TerminalBuffer();
+        // Two SGR codes back to back, no text between: both must survive, in order.
+        $b->feed("\x1b[1m\x1b[31mtext");
+
+        $this->assertStringStartsWith("\x1b[1m\x1b[31mtext", $b->lines[0]);
+    }
+
+    public function testResetClearsAnyAccumulatedSgrRatherThanAppendingToIt(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed("\x1b[1m\x1b[0mtext"); // bold, then a real reset before any text
+
+        // Only the reset code should prefix the text — the bold must not survive it.
+        $this->assertSame("\x1b[0mtext", $b->lines[0]);
+    }
+
+    public function testEraseFromCursorToEndOfDisplayActuallyTrimsWhenNotAtEndOfLine(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed("abcdef\r\x1b[J"); // rewind to col 0, then erase-to-end
+
+        $this->assertSame([''], $this->rows($b->lines), 'ESC[J at col 0 must erase the whole line, not leave it untouched');
+    }
+
+    public function testUnhandledEscapeCodesNeverTriggerAnErase(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed("abcdef\r"); // col back to 0, content still present
+        $b->feed("\x1b[H"); // cursor-home: a dropped sequence, not an erase
+
+        $this->assertSame(['abcdef'], $this->rows($b->lines), 'a dropped escape must never erase the line');
+    }
 }

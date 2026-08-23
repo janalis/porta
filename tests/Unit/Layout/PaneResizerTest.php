@@ -81,7 +81,12 @@ final class PaneResizerTest extends TestCase
         $this->assertTrue($resizer->canResize(), 'the focused widget is in a region sidebar');
         $resizer->resize(1);
 
-        $this->assertGreaterThan($before, $this->nav->width(), 'and the chord widened that region');
+        $this->assertSame($before + 2, $this->nav->width(), 'exactly 2 columns per direction unit, not 1 or 3');
+
+        // direction=3: 2*3=6 (an int) vs a corrupted 2/3 (a non-integer
+        // float) — the multiplication itself, not just its magnitude.
+        $resizer->resize(3);
+        $this->assertSame($before + 2 + 6, $this->nav->width(), 'multiplication, not division — 2/3 would not even be a valid int delta');
     }
 
     public function testAViewThatDeclaredNoResizableSidebarIsNotResizable(): void
@@ -90,5 +95,71 @@ final class PaneResizerTest extends TestCase
         // view never called setSidebarPanes() has no width to fan out, so
         // claiming the key would swallow it for nothing.
         $this->assertFalse($this->resizer(declareSidebar: false)->canResize());
+    }
+
+    public function testFocusOnTheTreeResizesItByExactlyTwoColumnsPerDirection(): void
+    {
+        $project = new TempProject();
+        $tui = TestTui::create(120, 30);
+        $tree = new FileTreeWidget($project->dir);
+        $regions = new ViewRegions(Styles::dark());
+        $layout = new LayoutController(
+            new LayoutStore($project->dir),
+            $tui,
+            new Renderer(new StyleSheet()),
+            $tree,
+            TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
+            $regions,
+            new Translator('en'),
+        );
+        $tui->add($tree);
+        $tui->setFocus($tree);
+        $resizer = new PaneResizer(
+            $tui,
+            $layout,
+            $tree,
+            TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
+            $regions,
+        );
+        $before = $tree->width();
+
+        $this->assertTrue($resizer->canResize(), 'the tree itself is a resizable pane, not just view sidebars');
+        $resizer->resize(1);
+
+        $this->assertSame($before + 2, $tree->width(), 'exactly 2 columns per direction unit, not 1 or 3');
+
+        // direction=3: 2*3=6 (an int) vs a corrupted 2/3 (a non-integer
+        // float) — the multiplication itself, not just its magnitude at
+        // direction=1, where 2*1 and 2/1 coincide.
+        $resizer->resize(3);
+        $this->assertSame($before + 2 + 6, $tree->width(), 'multiplication, not division — 2/3 would not even be a valid int delta');
+    }
+
+    public function testFocusOnTheVisibleBottomPanelIsResizable(): void
+    {
+        // Distinguishes the dock-panel match arm's identity check from the
+        // arms above/below it: a focus that IS the dock's own visible panel
+        // must claim the chord, not fall through to "not resizable".
+        $project = new TempProject();
+        $tui = TestTui::create(120, 30);
+        $debug = new DebugPanelWidget();
+        $dock = TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), $debug);
+        $debug->open('a.php');
+        $tui->add($debug);
+        $tui->setFocus($debug);
+        $regions = new ViewRegions(Styles::dark());
+        $layout = new LayoutController(
+            new LayoutStore($project->dir),
+            $tui,
+            new Renderer(new StyleSheet()),
+            new FileTreeWidget($project->dir),
+            $dock,
+            $regions,
+            new Translator('en'),
+        );
+        $resizer = new PaneResizer($tui, $layout, new FileTreeWidget($project->dir), $dock, $regions);
+
+        $this->assertSame($debug, $dock->visiblePanel(), 'sanity: the debug panel is the one the dock shows');
+        $this->assertTrue($resizer->canResize(), 'the focused widget is the dock\'s own visible panel');
     }
 }

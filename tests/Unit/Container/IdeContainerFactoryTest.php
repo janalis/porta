@@ -60,6 +60,26 @@ final class IdeContainerFactoryTest extends TestCase
         return new IdeContainerFactory($trackSources)->build('/tmp/porta-factory-test', IdeConfig::load('/tmp/porta-factory-test'), Ansi::Enabled);
     }
 
+    public function testAnExplicitLspCommandTravelsIntoTheEnvChannel(): void
+    {
+        $project = new TempProject();
+        putenv('PORTA_CACHE_DIR='.$project->dir);
+
+        new IdeContainerFactory()->build('/tmp/porta-factory-test', IdeConfig::load('/tmp/porta-factory-test'), Ansi::Enabled, 'custom-lsp-command');
+
+        $this->assertSame('custom-lsp-command', $_ENV['PORTA_LSP_COMMAND']);
+    }
+
+    public function testLspDisabledFlagsTheEnvChannel(): void
+    {
+        $project = new TempProject();
+        putenv('PORTA_CACHE_DIR='.$project->dir);
+
+        new IdeContainerFactory()->build('/tmp/porta-factory-test', IdeConfig::load('/tmp/porta-factory-test'), Ansi::Enabled, lsp: \Porta\Container\LspMode::Disabled);
+
+        $this->assertSame('1', $_ENV['PORTA_LSP_DISABLED']);
+    }
+
     public function testColdCacheDumpsAndServesTheCompiledContainer(): void
     {
         $project = new TempProject();
@@ -78,6 +98,32 @@ final class IdeContainerFactoryTest extends TestCase
         $locator = $container->get('porta.ide');
         $this->assertInstanceOf(ServiceLocator::class, $locator);
         $this->assertInstanceOf(Translator::class, $locator->get(Translator::class), 'env-bound services resolve from the dump through the locator');
+    }
+
+    /**
+     * Recomputes the cache filename's hash from the exact same inputs the
+     * factory uses, independently — so any reordering, dropped operand, or
+     * off-by-one on the two dirname() depths changes the hash and this fails.
+     */
+    public function testTheCacheFilenameEncodesTheExactHashInputs(): void
+    {
+        $project = new TempProject();
+        putenv('PORTA_CACHE_DIR='.$project->dir);
+
+        $this->build();
+
+        $root = \dirname(__DIR__, levels: 3); // tests/Unit/Container -> project root, same depth as src/Container -> root
+        $installKey = hash('xxh32', $root);
+        $versions = [];
+        foreach (InstalledVersions::getAllRawData() as $dataset) {
+            foreach ($dataset['versions'] as $name => $package) {
+                $versions[] = $name.'@'.($package['version'] ?? '');
+            }
+        }
+        sort($versions);
+        $hash = hash('xxh128', \Porta\Ide::VERSION.\PHP_VERSION.$root.'/config'.$project->dir.implode("\n", $versions));
+
+        $this->assertFileExists($project->path("container-{$installKey}-{$hash}.php"), 'the dump filename encodes exactly this hash');
     }
 
     public function testWarmCacheReusesTheDumpWithoutRecompiling(): void
@@ -222,6 +268,41 @@ final class IdeContainerFactoryTest extends TestCase
         $this->assertFileDoesNotExist($project->path('container-353c64d8016a114fe6c3e529dd2d34ea.php.meta'));
         $this->assertFileDoesNotExist($project->path('container-353c64d8016a114fe6c3e529dd2d34ea.php.meta.json'));
         $this->assertCount(1, (array) glob($project->path('container-*.php')), 'only the fresh dump remains');
+    }
+
+    public function testTheLegacyPatternIsAnchoredNotASubstringSearch(): void
+    {
+        // The legacy shape (container-<32hex>.php…) must match the WHOLE
+        // filename, not just appear somewhere inside it — a junk prefix or a
+        // trailing suffix must NOT get treated as legacy and swept.
+        $project = new TempProject();
+        putenv('PORTA_CACHE_DIR='.$project->dir);
+        $prefixed = $project->path('container-junk-container-353c64d8016a114fe6c3e529dd2d34ea.php');
+        $suffixed = $project->path('container-353c64d8016a114fe6c3e529dd2d34eb.phpx');
+        file_put_contents($prefixed, data: 'not legacy: extra prefix before the real shape');
+        file_put_contents($suffixed, data: 'not legacy: trailing garbage after .php');
+
+        $this->build();
+
+        $this->assertFileExists($prefixed, 'a junk prefix disqualifies it — the ^ anchor is load-bearing');
+        $this->assertFileExists($suffixed, 'trailing garbage disqualifies it — the $ anchor is load-bearing');
+    }
+
+    public function testGcDoesNotSpareAStaleSiblingSharingAHashPrefix(): void
+    {
+        // The skip check compares against the fresh hash PLUS its '.php'
+        // suffix — without it, a stale file whose hash merely starts with
+        // the fresh hash's digits (but isn't an exact match) would survive.
+        $project = new TempProject();
+        $installKey = 'aabbccdd';
+        $freshHash = str_repeat('a', times: 32);
+        $staleSibling = $project->path('container-'.$installKey.'-'.$freshHash.'ff.php');
+        file_put_contents($staleSibling, data: "a stale generation whose hash is the fresh hash's own prefix");
+
+        $method = new \ReflectionMethod(IdeContainerFactory::class, 'pruneStaleGenerations');
+        $method->invoke(null, $project->dir, $installKey, $freshHash);
+
+        $this->assertFileDoesNotExist($staleSibling, 'a prefix collision is not an exact-hash match — it must still be swept');
     }
 
     public function testCacheOffCompilesInMemory(): void

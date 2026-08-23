@@ -330,6 +330,70 @@ final class IdeHelpersTest extends TestCase
         $this->assertStringEndsWith('Real.php', (string) Services::resolve($this->ide, Tui::class)->getById('editor')->getFilePath());
     }
 
+    public function testRestoreWithEveryBufferMissingRestoresNothing(): void
+    {
+        $tui = Services::resolve($this->ide, Tui::class);
+        $focusBefore = $tui->getFocus();
+
+        new \Porta\History\SessionStore($this->project->dir)->save([
+            ['path' => '/does/not/exist-a.php', 'line' => 0, 'col' => 0],
+            ['path' => '/does/not/exist-b.php', 'line' => 0, 'col' => 0],
+        ], '/does/not/exist-a.php');
+
+        $restorer = Services::resolve($this->ide, SessionRestorer::class);
+        $this->assertFalse($restorer->restore(), 'nothing on disk was actually opened');
+        $this->assertSame($focusBefore, $tui->getFocus(), 'focus never moved to the editor');
+    }
+
+    public function testRestoreSetsTheCursorFromTheRecordedPosition(): void
+    {
+        $real = $this->project->write('src/Cursor.php', "line0\nline1\nline2\nline3\n");
+        new \Porta\History\SessionStore($this->project->dir)->save([
+            ['path' => $real, 'line' => 3, 'col' => 5],
+        ], null);
+
+        Services::resolve($this->ide, SessionRestorer::class)->restore();
+
+        $document = Services::resolve($this->ide, Tui::class)->getById('editor')->getDocument();
+        $this->assertSame(3, $document->getCursorLine());
+        $this->assertSame(5, $document->getCursorCol());
+    }
+
+    public function testRestoreWithNoRecordedActiveBufferDoesNotCrash(): void
+    {
+        // $activePath is null: a realpath(null) call here would be a
+        // TypeError under strict_types — this is that guard's own test.
+        $real = $this->project->write('src/NoActive.php', "hi\n");
+        new \Porta\History\SessionStore($this->project->dir)->save([
+            ['path' => $real, 'line' => 0, 'col' => 0],
+        ], null);
+
+        $this->assertTrue(Services::resolve($this->ide, SessionRestorer::class)->restore());
+    }
+
+    public function testRestoreReactivatesTheRecordedActiveBufferNotJustTheLastOpenedOne(): void
+    {
+        // Two buffers open — BufferManager's own open() would otherwise
+        // leave the LAST one active by default. The session recorded the
+        // FIRST one as active, and its path is spelled with a `./` segment
+        // realpath() strips — only a resolved (not raw) key correctly
+        // matches what BufferManager actually opened.
+        $first = $this->project->write('src/First.php', "hi\n");
+        $second = $this->project->write('src/Second.php', "hi\n");
+        $messyActivePath = \dirname($first).'/./'.\basename($first);
+
+        new \Porta\History\SessionStore($this->project->dir)->save([
+            ['path' => $first, 'line' => 0, 'col' => 0],
+            ['path' => $second, 'line' => 0, 'col' => 0],
+        ], $messyActivePath);
+
+        Services::resolve($this->ide, SessionRestorer::class)->restore();
+
+        $tui = Services::resolve($this->ide, Tui::class);
+        $this->assertStringEndsWith('First.php', (string) $tui->getById('editor')->getFilePath(), 'the recorded active buffer wins over the last-opened one');
+        $this->assertSame(Services::resolve($this->ide, \Porta\Workbench\EditorArea::class)->widget(), $tui->getFocus(), 'focus lands on the editor area');
+    }
+
     public function testProviderPriorityOrderMatchesTheContractualPaletteOrder(): void
     {
         $registry = Services::resolve($this->ide, CommandRegistry::class);

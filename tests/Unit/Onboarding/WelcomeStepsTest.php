@@ -119,6 +119,15 @@ final class WelcomeStepsTest extends TestCase
         $this->assertSame([[RecommendedPlugins::HIGHLIGHTER, true]], $this->lifecycle->toggled);
     }
 
+    /** The offer names the actual plugin it would enable, not a generic label. */
+    public function testTheHighlightingAndLanguageServerStepsNameTheirTool(): void
+    {
+        $steps = $this->steps()->all();
+
+        $this->assertSame('Enable tempest', $steps[0]->actionLabel);
+        $this->assertSame('Enable phpantom', $steps[1]->actionLabel);
+    }
+
     /**
      * Installed but not opted into is still pending — bundled plugins are opt-in.
      * The three plugin steps share the predicate, so all three are asserted.

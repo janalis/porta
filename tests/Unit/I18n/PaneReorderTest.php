@@ -34,6 +34,43 @@ final class PaneReorderTest extends TestCase
         $this->assertSame(16, AnsiUtils::visibleWidth($out), 'width preserved');
     }
 
+    /** A wide character straddling a run's column boundary must not spill into the next pane. */
+    public function testAWideCharacterStraddlingARunBoundaryIsDroppedNotOverflowed(): void
+    {
+        $line = "ab\u{4E2D}cd"; // 'a','b' (cols 0,1), a 2-column CJK char (cols 2,3), 'c','d' (cols 4,5)
+        $runs = [
+            ['start' => 0, 'width' => 2, 'ltr' => true],
+            ['start' => 2, 'width' => 1, 'ltr' => true], // too narrow for the wide char to fit
+        ];
+
+        $out = new PaneReorder()->reorderRow($line, $runs);
+
+        $this->assertSame(2, AnsiUtils::visibleWidth($out), 'the straddling wide char is dropped, not overflowed into extra columns');
+    }
+
+    public function testLogicalColumnAtTheExactRunBoundarySelectsTheNextRun(): void
+    {
+        // visualCol 4 is the first column PAST run 1's [0,4) span — it must
+        // select run 2, not fall into run 1 by an off-by-one on the boundary.
+        $line = 'abcd'.self::SHALOM;
+        $runs = [
+            ['start' => 0, 'width' => 4, 'ltr' => true],
+            ['start' => 4, 'width' => 4, 'ltr' => false],
+        ];
+
+        $this->assertSame(7, new PaneReorder()->logicalColumn($line, 4, $runs), 'run 2 (RTL) claims the boundary column, not run 1');
+    }
+
+    public function testLogicalColumnOnAnLtrRunIsIdentityEvenForRtlScriptContent(): void
+    {
+        // A run declared ltr:true must map identically regardless of its
+        // actual text — the flag is the pane's layout contract, not a
+        // property the content needs to satisfy.
+        $runs = [['start' => 0, 'width' => 4, 'ltr' => true]];
+
+        $this->assertSame(2, new PaneReorder()->logicalColumn(self::SHALOM, 2, $runs), 'ltr run: identity, no bidi reorder applied');
+    }
+
     public function testResetAfterEveryRunStopsBackgroundBleedAcrossPanes(): void
     {
         // An LTR run that opens a background and never closes it, then a chrome run.

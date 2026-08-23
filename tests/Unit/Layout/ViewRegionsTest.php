@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Layout;
 use PHPUnit\Framework\TestCase;
 use Porta\Layout\ViewRegions;
 use Porta\Ui\Theme\Styles;
+use Symfony\Component\Tui\Style\Direction;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
@@ -80,5 +81,15 @@ final class ViewRegionsTest extends TestCase
         $regions = $this->regions();
 
         $this->assertNotSame($regions->mint('git')->sidebar(), $regions->mint('settings')->sidebar());
+    }
+
+    public function testTheMintedContainersCarryTheirExactStyle(): void
+    {
+        $region = $this->regions()->mint('git');
+
+        $this->assertSame(Direction::Horizontal, $region->area()->getStyle()?->getDirection());
+        $this->assertSame(0, $region->area()->getStyle()?->getGap());
+        $this->assertSame(0, $region->sidebar()->getStyle()?->getFlex(), 'the sidebar is a fixed pane, not a flex-1 share');
+        $this->assertSame(1, $region->content()->getStyle()?->getFlex(), 'the content fills whatever the sidebar leaves');
     }
 }

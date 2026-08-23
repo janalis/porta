@@ -16,6 +16,7 @@ use Porta\Input\MouseEvent;
 use Porta\Layout\LayoutController;
 use Porta\Layout\ResizableSidebar;
 use Porta\Layout\ViewRegions;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Ui\Theme\Styles;
@@ -36,11 +37,14 @@ final class LayoutControllerNudgeTest extends TestCase
     private FileTreeWidget $tree;
     private GitSidebar $gitSidebar;
     private SettingsNavWidget $settingsSidebar;
+    private Tui $tui;
+    private Renderer $renderer;
 
     private function controller(int $columns = 100): LayoutController
     {
         $this->project = new TempProject(['a.php' => "<?php\n"]);
-        $tui = new Tui(terminal: new VirtualTerminal(columns: $columns, rows: 30), keybindings: new Keybindings([]), renderer: $renderer = new Renderer(new StyleSheet()));
+        $this->renderer = new Renderer(new StyleSheet());
+        $this->tui = new Tui(terminal: new VirtualTerminal(columns: $columns, rows: 30), keybindings: new Keybindings([]), renderer: $this->renderer);
         $this->tree = new FileTreeWidget($this->project->dir);
         $this->gitSidebar = new GitSidebar(
             new GitTabsWidget(new Translator('en')),
@@ -52,10 +56,10 @@ final class LayoutControllerNudgeTest extends TestCase
 
         return new LayoutController(
             new LayoutStore($this->project->dir),
-            $tui,
-            $renderer,
+            $this->tui,
+            $this->renderer,
             $this->tree,
-            TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
+            TestBottomDock::create($this->tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
             self::regionsWith($this->gitSidebar, $this->settingsSidebar),
             new Translator('en'),
         );
@@ -170,5 +174,89 @@ final class LayoutControllerNudgeTest extends TestCase
 
         $this->assertSame(30, $this->gitSidebar->width(), 'the pane declares 30 now, which is what the controller always clamped to');
         $this->assertSame(30, $this->gitSidebar->minWidth(), 'and it says so itself');
+    }
+
+    public function testNudgeSidebarRequestsARender(): void
+    {
+        $layout = $this->controller();
+        Probe::set($this->tui, 'renderRequested', false);
+
+        $layout->nudgeSidebar(2);
+
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'));
+    }
+
+    public function testClampSidebarWidthsColsMinus20FloorBindsBeforeTheRatio(): void
+    {
+        // On a 40-column terminal the tree's own 0.6 ratio would allow 24
+        // columns, but the neighbour-usability floor (cols - 20 = 20) is
+        // tighter and must win — this is the only bound this method itself
+        // owns (the others come from the pane), so it needs its own exact
+        // boundary and sign pinned directly.
+        $layout = $this->controller(columns: 40);
+
+        $layout->nudgeSidebar(1_000_000);
+
+        $this->assertSame(20, $this->tree->width(), 'clamped at cols - 20, not the 24-column ratio bound');
+    }
+
+    public function testClampSidebarWidthRoundsRatherThanCeilingUp(): void
+    {
+        // 82 * 0.6 = 49.2: round and floor agree at 49, but ceil would push
+        // it to 50 — isolates the RoundingFamily mutant that only a
+        // ceil-shaped input exposes.
+        $layout = $this->controller(columns: 82);
+
+        $layout->nudgeSidebar(1_000_000);
+
+        $this->assertSame(49, $this->tree->width());
+    }
+
+    public function testClampSidebarWidthRoundsRatherThanFlooringDown(): void
+    {
+        // 81 * 0.6 = 48.6: round and ceil agree at 49, but floor would give
+        // 48 — the complementary case to the one above.
+        $layout = $this->controller(columns: 81);
+
+        $layout->nudgeSidebar(1_000_000);
+
+        $this->assertSame(49, $this->tree->width());
+    }
+
+    public function testCommitPercentRoundsHalfUpNotDownToZero(): void
+    {
+        // Forced to the tree's 12-column floor on a 2400-column terminal:
+        // 12*100/2400 = 0.5, which rounds up to 1% — a *99 multiplier (or a
+        // floor()) would instead read as 0%, silently dropping the fact that
+        // any sidebar is there at all.
+        $layout = $this->controller(columns: 2400);
+
+        $layout->nudgeSidebar(-1_000_000);
+
+        $this->assertSame(1, $this->layoutFile()['sidebarWidthPercent']);
+    }
+
+    public function testCommitPercentDoesNotCeilAFractionBelowHalf(): void
+    {
+        // 12*100/4000 = 0.3: rounds down to 0%. A ceil() would report 1%
+        // instead — a sidebar collapsed to nothing must persist as 0, not a
+        // phantom sliver.
+        $layout = $this->controller(columns: 4000);
+
+        $layout->nudgeSidebar(-1_000_000);
+
+        $this->assertSame(0, $this->layoutFile()['sidebarWidthPercent']);
+    }
+
+    public function testCommitPercentDoesNotInflateTheNumeratorBy1Percent(): void
+    {
+        // 12*100/2406 ≈ 0.4988%, rounding down to 0. A value*101 mutant pushes
+        // it to ≈0.5038%, which rounds up to 1 — the numerator must be exactly
+        // value*100, not value*101.
+        $layout = $this->controller(columns: 2406);
+
+        $layout->nudgeSidebar(-1_000_000);
+
+        $this->assertSame(0, $this->layoutFile()['sidebarWidthPercent']);
     }
 }

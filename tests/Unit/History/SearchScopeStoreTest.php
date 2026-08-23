@@ -56,6 +56,114 @@ final class SearchScopeStoreTest extends TestCase
         $this->assertTrue($lib['pinned']);
     }
 
+    public function testPinFindsAnExistingEntryEvenWhenNotFirst(): void
+    {
+        // 'target' is NOT the first scope — a loop that wrongly stops at the
+        // first non-match (instead of continuing past it) would never find
+        // it, silently losing its pinned status below.
+        $project = new TempProject([]);
+        $project->write(
+            '.porta/search-scopes.json',
+            (string) json_encode([
+                'scopes' => [
+                    ['label' => 'other', 'paths' => ['o'], 'pinned' => false],
+                    ['label' => 'target', 'paths' => ['t'], 'pinned' => true],
+                ],
+            ]),
+        );
+
+        new SearchScopeStore($project->dir)->addRecent('target', ['t2']);
+
+        $reloaded = new SearchScopeStore($project->dir)->all();
+        $target = $reloaded[array_search('target', array_column($reloaded, 'label'), strict: true)];
+        $this->assertTrue($target['pinned'], 'a pin sticks even when re-recorded as recent');
+    }
+
+    public function testPinKeepsTheFirstMatchingEntryNotALaterDuplicate(): void
+    {
+        // Two entries share a label (constructible only via a raw file — the
+        // public API always dedupes on write). The lookup must stop at the
+        // FIRST match, not let a later one silently override it.
+        $project = new TempProject([]);
+        $project->write(
+            '.porta/search-scopes.json',
+            (string) json_encode([
+                'scopes' => [
+                    ['label' => 'dup', 'paths' => ['first'], 'pinned' => false],
+                    ['label' => 'dup', 'paths' => ['second'], 'pinned' => true],
+                ],
+            ]),
+        );
+
+        new SearchScopeStore($project->dir)->addRecent('dup', ['new']);
+
+        $reloaded = new SearchScopeStore($project->dir)->all();
+        $this->assertFalse($reloaded[0]['pinned'], 'the first (unpinned) match won, not the second');
+    }
+
+    public function testANonArrayScopesValueOnAPresentFileIsIgnoredNotFatal(): void
+    {
+        // `null === $data` is false here (the file parses), so this only
+        // exercises the second half of the guard — a non-array `scopes`.
+        $project = new TempProject([]);
+        $project->write('.porta/search-scopes.json', (string) json_encode(['scopes' => 'not-an-array']));
+
+        $this->assertSame([], new SearchScopeStore($project->dir)->all());
+    }
+
+    public function testAnInvalidScopeEntryDoesNotAbortTheRestOfTheList(): void
+    {
+        // The invalid entry (missing 'paths') comes FIRST — a loop that
+        // wrongly stops scanning would drop the valid entry after it.
+        $project = new TempProject([]);
+        $project->write(
+            '.porta/search-scopes.json',
+            (string) json_encode([
+                'scopes' => [
+                    ['label' => 'bad'], // missing paths
+                    ['label' => 'ok', 'paths' => ['x']],
+                ],
+            ]),
+        );
+
+        $this->assertSame(['ok'], array_column(new SearchScopeStore($project->dir)->all(), 'label'));
+    }
+
+    public function testLoadedPathsStayContiguouslyIndexedAfterFilteringInvalidOnes(): void
+    {
+        // The invalid entries (7, '') sort BEFORE the valid one, so filtering
+        // them out leaves a gap unless the result is reindexed — a gapped
+        // list serializes to a JSON *object*, not an array, corrupting the
+        // very next save/load round trip.
+        $project = new TempProject([]);
+        $project->write(
+            '.porta/search-scopes.json',
+            (string) json_encode([
+                'scopes' => [['label' => 'ok', 'paths' => [7, 'src', '']]],
+            ]),
+        );
+
+        $loaded = new SearchScopeStore($project->dir)->all();
+        $this->assertSame(['src'], $loaded[0]['paths']);
+        $this->assertSame('["src"]', json_encode($loaded[0]['paths']), 'stays a JSON array, not an object');
+    }
+
+    public function testLoadKeepsEveryValidScopeNotJustTheFirst(): void
+    {
+        $project = new TempProject([]);
+        $project->write(
+            '.porta/search-scopes.json',
+            (string) json_encode([
+                'scopes' => [
+                    ['label' => 'a', 'paths' => ['a']],
+                    ['label' => 'b', 'paths' => ['b']],
+                ],
+            ]),
+        );
+
+        $this->assertSame(['a', 'b'], array_column(new SearchScopeStore($project->dir)->all(), 'label'));
+    }
+
     public function testPersistsAcrossInstancesAndToleratesBadFiles(): void
     {
         $project = new TempProject([]);

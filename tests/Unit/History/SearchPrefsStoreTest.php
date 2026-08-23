@@ -78,6 +78,29 @@ final class SearchPrefsStoreTest extends TestCase
         }
     }
 
+    public function testSetScopePersists(): void
+    {
+        $project = new TempProject([]);
+        new SearchPrefsStore($project->dir)->setScope(ScopeKind::OpenFiles);
+
+        $this->assertSame(ScopeKind::OpenFiles, new SearchPrefsStore($project->dir)->lastScope());
+    }
+
+    public function testLoadedRecentMasksAreCappedFromTheStart(): void
+    {
+        // A raw file with more than MAX_MASKS entries: the loader must keep
+        // the FIRST 20 (offset 0), not the last one (an `offset: -1` bug
+        // would collapse this to a single entry).
+        $project = new TempProject([]);
+        $raw = array_map(static fn (int $i): string => "*.x{$i}", range(start: 0, end: 24));
+        $project->write('.porta/search-prefs.json', (string) json_encode(['recentMasks' => $raw]));
+
+        $loaded = Probe::get(new SearchPrefsStore($project->dir), 'recentMasks');
+        $this->assertCount(20, $loaded);
+        $this->assertSame('*.x0', $loaded[0]);
+        $this->assertSame('*.x19', $loaded[19]);
+    }
+
     public function testToleratesAbsentMalformedAndInvalidValues(): void
     {
         // Absent file → defaults.

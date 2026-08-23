@@ -10,6 +10,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
+use Symfony\Component\Tui\Style\Direction;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -71,5 +72,50 @@ final class WorkspaceLayoutTest extends TestCase
 
         $layout->setTabBarPosition(TabBarPosition::Top);
         $this->assertSame(['tabs', 'editor-body'], $this->ids(Probe::get($layout, 'editorPane')));
+    }
+
+    public function testTheConstructedContainersCarryTheirExactFlexAndGap(): void
+    {
+        // Pins the layout constants themselves: every sibling of `main` (the
+        // tree, the separator, editor-pane) shares its flex budget by these
+        // ratios, and a wrong one only shows up as a visibly wrong split at
+        // render time — cheaper to pin here directly.
+        $layout = $this->layout();
+
+        $editorBody = Probe::get($layout, 'editorBody');
+        $this->assertSame(1, $editorBody->getStyle()?->getFlex());
+
+        $editorPane = Probe::get($layout, 'editorPane');
+        $this->assertSame(1, $editorPane->getStyle()?->getFlex());
+
+        $main = Probe::get($layout, 'main');
+        $this->assertSame(Direction::Horizontal, $main->getStyle()?->getDirection());
+        $this->assertSame(0, $main->getStyle()?->getGap());
+    }
+
+    public function testSetTabBarPositionSetsTheSideStyleWithHorizontalDirection(): void
+    {
+        $layout = $this->layout();
+
+        $layout->setTabBarPosition(TabBarPosition::Left);
+
+        $editorPane = Probe::get($layout, 'editorPane');
+        $this->assertSame(1, $editorPane->getStyle()?->getFlex());
+        $this->assertSame(Direction::Horizontal, $editorPane->getStyle()?->getDirection(), 'a side position stacks the tab list beside the body, not above it');
+    }
+
+    public function testSetTabBarPositionSetsTheTopStyleWithNoDirectionOverride(): void
+    {
+        $layout = $this->layout();
+        // Move it to a side position first so the default (non-side) branch's
+        // own style assignment is what's actually observed afterward, not a
+        // leftover from construction.
+        $layout->setTabBarPosition(TabBarPosition::Left);
+
+        $layout->setTabBarPosition(TabBarPosition::Top);
+
+        $editorPane = Probe::get($layout, 'editorPane');
+        $this->assertSame(1, $editorPane->getStyle()?->getFlex());
+        $this->assertNull($editorPane->getStyle()?->getDirection(), 'top/bottom stacks vertically — the container default, no direction override');
     }
 }

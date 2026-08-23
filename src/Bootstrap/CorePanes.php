@@ -7,6 +7,7 @@ namespace Porta\Bootstrap;
 use Porta\Container\AsIdeService;
 use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
+use Porta\Support\Files;
 use Porta\Widget\HelpViewerWidget;
 
 /**
@@ -41,7 +42,7 @@ final class CorePanes
     /** A help page is text: read it, refusing anything that is not UTF-8. */
     private function loadHelp(string $path): string
     {
-        $content = (string) file_get_contents($path);
+        $content = Files::read($path);
         if ('' !== $content && !mb_check_encoding($content, encoding: 'UTF-8')) {
             throw new \RuntimeException($this->translator->trans('Not a UTF-8 text file'));
         }

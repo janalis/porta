@@ -67,6 +67,7 @@ final class ArchitectureCheckCommand extends Command
         'Bootstrap>Overlay',
         'Bootstrap>Plugin',
         'Bootstrap>Run',
+        'Bootstrap>Support',
         'Bootstrap>Widget',
         'Bootstrap>Workbench',
         'Command>Config',

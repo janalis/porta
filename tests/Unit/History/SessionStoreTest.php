@@ -76,6 +76,40 @@ final class SessionStoreTest extends TestCase
         $this->assertNull(new SessionStore($project->dir)->load());
     }
 
+    public function testLoadDefaultsMissingLineColAndStringifiesTypedOnes(): void
+    {
+        // The invalid entry comes FIRST — a loop that wrongly stops scanning
+        // (instead of skipping just that one) would drop everything after
+        // it. The second entry has no line/col at all (exercises the `?? 0`
+        // default's exact value); the third has them as numeric STRINGS
+        // (exercises the (int) cast — a missing cast would leak a string
+        // through instead of an int).
+        $project = new TempProject();
+        if (!is_dir($project->path('.porta'))) {
+            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        }
+        file_put_contents(
+            $project->path('.porta/session.json'),
+            json_encode([
+                'buffers' => [
+                    ['noPath' => true],
+                    ['path' => '/p/a.php'],
+                    ['path' => '/p/b.php', 'line' => '9', 'col' => '3'],
+                ],
+                'active' => null,
+            ]),
+        );
+
+        $loaded = new SessionStore($project->dir)->load();
+        $this->assertSame(
+            [
+                ['path' => '/p/a.php', 'line' => 0, 'col' => 0],
+                ['path' => '/p/b.php', 'line' => 9, 'col' => 3],
+            ],
+            $loaded['buffers'],
+        );
+    }
+
     public function testLoadSkipsMalformedBufferEntries(): void
     {
         $project = new TempProject();
