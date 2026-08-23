@@ -260,6 +260,265 @@ final class DebugPanelWidgetTest extends TestCase
         $this->assertStringNotContainsString('42', $screen);
     }
 
+    public function testConstructorRegistersTheListStyleClassAndTenVisibleRows(): void
+    {
+        $panel = new DebugPanelWidget();
+
+        $this->assertSame(['list'], $panel->getStyleClasses());
+        $this->assertSame(10, Probe::get($panel, 'visibleRows'));
+    }
+
+    public function testStatusTextHandlesTheIdleStateBeforeAnySessionStarts(): void
+    {
+        // Idle (the property default) shares Starting's copy — but it must
+        // still be a matched arm, not fall through to UnhandledMatchError.
+        $panel = new DebugPanelWidget();
+
+        $this->assertSame(
+            'starting…  F8 over · F7 into · Shift+F8 out · F9 resume · Ctrl+F2 stop',
+            $panel->statusText(),
+        );
+    }
+
+    public function testStatusTextConcatenatesStatusAndStepLegendInExactOrder(): void
+    {
+        $panel = new DebugPanelWidget();
+        $panel->open('a.php');
+
+        $this->assertSame(
+            'starting…  F8 over · F7 into · Shift+F8 out · F9 resume · Ctrl+F2 stop',
+            $panel->statusText(),
+        );
+    }
+
+    public function testReopeningResetsSelectionAndClearsTheStaleRowsImmediately(): void
+    {
+        $panel = $this->panel();
+        $panel->handleInput("\x1b[B");
+        $panel->handleInput("\x1b[B"); // move selection off row 0
+
+        $panel->open('b.php'); // a second session, before any new data arrives
+        $this->assertSame(0, Probe::get(Probe::get($panel, 'list'), 'selected'), 'selection snaps back to the top');
+        $this->assertSame([], $panel->render(new RenderContext(80, 14)), 'the previous session\'s rows do not linger');
+    }
+
+    public function testLeavingPauseResetsWatchReferencesSoNoneStayExpandable(): void
+    {
+        $panel = $this->panel();
+        $panel->setWatches(['$arr']);
+        $panel->setWatchResult(0, 'array(2)', 2000); // now expandable
+
+        $panel->setSessionState(DebugState::Running, null); // leaving pause
+
+        $panel->setSessionState(DebugState::Paused, 'src/a.php:5'); // re-enter to re-render watches
+        $panel->setWatches(['$arr']); // same expr, reset ref should be 0 not stale
+        $screen = implode("\n", $this->screen($panel));
+        $this->assertStringNotContainsString('▸ $arr', $screen, 'a reset watch does not carry over the old expandable ref');
+    }
+
+    public function testScopeWithZeroReferenceIsNeverMarkedExpandedRegardlessOfOrder(): void
+    {
+        $panel = new DebugPanelWidget();
+        $panel->open('a.php');
+        $panel->setSessionState(DebugState::Paused, 'src/a.php:5');
+        // The zero-ref scope comes FIRST: a `continue`-turned-`break` mutant
+        // would stop the loop here and leave the second, real scope unmarked.
+        $panel->setScopes([
+            ['name' => 'Registers', 'variablesReference' => 0],
+            ['name' => 'Locals', 'variablesReference' => 1000],
+        ]);
+
+        $screen = implode("\n", $this->screen($panel));
+        $this->assertStringContainsString('▾ Locals', $screen, 'the real scope after a zero-ref one is still auto-expanded');
+    }
+
+    public function testFreshWatchWithNoResultYetIsNotShownAsExpandable(): void
+    {
+        $panel = $this->panel();
+        $panel->setWatches(['$pending']);
+
+        $screen = implode("\n", $this->screen($panel));
+        $this->assertStringNotContainsString('▸ $pending', $screen, 'a watch with no ref yet renders blank, not a collapsed arrow');
+        $this->assertStringNotContainsString('▾ $pending', $screen);
+    }
+
+    public function testEditVariableOnAnOutOfRangeSelectionDoesNothing(): void
+    {
+        $events = new EventDispatcher();
+        $panel = new DebugPanelWidget(events: $events);
+        $panel->open('a.php'); // no frames/scopes: zero rows, selection points at nothing
+        $edited = null;
+        $events->addListener(DebugVariableEditRequested::class, static function () use (&$edited): void {
+            $edited = true;
+        });
+
+        $panel->handleInput('e');
+
+        $this->assertNull($edited);
+    }
+
+    public function testEditVariableSplitsOnlyOnTheFirstEqualsSeparator(): void
+    {
+        $events = new EventDispatcher();
+        $panel = $this->panel($events);
+        $panel->setVariables(1000, [
+            ['name' => '$expr', 'value' => 'a = b', 'variablesReference' => 0],
+        ]);
+        $edited = null;
+        $events->addListener(DebugVariableEditRequested::class, static function (DebugVariableEditRequested $event) use (&$edited): void {
+            $edited = $event->value;
+        });
+
+        // Rows: 0 Frames,1 #0,2 #1,3 Variables,4 Locals,5 $expr.
+        for ($i = 0; $i < 5; ++$i) {
+            $panel->handleInput("\x1b[B");
+        }
+        $panel->handleInput('e');
+
+        $this->assertSame('a = b', $edited, 'only the first " = " is the name/value separator');
+    }
+
+    public function testEditAndRemoveWatchAreSafeWithNoEventDispatcherWired(): void
+    {
+        $panel = $this->panel(); // no $events: a bare widget
+        $panel->setWatches(['$w']);
+
+        // Rows: 0 Frames,1 #0,2 #1,3 Variables,4 Locals,5 $x — 'e' on a variable.
+        for ($i = 0; $i < 5; ++$i) {
+            $panel->handleInput("\x1b[B");
+        }
+        $panel->handleInput('e');
+        $this->addToAssertionCount(1); // must not throw with events === null
+
+        $panel->handleInput("\x1b[3~"); // Delete on whatever is now selected
+        $this->addToAssertionCount(1);
+    }
+
+    public function testConcealedPanelRendersNothingEvenWithRowsPopulated(): void
+    {
+        $panel = $this->panel();
+        $panel->conceal();
+
+        $this->assertSame([], $panel->render(new RenderContext(80, 14)));
+    }
+
+    public function testVisibleRowsWindowsTheRenderedOutputToThatManyLines(): void
+    {
+        $panel = $this->panel();
+        $panel->setVisibleRows(2);
+
+        $lines = $panel->render(new RenderContext(80, 14));
+
+        $this->assertCount(2, $lines, 'only visibleRows lines render, not the full row list');
+    }
+
+    public function testSelectionStylingTracksTheSelectedRowNotAMirroredOffset(): void
+    {
+        // Without a real WidgetContext, resolveElement('selected') resolves
+        // to an empty Style (no theme attached) — so, oddly, it's the
+        // UNSELECTED rows that carry a visible background (Role::Toolbar)
+        // here, and the selected one that carries none. Either way, a
+        // scroll+i vs scroll-i mutant would move which row loses it.
+        $panel = $this->panel();
+        $panel->handleInput("\x1b[B"); // → row 1 (#0 frame)
+        $panel->handleInput("\x1b[B"); // → row 2 (#1 frame), now selected
+
+        $lines = $panel->render(new RenderContext(80, 14));
+
+        $this->assertStringNotContainsString("\x1b[48;5;235m", $lines[2], 'the selected row (index 2) has no resting background');
+        $this->assertStringContainsString("\x1b[48;5;235m", $lines[0], 'row 0 is not selected: resting background applies');
+        $this->assertStringContainsString("\x1b[48;5;235m", $lines[1], 'row 1 is not selected: resting background applies');
+    }
+
+    public function testRenderedRowsArePaddedToTheFullColumnWidth(): void
+    {
+        $panel = $this->panel();
+
+        $lines = $panel->render(new RenderContext(80, 14));
+
+        $this->assertSame(80, mb_strlen(AnsiUtils::stripAnsiCodes($lines[0])), 'a short row still fills the column width');
+    }
+
+    public function testNestingDepthWidensTheIndentAtEachLevel(): void
+    {
+        $panel = new DebugPanelWidget();
+        $panel->setCallbacks(new DebugPanelCallbacks(
+            onExpandVariable: static function (int $ref, callable $deliver): void {
+                match ($ref) {
+                    1001 => $deliver([['name' => 'nested', 'value' => '1', 'variablesReference' => 2002]]),
+                    2002 => $deliver([['name' => 'deep', 'value' => '2', 'variablesReference' => 0]]),
+                    default => null,
+                };
+            },
+        ));
+        $panel->open('a.php');
+        $panel->setSessionState(DebugState::Paused, 'src/a.php:5');
+        $panel->setScopes([['name' => 'Locals', 'variablesReference' => 1000]]);
+        $panel->setVariables(1000, [['name' => '$arr', 'value' => 'array(1)', 'variablesReference' => 1001]]);
+
+        // Rows: 0 Variables, 1 Locals(depth1), 2 $arr(depth2) — expand it.
+        $panel->handleInput("\x1b[B");
+        $panel->handleInput("\x1b[B");
+        $panel->handleInput("\r");
+        // Rows: ...,3 nested(depth3) — expand it too.
+        $panel->handleInput("\x1b[B");
+        $panel->handleInput("\r");
+
+        $lines = array_map(static fn (string $l): string => rtrim(AnsiUtils::stripAnsiCodes($l)), $panel->render(new RenderContext(60, 20)));
+
+        $this->assertSame('   ▾ Locals', $lines[1], 'depth 1');
+        $this->assertSame('     ▾ $arr = array(1)', $lines[2], 'depth 2');
+        $this->assertSame('       ▾ nested = 1', $lines[3], 'depth 3');
+        $this->assertSame('           deep = 2', $lines[4], 'depth 4');
+    }
+
+    public function testWatchChildRendersAtWatchIndentPlusOneLevel(): void
+    {
+        $panel = new DebugPanelWidget();
+        $panel->setCallbacks(new DebugPanelCallbacks(
+            onExpandVariable: static function (int $ref, callable $deliver): void {
+                if (3000 === $ref) {
+                    $deliver([['name' => 'w0', 'value' => 'v', 'variablesReference' => 0]]);
+                }
+            },
+        ));
+        $panel->open('a.php');
+        $panel->setSessionState(DebugState::Paused, 'src/a.php:5');
+        $panel->setWatches(['$w']);
+        $panel->setWatchResult(0, 'v', 3000);
+        $panel->handleInput("\x1b[B");
+        $panel->handleInput("\r"); // expand $w
+
+        $lines = array_map(static fn (string $l): string => rtrim(AnsiUtils::stripAnsiCodes($l)), $panel->render(new RenderContext(60, 20)));
+
+        $this->assertSame('   ▾ $w = v', $lines[1]);
+        $this->assertSame('       w0 = v', $lines[2], 'the watch child sits one level deeper than the watch itself');
+    }
+
+    public function testMovingSelectionInvalidatesTheRenderRevision(): void
+    {
+        $panel = $this->panel();
+        $revision = $panel->getRenderRevision();
+
+        $panel->handleInput("\x1b[B");
+
+        $this->assertGreaterThan($revision, $panel->getRenderRevision());
+    }
+
+    public function testSelectionClampsWhenTheRowCountShrinks(): void
+    {
+        $panel = $this->panel(); // 2 frames + a scope + 2 variables
+        for ($i = 0; $i < 6; ++$i) {
+            $panel->handleInput("\x1b[B"); // drive selection to the last row
+        }
+        $selectedBefore = Probe::get(Probe::get($panel, 'list'), 'selected');
+
+        $panel->setFrames([]); // rows shrink drastically
+
+        $selectedAfter = Probe::get(Probe::get($panel, 'list'), 'selected');
+        $this->assertLessThan($selectedBefore, $selectedAfter, 'selection is clamped to the new, shorter row list');
+    }
+
     public function testWatchRowsExpandThroughRefsAndDeleteFiresRemoval(): void
     {
         $events = new EventDispatcher();

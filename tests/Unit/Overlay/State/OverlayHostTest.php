@@ -1165,4 +1165,144 @@ final class OverlayHostTest extends TestCase
         $this->assertStringContainsString($inactive, $searchPlaced['rows'][0], 'search must stay inactive');
         $this->assertStringContainsString($inactive, $promptPlaced['rows'][0], 'the prompt must stay inactive');
     }
+
+    public function testListOverlaySelectedAndHoveredRowsAreStyledIndependently(): void
+    {
+        // 20 items forces a scroll window (windowStart > 0 once selected is
+        // pushed down), which is what actually distinguishes "windowStart + i"
+        // from "windowStart - i" in the row-index math below.
+        $items = [];
+        for ($i = 0; $i < 20; ++$i) {
+            $items[] = ['label' => "item{$i}", 'hint' => '', 'value' => (string) $i];
+        }
+        $host = $this->host();
+        $host->openList('L', $items, static fn () => null);
+        Probe::set($host, 'overlay', ['title' => 'L', 'items' => $items, 'selected' => 15, 'hovered' => 10, 'onPick' => static fn () => null]);
+
+        $lines = $this->canvas($host, 80, 20);
+        $selectedRow = null;
+        $hoveredRow = null;
+        foreach ($lines as $row => $line) {
+            if (str_contains($line, 'item15')) {
+                $selectedRow = $row;
+            }
+            if (str_contains($line, 'item10')) {
+                $hoveredRow = $row;
+            }
+        }
+        $this->assertNotNull($selectedRow, 'item15 (selected) scrolled into view');
+        $this->assertNotNull($hoveredRow, 'item10 (hovered) scrolled into view');
+        $this->assertStringContainsString("\x1b[48;5;31m", $lines[$selectedRow], 'the selected row carries the selection background');
+        $this->assertStringNotContainsString("\x1b[48;5;31m", $lines[$hoveredRow], 'the hovered row is NOT also styled as selected');
+        // PopupRow (plain, unselected/unhovered) ALSO carries background 236 —
+        // it's RowHighlightBg's foreground-less variant of the same color that
+        // actually distinguishes "genuinely hovered" from "just a plain row".
+        $this->assertStringContainsString("\x1b[48;5;236m", $lines[$hoveredRow], 'the hovered row carries the hover tint');
+        $this->assertStringNotContainsString("\x1b[38;5;250m", $lines[$hoveredRow], 'and it is NOT styled as a plain PopupRow');
+    }
+
+    public function testSearchSelectedAndHoveredRowsAreStyledIndependentlyWhenScrolled(): void
+    {
+        $rows = array_map(
+            fn (int $i): SearchRow => SearchRow::hit($this->hit(SearchCategory::Files, "hit{$i}", static fn () => null)),
+            range(0, end: 19),
+        );
+        $host = $this->host();
+        $host->openSearch('Search', static fn () => null, static fn () => null, static fn () => null);
+        $host->setSearchRows($rows);
+        $search = Probe::get($host, 'search');
+        $search->selected = 15;
+        $search->hovered = 10;
+
+        $lines = $this->canvas($host, 80, 20);
+        $selectedRow = null;
+        $hoveredRow = null;
+        foreach ($lines as $row => $line) {
+            if (str_contains($line, 'hit15')) {
+                $selectedRow = $row;
+            }
+            if (str_contains($line, 'hit10')) {
+                $hoveredRow = $row;
+            }
+        }
+        $this->assertNotNull($selectedRow, 'the selected hit scrolled into view');
+        $this->assertNotNull($hoveredRow, 'the hovered hit scrolled into view');
+        $this->assertStringContainsString("\x1b[48;5;31m", $lines[$selectedRow], 'the selected row carries the selection background');
+        $this->assertStringNotContainsString("\x1b[48;5;31m", $lines[$hoveredRow], 'the hovered row is NOT also styled as selected');
+        $this->assertStringContainsString("\x1b[48;5;236m", $lines[$hoveredRow], 'the hovered row carries the hover tint');
+        // PopupRow (plain) shares that same background 236 with a color:250
+        // foreground it doesn't have — that foreground is what actually tells
+        // "genuinely hovered" apart from "just an ordinary unselected row".
+        $this->assertStringNotContainsString("\x1b[38;5;250m", $lines[$hoveredRow], 'and it is NOT styled as a plain row');
+    }
+
+    public function testNoRowsAndNoEmptyMessageAddsNoFillerRow(): void
+    {
+        // The filler row is only for a configured empty-state message — a
+        // zero-result search with no message configured (the default '')
+        // must not grow the frame by a blank row.
+        $host = $this->host();
+        $host->openSearch('Search', static fn () => null, static fn () => null, static fn () => null);
+        $host->setSearchRows([]);
+
+        [$box] = $host->layout([0, 0, 20, 80]);
+        $this->assertCount(5, $box['rows'], 'title bar + query row + 3 frame chrome rows, no filler');
+    }
+
+    /** @return int how many of the 20 distinct "itemN" labels are visible on the canvas */
+    private function countVisibleListItems(OverlayHost $host, int $rows): int
+    {
+        $lines = $this->canvas($host, 80, $rows);
+        $count = 0;
+        foreach ($lines as $line) {
+            for ($n = 0; $n < 20; ++$n) {
+                if (!str_contains($line, "item{$n} ")) {
+                    continue;
+                }
+                ++$count;
+            }
+        }
+
+        return $count;
+    }
+
+    public function testListOverlayVisibleItemCountRespectsTheRowBudgetFormula(): void
+    {
+        $items = [];
+        for ($i = 0; $i < 20; ++$i) {
+            $items[] = ['label' => "item{$i}", 'hint' => '', 'value' => (string) $i];
+        }
+        $host = $this->host();
+        $host->openList('L', $items, static fn () => null);
+
+        // rows=5: rows-5=0, so max(1, min(20, 0, 12)) floors to exactly 1 item —
+        // a floor of 0 here would show none at all despite 20 real items.
+        $this->assertSame(1, $this->countVisibleListItems($host, rows: 5));
+
+        // rows=9: rows-5=4, distinct from both an off-by-one (3) and a sign
+        // flip (rows+5=14, capped at 12) — exactly 4 pins the real formula.
+        $this->assertSame(4, $this->countVisibleListItems($host, rows: 9));
+    }
+
+    public function testListOverlayWidthGrowsToFitTheWidestLabelPlusHint(): void
+    {
+        // A short title so the item's own label+hint dominates the width
+        // formula (label(30) + hint(10) + 6 = 46), with columns generous
+        // enough (100) to stay clear of the centered-picker clamps.
+        $host = $this->host();
+        $host->openList('X', [['label' => str_repeat('A', times: 30), 'hint' => str_repeat('B', times: 10), 'value' => 'v']], static fn () => null);
+
+        [$box] = $host->layout([0, 0, 20, 100]);
+        $this->assertSame(50, $box['width'], '46 (label+hint+6) + 4 chrome columns');
+    }
+
+    public function testSearchWidthGrowsToFitTheWidestLabelPlusDetail(): void
+    {
+        $host = $this->host();
+        $host->openSearch('X', static fn () => null, static fn () => null, static fn () => null);
+        $host->setSearchRows([SearchRow::hit(new SearchHit(SearchCategory::Files, str_repeat('A', times: 30), str_repeat('B', times: 10), static fn () => null))]);
+
+        [$box] = $host->layout([0, 0, 20, 100]);
+        $this->assertSame(50, $box['width'], '46 (label+detail+6) + 4 chrome columns');
+    }
 }

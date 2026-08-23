@@ -56,6 +56,26 @@ final class LineDecoratorTest extends TestCase
         $this->assertStringContainsString("\x1b[4m", $decorated);
     }
 
+    /** endCol exactly at the line's width: the tail is empty, not a zero-length slice of it. */
+    public function testSpanReachingExactlyTheLineEndHasNoTail(): void
+    {
+        $decorated = LineDecorator::apply('abc', 1, 3, "\x1b[4m", "\x1b[24m");
+
+        $this->assertSame("a\x1b[4mbc\x1b[24m", $decorated);
+    }
+
+    /** $col exactly at the line's width appends, rather than trying to insert "at" a non-existent column. */
+    public function testInsertAtExactlyTheLineEndAppends(): void
+    {
+        $this->assertSame('abcXYZ', LineDecorator::insertAt('abc', 3, 'XYZ'));
+    }
+
+    /** $col one past the end still appends (never throws walking off the line). */
+    public function testInsertAtPastTheLineEndAppends(): void
+    {
+        $this->assertSame('abcXYZ', LineDecorator::insertAt('abc', 99, 'XYZ'));
+    }
+
     public function testApplyFullWidthPadsAndReappliesBackground(): void
     {
         $decorated = LineDecorator::applyFullWidth('ab'."\x1b[0m".'cd', 8, new Style(background: 236));
@@ -64,5 +84,14 @@ final class LineDecoratorTest extends TestCase
         $this->assertStringStartsWith("\x1b[48;5;236m", $decorated);
         $this->assertStringContainsString("\x1b[0m\x1b[48;5;236m", $decorated, 'background survives a reset inside the line');
         $this->assertStringEndsWith("\x1b[49m", $decorated);
+    }
+
+    /** The line is exactly $width already: no padding is appended. */
+    public function testApplyFullWidthAddsNoPaddingWhenAlreadyExact(): void
+    {
+        $decorated = LineDecorator::applyFullWidth('abcd', 4, new Style(background: 236));
+
+        $this->assertSame(4, AnsiUtils::visibleWidth(AnsiUtils::stripAnsiCodes($decorated)));
+        $this->assertSame('abcd', AnsiUtils::stripAnsiCodes($decorated));
     }
 }

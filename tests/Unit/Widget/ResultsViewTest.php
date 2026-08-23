@@ -97,6 +97,78 @@ final class ResultsViewTest extends TestCase
         $this->assertNotContains('src/B.php', $filePaths);
     }
 
+    public function testFilterUsesMultibyteLowercasingNotByteWiseLowercasing(): void
+    {
+        // 'É' (U+00C9) only matches 'é' under mb_strtolower; strtolower() (byte-wise,
+        // locale-dependent) leaves the multibyte sequence untouched.
+        $results = [['path' => 'src/Ébène.php', 'line' => 0, 'text' => 'x', 'ranges' => []]];
+        $rows = ResultsView::build($results, [], grouped: ResultLayout::Flat, filter: 'ébène');
+
+        $this->assertCount(1, $rows, 'the multibyte accented filter must match via mb_strtolower');
+    }
+
+    public function testAFailingFilterDoesNotAbortLaterMatchesInGroupedMode(): void
+    {
+        $results = [
+            ['path' => 'src/A.php', 'line' => 0, 'text' => 'drop me', 'ranges' => []],
+            ['path' => 'src/B.php', 'line' => 1, 'text' => 'keep me', 'ranges' => []],
+        ];
+        $rows = ResultsView::build($results, [], grouped: ResultLayout::Grouped, filter: 'keep');
+
+        // The failing first result must be skipped (continue), not abort the whole scan.
+        $this->assertCount(2, $rows, 'header(1) + the one surviving match for src/B.php');
+        $this->assertSame('src/B.php', $rows[0]->filePath);
+    }
+
+    public function testAFailingFilterDoesNotAbortLaterMatchesInNestedMode(): void
+    {
+        $results = [
+            ['path' => 'src/A.php', 'line' => 0, 'text' => 'drop me', 'ranges' => []],
+            ['path' => 'src/B.php', 'line' => 1, 'text' => 'keep me', 'ranges' => []],
+        ];
+        $rows = ResultsView::build($results, [], grouped: ResultLayout::Grouped, filter: 'keep', grouping: ResultGrouping::Nested);
+
+        $filePaths = array_values(array_filter(array_map(static fn ($r) => $r->filePath, $rows)));
+        $this->assertContains('src/B.php', $filePaths, 'the later matching result must still be reached');
+    }
+
+    public function testNestedDirectoryHeaderReflectsItsOwnCollapsedState(): void
+    {
+        $results = [$this->hit('src/A.php', 0)];
+        $rows = ResultsView::build($results, ['src' => true], grouped: ResultLayout::Grouped, grouping: ResultGrouping::Nested);
+
+        $this->assertTrue($rows[0]->collapsed, 'a collapsed directory must render Collapsed, not Expanded');
+    }
+
+    public function testNestedFileHeaderReflectsItsOwnCollapsedState(): void
+    {
+        $results = [$this->hit('src/A.php', 0)];
+        $rows = ResultsView::build($results, ['src/A.php' => true], grouped: ResultLayout::Grouped, grouping: ResultGrouping::Nested);
+
+        // rows: dir header (not collapsed) · file header (collapsed)
+        $this->assertFalse($rows[0]->collapsed);
+        $this->assertTrue($rows[1]->collapsed, 'a collapsed file must render Collapsed, not Expanded');
+    }
+
+    public function testNestedCollapsedFileDoesNotAbortLaterFilesInTheSameDirectory(): void
+    {
+        $results = [$this->hit('src/A.php', 0), $this->hit('src/B.php', 1)];
+        $rows = ResultsView::build($results, ['src/A.php' => true], grouped: ResultLayout::Grouped, grouping: ResultGrouping::Nested);
+
+        // dir header · A.php header (collapsed, no match row) · B.php header · its match
+        $filePaths = array_values(array_filter(array_map(static fn ($r) => $r->filePath, $rows)));
+        $this->assertContains('src/B.php', $filePaths, 'a collapsed sibling file must not stop the scan of later files');
+        $this->assertSame(1, $rows[\count($rows) - 1]->matchIndex, 'B.php\'s match row was appended');
+    }
+
+    public function testFilterMatchesOnMultibyteTextIndependentlyOfPath(): void
+    {
+        $results = [['path' => 'src/A.php', 'line' => 0, 'text' => 'ÉCHO', 'ranges' => []]];
+        $rows = ResultsView::build($results, [], grouped: ResultLayout::Flat, filter: 'écho');
+
+        $this->assertCount(1, $rows, 'the multibyte text match must use mb_strtolower, not the path\'s');
+    }
+
     public function testCollapsedFileHidesItsMatchesButKeepsTheHeader(): void
     {
         $results = [$this->hit('a.php', 0), $this->hit('a.php', 5), $this->hit('b.php', 2)];

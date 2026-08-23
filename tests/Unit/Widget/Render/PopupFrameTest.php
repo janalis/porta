@@ -76,5 +76,16 @@ final class PopupFrameTest extends TestCase
     {
         $this->assertSame('╭╮', AnsiUtils::stripAnsiCodes(PopupFrame::top(-3, Styles::dark())));
         $this->assertSame('││', AnsiUtils::stripAnsiCodes(PopupFrame::rail('x', -3, Styles::dark())));
+        // bottom() has no clamping helper underneath it (unlike rail()'s
+        // AnsiText::truncate, which already tolerates negative widths) — its own
+        // max(0, ...) is the only thing standing between a negative width and a
+        // str_repeat() ValueError.
+        $this->assertSame('╰╯', AnsiUtils::stripAnsiCodes(PopupFrame::bottom(-3, Styles::dark())));
+    }
+
+    /** Exactly zero columns of content: no horizontal filler, not one stray column. */
+    public function testZeroInnerWidthAddsNoFillerToTheBottomBorder(): void
+    {
+        $this->assertSame('╰╯', AnsiUtils::stripAnsiCodes(PopupFrame::bottom(0, Styles::dark())));
     }
 }

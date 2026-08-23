@@ -144,6 +144,64 @@ final class ContextMenuTest extends TestCase
         $this->assertSame(['copy'], $ran);
     }
 
+    /**
+     * With only 3 items (one a separator), stepping by -1 or -2 coincidentally
+     * lands on the same row — so this needs 4 plain, selectable items to tell
+     * "one row back" from "two rows back" apart at all.
+     */
+    public function testUpMovesExactlyOneRowNotTwo(): void
+    {
+        $ran = [];
+        $menu = new ContextMenu();
+        $menu->open([
+            new MenuItem('A', '', static function () use (&$ran): void {
+                $ran[] = 'a';
+            }),
+            new MenuItem('B', '', static function () use (&$ran): void {
+                $ran[] = 'b';
+            }),
+            new MenuItem('C', '', static function () use (&$ran): void {
+                $ran[] = 'c';
+            }),
+            new MenuItem('D', '', static function () use (&$ran): void {
+                $ran[] = 'd';
+            }),
+        ]);
+        $menu->hoverItem(2); // start at C
+
+        $menu->handleInput("\x1b[A"); // up
+        $menu->handleInput("\r");
+
+        $this->assertSame(['b'], $ran, 'one row back from C is B, not A');
+    }
+
+    /** The down-arrow symmetric case: two rows would overshoot D onto the wrong row. */
+    public function testDownMovesExactlyOneRowNotTwo(): void
+    {
+        $ran = [];
+        $menu = new ContextMenu();
+        $menu->open([
+            new MenuItem('A', '', static function () use (&$ran): void {
+                $ran[] = 'a';
+            }),
+            new MenuItem('B', '', static function () use (&$ran): void {
+                $ran[] = 'b';
+            }),
+            new MenuItem('C', '', static function () use (&$ran): void {
+                $ran[] = 'c';
+            }),
+            new MenuItem('D', '', static function () use (&$ran): void {
+                $ran[] = 'd';
+            }),
+        ]);
+        $menu->hoverItem(1); // start at B
+
+        $menu->handleInput("\x1b[B"); // down
+        $menu->handleInput("\r");
+
+        $this->assertSame(['c'], $ran, 'one row forward from B is C, not D');
+    }
+
     public function testUpWrapsPastSeparator(): void
     {
         $menu = $this->menu(); // Cut (0)
@@ -174,6 +232,15 @@ final class ContextMenuTest extends TestCase
         $menu = $this->menu();
         $menu->runItem(2); // Copy
         $this->assertSame(['copy'], $this->ran);
+        $this->assertFalse($menu->isOpen());
+    }
+
+    /** An out-of-range index (item = null) must short-circuit before ever touching a MenuItem method. */
+    public function testRunItemOutOfRangeRunsNothingButCloses(): void
+    {
+        $menu = $this->menu();
+        $menu->runItem(99);
+        $this->assertSame([], $this->ran);
         $this->assertFalse($menu->isOpen());
     }
 
@@ -228,6 +295,19 @@ final class ContextMenuTest extends TestCase
         $this->assertFalse($menu->isOpen(), 'select on a separator still closes');
     }
 
+    public function testWheelOnAClosedMenuNeverFiresOnNavigate(): void
+    {
+        $closed = new ContextMenu();
+        $navigations = 0;
+        $closed->onNavigate(static function () use (&$navigations): void {
+            ++$navigations;
+        });
+
+        $closed->moveSelection(1);
+
+        $this->assertSame(0, $navigations, 'a closed menu ignores wheel events entirely');
+    }
+
     public function testWheelMovesTheSelectionSkippingSeparators(): void
     {
         $closed = new ContextMenu();
@@ -247,5 +327,52 @@ final class ContextMenuTest extends TestCase
         $menu->moveSelection(2);
         $menu->handleInput("\r");
         $this->assertSame(['cut'], $this->ran, 'two steps wrap back to Cut — the magnitude moved, not just the sign');
+    }
+
+    public function testWheelDirectionFollowsTheDeltaSignNotAFixedComparand(): void
+    {
+        $forward = $this->menu(); // Cut selected
+        $forward->moveSelection(1);
+        $forward->handleInput("\r");
+        $this->assertSame(['copy'], $this->ran, 'a single positive step lands on Copy');
+
+        $backward = $this->menu(); // Cut selected
+        $backward->moveSelection(-1);
+        $backward->handleInput("\r");
+        $this->assertSame(['copy'], $this->ran, 'a single negative step wraps backward onto Copy too — {Cut, Copy} is only 2 wide either direction');
+    }
+
+    public function testWheelStepFiresOnNavigateExactlyOnceRegardlessOfStepCount(): void
+    {
+        $menu = $this->menu();
+        $navigations = 0;
+        $menu->onNavigate(static function () use (&$navigations): void {
+            ++$navigations;
+        });
+
+        $menu->moveSelection(2);
+
+        $this->assertSame(1, $navigations, 'one re-placement per wheel event, not one per internal step');
+    }
+
+    public function testResetStateAfterCloseZeroesTheSelectionIndex(): void
+    {
+        $menu = $this->menu();
+        $menu->handleInput("\x1b"); // close
+
+        $this->assertSame(0, Probe::get($menu, 'selected'));
+    }
+
+    public function testHandleInputOnAClosedMenuNeverActsOnTheKey(): void
+    {
+        $menu = new ContextMenu();
+        $closed = false;
+        $menu->onClose(static function () use (&$closed): void {
+            $closed = true;
+        });
+
+        $menu->handleInput("\x1b"); // would be menu_close, if it were open
+
+        $this->assertFalse($closed, 'a closed menu ignores input entirely — onClose never fires for it');
     }
 }

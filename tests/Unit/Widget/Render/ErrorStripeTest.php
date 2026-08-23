@@ -38,6 +38,14 @@ final class ErrorStripeTest extends TestCase
         $this->assertSame(' ', AnsiUtils::stripAnsiCodes($cells[8]), 'line 80 painted nothing');
     }
 
+    /** A diagnostic on a stale line number past the current lineCount still clamps onto the last row. */
+    public function testAnOutOfRangeLineClampsOntoTheLastRow(): void
+    {
+        $cells = $this->cells([10 => [['severity' => 1, 'message' => 'e', 'col' => 0]]], rows: 10, lineCount: 5, vScroll: 0);
+
+        $this->assertSame(Glyphs::STRIPE_ERROR, AnsiUtils::stripAnsiCodes($cells[9]), 'clamped onto the last row, not silently dropped or off the end');
+    }
+
     public function testShortFileCollapsesToRowZeroAndShowsNoThumb(): void
     {
         $cells = $this->cells([0 => [['severity' => 2, 'message' => 'w', 'col' => 0]]], rows: 8, lineCount: 1);
@@ -62,10 +70,36 @@ final class ErrorStripeTest extends TestCase
         $this->assertSame(Glyphs::STRIPE_ERROR, AnsiUtils::stripAnsiCodes($marked), 'the diagnostic mark rides the thumb row');
         $plainMark = $this->cells($diagnostics, rows: 10, lineCount: 100)[5];
         $this->assertNotSame($plainMark, $marked, 'the thumb background merges under the mark');
+        $this->assertStringStartsWith(Sgr::RESET, $marked, 'the leading reset shields the cell from prior row state, same as every other cell');
+    }
+
+    /** The file exactly fills the viewport: no scrolling possible, so no thumb at all. */
+    public function testNoThumbWhenTheFileExactlyFillsTheViewport(): void
+    {
+        $cells = $this->cells([], rows: 10, lineCount: 10, vScroll: 0, lastVisible: 9);
+
+        foreach ($cells as $i => $cell) {
+            $this->assertSame(Sgr::RESET.' ', $cell, "row {$i}: no thumb when nothing is scrolled off");
+        }
+    }
+
+    /** A stale/out-of-range vScroll or lastVisible still clamps the thumb onto exactly the last row — no more, no less. */
+    public function testThumbFromAnOutOfRangeScrollClampsOntoExactlyTheLastRow(): void
+    {
+        $cells = $this->cells([], rows: 10, lineCount: 100, vScroll: 200, lastVisible: 200);
+
+        $this->assertNotSame(Sgr::RESET.' ', $cells[9], 'the thumb reaches the last row, not a phantom row past it');
+        $this->assertSame(Sgr::RESET.' ', $cells[8], 'row 8 is not swept into the thumb by an over-wide clamp');
     }
 
     public function testZeroRowsPaintsNothing(): void
     {
         $this->assertSame([], $this->cells([], rows: 0, lineCount: 5));
+    }
+
+    /** A negative row count must not crash array_fill() — it degrades to no cells, same as zero. */
+    public function testNegativeRowsPaintsNothingRatherThanCrashing(): void
+    {
+        $this->assertSame([], $this->cells([], rows: -1, lineCount: 5));
     }
 }

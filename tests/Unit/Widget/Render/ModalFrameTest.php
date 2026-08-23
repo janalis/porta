@@ -54,6 +54,29 @@ final class ModalFrameTest extends TestCase
         }
     }
 
+    /** room==8 exactly is the boundary: still wide enough to keep the hint. */
+    public function testRoomExactlyAtTheHintThresholdKeepsTheHint(): void
+    {
+        $bar = $this->plainBar('Setup', 18); // room = 18-6-4 = 8
+        $this->assertStringContainsString('Esc', $bar);
+
+        $dropped = $this->plainBar('Setup', 17); // room = 7: one column under
+        $this->assertStringNotContainsString('Esc', $dropped);
+    }
+
+    /** An explicitly empty hint must not itself steal a column from room. */
+    public function testAnEmptyHintReservesNoSeparatorColumn(): void
+    {
+        $withEmptyHint = $this->plainBar('Setup', 18, hint: '');
+        $withDefaultHint = $this->plainBar('Setup', 18);
+
+        // Same box width either way, but the empty-hint bar has one more fill
+        // column where the "Esc" hint and its separator would have sat.
+        $this->assertSame(18, mb_strwidth($withEmptyHint));
+        $this->assertStringNotContainsString('Esc', $withEmptyHint);
+        $this->assertSame(mb_substr_count($withEmptyHint, needle: '─'), mb_substr_count($withDefaultHint, needle: '─') + 4, 'the reclaimed hint+separator+chrome columns become fill');
+    }
+
     /** A narrow box drops the hint before it crushes the title. */
     public function testTheHintYieldsOnANarrowBox(): void
     {
@@ -85,6 +108,10 @@ final class ModalFrameTest extends TestCase
 
         $this->assertNotSame($normal, $hovered, 'the × restyles under the pointer');
         $this->assertSame(AnsiUtils::stripAnsiCodes($normal), AnsiUtils::stripAnsiCodes($hovered), 'same text, different shade');
+        // Direction, not just difference: hovered must be the BRIGHT variant, not
+        // merely "a different one" (which a swapped active/inactive would also be).
+        $this->assertStringContainsString(\Porta\Widget\Render\TabCloseGlyph::active(Styles::dark()), $hovered);
+        $this->assertStringContainsString(\Porta\Widget\Render\TabCloseGlyph::inactive(Styles::dark()), $normal);
     }
 
     public function testWrapPadsRailsTheContentAndClosesTheBox(): void
@@ -114,6 +141,24 @@ final class ModalFrameTest extends TestCase
             ['│        │', '│ top    │', '├────────┤', '│ mid    │', '├────────┤', '│ end    │', '│        │', '╰────────╯'],
             $rows,
         );
+    }
+
+    /** A negative inner width still closes the tee row and bottom border, not a str_repeat() crash. */
+    public function testDegenerateInnerWidthKeepsTheeAndBottomBorderClosed(): void
+    {
+        $rows = array_map(AnsiUtils::stripAnsiCodes(...), ModalFrame::wrapSections([['a'], ['b']], -3, Styles::dark()));
+
+        $this->assertSame('├┤', $rows[2], 'the tee row still closes at a negative inner width');
+        $this->assertSame('╰╯', $rows[array_key_last($rows)], 'the bottom border still closes at a negative inner width');
+    }
+
+    /** innerWidth + CHROME_COLS-worth-of-fill == 0: no horizontal filler on either the tee row or the bottom border. */
+    public function testZeroFillerWidthAddsNoFillerToTeeOrBottomBorder(): void
+    {
+        $rows = array_map(AnsiUtils::stripAnsiCodes(...), ModalFrame::wrapSections([['a'], ['b']], -2, Styles::dark()));
+
+        $this->assertSame('├┤', $rows[2]);
+        $this->assertSame('╰╯', $rows[array_key_last($rows)]);
     }
 
     /** The chrome constants match what wrap() actually emits — consumers derive from them. */

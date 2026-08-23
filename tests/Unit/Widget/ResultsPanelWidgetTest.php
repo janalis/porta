@@ -9,6 +9,7 @@ use Porta\Event\ResultRowActivated;
 use Porta\Event\ResultsExportRequested;
 use Porta\Event\ResultsRerunRequested;
 use Porta\Tests\Support\AttachedStyles;
+use Porta\Tests\Support\Probe;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Support\ResultsPanelFields;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -169,6 +170,63 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringContainsString('needle', AnsiUtils::stripAnsiCodes($body), 'the match text is still shown');
     }
 
+    /** Exact flat-row layout: leading space, then `path:line`, then the gutter, then the text. */
+    public function testFlatMatchRowHasExactLayout(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::resultsOnly());
+        $panel->setResults([['path' => 'src/A.php', 'line' => 4, 'text' => 'the needle here']]);
+
+        $row = rtrim(AnsiUtils::stripAnsiCodes($panel->render(new RenderContext(60, 4))[0]));
+
+        $this->assertSame(' src/A.php:5  the needle here', $row);
+    }
+
+    /** A flat (ungrouped) row's search-range highlight must land at the exact `path:line  ` prefix width. */
+    public function testFlatMatchHighlightLandsAtThePrefixWidthOffset(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::resultsOnly());
+        $panel->setResults([
+            ['path' => 'src/A.php', 'line' => 4, 'text' => 'the needle here', 'ranges' => [['start' => 4, 'length' => 6]]],
+        ]);
+
+        $raw = $panel->render(new RenderContext(60, 4))[0];
+
+        // prefixWidth = 1 (leading space) + strwidth('src/A.php:5') (11) + 2 (gutter) = 14; range start 4 → column 18.
+        $this->assertStringNotContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, 17, 1, strict: true), 'column 17 is not tinted');
+        $this->assertStringContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, 18, 1, strict: true), 'column 18 ("n" of needle) is tinted');
+    }
+
+    /** A location-less row (log tools) starts its text with a leading space, not the reverse. */
+    public function testLocationlessRowLeadsWithASpaceBeforeTheText(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Problems', ResultsPanelFields::resultsOnly());
+        $panel->setResults([['path' => '', 'line' => 0, 'text' => 'a diagnostic message']]);
+
+        $row = rtrim(AnsiUtils::stripAnsiCodes($panel->render(new RenderContext(60, 4))[0]));
+
+        $this->assertSame(' a diagnostic message', $row);
+    }
+
+    /** The location-less row's highlight prefix is exactly 1 (the leading space), not 0 or 2. */
+    public function testLocationlessRowHighlightLandsRightAfterTheLeadingSpace(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Problems', ResultsPanelFields::resultsOnly());
+        $panel->setResults([['path' => '', 'line' => 0, 'text' => 'needle here', 'ranges' => [['start' => 0, 'length' => 6]]]]);
+
+        $raw = $panel->render(new RenderContext(60, 4))[0];
+
+        $this->assertStringNotContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, 0, 1, strict: true), 'column 0 (the leading space) is not tinted');
+        $this->assertStringContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, 1, 1, strict: true), 'column 1 ("n" of needle) is tinted');
+    }
+
     public function testResultsWithoutRangesRenderUnhighlighted(): void
     {
         // Non-search modes provide no `ranges` key → no SearchBg, no crash.
@@ -305,6 +363,36 @@ final class ResultsPanelWidgetTest extends TestCase
         $lines = $panel->render(new RenderContext(60, 12));
 
         $this->assertStringNotContainsString("\x1b[48;5;236m", implode("\n", $lines), 'no row stays tinted after the list is rebuilt');
+    }
+
+    public function testDefaultVisibleRowsIsExactlyTen(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Usages', ResultsPanelFields::resultsOnly());
+        $panel->setResults($this->results(15));
+
+        $lines = $panel->render(new RenderContext(60, 24));
+        $resultRows = array_filter($lines, static fn (string $l) => str_contains(AnsiUtils::stripAnsiCodes($l), '.php:'));
+        $this->assertCount(10, $resultRows, 'the un-configured default is exactly 10 rows');
+    }
+
+    /** Reopening a panel that already has state must reset it, not carry stale filter/selection/rows over. */
+    public function testOpenResetsFilterSelectionAndSearchingFromAPriorSession(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $panel->handleInput('x'); // types into the filter
+        $panel->setSearching();
+        $panel->handleInput("\x1b[B"); // move off row 0
+
+        $panel->open('Find in Project', ResultsPanelFields::searchResults()); // reopen: everything above must reset
+
+        $this->assertSame('', Probe::get($panel, 'filter')->value());
+        $this->assertFalse(Probe::get($panel, 'searching'));
+        $lines = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $this->assertStringNotContainsString('match zero', $lines, 'the stale results are gone — setResults([]) via open()');
     }
 
     public function testSetVisibleRowsLimitsRenderedResultRows(): void
@@ -753,6 +841,42 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringContainsString('newest', $rendered[0] ?? '', 'log refresh keeps the latest line on top and selected');
     }
 
+    /** A header selection (groupKey only, no path/line) must relocate via the group key, not fall back to selectFirstMatch. */
+    public function testRefreshResultsRelocatesAHeaderSelectionByGroupKey(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $panel->handleInput("\x1b[B"); // A:0 -> A:4
+        $panel->handleInput("\x1b[B"); // -> B header
+
+        $panel->refreshResults([
+            ['path' => 'src/New.php', 'line' => 9, 'text' => 'fresh', 'ranges' => []],
+            ...$this->groupedResults(),
+        ]);
+
+        $this->assertSame('src/B.php', $panel->captureViewState()->selectedGroupKey, 'the header selection relocated by its group key');
+    }
+
+    /** With no prior identity to relocate (a fresh single-row set, selection not already at 0), refresh must select the first match, not leave the old index untouched. */
+    public function testRefreshResultsSelectsFirstMatchWhenNothingToRelocate(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Notifications', ResultsPanelFields::resultsOnly());
+        $panel->setResults([
+            ['path' => '', 'line' => 0, 'text' => 'a'],
+            ['path' => '', 'line' => 0, 'text' => 'b'],
+            ['path' => '', 'line' => 0, 'text' => 'c'],
+        ]);
+        $panel->handleInput("\x1b[B"); // move off row 0
+
+        // A location-less refresh with a wholly different row count/content: no
+        // (path,line) or groupKey identity to relocate by at all.
+        $panel->refreshResults([['path' => '', 'line' => 0, 'text' => 'only one now']]);
+
+        $this->assertSame(0, $panel->captureViewState()->selectedIndex, 'selection lands on the first (only) match, not wherever it happened to be');
+    }
+
     public function testRefreshResultsClampsWhenTheSelectedIdentityVanished(): void
     {
         $events = new EventDispatcher();
@@ -771,5 +895,48 @@ final class ResultsPanelWidgetTest extends TestCase
         });
         $panel->handleInput("\r");
         $this->assertSame(['src/C.php', 5], $jumped, 'a vanished identity clamps onto a real match');
+    }
+
+    /**
+     * Exact row layout in the nested view: indent, then arrow, then count —
+     * catches any reordering/dropping among the header's concatenated pieces,
+     * which a loose "contains" check on the file name alone would miss.
+     */
+    public function testNestedHeaderAndMatchRowsHaveExactLayout(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults([
+            ['path' => 'src/A.php', 'line' => 4, 'text' => 'foo one', 'ranges' => []],
+        ]);
+        $panel->handleInput("\x1bg"); // → Directory
+        $panel->handleInput("\x1bg"); // → Nested
+
+        $raw = $panel->render(new RenderContext(30, 4));
+        $rows = array_map(static fn (string $r): string => rtrim(AnsiUtils::stripAnsiCodes($r)), $raw);
+
+        $this->assertStringStartsWith("\x1b[48;5;235m", $raw[1], 'the row background opens first, before any content');
+        $this->assertStringEndsWith("\x1b[0m", $raw[1], 'and resets last, after all the content');
+        $this->assertSame(' ▾ src/  (1)', $rows[1], 'directory header: no indent, arrow right after the leading space');
+        $this->assertSame('   ▾ A.php  (1)', $rows[2], 'nested file header: two-space indent, THEN the arrow');
+        $this->assertSame('      5  foo one', $rows[3], 'nested match row: six-space indent, THEN the label, THEN the gutter');
+    }
+
+    /** A grouped match row's search-range highlight must land on the prefix's exact width, not one column off. */
+    public function testGroupedMatchHighlightLandsAtThePrefixWidthOffset(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults([
+            ['path' => 'src/A.php', 'line' => 4, 'text' => 'needle here', 'ranges' => [['start' => 0, 'length' => 6]]],
+        ]);
+
+        $raw = $panel->render(new RenderContext(30, 4))[2]; // the match row, under the file header
+
+        // prefixWidth = 4 (matchIndent) + 1 (label "5") + 2 (gutter) = 7.
+        $this->assertStringNotContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, 6, 1, strict: true), 'column 6 (the gutter) is not tinted');
+        $this->assertStringContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, 7, 1, strict: true), 'column 7 ("n" of needle) is tinted');
     }
 }

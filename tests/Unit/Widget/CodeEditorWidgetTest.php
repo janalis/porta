@@ -1344,6 +1344,130 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->handleSearchOverlayInput("\x1b");
     }
 
+    public function testShowDocumentClosesTheCompletionPopup(): void
+    {
+        $editor = $this->editor("<?php\n\$abc\n");
+        $editor->getDocument()->setCursor(1, 4); // right after "abc"
+        Probe::get($editor, 'completion')->show([new CompletionItem('abcdef', 'abcdef', 'var', '')]);
+        $this->assertTrue($editor->isCompletionOpen(), 'sanity: the popup is actually open before the swap');
+
+        $editor->showDocument('other.php', new \Porta\Editor\Document("<?php\n"));
+
+        // Note: this passes even without the explicit closeCompletion() call
+        // at the end of showDocument(), because the completion collaborator
+        // is unconditionally replaced with a fresh (closed) instance earlier
+        // in the same method — that later call is redundant given the current
+        // ordering, not a gap this test can expose.
+        $this->assertFalse($editor->isCompletionOpen(), 'no completion popup survives a buffer swap');
+    }
+
+    public function testShowDocumentClosesAnOpenListOverlay(): void
+    {
+        $editor = $this->editor();
+        $editor->openListOverlay('Recent', [['label' => 'a', 'hint' => '', 'value' => 'a']], static function (string $v): void {});
+        $this->assertTrue(Probe::get($editor, 'overlayHost')->anyOpen(), 'sanity: the list overlay is actually open before the swap');
+
+        $editor->showDocument('other.php', new \Porta\Editor\Document("<?php\n"));
+
+        $this->assertFalse(Probe::get($editor, 'overlayHost')->anyOpen(), 'showDocument must close a list overlay left open from the old buffer');
+    }
+
+    public function testShowDocumentRebuildsMultiCaretBoundToTheNewDocument(): void
+    {
+        $editor = $this->editor();
+        $before = Probe::get($editor, 'multiCaret');
+
+        $newDoc = new \Porta\Editor\Document("<?php\n");
+        $editor->showDocument('other.php', $newDoc);
+
+        $after = Probe::get($editor, 'multiCaret');
+        $this->assertNotSame($before, $after, 'the old buffer\'s carets must not leak into the new one');
+        $this->assertSame($newDoc, Probe::get($after, 'document'));
+    }
+
+    public function testCloseSiblingFloatersClosesTheWelcomeView(): void
+    {
+        $welcome = new class implements \Porta\Workbench\View\ContributedView {
+            private bool $open = false;
+
+            public function viewId(): string
+            {
+                return 'welcome';
+            }
+
+            public function ownsMainArea(): bool
+            {
+                return false;
+            }
+
+            public function isOpen(): bool
+            {
+                return $this->open;
+            }
+
+            public function open(): void
+            {
+                $this->open = true;
+            }
+
+            public function close(): void
+            {
+                $this->open = false;
+            }
+
+            public function toggle(): void
+            {
+                $this->open = !$this->open;
+            }
+
+            public function pointer(): ?\Porta\Workbench\View\ViewPointer
+            {
+                return null;
+            }
+
+            public function contextMenus(): ?\Porta\Workbench\Menu\ViewMenuSource
+            {
+                return null;
+            }
+
+            public function focusTarget(): \Symfony\Component\Tui\Widget\AbstractWidget&\Symfony\Component\Tui\Widget\FocusableInterface
+            {
+                throw new \LogicException('not exercised by this test');
+            }
+
+            public function cycleFocus(int $direction): bool
+            {
+                return false;
+            }
+        };
+        $views = new \Porta\Workbench\View\ViewRegistry();
+        $views->register($welcome);
+        $views->open('welcome');
+        $this->assertTrue($views->isOpen('welcome'), 'sanity: the welcome view is actually open before the picker opens');
+
+        $editor = new CodeEditorWidget(views: $views);
+        $editor->openFile('a.php', "<?php\n");
+        $editor->openListOverlay('Recent', [], static function (string $v): void {});
+
+        $this->assertFalse($views->isOpen('welcome'), 'opening the picker must close the welcome view sharing its span slot');
+    }
+
+    public function testHandleInputSwallowsTheEmptyRemainderWhileBufferingAPaste(): void
+    {
+        // Mid-paste (start marker seen, no end marker yet), a subsequent
+        // empty chunk must be swallowed, not fall through to keybinding
+        // dispatch as if it were a real (empty) keystroke.
+        $editor = $this->editor("<?php\n\n");
+        $editor->getDocument()->setCursor(1, 0);
+
+        $editor->handleInput("\x1b[200~partial"); // starts buffering, no end marker
+        $before = $editor->getDocument()->getLine(1);
+
+        $editor->handleInput(''); // the empty remainder this guard exists for
+
+        $this->assertSame($before, $editor->getDocument()->getLine(1), 'an empty chunk mid-paste must be a no-op');
+    }
+
     public function testMoveSelectionWithoutCandidatesIsInert(): void
     {
         // Directly on the collaborator: an empty candidate list must not

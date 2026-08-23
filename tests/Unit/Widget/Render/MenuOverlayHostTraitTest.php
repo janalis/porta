@@ -88,6 +88,16 @@ final class MenuOverlayHostTraitTest extends TestCase
         $this->assertSame('..........', AnsiUtils::stripAnsiCodes($lines[1]), 'a span wholly past the width is dropped');
     }
 
+    public function testSetMenuOverlayInvalidatesTheWidget(): void
+    {
+        $host = $this->host();
+        $rev = $host->getRenderRevision();
+
+        $host->setMenuOverlay([['row' => 0, 'col' => 0, 'width' => 2, 'segment' => 'DD']]);
+
+        $this->assertGreaterThan($rev, $host->getRenderRevision(), 'a new menu overlay must trigger a repaint');
+    }
+
     public function testClearingOneLayerLeavesTheOther(): void
     {
         $host = $this->host();

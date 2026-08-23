@@ -303,7 +303,6 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->mouse = $this->newEditorMouse($document);
         $this->structural = $this->newEditorStructural($document);
         $this->actions = $this->newEditorActions($document, $this->actions->clipboardValue());
-        $this->closeCompletion();
         $this->overlayHost->closeList();
         $this->invalidate();
     }

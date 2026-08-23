@@ -102,6 +102,74 @@ final class LineSpansTest extends TestCase
         $this->assertSame(3, $result['padTo']);
     }
 
+    public function testBracketSpanCoversExactlyOneCell(): void
+    {
+        $doc = new Document("a(b)\n");
+        $result = LineSpans::forLine(
+            $doc,
+            0,
+            new EditorDecorations(multiActive: false, selection: null, carets: [], occurrences: [], brackets: [[0, 3]]),
+            [],
+            [],
+            new Styles(DarkTheme::definition()),
+        );
+
+        $bracketSpan = array_values(array_filter($result['spans'], static fn (array $s) => LineDecorator::BRACKET_SGR === $s[2]))[0];
+        $this->assertSame(3, $bracketSpan[0]);
+        $this->assertSame(4, $bracketSpan[1], 'a bracket cell is exactly one column wide');
+    }
+
+    public function testDiagnosticWithoutAnExplicitEndColDefaultsToExactlyOneColumnPastCol(): void
+    {
+        $doc = new Document("abcdef\n");
+        $result = LineSpans::forLine(
+            $doc,
+            0,
+            new EditorDecorations(multiActive: false, selection: null, carets: [], occurrences: [], brackets: null),
+            [],
+            [['severity' => 1, 'message' => 'x', 'col' => 2]], // no endCol
+            new Styles(DarkTheme::definition()),
+        );
+
+        $diagSpan = $result['spans'][0];
+        $this->assertSame(2, $diagSpan[0]);
+        $this->assertSame(3, $diagSpan[1], 'defaults to col+1, one column wide, no more and no less');
+    }
+
+    public function testDiagnosticEndDisplayColumnIsAtLeastOnePastStartEvenWhenTheMappedEndColIsSmaller(): void
+    {
+        // endCol maps to the SAME display column as col (a zero-width mapping),
+        // so the max(startDisp+1, ...) floor must still produce a 1-wide span.
+        $doc = new Document("abcdef\n");
+        $result = LineSpans::forLine(
+            $doc,
+            0,
+            new EditorDecorations(multiActive: false, selection: null, carets: [], occurrences: [], brackets: null),
+            [],
+            [['severity' => 1, 'message' => 'x', 'col' => 2, 'endCol' => 2]],
+            new Styles(DarkTheme::definition()),
+        );
+
+        $diagSpan = $result['spans'][0];
+        $this->assertSame(2, $diagSpan[0]);
+        $this->assertSame(3, $diagSpan[1], 'the floor of startDisp+1 must hold, not startDisp+0 or startDisp+2');
+    }
+
+    public function testMiddleLineOfAMultiLineSelectionStartsAtColumnZero(): void
+    {
+        $doc = new Document("alpha beta\ngamma delta\nepsilon\n");
+        $result = LineSpans::forLine(
+            $doc,
+            1, // the middle line: neither the selection's start nor end line
+            new EditorDecorations(multiActive: false, selection: ['startLine' => 0, 'startCol' => 2, 'endLine' => 2, 'endCol' => 4], carets: [], occurrences: [], brackets: null),
+            [],
+            [],
+            new Styles(DarkTheme::definition()),
+        );
+
+        $this->assertSame(0, $result['spans'][0][0], 'a fully-selected middle line starts at column 0, not -1');
+    }
+
     public function testOffLineDecorationsProduceNoSpans(): void
     {
         $doc = new Document("one\ntwo\n");

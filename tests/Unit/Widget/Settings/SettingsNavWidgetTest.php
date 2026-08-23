@@ -170,4 +170,68 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->setMenuOverlay([['row' => 0, 'col' => 0, 'width' => 8, 'segment' => "\x1b[7mDROP\x1b[0m"]]);
         $this->assertStringContainsString('DROP', $widget->render(new RenderContext(24, 20))[0]);
     }
+
+    public function testDefaultWidthIsTwentyTwo(): void
+    {
+        $this->assertSame(22, $this->widget()->width());
+    }
+
+    public function testMaxWidthIsSixty(): void
+    {
+        $widget = $this->widget();
+        $widget->setWidth(60);
+        $this->assertSame(60, $widget->width());
+        $widget->setWidth(61); // clamped down
+        $this->assertSame(60, $widget->width());
+    }
+
+    public function testARealSelectionMoveBumpsTheRenderRevision(): void
+    {
+        $widget = $this->widget();
+        $before = $widget->getRenderRevision();
+        $widget->setPluginEntries(['phpstan']);
+        $this->assertGreaterThan($before, $widget->getRenderRevision(), 'setPluginEntries always invalidates');
+
+        $widget->render(new RenderContext(24, 20)); // establish scroll for the click's row mapping
+        $before = $widget->getRenderRevision();
+        $widget->handleClick(3); // 'general' -> 'keybindings'
+        $this->assertSame('keybindings', $widget->selectedId());
+        $this->assertGreaterThan($before, $widget->getRenderRevision(), 'a real click-driven move invalidates');
+
+        $before = $widget->getRenderRevision();
+        $widget->setActive('general'); // a different, real move
+        $this->assertGreaterThan($before, $widget->getRenderRevision(), 'setActive on a real move invalidates');
+    }
+
+    public function testHoveringARowInvalidatesButAReRequestOfTheSameRowDoesNot(): void
+    {
+        $widget = $this->widget();
+        $widget->render(new RenderContext(24, 20));
+
+        $before = $widget->getRenderRevision();
+        $this->assertTrue($widget->hoverRow(1));
+        $this->assertGreaterThan($before, $widget->getRenderRevision(), 'a real hover change invalidates');
+
+        $before = $widget->getRenderRevision();
+        $this->assertFalse($widget->hoverRow(1), 'still the same row → no change');
+        $this->assertSame($before, $widget->getRenderRevision());
+    }
+
+    public function testMoveWithoutAnOnSelectCallbackDoesNotCrash(): void
+    {
+        $widget = new SettingsNavWidget(new Translator('en'));
+        AttachedStyles::attach($widget);
+        $widget->setFocused(true);
+        // deliberately no onSelect(...) registered
+
+        $widget->handleInput("\x1b[B"); // move_down: moveTo() must not call a null callback
+        $this->assertSame('interface', $widget->selectedId());
+    }
+
+    public function testRenderRowCountRespectsTheContextRowsIncludingTheSingleRowFloor(): void
+    {
+        $widget = $this->widget();
+        $this->assertCount(1, $widget->render(new RenderContext(24, 1)), 'exactly 1 context row renders exactly 1 line');
+        $this->assertCount(12, $widget->render(new RenderContext(24, 0)), 'a non-positive context row count falls back to 12');
+    }
 }

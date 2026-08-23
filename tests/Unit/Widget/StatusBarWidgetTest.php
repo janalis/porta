@@ -126,6 +126,166 @@ final class StatusBarWidgetTest extends TestCase
         $this->assertNull($status->menuAt(1), 'a flash replaces the prefix, so there is no hit region');
     }
 
+    public function testFlashSetsAFutureExpiryNotAPastOne(): void
+    {
+        $clock = new MockClock('2020-01-01T00:00:00+00:00');
+        $status = new StatusBarWidget($clock);
+        $status->setProvider(static fn () => ['left' => 'normal', 'right' => 'R']);
+        $status->beforeRender();
+
+        $status->flash('Saved!', 10.0);
+        $status->beforeRender(); // a second frame, no time elapsed: must not already be expired
+
+        $line = $status->render(new RenderContext(40, 1))[0];
+        $this->assertStringContainsString('Saved!', $line, 'a flash set 10s in the future must not expire on the very next frame');
+    }
+
+    public function testFlashInvalidatesImmediately(): void
+    {
+        $status = new StatusBarWidget();
+        $before = $status->getRenderRevision();
+
+        $status->flash('Saved!');
+
+        $this->assertGreaterThan($before, $status->getRenderRevision());
+    }
+
+    public function testFlashDoesNotExpireAtTheExactExpiryInstant(): void
+    {
+        $clock = new MockClock('2020-01-01T00:00:00+00:00');
+        $status = new StatusBarWidget($clock);
+        $status->setProvider(static fn () => ['left' => 'normal', 'right' => 'R']);
+        $status->beforeRender();
+
+        $status->flash('Saved!', 0.0); // until == now, exactly
+        $status->beforeRender(); // no time elapsed → now == until still
+
+        $line = $status->render(new RenderContext(40, 1))[0];
+        $this->assertStringContainsString('Saved!', $line, 'now == until is not yet past the expiry (strictly greater-than)');
+    }
+
+    public function testFlashExpiryInvalidates(): void
+    {
+        $clock = new MockClock('2020-01-01T00:00:00+00:00');
+        $status = new StatusBarWidget($clock);
+        $status->setProvider(static fn () => ['left' => 'normal', 'right' => 'R']);
+        $status->beforeRender();
+        $status->flash('Saved!', 0.01);
+        $clock->sleep(0.02);
+
+        $before = $status->getRenderRevision();
+        $status->beforeRender();
+
+        $this->assertGreaterThan($before, $status->getRenderRevision(), 'expiry must invalidate so the bar repaints without the flash');
+    }
+
+    public function testOnlyTheRightChangingStillInvalidates(): void
+    {
+        $status = new StatusBarWidget();
+        $right = 'A';
+        $status->setProvider(static function () use (&$right): array {
+            return ['left' => 'same', 'right' => $right];
+        });
+        $status->beforeRender();
+        $before = $status->getRenderRevision();
+
+        $right = 'B'; // left unchanged, right changed
+        $status->beforeRender();
+
+        $this->assertGreaterThan($before, $status->getRenderRevision(), 'a right-only change must still invalidate');
+    }
+
+    public function testOnlyTheLeftChangingStillInvalidates(): void
+    {
+        $status = new StatusBarWidget();
+        $left = 'A';
+        $status->setProvider(static function () use (&$left): array {
+            return ['left' => $left, 'right' => 'same'];
+        });
+        $status->beforeRender();
+        $before = $status->getRenderRevision();
+
+        $left = 'B'; // right unchanged, left changed
+        $status->beforeRender();
+
+        $this->assertGreaterThan($before, $status->getRenderRevision(), 'a left-only change must still invalidate');
+    }
+
+    public function testAFlashLongerThanTheAvailableWidthLeavesNoRoomForTheRightSide(): void
+    {
+        // The flash text alone reaches the min(...) cap, so rightMax's final
+        // "- 3" must hold exactly: one column too many and the ellipsis-only
+        // right side gains an extra character.
+        $clock = new MockClock('2020-01-01T00:00:00+00:00');
+        $status = new StatusBarWidget($clock);
+        $status->setProvider(static fn () => ['left' => 'x', 'right' => str_repeat('R', times: 30)]);
+        $status->beforeRender();
+        $status->flash(str_repeat('F', times: 25), 5.0);
+
+        $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(20, 1))[0]);
+        $this->assertStringEndsWith('  ', $plain, 'the right side is fully squeezed out (rightMax = 0), leaving two trailing spaces');
+    }
+
+    public function testAShortFlashLeavesExactlyTheComputedWidthForTheRightSide(): void
+    {
+        $clock = new MockClock('2020-01-01T00:00:00+00:00');
+        $status = new StatusBarWidget($clock);
+        $status->setProvider(static fn () => ['left' => 'x', 'right' => str_repeat('R', times: 30)]);
+        $status->beforeRender();
+        $status->flash('SAVED', 5.0); // visibleWidth 5, well under the columns-3 cap
+
+        $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(20, 1))[0]);
+        // rightMax = max(0, 20 - 5 - 3) = 12 → 11 'R's + the ellipsis.
+        $this->assertStringContainsString(str_repeat('R', times: 11).'…', $plain);
+        $this->assertStringNotContainsString(str_repeat('R', times: 12), $plain, 'one column more than rightMax must not fit');
+    }
+
+    public function testLeftMaxLeavesExactlyThreeColumnsForThePadAndRightMargin(): void
+    {
+        $status = new StatusBarWidget();
+        $status->setProvider(static fn () => ['left' => str_repeat('L', times: 30), 'right' => 'RR']);
+        $status->beforeRender();
+
+        // leftMax = max(0, 20 - 2 - 3) = 15 → 14 'L's + the ellipsis.
+        $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(20, 1))[0]);
+        $this->assertStringContainsString(str_repeat('L', times: 14).'…', $plain);
+        $this->assertStringNotContainsString(str_repeat('L', times: 15), $plain);
+    }
+
+    public function testMenuSpanEndingExactlyAtTheLeftWidthBoundaryStillHitTests(): void
+    {
+        $status = new StatusBarWidget();
+        // 'abcde' is 5 columns; a span ending exactly at column 5 (the boundary,
+        // not past it) must still count as fully on-screen.
+        $span = new StatusMenuSpan(0, 5, static fn (): array => [new MenuItem('Item', '', static fn () => null)]);
+        $status->setProvider(static fn () => ['left' => 'abcde', 'right' => 'R', 'menus' => [$span]]);
+        $status->beforeRender();
+        $status->render(new RenderContext(40, 1));
+
+        $this->assertNotNull($status->menuAt(1), 'a span ending exactly at leftWidth is still fully visible');
+    }
+
+    public function testGapFillsExactlyToTheRemainingWidth(): void
+    {
+        $status = new StatusBarWidget();
+        $status->setProvider(static fn () => ['left' => str_repeat('L', times: 5), 'right' => str_repeat('R', times: 5)]);
+        $status->beforeRender();
+
+        $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(20, 1))[0]);
+        // 1 (pad) + 5 (left) + gap + 5 (right) + 1 (pad) = 20 → gap = 8.
+        $this->assertSame(' '.str_repeat('L', times: 5).str_repeat(' ', times: 8).str_repeat('R', times: 5).' ', $plain);
+    }
+
+    public function testTheRowIsAssembledAsPadLeftGapRightPadInThatExactOrder(): void
+    {
+        $status = new StatusBarWidget();
+        $status->setProvider(static fn () => ['left' => 'AAA', 'right' => 'BBB']);
+        $status->beforeRender();
+
+        $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(12, 1))[0]);
+        $this->assertSame(' AAA    BBB ', $plain, 'exactly: leading pad, left, the gap, right, trailing pad');
+    }
+
     public function testStatusCellMenuIsNullWhenTruncatedOff(): void
     {
         $status = new StatusBarWidget();

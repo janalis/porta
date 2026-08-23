@@ -186,6 +186,67 @@ final class BreadcrumbsWidgetTest extends TestCase
         $this->assertStringNotContainsString("\x1b[48;5;240m", $line, 'the hovered column maps to no crumb in the shorter trail, so nothing is tinted');
     }
 
+    public function testShowAndHideInvalidateOnlyWhenTheStateActuallyChanges(): void
+    {
+        $bar = new BreadcrumbsWidget();
+        $rev = $bar->getRenderRevision();
+
+        $bar->show(); // already visible → no-op
+        $this->assertSame($rev, $bar->getRenderRevision());
+
+        $bar->hide();
+        $this->assertGreaterThan($rev, $bar->getRenderRevision(), 'hide() invalidates');
+        $rev = $bar->getRenderRevision();
+
+        $bar->hide(); // already hidden → no-op
+        $this->assertSame($rev, $bar->getRenderRevision());
+
+        $bar->show();
+        $this->assertGreaterThan($rev, $bar->getRenderRevision(), 'show() invalidates');
+    }
+
+    public function testOnlyTheCurrentAndHoveredCrumbCarriesBothTheBoldAndHoverShadeTogether(): void
+    {
+        $bar = new BreadcrumbsWidget();
+        $bar->setProvider(self::trail(...)); // App, Widget, render (last = current)
+        $bar->render(new RenderContext(80, 1));
+        $bar->hoverAt(16); // 'render': the last crumb, i.e. current
+
+        $line = $bar->render(new RenderContext(80, 1))[0];
+
+        // The current+hovered crumb gets Emphasis fg (255) + BarHoverBg (240) + bold,
+        // in that fixed order, applied together — not the shade on one crumb and the
+        // bold on another.
+        $this->assertStringContainsString("\x1b[38;5;255m\x1b[48;5;240m\x1b[1mrender", $line);
+        $this->assertStringNotContainsString("\x1b[48;5;240m\x1b[1mApp", $line, 'a non-current, non-hovered crumb must not pick up the hover+bold combo');
+        $this->assertStringNotContainsString("\x1b[48;5;240m\x1b[1mWidget", $line, 'a non-current, non-hovered crumb must not pick up the hover+bold combo');
+    }
+
+    public function testHoveringExactlyOnePastACrumbsWidthDoesNotHoverIt(): void
+    {
+        $bar = new BreadcrumbsWidget();
+        $bar->setProvider(static fn (): array => [['label' => 'App', 'line' => 0], ['label' => 'Widget', 'line' => 4]]);
+        $bar->render(new RenderContext(80, 1));
+
+        // 'Widget' spans columns [7, 13) — col 13 is one past its last column.
+        $bar->hoverAt(13);
+        $line = $bar->render(new RenderContext(80, 1))[0];
+        $this->assertStringNotContainsString("\x1b[48;5;240m", $line, 'one column past the crumb is not on the crumb');
+        $this->assertNull($bar->lineAtColumn(13), 'crumbIndexAt must not treat the boundary column as inside the crumb');
+    }
+
+    public function testSeparatorAdvancesTheColumnByItsFullThreeCharWidth(): void
+    {
+        $bar = new BreadcrumbsWidget();
+        $bar->setProvider(static fn (): array => [['label' => 'AB', 'line' => 0], ['label' => 'CD', 'line' => 1]]);
+        $bar->render(new RenderContext(80, 1));
+
+        // 'AB' occupies cols [1,3); the separator ' › ' is exactly 3 cols wide,
+        // so 'CD' must start at col 6, not col 5.
+        $this->assertNull($bar->lineAtColumn(5), 'the last column of the separator is not a crumb');
+        $this->assertSame(1, $bar->lineAtColumn(6), 'the second crumb starts right after the full-width separator');
+    }
+
     public function testARelabelUnderAStillPointerKeepsTheTint(): void
     {
         $bar = new BreadcrumbsWidget();

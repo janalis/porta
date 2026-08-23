@@ -1,0 +1,223 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Tests\Unit\Widget\Render;
+
+use PHPUnit\Framework\TestCase;
+use Porta\Editor\ChangeMarkKind;
+use Porta\Editor\Document;
+use Porta\Editor\FoldModel;
+use Porta\Editor\LineNumberMode;
+use Porta\Ui\Glyphs;
+use Porta\Ui\Theme\LightTheme;
+use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\EditorDecorations;
+use Porta\Widget\Render\EditorGeometry;
+use Porta\Widget\Render\EditorRowAssembler;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
+
+final class EditorRowAssemblerTest extends TestCase
+{
+    private function assembler(
+        Document $document,
+        ?Styles $styles = null,
+        bool $vcsGutter = false,
+        bool $indentGuides = false,
+        LineNumberMode $lineNumbers = LineNumberMode::Absolute,
+        ?\Porta\Editor\DecorationStore $store = null,
+    ): array {
+        $foldModel = new FoldModel($document);
+        $store ??= new \Porta\Editor\DecorationStore(static function (): void {});
+        $assembler = new EditorRowAssembler(
+            $document,
+            $foldModel,
+            $store,
+            $lineNumbers,
+            $indentGuides,
+            $vcsGutter,
+            inlineDiagnostics: false,
+            focused: true,
+            showCaret: true,
+            styles: $styles,
+        );
+
+        return [$assembler, $foldModel, $store];
+    }
+
+    private function noSelection(): EditorDecorations
+    {
+        return new EditorDecorations(false, null, [], [], null);
+    }
+
+    public function testAnInjectedThemeIsHonoredInsteadOfTheDarkDefault(): void
+    {
+        $doc = new Document("a\n");
+        $geo = new EditorGeometry(numberWidth: 0, gutterWidth: 3, contentWidth: 5, stripeCol: 0);
+
+        [$default] = $this->assembler($doc);
+        $rows = $default->assemble($geo, $this->noSelection(), sticky: [], highlighted: ['a'], stripe: [''], contentRows: 1, vScroll: 100, cursorLine: -1, cursorDisplayCol: 0, hScroll: 0);
+        $darkPlaceholder = $rows[0];
+
+        $light = new Styles(LightTheme::definition());
+        [$injected] = $this->assembler($doc, styles: $light);
+        $rows = $injected->assemble($geo, $this->noSelection(), sticky: [], highlighted: ['a'], stripe: [''], contentRows: 1, vScroll: 100, cursorLine: -1, cursorDisplayCol: 0, hScroll: 0);
+        $lightPlaceholder = $rows[0];
+
+        $this->assertNotSame($darkPlaceholder, $lightPlaceholder, 'an injected theme must actually be used, not silently replaced by the dark default');
+        $this->assertSame(AnsiUtils::stripAnsiCodes($darkPlaceholder), AnsiUtils::stripAnsiCodes($lightPlaceholder), 'only the styling should differ, not the plain content');
+    }
+
+    public function testStickyHeaderRowPlacesTheRenderedRowBeforeItsStripeCell(): void
+    {
+        $doc = new Document("hello\n");
+        [$assembler] = $this->assembler($doc);
+        $geo = new EditorGeometry(numberWidth: 2, gutterWidth: 4, contentWidth: 5, stripeCol: 0);
+
+        $rows = $assembler->assemble(
+            $geo,
+            $this->noSelection(),
+            sticky: [['label' => 'x', 'line' => 0]],
+            highlighted: ['hello'],
+            stripe: ['<STRIPE>'],
+            contentRows: 0,
+            vScroll: 0,
+            cursorLine: -1,
+            cursorDisplayCol: 0,
+            hScroll: 0,
+        );
+
+        $plain = AnsiUtils::stripAnsiCodes($rows[0]);
+        $this->assertStringEndsWith('<STRIPE>', $plain, 'the stripe cell must trail the rendered sticky row, not precede it');
+        $this->assertSame('hello', substr($plain, offset: strpos($plain, needle: 'hello'), length: 5));
+    }
+
+    public function testStickyRowGutterConcatenatesVcsMarkerLabelAndTrailingSpaceInOrder(): void
+    {
+        $doc = new Document("hello\n");
+        [$assembler, , $store] = $this->assembler($doc, vcsGutter: true, lineNumbers: LineNumberMode::Absolute);
+        $store->setVcsMarks([0 => ChangeMarkKind::Modified]);
+        // gutterWidth (20) deliberately doesn't match the gutter's own true
+        // rendered width (6): only geo->gutterWidth feeds applyFullWidth's pad
+        // target, so a gutterWidth-contentWidth mutant pads to a visibly
+        // different (smaller) total than the real gutterWidth+contentWidth.
+        $geo = new EditorGeometry(numberWidth: 3, gutterWidth: 20, contentWidth: 5, stripeCol: 0);
+
+        $rows = $assembler->assemble(
+            $geo,
+            $this->noSelection(),
+            sticky: [['label' => 'x', 'line' => 0]],
+            highlighted: ['hello'],
+            stripe: [''],
+            contentRows: 0,
+            vScroll: 0,
+            cursorLine: -1,
+            cursorDisplayCol: 0,
+            hScroll: 0,
+        );
+
+        $plain = AnsiUtils::stripAnsiCodes($rows[0]);
+        // vcs marker, then the right-padded "1" label, then two literal spaces (one
+        // from inside the styled span, one appended after it), then the content.
+        $this->assertStringStartsWith(Glyphs::VCS_MODIFIED.'  1  hello', $plain);
+        $this->assertSame(25, AnsiUtils::visibleWidth($rows[0]), 'the full row pads out to gutterWidth + contentWidth');
+    }
+
+    public function testIndentGuidesAreAppliedToTheStickyRowWhenEnabled(): void
+    {
+        $doc = new Document("    x\n");
+
+        [$withGuides] = $this->assembler($doc, indentGuides: true);
+        $geo = new EditorGeometry(numberWidth: 0, gutterWidth: 2, contentWidth: 10, stripeCol: 0);
+        $rows = $withGuides->assemble(
+            $geo,
+            $this->noSelection(),
+            sticky: [['label' => 'x', 'line' => 0]],
+            highlighted: ['    x'],
+            stripe: [''],
+            contentRows: 0,
+            vScroll: 0,
+            cursorLine: -1,
+            cursorDisplayCol: 0,
+            hScroll: 0,
+        );
+        $this->assertStringContainsString(Glyphs::INDENT_GUIDE, AnsiUtils::stripAnsiCodes($rows[0]));
+
+        [$without] = $this->assembler($doc, indentGuides: false);
+        $rows = $without->assemble(
+            $geo,
+            $this->noSelection(),
+            sticky: [['label' => 'x', 'line' => 0]],
+            highlighted: ['    x'],
+            stripe: [''],
+            contentRows: 0,
+            vScroll: 0,
+            cursorLine: -1,
+            cursorDisplayCol: 0,
+            hScroll: 0,
+        );
+        $this->assertStringNotContainsString(Glyphs::INDENT_GUIDE, AnsiUtils::stripAnsiCodes($rows[0]));
+    }
+
+    public function testGutterCellShowsTheLogpointGlyphWhenOnlyALogpointIsSet(): void
+    {
+        $doc = new Document("a\nb\n");
+        $store = new \Porta\Editor\DecorationStore(static function (): void {});
+        $store->setBreakpointLines([], [], [1]); // line 1: logpoint only
+        [$assembler] = $this->assembler($doc, store: $store);
+        $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 5, stripeCol: 0);
+
+        $rows = $assembler->assemble($geo, $this->noSelection(), sticky: [], highlighted: ['a', 'b'], stripe: ['', ''], contentRows: 2, vScroll: 0, cursorLine: -1, cursorDisplayCol: 0, hScroll: 0);
+
+        $this->assertStringContainsString(Glyphs::LOGPOINT, AnsiUtils::stripAnsiCodes($rows[1]));
+    }
+
+    public function testGutterCellShowsTheConditionalBreakpointGlyphWhenOnlyOneIsSet(): void
+    {
+        $doc = new Document("a\nb\n");
+        $store = new \Porta\Editor\DecorationStore(static function (): void {});
+        $store->setBreakpointLines([], [1], []); // line 1: conditional breakpoint only
+        [$assembler] = $this->assembler($doc, store: $store);
+        $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 5, stripeCol: 0);
+
+        $rows = $assembler->assemble($geo, $this->noSelection(), sticky: [], highlighted: ['a', 'b'], stripe: ['', ''], contentRows: 2, vScroll: 0, cursorLine: -1, cursorDisplayCol: 0, hScroll: 0);
+
+        $this->assertStringContainsString(Glyphs::BREAKPOINT_CONDITIONAL, AnsiUtils::stripAnsiCodes($rows[1]));
+    }
+
+    public function testCollapsedFoldMarkerReportsTheExactHiddenLineCountAndOrder(): void
+    {
+        $doc = new Document("a\nb\nc\nd\ne\n");
+        [$assembler, $foldModel] = $this->assembler($doc);
+        $doc->setCursor(1, 0);
+        $foldModel->setRegions([[1, 3]], $doc->getVersion()); // fold covering lines 1-3, 2 lines hidden past the start
+        $foldModel->toggle(); // caret sits on line 1, collapses that region
+        $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 20, stripeCol: 0);
+
+        $rows = $assembler->assemble($geo, $this->noSelection(), sticky: [], highlighted: ['a', 'b'], stripe: ['', ''], contentRows: 2, vScroll: 0, cursorLine: -1, cursorDisplayCol: 0, hScroll: 0);
+
+        // foldEnd(3) - lineIndex(1) = 2 hidden lines; a foldEnd+lineIndex mutant
+        // would misreport 4 instead, since start line (1) is nonzero here.
+        $plain = AnsiUtils::stripAnsiCodes($rows[1]);
+        $this->assertStringContainsString('b ⋯ 2 lines', $plain);
+    }
+
+    public function testCaretPastEndOfLinePadsExactlyOneColumnForItsCell(): void
+    {
+        // A caret past the end of a short line makes LineSpans report a padTo
+        // one column beyond the line's own display width (displayColAt clamps
+        // the caret's column to the line's width, so this gap is structurally
+        // never more than 1 — str_repeat(' ', N) and a literal ' ' are
+        // equivalent here; this just exercises the padding branch at all).
+        $doc = new Document("ab\n");
+        [$assembler] = $this->assembler($doc);
+        $decorations = new EditorDecorations(false, null, [\Porta\Editor\Caret::point(0, 5)], [], null);
+        $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 20, stripeCol: 0);
+
+        $rows = $assembler->assemble($geo, $decorations, sticky: [], highlighted: ['ab'], stripe: [''], contentRows: 1, vScroll: 0, cursorLine: -1, cursorDisplayCol: 0, hScroll: 0);
+
+        // Padded to col 6 (5 + 1, for the caret's own cell) from a 2-char line:
+        // 4 padding spaces before the reverse-video caret cell closes it off.
+        $this->assertStringContainsString('ab    ', AnsiUtils::stripAnsiCodes($rows[0]));
+    }
+}

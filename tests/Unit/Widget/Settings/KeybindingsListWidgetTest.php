@@ -12,6 +12,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class KeybindingsListWidgetTest extends TestCase
@@ -210,6 +211,116 @@ final class KeybindingsListWidgetTest extends TestCase
 
         $widget->setMenuOverlay([['row' => 0, 'col' => 0, 'width' => 8, 'segment' => "\x1b[7mDROPDOWN\x1b[0m"]]);
         $this->assertStringContainsString('DROPDOWN', $widget->render(new RenderContext(60, 8))[0]);
+    }
+
+    public function testSetRowsInvalidatesTheRenderRevision(): void
+    {
+        $widget = new KeybindingsListWidget(new Translator('en'));
+        $widget->setRows($this->rows());
+        $revision = $widget->getRenderRevision();
+
+        $widget->setRows($this->rows());
+
+        $this->assertGreaterThan($revision, $widget->getRenderRevision());
+    }
+
+    public function testCapturingAKeyInvalidatesTheRenderRevision(): void
+    {
+        $widget = $this->widget();
+        $widget->handleInput("\r"); // arm
+        $revision = $widget->getRenderRevision();
+
+        $widget->handleInput('x'); // captured
+
+        $this->assertGreaterThan($revision, $widget->getRenderRevision());
+    }
+
+    public function testExitViewInvalidatesTheRenderRevision(): void
+    {
+        $widget = $this->widget();
+        $widget->render(new RenderContext(60, 8));
+        $revision = $widget->getRenderRevision();
+
+        $widget->handleInput("\x1b[B");
+
+        $this->assertGreaterThan($revision, $widget->getRenderRevision());
+    }
+
+    public function testClickInvalidatesTheRenderRevision(): void
+    {
+        $widget = $this->widget();
+        $widget->render(new RenderContext(60, 8));
+        $revision = $widget->getRenderRevision();
+
+        $widget->handleClick(2);
+
+        $this->assertGreaterThan($revision, $widget->getRenderRevision());
+    }
+
+    public function testArmCaptureInvalidatesTheRenderRevision(): void
+    {
+        $widget = $this->widget();
+        $revision = $widget->getRenderRevision();
+
+        $widget->handleInput("\r");
+
+        $this->assertGreaterThan($revision, $widget->getRenderRevision());
+    }
+
+    public function testAZeroRowContextFallsBackToTwelveDefaultRows(): void
+    {
+        $lines = $this->widget()->render(new RenderContext(60, 0));
+
+        $this->assertCount(12, $lines);
+    }
+
+    public function testTitleConcatenatesALeadingSpaceBeforeTheTranslatedText(): void
+    {
+        $screen = $this->plain($this->widget()->render(new RenderContext(60, 8)));
+
+        $this->assertStringStartsWith(' Keybindings', $screen);
+    }
+
+    public function testAnUnboundActionsRightColumnWidthIsExactlyOneNotZeroOrTwo(): void
+    {
+        // The dash '—' occupies width 1. A width-default mutant (0 or 2)
+        // shifts the label's truncation boundary at a width tight enough to
+        // matter — pin the boundary exactly instead of just presence.
+        $widget = new KeybindingsListWidget(new Translator('en'));
+        $widget->setRows([new KeybindingRow('a', str_repeat('X', times: 50), '')]);
+
+        // width=10: labelWidth = max(0, 10 - 1 - 2) = 7 → truncated label ' XXXXX…'.
+        $line = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(10, 4))[1]);
+
+        $this->assertSame(' XXXXX… — ', $line);
+    }
+
+    public function testRowAssemblyConcatenatesLabelSpaceRightSpaceInOrder(): void
+    {
+        $widget = new KeybindingsListWidget(new Translator('en'));
+        $widget->setRows([new KeybindingRow('a', 'Save', 'ctrl+s')]);
+
+        $line = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(30, 4))[1]);
+
+        $this->assertStringStartsWith(' Save', $line);
+        $this->assertStringEndsWith('Ctrl+S ', $line);
+    }
+
+    public function testPageUpAndPageDownKeybindingsPageTheSelection(): void
+    {
+        $widget = new KeybindingsListWidget(new Translator('en'));
+        $rows = [];
+        for ($i = 0; $i < 20; ++$i) {
+            $rows[] = new KeybindingRow("a{$i}", "Action {$i}", '');
+        }
+        $widget->setRows($rows);
+        $widget->render(new RenderContext(60, 6)); // establishes lastRows for paging
+
+        $widget->handleInput("\x1b[6~"); // Page Down
+        $this->assertNotSame('a0', $this->selectedAction($widget), 'page_down must move the selection');
+
+        $widget->handleInput("\x1b[5~"); // Page Up
+        $this->assertSame('a0', $this->selectedAction($widget), 'page_up brought it back');
     }
 
     /** The action of the row under the selection (the widget's private rows + list, via Probe). */

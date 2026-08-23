@@ -38,6 +38,41 @@ final class OverlayCompositorTest extends TestCase
         $this->assertSame(40, AnsiUtils::visibleWidth($out));
     }
 
+    /**
+     * A marker sitting only in the POPUP (not the head) must still trigger
+     * stripping the tail's re-emitted duplicate — the docblock is explicit
+     * that "the head (or the popup itself)" both count.
+     */
+    public function testACaretMarkerInThePopupAloneStillStripsTheTailsDuplicate(): void
+    {
+        $marker = AnsiUtils::cursorMarker();
+        // The line's own marker sits exactly at the tail's start column, so
+        // slicing at that boundary re-emits a duplicate at the tail's front.
+        $line = str_repeat('.', times: 8).$marker.str_repeat('.', times: 12);
+        $popup = $marker.'XXX'; // the popup carries a marker of its own; the head does not
+
+        $out = OverlayCompositor::into($line, 5, 3, 20, $popup);
+
+        $this->assertSame(1, substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'only the popup\'s marker survives — the tail\'s duplicate is stripped');
+    }
+
+    /**
+     * A marker genuinely inside the tail (not a re-emitted duplicate of one
+     * in the head or popup) must be left alone — stripping is only correct
+     * when the head/popup side has a marker of its own to be the duplicate of.
+     */
+    public function testACaretMarkerGenuinelyInsideTheTailSurvivesUntouched(): void
+    {
+        $marker = AnsiUtils::cursorMarker();
+        // Well past the tail's start column — not a boundary re-emission, just
+        // literally where the marker sits in the original line.
+        $line = str_repeat('.', times: 10).$marker.str_repeat('.', times: 10);
+
+        $out = OverlayCompositor::into($line, 2, 3, 20, 'XXX');
+
+        $this->assertSame(1, substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'the tail\'s own marker is not a duplicate — it must not be stripped');
+    }
+
     /** The background colour in effect at visible column $col (net of every SGR code up to it). */
     public static function netBackgroundAt(string $line, int $col): string
     {

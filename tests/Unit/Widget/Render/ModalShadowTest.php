@@ -86,4 +86,29 @@ final class ModalShadowTest extends TestCase
         // pane, the bottom band (row 5) is below it.
         $this->assertSame([], ModalShadow::spans($rect, 2, 4, 6, 3, Styles::dark()));
     }
+
+    /**
+     * A box near the right edge (but not flush against it) makes the bottom
+     * band's width bounded by the REMAINING columns, not by the box width —
+     * the only arrangement where the `columns - col - 1` term, not `$width`,
+     * actually drives min()'s result.
+     */
+    public function testBottomBandWidthIsClippedByTheRemainingColumnsNotTheBoxWidth(): void
+    {
+        // col=15, width=6, columns=20: remaining columns past col+1 is 4, well
+        // under the box's own 6 — the band must stop at 4, not 6.
+        $lines = array_map(AnsiUtils::stripAnsiCodes(...), ModalShadow::blit($this->pane(), 2, 15, 6, 3, 20, Styles::dark()));
+
+        $this->assertSame(str_repeat('.', times: 16).str_repeat(' ', times: 4), $lines[5], 'the band stops 4 columns in, not 6');
+    }
+
+    /** A box flush against the right edge leaves no room at all: no band, no composited row at all. */
+    public function testNoRemainingColumnsPaintsNoBottomBandRow(): void
+    {
+        $pane = $this->pane();
+
+        $lines = ModalShadow::blit($pane, 2, 19, 1, 3, 20, Styles::dark());
+
+        $this->assertSame($pane[5], $lines[5], 'row is untouched byte-for-byte — not even a zero-width composite');
+    }
 }

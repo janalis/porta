@@ -417,6 +417,281 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertSame([], $changes);
     }
 
+    public function testSetRowsWithZeroRowsClampsSelectionToZeroNotNegative(): void
+    {
+        $widget = $this->widget();
+        $widget->setRows([]);
+
+        $this->assertSame(0, Probe::get($widget, 'selected'));
+    }
+
+    public function testSetRowsWithTheSameRowCountKeepsAnUpperBoundSelection(): void
+    {
+        $widget = $this->widget(); // 5 rows
+        for ($i = 0; $i < 4; ++$i) {
+            $widget->handleInput("\x1b[B"); // selected = 4 (the last row)
+        }
+
+        $widget->setRows($this->rows()); // same 5 rows, re-supplied
+
+        $this->assertSame(4, Probe::get($widget, 'selected'), 'the last row is still in range, selection must not shift');
+    }
+
+    public function testSetRowsInvalidatesTheRenderRevision(): void
+    {
+        $widget = new SettingsFormWidget(new Translator('en'));
+        $widget->setRows($this->rows());
+        $revision = $widget->getRenderRevision();
+
+        $widget->setRows($this->rows());
+
+        $this->assertGreaterThan($revision, $widget->getRenderRevision());
+    }
+
+    public function testCancellingRowsMidEditDoesNotLeaveATextInputRouteOpen(): void
+    {
+        // setRows() resets `editing` to null but not `editField` — an
+        // editing/editField AND-vs-OR mutant would keep routing keys into
+        // the stale text editor instead of normal row navigation.
+        $widget = $this->textWidget($changes);
+        $widget->handleInput("\r"); // start editing row 0
+        $widget->setRows([
+            new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'phpactor', restart: false),
+            new SettingsRow(key: 'other', label: 'Other', kind: SettingsRowKind::Text, value: '', restart: false),
+        ]);
+
+        $widget->handleInput("\x1b[B"); // must navigate, not type into the stale editor
+
+        $this->assertSame(1, Probe::get($widget, 'selected'));
+        $this->assertSame([], $changes);
+    }
+
+    public function testStaleTextFieldAfterSetRowsDoesNotLeakIntoAnUneditedRow(): void
+    {
+        // Same divergent-state class as above, but exercised through
+        // textValue()'s own (separate) editing/editField guard.
+        $widget = $this->textWidget();
+        $widget->handleInput("\r"); // start editing row 0
+        $widget->handleInput('Z'); // mutate the (soon-to-be-stale) TextField
+        $widget->setRows([
+            new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'phpactor', restart: false),
+        ]);
+
+        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[0]);
+
+        $this->assertStringContainsString('phpactor', $screen);
+        $this->assertStringNotContainsString('Z', $screen, 'the stale editor from before setRows() must not render');
+    }
+
+    public function testMoveUpStepsExactlyOneRowFromAnInteriorSelection(): void
+    {
+        $widget = $this->widget(); // 5 rows
+        for ($i = 0; $i < 3; ++$i) {
+            $widget->handleInput("\x1b[B"); // selected = 3
+        }
+
+        $widget->handleInput("\x1b[A"); // up once
+
+        $this->assertSame(2, Probe::get($widget, 'selected'));
+    }
+
+    public function testMoveDownPastTheLastRowClampsAtTheLastIndexNotBeyond(): void
+    {
+        $widget = $this->widget(); // 5 rows: last index 4
+        for ($i = 0; $i < 10; ++$i) {
+            $widget->handleInput("\x1b[B");
+        }
+
+        $this->assertSame(4, Probe::get($widget, 'selected'));
+    }
+
+    public function testMoveToInvalidatesTheRenderRevision(): void
+    {
+        $widget = $this->widget();
+        $revision = $widget->getRenderRevision();
+
+        $widget->handleInput("\x1b[B");
+
+        $this->assertGreaterThan($revision, $widget->getRenderRevision());
+    }
+
+    public function testClickActuatesAChoiceRowByExactlyOneStep(): void
+    {
+        $widget = $this->widget($changes);
+        $widget->setRows([new SettingsRow(key: 'theme', label: 'Theme', kind: SettingsRowKind::Choice, value: 'dark', restart: false, options: ['dark', 'mid', 'light'])]);
+
+        $widget->handleClick(0);
+
+        $this->assertSame([['theme', 'mid']], $changes, 'a click steps by exactly one option, not two');
+    }
+
+    public function testStartingTextEditInvalidatesTheRenderRevision(): void
+    {
+        $widget = $this->textWidget();
+        $revision = $widget->getRenderRevision();
+
+        $widget->handleInput("\r");
+
+        $this->assertGreaterThan($revision, $widget->getRenderRevision());
+    }
+
+    public function testExitViewWhileEditingInvalidatesTheRenderRevision(): void
+    {
+        $widget = $this->textWidget();
+        $widget->handleInput("\r");
+        $revision = $widget->getRenderRevision();
+
+        $widget->handleInput("\x1b");
+
+        $this->assertGreaterThan($revision, $widget->getRenderRevision());
+    }
+
+    public function testConfirmingTextEditInvalidatesTheRenderRevision(): void
+    {
+        $widget = $this->textWidget();
+        $widget->handleInput("\r");
+        $revision = $widget->getRenderRevision();
+
+        $widget->handleInput("\r");
+
+        $this->assertGreaterThan($revision, $widget->getRenderRevision());
+    }
+
+    public function testBackspaceOnlyInvalidatesWhenItActuallyDeletesSomething(): void
+    {
+        $widget = $this->textWidget();
+        $widget->setRows([new SettingsRow(key: 'k', label: 'K', kind: SettingsRowKind::Text, value: '', restart: false)]);
+        $widget->handleInput("\r"); // edit the empty field
+        $revision = $widget->getRenderRevision();
+
+        $widget->handleInput("\x7f"); // backspace on an already-empty field: nothing to delete
+        $this->assertSame($revision, $widget->getRenderRevision(), 'a no-op backspace does not invalidate');
+
+        $widget->handleInput('a');
+        $revision = $widget->getRenderRevision();
+        $widget->handleInput("\x7f"); // now there is something to delete
+        $this->assertGreaterThan($revision, $widget->getRenderRevision());
+    }
+
+    public function testTypingAlwaysInvalidates(): void
+    {
+        $widget = $this->textWidget();
+        $widget->handleInput("\r");
+        $revision = $widget->getRenderRevision();
+
+        $widget->handleInput('a');
+
+        $this->assertGreaterThan($revision, $widget->getRenderRevision());
+    }
+
+    public function testRenderWithZeroRowsAndAZeroRowContextProducesNoLines(): void
+    {
+        $widget = new SettingsFormWidget(new Translator('en'));
+        $widget->setRows([]);
+
+        $lines = $widget->render(new RenderContext(60, 0));
+
+        $this->assertSame([], $lines);
+    }
+
+    public function testRenderNeverProducesMoreLinesThanTheAllottedRows(): void
+    {
+        $lines = $this->widget()->render(new RenderContext(60, 8)); // 5 rows, 8 allotted
+
+        $this->assertCount(8, $lines, 'the context height wins, padding with blank rows');
+    }
+
+    public function testBlankPaddingRowsContinueRatherThanStoppingTheLoop(): void
+    {
+        $lines = $this->widget()->render(new RenderContext(60, 8)); // 5 real rows + 3 blank
+
+        $this->assertStringContainsString('Inline diagnostics', AnsiUtils::stripAnsiCodes($lines[0]), 'the first real row still renders after the loop keeps going past index bounds');
+        $this->assertSame(8, \count($lines));
+        $this->assertStringContainsString('Tab width', AnsiUtils::stripAnsiCodes($lines[4]), 'the last real row (index 4) is reached — a break at row 0 would prevent this');
+    }
+
+    public function testTextRowConcatenatesALeadingSpaceBeforeTheLabel(): void
+    {
+        $screen = AnsiUtils::stripAnsiCodes($this->textWidget()->render(new RenderContext(60, 4))[0]);
+
+        $this->assertStringStartsWith(' LSP server', $screen);
+    }
+
+    public function testActionRowConcatenatesALeadingSpaceBeforeTheLabel(): void
+    {
+        $widget = new SettingsFormWidget(new Translator('en'));
+        $widget->setRows([new SettingsRow(key: 'k', label: 'Remove', kind: SettingsRowKind::Action, value: 'Go', restart: false)]);
+
+        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[0]);
+
+        $this->assertStringStartsWith(' Remove  [Go]', $screen);
+    }
+
+    public function testDefaultChoiceRowConcatenatesALeadingSpaceBeforeTheLabel(): void
+    {
+        $widget = new SettingsFormWidget(new Translator('en'));
+        $widget->setRows([new SettingsRow(key: 'k', label: 'Theme', kind: SettingsRowKind::Choice, value: 'dark', restart: false, options: ['dark', 'light'])]);
+
+        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[0]);
+
+        $this->assertStringStartsWith(' Theme  < dark >', $screen);
+    }
+
+    public function testAnOverflowingEditedRowScrollsToTheCaretInsteadOfTruncating(): void
+    {
+        $widget = $this->textWidget($changes);
+        $widget->setRows([new SettingsRow(key: 'k', label: 'A very long label that will not fit', kind: SettingsRowKind::Text, value: str_repeat('x', times: 100), restart: false)]);
+        $widget->handleInput("\r"); // edit: the caret sits at the end of 100 x's
+
+        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(20, 4))[0]);
+
+        // Truncation would keep the LEFT edge (the label); scroll-to-caret
+        // keeps the caret (the tail of the value) in view instead.
+        $this->assertStringNotContainsString('A very long label', $screen);
+        $this->assertStringContainsString('x', $screen);
+    }
+
+    public function testANonEditedOverflowingRowTruncatesRatherThanScrolling(): void
+    {
+        $widget = new SettingsFormWidget(new Translator('en'));
+        $widget->setRows([new SettingsRow(key: 'k', label: 'A very long label that will not fit at all', kind: SettingsRowKind::Bool, value: true, restart: false)]);
+
+        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(20, 4))[0]);
+
+        $this->assertStringStartsWith(' [x] A very long', $screen, 'not being edited: the left edge (label start) is kept, not scrolled');
+    }
+
+    public function testShortRowsArePaddedToTheFullColumnWidth(): void
+    {
+        $screen = AnsiUtils::stripAnsiCodes($this->widget()->render(new RenderContext(60, 8))[0]);
+
+        $this->assertSame(60, mb_strlen($screen));
+    }
+
+    public function testEditingCursorVisibilityFollowsFocus(): void
+    {
+        $widget = $this->textWidget();
+        $widget->setFocused(true);
+        $widget->handleInput("\r");
+        $focused = $widget->render(new RenderContext(60, 4))[0];
+
+        $widget->setFocused(false);
+        $unfocused = $widget->render(new RenderContext(60, 4))[0];
+
+        $this->assertNotSame($focused, $unfocused, 'the caret visibility marker must differ between focused and unfocused edit');
+    }
+
+    public function testATextRowWithBothAValueAndAHintShowsTheValue(): void
+    {
+        $widget = new SettingsFormWidget(new Translator('en'));
+        $widget->setRows([new SettingsRow(key: 'k', label: 'K', kind: SettingsRowKind::Text, value: 'set', restart: false, hint: 'auto: none')]);
+
+        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[0]);
+
+        $this->assertStringContainsString('set', $screen);
+        $this->assertStringNotContainsString('auto: none', $screen, 'a non-empty value wins over the hint, even with a hint set');
+    }
+
     public function testHoverTintsARowVisualOnlyAndClears(): void
     {
         $widget = $this->widget();

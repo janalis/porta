@@ -585,6 +585,149 @@ final class WelcomeWidgetTest extends TestCase
      * The input hook (the menu overlay's key grab) takes precedence over every
      * binding, so a step must not run while a menu is open over the pane.
      */
+    public function testSetStepsInvalidatesTheRenderRevision(): void
+    {
+        $widget = new WelcomeWidget(new Translator('en'));
+        $widget->setSteps([$this->step('a')]);
+        $revision = $widget->getRenderRevision();
+
+        $widget->setSteps([$this->step('b')]);
+
+        $this->assertGreaterThan($revision, $widget->getRenderRevision());
+    }
+
+    public function testResetViewInvalidatesTheRenderRevision(): void
+    {
+        $widget = $this->widget($this->step('a'));
+        $revision = $widget->getRenderRevision();
+
+        $widget->resetView();
+
+        $this->assertGreaterThan($revision, $widget->getRenderRevision());
+    }
+
+    public function testMovingSelectionInvalidatesTheRenderRevision(): void
+    {
+        $widget = $this->widget($this->step('a'), $this->step('b'));
+        $revision = $widget->getRenderRevision();
+
+        $widget->handleInput("\x1b[B");
+
+        $this->assertGreaterThan($revision, $widget->getRenderRevision());
+    }
+
+    public function testClickSelectingAStepInvalidatesTheRenderRevision(): void
+    {
+        $widget = $this->widget($this->step('a'), $this->step('b'));
+        $widget->render(new RenderContext(60, 12));
+        $revision = $widget->getRenderRevision();
+
+        $widget->handleClick(self::FIRST_STEP_ROW + 3);
+
+        $this->assertGreaterThan($revision, $widget->getRenderRevision());
+    }
+
+    public function testRunningAStepInvalidatesTheRenderRevision(): void
+    {
+        $widget = $this->widget($this->step('a'));
+        $revision = $widget->getRenderRevision();
+
+        $widget->handleInput("\r");
+
+        $this->assertGreaterThan($revision, $widget->getRenderRevision());
+    }
+
+    /** With no context row count, render() falls back to a 12-row default. */
+    public function testAZeroRowContextFallsBackToTwelveDefaultRows(): void
+    {
+        $lines = $this->widget($this->step('a'))->render(new RenderContext(60, 0));
+
+        $this->assertCount(12, $lines);
+    }
+
+    public function testMessageRowsPutTheMarginBeforeTheText(): void
+    {
+        $line = $this->widget()->render(new RenderContext(60, 12))[self::FIRST_STEP_ROW];
+
+        // The message is dimmed (styled) but the margin is plain leading
+        // spaces; a concat-order mutant would put the (unstyled) text first.
+        $this->assertMatchesRegularExpression('/^  +\x1b\[/', $line, 'plain margin, then the styled text');
+    }
+
+    public function testHeroCentersWithNoNegativePadAtAnyWidth(): void
+    {
+        // 'Welcome to Porta' is 16 columns wide — a width narrower than that
+        // must not go negative (str_repeat rejects a negative count).
+        $lines = $this->rendered($this->widget($this->step('a')), columns: 10);
+
+        $this->assertNotSame([], $lines);
+    }
+
+    public function testWideEnoughPaneCentersTheHeroPastTheFloorMargin(): void
+    {
+        // At width 90 the content column caps at 72, leaving 18 spare columns
+        // — intdiv(18, 2) = 9, well past the H_MARGIN=2 floor, so an intdiv
+        // divisor mutant (÷3 = 6) is observable here where it isn't at 60.
+        // Asserted on the SECOND (unselected) card — the first's accent bar
+        // is a multi-byte glyph that would shift a byte-based strpos.
+        $lines = $this->rendered($this->widget($this->step('First'), $this->step('Second')), columns: 90);
+
+        $this->assertSame(9, strpos($lines[self::FIRST_STEP_ROW + 3], needle: '['), 'the card margin is 9, not the H_MARGIN floor');
+    }
+
+    public function testAnExtremelyNarrowPaneStillProducesAtLeastOneContentColumn(): void
+    {
+        // width=5: content = min(5-4, 72) = 1. A max(2, …) mutant would need
+        // 2 content columns out of a 5-wide pane, which cannot fit the H_MARGIN
+        // floor (2) twice — the render must not throw or garble.
+        $lines = $this->widget($this->step('a'))->render(new RenderContext(5, 6));
+
+        $this->assertNotSame([], $lines);
+        foreach ($lines as $line) {
+            $this->assertSame(5, AnsiUtils::visibleWidth($line));
+        }
+    }
+
+    /** The all-done banner's own two rows count toward the scroll's chrome budget. */
+    public function testAllSetBannerConsumesScrollBudgetSoLateStepsStillScrollIntoView(): void
+    {
+        $steps = [$this->doneStep('done')];
+        for ($i = 0; $i < 12; ++$i) {
+            $steps[] = $this->step('Step '.$i);
+        }
+        $widget = $this->widget(...$steps);
+        for ($i = 0; $i < 12; ++$i) {
+            $widget->handleInput("\x1b[B"); // select the very last step
+        }
+
+        $lines = $this->rendered($widget, rows: 8);
+
+        $this->assertStringContainsString('Step 11', implode("\n", $lines), 'the last step scrolled into view');
+    }
+
+    public function testANarrowPaneWholeLineFallbackConcatenatesPrefixTitleAndSuffixInOrder(): void
+    {
+        $lines = $this->rendered($this->widget($this->step('ABCDEFGHIJ')), rows: 8, columns: 12);
+
+        $screen = AnsiUtils::stripAnsiCodes($lines[0]);
+        // Prefix ('[ ]  ') must come before the title text, which must come
+        // before the '[Do it]' suffix would — even though truncation clips
+        // it — the relative ORDER of what survives must be prefix-then-title.
+        $this->assertMatchesRegularExpression('/\[ \].*AB/', $screen);
+    }
+
+    public function testMoveUpKeybindingMovesTheSelectionUp(): void
+    {
+        $widget = $this->widget($this->step('a'), $this->step('b'), $this->step('c'));
+        $widget->handleInput("\x1b[B");
+        $widget->handleInput("\x1b[B"); // selected = 2
+
+        $widget->handleInput("\x1b[A"); // Key::UP
+
+        $lines = $this->rendered($widget);
+        $this->assertSame(0, strpos($lines[self::FIRST_STEP_ROW + 3], needle: Glyphs::CARD_ACCENT), 'selection moved back to step 1, not stuck at 2');
+    }
+
     public function testAnInstalledInputHookSwallowsInput(): void
     {
         $ran = 0;

@@ -447,6 +447,269 @@ final class FindBarWidgetTest extends TestCase
         $this->assertSame(80, AnsiUtils::visibleWidth($line), 'the tint does not change the bar width');
     }
 
+    public function testClosedBarIgnoresInputEvenAfterHavingBeenOpened(): void
+    {
+        // Once open() has run, $target stays non-null forever (close() never
+        // clears it) — handleInput's closed-guard must key off $open alone, not
+        // fall through just because a stale target is still sitting there. A
+        // fall-through would silently corrupt the query field even though
+        // render() (its own, independent !open guard) still shows nothing.
+        $doc = new Document("match here\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Find, initialQuery: 'match');
+        $bar->close();
+
+        $bar->handleInput('x'); // must no-op: the bar is closed
+
+        // Query is session-lifetime: reopening without a fresh initialQuery
+        // keeps whatever the field already held.
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
+        $this->assertNotSame([], $bar->getMatchesByLine(), 'the query is still "match", not corrupted into "matchx"');
+    }
+
+    public function testCurrentMatchFlagOnlyMarksTheActualCurrentIndex(): void
+    {
+        $doc = new Document("match one\nmatch two\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Find, initialQuery: 'match');
+        $bar->handleInput("\r"); // find_next → currentIndex becomes 1
+
+        $matches = $bar->getMatchesByLine();
+        $this->assertFalse($matches[0][0]['current'], 'match 0 is not the current one');
+        $this->assertTrue($matches[1][0]['current'], 'match 1 is');
+    }
+
+    public function testSwitchFieldTogglesBothWaysAndHidesTheCaretForNeitherField(): void
+    {
+        $doc = new Document("x\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace, initialQuery: 'x');
+        $marker = AnsiUtils::cursorMarker(CursorShape::Bar);
+
+        $line = $bar->render(new RenderContext(120, 1))[0];
+        $this->assertSame(1, substr_count($line, $marker), 'find field shows the caret');
+
+        $bar->handleInput("\t"); // → replace field
+        $line = $bar->render(new RenderContext(120, 1))[0];
+        $this->assertSame(1, substr_count($line, $marker), 'replace field shows the caret');
+
+        $bar->handleInput("\t"); // → back to find field
+        $line = $bar->render(new RenderContext(120, 1))[0];
+        $this->assertSame(1, substr_count($line, $marker), 'back on the find field');
+    }
+
+    public function testDeleteCharBackwardDoesNotFallThroughToInsertTheDeletedByte(): void
+    {
+        $doc = new Document("bar\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
+        $this->type($bar, 'ba');
+
+        $bar->handleInput("\x7f"); // backspace: query becomes "b" — must not also insert the \x7f byte
+
+        $flat = array_merge(...array_values($bar->getMatchesByLine()));
+        $this->assertCount(1, $flat, '"b" matches once');
+        $this->assertSame(1, $flat[0]['end'] - $flat[0]['start'], 'the query is "b" (1 char), not "b\x7f" or longer');
+    }
+
+    public function testTagZoneColumnsAreExactlyGlyphPlusTwoWide(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
+        $bar->render(new RenderContext(80, 1));
+
+        // [.*] is 2 glyph cols + 2 padding = 4 wide; same for [\b]. Right-aligned
+        // into an 8-wide strip: regex spans 72-75, word spans 76-79.
+        $this->assertFalse($bar->hoverAt(71), 'just before the regex zone: no tag');
+        $this->assertTrue($bar->hoverAt(72), 'the regex zone starts at 72');
+        $this->assertFalse($bar->hoverAt(75), 'still the regex zone (72-75): no change');
+        $this->assertTrue($bar->hoverAt(76), 'the word zone starts right after, at 76');
+        $this->assertFalse($bar->hoverAt(79), 'still the word zone (76-79): no change');
+        $bar->clearHover();
+        $this->assertFalse($bar->hoverAt(80), 'past the last column: no tag, no change from already-cleared');
+    }
+
+    public function testFindNextAfterAStaleRefreshJumpsToTheFirstMatchNotTheSecond(): void
+    {
+        $doc = new Document("match one\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Find, initialQuery: 'match');
+
+        $doc->moveToDocumentEnd();
+        $doc->insert("match two\n"); // stale: recompute() resets currentIndex before find_next re-jumps
+
+        $bar->handleInput("\r"); // find_next: refreshIfStale() then gotoMatch(currentIndex + 1)
+        $this->assertSame(0, $doc->getCursorLine(), 'lands on the first match, not the second');
+    }
+
+    public function testJumpToNearestLandsExactlyOnAMatchStartingAtTheCursor(): void
+    {
+        $doc = new Document("xxx match\n");
+        $doc->setCursor(0, 4); // exactly at the match's start column
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Find, initialQuery: 'match');
+
+        $this->assertSame(4, $doc->getCursorCol(), 'a match starting exactly at the cursor counts as "at/after", not skipped');
+    }
+
+    public function testJumpToNearestSkipsAnEarlierMatchOnTheSameLineAsTheCursor(): void
+    {
+        // Two matches on line 0, cursor sitting strictly between them: "at or
+        // after the cursor" must only accept the second one, on column, not
+        // "same line as the cursor" alone (which would wrongly grab the first).
+        $doc = new Document("match aaaa match\n");
+        $doc->setCursor(0, 6);
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Find, initialQuery: 'match');
+
+        $this->assertSame(11, $doc->getCursorCol(), 'jumps to the match after the cursor, not the one before it');
+    }
+
+    public function testReplaceCurrentRepositionsTheCursorRegardlessOfWhereItCurrentlyIs(): void
+    {
+        $doc = new Document("aaa bbb\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace, initialQuery: 'bbb');
+        $doc->setCursor(0, 0); // move away from the match after the jump
+
+        $bar->handleInput("\t");
+        $this->type($bar, 'X');
+        $bar->handleInput("\x1br"); // replace current must still target the match, not the stray cursor
+
+        $this->assertSame('aaa X', $doc->getLine(0));
+    }
+
+    public function testReplaceAllOnTwoMatchesInTheSameLineAppliesBottomUp(): void
+    {
+        $doc = new Document("a a\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace, initialQuery: 'a');
+        $bar->handleInput("\t");
+        $this->type($bar, 'XX');
+
+        $bar->handleInput("\x1ba"); // replace all
+
+        $this->assertSame("XX XX\n", $doc->getText(), 'both are replaced correctly only if the rightmost goes first');
+    }
+
+    public function testTypingInTheReplaceFieldInvalidatesTheRenderCache(): void
+    {
+        // Typing in the replacement field never calls recompute() (only the
+        // query field does) — editActiveField's own trailing invalidate() is
+        // the only thing that bumps the render revision for that path.
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Replace);
+        $bar->handleInput("\t"); // → replace field
+
+        $before = $bar->getRenderRevision();
+        $bar->handleInput('y');
+        $this->assertGreaterThan($before, $bar->getRenderRevision());
+    }
+
+    public function testTagZoneStartClampsToZeroWhenTheBarIsNarrowerThanTheTags(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
+        $bar->render(new RenderContext(3, 1)); // narrower than the 8-column tag strip
+
+        $this->assertFalse($bar->hoverAt(-1), 'nothing before column 0');
+        $this->assertTrue($bar->hoverAt(0), 'the first zone starts exactly at 0, not -1 or 1');
+    }
+
+    public function testHoveringOneTagDoesNotTintTheOtherTag(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
+        $bar->render(new RenderContext(80, 1));
+
+        $bar->hoverAt(73); // the regex tag's column
+        $line = $bar->render(new RenderContext(80, 1))[0];
+        // The hints text also mentions ".*" and "\b" literally, earlier in the
+        // line; the tags strip is appended last, so its own occurrences are
+        // the *last* ones in the string.
+        $tint = strrpos($line, needle: "\x1b[48;5;236m");
+        $star = strrpos($line, needle: '.*');
+        $backslashB = strrpos($line, needle: '\b');
+        $this->assertNotFalse($tint);
+        $this->assertLessThan($star, $tint, 'the tint wraps the hovered [.*] tag');
+        $this->assertLessThan($backslashB, $star, 'and .* still comes before \b in the strip');
+    }
+
+    public function testEmptyLineIsSkippedNotAbortingTheRestOfTheDocument(): void
+    {
+        $doc = new Document("a\n\na\n"); // a match, then a blank line, then another match
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
+        $bar->handleInput("\x1bx"); // regex
+        $this->type($bar, 'a');
+
+        $this->assertCount(2, array_merge(...array_values($bar->getMatchesByLine())), 'the blank line is skipped, not treated as end-of-document');
+    }
+
+    public function testAnUnmatchableLineDoesNotAbortTheRestOfTheDocument(): void
+    {
+        // A catastrophic-backtrack line makes preg_match_all return false for
+        // just that line; the scan must move on to the next line, not stop.
+        $doc = new Document(str_repeat('a', times: 30)."!\naaa\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
+        $bar->handleInput("\x1bx");
+        $this->type($bar, '(a+)+$');
+
+        $this->assertCount(1, array_merge(...array_values($bar->getMatchesByLine())), 'line 2 still matches after line 1 fails to scan');
+    }
+
+    public function testAZeroWidthHitDoesNotAbortTheRestOfTheLine(): void
+    {
+        $doc = new Document("abzc\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
+        $bar->handleInput("\x1bx");
+        $this->type($bar, 'z*');
+
+        $this->assertCount(1, array_merge(...array_values($bar->getMatchesByLine())), 'the real "z" hit after the zero-width ones is still found');
+    }
+
+    public function testRegexMatchStartUsesTheByteOffsetNotTheMatchedText(): void
+    {
+        $doc = new Document("xx match\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
+        $bar->handleInput("\x1bx");
+        $this->type($bar, 'match');
+
+        $flat = array_merge(...array_values($bar->getMatchesByLine()));
+        $this->assertSame(3, $flat[0]['start'], 'the offset is 3, not (int) of the matched text');
+    }
+
+    public function testRegexModeMatchCapStopsImmediatelyAcrossLines(): void
+    {
+        // Cap hit mid-way through line 0's own hits: the scan must stop right
+        // there, not merely stop the current line and move to the next one.
+        $doc = new Document(str_repeat('a', times: 5002)."\naaa\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
+        $bar->handleInput("\x1bx");
+        $this->type($bar, 'a');
+
+        $this->assertCount(5000, array_merge(...array_values($bar->getMatchesByLine())), 'stops exactly at the cap, not 3 over from line 2');
+    }
+
+    public function testRegexReplacementExpandsOnlyTheMatchedSubstring(): void
+    {
+        $doc = new Document("prefix name: alpha suffix\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace);
+        $bar->handleInput("\x1bx"); // regex mode
+        $this->type($bar, 'name: (\w+)');
+        $bar->handleInput("\t");
+        $this->type($bar, '[$1]');
+
+        $bar->handleInput("\x1br");
+        $this->assertSame('prefix [alpha] suffix', $doc->getLine(0), 'only the matched span is replaced, the rest of the line is untouched');
+    }
+
     /**
      * The reason the tags are right-aligned rather than sitting after the
      * counter: the rest of the bar scrolls to follow the caret, so a growing
