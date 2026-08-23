@@ -63,7 +63,7 @@ final class PluginManager implements
     private array $keys = [];
     /** @var list<PluginMenuSpec> Plugins-menu entries */
     private array $menuSpecs = [];
-    /** @var list<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null)}> committed LSP providers, in load order */
+    /** @var list<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null), initOptions: (\Closure(): array<string, mixed>)|null}> committed LSP providers, in load order */
     private array $languageServers = [];
     /** @var list<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>}> committed install offers */
     private array $installers = [];
@@ -252,8 +252,11 @@ final class PluginManager implements
      * server map. A resolver returning null (binary missing) leaves the
      * language to the next available provider; the first available in load
      * order wins. A throwing resolver is reported and treated as unavailable.
+     * The optional initializationOptions closure resolves here too — same
+     * laziness, same failure handling — so a plugin's settings reach the
+     * server relaunched by the next (re)configure.
      *
-     * @return array<string, array{command: list<string>, name: string}>
+     * @return array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>
      */
     #[\Override]
     public function languageServers(): array
@@ -265,6 +268,7 @@ final class PluginManager implements
             }
             try {
                 $command = $server['resolve']();
+                $options = null === $server['initOptions'] ? [] : $server['initOptions']();
             } catch (\Throwable $error) {
                 $this->reportFailure($server['plugin'], $error);
 
@@ -273,7 +277,11 @@ final class PluginManager implements
             if (null === $command || [] === $command) {
                 continue; // the server's binary is not available
             }
-            $servers[$server['languageId']] = ['command' => array_values($command), 'name' => $server['name']];
+            $entry = ['command' => array_values($command), 'name' => $server['name']];
+            if ([] !== $options) {
+                $entry['initializationOptions'] = $options;
+            }
+            $servers[$server['languageId']] = $entry;
         }
 
         return $servers;

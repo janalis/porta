@@ -24,11 +24,11 @@ final class LspSession
     private array $syncedText = [];
     private ?string $changeDebounce = null;
 
-    /** @var \Closure(list<string>, string, \Closure(string): void): LspClientInterface */
+    /** @var \Closure(list<string>, string, \Closure(string): void, array<string, mixed>|null): LspClientInterface */
     private \Closure $clientFactory;
 
     /**
-     * @param (\Closure(list<string>, string, \Closure(string): void): LspClientInterface)|null $clientFactory
+     * @param (\Closure(list<string>, string, \Closure(string): void, array<string, mixed>|null): LspClientInterface)|null $clientFactory
      *        builds the transport (defaults to a real {@see LspClient}); inject a
      *        fake to unit-test without spawning a server process
      */
@@ -36,8 +36,16 @@ final class LspSession
         private readonly string $rootDir,
         ?\Closure $clientFactory = null,
     ) {
-        $this->clientFactory =
-            $clientFactory ?? /** @param list<string> $command */ static fn (array $command, string $rootDir, \Closure $onLog): LspClientInterface => new LspClient($command, $rootDir, $onLog);
+        $this->clientFactory = $clientFactory ?? /**
+         * @param list<string>              $command
+         * @param array<string, mixed>|null $initializationOptions
+         */
+        static fn (array $command, string $rootDir, \Closure $onLog, ?array $initializationOptions): LspClientInterface => new LspClient(
+            $command,
+            $rootDir,
+            $onLog,
+            initializationOptions: $initializationOptions,
+        );
     }
 
     /**
@@ -48,10 +56,11 @@ final class LspSession
      * @param \Closure(array): void  $onDiagnostics textDocument/publishDiagnostics params
      * @param \Closure(array): bool  $onApplyEdit   workspace/applyEdit handler (returns applied)
      * @param \Closure(Outcome): void   $onStarted     start result (true when initialized)
+     * @param array<string, mixed>|null $initializationOptions forwarded into the `initialize` request
      */
-    public function start(array $command, \Closure $onLog, \Closure $onDiagnostics, \Closure $onApplyEdit, \Closure $onStarted): void
+    public function start(array $command, \Closure $onLog, \Closure $onDiagnostics, \Closure $onApplyEdit, \Closure $onStarted, ?array $initializationOptions = null): void
     {
-        $this->client = ($this->clientFactory)($command, $this->rootDir, $onLog);
+        $this->client = ($this->clientFactory)($command, $this->rootDir, $onLog, $initializationOptions);
         $this->client->onNotification('textDocument/publishDiagnostics', $onDiagnostics);
         // Many servers log through LSP rather than stderr — same sink.
         $this->client->onNotification('window/logMessage', static function (array $params) use ($onLog): void {

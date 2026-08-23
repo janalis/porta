@@ -292,8 +292,13 @@ there.
 ## LSP
 
 `Lsp/LspSessionPool` routes traffic to per-language sessions started lazily on
-the first `didOpen` of a matching file. Sessions are keyed by command, so JS and
-TS share one server process.
+the first `didOpen` of a matching file. Sessions are keyed by command **plus
+`initializationOptions`**, so JS and TS share one server process, while the same
+argv under different options (a config override colliding with a plugin entry)
+launches separately rather than reusing whichever started first. An LSP-provider
+plugin supplies options via `registerLanguageServer()`'s optional closure,
+re-resolved on every (re)configure, and `LspClient` sends them in the
+`initialize` request; the config/env/`--lsp` override layers never carry any.
 
 Feature controllers extend `Lsp/AbstractLspController`.
 `NavigationController`'s position-bound verbs ride one private scaffold —

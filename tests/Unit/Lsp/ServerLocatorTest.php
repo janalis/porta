@@ -149,6 +149,24 @@ final class ServerLocatorTest extends TestCase
         $this->assertSame('phpactor', $servers['php']['name']);
     }
 
+    public function testPluginInitializationOptionsSurviveTheDefaultsMergeButNotAnOverride(): void
+    {
+        putenv('PATH=/nonexistent');
+        $plugins = [
+            'twig' => ['command' => ['/opt/sf-ls'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => false]],
+            'yaml' => ['command' => ['/opt/sf-ls'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => false]],
+        ];
+
+        $plain = new TempProject();
+        $servers = ServerLocator::locateAll($plain->dir, null, $plugins);
+        $this->assertSame(['workspaceTrust' => false], $servers['twig']['initializationOptions'] ?? null, 'the plugin entry passes through whole');
+
+        $project = new TempProject(['.porta.json' => json_encode(['lsp' => ['twig' => 'my-twig-ls']])]);
+        $overridden = ServerLocator::locateAll($project->dir, null, $plugins);
+        $this->assertArrayNotHasKey('initializationOptions', $overridden['twig'], 'a config override replaces the entry, options included');
+        $this->assertSame(['workspaceTrust' => false], $overridden['yaml']['initializationOptions'] ?? null, 'the untouched language keeps its options');
+    }
+
     public function testMapOverrideLeavesOtherLanguagesOnTheirDefaults(): void
     {
         // A map that only sets typescript leaves php on its plugin server.

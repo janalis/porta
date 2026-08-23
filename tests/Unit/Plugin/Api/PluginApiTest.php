@@ -250,6 +250,12 @@ final class PluginApiTest extends TestCase
         $this->assertSame('php', $buffered[0]['languageId']);
         $this->assertSame('my-ls', $buffered[0]['name']);
         $this->assertSame(['/bin/ls'], $buffered[0]['resolve']());
+        $this->assertNull($buffered[0]['initOptions'], 'options are opt-in');
+
+        $api->registerLanguageServer('twig', 'my-ls', $resolve, static fn (): array => ['environment' => 'dev']);
+        $options = $api->bufferedLanguageServers()[1]['initOptions'];
+        $this->assertNotNull($options);
+        $this->assertSame(['environment' => 'dev'], $options());
 
         try {
             $api->registerLanguageServer('bad:id', 'X', static fn (): ?array => null);

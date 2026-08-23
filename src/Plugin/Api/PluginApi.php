@@ -80,7 +80,7 @@ final class PluginApi
      * @var array<string, array{key: string, label: string, kind: string, default: bool|int|string, options: list<string>|null, hint: string|null}> by key
      */
     private array $settingDescriptors = [];
-    /** @var PluginBuffer<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null)}> */
+    /** @var PluginBuffer<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null), initOptions: (\Closure(): array<string, mixed>)|null}> */
     private readonly PluginBuffer $languageServers;
     /** @var PluginBuffer<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>}> */
     private readonly PluginBuffer $installers;
@@ -299,11 +299,17 @@ final class PluginApi
      * config in precedence; when several enabled plugins serve one language the
      * first available (in load order) wins.
      *
-     * @param \Closure(): (list<string>|null) $resolveCommand
+     * $initializationOptions, when given, returns the LSP `initializationOptions`
+     * sent in the server's initialize handshake. Like the command resolver it is
+     * re-run on every (re)configure — read this plugin's settings in it and a
+     * settings edit reaches the relaunched server. An empty array sends nothing.
+     *
+     * @param \Closure(): (list<string>|null)            $resolveCommand
+     * @param (\Closure(): array<string, mixed>)|null $initializationOptions
      *
      * @throws PluginException
      */
-    public function registerLanguageServer(string $languageId, string $name, \Closure $resolveCommand): void
+    public function registerLanguageServer(string $languageId, string $name, \Closure $resolveCommand, ?\Closure $initializationOptions = null): void
     {
         if (1 !== preg_match(self::ID_PATTERN, $languageId)) {
             throw new PluginException(\sprintf('Invalid language id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $languageId));
@@ -313,6 +319,7 @@ final class PluginApi
             'languageId' => $languageId,
             'name' => $name,
             'resolve' => $resolveCommand,
+            'initOptions' => $initializationOptions,
         ]);
     }
 
@@ -1328,7 +1335,7 @@ final class PluginApi
         return array_values($this->settingDescriptors);
     }
 
-    /** @return list<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null)}> */
+    /** @return list<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null), initOptions: (\Closure(): array<string, mixed>)|null}> */
     public function bufferedLanguageServers(): array
     {
         return $this->languageServers->all();

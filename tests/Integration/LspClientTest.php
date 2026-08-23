@@ -72,6 +72,16 @@ final class LspClientTest extends TestCase
             ],
             $params['capabilities'],
         );
+        $this->assertArrayNotHasKey('initializationOptions', $params, 'no options configured, none sent');
+    }
+
+    public function testInitializeParamsCarryTheConfiguredInitializationOptions(): void
+    {
+        $client = new LspClient(['unused'], '/tmp/proj', initializationOptions: ['workspaceTrust' => false, 'environment' => 'dev']);
+
+        $params = Probe::invoke($client, 'initializeParams');
+
+        $this->assertSame(['workspaceTrust' => false, 'environment' => 'dev'], $params['initializationOptions']);
     }
 
     /**

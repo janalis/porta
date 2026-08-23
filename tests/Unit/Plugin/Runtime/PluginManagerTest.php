@@ -230,6 +230,49 @@ final class PluginManagerTest extends TestCase
         $this->assertFalse($manager->providesLanguageServer('nobody'));
     }
 
+    public function testLanguageServerInitializationOptionsResolveLazilyIntoTheEntry(): void
+    {
+        $settings = new PluginSettings('/p', []);
+        $manager = new PluginManager(new EventDispatcher(), $settings);
+
+        $trust = false;
+        $sf = new PluginApi('sf', $manager, '/p', $settings);
+        $sf->registerLanguageServer('twig', 'sf-ls', static fn (): array => ['/bin/sf'], static function () use (&$trust): array {
+            return ['workspaceTrust' => $trust];
+        });
+        $sf->registerLanguageServer('yaml', 'sf-ls', static fn (): array => ['/bin/sf'], static fn (): array => []);
+        $manager->commit($sf);
+
+        $this->assertSame(
+            [
+                'twig' => ['command' => ['/bin/sf'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => false]],
+                'yaml' => ['command' => ['/bin/sf'], 'name' => 'sf-ls'],
+            ],
+            $manager->languageServers(),
+            'options land in the entry; an empty options array sends nothing',
+        );
+
+        $trust = true;
+        $this->assertSame(
+            ['workspaceTrust' => true],
+            $manager->languageServers()['twig']['initializationOptions'],
+            'the closure re-resolves on every call, so a settings edit reaches the next reconfigure',
+        );
+    }
+
+    public function testAThrowingInitializationOptionsClosureLeavesTheLanguageUnserved(): void
+    {
+        $settings = new PluginSettings('/p', []);
+        $manager = new PluginManager(new EventDispatcher(), $settings);
+
+        $bad = new PluginApi('bad', $manager, '/p', $settings);
+        $bad->registerLanguageServer('twig', 'bad-ls', static fn (): array => ['/bin/bad'], static fn (): array => throw new \RuntimeException('boom'));
+        $manager->commit($bad);
+
+        $this->assertSame([], $manager->languageServers());
+        $this->assertNotEmpty($manager->warnings(), 'the failure is reported like a throwing command resolver');
+    }
+
     public function testLanguageServersReportAThrowingResolverAndDeactivateDropsProviders(): void
     {
         $events = new EventDispatcher();

@@ -31,9 +31,9 @@ final class ServerLocator
      * registered by LSP-provider plugins (php now comes from here, not a
      * hardcoded default); they sit below the user's config in precedence.
      *
-     * @param array<string, array{command: list<string>, name: string}> $pluginServers
+     * @param array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}> $pluginServers
      *
-     * @return array<string, array{command: list<string>, name: string}>
+     * @return array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>
      */
     public static function locateAll(string $rootDir, ?string $override = null, array $pluginServers = []): array
     {
@@ -77,9 +77,9 @@ final class ServerLocator
      * overlaid with the plugin-provided servers (which win, and are the only
      * source of the PHP server now).
      *
-     * @param array<string, array{command: list<string>, name: string}> $pluginServers
+     * @param array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}> $pluginServers
      *
-     * @return array<string, array{command: list<string>, name: string}>
+     * @return array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>
      */
     private static function effectiveDefaults(string $rootDir, array $pluginServers): array
     {

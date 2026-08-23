@@ -32,9 +32,9 @@ final class LspSessionPoolTest extends TestCase
             '/tmp/proj',
             $this->activeFile = new FixedActiveFile(),
             new Translator('en'),
-            function (array $command, string $rootDir, \Closure $onLog): FakeLspClient {
+            function (array $command, string $rootDir, \Closure $onLog, ?array $options): FakeLspClient {
                 $client = new FakeLspClient();
-                $this->clients[] = ['command' => $command, 'client' => $client, 'onLog' => $onLog];
+                $this->clients[] = ['command' => $command, 'client' => $client, 'onLog' => $onLog, 'options' => $options];
 
                 return $client;
             },
@@ -98,6 +98,33 @@ final class LspSessionPoolTest extends TestCase
 
         $this->assertCount(1, $this->clients, 'JS and TS share the ts-ls process');
         $this->assertCount(2, $this->clients[0]['client']->notifications);
+    }
+
+    public function testInitializationOptionsReachTheClientFactoryAndSplitSessions(): void
+    {
+        $pool = $this->pool([
+            'php' => ['command' => ['sf-ls'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => false]],
+            'twig' => ['command' => ['sf-ls'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => false]],
+            'yaml' => ['command' => ['sf-ls'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => true]],
+        ]);
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/b.twig', 'y', 'twig', 1);
+
+        $this->assertCount(1, $this->clients, 'same command + same options share one process');
+        $this->assertSame(['workspaceTrust' => false], $this->clients[0]['options']);
+
+        $pool->notifyDidOpen('/tmp/proj/c.yaml', 'z', 'yaml', 1);
+
+        $this->assertCount(2, $this->clients, 'same command under different options launches separately');
+        $this->assertSame(['workspaceTrust' => true], $this->clients[1]['options']);
+    }
+
+    public function testAServerWithoutOptionsHandsTheFactoryNull(): void
+    {
+        $pool = $this->pool(self::SERVERS);
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+
+        $this->assertNull($this->clients[0]['options']);
     }
 
     public function testDistinctLanguagesGetDistinctSessions(): void

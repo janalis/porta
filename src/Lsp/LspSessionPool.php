@@ -18,19 +18,22 @@ use Psr\EventDispatcher\EventDispatcherInterface;
  * {@see configure()} (languageId => command, '*' = catch-all) and each session
  * starts lazily on the first didOpen of a matching file, so configuring a
  * Python server costs nothing until a .py buffer opens. Sessions are keyed by
- * their command, so JS and TS configured with the same server share one
- * process. Mirrors {@see LspSession}'s public surface: path-taking calls route
+ * their command plus initializationOptions, so JS and TS configured with the
+ * same server share one process — while the same argv under different options
+ * (a config override colliding with a plugin's entry) launches separately
+ * rather than nondeterministically reusing whichever started first.
+ * Mirrors {@see LspSession}'s public surface: path-taking calls route
  * by that path, the rest route by the active editor file — feature controllers
  * keep their single-session call shape.
  */
 #[AsIdeService]
 final class LspSessionPool
 {
-    /** @var array<string, array{command: list<string>, name: string}> languageId ('*' = any) => server */
+    /** @var array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}> languageId ('*' = any) => server */
     private array $servers = [];
-    /** @var array<string, LspSession> command signature => session */
+    /** @var array<string, LspSession> server signature => session */
     private array $sessions = [];
-    /** @var array<string, string> command signature => 'starting…' | server name | 'failed' */
+    /** @var array<string, string> server signature => 'starting…' | server name | 'failed' */
     private array $statuses = [];
     private bool $disabled = false;
     private bool $configured = false;
@@ -43,7 +46,7 @@ final class LspSessionPool
     private ?\Closure $onApplyEdit = null;
 
     /**
-     * @param (\Closure(list<string>, string, \Closure(string): void): LspClientInterface)|null $clientFactory
+     * @param (\Closure(list<string>, string, \Closure(string): void, array<string, mixed>|null): LspClientInterface)|null $clientFactory
      *        forwarded to every session; inject a fake to test without processes
      */
     public function __construct(
@@ -58,7 +61,7 @@ final class LspSessionPool
      * Declare the available servers and the shared inbound hooks. Sessions are
      * not started here — each launches on its language's first didOpen.
      *
-     * @param array<string, array{command: list<string>, name: string}> $servers
+     * @param array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}> $servers
      * @param \Closure(string): void $onLog
      * @param \Closure(array): void  $onDiagnostics
      * @param \Closure(array): bool  $onApplyEdit
@@ -83,7 +86,7 @@ final class LspSessionPool
      * settings): stop every running session and forget it, so the next didOpen
      * relaunches under the new configuration. The inbound hooks are kept.
      *
-     * @param array<string, array{command: list<string>, name: string}> $servers
+     * @param array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}> $servers
      */
     public function reconfigure(array $servers): void
     {
@@ -117,7 +120,7 @@ final class LspSessionPool
         }
         $server = $this->servers[$key];
 
-        return $this->statuses[self::signature($server['command'])] ?? $server['name'];
+        return $this->statuses[self::signature($server)] ?? $server['name'];
     }
 
     // --- LspSession-compatible surface ---------------------------------------
@@ -197,7 +200,7 @@ final class LspSessionPool
         // is already running.
         $key = $this->fallbackKey();
 
-        return null === $key ? null : $this->sessions[self::signature($this->servers[$key]['command'])] ?? null;
+        return null === $key ? null : $this->sessions[self::signature($this->servers[$key])] ?? null;
     }
 
     private function sessionFor(?string $path, StartMode $start = StartMode::Reuse): ?LspSession
@@ -210,7 +213,7 @@ final class LspSessionPool
             return null;
         }
         $server = $this->servers[$key];
-        $signature = self::signature($server['command']);
+        $signature = self::signature($server);
         if (($this->sessions[$signature] ?? null) === null) {
             if (StartMode::Reuse === $start) {
                 return null;
@@ -242,7 +245,7 @@ final class LspSessionPool
         return ($this->servers['php'] ?? null) !== null ? 'php' : null;
     }
 
-    /** @param array{command: list<string>, name: string} $server */
+    /** @param array{command: list<string>, name: string, initializationOptions?: array<string, mixed>} $server */
     private function startSession(array $server, string $signature): LspSession
     {
         $session = new LspSession($this->rootDir, $this->clientFactory);
@@ -257,14 +260,15 @@ final class LspSessionPool
                 $this->statuses[$signature] = $ok->isOk() ? $server['name'] : $this->translator->trans('failed');
                 $this->dispatcher?->dispatch(new LspStatusChanged());
             },
+            $server['initializationOptions'] ?? null,
         );
 
         return $session;
     }
 
-    /** @param list<string> $command */
-    private static function signature(array $command): string
+    /** @param array{command: list<string>, name: string, initializationOptions?: array<string, mixed>} $server */
+    private static function signature(array $server): string
     {
-        return implode("\0", $command);
+        return implode("\0", $server['command'])."\0".json_encode($server['initializationOptions'] ?? null, \JSON_THROW_ON_ERROR);
     }
 }

@@ -26,7 +26,7 @@ final class LspSessionTest extends TestCase
     {
         return new LspSession(
             '/tmp/project',
-            static fn (array $command, string $rootDir, \Closure $onLog): LspClientInterface => $client,
+            static fn (array $command, string $rootDir, \Closure $onLog, ?array $options): LspClientInterface => $client,
         );
     }
 
@@ -34,6 +34,26 @@ final class LspSessionTest extends TestCase
     {
         $noop = static function (): void {};
         $session->start(['fake'], $noop, static fn (array $p): null => null, static fn (array $e): bool => false, $noop);
+    }
+
+    public function testStartForwardsInitializationOptionsToTheFactory(): void
+    {
+        $received = [];
+        $session = new LspSession(
+            '/tmp/project',
+            static function (array $command, string $rootDir, \Closure $onLog, ?array $options) use (&$received): LspClientInterface {
+                $received[] = $options;
+
+                return new FakeLspClient();
+            },
+        );
+        $noop = static function (): void {};
+
+        $session->start(['fake'], $noop, static fn (array $p): null => null, static fn (array $e): bool => false, $noop, ['workspaceTrust' => true]);
+        $this->assertSame([['workspaceTrust' => true]], $received);
+
+        $session->start(['fake'], $noop, static fn (array $p): null => null, static fn (array $e): bool => false, $noop);
+        $this->assertNull($received[1], 'omitting the argument hands the factory null');
     }
 
     public function testStartUsesInjectedClientAndReportsState(): void

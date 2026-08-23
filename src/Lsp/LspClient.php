@@ -42,13 +42,16 @@ final class LspClient implements LspClientInterface
     private $applyEditHandler = null;
 
     /**
-     * @param list<string> $command e.g. ['phpactor', 'language-server']
+     * @param list<string>              $command               e.g. ['phpactor', 'language-server']
+     * @param array<string, mixed>|null $initializationOptions server-specific `initialize` options
+     *                                                         (an LSP-provider plugin's settings travel here)
      */
     public function __construct(
         array $command,
         private readonly string $rootDir,
         ?callable $logger = null,
         int $maxWriteBuffer = NonBlockingWriter::DEFAULT_LIMIT,
+        private readonly ?array $initializationOptions = null,
     ) {
         $this->logger = $logger;
         $this->transport = new JsonRpcTransport($command, $rootDir, 'LSP server', $logger, $maxWriteBuffer);
@@ -140,13 +143,18 @@ final class LspClient implements LspClientInterface
     {
         $rootUri = 'file://'.str_replace(\DIRECTORY_SEPARATOR, replace: '/', subject: $this->rootDir);
 
-        return [
+        $params = [
             'processId' => getmypid(),
             'rootUri' => $rootUri,
             'workspaceFolders' => [['uri' => $rootUri, 'name' => basename($this->rootDir)]],
             'clientInfo' => ['name' => 'porta', 'version' => '0.1.0'],
             'capabilities' => $this->clientCapabilities(),
         ];
+        if (null !== $this->initializationOptions) {
+            $params['initializationOptions'] = $this->initializationOptions;
+        }
+
+        return $params;
     }
 
     /**

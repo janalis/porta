@@ -533,7 +533,8 @@ final class IdeHelpersTest extends TestCase
 
         $pool = Services::resolve($this->ide, LspSessionPool::class);
         Probe::set($pool, 'servers', ['*' => ['command' => ['injected'], 'name' => 'injected']]);
-        Probe::set($pool, 'sessions', ['injected' => $session]);
+        // The key mirrors LspSessionPool::signature(): command + "\0" + json of the (absent) options.
+        Probe::set($pool, 'sessions', ["injected\0null" => $session]);
         Probe::set($pool, 'configured', true);
     }
 
@@ -629,7 +630,7 @@ final class IdeHelpersTest extends TestCase
         });
         $this->injectLspClient($client);
         $pool = Services::resolve($this->ide, LspSessionPool::class);
-        Probe::set($pool, 'statuses', ['injected' => 'mock-lsp-server']);
+        Probe::set($pool, 'statuses', ["injected\0null" => 'mock-lsp-server']);
 
         // Open a "noformat" buffer and make it the active editor document.
         $buffers = Services::resolve($this->ide, BufferManager::class);

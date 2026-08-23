@@ -12,6 +12,6 @@ namespace Porta\Lsp;
  */
 interface LanguageServerProvider
 {
-    /** @return array<string, array{command: list<string>, name: string}> keyed by LSP languageId */
+    /** @return array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}> keyed by LSP languageId */
     public function languageServers(): array;
 }
