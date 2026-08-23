@@ -73,7 +73,7 @@ final class SettingsNavWidgetTest extends TestCase
         for ($i = 0; $i < 20; ++$i) {
             $widget->handleInput("\x1b[B");
         }
-        $this->assertSame('lang:twig', $widget->selectedId(), 'stops at the last language');
+        $this->assertSame('lang:dotenv', $widget->selectedId(), 'stops at the last language');
     }
 
     public function testClickSelectsAndTheHeaderIsInert(): void

@@ -25,6 +25,8 @@ final class LanguageCatalog
         'markdown' => 'Markdown',
         'yaml' => 'YAML',
         'twig' => 'Twig',
+        'xml' => 'XML',
+        'dotenv' => 'Dotenv',
     ];
 
     /** @return list<string> the configurable language ids, in display order */

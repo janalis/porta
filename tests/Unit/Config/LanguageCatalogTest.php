@@ -17,9 +17,10 @@ final class LanguageCatalogTest extends TestCase
         $ids = LanguageCatalog::ids();
         $this->assertContains('php', $ids);
         $this->assertContains('typescript', $ids);
-        $this->assertCount(11, $ids);
+        $this->assertCount(13, $ids);
         $this->assertSame('PHP', LanguageCatalog::displayName('php'));
         $this->assertSame('SCSS', LanguageCatalog::displayName('scss'));
+        $this->assertSame('Dotenv', LanguageCatalog::displayName('dotenv'));
     }
 
     public function testKnownMatchesProjectPathsIds(): void

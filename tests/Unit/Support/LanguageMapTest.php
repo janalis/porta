@@ -40,11 +40,12 @@ final class LanguageMapTest extends TestCase
         yield 'yml' => ['a.yml', 'yaml', 'yaml'];
         yield 'twig' => ['a.twig', 'twig', 'twig'];
         yield 'json' => ['a.json', 'json', 'json'];
+        yield 'xml' => ['a.xml', 'xml', 'xml'];
+        yield 'env ext' => ['a.env', 'dotenv', 'dotenv'];
 
         // Highlighted, but no language server speaks them — LSP stays plaintext.
         yield 'jsx' => ['a.jsx', 'javascript', 'plaintext'];
         yield 'tsx' => ['a.tsx', 'typescript', 'plaintext'];
-        yield 'xml' => ['a.xml', 'xml', 'plaintext'];
         yield 'blade' => ['a.blade', 'blade', 'plaintext'];
         yield 'sql' => ['a.sql', 'sql', 'plaintext'];
         yield 'sh' => ['a.sh', 'bash', 'plaintext'];
@@ -58,7 +59,6 @@ final class LanguageMapTest extends TestCase
         yield 'terraform' => ['a.tf', 'terraform', 'plaintext'];
         yield 'diff' => ['a.diff', 'diff', 'plaintext'];
         yield 'patch' => ['a.patch', 'diff', 'plaintext'];
-        yield 'env ext' => ['a.env', 'dotenv', 'plaintext'];
 
         // Basename-driven, extension absent or misleading.
         yield 'dockerfile' => ['Dockerfile', 'dockerfile', 'plaintext'];
