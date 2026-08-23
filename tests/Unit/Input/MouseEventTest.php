@@ -190,5 +190,26 @@ final class MouseEventTest extends TestCase
         $this->assertNull(MouseEvent::parse("\x1b[A"));
         $this->assertNull(MouseEvent::parse("\x1b[<0;10;5")); // no final byte
         $this->assertNull(MouseEvent::parse("\x1b[<0;10;5Mtail")); // trailing junk
+        $this->assertNull(MouseEvent::parse("x\x1b[<0;10;5M"), 'a valid sequence must start at position 0, not appear anywhere in the string');
+    }
+
+    public function testWheelButtonIsExactlyNegativeOne(): void
+    {
+        $up = MouseEvent::parse("\x1b[<64;3;3M");
+
+        $this->assertSame(-1, $up?->button);
+    }
+
+    public function testMiddlePressWithNoModifierBitsSetsNoneOfThem(): void
+    {
+        // Code 1 = middle button, all higher bits (motion/shift/alt/ctrl) clear.
+        // Bit 0 alone must not leak into any of the higher single-bit checks.
+        $e = MouseEvent::parse("\x1b[<1;5;5M");
+
+        $this->assertSame(MouseEvent::MIDDLE, $e?->button);
+        $this->assertFalse($e?->motion);
+        $this->assertFalse($e?->shift);
+        $this->assertFalse($e?->alt);
+        $this->assertFalse($e?->ctrl);
     }
 }

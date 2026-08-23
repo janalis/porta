@@ -48,4 +48,29 @@ final class ZoomGestureTest extends TestCase
         $clock->sleep(0.12); // past the 0.1s window: a deliberate second wheel click
         $this->assertNull($gesture->glideFactor(1), 'the ladder takes over again');
     }
+
+    public function testANotchExactlyAtTheWindowBoundaryStandsAlone(): void
+    {
+        // A real wall-clock sleep(0.1) never lands bit-exactly on 0.1 (double
+        // rounding), so the boundary itself is only reachable by placing the
+        // clock at exactly epoch 0.1s while the gesture's own internal
+        // "$lastTime = 0.0" default is still in effect: 0.1 - 0.0 is exact.
+        $clock = new MockClock('@0.1');
+        $gesture = new ZoomGesture($clock);
+
+        $this->assertNull($gesture->glideFactor(1), 'elapsed time equal to the window is already too late: strict "<", not "<="');
+    }
+
+    public function testANonPositiveDirectionShrinks(): void
+    {
+        $clock = new MockClock();
+        $gesture = new ZoomGesture($clock);
+        $gesture->glideFactor(1);
+        $clock->sleep(0.02);
+
+        $factor = $gesture->glideFactor(0);
+
+        $this->assertNotNull($factor);
+        $this->assertLessThan(1.0, $factor, 'dir=0 is not a positive direction, so it takes the shrink branch');
+    }
 }
