@@ -67,4 +67,55 @@ final class EditorConfigParserTest extends TestCase
         $this->assertFalse($parsed['root']);
         $this->assertSame([], $parsed['sections']);
     }
+
+    public function testLoneCrLineEndingsAreNormalized(): void
+    {
+        // Classic-Mac line endings (bare \r, no \n) — explode("\n", ...) alone
+        // would never split these, merging every logical line into one blob.
+        $parsed = EditorConfigParser::parse("root = true\r[*]\rindent_size = 4\r");
+
+        $this->assertTrue($parsed['root']);
+        $this->assertSame(['indent_size' => '4'], $parsed['sections'][0]['props']);
+    }
+
+    public function testLeadingWhitespaceOnALineIsTrimmed(): void
+    {
+        $parsed = EditorConfigParser::parse("  [*]\n  indent_size = 4\n");
+
+        $this->assertSame('*', $parsed['sections'][0]['glob']);
+        $this->assertSame(['indent_size' => '4'], $parsed['sections'][0]['props']);
+    }
+
+    public function testACommentLineContainingAnEqualsSignIsStillSkipped(): void
+    {
+        // A comment-like line that happens to look like a key=value pair
+        // must never leak into the section's props.
+        $parsed = EditorConfigParser::parse("[*]\n# key = value\n; other = value\nreal = kept\n");
+
+        $this->assertSame(['real' => 'kept'], $parsed['sections'][0]['props']);
+    }
+
+    public function testALineEndingInACloseBracketWithoutStartingWithAnOpenBracketIsNotASection(): void
+    {
+        // Only a line that BOTH starts with `[` AND ends with `]` opens a new
+        // section — a plain value that happens to end in `]` must not.
+        $parsed = EditorConfigParser::parse("[*]\nkey = ]\n");
+
+        $this->assertCount(1, $parsed['sections']);
+        $this->assertSame(['key' => ']'], $parsed['sections'][0]['props']);
+    }
+
+    public function testAValueImmediatelyAfterTheEqualsSignWithNoSpaceIsKeptInFull(): void
+    {
+        $parsed = EditorConfigParser::parse("[*]\nkey=ab\n");
+
+        $this->assertSame(['key' => 'ab'], $parsed['sections'][0]['props']);
+    }
+
+    public function testRootValueComparisonIsCaseInsensitive(): void
+    {
+        $parsed = EditorConfigParser::parse("root = TRUE\n");
+
+        $this->assertTrue($parsed['root']);
+    }
 }

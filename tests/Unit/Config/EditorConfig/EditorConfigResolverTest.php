@@ -92,4 +92,71 @@ final class EditorConfigResolverTest extends TestCase
         $this->assertNull($c->usesTabs);
         $this->assertNull($c->eol);
     }
+
+    public function testResolvesForAPathThatDoesNotExistOnDiskYet(): void
+    {
+        // realpath() returns false for a not-yet-created file (e.g. resolving
+        // config before the first save) — the walk must still fall back to the
+        // raw path rather than choking on it.
+        $project = new TempProject([
+            '.editorconfig' => "root = true\n[*]\nindent_size = 4\n",
+        ]);
+
+        $this->assertSame(4, $this->resolve($project, 'not-yet-saved.py')->indentSize);
+    }
+
+    public function testGlobMatchOnlyAppliesWithinItsOwnEditorconfigsDirectory(): void
+    {
+        // A non-matching section immediately above the matching one, in the
+        // SAME .editorconfig file, must not swallow the rest of the sections.
+        $project = new TempProject([
+            '.editorconfig' => "root = true\n[*.js]\nindent_size = 2\n[*.py]\nindent_size = 8\n",
+            'a.py' => 'x',
+        ]);
+
+        $this->assertSame(8, $this->resolve($project, 'a.py')->indentSize);
+    }
+
+    public function testUnsetComparisonIsCaseInsensitive(): void
+    {
+        // charset() lowercases its raw value regardless, so an un-filtered
+        // "UNSET" would surface as the bogus non-null charset 'unset' instead
+        // of being stripped by the resolver's own case-insensitive check —
+        // indent_size can't distinguish this (toPositiveInt() nulls any
+        // non-numeric string on its own, masking the filter either way).
+        $project = new TempProject([
+            '.editorconfig' => "root = true\n[*]\ncharset = utf-8\n[*.py]\ncharset = UNSET\n",
+            'a.py' => 'x',
+        ]);
+
+        $this->assertNull($this->resolve($project, 'a.py')->charset);
+    }
+
+    public function testUnsetIsStrippedEvenInTheExactSpecCase(): void
+    {
+        // With array_filter() itself removed, even the canonical lowercase
+        // "unset" would survive as a literal (bogus, non-null) property.
+        $project = new TempProject([
+            '.editorconfig' => "root = true\n[*]\ncharset = utf-8\n[*.py]\ncharset = unset\n",
+            'a.py' => 'x',
+        ]);
+
+        $this->assertNull($this->resolve($project, 'a.py')->charset);
+    }
+
+    public function testGlobWithASlashMatchesTheCorrectlyStrippedRelativePath(): void
+    {
+        // A glob with no `/` is compiled to match the basename at ANY depth
+        // (EditorConfigGlob::compile()'s "no separator" branch), which
+        // tolerates a wrong/unstripped relativePath() completely by accident.
+        // Only a glob CONTAINING a `/` is anchored strictly to the relative
+        // path, which is the only way to actually exercise relativePath()'s
+        // own prefix-stripping arithmetic.
+        $project = new TempProject([
+            '.editorconfig' => "root = true\n[sub/*.py]\nindent_size = 4\n",
+            'sub/a.py' => 'x',
+        ]);
+
+        $this->assertSame(4, $this->resolve($project, 'sub/a.py')->indentSize);
+    }
 }

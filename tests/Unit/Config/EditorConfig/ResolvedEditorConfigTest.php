@@ -97,4 +97,51 @@ final class ResolvedEditorConfigTest extends TestCase
         $this->assertNull(ResolvedEditorConfig::fromProps(['charset' => ''])->charset);
         $this->assertNull(ResolvedEditorConfig::fromProps([])->charset);
     }
+
+    public function testValuesAreTrimmedOfSurroundingWhitespace(): void
+    {
+        // The parser already trims, but fromProps() is a public entry point
+        // in its own right — it must not assume a pre-trimmed caller.
+        $c = ResolvedEditorConfig::fromProps([
+            'indent_size' => ' TAB ',
+            'tab_width' => '8',
+            'indent_style' => ' tab ',
+            'end_of_line' => ' lf ',
+            'charset' => ' UTF-8 ',
+            'trim_trailing_whitespace' => ' true ',
+        ]);
+
+        $this->assertSame(8, $c->indentSize, '"indent_size = tab" keyword, case- and whitespace-insensitive');
+        $this->assertTrue($c->usesTabs);
+        $this->assertSame('lf', $c->eol);
+        $this->assertSame('utf-8', $c->charset);
+        $this->assertTrue($c->trimTrailingWhitespace);
+    }
+
+    public function testNumericIndentSizeWithSurroundingWhitespaceIsStillNumeric(): void
+    {
+        $this->assertSame(4, ResolvedEditorConfig::fromProps(['indent_size' => ' 4 '])->indentSize);
+    }
+
+    public function testToPositiveIntRejectsATrailingNonDigitSuffix(): void
+    {
+        // A digit run must span the WHOLE trimmed value, not just its start.
+        $this->assertNull(ResolvedEditorConfig::fromProps(['indent_size' => '5abc'])->indentSize);
+    }
+
+    public function testToPositiveIntRejectsALeadingNonDigitPrefix(): void
+    {
+        // ...nor just its end.
+        $this->assertNull(ResolvedEditorConfig::fromProps(['indent_size' => 'abc5'])->indentSize);
+    }
+
+    public function testTabWidthOwnTrimIsNotMaskedByIndentSizesUpstreamTrim(): void
+    {
+        // Unlike indent_size, tab_width is never pre-trimmed before reaching
+        // toPositiveInt() — it's the only property that exercises that
+        // method's OWN trim(), independent of fromProps()'s outer one.
+        $this->assertSame(8, ResolvedEditorConfig::fromProps(['tab_width' => ' 8 '])->tabWidth);
+        $this->assertNull(ResolvedEditorConfig::fromProps(['tab_width' => '5abc'])->tabWidth);
+        $this->assertNull(ResolvedEditorConfig::fromProps(['tab_width' => 'abc5'])->tabWidth);
+    }
 }

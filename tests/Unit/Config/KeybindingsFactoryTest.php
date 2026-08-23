@@ -99,4 +99,15 @@ final class KeybindingsFactoryTest extends TestCase
         $this->assertSame(['f5'], $keys->getBindings('save'));
         $this->assertEquals([new ConfigWarning('Unknown keymap action "%action%" in .porta.json', ['%action%' => 'still_nothing'])], $host->manager()->warnings());
     }
+
+    public function testMultipleDeclaredActionsAreAllKept(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode(['keymap' => ['save' => 'f2', 'find' => 'f3']])]);
+        [$factory] = $this->factory($project);
+
+        $keys = $factory->create();
+
+        $this->assertSame(['f2'], $keys->getBindings('save'));
+        $this->assertSame(['f3'], $keys->getBindings('find'));
+    }
 }

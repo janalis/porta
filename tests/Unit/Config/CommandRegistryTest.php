@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Config;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
+use Porta\Config\PaletteVisibility;
 
 final class CommandRegistryTest extends TestCase
 {
@@ -79,5 +80,36 @@ final class CommandRegistryTest extends TestCase
         });
         $registry->run('save');
         $this->assertSame(['core', 'fresh'], $ran, 'after remove(), a re-registration wins cleanly');
+    }
+
+    public function testRunOnAnUnknownIdIsANoOp(): void
+    {
+        $registry = new CommandRegistry();
+        $registry->add('save', static function (): void {
+            self::fail('unreachable');
+        });
+
+        $registry->run('nope'); // must not throw
+        $this->addToAssertionCount(1);
+    }
+
+    public function testKeyBoundFlagIsStoredExactly(): void
+    {
+        $registry = new CommandRegistry();
+        $registry
+            ->add('bound', static function (): void {}, keyBound: KeyDispatch::Bound)
+            ->add('unbound', static function (): void {}, keyBound: KeyDispatch::Unbound);
+
+        $this->assertSame(['bound'], $registry->keyBoundIds(), 'only the Bound command carries a keybinding');
+    }
+
+    public function testInPaletteFlagIsStoredExactly(): void
+    {
+        $registry = new CommandRegistry();
+        $registry
+            ->add('listed', static function (): void {}, inPalette: PaletteVisibility::Listed, label: 'Listed')
+            ->add('hidden', static function (): void {}, inPalette: PaletteVisibility::Hidden, label: 'Hidden');
+
+        $this->assertSame(['Listed'], array_column($registry->paletteCommands(), 'label'), 'the Hidden command is excluded from the palette');
     }
 }

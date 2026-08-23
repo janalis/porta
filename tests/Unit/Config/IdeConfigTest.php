@@ -658,4 +658,209 @@ final class IdeConfigTest extends TestCase
         $this->assertCount(3, array_unique(array_map(static fn ($s): int => $s->value, $shapes)));
         $this->assertSame(CursorShape::Bar, CursorStyle::shapeFromSetting('anything-else'));
     }
+
+    public function testABadKeymapActionDoesNotAbortTheRemainingActions(): void
+    {
+        // "must map to a key or list" for `bad` must skip only that one entry,
+        // not stop parsing the rest of the keymap.
+        $project = new TempProject(['.porta.json' => json_encode([
+            'keymap' => ['bad' => 5, 'save' => ['ctrl+s']],
+        ])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame(['save' => ['ctrl+s']], $config->keymap);
+        $this->assertCount(1, $config->warnings);
+    }
+
+    public function testKeymapKeysAreReindexedAndStringified(): void
+    {
+        // A JSON array with a filtered/sparse shape is not possible from
+        // json_decode, but the values themselves are not always strings.
+        $project = new TempProject(['.porta.json' => json_encode([
+            'keymap' => ['save' => ['ctrl+s', 1]],
+        ])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame(['ctrl+s', '1'], $config->keymap['save'], 'every key is stringified');
+        $this->assertSame([0, 1], array_keys($config->keymap['save']), 'reindexed from 0');
+    }
+
+    public function testMalformedHighlightBlockWarnsAndFallsBackWithoutCrashing(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode(['highlight' => 'not-an-object'])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame(['default' => '', 'languages' => []], $config->highlight);
+        $this->assertContainsEquals(new ConfigWarning('"highlight" in .porta.json must be an object'), $config->warnings);
+    }
+
+    public function testANumericHighlightLanguageKeyIsWarnedAsAString(): void
+    {
+        // json_decode turns a purely-numeric object key into an int array key;
+        // the warning's %language% param must still carry it as a string.
+        $project = new TempProject(['.porta.json' => json_encode(['highlight' => ['languages' => ['5' => '']]])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $warning = $config->warnings[0];
+        $this->assertSame('5', $warning->params['%language%']);
+    }
+
+    public function testAnInvalidHighlighterLanguageWarningNamesTheLanguage(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode(['highlight' => ['languages' => ['rust' => '']]])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertContainsEquals(
+            new ConfigWarning('Highlighter for "%language%" in .porta.json must be a non-empty string', ['%language%' => 'rust']),
+            $config->warnings,
+        );
+    }
+
+    public function testANumericPluginKeyIsWarnedAsAString(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode(['plugins' => ['5' => 'not-an-object']])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $warning = $config->warnings[0];
+        $this->assertSame('5', $warning->params['%plugin%']);
+    }
+
+    public function testABadPluginBlockDoesNotAbortTheRemainingPlugins(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode([
+            'plugins' => ['bad' => 'not-an-object', 'good' => ['setting' => 'value']],
+        ])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame(['good' => ['setting' => 'value']], $config->plugins);
+    }
+
+    public function testANonScalarPluginSettingValueDoesNotAbortTheRemainingKeys(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode([
+            'plugins' => ['git' => ['bad' => ['nested' => 'array'], 'good' => 'value']],
+        ])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame(['good' => 'value'], $config->plugins['git']);
+    }
+
+    public function testAFloatPluginSettingValueIsStringified(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode(['plugins' => ['git' => ['ratio' => 3.14]]])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame('3.14', $config->plugins['git']['ratio']);
+    }
+
+    public function testMultiplePluginsAreAllRetained(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode([
+            'plugins' => ['git' => ['a' => '1'], 'graph-viewer' => ['b' => '2']],
+        ])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame(['git' => ['a' => '1'], 'graph-viewer' => ['b' => '2']], $config->plugins);
+    }
+
+    public function testALspListFormFallsBackToNoPerLanguageServers(): void
+    {
+        // A single-command form (string or argv list) has no per-language
+        // keys to read — it must not be misparsed as one.
+        $project = new TempProject(['.porta.json' => json_encode(['lsp' => ['intelephense', '--stdio']])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame([], $config->lspServers);
+    }
+
+    public function testStringListDropsNonScalarsAndReindexes(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode([
+            'disabledPlugins' => ['a', ['nested'], 'b'],
+        ])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame(['a', 'b'], $config->disabledPlugins);
+    }
+
+    public function testCommandStringStringifiesEveryArgvElement(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode([
+            'languages' => ['php' => ['runCommand' => ['php', '-v', 8]]],
+        ])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame('php -v 8', $config->languages['php']['runCommand']);
+    }
+
+    public function testANumericLanguageKeyIsRejectedAsUnknownRatherThanCrashing(): void
+    {
+        // LanguageCatalog::isKnown() is strictly typed `string`; a purely
+        // numeric key (auto-converted to an int by json_decode) must be
+        // stringified before reaching it, or the whole parse would throw.
+        $project = new TempProject(['.porta.json' => json_encode(['languages' => ['5' => ['indentStyle' => 'spaces']]])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame([], $config->languages);
+        $this->assertContainsEquals(new ConfigWarning('Unknown language "%lang%" in .porta.json', ['%lang%' => '5']), $config->warnings);
+    }
+
+    public function testABadLanguageEntryDoesNotAbortTheRemainingLanguages(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode([
+            'languages' => ['php' => 'not-an-object', 'python' => ['indentStyle' => 'spaces']],
+        ])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertArrayNotHasKey('php', $config->languages);
+        $this->assertSame(['indentStyle' => 'spaces'], $config->languages['python']);
+    }
+
+    public function testIndentSizeOfExactlyOneIsAccepted(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode([
+            'languages' => ['php' => ['indentSize' => 1]],
+        ])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame(1, $config->languages['php']['indentSize']);
+    }
+
+    /** @return iterable<string, array{string, int|null}> */
+    public static function indentSizeStringProvider(): iterable
+    {
+        yield 'plain digits' => ['2', 2];
+        yield 'the floor itself' => ['0', 1];
+        yield 'exactly one' => ['1', 1];
+        yield 'leading non-digit' => ['x2', null];
+        yield 'trailing non-digit' => ['2x', null];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('indentSizeStringProvider')]
+    public function testIndentSizeFromAStringValue(string $raw, ?int $expected): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode([
+            'languages' => ['php' => ['indentSize' => $raw]],
+        ])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame($expected, $config->languages['php']['indentSize'] ?? null);
+    }
 }

@@ -129,6 +129,24 @@ final class LayoutStoreTest extends TestCase
         );
     }
 
+    public function testANumericViewIdIsExcludedAndAnInvalidPercentIsExcluded(): void
+    {
+        // Real view ids are always non-numeric strings; json_decode turns a
+        // purely-numeric object key into an int array key, which must not
+        // leak into the width map. Likewise a non-numeric percent must not
+        // leak in under a valid string id.
+        $project = new TempProject();
+        if (!is_dir($project->path('.porta'))) {
+            mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
+        }
+        file_put_contents(
+            $project->path('.porta/layout.json'),
+            json_encode(['viewSidebarWidthPercent' => ['5' => 50, 'git' => 'not-a-number']]),
+        );
+
+        $this->assertSame([], new LayoutStore($project->dir)->load()?->viewSidebarWidthPercent);
+    }
+
     public function testAnUnencodablePayloadDegradesToFalseInsteadOfThrowing(): void
     {
         // An invalid-UTF-8 view id makes json_encode(JSON_THROW_ON_ERROR)
