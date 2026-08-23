@@ -179,4 +179,13 @@ final class StructuralSelectionTest extends TestCase
         $steps = $this->ladder($text, 8);
         $this->assertSame("a\\'b", $steps[1], 'escaped quote kept inside the literal');
     }
+
+    public function testTiedSmallestCandidateKeepsTheFirstOneFound(): void
+    {
+        // The bracket pair's inner span [1,2] (the newline) and the single-char
+        // line span [0,1] are both size 1 and both genuinely enclose the caret.
+        // The bracket candidate is discovered first — it must win the tie, not
+        // be silently replaced by the line span found afterward.
+        $this->assertSame([1, 2], StructuralSelection::expand("(\n)", 1, 1));
+    }
 }

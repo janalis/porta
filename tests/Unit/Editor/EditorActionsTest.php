@@ -615,6 +615,7 @@ final class EditorActionsTest extends TestCase
         $actions->handleKey('q', $kb);
 
         $this->assertSame(1, $this->doc->getCursorLine(), 'jumped to the conflict start');
+        $this->assertSame($text, $this->doc->getText(), 'no fallthrough insert of the bound letter');
     }
 
     public function testCursorHorizontalMovementDoesNotClearTheSignatureHint(): void
@@ -703,6 +704,7 @@ final class EditorActionsTest extends TestCase
         $actions->handleKey("\x02", $kb);
 
         $this->assertSame("a\n", $this->doc->getText());
+        $this->assertSame(1, $this->count_('notifyChange'), 'a real edit notifies');
     }
 
     public function testDeleteCharForwardRemovesTheFollowingChar(): void
@@ -787,5 +789,137 @@ final class EditorActionsTest extends TestCase
         $actions->handleKey('>', $kb);
 
         $this->assertSame(1, $this->count_('requestCompletion'), 'the prefix must stop at the cursor, not include the rest of the line');
+    }
+
+    public function testPreCaretActionConsumedKeyStopsTheCascade(): void
+    {
+        $kb = new Keybindings(['trigger_completion' => ['q']]);
+        $actions = $this->actions();
+        $actions->handleKey('q', $kb);
+
+        $this->assertSame(1, $this->count_('requestCompletion'), 'the PRE_CARET_ACTIONS entry ran');
+        $this->assertSame("alpha beta\ngamma\n", $this->doc->getText(), 'no fallthrough insert of the bound letter');
+    }
+
+    public function testSelectAllOccurrencesConsumedKeyStopsTheCascade(): void
+    {
+        $kb = new Keybindings(['select_all_occurrences' => ['q']]);
+        $actions = $this->actions("foo bar\nfoo baz\n");
+        $actions->handleKey('q', $kb);
+
+        $this->assertTrue($this->multiCaret->hasMultiple(), 'both "foo" occurrences got carets');
+        $this->assertSame("foo bar\nfoo baz\n", $this->doc->getText(), 'no fallthrough insert of the bound letter');
+    }
+
+    public function testSurroundWithConsumedKeyStopsTheCascade(): void
+    {
+        $kb = new Keybindings(['surround_with' => ['q']]);
+        $actions = $this->actions();
+        $this->doc->setSelectionRange(0, 0, 0, 5);
+        $actions->handleKey('q', $kb);
+
+        $this->assertSame(1, $this->count_('openListOverlay'), 'surround_with ran');
+        $this->assertSame('alpha', $this->doc->getSelectedText(), 'no fallthrough insert of the bound letter');
+    }
+
+    public function testResolveConflictOpensTheMenuAndStopsTheCascade(): void
+    {
+        $text = "<<<<<<< ours\nx\n=======\ny\n>>>>>>> theirs\n";
+        $kb = new Keybindings(['resolve_conflict' => ['q']]);
+        $actions = $this->actions($text);
+        $actions->handleKey('q', $kb);
+
+        $this->assertSame(1, $this->count_('openListOverlay'), 'resolve_conflict opened the menu');
+        $this->assertSame($text, $this->doc->getText(), 'no fallthrough insert of the bound letter');
+    }
+
+    public function testSelectAllConsumedKeyStopsTheCascade(): void
+    {
+        $kb = new Keybindings(['select_all' => ['q']]);
+        $actions = $this->actions("one\ntwo\n");
+        $actions->handleKey('q', $kb);
+
+        $this->assertSame("one\ntwo\n", $this->doc->getSelectedText());
+        $this->assertSame("one\ntwo\n", $this->doc->getText(), 'no fallthrough insert of the bound letter');
+    }
+
+    public function testDocumentStartClearsSelectionInvalidatesAndStopsTheCascade(): void
+    {
+        $kb = new Keybindings(['document_start' => ['q']]);
+        $actions = $this->actions("alpha beta\ngamma\n");
+        $this->doc->setCursor(1, 2);
+        $this->doc->setSelectionRange(1, 0, 1, 5);
+        $actions->handleKey('q', $kb);
+
+        $this->assertFalse($this->doc->hasSelection(), 'the selection was cleared');
+        $this->assertSame(0, $this->doc->getCursorLine(), 'jumped to the document start');
+        $this->assertSame(0, $this->doc->getCursorCol());
+        $this->assertSame(1, $this->count_('invalidate'));
+        $this->assertSame("alpha beta\ngamma\n", $this->doc->getText(), 'no fallthrough insert of the bound letter');
+    }
+
+    public function testDocumentEndClearsSelectionInvalidatesAndStopsTheCascade(): void
+    {
+        $kb = new Keybindings(['document_end' => ['q']]);
+        $actions = $this->actions("alpha beta\ngamma\n");
+        $this->doc->setSelectionRange(0, 0, 0, 5);
+        $actions->handleKey('q', $kb);
+
+        $this->assertFalse($this->doc->hasSelection(), 'the selection was cleared');
+        $this->assertSame(2, $this->doc->getCursorLine(), 'jumped to the document end');
+        $this->assertSame(1, $this->count_('invalidate'));
+        $this->assertSame("alpha beta\ngamma\n", $this->doc->getText(), 'no fallthrough insert of the bound letter');
+    }
+
+    public function testPageMovementClearsAnExistingSelection(): void
+    {
+        $kb = new Keybindings(['page_down' => ['q']]);
+        $actions = $this->actions(str_repeat("line\n", times: 20));
+        $this->doc->setSelectionRange(0, 0, 0, 2);
+        $actions->handleKey('q', $kb);
+
+        $this->assertFalse($this->doc->hasSelection(), 'the selection was cleared before repositioning');
+    }
+
+    public function testNewLineNotifiesAndStopsTheCascade(): void
+    {
+        $kb = new Keybindings(['new_line' => ['q']]);
+        $actions = $this->actions("one\n");
+        $this->doc->setCursor(0, 3);
+        $actions->handleKey('q', $kb);
+
+        $this->assertSame("one\n\n", $this->doc->getText(), 'a newline was inserted, no fallthrough insert of the bound letter');
+        $this->assertSame(1, $this->count_('notifyChange'));
+    }
+
+    public function testPrevTabStopNotifiesAndStopsTheCascade(): void
+    {
+        $kb = new Keybindings(['prev_tab_stop' => ['q']]);
+        $actions = $this->actions("    one\n");
+        $this->doc->setCursor(0, 4);
+        $actions->handleKey('q', $kb);
+
+        $this->assertSame("one\n", $this->doc->getText(), 'dedented once, no fallthrough insert of the bound letter');
+        $this->assertSame(1, $this->count_('notifyChange'));
+    }
+
+    public function testDeleteLineConsumedKeyStopsTheCascade(): void
+    {
+        $kb = new Keybindings(['delete_line' => ['q']]);
+        $actions = $this->actions("one\ntwo\n");
+        $actions->handleKey('q', $kb);
+
+        $this->assertSame("two\n", $this->doc->getText(), 'the line was deleted, no fallthrough insert of the bound letter');
+    }
+
+    public function testDeleteWithNothingToDeleteDoesNotNotifyButStillStopsTheCascade(): void
+    {
+        $kb = new Keybindings(['delete_char_backward' => ['q']]);
+        $actions = $this->actions("ab\n");
+        $this->doc->setCursor(0, 0); // nothing before the cursor
+        $actions->handleKey('q', $kb);
+
+        $this->assertSame(0, $this->count_('notifyChange'), 'nothing changed, so no notification');
+        $this->assertSame("ab\n", $this->doc->getText(), 'no fallthrough insert of the bound letter either way');
     }
 }

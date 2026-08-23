@@ -137,6 +137,36 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringContainsString('File0.php', $plain, 'scrolled back to the top');
     }
 
+    /** The selection background lands at the selected row's OWN rendered position, not mirrored/flipped relative to the scroll offset. */
+    public function testSelectedRowBackgroundLandsAtItsOwnPosition(): void
+    {
+        $panel = new ResultsPanelWidget();
+        AttachedStyles::attach($panel);
+        $panel->setFocused(true);
+        $panel->open('Usages', ResultsPanelFields::resultsOnly());
+        $panel->setResults($this->results(5));
+        $panel->handleInput("\x1b[B");
+        $panel->handleInput("\x1b[B"); // selection at index 2
+
+        $lines = $panel->render(new RenderContext(60, 12));
+
+        $this->assertStringNotContainsString("\x1b[48;5;31m", $lines[0], 'row 0 is not selected');
+        $this->assertStringContainsString("\x1b[48;5;31m", $lines[2], 'row 2 (the actual selection) carries the selected background');
+    }
+
+    /** The '%count% shown' status counts real MATCH rows, not group header rows, and keeps the '%count% results' prefix intact. */
+    public function testShownCountCountsMatchesNotHeadersAndKeepsTheResultsPrefix(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults()); // 2 file headers, 3 real matches
+        foreach (str_split('match') as $ch) {
+            $panel->handleInput($ch);
+        } // a filter every fixture row matches, so nothing is hidden
+
+        $this->assertSame('3 results · 3 shown', $panel->statusText(), 'the results prefix survives, and the count is the 3 matches, not the 2 headers');
+    }
+
     public function testUnfocusedSelectionStyleAndExactWidths(): void
     {
         $panel = new ResultsPanelWidget();
@@ -407,6 +437,117 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertCount(3, $resultRows, 'only the resized number of result rows render');
     }
 
+    /** setSearching() requests a render on its own. */
+    public function testSetSearchingRequestsARender(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $before = $panel->getRenderRevision();
+
+        $panel->setSearching();
+
+        $this->assertGreaterThan($before, $panel->getRenderRevision());
+    }
+
+    /** A panel that was never opened ignores every keystroke, including ones with no other open-guard of their own (e.g. rerun). */
+    public function testHandleInputOnAClosedPanelIsInert(): void
+    {
+        $events = new EventDispatcher();
+        $panel = new ResultsPanelWidget(events: $events);
+        $reran = false;
+        $events->addListener(ResultsRerunRequested::class, static function () use (&$reran): void {
+            $reran = true;
+        });
+
+        $panel->handleInput("\x1b[15~"); // F5 — panel never opened
+
+        $this->assertFalse($reran, 'a closed panel ignores input entirely, before any keybinding is even checked');
+    }
+
+    /** List navigation (arrow keys) requests a render on its own. */
+    public function testHandleInputNavigationRequestsARender(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::resultsOnly());
+        $panel->setResults($this->results(3));
+        $before = $panel->getRenderRevision();
+
+        $panel->handleInput("\x1b[B");
+
+        $this->assertGreaterThan($before, $panel->getRenderRevision());
+    }
+
+    /** Cycling the grouping mode (alt+g) requests a render on its own. */
+    public function testToggleGroupRequestsARender(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $before = $panel->getRenderRevision();
+
+        $panel->handleInput("\x1bg");
+
+        $this->assertGreaterThan($before, $panel->getRenderRevision());
+    }
+
+    /** Export (alt+x) with no event dispatcher wired is inert, not a crash — the nullsafe call matters. */
+    public function testExportWithNoEventDispatcherIsInertNotACrash(): void
+    {
+        $panel = new ResultsPanelWidget(); // no events passed: null
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+
+        $panel->handleInput("\x1bx");
+
+        $this->assertTrue($panel->isOpen(), 'no crash when no event dispatcher is wired');
+    }
+
+    /** Rerun (F5) with no event dispatcher wired is inert, not a crash — the nullsafe call matters. */
+    public function testRerunWithNoEventDispatcherIsInertNotACrash(): void
+    {
+        $panel = new ResultsPanelWidget(); // no events passed: null
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+
+        $panel->handleInput("\x1b[15~");
+
+        $this->assertTrue($panel->isOpen(), 'no crash when no event dispatcher is wired');
+    }
+
+    /**
+     * A successful backspace (something was actually deleted) both edits the
+     * field AND requests a render — covers the guard's own boolean logic (a
+     * negated whole-condition or negated backspace() result would both skip
+     * the repaint even though the character was already removed) and the
+     * invalidate() call itself.
+     */
+    public function testSuccessfulBackspaceEditsTheFieldAndRequestsARender(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->handleInput('x'); // filter now "x"
+        $before = $panel->getRenderRevision();
+
+        $panel->handleInput("\x7f"); // backspace: filter now ""
+
+        $this->assertSame('', Probe::get($panel, 'filter')->value(), 'the character was actually removed');
+        $this->assertGreaterThan($before, $panel->getRenderRevision(), 'the successful backspace requested a repaint');
+    }
+
+    /** Typing a character into the filter requests a render. */
+    public function testTypingIntoTheFilterRequestsARender(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $before = $panel->getRenderRevision();
+
+        $panel->handleInput('a');
+
+        $this->assertGreaterThan($before, $panel->getRenderRevision());
+    }
+
     public function testCloseNotifies(): void
     {
         $panel = new ResultsPanelWidget();
@@ -536,6 +677,83 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringContainsString('match zero', $expanded);
     }
 
+    /**
+     * In File (non-nested) grouping mode, toggleAllGroups() must only collect
+     * FILE keys — not also each file's dirname, which is only relevant in
+     * Nested mode. The array's stored boolean values are never read (only
+     * array_keys() is consulted), so this checks the KEY SET exactly.
+     */
+    public function testToggleAllGroupsInFileModeCollectsOnlyFileKeysNotDirnames(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults()); // src/A.php x2, src/B.php x1
+
+        $panel->handleInput("\x1be"); // alt+e → collapse all
+
+        $this->assertSame(['src/A.php' => true, 'src/B.php' => true], $panel->captureViewState()->collapsed);
+    }
+
+    /**
+     * The key-collection loop must visit every result, not stop after the
+     * first — only observable in Nested mode (the branch with a continue
+     * right after adding two keys per result).
+     */
+    public function testToggleAllGroupsCollectsKeysFromEveryResultNotJustTheFirst(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults([
+            ['path' => 'src/A.php', 'line' => 0, 'text' => 'one', 'ranges' => []],
+            ['path' => 'other/B.php', 'line' => 0, 'text' => 'two', 'ranges' => []],
+        ]);
+        $panel->handleInput("\x1bg"); // → Directory
+        $panel->handleInput("\x1bg"); // → Nested
+
+        $panel->handleInput("\x1be"); // alt+e → collapse all
+        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+
+        $this->assertStringContainsString('▸ src/', $plain, 'the first directory collapsed');
+        $this->assertStringContainsString('▸ other/', $plain, 'the second directory (from the second result) collapsed too');
+    }
+
+    /**
+     * "Are all groups collapsed?" must check EVERY group, not stop at the
+     * first collapsed one and assume the rest match — a partially-collapsed
+     * state (A collapsed, B not) must still be treated as "not all collapsed"
+     * and thus expand-then-recollapse everything, not silently no-op.
+     */
+    public function testToggleAllGroupsDetectsAllCollapsedByCheckingEveryKey(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults()); // src/A.php x2, src/B.php x1
+
+        $panel->handleInput("\x1b[A"); // up → the src/A.php header (index 0)
+        $panel->handleInput("\r"); // collapse A only; B stays expanded
+
+        $panel->handleInput("\x1be"); // alt+e: not everything is collapsed → collapse ALL
+
+        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(80, 12))));
+        $this->assertStringContainsString('▸ src/B.php', $plain, 'B collapsed too, not left open by a premature all-collapsed verdict');
+    }
+
+    /** toggleAllGroups() requests a render on its own. */
+    public function testToggleAllGroupsRequestsARender(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $before = $panel->getRenderRevision();
+
+        $panel->handleInput("\x1be");
+
+        $this->assertGreaterThan($before, $panel->getRenderRevision());
+    }
+
     public function testToggleAllGroupsCollapsesThenExpandsEveryGroup(): void
     {
         $panel = new ResultsPanelWidget();
@@ -654,6 +872,91 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertStringNotContainsString('foo one', $plain(), 'collapse-all hides matches at both levels');
         $panel->handleInput("\x1be");
         $this->assertStringContainsString('foo one', $plain(), 'expand-all restores them');
+    }
+
+    /** Collapsing/expanding a group header requests a render. */
+    public function testActivateRowOnAHeaderRequestsARender(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $before = $panel->getRenderRevision();
+
+        $panel->handleInput("\r"); // Enter on the first match doesn't touch a header...
+        $panel->handleInput("\x1b[A"); // ...so move up to the header first
+        $before = $panel->getRenderRevision();
+        $panel->handleInput("\r"); // Enter on the header: collapse it
+
+        $this->assertGreaterThan($before, $panel->getRenderRevision());
+    }
+
+    /** Jumping to a real match with no event dispatcher wired is inert, not a crash. */
+    public function testActivateRowJumpWithNoEventDispatcherIsInertNotACrash(): void
+    {
+        $panel = new ResultsPanelWidget(); // no events: null
+        $panel->open('Usages', ResultsPanelFields::resultsOnly());
+        $panel->setResults($this->results(2));
+
+        $panel->handleInput("\r");
+
+        $this->assertTrue($panel->isOpen(), 'no crash when no event dispatcher is wired');
+    }
+
+    /** Expanding context with no provider wired must not crash by calling a null closure. */
+    public function testToggleContextWithNoProviderWiredDoesNotCrash(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        // Deliberately no setContextProvider() call.
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults([['path' => 'src/A.php', 'line' => 4, 'text' => 'the match', 'ranges' => []]]);
+
+        $panel->handleInput("\x1bm"); // alt+m expand — must not attempt to call a null provider
+
+        $this->assertTrue($panel->isOpen());
+    }
+
+    /** toggleContext() requests a render on its own. */
+    public function testToggleContextRequestsARender(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults([['path' => 'src/A.php', 'line' => 4, 'text' => 'the match', 'ranges' => []]]);
+        $before = $panel->getRenderRevision();
+
+        $panel->handleInput("\x1bm");
+
+        $this->assertGreaterThan($before, $panel->getRenderRevision());
+    }
+
+    /**
+     * A context row's exact layout: the row background opens first and resets
+     * last, the content is padded to the full column width (not left
+     * truncated-short), and the indent + gap + 1-based line number + gap +
+     * text are concatenated in the exact order and with the exact arithmetic
+     * — catches any reordering, dropped operand or off-by-one among them.
+     */
+    public function testContextRowHasExactLayoutAndIsPaddedToFullWidth(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->setFocused(true);
+        $panel->setContextProvider(static fn (string $path, int $line): array => [
+            ['line' => $line - 1, 'text' => 'above line'],
+        ]);
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults([['path' => 'src/A.php', 'line' => 4, 'text' => 'the match', 'ranges' => []]]);
+        $panel->handleInput("\x1bm"); // alt+m expand
+
+        $raw = $panel->render(new RenderContext(60, 6));
+        // row 0 = filter, row 1 = header, row 2 = match, row 3 = the context row.
+        $this->assertSame(60, AnsiUtils::visibleWidth($raw[3]), 'padded to the full column width, not left short');
+        $this->assertStringStartsWith("\x1b[48;5;235m", $raw[3], 'the row background opens first');
+        $this->assertStringEndsWith("\x1b[0m", $raw[3], 'and resets last, after all the content');
+
+        $plain = rtrim(AnsiUtils::stripAnsiCodes($raw[3]));
+        $this->assertSame('      4  above line', $plain, 'indent(4) + gap(2) + (line+1) + gap(2) + text, in that exact order');
     }
 
     public function testContextLinesExpandCollapseAndAreInert(): void
@@ -938,5 +1241,270 @@ final class ResultsPanelWidgetTest extends TestCase
         // prefixWidth = 4 (matchIndent) + 1 (label "5") + 2 (gutter) = 7.
         $this->assertStringNotContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, 6, 1, strict: true), 'column 6 (the gutter) is not tinted');
         $this->assertStringContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, 7, 1, strict: true), 'column 7 ("n" of needle) is tinted');
+    }
+
+    /** The filter hint's exact text and its leading two-space gap after the field, not reordered or dropped. */
+    public function testFilterHintTextHasTheExactLeadingGapAndWording(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('X', ResultsPanelFields::searchResults());
+
+        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(90, 12))));
+        $this->assertStringContainsString('Filter:   (narrows the results below)', $plain);
+    }
+
+    /** Reopening rebuilds the DISPLAY rows, not just the results array — a stale render must not leak through. */
+    public function testOpenActuallyRebuildsTheDisplayRowsNotJustResults(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::resultsOnly());
+        $panel->setResults($this->results(2));
+
+        $panel->open('Usages', ResultsPanelFields::resultsOnly());
+
+        $lines = AnsiUtils::stripAnsiCodes(implode("\n", $panel->render(new RenderContext(60, 12))));
+        $this->assertStringNotContainsString('File0.php', $lines, 'the prior session\'s display rows are gone, not just its results array');
+    }
+
+    /** open() resets the selection to 0 by itself, even before any setResults() call re-derives it. */
+    public function testOpenAloneResetsTheSelectionIndex(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::resultsOnly());
+        $panel->setResults($this->results(3));
+        $panel->handleInput("\x1b[B");
+        $panel->handleInput("\x1b[B"); // selection now at index 2
+
+        $panel->open('Usages', ResultsPanelFields::resultsOnly()); // no setResults() yet
+
+        $this->assertSame(0, Probe::get($panel, 'list')->selected());
+    }
+
+    /**
+     * open() requests a render TWICE — once via markOpen()'s own invalidate(),
+     * once via open()'s own trailing invalidate() — so an exact delta of 2 is
+     * required, not just "at least one", to catch the second call's removal.
+     */
+    public function testOpenAloneRequestsARender(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::resultsOnly());
+        $before = $panel->getRenderRevision();
+
+        $panel->open('Usages', ResultsPanelFields::resultsOnly());
+
+        $this->assertSame($before + 2, $panel->getRenderRevision(), 'markOpen() and open()\'s own trailing invalidate() both fired');
+    }
+
+    /** setResults() resets the selection to 0 by itself, observable when the new set is empty (selectFirstMatch finds nothing to relocate). */
+    public function testSetResultsAloneResetsSelectionEvenWithNoRowsToRelocateTo(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::resultsOnly());
+        $panel->setResults($this->results(5));
+        $panel->handleInput("\x1b[B");
+        $panel->handleInput("\x1b[B"); // selection at index 2
+
+        $panel->setResults([]); // no rows: selectFirstMatch() cannot relocate anything
+
+        $this->assertSame(0, Probe::get($panel, 'list')->selected());
+    }
+
+    /** setResults() requests a render on its own. */
+    public function testSetResultsAloneRequestsARender(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::resultsOnly());
+        $before = $panel->getRenderRevision();
+
+        $panel->setResults($this->results(2));
+
+        $this->assertGreaterThan($before, $panel->getRenderRevision());
+    }
+
+    /** refreshResults() must actually pick the relocate-vs-select-first branch — a De Morgan flip on the condition would invert which one runs. */
+    public function testRefreshResultsPicksRelocateOverSelectFirstWhenAnIdentityExists(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $panel->handleInput("\x1b[B"); // A:0 -> A:4
+
+        // A refresh where the selected identity (A:4) is still present at a
+        // different position — relocate must find it, not fall back to the
+        // first match (A:0), which would be a silent, wrong jump.
+        $panel->refreshResults([
+            ['path' => 'src/Z.php', 'line' => 1, 'text' => 'new one', 'ranges' => []],
+            ...$this->groupedResults(),
+        ]);
+
+        $this->assertSame('src/A.php', $panel->captureViewState()->selectedPath);
+        $this->assertSame(4, $panel->captureViewState()->selectedLine, 'relocated to A:4, not fallen back to the first match');
+    }
+
+    /**
+     * With NO prior identity at all (nothing was ever located — path and
+     * groupKey both null), refreshResults() must take the selectFirstMatch()
+     * branch, which specifically skips header rows — not relocateSelection()'s
+     * raw fallback-index clamp, which would happily land on row 0 even when
+     * row 0 is a group header, not a match.
+     */
+    public function testRefreshResultsWithNoPriorIdentitySkipsHeaderRowsNotJustIndexZero(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::searchResults()); // grouped
+        // A location-less prior state (log tools style): null path AND null
+        // groupKey, with the selection moved to index 2 — deliberately NOT
+        // wherever selectFirstMatch() would land in the new (grouped) rows,
+        // so a wrong fallback-index clamp is distinguishable from the correct
+        // "skip every header" search.
+        $panel->setResults([
+            ['path' => '', 'line' => 0, 'text' => 'a'],
+            ['path' => '', 'line' => 0, 'text' => 'b'],
+            ['path' => '', 'line' => 0, 'text' => 'c'],
+        ]);
+        $panel->handleInput("\x1b[B");
+        $panel->handleInput("\x1b[B"); // selection now at index 2
+
+        // Grouped rows: [header A, A:0, A:4, header B, B:2] — the fallback
+        // clamp (index 2) would land on A:4; selectFirstMatch() must instead
+        // skip the header at 0 and land on A:0.
+        $panel->refreshResults($this->groupedResults());
+
+        $this->assertSame('src/A.php', $panel->captureViewState()->selectedPath, 'landed on the first REAL match, not the fallback-clamped index');
+        $this->assertSame(0, $panel->captureViewState()->selectedLine);
+    }
+
+    /** refreshResults() requests a render on its own. */
+    public function testRefreshResultsRequestsARender(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::resultsOnly());
+        $panel->setResults($this->results(2));
+        $before = $panel->getRenderRevision();
+
+        $panel->refreshResults($this->results(3));
+
+        $this->assertGreaterThan($before, $panel->getRenderRevision());
+    }
+
+    /** restoreViewState() requests a render on its own. */
+    public function testRestoreViewStateRequestsARender(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $state = $panel->captureViewState();
+        $before = $panel->getRenderRevision();
+
+        $panel->restoreViewState($state);
+
+        $this->assertGreaterThan($before, $panel->getRenderRevision());
+    }
+
+    /** relocateSelection()'s (path,line) branch requires BOTH to be non-null, not either alone. */
+    public function testRelocateSelectionRequiresBothPathAndLineNotJustEither(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $panel->handleInput("\x1b[B");
+        $panel->handleInput("\x1b[B"); // -> B header (path null via group key, not identity)
+        $state = $panel->captureViewState();
+        $this->assertNull($state->selectedPath, 'a header selection carries no path/line identity');
+        $this->assertSame('src/B.php', $state->selectedGroupKey);
+
+        // Restoring with a null path but the group key present must relocate
+        // by GROUP KEY, not attempt (and silently fail to find) a null/null
+        // (path,line) match first.
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $panel->restoreViewState($state);
+        $this->assertSame('src/B.php', $panel->captureViewState()->selectedGroupKey, 'relocated by group key');
+    }
+
+    /** relocateSelection()'s fallback path only clamps a matchIndex that is actually >= 0 (a real match row), not a header row's -1 sentinel. */
+    public function testRelocateSelectionsMatchIndexGuardExcludesHeaderRows(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+
+        // Restore with a (path,line) that does not exist among the results at
+        // all, and no group key either: relocateSelection must fall through
+        // its two identity passes without crashing on a header row's
+        // matchIndex === -1, landing on the clamped fallback index.
+        $state = $panel->captureViewState();
+        $panel->open('Find in Project', ResultsPanelFields::searchResults());
+        $panel->setResults($this->groupedResults());
+        $panel->restoreViewState(new \Porta\Widget\Support\ResultsViewState('', $state->grouping, [], 'does/not/exist.php', 999, null, 0, [], []));
+
+        $this->assertTrue($panel->isOpen(), 'no crash walking header rows while looking for a (path,line) match');
+    }
+
+    /** relocateSelection()'s final fallback clamps to [0, count-1] — both boundaries, not one past either end. */
+    public function testRelocateSelectionFallbackClampsToBothEnds(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::resultsOnly());
+        $panel->setResults($this->results(3));
+        $state = new \Porta\Widget\Support\ResultsViewState('', \Porta\Widget\Support\ResultGrouping::File, [], null, null, null, 999, [], []);
+
+        $panel->restoreViewState($state); // fallbackIndex way past the end
+
+        $this->assertSame(2, Probe::get($panel, 'list')->selected(), 'clamped to the last row, count-1');
+
+        $state2 = new \Porta\Widget\Support\ResultsViewState('', \Porta\Widget\Support\ResultGrouping::File, [], null, null, null, -5, [], []);
+        $panel->restoreViewState($state2); // fallbackIndex before the start
+
+        $this->assertSame(0, Probe::get($panel, 'list')->selected(), 'clamped to the first row, not left negative');
+    }
+
+    /** With zero display rows, relocateSelection's fallback must not call select() at all — never a negative index. */
+    public function testRelocateSelectionFallbackNeverSelectsANegativeIndexWithZeroRows(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::resultsOnly());
+        $panel->setResults([]);
+        $state = new \Porta\Widget\Support\ResultsViewState('', \Porta\Widget\Support\ResultGrouping::File, [], null, null, null, 5, [], []);
+
+        $panel->restoreViewState($state);
+
+        $this->assertSame(0, Probe::get($panel, 'list')->selected(), 'zero rows: the fallback clamp never fires, selection stays at its prior (reset) value, never goes negative');
+    }
+
+    /** rebuildView()'s own clamp: a shrinking list (here, a filter narrowing it) must pull an out-of-range selection back to the new last row, exactly. */
+    public function testRebuildViewClampsSelectionWhenTheListShrinksUnderIt(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', new \Porta\Widget\Support\ResultsPanelFields(grouped: false, filter: true));
+        $panel->setResults([
+            ['path' => 'src/A.php', 'line' => 0, 'text' => 'keep me', 'ranges' => []],
+            ['path' => 'src/B.php', 'line' => 1, 'text' => 'keep too', 'ranges' => []],
+            ['path' => 'src/C.php', 'line' => 2, 'text' => 'drop me', 'ranges' => []],
+        ]);
+        $panel->handleInput("\x1b[B");
+        $panel->handleInput("\x1b[B"); // selection at index 2 ("drop me")
+
+        foreach (str_split('keep') as $ch) {
+            $panel->handleInput($ch);
+        } // narrows to exactly 2 rows (A, B) — selection (2) now equals the new count
+
+        $this->assertSame(1, Probe::get($panel, 'list')->selected(), 'clamped to the new last row, count - 1 exactly');
+    }
+
+    /** matchIndex 0 (the very first result) is a real, non-header candidate for identity relocation, not skipped as if it were a header's -1 sentinel. */
+    public function testRelocateSelectionMatchesTheVeryFirstResultAtIndexZero(): void
+    {
+        $panel = new ResultsPanelWidget();
+        $panel->open('Find in Project', ResultsPanelFields::resultsOnly());
+        $panel->setResults($this->results(3));
+        // A deliberately wrong fallback index (99) proves the selection came
+        // FROM identity relocation, not by coincidentally clamping there.
+        $state = new \Porta\Widget\Support\ResultsViewState('', \Porta\Widget\Support\ResultGrouping::File, [], 'src/File0.php', 0, null, 99, [], []);
+
+        $panel->restoreViewState($state);
+
+        $this->assertSame(0, Probe::get($panel, 'list')->selected(), 'the first result relocated by identity, not by falling through to the fallback clamp');
     }
 }
