@@ -239,6 +239,275 @@ final class ArchitectureCheckCommandTest extends TestCase
         $this->assertStringContainsString('(0 namespace edges', $tester->getDisplay());
     }
 
+    public function testAPluginPrefixThatIsPureBackslashesIsSkippedNotJustEmpty(): void
+    {
+        // The raw prefix is "\" (one backslash) — not the empty string, but
+        // trim()med to it. Without the trim, the guard's own '' === $prefix
+        // check misses it, and the "bad" dir (which is real and has a class)
+        // gets scanned under a near-empty prefix, producing a bogus edge.
+        $project = new TempProject([
+            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+            'plugins/acme/composer.json' => '{"autoload": {"psr-4": {"\\\\": "bad"}}}',
+            'plugins/acme/bad/Ghost.php' => "<?php\n\nuse Porta\\Beta\\Two;\n\nfinal class Ghost\n{\n    public function f(): void { new Two(); }\n}\n",
+        ]);
+
+        $tester = $this->tester();
+
+        $this->assertSame(Command::SUCCESS, $tester->execute(['path' => $project->dir]), $tester->getDisplay());
+    }
+
+    public function testAPluginManifestsInvalidPrefixEntryIsSkippedNotAbortingTheRest(): void
+    {
+        // Two psr-4 entries in one manifest: the first prefix is backslash-only
+        // (invalid, trim()'d to ''), the second is a real one. `continue` skips
+        // only the bad entry; `break` would abort the whole foreach and the
+        // second, valid entry would never be scanned.
+        $project = new TempProject([
+            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+            'plugins/acme/composer.json' => '{"autoload": {"psr-4": {"\\\\": "bad", "Acme\\\\": "lib"}}}',
+            'plugins/acme/lib/Greeting.php' => "<?php\n\nnamespace Acme;\n\nuse Porta\\Beta\\Two;\n\nfinal class Greeting\n{\n    public function f(): void { new Two(); }\n}\n",
+        ]);
+
+        $tester = $this->tester(['Acme>Beta']);
+
+        $this->assertSame(Command::SUCCESS, $tester->execute(['path' => $project->dir]), $tester->getDisplay());
+    }
+
+    public function testAPluginManifestsInvalidRelativeEntryIsSkippedNotAbortingTheRest(): void
+    {
+        // One prefix mapping to TWO relative dirs: the first is a non-string
+        // (invalid), the second is real. `continue` skips only the bad one;
+        // `break` would abort before the real one is ever tried.
+        $project = new TempProject([
+            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+            'plugins/acme/composer.json' => '{"autoload": {"psr-4": {"Acme\\\\": [7, "lib"]}}}',
+            'plugins/acme/lib/Greeting.php' => "<?php\n\nnamespace Acme;\n\nuse Porta\\Beta\\Two;\n\nfinal class Greeting\n{\n    public function f(): void { new Two(); }\n}\n",
+        ]);
+
+        $tester = $this->tester(['Acme>Beta']);
+
+        $this->assertSame(Command::SUCCESS, $tester->execute(['path' => $project->dir]), $tester->getDisplay());
+    }
+
+    public function testNamespaceEdgesAreReportedInSortedOrder(): void
+    {
+        // Two edges whose insertion order (Zulu's file scans before Alpha's,
+        // alphabetically) is the REVERSE of sorted order — the failure list
+        // must still name the vanished-edge line in sorted order, proving
+        // sort() ran rather than just relying on dict insertion order.
+        $project = new TempProject([
+            'src/Zulu/One.php' => $this->file('Zulu', 'One', '    public function f(): void { new Two(); }', "use Porta\\Alpha\\Two;\n"),
+            'src/Alpha/Two.php' => $this->file('Alpha', 'Two', '    public function g(): void { new One(); }', "use Porta\\Beta\\One;\n"),
+            'src/Beta/One.php' => $this->file('Beta', 'One'),
+        ]);
+
+        $tester = $this->tester();
+        $status = $tester->execute(['path' => $project->dir], ['capture_stderr_separately' => true]);
+
+        $this->assertSame(Command::FAILURE, $status);
+        // If unsorted, "NEW edge Zulu>Alpha" would list before "NEW edge
+        // Alpha>Beta" — assert the reverse (sorted) ordering in the raw output.
+        $errors = $tester->getErrorOutput();
+        $this->assertLessThan(strpos($errors, needle: 'NEW edge Zulu>Alpha'), strpos($errors, needle: 'NEW edge Alpha>Beta'), 'sorted order: Alpha before Zulu');
+    }
+
+    public function testBothANewCircularDependencyAndAVanishedPinnedOneFailTogether(): void
+    {
+        // Two simultaneous cycle failures: a fresh unpinned SCC, plus a pinned
+        // SCC that no longer exists. Both must be listed — proves the loop over
+        // $sccs doesn't stop after the first non-matching entry (continue, not
+        // break) and that the failures array isn't truncated to one entry.
+        $project = new TempProject([
+            'src/Alpha/One.php' => $this->file('Alpha', 'One', '    public function f(): void { new Two(); }', "use Porta\\Beta\\Two;\n"),
+            'src/Beta/Two.php' => $this->file('Beta', 'Two', '    public function g(): void { new One(); }', "use Porta\\Alpha\\One;\n"),
+        ]);
+        $edges = ['Alpha>Beta', 'Beta>Alpha'];
+        $vanished = ['Porta\Gamma\Ghost', 'Porta\Delta\Ghost'];
+
+        $tester = $this->tester($edges, [$vanished]);
+        $status = $tester->execute(['path' => $project->dir], ['capture_stderr_separately' => true]);
+        $errors = $tester->getErrorOutput();
+
+        $this->assertSame(Command::FAILURE, $status);
+        $this->assertStringContainsString('new circular dependency — Porta\Alpha\One <-> Porta\Beta\Two (re-opening acyclicity needs new evidence, recorded in docs/internals/decisions.md)', $errors);
+        $this->assertStringContainsString('classes: allowed SCC {Porta\Gamma\Ghost, Porta\Delta\Ghost} no longer exists — remove it from ALLOWED_SCCS', $errors);
+    }
+
+    public function testTwoPinnedSccsOnlyTheFirstMatchingProvesTheVanishedCheckLoopKeepsGoing(): void
+    {
+        // Two pins, one real SCC: the FIRST pin matches (must `continue`, not
+        // stop), the SECOND does not (a vanished pin that must still be
+        // reported). If the "is this pin still real" loop broke on the first
+        // match instead of continuing past it, the vanished second pin would
+        // never be reached or reported.
+        $project = new TempProject([
+            'src/Alpha/One.php' => $this->file('Alpha', 'One', '    public function f(): void { new Two(); }', "use Porta\\Beta\\Two;\n"),
+            'src/Beta/Two.php' => $this->file('Beta', 'Two', '    public function g(): void { new One(); }', "use Porta\\Alpha\\One;\n"),
+        ]);
+        $edges = ['Alpha>Beta', 'Beta>Alpha'];
+        $realCycle = ['Porta\Alpha\One', 'Porta\Beta\Two'];
+        $ghostCycle = ['Porta\Gamma\Ghost', 'Porta\Delta\Ghost'];
+
+        $tester = $this->tester($edges, [$realCycle, $ghostCycle]);
+        $status = $tester->execute(['path' => $project->dir], ['capture_stderr_separately' => true]);
+
+        $this->assertSame(Command::FAILURE, $status);
+        $this->assertStringContainsString('classes: allowed SCC {Porta\Gamma\Ghost, Porta\Delta\Ghost} no longer exists', $tester->getErrorOutput());
+    }
+
+    public function testTwoRealCyclesOnlyTheFirstPinnedProvesTheNewCycleCheckLoopKeepsGoing(): void
+    {
+        // Two independent real cycles: the first is pinned (must `continue`,
+        // not stop), the second is not (a new, unpinned cycle that must still
+        // be reported). If the "is this a new cycle" loop broke on the first
+        // pinned match instead of continuing, the second, genuinely new cycle
+        // would never be reached or reported.
+        $project = new TempProject([
+            'src/Alpha/One.php' => $this->file('Alpha', 'One', '    public function f(): void { new Two(); }', "use Porta\\Beta\\Two;\n"),
+            'src/Beta/Two.php' => $this->file('Beta', 'Two', '    public function g(): void { new One(); }', "use Porta\\Alpha\\One;\n"),
+            'src/Gamma/Three.php' => $this->file('Gamma', 'Three', '    public function h(): void { new Four(); }', "use Porta\\Delta\\Four;\n"),
+            'src/Delta/Four.php' => $this->file('Delta', 'Four', '    public function i(): void { new Three(); }', "use Porta\\Gamma\\Three;\n"),
+        ]);
+        $edges = ['Alpha>Beta', 'Beta>Alpha', 'Gamma>Delta', 'Delta>Gamma'];
+        $pinned = ['Porta\Alpha\One', 'Porta\Beta\Two'];
+
+        $tester = $this->tester($edges, [$pinned]);
+        $status = $tester->execute(['path' => $project->dir], ['capture_stderr_separately' => true]);
+
+        $this->assertSame(Command::FAILURE, $status);
+        $this->assertStringContainsString('new circular dependency — Porta\Delta\Four <-> Porta\Gamma\Three', $tester->getErrorOutput());
+    }
+
+    public function testTwoOversizedSuitesAreBothReported(): void
+    {
+        $project = new TempProject([
+            'src/Alpha/One.php' => $this->file('Alpha', 'One'),
+            'tests/E2e/AaHugeTest.php' => "<?php\n".str_repeat("    public function testMany(): void {}\n", times: 61),
+            'tests/E2e/ZzHugeTest.php' => "<?php\n".str_repeat("    public function testMany(): void {}\n", times: 61),
+        ]);
+
+        $tester = $this->tester();
+        $status = $tester->execute(['path' => $project->dir], ['capture_stderr_separately' => true]);
+        $errors = $tester->getErrorOutput();
+
+        $this->assertSame(Command::FAILURE, $status);
+        $this->assertStringContainsString('AaHugeTest.php has 61', $errors);
+        $this->assertStringContainsString('ZzHugeTest.php has 61', $errors);
+        // Explicit pathname sort, not filesystem enumeration order (which
+        // varies) — the gate's own docblock calls this a byte contract.
+        $this->assertLessThan(strpos($errors, needle: 'ZzHugeTest.php'), strpos($errors, needle: 'AaHugeTest.php'), 'the failure list is in sorted pathname order');
+    }
+
+    public function testPluginTestDirsOnlyGlobsTestsSubdirectoriesNotThePluginRoot(): void
+    {
+        // A file OUTSIDE any tests/ dir, with enough test-shaped method names
+        // to trip the size cap if it were scanned. If pluginTestDirs() globbed
+        // the plugins root instead of `*/tests`, Finder's own recursion would
+        // still find and wrongly grade this src file.
+        $methods = str_repeat("    public function testMany(): void {}\n", times: 61);
+        $project = new TempProject([
+            'src/Alpha/One.php' => $this->file('Alpha', 'One'),
+            'plugins/thing/src/NotATest.php' => "<?php\n".$methods,
+        ]);
+
+        $tester = $this->tester();
+
+        $this->assertSame(Command::SUCCESS, $tester->execute(['path' => $project->dir]), $tester->getDisplay());
+    }
+
+    public function testALeafImportWithNoFileOfItsOwnDoesNotCrashTheCycleScan(): void
+    {
+        // `new Two()` names an import that has no source file of its own (an
+        // interface or a plugin's own vendor class, never scanned) — the
+        // leaf-import branch must still mark it visited and move on rather
+        // than treating it as newly-discoverable or a stack member.
+        $project = new TempProject([
+            'src/Alpha/One.php' => $this->file('Alpha', 'One', '    public function f(): void { new Two(); }', "use Porta\\Beta\\Two;\n"),
+        ]);
+
+        $tester = $this->tester(['Alpha>Beta']);
+        $status = $tester->execute(['path' => $project->dir]);
+
+        $this->assertSame(Command::SUCCESS, $status, $tester->getDisplay());
+        $this->assertStringContainsString('(1 namespace edges, 0 known SCCs', $tester->getDisplay());
+    }
+
+    public function testAThreeClassCycleIsDetectedNotJustAdjacentPairs(): void
+    {
+        // A -> B -> C -> A: with the onStack lookup defaulting to true instead
+        // of false, every DFS-discovered (non-leaf) neighbour would be treated
+        // as still on the stack, over-merging components; a real 3-cycle is the
+        // simplest fixture where over- and under-merging diverge from the
+        // correct single-SCC answer.
+        $project = new TempProject([
+            'src/Alpha/One.php' => $this->file('Alpha', 'One', '    public function f(): void { new Two(); }', "use Porta\\Beta\\Two;\n"),
+            'src/Beta/Two.php' => $this->file('Beta', 'Two', '    public function g(): void { new Three(); }', "use Porta\\Gamma\\Three;\n"),
+            'src/Gamma/Three.php' => $this->file('Gamma', 'Three', '    public function h(): void { new One(); }', "use Porta\\Alpha\\One;\n"),
+        ]);
+        $edges = ['Alpha>Beta', 'Beta>Gamma', 'Gamma>Alpha'];
+        $cycle = ['Porta\Alpha\One', 'Porta\Beta\Two', 'Porta\Gamma\Three'];
+
+        $tester = $this->tester($edges, [$cycle]);
+
+        $this->assertSame(Command::SUCCESS, $tester->execute(['path' => $project->dir]), $tester->getDisplay());
+        $this->assertStringContainsString('1 known SCCs', $tester->getDisplay());
+    }
+
+    public function testFilesAreScannedInVcsIgnoredDirectoriesToo(): void
+    {
+        // ignoreVCS(false) is deliberate (see the class docblock on phpFiles):
+        // a .git-named directory under the scanned tree must still be walked.
+        // The IMPORTING class lives under .git/ itself, so its own edge only
+        // shows up at all if that file was scanned — a class it imports being
+        // there too would form the edge regardless of VCS-walking.
+        $project = new TempProject([
+            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+            // The scanner derives its FQCN from the PATH, not this declaration
+            // (a namespace segment can't syntactically start with a dot).
+            'src/.git/Ghost.php' => "<?php\n\nnamespace Porta\\GitDir;\n\nuse Porta\\Beta\\Two;\n\nfinal class Ghost\n{\n    public function f(): void { new Two(); }\n}\n",
+        ]);
+
+        $tester = $this->tester(['.git>Beta']);
+        $status = $tester->execute(['path' => $project->dir]);
+
+        $this->assertSame(Command::SUCCESS, $status, $tester->getDisplay());
+        $this->assertStringContainsString('(1 namespace edges', $tester->getDisplay());
+    }
+
+    public function testADocCommentIsStrippedTheSameAsARegularComment(): void
+    {
+        // T_DOC_COMMENT (/** */) must be stripped exactly like T_COMMENT (// or
+        // /* */) before an import is checked for real use — otherwise a
+        // docblock-only {@see Two} reference would count as a code edge.
+        $project = new TempProject([
+            'src/Alpha/One.php' => "<?php\n\nnamespace Porta\\Alpha;\n\nuse Porta\\Beta\\Two;\n\n/**\n * Prose about Two.\n */\nfinal class One\n{\n}\n",
+            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+        ]);
+
+        $tester = $this->tester();
+        $status = $tester->execute(['path' => $project->dir]);
+
+        $this->assertSame(Command::SUCCESS, $status, 'the /** */ reference forms no edge');
+        $this->assertStringContainsString('(0 namespace edges', $tester->getDisplay());
+    }
+
+    public function testAPlainCommentIsAlsoStrippedNotJustADocComment(): void
+    {
+        // T_COMMENT (// and single-star /* */) is a DIFFERENT token type than
+        // T_DOC_COMMENT (/** */) — both must be stripped, checked here with a
+        // reference that appears ONLY in a plain `//` line comment.
+        $project = new TempProject([
+            'src/Alpha/One.php' => "<?php\n\nnamespace Porta\\Alpha;\n\nuse Porta\\Beta\\Two;\n\n// Prose about Two, not real code.\nfinal class One\n{\n}\n",
+            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+        ]);
+
+        $tester = $this->tester();
+        $status = $tester->execute(['path' => $project->dir]);
+
+        $this->assertSame(Command::SUCCESS, $status, 'the // comment reference forms no edge');
+        $this->assertStringContainsString('(0 namespace edges', $tester->getDisplay());
+    }
+
     public function testTheProductionDefaultsGradePortasOwnTree(): void
     {
         // No path argument, no pins: the real gate over the real repository —

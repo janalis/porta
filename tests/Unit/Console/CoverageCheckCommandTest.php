@@ -66,6 +66,37 @@ final class CoverageCheckCommandTest extends TestCase
         );
         $this->assertStringContainsString('TOTAL: 100.00% (20/20) — required: 100.00%', $display);
         $this->assertStringContainsString('coverage-check: OK', $display);
+        $this->assertStringContainsString('File', $display, 'the header row names the file column');
+        $this->assertStringContainsString('Coverage', $display, 'the header row names the coverage column');
+        $this->assertStringNotContainsString('/graph-viewer', $display, 'the plugin path is fully stripped to `plugin/...`, not left with a leading slash or the raw prefix');
+        $this->assertStringContainsString("\n\n  TOTAL", $display, 'a blank line separates the table from the total');
+        $this->assertStringContainsString("\n\ncoverage-check: OK", $display, 'a blank line separates the total from the final status');
+    }
+
+    public function testPerFileRowsShowTheExactPercentageAndFraction(): void
+    {
+        // Two rows whose fractions differ from each other AND from the
+        // combined total (4/12 = 33.33%), so an assertion on either row's
+        // exact string can only match the per-row formula, not a total-line
+        // coincidence. 100*3/8 = 37.50% exactly — chosen so a corrupted
+        // formula (99*, a division swapped for the numerator, +1/-1, or
+        // dropping the division entirely) all produce a visibly different
+        // number.
+        $project = new TempProject(['clover.xml' => $this->clover(
+            [
+                '/p/src/Partial.php' => [3, 8],
+                '/p/src/Other.php' => [1, 4],
+            ],
+            totalCovered: 4,
+            totalStatements: 12,
+        )]);
+
+        $tester = $this->tester();
+        $tester->execute(['clover' => $project->path('clover.xml'), 'threshold' => '0']);
+        $display = $tester->getDisplay();
+
+        $this->assertStringContainsString('37.50% (3/8)', $display, 'the per-row percentage is computed from the real map, not a corrupted formula');
+        $this->assertStringContainsString('25.00% (1/4)', $display);
     }
 
     public function testAShortfallFailsWithTheThresholdMessage(): void
@@ -84,6 +115,7 @@ final class CoverageCheckCommandTest extends TestCase
         $this->assertSame(Command::FAILURE, $status);
         $this->assertStringContainsString('TOTAL: 50.00% (1/2)', $tester->getDisplay());
         $this->assertStringContainsString('below the 100% line-coverage gate', $tester->getErrorOutput(), 'the failure goes to stderr');
+        $this->assertStringStartsWith("\ncoverage-check: FAILED", $tester->getErrorOutput(), 'a blank line opens the error stream, directly before the failure message');
     }
 
     public function testAThresholdBelowTheActualCoveragePasses(): void
@@ -99,6 +131,41 @@ final class CoverageCheckCommandTest extends TestCase
         $status = $this->tester()->execute(['clover' => $project->path('clover.xml'), 'threshold' => '50']);
 
         $this->assertSame(Command::SUCCESS, $status, '50% meets a 50% gate — the 1e-9 epsilon absorbs float drift');
+    }
+
+    public function testTheEpsilonAllowsExactEqualityButNotLessThan(): void
+    {
+        // percentage + 1e-9 must be strictly LESS than the threshold to fail
+        // — an exact match, down to the same epsilon, still passes.
+        $percentage = 100 / 2; // 50.0, exact in IEEE754 — matches the command's own (100 * covered) / statements for covered=1, statements=2
+        $thresholdAtTheBoundary = \sprintf('%.20f', $percentage + 1e-9);
+
+        $project = new TempProject(['clover.xml' => $this->clover(
+            ['/p/src/Half.php' => [1, 2]],
+            totalCovered: 1,
+            totalStatements: 2,
+        )]);
+
+        $status = $this->tester()->execute(['clover' => $project->path('clover.xml'), 'threshold' => $thresholdAtTheBoundary]);
+
+        $this->assertSame(Command::SUCCESS, $status, 'strictly-less-than, not less-or-equal, at the exact epsilon boundary');
+    }
+
+    public function testANonNumericThresholdFallsBackToZero(): void
+    {
+        // A non-numeric threshold reads as 0.0 — the same tolerance the old
+        // positional-argv script had — so any real coverage passes.
+        $project = new TempProject(['clover.xml' => $this->clover(
+            ['/p/src/Half.php' => [1, 2]],
+            totalCovered: 1,
+            totalStatements: 2,
+        )]);
+
+        $tester = $this->tester();
+        $status = $tester->execute(['clover' => $project->path('clover.xml'), 'threshold' => 'not-a-number']);
+
+        $this->assertSame(Command::SUCCESS, $status, 'a 0% gate is trivially met');
+        $this->assertStringContainsString('required: 0.00%', $tester->getDisplay(), 'the parsed threshold itself is 0.0, not some other fallback');
     }
 
     public function testAnEmptyReportIsUsableAndReportsZero(): void
@@ -137,6 +204,26 @@ final class CoverageCheckCommandTest extends TestCase
         $this->assertFalse(libxml_use_internal_errors($before), 'the previous libxml setting was restored');
     }
 
+    public function testTheErrorBufferIsClearedEvenWhenTheCallerAlreadyHadInternalErrorsOn(): void
+    {
+        // Restoring the previous setting only clears PHP's own internal error
+        // buffer as a side effect when that restore is an actual OFF->ON or
+        // ON->OFF transition. When the caller already had internal errors ON
+        // (so the restore is a no-op transition), only the explicit
+        // libxml_clear_errors() call prevents this command's parse errors
+        // from leaking into whatever libxml call runs next in the process.
+        $before = libxml_use_internal_errors(true);
+        try {
+            $project = new TempProject(['broken.xml' => '<coverage><project></coverage>']);
+            $this->tester()->execute(['clover' => $project->path('broken.xml')]);
+
+            $this->assertSame([], libxml_get_errors(), 'the internal error buffer was cleared');
+        } finally {
+            libxml_use_internal_errors($before);
+            libxml_clear_errors();
+        }
+    }
+
     public function testTheDefaultArgumentsAreTheComposerScriptContract(): void
     {
         $command = new CoverageCheckCommand();
@@ -168,6 +255,11 @@ final class CoverageCheckCommandTest extends TestCase
         $this->assertSame(Command::SUCCESS, $status, $display);
         $this->assertStringNotContainsString('Helper.php', $display, 'the vendored file is not ours to cover');
         $this->assertStringContainsString('demo/src/Tool.php', $display);
+        $this->assertStringContainsString(
+            'TOTAL (/plugins/): 100.00% (5/5)',
+            $display,
+            'a scoped run sums the kept rows (5/5), not the report-wide totals (6/45, which count the vendored file)',
+        );
     }
 
     public function testAFileTheReportNeverMentionsFailsEvenAtFullCoverage(): void
@@ -201,12 +293,100 @@ final class CoverageCheckCommandTest extends TestCase
 
         $this->assertSame(Command::FAILURE, $status, $display);
         $this->assertStringContainsString('100.00%', $display, 'the percentage was green the whole time — that is the point');
+        $this->assertStringContainsString(
+            "\n\ncoverage-check: FAILED — these files are absent",
+            $display,
+            'a blank line separates the total from the failure message',
+        );
         // The graded file still appears in the table above; what matters is
         // which files the failure itself names.
         $named = substr($display, offset: (int) strpos($display, needle: 'absent from the report'));
         $this->assertStringContainsString('Ghost.php', $named, 'the ungraded file is named');
         $this->assertStringContainsString('.Hidden.php', $named, 'a dot-named file is a coverage subject too');
         $this->assertStringNotContainsString('Graded.php', $named, 'and the graded one is not');
+        $this->assertStringContainsString(
+            '  '.$project->path('plugins/demo/src/Ghost.php'),
+            $named,
+            'each entry is indented exactly two spaces before the path, not concatenated on the wrong side',
+        );
+    }
+
+    public function testRequireStripsTheCurrentWorkingDirectoryPrefixFromAbsentPaths(): void
+    {
+        $project = new TempProject(['plugins/demo/src/Ghost.php' => "<?php\n"]);
+        $project->write('clover.xml', $this->clover([], totalCovered: 0, totalStatements: 0));
+
+        // Empty mayBeAbsent: the default excuse list is checked with
+        // is_file() against the (about to change) cwd, and would otherwise
+        // report every default entry as stale once we chdir below.
+        //
+        // --require must be ABSOLUTE here: Finder::in() with a relative
+        // directory already returns relative pathnames, which would make
+        // the str_replace()-based stripping a no-op with nothing to prove.
+        // An absolute --require (which the option's contract permits, even
+        // though the composer.json script always passes a relative one)
+        // forces Finder to return absolute pathnames, so the cwd-prefix
+        // stripping actually has something to strip.
+        $tester = new CommandTester(new CoverageCheckCommand(mayBeAbsent: []));
+        $originalCwd = (string) getcwd();
+        chdir($project->dir);
+        try {
+            // realpath, not $project->path(): on macOS /tmp is itself a
+            // symlink to /private/tmp, and getcwd() after chdir() reports
+            // the resolved form — an unresolved --require would silently
+            // mismatch $root on the /private prefix alone, unrelated to
+            // any mutant.
+            $status = $tester->execute([
+                'clover' => 'clover.xml',
+                'threshold' => '0',
+                '--require' => (string) realpath($project->path('plugins')),
+            ]);
+        } finally {
+            chdir($originalCwd);
+        }
+        $display = $tester->getDisplay();
+
+        $this->assertSame(Command::FAILURE, $status, $display);
+        $named = substr($display, offset: (int) strpos($display, needle: 'absent from the report'));
+        $this->assertStringContainsString(
+            '  plugins/demo/src/Ghost.php',
+            $named,
+            'the cwd prefix is stripped to a clean relative path — no leading slash or absolute prefix left over',
+        );
+    }
+
+    public function testAFileInsideAVcsLikeDirectoryIsStillAGradingSubject(): void
+    {
+        // ignoreVCS(false): unlike Finder's default, a `.git`-named
+        // directory's .php files are NOT silently skipped — matching the raw
+        // walker this replaced, which had no VCS-awareness at all.
+        $project = new TempProject(['plugins/demo/.git/Stray.php' => "<?php\n"]);
+        $project->write('clover.xml', $this->clover([], totalCovered: 0, totalStatements: 0));
+
+        $tester = $this->tester();
+        $status = $tester->execute([
+            'clover' => $project->path('clover.xml'),
+            'threshold' => '0',
+            '--require' => $project->path('plugins'),
+        ]);
+
+        $this->assertSame(Command::FAILURE, $status, 'a .git-named directory is still walked, so its ungraded file is a real gap');
+        $this->assertStringContainsString('Stray.php', $tester->getDisplay());
+    }
+
+    public function testAReportWithNoProjectMetricsNodeDefaultsCleanlyToZero(): void
+    {
+        // No <project><metrics> element at all (not just a missing
+        // attribute) — exercises element()'s "found but empty" branch and
+        // number()'s "no metrics at all" branch together, both of which must
+        // degrade to 0 without ever indexing into an empty/null value.
+        $project = new TempProject(['broken-metrics.xml' => '<?xml version="1.0"?><coverage><project></project></coverage>']);
+
+        $tester = $this->tester();
+        $status = $tester->execute(['clover' => $project->path('broken-metrics.xml'), 'threshold' => '0']);
+
+        $this->assertSame(Command::SUCCESS, $status, $tester->getDisplay());
+        $this->assertStringContainsString('TOTAL: 0.00% (0/0)', $tester->getDisplay(), 'a missing metrics node reads as zero, not -1/1 or a warning');
     }
 
     public function testRequireIgnoresVendoredAndTestFilesAndAnAbsentDirectory(): void
@@ -288,5 +468,15 @@ final class CoverageCheckCommandTest extends TestCase
         $this->assertSame(Command::FAILURE, $status, $display);
         $this->assertStringContainsString('no longer exist', $display);
         $this->assertStringContainsString('plugins/ghost/plugin.php', $display, 'the dead entry is named');
+        $this->assertStringContainsString(
+            "\n\ncoverage-check: FAILED — MAY_BE_ABSENT excuses",
+            $display,
+            'a blank line separates the total from the failure message',
+        );
+        $this->assertStringContainsString(
+            '  plugins/ghost/plugin.php',
+            $display,
+            'the entry is indented exactly two spaces before the path, not concatenated on the wrong side',
+        );
     }
 }

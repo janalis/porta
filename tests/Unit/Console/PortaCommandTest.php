@@ -212,9 +212,35 @@ final class PortaCommandTest extends TestCase
     {
         // Construct with the real defaults, then call only the interactivity
         // check — never execute(), so the real IDE launcher is not invoked.
+        // Under a normal (non-TTY) test run both STDIN and STDOUT are
+        // non-interactive, so the real `&&` check must return exactly false —
+        // a plain assertIsBool() doesn't distinguish it from a mutated `||`
+        // or a full negation, both of which would also return a bool, just
+        // the wrong one.
         $command = new PortaCommand();
         $isInteractive = Probe::get($command, 'isInteractive');
-        $this->assertIsBool($isInteractive());
+        $this->assertFalse($isInteractive(), 'neither stream is a TTY under phpunit');
         $this->assertIsCallable(Probe::get($command, 'launch'));
+    }
+
+    public function testTheErrorMessageIsPrefixedWithPortaNotJustContainingTheReason(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $tester = new CommandTester($this->command());
+
+        $status = $tester->execute(['path' => $project->path('does-not-exist')], ['capture_stderr_separately' => true]);
+
+        $this->assertSame(Command::FAILURE, $status);
+        $this->assertStringContainsString('porta: no such file or directory', $tester->getErrorOutput(), 'the prefix comes first, not appended after the reason');
+    }
+
+    public function testAZeroLineOptionClampsUpToLineOneNotZero(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $tester = new CommandTester($this->command());
+
+        $tester->execute(['path' => $project->dir, '--line' => '0']);
+
+        $this->assertSame(1, $this->launched[0]->line, 'max(1, ...) floors at exactly 1, not 0 or 2');
     }
 }

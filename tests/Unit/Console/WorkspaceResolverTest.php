@@ -83,6 +83,28 @@ final class WorkspaceResolverTest extends TestCase
         $this->resolver->resolve('/nope:5', '/nowhere');
     }
 
+    public function testTrailingNonDigitAfterTheLineNumberIsNotSplit(): void
+    {
+        // The trailing $ anchor requires the digit run to reach the end of
+        // the string — "42abc" is not a valid line number, so this must NOT
+        // split into file + line.
+        $project = new TempProject(['a.php' => '']);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->resolver->resolve($project->path('a.php').':42abc', '/nowhere');
+    }
+
+    public function testALeadingNewlineBeforeTheShorthandIsNotSplit(): void
+    {
+        // The ^ anchor requires the match to start at the very beginning of
+        // the string (and '.' never crosses a newline) — a leading newline
+        // must block the split entirely, not just shift where it starts.
+        $project = new TempProject(['a.php' => '']);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->resolver->resolve("\n".$project->path('a.php').':42', '/nowhere');
+    }
+
     public function testMissingTargetThrows(): void
     {
         $this->expectException(\InvalidArgumentException::class);
