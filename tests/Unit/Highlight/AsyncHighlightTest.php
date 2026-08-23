@@ -7,8 +7,10 @@ namespace Porta\Tests\Unit\Highlight;
 use PHPUnit\Framework\TestCase;
 use Porta\Highlight\CapturingHighlightSink;
 use Porta\Highlight\CodeHighlighter;
+use Porta\Highlight\PlainTextHighlightProvider;
 use Porta\Tests\Support\ClosureHighlightProvider;
 use Porta\Tests\Support\FakeScheduler;
+use Porta\Tests\Support\Probe;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -333,5 +335,167 @@ final class AsyncHighlightTest extends TestCase
         $highlighter->highlight(['a'], 1);
 
         $this->assertSame([], $scheduler->scheduled);
+    }
+
+    /** A synchronous dispatch exception resets inFlightVersion to the exact idle sentinel. */
+    public function testFailedDispatchResetsInFlightVersionToTheExactSentinel(): void
+    {
+        $provider = new ClosureHighlightProvider(static function (): string {
+            throw new \RuntimeException('boom');
+        });
+        $highlighter = new CodeHighlighter($provider);
+        $highlighter->setFile('/x/a.php');
+
+        $highlighter->highlight(['a'], 1);
+
+        $this->assertSame(-1, Probe::get($highlighter, 'inFlightVersion'));
+    }
+
+    /**
+     * A synchronous dispatch exception gives up immediately — it must not
+     * fall into the "wait for an async answer" provisional-paint path.
+     */
+    public function testFailedDispatchGivesUpImmediatelyRatherThanWaitingForAnAnswer(): void
+    {
+        $scheduler = new FakeScheduler();
+        $provider = new ClosureHighlightProvider(static function (): string {
+            throw new \RuntimeException('boom');
+        });
+        $highlighter = new CodeHighlighter($provider, null, null, $scheduler);
+        $highlighter->setFile('/x/a.php');
+
+        $highlighter->highlight(['a'], 1);
+
+        $this->assertSame([], $scheduler->scheduled, 'no answer deadline armed — there is no answer coming');
+        $this->assertFalse(Probe::get($highlighter, 'asyncBackend'), 'a thrown exception is not evidence of an async backend');
+    }
+
+    /** A mangled-line-count delivery resets inFlightVersion to the exact idle sentinel. */
+    public function testMangledDeliveryResetsInFlightVersionToTheExactSentinel(): void
+    {
+        $provider = new ClosureHighlightProvider(static fn (): string => "only\none\nline", async: true);
+        $highlighter = $this->highlighter($provider);
+
+        $highlighter->highlight(['a', 'b'], 1);
+        $provider->deliverPending();
+
+        $this->assertSame(-1, Probe::get($highlighter, 'inFlightVersion'));
+    }
+
+    /** A mangled-line-count delivery is a real fault: three in a row trip the backend. */
+    public function testMangledLineCountCountsAsAFailureAndCanTripTheBackend(): void
+    {
+        $provider = new ClosureHighlightProvider(static fn (): string => "only\none\nline", async: true);
+        $highlighter = $this->highlighter($provider);
+
+        foreach ([1, 2, 3] as $version) {
+            $highlighter->highlight(['a', 'b'], $version);
+            $provider->deliverPending();
+        }
+
+        $this->assertInstanceOf(PlainTextHighlightProvider::class, Probe::get($highlighter, 'provider'), 'three mangled deliveries trip the backend like three failures');
+    }
+
+    /** A successful delivery resets every counter to its exact idle value, not just clears it. */
+    public function testSuccessfulDeliveryResetsCountersToTheirExactIdleValues(): void
+    {
+        $provider = $this->asyncProvider();
+        $highlighter = $this->highlighter($provider);
+
+        $highlighter->highlight(['a'], 1);
+        Probe::set($highlighter, 'staleEdits', 7);
+        Probe::set($highlighter, 'strikes', 2);
+        $provider->deliverPending();
+
+        $this->assertSame(-1, Probe::get($highlighter, 'inFlightVersion'));
+        $this->assertSame(0, Probe::get($highlighter, 'staleEdits'));
+        $this->assertSame(0, Probe::get($highlighter, 'strikes'));
+    }
+
+    /** An explicit give-up both disarms the deadline and counts as a failure. */
+    public function testFailDisarmsTheDeadlineAndRecordsAFailure(): void
+    {
+        $scheduler = new FakeScheduler();
+        $provider = $this->asyncProvider();
+        $highlighter = new CodeHighlighter($provider, null, null, $scheduler);
+        $highlighter->setFile('/x/a.php');
+
+        $highlighter->highlight(['a'], 1);
+        $this->assertCount(1, $scheduler->scheduled);
+
+        $highlighter->fail('/x/a.php', 1, new \RuntimeException('gave up'));
+
+        $this->assertSame([], $scheduler->scheduled, 'the deadline was disarmed');
+        $this->assertCount(1, $scheduler->cancelled);
+        $this->assertSame(1, Probe::get($highlighter, 'strikes'), 'an explicit fail() counts as a failure');
+    }
+
+    /** fail() resets inFlightVersion to the exact idle sentinel. */
+    public function testFailResetsInFlightVersionToTheExactSentinel(): void
+    {
+        $provider = $this->asyncProvider();
+        $highlighter = $this->highlighter($provider);
+
+        $highlighter->highlight(['a'], 1);
+        $highlighter->fail('/x/a.php', 1, new \RuntimeException('gave up'));
+
+        $this->assertSame(-1, Probe::get($highlighter, 'inFlightVersion'));
+    }
+
+    /** Re-dispatching (a second edit before the first answer) cancels the first deadline. */
+    public function testArmingANewDeadlineCancelsAnyPriorOne(): void
+    {
+        $scheduler = new FakeScheduler();
+        $provider = $this->asyncProvider();
+        $highlighter = new CodeHighlighter($provider, null, null, $scheduler);
+        $highlighter->setFile('/x/a.php');
+
+        $highlighter->highlight(['a'], 1);
+        $firstTimer = (string) array_key_first($scheduler->scheduled);
+        $highlighter->highlight(['b'], 2);
+
+        $this->assertCount(1, $scheduler->scheduled, 'only one deadline pending at a time');
+        $this->assertContains($firstTimer, $scheduler->cancelled, 'the superseded deadline was cancelled, not left dangling');
+    }
+
+    /** A stale deadline firing for a request already forgotten via invalidate() must not count a strike. */
+    public function testStaleDeadlineFiringForAForgottenRequestNeverRecordsAFailure(): void
+    {
+        $scheduler = new FakeScheduler();
+        $provider = $this->asyncProvider();
+        $highlighter = new CodeHighlighter($provider, null, null, $scheduler);
+        $highlighter->setFile('/x/a.php');
+
+        $highlighter->highlight(['a'], 1);
+        $highlighter->invalidate();
+        $scheduler->fire();
+
+        $this->assertSame(0, Probe::get($highlighter, 'strikes'), 'a superseded deadline firing is a no-op, not a fault');
+    }
+
+    /** An answer-deadline that genuinely fires resets inFlightVersion to the exact idle sentinel. */
+    public function testDeadlineFiringResetsInFlightVersionToTheExactSentinel(): void
+    {
+        $scheduler = new FakeScheduler();
+        $provider = $this->asyncProvider();
+        $highlighter = new CodeHighlighter($provider, null, null, $scheduler);
+        $highlighter->setFile('/x/a.php');
+
+        $highlighter->highlight(['a'], 1);
+        $scheduler->fire();
+
+        $this->assertSame(-1, Probe::get($highlighter, 'inFlightVersion'));
+    }
+
+    /** disarmAnswerDeadline() is safe even if forced to run with a timer set but no scheduler wired. */
+    public function testDisarmingWithATimerSetButNoSchedulerDoesNotCrash(): void
+    {
+        $highlighter = new CodeHighlighter($this->asyncProvider());
+        $highlighter->setFile('/x/a.php');
+        Probe::set($highlighter, 'timeoutTimer', 'orphaned-timer-id');
+
+        Probe::invoke($highlighter, 'disarmAnswerDeadline');
+
+        $this->assertNull(Probe::get($highlighter, 'timeoutTimer'));
     }
 }

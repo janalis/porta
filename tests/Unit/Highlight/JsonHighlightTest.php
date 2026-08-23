@@ -150,6 +150,21 @@ final class JsonHighlightTest extends TestCase
         $this->assertStringNotContainsString(self::COMMENT, $url, 'the // is inside the string');
     }
 
+    /**
+     * The diff/injection marker patterns every language carries — both the
+     * addition-start and addition-end tokens must be present for the pair to
+     * be recognized and stripped at all; a lone marker is left as-is.
+     */
+    public function testDiffAdditionMarkersAreStrippedFromJson(): void
+    {
+        $this->assertSame(' x ', AnsiUtils::stripAnsiCodes($this->highlight('{+ x +}')), 'a paired addition marker is invisible, not shown as raw braces');
+    }
+
+    public function testDiffAdditionMarkersAreStrippedFromJsonc(): void
+    {
+        $this->assertSame(' x ', AnsiUtils::stripAnsiCodes($this->highlight('{+ x +}', file: 'a.jsonc')), 'jsonc shares the same base() marker patterns as json');
+    }
+
     public function testJsoncBlockCommentSpansLines(): void
     {
         $highlighter = new CodeHighlighter();

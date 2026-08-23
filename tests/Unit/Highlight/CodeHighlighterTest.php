@@ -10,6 +10,8 @@ use Porta\Highlight\DarkTerminalTheme;
 use Porta\Highlight\LightTerminalTheme;
 use Porta\Highlight\PlainTerminalTheme;
 use Porta\Highlight\SwitchableTerminalTheme;
+use Porta\Tests\Support\ClosureHighlightProvider;
+use Porta\Tests\Support\Probe;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 final class CodeHighlighterTest extends TestCase
@@ -52,6 +54,27 @@ final class CodeHighlighterTest extends TestCase
             str_contains($lines[1], $commentGray) || str_contains($lines[2], $commentGray),
             'comment color re-opened on continuation lines',
         );
+    }
+
+    /**
+     * Every returned line must be independently renderable: the reopened
+     * prefix comes FIRST (not appended after the text), and a token still
+     * open at line end gets an explicit reset so the color never bleeds past
+     * the line boundary.
+     */
+    public function testEachLineIsIndependentlyRenderableAroundAMultiLineToken(): void
+    {
+        $highlighter = new CodeHighlighter();
+        $highlighter->setFile('test.php');
+        $lines = $highlighter->highlight(explode("\n", string: "<?php\n/* multi\nline comment */\nreturn 1;"), 1);
+
+        $commentGray = "\x1b[38;5;243m";
+        // Line 1 opens the comment (nothing carried in) but leaves it open at
+        // the end, so it needs a trailing reset, not a leading one.
+        $this->assertStringEndsWith("\x1b[0m", $lines[1], 'a still-open token at line end gets an explicit reset');
+        // Line 2 carries the comment IN from line 1: the reopened code must be
+        // the prefix, not appended after the text.
+        $this->assertStringStartsWith($commentGray, $lines[2], 'the reopened code comes before the line text, not after it');
     }
 
     public function testPhpDocBlocksRenderAsUniformComments(): void
@@ -139,5 +162,47 @@ final class CodeHighlighterTest extends TestCase
 
         $lines = [str_repeat('x', 600 * 1024)];
         $this->assertSame($lines, $highlighter->highlight($lines, 1));
+    }
+
+    /** The byte cap is exclusive: content at exactly the limit still gets highlighted. */
+    public function testByteCapBoundaryIsExclusive(): void
+    {
+        $marker = 'MARK:';
+        $provider = new ClosureHighlightProvider(static fn (string $content): string => $marker.$content);
+        $highlighter = new CodeHighlighter($provider);
+        $highlighter->setFile('a.php');
+
+        $content = str_repeat('x', 512 * 1024); // exactly the cap
+        $result = $highlighter->highlight([$content], 1);
+
+        $this->assertStringContainsString($marker, $result[0], 'content at exactly the cap is still highlighted, not falls back to plain');
+    }
+
+    /** A null language (unknown extension) must never construct a request for the backend. */
+    public function testUnknownExtensionNeverDispatchesToTheBackend(): void
+    {
+        $highlighter = new CodeHighlighter();
+        $highlighter->setFile('binary.dat');
+
+        $highlighter->highlight(['plain text'], 1);
+
+        $this->assertSame(0, Probe::get($highlighter, 'strikes'), 'a null language short-circuits before ever reaching the provider dispatch');
+    }
+
+    /** invalidate() resets every version/counter field to its exact idle sentinel, not just "falsy". */
+    public function testInvalidateResetsInternalStateToTheExactSentinelValues(): void
+    {
+        $highlighter = new CodeHighlighter();
+        $highlighter->setFile('a.php');
+        $highlighter->highlight(['<?php'], 1);
+
+        $highlighter->invalidate();
+
+        $this->assertSame(-1, Probe::get($highlighter, 'cacheVersion'));
+        $this->assertSame(-1, Probe::get($highlighter, 'resolvedVersion'));
+        $this->assertSame(-1, Probe::get($highlighter, 'inFlightVersion'));
+        $this->assertSame(0, Probe::get($highlighter, 'staleEdits'));
+        $this->assertSame([], Probe::get($highlighter, 'cache'));
+        $this->assertNull(Probe::get($highlighter, 'lastRawLines'));
     }
 }
