@@ -24,4 +24,22 @@ final class TabListProviderTest extends TestCase
 
         $this->assertSame(['Demo.php', 'Documentation', 'Project Architecture', 'other.dot'], $names);
     }
+
+    public function testDirtyAndActiveFlagsPerBuffer(): void
+    {
+        $buffers = new BufferManager();
+        $a = $buffers->open('/p/a.php', '<?php');
+        $buffers->open('/p/b.php', '<?php'); // opening a second buffer makes it the active one
+        $a->document->insert('x'); // dirty the first, now-inactive buffer
+
+        $tabs = new TabListProvider($buffers, new Translator('en'))->tabs();
+
+        $this->assertSame(
+            [
+                ['name' => 'a.php', 'dirty' => true, 'active' => false],
+                ['name' => 'b.php', 'dirty' => false, 'active' => true],
+            ],
+            $tabs,
+        );
+    }
 }

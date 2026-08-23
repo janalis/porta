@@ -1,0 +1,319 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Tests\Unit\Workbench;
+
+use PHPUnit\Framework\TestCase;
+use Porta\Editor\BufferManager;
+use Porta\Editor\EditorPanes;
+use Porta\I18n\Translator;
+use Porta\Lsp\LspSessionPool;
+use Porta\Support\ProjectPaths;
+use Porta\Tests\Support\FixedActiveFile;
+use Porta\Tests\Support\TempProject;
+use Porta\Ui\Glyphs;
+use Porta\Ui\Role;
+use Porta\Ui\Theme\Styles;
+use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\EditorPaneWidget;
+use Porta\Workbench\StatusBarProvider;
+use Porta\Workbench\StatusCell;
+use Porta\Workbench\StatusSegment;
+use Porta\Workbench\StatusTone;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
+
+/**
+ * {@see StatusBarProvider::segments()} beyond the prefix span arithmetic
+ * {@see StatusBarPrefixTest} already owns: the left match arms, the pane
+ * short-circuit, and the right side's problems/location/legend assembly.
+ */
+final class StatusBarProviderTest extends TestCase
+{
+    private TempProject $project;
+    private BufferManager $buffers;
+    private CodeEditorWidget $editor;
+    private EditorPanes $panes;
+    private Translator $translator;
+
+    /** @param list<list<StatusCell>> $perSource */
+    private function provider(array $perSource = []): StatusBarProvider
+    {
+        $this->project = new TempProject();
+        $this->buffers = new BufferManager();
+        $this->editor = new CodeEditorWidget();
+        $this->panes = new EditorPanes();
+        $this->translator = new Translator('en');
+
+        $sources = array_map(
+            static fn (array $cells): StatusSegment => new class($cells) implements StatusSegment {
+                /** @param list<StatusCell> $cells */
+                public function __construct(
+                    private readonly array $cells,
+                ) {}
+
+                public function statusCells(): array
+                {
+                    return $this->cells;
+                }
+            },
+            $perSource,
+        );
+
+        return new StatusBarProvider(
+            $this->buffers,
+            $this->editor,
+            $this->panes,
+            $sources,
+            new LspSessionPool($this->project->dir, new FixedActiveFile(), $this->translator),
+            Styles::dark(),
+            $this->translator,
+            new ProjectPaths($this->project->dir),
+        );
+    }
+
+    private function fakePane(string $id, string $statusRight): EditorPaneWidget
+    {
+        return new class($id, $statusRight) extends EditorPaneWidget {
+            public function __construct(
+                private readonly string $id,
+                private readonly string $statusRight,
+            ) {}
+
+            #[\Override]
+            public function paneId(): string
+            {
+                return $this->id;
+            }
+
+            #[\Override]
+            public function show(string $path, mixed $payload): void {}
+
+            #[\Override]
+            public function clear(): void {}
+
+            #[\Override]
+            public function statusRight(): string
+            {
+                return $this->statusRight;
+            }
+
+            #[\Override]
+            public function render(RenderContext $context): array
+            {
+                return [];
+            }
+
+            #[\Override]
+            public function handleInput(string $data): void {}
+        };
+    }
+
+    public function testLeftFallsBackToTheOpenAFilePromptWhenNoFileIsOpen(): void
+    {
+        $left = $this->provider()->segments()['left'];
+
+        $this->assertSame($this->translator->trans('porta — open a file from the tree (Enter)'), $left);
+    }
+
+    public function testLeftUsesTheActiveViewerBuffersPathWhenActiveIsAViewer(): void
+    {
+        // A DIFFERENT path on the editor itself proves this came from the
+        // viewer-buffer arm, not the default arm reading getFilePath().
+        $provider = $this->provider();
+        $viewerAbs = $this->project->write('shown.png', 'x');
+        $this->buffers->openPane($viewerAbs, 'image', 'payload');
+        $this->editor->openFile($this->project->path('editor-side.php'), "<?php\n");
+
+        $left = $provider->segments()['left'];
+
+        $this->assertStringContainsString('shown.png', $left);
+        $this->assertStringNotContainsString('editor-side.php', $left);
+    }
+
+    public function testLeftUsesTheDefaultArmForANonViewerActiveBufferWithTheDirtyGlyph(): void
+    {
+        // The active buffer is a normal text buffer (not a viewer), so it
+        // must NOT match the first arm even though it is non-null — the
+        // default arm's own $path (the editor's, a different buffer) wins.
+        $provider = $this->provider();
+        $activeAbs = $this->project->write('active.php', "<?php\n");
+        $this->buffers->open($activeAbs, "<?php\n");
+        $editedAbs = $this->project->write('edited.php', "<?php\n");
+        $this->editor->openFile($editedAbs, "<?php\n");
+        $this->editor->getDocument()->insert('x'); // dirty
+
+        $left = $provider->segments()['left'];
+
+        $this->assertStringContainsString('edited.php', $left);
+        $this->assertStringNotContainsString('active.php', $left);
+        $this->assertStringContainsString(Glyphs::DIRTY, $left);
+    }
+
+    public function testAnEmptyCellDoesNotAbortTheRestOfItsSource(): void
+    {
+        // continue vs break only differs within the SAME source's cell loop:
+        // an empty cell must skip just itself, not the cells after it.
+        $provider = $this->provider([[
+            new StatusCell(''),
+            new StatusCell('⎇ main', StatusTone::Accent, static fn (): array => []),
+        ]]);
+
+        $segments = $provider->segments();
+
+        $this->assertStringContainsString('main', $segments['left']);
+        $this->assertCount(1, $segments['menus'], 'the cell after the empty one still got its span recorded');
+    }
+
+    public function testAPrefixCellIsStyledTextThenATwoColumnGap(): void
+    {
+        $provider = $this->provider([[new StatusCell('AA', StatusTone::Accent)]]);
+        $styled = Styles::dark()->of(Role::StatusAccent)->apply('AA');
+
+        $left = $provider->segments()['left'];
+
+        $this->assertStringStartsWith($styled.'  ', $left, 'styled text first, then the two-space gap — not swapped, not dropped');
+    }
+
+    public function testEachCellsTextAccumulatesIntoThePrefixRatherThanOverwritingThePrevious(): void
+    {
+        $provider = $this->provider([[new StatusCell('AA'), new StatusCell('BB')]]);
+
+        $left = $provider->segments()['left'];
+
+        $this->assertStringContainsString('AA', $left);
+        $this->assertStringContainsString('BB', $left);
+    }
+
+    public function testPrefixWidthAccumulatesAcrossEveryPrecedingCellNotJustTheLastOne(): void
+    {
+        $menu = static fn (): array => [];
+        $provider = $this->provider([[
+            new StatusCell('AAAA'), // width 4, no menu
+            new StatusCell('BB'), // width 2, no menu
+            new StatusCell('C', StatusTone::Accent, $menu),
+        ]]);
+
+        $segments = $provider->segments();
+
+        $expectedFrom = AnsiUtils::visibleWidth('AAAA') + 2 + AnsiUtils::visibleWidth('BB') + 2;
+        $this->assertSame($expectedFrom, $segments['menus'][0]->from, 'an overwrite (vs accumulate) would drop the first cell\'s width');
+    }
+
+    public function testThePrefixIsPrependedToTheOriginalLeftNotAppendedOrDropped(): void
+    {
+        $provider = $this->provider([[new StatusCell('⎇ main', StatusTone::Accent)]]);
+        $originalLeft = $this->translator->trans('porta — open a file from the tree (Enter)');
+        $styledCell = Styles::dark()->of(Role::StatusAccent)->apply('⎇ main');
+
+        $left = $provider->segments()['left'];
+
+        $this->assertSame($styledCell.'  '.$originalLeft, $left);
+    }
+
+    public function testANonEmptyPaneStatusSegmentShortCircuitsTheRightSide(): void
+    {
+        $provider = $this->provider();
+        $abs = $this->project->write('v.bin', 'x');
+        $this->buffers->openPane($abs, 'viewer', 'payload');
+        $this->panes->register($this->fakePane('viewer', 'PANE-RIGHT'), static fn (string $p): string => '');
+
+        $segments = $provider->segments();
+
+        $this->assertSame('PANE-RIGHT', $segments['right']);
+        $this->assertArrayHasKey('left', $segments, 'the early-return array literal must still carry the left segment');
+    }
+
+    public function testAnEmptyPaneStatusSegmentFallsThroughToTheDiagnosticsLegend(): void
+    {
+        $provider = $this->provider();
+        $abs = $this->project->write('v.bin', 'x');
+        $this->buffers->openPane($abs, 'viewer', 'payload');
+        $this->panes->register($this->fakePane('viewer', ''), static fn (string $p): string => '');
+
+        $right = $provider->segments()['right'];
+
+        $this->assertStringContainsString('Ctrl+S', $right, 'an empty pane segment must not short-circuit');
+    }
+
+    public function testANonViewerActiveBufferHasNoPaneAtAllAndAlsoFallsThrough(): void
+    {
+        // paneFor('') resolves to null (no pane registered for the empty id
+        // a plain text buffer's null paneId casts to) — a different operand
+        // than the empty-string case above, but the same required fallthrough.
+        $provider = $this->provider();
+        $abs = $this->project->write('t.php', "<?php\n");
+        $this->buffers->open($abs, "<?php\n");
+
+        $right = $provider->segments()['right'];
+
+        $this->assertStringContainsString('Ctrl+S', $right);
+    }
+
+    public function testProblemsSegmentIsAbsentWithZeroErrorsAndWarnings(): void
+    {
+        $provider = $this->provider();
+        $this->editor->openFile($this->project->path('t.php'), "<?php\n");
+
+        $right = $provider->segments()['right'];
+
+        $this->assertStringNotContainsString(Glyphs::SEVERITY_ERROR, $right);
+        $this->assertStringNotContainsString(Glyphs::SEVERITY_WARNING, $right);
+    }
+
+    public function testProblemsSegmentShowsExactlyOneErrorAndOneWarning(): void
+    {
+        $provider = $this->provider();
+        $this->editor->openFile($this->project->path('t.php'), "<?php\n\n");
+        $this->editor->setDiagnostics([
+            0 => [['severity' => 1, 'message' => 'e', 'col' => 0]],
+            1 => [['severity' => 2, 'message' => 'w', 'col' => 0]],
+        ]);
+
+        $right = $provider->segments()['right'];
+
+        $this->assertStringContainsString(Glyphs::SEVERITY_ERROR.' 1', $right);
+        $this->assertStringContainsString(Glyphs::SEVERITY_WARNING.' 1', $right);
+    }
+
+    public function testLocationIsOneBasedFromTheZeroBasedCursor(): void
+    {
+        $provider = $this->provider();
+        $this->editor->openFile($this->project->path('t.php'), "aa\nbb\ncc\ndd\n");
+        $this->editor->getDocument()->setCursor(2, 1);
+
+        $right = $provider->segments()['right'];
+
+        $this->assertStringContainsString('3:2', $right, 'line 2/col 1 (0-based) must read "3:2" — any off-by-one or sign flip misses this exact pair');
+    }
+
+    public function testTheLspStatusPlaceholderIsSubstitutedNotLeftLiteral(): void
+    {
+        $provider = $this->provider();
+        $this->editor->openFile($this->project->path('t.php'), "<?php\n");
+
+        $right = $provider->segments()['right'];
+
+        $this->assertStringNotContainsString('%status%', $right);
+        $this->assertStringContainsString('no server', $right, 'an unconfigured LspSessionPool reports "no server" once substituted');
+    }
+
+    public function testRightIsProblemsThenLocationThenATwoColumnGapThenTheLegend(): void
+    {
+        $provider = $this->provider();
+        $this->editor->openFile($this->project->path('t.php'), "aa\nbb\n");
+        $this->editor->setDiagnostics([0 => [['severity' => 1, 'message' => 'e', 'col' => 0]]]);
+        $this->editor->getDocument()->setCursor(1, 0);
+
+        $expectedProblems = Styles::dark()->of(Role::StatusError)->apply(Glyphs::SEVERITY_ERROR.' 1').' ';
+        $expectedLocation = '2:1';
+        $expectedLegend = $this->translator->trans('LSP:%status%  Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit', [
+            '%status%' => $this->translator->trans('no server'),
+        ]);
+
+        $right = $provider->segments()['right'];
+
+        $this->assertSame($expectedProblems.$expectedLocation.'  '.$expectedLegend, $right);
+    }
+}

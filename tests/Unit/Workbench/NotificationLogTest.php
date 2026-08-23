@@ -5,12 +5,27 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Event\NotificationLogged;
 use Porta\Workbench\NotificationLog;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class NotificationLogTest extends TestCase
 {
+    public function testAppendDispatchesNotificationLoggedForTheLiveDockTool(): void
+    {
+        $dispatcher = new EventDispatcher();
+        $log = new NotificationLog(new MockClock(), $dispatcher);
+        $fired = false;
+        $dispatcher->addListener(NotificationLogged::class, static function () use (&$fired): void {
+            $fired = true;
+        });
+
+        $log->append('msg');
+
+        $this->assertTrue($fired);
+    }
+
     public function testAppendsWithTimestampsOldestFirst(): void
     {
         $clock = new MockClock('2026-07-13 10:00:00');

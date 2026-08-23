@@ -107,4 +107,33 @@ final class FocusRingTest extends TestCase
         $ring->cycle(-1);
         $this->assertSame($this->editor, $this->tui->getFocus(), 'backward enters at the last member');
     }
+
+    public function testFocusOutsideTheRingWithZeroDirectionEntersAtTheBackwardEdge(): void
+    {
+        // direction=0 is not a "forward" direction (`> 0` is false), so it
+        // must take the SAME edge as a negative direction, not the forward one.
+        $ring = $this->ring();
+        $this->tui->setFocus(new MenuBarWidget());
+
+        $ring->cycle(0);
+
+        $this->assertSame($this->editor, $this->tui->getFocus());
+    }
+
+    public function testCycleRequestsARenderEvenWhenTheTargetIsAlreadyFocused(): void
+    {
+        // Tui::setFocus() already requests its own render on a REAL focus
+        // change, which would mask cycle()'s own call in every other test
+        // here. direction=0 on a member that is ALREADY the ring's current
+        // member ((current + 0) % count === current) makes setFocus() a
+        // genuine no-op, so only cycle()'s own explicit call is left to prove.
+        $ring = $this->ring();
+        $this->tui->setFocus($this->editor); // already the ring's last member
+        \Porta\Tests\Support\Probe::set($this->tui, 'renderRequested', false);
+
+        $ring->cycle(0);
+
+        $this->assertSame($this->editor, $this->tui->getFocus(), 'sanity: still the same member');
+        $this->assertTrue((bool) \Porta\Tests\Support\Probe::get($this->tui, 'renderRequested'));
+    }
 }

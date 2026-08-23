@@ -7,9 +7,12 @@ namespace Porta\Tests\Unit\Workbench\Dock;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
+use Porta\Event\DockTabMoveRequested;
+use Porta\Event\DockToolBound;
 use Porta\Event\DockToolClosed;
 use Porta\Event\TerminalRevealRequested;
 use Porta\Event\TerminalSessionCloseRequested;
+use Porta\Terminal\PtyProcess;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\Probe;
@@ -19,14 +22,17 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\StatusBarWidget;
 use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\Dock\DockPanels;
 use Porta\Workbench\Dock\DockTab;
 use Porta\Workbench\Dock\DockToolHandlers;
 use Porta\Workbench\Dock\DockToolTabs;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\EditorArea;
+use Porta\Workbench\Notifier;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Tui;
@@ -433,6 +439,22 @@ final class BottomDockTest extends TestCase
         $this->assertSame($this->debug, $this->tui->getFocus(), 'clicking the displayed Debug tab brings you to it');
     }
 
+    public function testRevealingAnAlreadyFocusedVisibleTabStillRenders(): void
+    {
+        $dock = $this->dock();
+        $this->debug->open('a.php');
+        $dock->reveal(DockTab::Debug); // visible AND focused already
+        $this->assertSame($this->debug, $this->tui->getFocus());
+
+        // Focus does not move this time — Tui::setFocus()'s own
+        // requestRender (unconditional only on an actual focus CHANGE) does
+        // not fire, isolating focusPanel()'s own requestRender call.
+        Probe::set($this->tui, 'renderRequested', false);
+        $dock->reveal(DockTab::Debug);
+
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'clicking the already-focused tab still repaints');
+    }
+
     public function testRevealingADebugTabThatIsNotOpenStaysANoOp(): void
     {
         $dock = $this->dock();
@@ -515,5 +537,340 @@ final class BottomDockTest extends TestCase
         $again = $dock->showTool($handlers, 'Notifications', []);
         $this->assertSame($tab, $again, 'the id reuses the tab rather than appending');
         $this->assertSame([], $again->rows);
+    }
+
+    public function testTabMovedWithANullFamilyIsANoOp(): void
+    {
+        $events = new EventDispatcher();
+        $dock = $this->dock($events);
+
+        $events->dispatch(new DockTabMoveRequested(null, 0, 1));
+
+        $this->addToAssertionCount(1); // must not throw UnhandledMatchError
+        $this->assertSame($this->tools, Probe::get($dock, 'tools'), 'and nothing moved');
+    }
+
+    public function testDismissingTheTerminalOrResultsPanelHidesTheDock(): void
+    {
+        $dock = $this->dock();
+        $this->terminal->open('Terminal', new TerminalBuffer());
+        $this->terminal->dismiss();
+        $this->assertNull($dock->visiblePanel(), "the terminal panel's Esc is wired to hide()");
+        $this->assertTrue($this->terminal->isOpen(), 'a soft hide (hide()) keeps the tab alive, unlike the unwired close() fallback');
+
+        $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+        $this->results->dismiss();
+        $this->assertNull($dock->visiblePanel(), "the results panel's Esc is wired to hide()");
+        $this->assertTrue($this->results->isOpen(), 'same: still a soft hide, not a real close');
+    }
+
+    public function testAliveTabsMarksOnlyTheActiveSessionAndFlagsAStoppedOne(): void
+    {
+        $dock = $this->dock();
+        $this->sessions->create('shell:1', 'sh 1');
+        $sh2 = $this->sessions->create('shell:2', 'sh 2'); // create() activates the newest
+        $sh2->attach(new PtyProcess(['/bin/true'], '/tmp')); // attached but never started: stopped, not running
+        $this->terminal->open('sh 2', new TerminalBuffer());
+        Probe::set($this->terminal, 'scrollBack', 3); // gives statusText() a non-empty value while shown+active
+
+        $tabs = $dock->aliveTabs();
+
+        $this->assertSame([false, true], array_column($tabs, 'active'), 'only the truly-active session is flagged, not every session while the terminal is shown');
+        $this->assertSame(['sh 1', 'sh 2 ○'], array_column($tabs, 'label'), 'a stopped session (process attached, not running) gets the glyph with its leading space; a never-attached one does not');
+        $this->assertNotSame('', $this->terminal->statusText(), 'sanity: the status really is non-empty here');
+        $this->assertSame(['', $this->terminal->statusText()], array_column($tabs, 'status'), "only the active row carries the panel's status");
+    }
+
+    public function testMultipleContributedPanelsAllParticipateInScanningAndVisibility(): void
+    {
+        $panels = new DockPanels();
+        $closed = new DebugPanelWidget();
+        $panels->register($closed, 'closed-one', static fn (): string => 'Closed');
+        $open = new DebugPanelWidget();
+        $panels->register($open, 'open-one', static fn (): string => 'Open');
+
+        $tui = TestTui::create(100, 24);
+        $dock = new BottomDock(
+            $tui,
+            new TerminalPanelWidget(),
+            new ResultsPanelWidget(),
+            $panels,
+            new DockTabsWidget(),
+            new DockToolTabs(),
+            new TerminalSessions(),
+            new Notifier(new StatusBarWidget(), $tui),
+            new EditorArea(new BufferManager(), new CodeEditorWidget(), new EditorPanes(), $tui),
+        );
+        $dock->wire();
+
+        $open->open('b.php'); // opens AND, via the wired hook, takes the dock slot
+
+        // panels() must carry every registered panel, not just the first, or
+        // the second one's own onOpen/onClose/onDismiss hooks are never wired
+        // and it can never become the visible one at all.
+        $this->assertSame($open, $dock->visiblePanel(), 'the second registered panel can become visible too');
+
+        // aliveTabs() must skip the closed FIRST entry without stopping the
+        // scan, so the open SECOND one still reaches the strip.
+        $this->assertSame(['open-one'], array_column($dock->aliveTabs(), 'key'));
+    }
+
+    public function testRevealAndCloseTabOnTerminalToleratesNoEventDispatcher(): void
+    {
+        $tui = TestTui::create(100, 24);
+        $sessions = new TerminalSessions();
+        $sessions->create('shell:1', 'sh 1');
+        $dock = TestBottomDock::create(
+            $tui,
+            new TerminalPanelWidget(),
+            new ResultsPanelWidget(),
+            new DebugPanelWidget(),
+            sessions: $sessions,
+            events: null,
+        );
+
+        $dock->reveal(DockTab::Terminal); // must not crash on the nullsafe dispatch
+        $dock->closeTab(DockTab::Terminal, 'shell:1'); // ditto, a different nullsafe site
+
+        $this->addToAssertionCount(2);
+    }
+
+    public function testHideReturnsFocusFromTheVisiblePanelAndRenders(): void
+    {
+        $dock = $this->dock();
+        $this->debug->open('a.php');
+        $this->tui->setFocus($this->debug);
+        Probe::set($this->tui, 'renderRequested', false);
+
+        $dock->hide();
+
+        $this->assertSame($this->editor, $this->tui->getFocus(), 'focus returns to the editor');
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'hide() repaints even when something was visible');
+    }
+
+    public function testHideWithNothingVisibleDoesNotTouchFocus(): void
+    {
+        $dock = $this->dock();
+        $this->tui->setFocus($this->terminal); // arbitrary: nothing is open, so nothing is visible
+        Probe::set($this->tui, 'renderRequested', false);
+
+        $dock->hide(); // must not try to return focus FROM a null visible panel
+
+        $this->assertSame($this->terminal, $this->tui->getFocus());
+        // With nothing visible, returnFocusFrom() (whose own tail always
+        // renders) is never reached — hide()'s OWN requestRender() call is
+        // the only thing left that can still request a repaint here.
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'hiding an already-hidden dock still repaints (e.g. the strip disappearing)');
+    }
+
+    public function testCycleWithASingleTabIsANoOpAndDoesNotStealFocus(): void
+    {
+        $dock = $this->dock();
+        $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+        $this->tui->setFocus($this->terminal); // deliberately elsewhere
+
+        $dock->cycle(1);
+
+        $this->assertSame($this->terminal, $this->tui->getFocus(), 'a single tab must not steal focus back');
+    }
+
+    public function testCycleWithExactlyTwoTabsStillCycles(): void
+    {
+        $dock = $this->dock();
+        $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+        $dock->showList(ResultsPanelMode::Notifications, 'Notifications', []);
+
+        $dock->cycle(1);
+
+        $this->assertSame($problems, $dock->activeTool(), 'exactly 2 tabs is still enough to cycle, not "too few"');
+    }
+
+    public function testClosingATerminalTabByIdKeepsScanningPastNonMatches(): void
+    {
+        $events = new EventDispatcher();
+        $dock = $this->dock($events);
+        $this->sessions->create('shell:1', 'sh 1');
+        $this->sessions->create('shell:2', 'sh 2');
+        $closed = [];
+        $events->addListener(TerminalSessionCloseRequested::class, static function (TerminalSessionCloseRequested $event) use (&$closed): void {
+            $closed[] = $event->index;
+        });
+
+        $dock->closeTab(DockTab::Terminal, 'shell:2');
+
+        $this->assertSame([1], $closed, 'the loop must keep scanning past the shell:1 mismatch to find shell:2 at index 1');
+    }
+
+    public function testClosingAnUnregisteredContributedPanelIsANoOp(): void
+    {
+        $dock = $this->dock();
+
+        $dock->closeTab(null, 'nonexistent'); // no panel registered under a null tab at all
+
+        $this->addToAssertionCount(1); // must not crash calling close() on a null find() result
+    }
+
+    public function testClosingTheDebugTabDoesNotAlsoCloseTheActiveToolTab(): void
+    {
+        $dock = $this->dock();
+        $tool = $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+        $this->debug->open('a.php');
+
+        $dock->closeTab(DockTab::Debug);
+
+        $this->assertFalse($this->debug->isOpen(), 'the debug panel really closed');
+        $this->assertTrue($dock->isToolAlive($tool), 'closing an unrelated tab must not also close the active tool');
+    }
+
+    public function testClosingABackgroundToolTabRendersButDoesNotRebind(): void
+    {
+        $events = new EventDispatcher();
+        $dock = $this->dock($events);
+        $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+        $todo = $dock->showList(ResultsPanelMode::Notifications, 'Notifications', []); // displayed
+        $bound = [];
+        $events->addListener(DockToolBound::class, static function (DockToolBound $event) use (&$bound): void {
+            $bound[] = $event->tab;
+        });
+        Probe::set($this->tui, 'renderRequested', false);
+
+        $dock->closeTab(DockTab::Results, (string) $problems->id); // a BACKGROUND (non-displayed) tab
+
+        $this->assertSame([], $bound, 'closing a tab that was never displayed must not rebind the one that is');
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'the strip still shrinks, so it still repaints');
+        $this->assertSame($todo, $dock->activeTool(), 'the displayed tool is genuinely untouched');
+    }
+
+    public function testClosingTheDisplayedToolTabRebindsAndRenders(): void
+    {
+        $events = new EventDispatcher();
+        $dock = $this->dock($events);
+        $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+        $todo = $dock->showList(ResultsPanelMode::Notifications, 'Notifications', []); // displayed
+        $bound = [];
+        $events->addListener(DockToolBound::class, static function (DockToolBound $event) use (&$bound): void {
+            $bound[] = $event->tab;
+        });
+        Probe::set($this->tui, 'renderRequested', false);
+
+        $dock->closeTab(DockTab::Results, (string) $todo->id); // the DISPLAYED tab itself
+
+        $this->assertSame([$problems], $bound, 'closing the displayed tab rebinds its neighbour');
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'));
+    }
+
+    public function testShowListUsesTheProvidedFieldsNotTheDefault(): void
+    {
+        $dock = $this->dock();
+
+        $dock->showList(ResultsPanelMode::Search, 'Custom', [], ResultsPanelFields::searchResults());
+
+        $this->assertTrue(Probe::get($this->results, 'grouped'), 'the caller-supplied fields must win over the resultsOnly() default');
+    }
+
+    public function testShowToolResetsSearchingOnReuse(): void
+    {
+        $dock = $this->dock();
+        $handlers = new DockToolHandlers('demo:tool');
+        $tab = $dock->showTool($handlers, 'Demo', []);
+        $dock->markSearching($tab);
+        $this->assertTrue($tab->searching);
+
+        $again = $dock->showTool($handlers, 'Demo', []);
+
+        $this->assertSame($tab, $again);
+        $this->assertFalse($again->searching, 'reopening a tool must clear a stale searching flag, not leave it true');
+    }
+
+    public function testShowBindsFocusesAndRenders(): void
+    {
+        $dock = $this->dock();
+        $tab = $dock->showList(ResultsPanelMode::Problems, 'Problems', []); // already focuses the panel
+        Probe::set($this->tui, 'renderRequested', false);
+
+        // Focus is ALREADY on the results panel, so Tui::setFocus()'s own
+        // (unconditional-on-change) requestRender does not fire this time —
+        // isolating show()'s OWN requestRender call.
+        $dock->show($tab); // called directly, not through showList/showTool
+
+        $this->assertSame($tab, $dock->activeTool());
+        $this->assertSame($this->results, $this->tui->getFocus());
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'));
+    }
+
+    public function testRevealingAConcealedOpenPanelActivatesAndFocusesIt(): void
+    {
+        $dock = $this->dock();
+        $this->debug->open('a.php'); // opens and becomes visible
+        $this->terminal->open('Terminal', new TerminalBuffer()); // conceals debug behind it
+        $this->assertFalse($this->debug->isVisible());
+        $this->tui->setFocus($this->terminal);
+        Probe::set($this->tui, 'renderRequested', false);
+
+        $dock->reveal(DockTab::Debug);
+
+        $this->assertSame($this->debug, $dock->visiblePanel(), 'the concealed-but-open panel is brought back');
+        $this->assertSame($this->debug, $this->tui->getFocus());
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'));
+    }
+
+    public function testMarkSearchingAndRefreshIfBoundRequestARender(): void
+    {
+        $dock = $this->dock();
+        $todo = $dock->showList(ResultsPanelMode::Notifications, 'Notifications', []);
+        Probe::set($this->tui, 'renderRequested', false);
+
+        $dock->markSearching($todo);
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'markSearching() always repaints');
+
+        Probe::set($this->tui, 'renderRequested', false);
+        $dock->refreshIfBound($todo);
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'a bound refresh repaints too');
+    }
+
+    public function testReturnFocusFromDirectlyRepaintsEvenWithoutMovingFocus(): void
+    {
+        $dock = $this->dock();
+        $this->debug->open('a.php');
+        $this->tui->setFocus($this->terminal); // focus is NOT on $widget below
+        Probe::set($this->tui, 'renderRequested', false);
+
+        // Since focus isn't on $this->debug, the internal setFocus() branch
+        // (whose own requestRender fires only on an actual focus CHANGE)
+        // never runs — isolating returnFocusFrom()'s own trailing call.
+        $dock->returnFocusFrom($this->debug); // public, callable directly
+
+        $this->assertSame($this->terminal, $this->tui->getFocus(), 'focus is untouched — it was never on $widget');
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'but it still unconditionally repaints');
+    }
+
+    public function testActivatingAnAlreadySeenPanelMovesItToTheEndWithoutDuplicating(): void
+    {
+        $dock = $this->dock();
+        $this->terminal->open('Terminal', new TerminalBuffer());
+        $this->results->open('Problems', ResultsPanelFields::resultsOnly());
+        $this->debug->open('a.php');
+        $this->assertSame([$this->terminal, $this->results, $this->debug], Probe::get($dock, 'mru'));
+
+        $this->terminal->open('Terminal', new TerminalBuffer()); // re-activate an already-seen panel
+
+        $this->assertSame([$this->results, $this->debug, $this->terminal], Probe::get($dock, 'mru'), 'moved to the end, not duplicated');
+    }
+
+    public function testRestoreAfterReindexesMruSoAGapDoesNotSwallowTheLastEntry(): void
+    {
+        $dock = $this->dock();
+        $this->terminal->open('Terminal', new TerminalBuffer());
+        $this->results->open('Problems', ResultsPanelFields::resultsOnly());
+        $this->debug->open('a.php'); // debug is now visible
+
+        // Simulate an mru with a gap at index 1 — restoreAfter() must reindex
+        // it before indexing by count()-1, or the true last entry (results,
+        // now at key 2) is unreachable and nothing gets restored.
+        Probe::set($dock, 'mru', [0 => $this->terminal, 2 => $this->results]);
+
+        $this->debug->close();
+
+        $this->assertSame($this->results, $dock->visiblePanel(), 'the reindexed mru must still find its last (real) entry');
     }
 }

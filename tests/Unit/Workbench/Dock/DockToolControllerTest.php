@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Workbench\Dock;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Support\ProjectPaths;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestTui;
@@ -87,6 +88,88 @@ final class DockToolControllerTest extends TestCase
         $controller->update('demo:todo', [['path' => 'b.php', 'line' => 0, 'text' => 'too late']]);
 
         $this->assertNull($this->dock->findTool('demo:todo'), 'the late answer did not resurrect the tab');
+    }
+
+    public function testUpdateOnTheBoundTabPushesTheNewRowsIntoTheDisplayedPanel(): void
+    {
+        // Setting $tab->rows alone proves nothing about refreshIfBound() firing —
+        // the panel's OWN copy only moves if that call actually happens.
+        $controller = $this->controller(self::tool());
+        $controller->open('demo:todo', [['path' => 'a.php', 'line' => 0, 'text' => 'first']]);
+
+        $controller->update('demo:todo', [['path' => 'a.php', 'line' => 0, 'text' => 'second']]);
+
+        $this->assertSame(
+            [['path' => 'a.php', 'line' => 0, 'text' => 'second', 'ranges' => []]],
+            Probe::get($this->results, 'results'),
+            'the bound panel is refreshed in place, not just the tab\'s own row copy',
+        );
+    }
+
+    public function testANonAdjacentInvalidRowIsSkippedNotTruncating(): void
+    {
+        // A valid row placed AFTER an invalid one distinguishes "skip the bad
+        // row and keep scanning" from "stop at the first bad row" — every row
+        // in the other normalisation test is invalid from the first bad one
+        // onward, so it can't tell the two apart.
+        $controller = $this->controller(self::tool());
+        $controller->open('demo:todo', [
+            ['path' => 'bad.php', 'text' => 'dropped, no line'],
+            ['path' => 'ok.php', 'line' => 1, 'text' => 'must survive'],
+        ]);
+
+        $tab = $this->dock->findTool('demo:todo');
+        $this->assertNotNull($tab);
+        $this->assertSame(
+            [['path' => 'ok.php', 'line' => 1, 'text' => 'must survive', 'ranges' => []]],
+            $tab->rows,
+        );
+    }
+
+    public function testRangesAreValidatedFieldByFieldNotBundled(): void
+    {
+        // A range that IS an array but carries a non-int 'start' must still be
+        // rejected — even though 'length' alone is fine — proving the
+        // is_array/is_int checks are independent guards, not accidentally
+        // paired by a stray && instead of ||.
+        $controller = $this->controller(self::tool());
+        $controller->open('demo:todo', [
+            ['path' => 'a.php', 'line' => 0, 'text' => 'x', 'ranges' => [['start' => 'not-an-int', 'length' => 3]]],
+        ]);
+
+        $tab = $this->dock->findTool('demo:todo');
+        $this->assertNotNull($tab);
+        $this->assertSame([], $tab->rows[0]['ranges']);
+    }
+
+    public function testNegativeRangeBoundsClampToZeroExactly(): void
+    {
+        // max(0, x) mutated to max(-1, x) or max(1, x) both only differ from
+        // the original at a deeply negative input — 0 is the one value every
+        // one of those three formulas would otherwise agree on.
+        $controller = $this->controller(self::tool());
+        $controller->open('demo:todo', [
+            ['path' => 'a.php', 'line' => 0, 'text' => 'x', 'ranges' => [['start' => -5, 'length' => -5]]],
+        ]);
+
+        $tab = $this->dock->findTool('demo:todo');
+        $this->assertNotNull($tab);
+        $this->assertSame([['start' => 0, 'length' => 0]], $tab->rows[0]['ranges']);
+    }
+
+    public function testMultipleValidRangesAreAllKeptNotTruncatedToOne(): void
+    {
+        $controller = $this->controller(self::tool());
+        $controller->open('demo:todo', [
+            ['path' => 'a.php', 'line' => 0, 'text' => 'x', 'ranges' => [['start' => 1, 'length' => 2], ['start' => 5, 'length' => 3]]],
+        ]);
+
+        $tab = $this->dock->findTool('demo:todo');
+        $this->assertNotNull($tab);
+        $this->assertSame(
+            [['start' => 1, 'length' => 2], ['start' => 5, 'length' => 3]],
+            $tab->rows[0]['ranges'],
+        );
     }
 
     public function testRowsAreNormalisedBecauseAPluginsShapeIsUnchecked(): void

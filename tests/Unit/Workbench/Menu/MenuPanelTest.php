@@ -98,4 +98,89 @@ final class MenuPanelTest extends TestCase
         $this->assertSame(2, MenuPanel::step($items, 0, -1), 'up from Save wraps past the separator to Quit');
         $this->assertSame(0, MenuPanel::step([MenuItem::separator(), MenuItem::separator()], 0, 1), 'no selectable item → stays put');
     }
+
+    public function testStepMovesInTheRequestedDirectionNotReversed(): void
+    {
+        // Four fully-selectable, evenly-spaced items: unlike this file's other
+        // fixtures (a single separator splitting two items), this has no
+        // symmetry that would let a reversed step direction land on the same
+        // index as the correct one.
+        $items = [
+            new MenuItem('A', '', static fn () => null),
+            new MenuItem('B', '', static fn () => null),
+            new MenuItem('C', '', static fn () => null),
+            new MenuItem('D', '', static fn () => null),
+        ];
+        $this->assertSame(1, MenuPanel::step($items, 0, 1), 'forward from A lands on B, not D');
+        $this->assertSame(3, MenuPanel::step($items, 0, -1), 'backward from A lands on D, not B');
+    }
+
+    public function testWidthContinuesPastASeparatorInsteadOfStoppingThere(): void
+    {
+        // A separator sits first: measuring must keep scanning past it, not
+        // stop the walk there and leave every later item's width unseen.
+        $items = [MenuItem::separator(), new MenuItem('Longlabel', '', static fn () => null)];
+        $this->assertSame(13, MenuPanel::width($items), '9-wide label + 4-column chrome, past the leading separator');
+    }
+
+    public function testWidthWithNoShortcutAddsNoExtraColumns(): void
+    {
+        $items = [new MenuItem('Abcdef', '', static fn () => null)]; // 6-wide label, no shortcut
+        $this->assertSame(10, MenuPanel::width($items), '6-wide label + 0 (no shortcut) + 4-column chrome');
+    }
+
+    public function testSeparatorRowNeverThrowsOrOverdrawsAtAZeroOrNegativePanelWidth(): void
+    {
+        $items = [MenuItem::separator()];
+        $styles = new Styles(DarkTheme::definition());
+
+        $this->assertSame(0, AnsiUtils::visibleWidth(MenuPanel::segments($items, 0, 0, $styles)[0]['segment']), 'a zero-width panel draws no separator glyphs');
+        $this->assertSame(0, AnsiUtils::visibleWidth(MenuPanel::segments($items, 0, -1, $styles)[0]['segment']), 'a negative panel width clamps to zero rather than crashing str_repeat');
+    }
+
+    public function testInnerWidthFloorLeavesNoRoomForALabelAtATooNarrowPanel(): void
+    {
+        $items = [new MenuItem('Hi', '', static fn () => null)];
+        $segment = MenuPanel::segments($items, 0, 2, new Styles(DarkTheme::definition()))[0]['segment'];
+        // inner = max(0, 2 - EDGE_COLS(2)) = 0: no budget for even a
+        // truncation ellipsis, just the two edge/gap spaces.
+        $this->assertSame('   ', AnsiUtils::stripAnsiCodes($segment));
+    }
+
+    public function testALabelYieldsEntirelyToAShortcutWiderThanTheWholePanel(): void
+    {
+        // The shortcut alone (21 columns) blows well past the 5-column inner
+        // budget: the label gets none of it (labelMax floors at 0, not a
+        // negative slice) and the gap floors at 1, not 0 or 2.
+        $items = [new MenuItem('Save', 'Ctrl+Alt+Shift+Insert', static fn () => null)];
+        $segment = MenuPanel::segments($items, 0, 7, new Styles(DarkTheme::definition()))[0]['segment'];
+        $this->assertSame('  Ctrl+Alt+Shift+Insert ', AnsiUtils::stripAnsiCodes($segment));
+    }
+
+    public function testLongLabelWithNoShortcutTruncatesToExactlyTheInnerWidth(): void
+    {
+        $items = [new MenuItem(str_repeat('x', times: 20), '', static fn () => null)];
+        $segment = MenuPanel::segments($items, 0, 14, new Styles(DarkTheme::definition()))[0]['segment'];
+        // inner = 12: 11 x's plus the truncation ellipsis exactly fill it.
+        $this->assertSame(' xxxxxxxxxxx…  ', AnsiUtils::stripAnsiCodes($segment));
+    }
+
+    public function testEmptyShortcutTailConsumesNoColumns(): void
+    {
+        // Every other fixture in this file gives its item a real shortcut;
+        // none of the existing "exact width" assertions can catch a tail
+        // that quietly widens from '' to a single space when there is none.
+        $items = [new MenuItem('X', '', static fn () => null)];
+        $width = MenuPanel::width($items);
+        $segment = MenuPanel::segments($items, 0, $width, new Styles(DarkTheme::definition()))[0]['segment'];
+        $this->assertSame($width, AnsiUtils::visibleWidth($segment), 'the empty-shortcut tail must not widen the row past panelWidth');
+    }
+
+    public function testSegmentLayoutIsExactlyEdgeLabelGapShortcutEdge(): void
+    {
+        $items = [new MenuItem('Ab', 'F2', static fn () => null)];
+        $segment = MenuPanel::segments($items, 0, 10, new Styles(DarkTheme::definition()))[0]['segment'];
+        // inner=8, labelMax=8-(2+2)=4 (label fits untouched), gap=8-2-2=4.
+        $this->assertSame(' Ab    F2 ', AnsiUtils::stripAnsiCodes($segment));
+    }
 }

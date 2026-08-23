@@ -77,6 +77,45 @@ final class DockToolTabsTest extends TestCase
         $this->assertSame(0, \count(Probe::get($tabs, 'tabs')));
     }
 
+    /**
+     * Closing the currently-active tab with several survivors: the active pointer
+     * must stay at the SAME index (so it lands on the tab that slides into the
+     * closed slot), not shift to the previous one — a distinction the 2-survivor
+     * case in testCloseMovesTheActivePointerToTheNearestNeighbour can't see, since
+     * both would clamp to the same lone survivor there.
+     */
+    public function testCloseOnTheActiveTabLandsOnItsSuccessorNotItsPredecessor(): void
+    {
+        $tabs = new DockToolTabs();
+        $a = $tabs->openOrReuse(ResultsPanelMode::Search, 'a', ResultsPanelFields::searchResults());
+        $b = $tabs->openOrReuse(ResultsPanelMode::Search, 'b', ResultsPanelFields::searchResults());
+        $c = $tabs->openOrReuse(ResultsPanelMode::Search, 'c', ResultsPanelFields::searchResults());
+        $tabs->openOrReuse(ResultsPanelMode::Search, 'd', ResultsPanelFields::searchResults());
+
+        $tabs->makeActive($b);
+
+        $this->assertSame($c, $tabs->close($b), 'the tab sliding into the closed slot becomes active, not $a');
+    }
+
+    /**
+     * Closing a tab BEFORE the active one, with survivors on both sides of the
+     * active tab: the active index must shift down by exactly 1 to track its
+     * tab through the reindex — not stay put, not shift by 2. Chosen so the
+     * trailing min(..., count-1) clamp cannot coincidentally mask either bug.
+     */
+    public function testCloseBeforeTheActiveTabShiftsItsIndexByExactlyOne(): void
+    {
+        $tabs = new DockToolTabs();
+        $a = $tabs->openOrReuse(ResultsPanelMode::Search, 'a', ResultsPanelFields::searchResults());
+        $c = $tabs->openOrReuse(ResultsPanelMode::Search, 'c', ResultsPanelFields::searchResults());
+        $tabs->openOrReuse(ResultsPanelMode::Search, 'd', ResultsPanelFields::searchResults());
+        $tabs->openOrReuse(ResultsPanelMode::Search, 'e', ResultsPanelFields::searchResults());
+
+        $tabs->makeActive($c);
+
+        $this->assertSame($c, $tabs->close($a), 'the active tab is tracked, not swapped for its neighbour');
+    }
+
     public function testMoveReordersKeepingTheActivePointerOnItsTab(): void
     {
         $tabs = new DockToolTabs();

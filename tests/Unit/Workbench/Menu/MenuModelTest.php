@@ -12,6 +12,7 @@ use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginMenuSpec;
 use Porta\Tests\Support\Probe;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Workbench\Menu\EditorCommandTarget;
 use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\Menu\MenuContribution;
 use Porta\Workbench\Menu\MenuContributions;
@@ -235,6 +236,26 @@ final class MenuModelTest extends TestCase
 
         $this->assertTrue($this->item($menus, 'Git', 'Git: Commit…')->enabled(), "the contribution's viewSafe list is honored");
         $this->assertFalse($this->item($menus, 'Git', 'Git: Stage Current File')->enabled(), 'an unlisted item is gated while the view is active');
+    }
+
+    public function testAViewlessContributionDoesNotStopLaterOnesFromJoiningTheSafeListMerge(): void
+    {
+        // The view-safe merge walks contributions in a separate loop from the
+        // one that skips a viewless entry when PLACING menus — a `continue`
+        // that regressed to `break` there would strand every contribution
+        // registered after a viewless one out of the merged safe list.
+        $viewless = new MenuContribution(title: 'Tools', after: 'Run', items: []);
+
+        $menus = MenuModel::build(
+            $this->gitCommands(),
+            new CodeEditorWidget(),
+            new Keybindings([]),
+            new Translator('en'),
+            activeView: static fn (): ?string => 'git',
+            contributions: [$viewless, self::gitContribution()],
+        );
+
+        $this->assertTrue($this->item($menus, 'Git', 'Git: Commit…')->enabled(), "the git contribution's viewSafe list still merged in");
     }
 
     public function testTwoContributionsToOneViewMergeTheirSafeLists(): void
@@ -507,5 +528,44 @@ final class MenuModelTest extends TestCase
 
         $items = MenuModel::items(['i:ide_settings', MenuModel::SEP, 'i:ide_quit'], $commands, $editor, $ideKeys, new Translator('en'));
         $this->assertSame(['Settings…', '---', 'Quit'], $kinds($items), 'a divider between two survivors stays');
+    }
+
+    public function testAnEditorBindingTakesPriorityOverAnIdeBindingForTheSameId(): void
+    {
+        // binding() documents editor-first priority: an id bound in BOTH the
+        // editor's own keybindings and the IDE-level ones must resolve to the
+        // editor's, not the IDE's — a coalesce swapped the wrong way would
+        // silently print (and honor) the IDE-level shortcut instead.
+        $editor = new class implements EditorCommandTarget {
+            public function getFilePath(): ?string
+            {
+                return null;
+            }
+
+            public function getKeybindings(): Keybindings
+            {
+                return new Keybindings(['shared_action' => ['ctrl+e']]);
+            }
+
+            public function runAction(string $action): void {}
+        };
+        $ideKeys = new Keybindings(['shared_action' => ['ctrl+i']]);
+
+        $items = MenuModel::items(['e:shared_action'], new CommandRegistry(), $editor, $ideKeys, new Translator('en'));
+
+        $this->assertSame('Ctrl+E', $items[0]->shortcut, "the editor's own binding wins over the IDE-level one");
+    }
+
+    public function testTheAdoptableSkipRuleOnlyEverAppliesToAnICommandSpec(): void
+    {
+        // The skip guard is scoped to 'i:' specs on purpose: an 'e:' (editor
+        // action) spec's id is core's own and always answered, even if that
+        // same id string happens to also name an adoptable 'i:' command
+        // elsewhere in the catalog (e.g. 'git_blame'). Losing the 'i:' check
+        // would make the guard fire on ANY spec whose id collides with an
+        // adoptable name, silently dropping a real editor action.
+        $items = MenuModel::items(['e:git_blame'], new CommandRegistry(), new CodeEditorWidget(), new Keybindings(), new Translator('en'));
+
+        $this->assertCount(1, $items, "an 'e:' spec is never skipped by the adoptable-id rule, even sharing an adoptable id's name");
     }
 }

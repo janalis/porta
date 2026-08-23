@@ -32,10 +32,36 @@ final class NotifierTest extends TestCase
 
     public function testFlashWithoutALogStillWorks(): void
     {
-        $notifier = new Notifier(new StatusBarWidget(), new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24)));
+        $status = new StatusBarWidget();
+        $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
+        $notifier = new Notifier($status, $tui);
+
         $notifier->flash('no log wired');
 
-        $this->addToAssertionCount(1); // no crash: the log is optional for tests
+        // Without a ToastCenter, notify() falls back to the status-bar flash
+        // and still requests a render — both real effects, not just "no crash".
+        $this->assertSame('no log wired', \Porta\Tests\Support\Probe::get($status, 'flash')['text'] ?? null);
+        $this->assertTrue((bool) \Porta\Tests\Support\Probe::get($tui, 'renderRequested'));
+    }
+
+    public function testNotifyIsCallableFromOutsideTheClass(): void
+    {
+        // PluginApi calls $notifier->notify(...) directly (see
+        // PluginApi::flash) — a protected visibility would fatal there.
+        $notifier = new Notifier(new StatusBarWidget(), new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24)));
+
+        $notifier->notify('direct call', ToastSeverity::Info);
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testDismissAllIsSafeWithoutToasts(): void
+    {
+        $notifier = new Notifier(new StatusBarWidget(), new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24)));
+
+        $notifier->dismissAll();
+
+        $this->addToAssertionCount(1); // the toasts collaborator is optional; must not fatal
     }
 
     public function testSeveritiesToastWithTheirRankAndLogWithTheGlyph(): void
@@ -70,10 +96,12 @@ final class NotifierTest extends TestCase
         $toasts = new ToastCenter(new FakeScheduler(), $tui);
         $notifier = new Notifier($status, $tui, $log, $toasts);
 
+        \Porta\Tests\Support\Probe::set($tui, 'renderRequested', false);
         $notifier->hint('scrolled +3');
 
         $this->assertTrue($toasts->isEmpty(), 'no toast for a hint');
         $this->assertSame([], $log->entries(), 'no log entry either');
         $this->assertSame('scrolled +3', \Porta\Tests\Support\Probe::get($status, 'flash')['text'] ?? null, 'the status bar carries it');
+        $this->assertTrue((bool) \Porta\Tests\Support\Probe::get($tui, 'renderRequested'), 'a hint still requests a render');
     }
 }

@@ -39,6 +39,18 @@ final class MenuContributionsTest extends TestCase
         $this->assertSame(['vcs' => ['a', 'b']], $registry->viewSafe());
     }
 
+    public function testAViewlessContributionDoesNotStopLaterOnesFromContributingTheirSafeList(): void
+    {
+        // The loop must skip a viewless entry and keep scanning, not stop at
+        // it — otherwise any menu registered without a view would silently
+        // blind every later contribution's view-safe list too.
+        $registry = new MenuContributions();
+        $registry->register(new MenuContribution('Tools', 'Run', ['i:x']));
+        $registry->register(new MenuContribution('A', 'Run', ['i:a'], viewId: 'vcs', viewSafe: ['a']));
+
+        $this->assertSame(['vcs' => ['a']], $registry->viewSafe());
+    }
+
     public function testRegistrationOrderIsPreserved(): void
     {
         // The order menus appear in, after their shared `after` title.

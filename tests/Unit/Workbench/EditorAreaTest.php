@@ -75,4 +75,30 @@ final class EditorAreaTest extends TestCase
 
         $this->assertSame($this->editor, $this->tui->getFocus());
     }
+
+    public function testFocusMovesFocusAwayFromWhateverElseWasFocused(): void
+    {
+        // Tui::add() auto-focuses the first widget added, so a lone
+        // $this->editor add already leaves it focused without focus()'s own
+        // setFocus() call doing anything — start focused elsewhere instead,
+        // so only that explicit call can move it back.
+        $other = new CodeEditorWidget();
+        $this->tui->add($other);
+        $this->tui->add($this->editor);
+        $this->tui->setFocus($other);
+
+        $this->area->focus();
+
+        $this->assertSame($this->editor, $this->tui->getFocus());
+    }
+
+    public function testFocusRequestsARender(): void
+    {
+        $this->tui->add($this->editor);
+        \Porta\Tests\Support\Probe::set($this->tui, 'renderRequested', false);
+
+        $this->area->focus();
+
+        $this->assertTrue((bool) \Porta\Tests\Support\Probe::get($this->tui, 'renderRequested'));
+    }
 }
