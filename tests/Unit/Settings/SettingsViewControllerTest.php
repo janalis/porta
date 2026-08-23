@@ -55,6 +55,7 @@ use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\NavigatesSettings;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
@@ -100,6 +101,7 @@ final class SettingsViewControllerTest extends TestCase
     private CodeEditorWidget $editorWidget;
     private PluginSettings $pluginSettings;
     private FakePluginLifecycle $lifecycle;
+    private ViewRegions $regions;
 
     /** @param list<SettingsSection>|null $sections */
     private function controller(?ViewRegistry $views = null, ?array $sections = null): SettingsViewController
@@ -119,6 +121,7 @@ final class SettingsViewControllerTest extends TestCase
         // The controller mints its region and puts the nav into the sidebar
         // itself; the test reads the same containers back off the registry.
         $regions = new ViewRegions(Styles::dark());
+        $this->regions = $regions;
         $this->content = $regions->mint('settings')->content();
         $menuBar = new MenuBarWidget();
         $menuBar->setId('menu');
@@ -584,6 +587,247 @@ final class SettingsViewControllerTest extends TestCase
         $this->expectException(\LogicException::class);
         $this->expectExceptionMessage('No settings section claimed general');
         $controller->open();
+    }
+
+    public function testTheNavIsMintedIntoTheSidebarAsTheResizableUnit(): void
+    {
+        $this->controller();
+
+        $sidebar = $this->regions->find('settings')?->sidebar();
+        $this->assertNotNull($sidebar);
+        $this->assertSame([$this->nav], $sidebar->all(), 'the nav widget is actually added to the sidebar container');
+        $this->assertSame($this->nav, $this->regions->find('settings')?->sidebarPanes(), 'the nav is registered as the resizable sidebar unit');
+    }
+
+    public function testOwnsMainAreaIsTrue(): void
+    {
+        $controller = $this->controller();
+
+        $this->assertTrue($controller->ownsMainArea());
+    }
+
+    public function testOpenIsIdempotentAndDoesNotResetAnAlreadyOpenView(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $this->selectSettingsSection($this->nav, 'interface');
+        $this->form->handleInput("\t"); // content -> nav, so a re-run of open() would steal focus back
+
+        $controller->open(); // already open: must be a complete no-op
+
+        $this->assertSame('interface', $this->nav->selectedId(), 'a second open() must not reset the section back to general');
+        $this->assertSame($this->nav, $this->tui->getFocus(), 'a second open() must not steal focus back to the form');
+    }
+
+    public function testOpenRequestsARender(): void
+    {
+        $controller = $this->controller();
+        // The first open() also moves focus onto the form, which requests its
+        // own render — close and reopen with focus already on the form so
+        // that side effect can't mask invalidate()'s own render request.
+        $controller->open();
+        $controller->close();
+        $this->tui->setFocus($this->form);
+        Probe::set($this->tui, 'renderRequested', false);
+
+        $controller->open();
+
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'));
+    }
+
+    public function testSelectingASectionRequestsARender(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        Probe::set($this->tui, 'renderRequested', false);
+
+        $this->selectSettingsSection($this->nav, 'interface');
+
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'));
+    }
+
+    public function testRefreshWhileClosedIsACompleteNoOpEvenOnAPluginSection(): void
+    {
+        $controller = $this->controller();
+        // Reach a plugin: section the ordinary way, then close — refresh()
+        // must not act on it while closed, even though closed leaves $section
+        // pointing at it.
+        $this->lifecycle->names = ['demo'];
+        $this->pluginSettings->registerFor('demo', [
+            ['key' => 'binary', 'label' => 'Binary path', 'kind' => 'text', 'default' => '', 'options' => null, 'hint' => null],
+        ]);
+        $controller->open();
+        $this->nav->setPluginEntries(['demo']);
+        $this->selectSettingsSection($this->nav, 'plugin:demo');
+        $controller->close();
+
+        $this->lifecycle->names = []; // the plugin "vanishes" while closed
+        Probe::set($this->tui, 'renderRequested', false);
+
+        $controller->refresh();
+
+        $this->assertSame('plugin:demo', $this->nav->selectedId(), 'refresh() while closed must not fall back to Plugins');
+        $this->assertFalse(Probe::get($this->tui, 'renderRequested'), 'refresh() while closed must not request a render either');
+    }
+
+    /**
+     * refresh()'s plugin-vanished check reads exactly `substr($section, 7)`
+     * (the length of "plugin:"); an off-by-one or a dropped substr entirely
+     * would misread a still-existing plugin's id and wrongly bounce to the
+     * Plugins section.
+     */
+    public function testRefreshOnAStillExistingPluginPageStaysPutRegardlessOfSubstrPrecision(): void
+    {
+        $controller = $this->controller();
+        $this->lifecycle->names = ['x']; // a one-character id: any offset error mangles it
+        $this->pluginSettings->registerFor('x', []);
+        $controller->open();
+        $this->nav->setPluginEntries(['x']);
+        $this->selectSettingsSection($this->nav, 'plugin:x');
+
+        $controller->refresh();
+
+        $this->assertSame('plugin:x', $this->nav->selectedId(), 'the plugin still exists, so refresh() must not bounce away from its page');
+    }
+
+    /**
+     * The first `if` uses && between the plugin-prefix check and the
+     * vanished-plugin check; a mutant that turns it into || would make
+     * ANY non-plugin section wrongly bounce to Plugins too (hasPlugin('')
+     * on a plugin-less id is false, so !hasPlugin(...) is true, and ||
+     * only needs one true side).
+     */
+    public function testRefreshOnAnOrdinarySectionNeverBouncesToPlugins(): void
+    {
+        $controller = $this->controller();
+        $controller->open(); // opens on 'general'
+        Probe::set($this->tui, 'renderRequested', false);
+
+        $controller->refresh();
+
+        $this->assertSame('general', $this->nav->selectedId());
+        $this->assertFalse(Probe::get($this->tui, 'renderRequested'), 'an ordinary section is unaffected by refresh() and must not re-render either');
+    }
+
+    /**
+     * The vanished-plugin fallback branch calls selectSection('plugins') —
+     * which already calls setRows()+invalidate() itself — and then must
+     * `return`, not fall into the second `if` and repeat both calls. Both
+     * calls end up producing the SAME rows either way (nothing changed in
+     * between), so no state assertion can catch a redundant repeat; only the
+     * form's own render-revision counter (bumped once per invalidate()) can.
+     */
+    public function testFallingBackToPluginsAfterARemovedPluginInvalidatesOnlyOnce(): void
+    {
+        $controller = $this->controller();
+        $this->lifecycle->names = ['demo'];
+        $this->pluginSettings->registerFor('demo', []);
+        $controller->open();
+        $this->nav->setPluginEntries(['demo']);
+        $this->selectSettingsSection($this->nav, 'plugin:demo');
+        $this->lifecycle->names = []; // vanished
+        $revisionBefore = $this->form->getRenderRevision();
+        $controller->refresh();
+        $refreshDelta = $this->form->getRenderRevision() - $revisionBefore;
+
+        // The yardstick: selectSection('plugins') called directly, from the
+        // exact same starting state, costs however many invalidate()s it
+        // costs on its own — a repeat-without-return would cost strictly
+        // more than that on top of it.
+        $controller2 = $this->controller();
+        $this->lifecycle->names = ['demo'];
+        $controller2->open();
+        $this->nav->setPluginEntries(['demo']);
+        $this->selectSettingsSection($this->nav, 'plugin:demo');
+        $revisionBefore2 = $this->form->getRenderRevision();
+        Probe::invoke($controller2, 'selectSection', 'plugins');
+        $directCallDelta = $this->form->getRenderRevision() - $revisionBefore2;
+
+        $this->assertSame($directCallDelta, $refreshDelta, 'the fallback must not fall through and repeat setRows()+invalidate() a second time, on top of selectSection()\'s own');
+    }
+
+    public function testRefreshOnThePluginsListingSectionReRendersItsRows(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $this->selectSettingsSection($this->nav, 'plugins');
+        mkdir($this->project->dir.'/.porta/plugins/late', permissions: 0o777, recursive: true);
+        file_put_contents($this->project->dir.'/.porta/plugins/late/plugin.php', data: "<?php\n");
+        Probe::set($this->tui, 'renderRequested', false);
+
+        $controller->refresh();
+
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'refresh() on the plugins section must request a render');
+        $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
+        $this->assertStringContainsString('late (project)  [Remove]', $screen);
+    }
+
+    /**
+     * The widget's own capture-completion handler already clears its
+     * capturingIndex and calls the onRebind callback BEFORE the controller
+     * does anything, so neither "capture mode ended" nor a bare "does 'a'
+     * appear anywhere on screen" (many labels already contain the letter)
+     * distinguishes a missing setRows() call — only the specific row's own
+     * text does, since setRows() is the only thing that ever refreshes it
+     * with the freshly-persisted binding.
+     */
+    public function testRebindingReRendersTheKeybindingsList(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $this->selectSettingsSection($this->nav, 'keybindings');
+        // cursor_up (row 0, the default selection) is shadowed by the
+        // editor's own baked-in arrow-key binding, which always wins over an
+        // ideKeys rebind in rows()'s priority order — its displayed binding
+        // would never change either way. move_tab_left has no default at any
+        // priority level, so a rebind is the only thing that could ever fill
+        // it in.
+        $rows = Probe::get($this->keymapList, 'rows');
+        $targetIndex = array_search('move_tab_left', array_column($rows, 'action'), strict: true);
+        \assert(false !== $targetIndex, description: 'move_tab_left is a registered action');
+        for ($i = 0; $i < $targetIndex; ++$i) {
+            $this->keymapList->handleInput("\x1b[B");
+        }
+        $rowBefore = Probe::get($this->keymapList, 'rows')[$targetIndex]->binding;
+
+        $this->keymapList->handleInput("\r"); // arm capture on move_tab_left
+        $this->keymapList->handleInput('a');
+
+        $rowAfter = Probe::get($this->keymapList, 'rows')[$targetIndex]->binding;
+        $this->assertSame('', $rowBefore, 'move_tab_left starts unbound');
+        $this->assertSame('a', $rowAfter, "the rebound action's own row must reflect the new binding, proving setRows() re-ran");
+    }
+
+    public function testCycleFocusAlwaysReportsItHandledTheKey(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+
+        $this->assertTrue($controller->cycleFocus(1), 'content -> nav is handled');
+        $this->assertTrue($controller->cycleFocus(1), 'nav -> content is handled too');
+    }
+
+    /**
+     * focusNav()/focusContent() both call setFocus() then their own explicit
+     * invalidate() — but Tui::setFocus() itself already requests a render on
+     * any ACTUAL focus change, which would mask a removed invalidate() call
+     * in a test that changes focus. Pre-position focus at the target first,
+     * so setFocus() is a no-op and only the explicit invalidate() is left.
+     */
+    public function testFocusNavAndFocusContentEachRequestARenderEvenWhenAlreadyFocused(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+
+        $this->tui->setFocus($this->nav);
+        Probe::set($this->tui, 'renderRequested', false);
+        Probe::invoke($controller, 'focusNav');
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'focusNav() must request a render even when nav was already focused');
+
+        $this->tui->setFocus($this->form);
+        Probe::set($this->tui, 'renderRequested', false);
+        Probe::invoke($controller, 'focusContent');
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'focusContent() must request a render even when the form was already focused');
     }
 
     private static function formatOnSave(): FormatOnSave

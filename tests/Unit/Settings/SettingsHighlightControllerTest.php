@@ -98,15 +98,40 @@ final class SettingsHighlightControllerTest extends TestCase
 
         $this->assertSame(SettingsHighlightController::ENABLE_KEY, $rows[0]->key);
         $this->assertSame(SettingsRowKind::Action, $rows[0]->kind);
+        $this->assertSame('Enable tempest', $rows[0]->value, 'the plugin name is interpolated into the action label');
+        $this->assertFalse($rows[0]->restart, 'enabling the plugin applies live');
     }
 
     public function testActuatingTheOfferEnablesThePluginLive(): void
     {
         $this->lifecycle->names = [RecommendedPlugins::HIGHLIGHTER];
+        $controller = $this->controller();
 
-        $this->controller()->change(SettingsHighlightController::ENABLE_KEY, '');
+        $controller->change(SettingsHighlightController::ENABLE_KEY, '');
 
         $this->assertSame([[RecommendedPlugins::HIGHLIGHTER, true]], $this->lifecycle->toggled);
+        $this->assertFalse(is_file($this->project->path('.porta.json')), 'enabling the engine must not also persist a bogus highlighter entry');
+    }
+
+    /** No lifecycle wired (a settings page built before the plugin system boots) must not crash on the offer. */
+    public function testActuatingTheOfferWithNoLifecycleWiredIsInert(): void
+    {
+        $controller = new SettingsHighlightController(
+            new HighlightRegistry(new class implements SyntaxHighlightProviderSource {
+                public function highlightProviders(): array
+                {
+                    return [];
+                }
+            }, new HighlightPreferences()),
+            new Translator('en'),
+            $this->project->dir,
+            IdeConfig::load($this->project->dir),
+            new PortaJsonWriter(),
+        );
+
+        $controller->change(SettingsHighlightController::ENABLE_KEY, '');
+
+        $this->addToAssertionCount(1);
     }
 
     /** Once an engine is loaded the offer is gone — there is nothing to enable. */
@@ -142,6 +167,8 @@ final class SettingsHighlightControllerTest extends TestCase
 
         $this->assertSame([SettingsHighlightController::DEFAULT_KEY, 'lang:go', 'lang:rust'], $keys);
         $this->assertSame(['', 'tempest', 'chroma', 'plain'], $rows[1]->options, 'plugin load order, then the fallback');
+        $this->assertFalse($rows[1]->restart, 'a per-language choice applies live');
+        $this->assertSame('default', $rows[1]->optionLabels[''] ?? null, 'the auto option is labelled "default" on a per-language row');
     }
 
     /** One engine claiming everything means no per-language rows at all. */
@@ -161,6 +188,7 @@ final class SettingsHighlightControllerTest extends TestCase
 
         $this->assertSame(['', 'tempest', 'chroma', 'plain'], $rows[0]->options);
         $this->assertSame('auto (first available)', $rows[0]->optionLabels[''] ?? null);
+        $this->assertFalse($rows[0]->restart, 'the default highlighter applies live');
     }
 
     public function testChangingTheDefaultPersistsToTheHighlightBlock(): void

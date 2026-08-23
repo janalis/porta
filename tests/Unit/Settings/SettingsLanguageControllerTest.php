@@ -44,6 +44,8 @@ final class SettingsLanguageControllerTest extends TestCase
         $this->assertSame('tabs', $php[0]->value);
         $this->assertSame(['auto', 'spaces', 'tabs'], $php[0]->options);
         $this->assertSame('4', $php[1]->value, 'size rendered as a string for the choice');
+        $this->assertFalse($php[0]->restart, 'indent style applies live, no restart needed');
+        $this->assertFalse($php[1]->restart, 'indent size applies live, no restart needed');
         $this->assertSame('frankenphp php-cli', $php[2]->value, 'the configured run command shows');
         $this->assertTrue($php[2]->restart, 'the run command applies on restart');
 
@@ -90,6 +92,33 @@ final class SettingsLanguageControllerTest extends TestCase
         $this->assertSame('auto', IdeConfig::load($project->dir)->languages['php']['indentSize']);
     }
 
+    /**
+     * IdeConfig::load() normalizes a numeric-string indentSize back to int on
+     * read, masking whether the RAW persisted value was actually an int or a
+     * string — so these check the on-disk JSON directly.
+     */
+    public function testIndentSizeIsStoredAsAJsonIntOnlyForTheIndentSizeKeyWithANumericNonAutoValue(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget());
+
+        $controller->changeLanguageSetting('php', 'indentSize', '4');
+        $raw = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+        $this->assertSame(4, $raw['languages']['php']['indentSize'], 'a numeric, non-auto indentSize is stored as a JSON int');
+
+        // The int-cast is gated on the key being indentSize specifically, not
+        // merely on the value looking numeric.
+        $controller->changeLanguageSetting('php', 'indentStyle', '4');
+        $raw = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+        $this->assertSame('4', $raw['languages']['php']['indentStyle'], 'a numeric-looking value for a non-indentSize key stays a string');
+
+        // The false branch's own (string) cast: an already-non-string value
+        // routed there must still come out as a genuine string.
+        $controller->changeLanguageSetting('php', 'indentStyle', true);
+        $raw = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+        $this->assertSame('1', $raw['languages']['php']['indentStyle']);
+    }
+
     public function testChangingTheRunCommandPersistsAndFlashesTheRestartNote(): void
     {
         $project = new TempProject();
@@ -99,7 +128,7 @@ final class SettingsLanguageControllerTest extends TestCase
         $this->assertSame('frankenphp php-cli', IdeConfig::load($project->dir)->languages['php']['runCommand'] ?? null);
         $flash = $this->flashText($status);
         $this->assertStringContainsString('PHP run command: frankenphp php-cli', $flash);
-        $this->assertStringContainsString('applies on restart', $flash);
+        $this->assertStringContainsString('frankenphp php-cli · applies on restart', $flash, 'the separator sits between the command and the note, in that order');
 
         // Clearing it shows the bundled-php default and the row reflects empty.
         $controller->changeLanguageSetting('php', 'runCommand', '  ');

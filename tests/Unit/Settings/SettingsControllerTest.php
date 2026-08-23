@@ -74,6 +74,8 @@ final class SettingsControllerTest extends TestCase
     /** @var list<string> */
     private array $tabBarPositionChanges = [];
 
+    private FormatOnSave $formatOnSave;
+
     /**
      * @param array<string, int|bool|string> $settings
      */
@@ -118,7 +120,7 @@ final class SettingsControllerTest extends TestCase
             new TabBarWidget(),
             TestWorkspaceLayout::create(rootDir: $rootDir),
             $dispatcher,
-            self::formatOnSave(),
+            $this->formatOnSave = self::formatOnSave(),
             true,
         );
 
@@ -174,6 +176,39 @@ final class SettingsControllerTest extends TestCase
         $this->assertSame(['off', 'absolute', 'relative'], $byKey['lineNumbers']->options);
         $this->assertTrue($byKey['stickyScroll']->value);
         $this->assertSame(SettingsRowKind::Bool, $byKey['breadcrumbs']->kind);
+    }
+
+    /**
+     * The docblock states every row in this table is live (no restart-required
+     * row exists here anymore — those moved to their plugins' own pages), so
+     * this is a table-wide invariant, not a per-row spot check.
+     */
+    public function testNoRowInEitherGroupEverRequiresARestart(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget());
+
+        foreach ([...$controller->formRows(), ...$controller->interfaceRows()] as $row) {
+            $this->assertFalse($row->restart, $row->key.' never needs a restart');
+        }
+    }
+
+    /**
+     * A Bool-kind row's value must be a strict bool and a non-Bool row's value
+     * a strict string, even when the underlying setting was stored as some
+     * other scalar (e.g. a hand-edited .porta.json) — rowsForGroup()'s casts
+     * are what normalize it for the widget.
+     */
+    public function testRowValuesAreCoercedToTheirDeclaredKindRegardlessOfTheStoredScalarType(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), ['autoPairs' => 1, 'theme' => 0]);
+
+        $general = array_column($controller->formRows(), null, 'key');
+        $interface = array_column($controller->interfaceRows(), null, 'key');
+
+        $this->assertSame(true, $general['autoPairs']->value, 'a truthy non-bool coerces to strict bool true');
+        $this->assertSame('0', $interface['theme']->value, 'a non-string coerces to a strict string');
     }
 
     public function testChangingTheTabBarPositionFiresItsApplyClosureAndPersists(): void
@@ -260,6 +295,70 @@ final class SettingsControllerTest extends TestCase
         $this->assertTrue($breadcrumbs->isVisible());
     }
 
+    /**
+     * The General group's three bool rows apply in BOTH directions — the
+     * table-construction closures each have an (enable():disable()) ternary,
+     * and the existing suite only ever exercised the default (enable) branch
+     * via applyAll(), never disable().
+     */
+    public function testChangingTheGeneralBoolsAppliesToTheEditorAndFormatOnSaveInBothDirections(): void
+    {
+        $project = new TempProject();
+        $editor = new CodeEditorWidget();
+        $controller = $this->controller($project->dir, $editor, new StatusBarWidget());
+
+        $controller->changeSetting('inlineDiagnostics', false);
+        $this->assertFalse(EditorState::display($editor)->inlineDiagnostics());
+        $controller->changeSetting('autoPairs', false);
+        $this->assertFalse(EditorState::display($editor)->autoPairs());
+        $controller->changeSetting('formatOnSave', true);
+        $this->assertTrue($this->formatOnSave->isEnabled());
+
+        $controller->changeSetting('inlineDiagnostics', true);
+        $this->assertTrue(EditorState::display($editor)->inlineDiagnostics());
+        $controller->changeSetting('autoPairs', true);
+        $this->assertTrue(EditorState::display($editor)->autoPairs());
+        $controller->changeSetting('formatOnSave', false);
+        $this->assertFalse($this->formatOnSave->isEnabled());
+    }
+
+    /** The flash's on/off state word must match the value that was actually set, not its opposite. */
+    public function testChangingABoolSettingFlashesTheMatchingOnOrOffWord(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), $status = new StatusBarWidget());
+
+        $controller->changeSetting('autoPairs', true);
+        $this->assertStringContainsString(' on', $this->flashText($status));
+
+        $controller->changeSetting('autoPairs', false);
+        $this->assertStringContainsString(' off', $this->flashText($status));
+    }
+
+    /**
+     * No shipping descriptor is restart-required today (see the class
+     * docblock), so the " · applies on restart" note's exact formatting can
+     * only be exercised through a hand-built descriptor table, the same
+     * technique testApplyAllSkipsADescriptorWithNoApplyClosure uses.
+     */
+    public function testARestartRequiredDescriptorAppendsTheExactRestartNote(): void
+    {
+        $controller = new \ReflectionClass(SettingsController::class)->newInstanceWithoutConstructor();
+        $status = new StatusBarWidget();
+        Probe::set($controller, 'notifier', new Notifier($status, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24))));
+        Probe::set($controller, 'translator', new Translator('en'));
+        Probe::set($controller, 'writer', new PortaJsonWriter());
+        Probe::set($controller, 'rootDir', new TempProject()->dir);
+        Probe::set($controller, 'settings', ['restartOnly' => false]);
+        Probe::set($controller, 'descriptors', [
+            'restartOnly' => ['label' => 'Restart only', 'kind' => SettingsRowKind::Bool, 'group' => 'general', 'restart' => true, 'apply' => null],
+        ]);
+
+        $controller->changeSetting('restartOnly', true);
+
+        $this->assertStringContainsString('Restart only on · applies on restart', $this->flashText($status));
+    }
+
     public function testChangingLanguageFiresTheLocaleHookAndPersists(): void
     {
         $project = new TempProject();
@@ -325,7 +424,9 @@ final class SettingsControllerTest extends TestCase
         // null-apply (restart-only) descriptor; applyAll must skip such an entry
         // instead of invoking null. The descriptor table is readonly and built in
         // the constructor, so exercise the guard on an instance whose table
-        // carries one null-apply row.
+        // carries one null-apply row. The null-apply row sits BETWEEN two live
+        // ones (not trailing) so a continue-vs-break regression is observable —
+        // a trailing null row can't distinguish "skip this one" from "stop here".
         $controller = new \ReflectionClass(SettingsController::class)->newInstanceWithoutConstructor();
         $applied = [];
         Probe::set($controller, 'descriptors', [
@@ -338,12 +439,47 @@ final class SettingsControllerTest extends TestCase
                 },
             ],
             'restartOnly' => ['label' => 'Restart only', 'kind' => 'bool', 'restart' => true, 'apply' => null],
+            'liveAfter' => [
+                'label' => 'Live after',
+                'kind' => 'bool',
+                'restart' => false,
+                'apply' => static function () use (&$applied): void {
+                    $applied[] = 'liveAfter';
+                },
+            ],
         ]);
-        Probe::set($controller, 'settings', ['live' => true, 'restartOnly' => false]);
+        Probe::set($controller, 'settings', ['live' => true, 'restartOnly' => false, 'liveAfter' => true]);
 
         $controller->applyAll();
 
-        $this->assertSame(['live'], $applied, 'the null-apply descriptor is skipped; the live one still applies');
+        $this->assertSame(['live', 'liveAfter'], $applied, 'the null-apply descriptor is skipped, not aborted on; every live one still applies');
+    }
+
+    /**
+     * Every shipping descriptor's key is always present in $settings (merged
+     * with IdeConfig::DEFAULT_SETTINGS at construction), so toggle()'s
+     * `?? false` fallback for a genuinely-absent key is otherwise dead code —
+     * exercise it directly on a hand-built table/settings pair, PHPUnit's
+     * failOnAllIssues would also turn a bare `$this->settings[$key]` access
+     * (the CastBool mutant's rewritten form) into a failure via an undefined
+     * array key warning.
+     */
+    public function testTogglingAKeyAbsentFromSettingsTreatsItAsFalseAndFlipsToTrue(): void
+    {
+        $controller = new \ReflectionClass(SettingsController::class)->newInstanceWithoutConstructor();
+        $status = new StatusBarWidget();
+        Probe::set($controller, 'notifier', new Notifier($status, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24))));
+        Probe::set($controller, 'translator', new Translator('en'));
+        Probe::set($controller, 'writer', new PortaJsonWriter());
+        Probe::set($controller, 'rootDir', new TempProject()->dir);
+        Probe::set($controller, 'descriptors', [
+            'missing' => ['label' => 'Missing', 'kind' => SettingsRowKind::Bool, 'group' => 'general', 'restart' => false, 'apply' => null],
+        ]);
+        Probe::set($controller, 'settings', []); // 'missing' is absent, not merely falsy
+
+        $controller->toggle('missing');
+
+        $this->assertStringContainsString(' on', $this->flashText($status), 'an absent value reads as false, so toggling it flips to true/"on"');
     }
 
     public function testUnknownKeyFlashesInsteadOfTogglingAnything(): void
@@ -356,7 +492,9 @@ final class SettingsControllerTest extends TestCase
 
         $settings->toggle('doesNotExist');
 
-        $this->assertStringContainsString('Unknown setting "doesNotExist"', \Porta\Tests\Support\Toasts::last($ide));
+        $toasts = \Porta\Tests\Support\Toasts::all($ide);
+        $this->assertStringContainsString('Unknown setting "doesNotExist"', $toasts[0] ?? '');
+        $this->assertCount(1, $toasts, 'toggle() must not fall through into changeSetting() and flash a second, redundant warning');
 
         // The toast arms an expiry timer, and this Ide never run()s — so
         // nothing else will ever cancel it.

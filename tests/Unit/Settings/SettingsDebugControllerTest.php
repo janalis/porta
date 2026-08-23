@@ -45,12 +45,32 @@ final class SettingsDebugControllerTest extends TestCase
         $this->assertSame('debugAdapter', $rows[0]->key);
         $this->assertSame('node a.js', $rows[0]->value);
         $this->assertSame('not configured', $rows[0]->hint);
+        $this->assertFalse($rows[0]->restart, 'a debug-adapter change never needs a restart');
         $this->assertSame('debugLaunch', $rows[1]->key);
         $this->assertSame('{"env":{"X":"1"}}', $rows[1]->value);
+        $this->assertFalse($rows[1]->restart, 'a launch-config change never needs a restart');
 
         $unset = $this->controller()->rows('python');
         $this->assertSame('', $unset[0]->value);
         $this->assertSame('', $unset[1]->value);
+    }
+
+    /**
+     * json_encode() returns false (not a string) when it cannot encode its
+     * input; the (string) cast is what keeps a non-empty $launch array from
+     * ever putting a strict bool where the row's value must be a string.
+     */
+    public function testRowsCoerceAJsonEncodeFailureToAnEmptyStringRatherThanFalse(): void
+    {
+        $this->project = new TempProject();
+        $this->adapters = new DebugAdapters(['php' => ['debug' => ['adapter' => 'node a.js', 'launch' => ['bad' => "\xB1\x31"]]]]);
+        $this->statusBar = new StatusBarWidget();
+        $notifier = new Notifier($this->statusBar, new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20)));
+        $controller = new SettingsDebugController($this->project->dir, $this->adapters, $notifier, new Translator('en'), new PortaJsonWriter());
+
+        $rows = $controller->rows('php');
+
+        $this->assertSame('', $rows[1]->value, 'a json_encode() failure must not leak a bare bool into the row value');
     }
 
     public function testAdapterChangePersistsUpdatesLiveAndBlankClears(): void
@@ -77,6 +97,7 @@ final class SettingsDebugControllerTest extends TestCase
         $written = json_decode((string) file_get_contents($this->project->path('.porta.json')), associative: true);
         $this->assertSame(['stopOnEntry' => true], $written['languages']['php']['debug']['launch']);
         $this->assertSame(['stopOnEntry' => true], $this->adapters->launchOverrides('php'));
+        $this->assertStringContainsString('PHP: Launch config (JSON)', $this->flashed(), 'a successful launch change flashes, same as the adapter change does');
 
         $controller->change('php', 'debugLaunch', '{not json');
         $this->assertStringContainsString('Invalid JSON — not saved', $this->flashed());
@@ -89,5 +110,22 @@ final class SettingsDebugControllerTest extends TestCase
         $this->assertSame([], $this->adapters->launchOverrides('php'), 'blank clears the overrides');
         $written = json_decode((string) file_get_contents($this->project->path('.porta.json')), associative: true);
         $this->assertArrayNotHasKey('launch', $written['languages']['php']['debug'] ?? []);
+    }
+
+    /**
+     * A whitespace-only value must trim() down to '' and take the "blank
+     * clears the overrides" branch — untrimmed, `'' !== $json` still passes
+     * (the string is non-empty), so json_decode() would be handed pure
+     * whitespace and fail, wrongly flashing "Invalid JSON" instead of
+     * clearing.
+     */
+    public function testLaunchChangeTreatsWhitespaceOnlyInputAsBlank(): void
+    {
+        $controller = $this->controller();
+
+        $controller->change('php', 'debugLaunch', "   \n\t  ");
+
+        $this->assertSame([], $this->adapters->launchOverrides('php'), 'whitespace-only trims to blank, which clears the overrides');
+        $this->assertStringNotContainsString('Invalid JSON', $this->flashed());
     }
 }

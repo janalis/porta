@@ -19,6 +19,8 @@ use Porta\Workbench\View\WheelAxis;
 use Porta\Workbench\View\WheelGesture;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The stages a view has no use for still have to answer.
@@ -86,5 +88,64 @@ final class ViewPointerStagesTest extends TestCase
         $router = $this->router();
 
         $this->assertFalse($router->wheel(new WheelGesture($this->mouse(), WheelAxis::Horizontal, 3)));
+    }
+
+    /**
+     * The two tests above never lay out a real pane, so they cannot tell a
+     * correctly-refused horizontal notch from one that fell through to a
+     * pane it should never have reached — both read as "false" either way.
+     * These two need an actual hit.
+     */
+    public function testAVerticalNotchOnTheHitPaneScrollsItAndAHorizontalOneOnTheSamePaneIsStillRefused(): void
+    {
+        $translator = new Translator('en');
+        $renderer = new Renderer(new StyleSheet());
+        $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), renderer: $renderer);
+        $nav = new SettingsNavWidget($translator);
+        $tui->add($nav); // the only widget attached: it fills the whole screen
+        $tui->requestRender();
+        $tui->processRender();
+
+        $router = new SettingsMouseRouter(
+            new HitTester($renderer),
+            $tui,
+            $nav,
+            new SettingsFormWidget($translator), // never attached: HitTester::rect() is null, a guaranteed miss
+            new KeybindingsListWidget($translator), // same
+            new ViewRegions(Styles::dark()),
+        );
+
+        $this->assertTrue($router->wheel(new WheelGesture($this->mouse(), WheelAxis::Vertical, 3)), 'a vertical notch over the hit pane scrolls it');
+        $this->assertFalse($router->wheel(new WheelGesture($this->mouse(), WheelAxis::Horizontal, 3)), 'no settings pane scrolls sideways, even one the pointer is actually over');
+    }
+
+    /**
+     * $this->nav is checked first in the wheel() scan; a miss on it must
+     * `continue` to the next pane, not abandon the whole scan. Nav here is
+     * never attached (a guaranteed miss via a null rect), so only `continue`
+     * reaches the keybindings list — a `break` regression would stop at nav
+     * and never even try it.
+     */
+    public function testANotchMissingTheFirstPaneStillReachesALaterOne(): void
+    {
+        $translator = new Translator('en');
+        $renderer = new Renderer(new StyleSheet());
+        $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), renderer: $renderer);
+        $keys = new KeybindingsListWidget($translator);
+        $tui->add($keys); // the only widget attached: it fills the whole screen
+
+        $tui->requestRender();
+        $tui->processRender();
+
+        $router = new SettingsMouseRouter(
+            new HitTester($renderer),
+            $tui,
+            new SettingsNavWidget($translator), // never attached: a guaranteed miss, checked before $keys
+            new SettingsFormWidget($translator), // never attached: also a guaranteed miss
+            $keys,
+            new ViewRegions(Styles::dark()),
+        );
+
+        $this->assertTrue($router->wheel(new WheelGesture($this->mouse(), WheelAxis::Vertical, 3)), 'missing nav and form must not stop the scan before it reaches keys');
     }
 }

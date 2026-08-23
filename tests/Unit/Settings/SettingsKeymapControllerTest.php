@@ -18,6 +18,7 @@ use Porta\Plugin\Runtime\PluginHost;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\SettingsKeymapController;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestPane;
@@ -101,6 +102,8 @@ final class SettingsKeymapControllerTest extends TestCase
         // sees the key. That is what makes this rebind live.
         $this->commands->add('save', static function (): void {}, KeyDispatch::Bound);
 
+        $this->assertSame([], Probe::get($this->menuBar, 'menus'), 'the menu bar is unbuilt until something rebakes it');
+
         $controller->rebind('save', "\x1b[24~"); // F12
 
         $this->assertSame(['f12'], IdeConfig::load($project->dir)->keymap['save']);
@@ -109,6 +112,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $this->assertStringNotContainsString('applies on restart', $flash, 'save is IDE-scope: the rebuilt map dispatches it immediately');
         $this->assertSame(['f12'], $this->live->getBindings('save'), 'the live map re-merged the persisted rebind');
         $this->assertSame($parser, $this->live->current()->getParser(), 'the shared parser rode through');
+        $this->assertNotSame([], Probe::get($this->menuBar, 'menus'), 'a rebind rebakes the menu bar');
     }
 
     public function testRebindWithAModifierChordPersistsTheFullToken(): void
@@ -139,7 +143,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
         $controller->rebind('save', 'a');
 
-        $this->assertStringContainsString('(not saved)', $this->flashText($status));
+        $this->assertStringContainsString('Rebound Save File to A (not saved)', $this->flashText($status), 'the "(not saved)" suffix trails the message, not the other way around');
     }
 
     public function testAPluginPanesActionGetsARowAndCanBeRebound(): void
@@ -199,6 +203,30 @@ final class SettingsKeymapControllerTest extends TestCase
 
         $this->assertSame('n', $byAction['test_pane_step']->binding, "the pane's own action shows the pane's key");
         $this->assertSame('ctrl+shift+n', $byAction['goto_file']->binding, "a core action the editor also binds keeps the editor's");
+    }
+
+    public function testAPaneBindingBeatsAnIdeScopeBindingWhenTheEditorHasNeither(): void
+    {
+        // Priority is editor, THEN pane, THEN ide scope — an action bound at
+        // both pane and ide scope (but not editor scope) must show the pane's
+        // key, since that is the one that actually fires.
+        $project = new TempProject(['.porta/plugins/demo/plugin.php' => <<<'PHP'
+                <?php
+                return new class('demo') extends \Porta\Plugin\Api\AbstractPlugin {
+                    public function activate(\Porta\Plugin\Api\PluginApi $api): void
+                    {
+                        $api->registerActions(['test_pane_step' => 'Demo: Step']);
+                    }
+                };
+                PHP]);
+        $panes = new EditorPanes();
+        $panes->register(new TestPane('demo'), static fn (): string => '');
+        $controller = $this->controller($project->dir, new StatusBarWidget(), new Keybindings(['test_pane_step' => ['x']]), $panes);
+        $this->host->ensureLoaded();
+
+        $byAction = array_column($controller->rows(), null, 'action');
+
+        $this->assertSame('n', $byAction['test_pane_step']->binding, "the pane's own key wins over the ide-scope default");
     }
 
     public function testAWidgetScopeRebindSaysItAppliesOnRestart(): void

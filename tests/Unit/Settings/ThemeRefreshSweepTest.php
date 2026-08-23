@@ -20,11 +20,14 @@ use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\Role;
+use Porta\Ui\Theme\MonochromeTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\StyleSheetThemer;
 use Porta\Ui\Theme\Themes;
 use Porta\Ui\ThemeRefreshable;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\EditorPaneWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TabBarWidget;
 use Porta\Workbench\Notifier;
@@ -33,6 +36,7 @@ use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Widget\AbstractWidget;
+use Tempest\Highlight\Tokens\TokenTypeEnum;
 
 /**
  * A theme switch reaches a contributed view's panes, whoever contributed them.
@@ -150,5 +154,156 @@ final class ThemeRefreshSweepTest extends TestCase
         $this->applier(new ViewRegions(Styles::dark()))->applyTheme('light');
 
         $this->addToAssertionCount(1);
+    }
+
+    public function testTheThreeThemeHoldersAllSwitchToTheNewDefinition(): void
+    {
+        $styles = Themes::createSwitchable(ColorMode::Ansi, 'dark');
+        $renderer = new Renderer(new StyleSheet());
+        $syntaxTheme = TerminalThemeFactory::createSwitchable(ColorMode::Ansi, 'dark');
+        $applier = new LiveSettingsApplier(
+            $styles,
+            new StyleSheetThemer($renderer),
+            $syntaxTheme,
+            new CursorStyle(),
+            new Translator('en'),
+            new ViewRegions(Styles::dark()),
+            new EditorPanes(),
+            new TabBarWidget(),
+            TestWorkspaceLayout::create(rootDir: sys_get_temp_dir()),
+            new EventDispatcher(),
+            self::formatOnSave(),
+            true,
+        );
+
+        $applier->applyTheme('light');
+
+        $this->assertSame(
+            Themes::definition(ColorMode::Ansi, 'light')->of(Role::Gutter)->apply('x'),
+            $styles->of(Role::Gutter)->apply('x'),
+            'the shared Styles holder switched to the light definition',
+        );
+        $this->assertSame(
+            Themes::definition(ColorMode::Ansi, 'light')->of(Role::Gutter)->apply('x'),
+            $renderer->getStyleSheet()->getRules()[Role::Gutter->selector()]->apply('x'),
+            'the renderer\'s live stylesheet carries the light theme\'s rule',
+        );
+        $this->assertSame(
+            TerminalThemeFactory::create(ColorMode::Ansi, 'light')->before(TokenTypeEnum::KEYWORD),
+            $syntaxTheme->before(TokenTypeEnum::KEYWORD),
+            'the syntax-theme holder switched to the light terminal theme',
+        );
+    }
+
+    public function testAnAnsiFalseIdeSelectsThePlainColorModeRegardlessOfTheThemeId(): void
+    {
+        $styles = Themes::createSwitchable(ColorMode::Ansi, 'dark');
+        $applier = new LiveSettingsApplier(
+            $styles,
+            new StyleSheetThemer(new Renderer(new StyleSheet())),
+            TerminalThemeFactory::createSwitchable(ColorMode::Ansi, 'dark'),
+            new CursorStyle(),
+            new Translator('en'),
+            new ViewRegions(Styles::dark()),
+            new EditorPanes(),
+            new TabBarWidget(),
+            TestWorkspaceLayout::create(rootDir: sys_get_temp_dir()),
+            new EventDispatcher(),
+            self::formatOnSave(),
+            false, // ansi disabled
+        );
+
+        $applier->applyTheme('light');
+
+        $this->assertSame(
+            MonochromeTheme::definition()->of(Role::Gutter)->apply('x'),
+            $styles->of(Role::Gutter)->apply('x'),
+            'a non-ANSI IDE always gets the monochrome definition, never a colored theme',
+        );
+    }
+
+    public function testEveryWidgetInAMultiWidgetSidebarOrContentIsSweptNotJustTheFirst(): void
+    {
+        // A single-widget sidebar/content list cannot distinguish "spread every
+        // item" from "take only the first" — both produce the same one call.
+        $sidebarFlags = [false, false];
+        $contentFlags = [false, false];
+        $regions = new ViewRegions(Styles::dark());
+        $region = $regions->mint('git');
+        $region->sidebar()->add($this->widget($sidebarFlags[0]));
+        $region->sidebar()->add($this->widget($sidebarFlags[1]));
+        $region->content()->add($this->widget($contentFlags[0]));
+        $region->content()->add($this->widget($contentFlags[1]));
+
+        $this->applier($regions)->applyTheme('light');
+
+        $this->assertTrue($sidebarFlags[0] && $sidebarFlags[1], 'both sidebar widgets rebaked');
+        $this->assertTrue($contentFlags[0] && $contentFlags[1], 'both content widgets rebaked');
+    }
+
+    public function testEveryRegisteredEditorPaneIsRefreshedOnAThemeSwitch(): void
+    {
+        $refreshed = false;
+        $panes = new EditorPanes();
+        $panes->register(
+            new class($refreshed) extends EditorPaneWidget {
+                public function __construct(
+                    private bool &$refreshed,
+                ) {}
+
+                #[\Override]
+                public function paneId(): string
+                {
+                    return 'test-pane';
+                }
+
+                #[\Override]
+                public function show(string $path, mixed $payload): void {}
+
+                #[\Override]
+                public function clear(): void {}
+
+                #[\Override]
+                public function statusRight(): string
+                {
+                    return '';
+                }
+
+                #[\Override]
+                public function refreshTheme(): void
+                {
+                    $this->refreshed = true;
+                }
+
+                #[\Override]
+                public function render(RenderContext $context): array
+                {
+                    return [];
+                }
+
+                #[\Override]
+                public function handleInput(string $data): void {}
+            },
+            static fn (string $path): mixed => null,
+        );
+
+        $applier = new LiveSettingsApplier(
+            Themes::createSwitchable(ColorMode::Ansi, 'dark'),
+            new StyleSheetThemer(new Renderer(new StyleSheet())),
+            TerminalThemeFactory::createSwitchable(ColorMode::Ansi, 'dark'),
+            new CursorStyle(),
+            new Translator('en'),
+            new ViewRegions(Styles::dark()),
+            $panes,
+            new TabBarWidget(),
+            TestWorkspaceLayout::create(rootDir: sys_get_temp_dir()),
+            new EventDispatcher(),
+            self::formatOnSave(),
+            true,
+        );
+
+        $applier->applyTheme('light');
+
+        $this->assertTrue($refreshed, 'a registered editor pane is swept alongside the view regions');
     }
 }

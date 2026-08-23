@@ -82,6 +82,7 @@ final class SettingsLspControllerTest extends TestCase
         $this->assertSame('lspServer', $php[0]->key);
         $this->assertSame(SettingsRowKind::Text, $php[0]->kind);
         $this->assertSame('phpactor language-server', $php[0]->value);
+        $this->assertFalse($php[0]->restart, 'the LSP server command applies live');
 
         $this->assertSame('auto-detect', $controller->rows('typescript')[0]->hint, 'no server on PATH → generic hint');
         $this->assertSame('auto-detect', $controller->rows('php')[0]->hint, 'PHP is not auto-detected — it comes from a plugin');
