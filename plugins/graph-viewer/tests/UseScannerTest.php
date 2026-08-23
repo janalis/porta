@@ -128,6 +128,19 @@ final class UseScannerTest extends TestCase
         $this->assertSame([], $scanned['uses']);
     }
 
+    public function testGroupedFunctionImportsAreAlsoSkippedStatementWide(): void
+    {
+        $scanned = UseScanner::scan(<<<'PHP'
+            <?php
+            namespace App;
+
+            use function App\Support\{slugify, other};
+            use App\Kept;
+            PHP);
+
+        $this->assertSame(['App\Kept'], $scanned['uses']);
+    }
+
     public function testStringInterpolationBracesDoNotConfuseDepth(): void
     {
         $scanned = UseScanner::scan(<<<'PHP'

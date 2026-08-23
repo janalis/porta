@@ -149,4 +149,20 @@ final class GraphRendererTest extends TestCase
         $this->assertSame('clip', substr($lines[0], offset: 0, length: 4), 'text stops at maxCol');
         $this->assertStringNotContainsString("\x1b[", implode('', $lines), 'a style-less grid emits no escapes');
     }
+
+    public function testABlankRunUnderAnOrdinaryRoleSkipsEscapesButASelectedRowRunDoesNot(): void
+    {
+        $view = new ZoomPanModel(100, 100);
+        $grid = new GraphCellGrid(4, 2, $view, Styles::dark());
+        $dim = $grid->roleKey(Role::Dim);
+        $selected = $grid->roleKey(Role::SelectedRow);
+        $grid->put(0, 0, ' ', $dim);
+        $grid->put(1, 0, ' ', $dim);
+        $grid->put(0, 1, ' ', $selected);
+        $grid->put(1, 1, ' ', $selected);
+        $lines = $grid->lines();
+
+        $this->assertStringNotContainsString("\x1b[", $lines[0], 'a blank run under a plain role needs no escapes');
+        $this->assertStringContainsString("\x1b[", $lines[1], "a selected node's blank interior is still inverse-painted");
+    }
 }

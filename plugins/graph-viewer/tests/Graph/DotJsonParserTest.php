@@ -244,4 +244,14 @@ final class DotJsonParserTest extends TestCase
         $this->assertSame([], $layout->clusters);
         $this->assertSame(1, $layout->nodeCount());
     }
+
+    public function testClusterWithoutALabelDefaultsToEmptyString(): void
+    {
+        // GraphCluster::$label is non-nullable string — a cluster with no
+        // `label` key must fall back to '', not the null `label()` returns.
+        $json = '{"bb": "0,0,20,20", "_subgraph_cnt": 1, "objects": ['.'{"_gvid": 0, "name": "cluster_x", "bb": "0,0,10,10"}]}';
+        $layout = DotJsonParser::parse($json);
+
+        $this->assertSame('', $layout->clusters[0]->label);
+    }
 }
