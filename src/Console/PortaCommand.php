@@ -38,7 +38,9 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
         Language server resolution: --lsp, then .porta.json {"lsp": …}, then $PORTA_LSP,
         then the enabled language-server plugins (phpantom for PHP; enable the phpactor
-        plugin to use phpactor instead), then typescript-language-server / pyright on PATH.
+        plugin to use phpactor instead; symfony-lsp for Symfony projects — twig, yaml,
+        xml, json and dotenv, plus PHP when neither PHP server is enabled), then
+        typescript-language-server / pyright on PATH.
         HELP,
     usages: ['src/', 'src/Ide.php:200', '--no-lsp .'],
 )]

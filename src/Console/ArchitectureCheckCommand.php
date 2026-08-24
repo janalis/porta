@@ -249,6 +249,10 @@ final class ArchitectureCheckCommand extends Command
         'Settings>Workbench',
         'Support>Container',
         'Support>Ui',
+        // The symfony-lsp plugin's one core reach: Argv::split for the
+        // php-command setting. Its plugin.php (outside the namespace graph)
+        // does the PluginApi wiring.
+        'SymfonyLsp>Support',
         'Terminal>Support',
         'Terminal>Ui',
         'Todo>Plugin',
