@@ -1008,7 +1008,9 @@ final class PluginApi
     /**
      * Persist a new value for a setting this plugin registered — coerced to the
      * declared kind, kept live and written to `.porta.json` under
-     * `plugins.<name>.<key>`, exactly like a Settings-page edit. An action
+     * `plugins.<name>.<key>`, exactly like a Settings-page edit: this plugin's
+     * own {@see onSettingChanged()} hooks fire, and when it provides a
+     * language server the LSP re-resolves and relaunches live. An action
      * method: calling it during activate() throws (seed defaults via
      * {@see registerSetting()} instead).
      *
@@ -1021,6 +1023,8 @@ final class PluginApi
         }
         $runtime = $this->manager->runtime(); // activate()-phase gate
         $this->settings->change($this->pluginName, $key, $value);
+        // The hook gets the COERCED value — what setting() reads back now.
+        $runtime->lifecycle?->onPluginSettingChanged($this->pluginName, $key, $this->settings->value($this->pluginName, $key));
         $runtime->tui->requestRender();
     }
 

@@ -34,6 +34,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RecordingChangeMarkSink;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
+use Porta\Tests\Support\RecordingLifecycleOps;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
@@ -398,6 +399,7 @@ final class PluginApiTest extends TestCase
                 new Clipboard($tui),
                 new StatusBarWidget(),
                 new CodeEditorWidget(),
+                lifecycle: $lifecycle = new RecordingLifecycleOps(),
             ),
         );
         $api = new PluginApi('demo', $manager, $project->dir, $settings);
@@ -409,6 +411,11 @@ final class PluginApiTest extends TestCase
 
         $this->assertSame(7, $api->setting('jobs'), 'coerced to the declared int kind, live');
         $this->assertSame(7, IdeConfig::load($project->dir)->plugins['demo']['jobs'], 'persisted to .porta.json');
+        $this->assertSame(
+            [['demo', 'jobs', 7]],
+            $lifecycle->settingChanges,
+            'Settings-page parity: the lifecycle hook fires with the coerced value, so hooks run and a provider plugin reconfigures the LSP',
+        );
 
         try {
             $api->changeSetting('ghost', true);

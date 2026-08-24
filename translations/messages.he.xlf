@@ -2602,6 +2602,18 @@
         <source>%tool%: generated config</source>
         <target>%tool%: התצורה נוצרה</target>
       </trans-unit>
+      <trans-unit id="662">
+        <source>symfony-lsp: downloading the latest release…</source>
+        <target>symfony-lsp: מוריד את הגרסה האחרונה…</target>
+      </trans-unit>
+      <trans-unit id="663">
+        <source>symfony-lsp installed: %path%</source>
+        <target>symfony-lsp הותקן: %path%</target>
+      </trans-unit>
+      <trans-unit id="664">
+        <source>symfony-lsp install failed: %why%</source>
+        <target>התקנת symfony-lsp נכשלה: %why%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

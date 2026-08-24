@@ -16,6 +16,7 @@ use Porta\Editor\LineAnnotationSink;
 use Porta\Editor\ModalHost;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
+use Porta\Plugin\Lifecycle\PluginLifecycleOps;
 use Porta\Support\Clipboard;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Dock\DockToolController;
@@ -51,5 +52,9 @@ final readonly class PluginRuntime
         public Clipboard $clipboard,
         public StatusBarWidget $statusBar,
         public EditorViewOptions $editorView,
+        // Nullable-with-default so the many positional test constructions
+        // stand; the container always resolves it, and the symfony-lsp E2e
+        // pins the wired behavior (changeSetting → live LSP reconfigure).
+        public ?PluginLifecycleOps $lifecycle = null,
     ) {}
 }

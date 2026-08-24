@@ -2602,6 +2602,18 @@
         <source>%tool%: generated config</source>
         <target>%tool% : configuration générée</target>
       </trans-unit>
+      <trans-unit id="662">
+        <source>symfony-lsp: downloading the latest release…</source>
+        <target>symfony-lsp : téléchargement de la dernière version…</target>
+      </trans-unit>
+      <trans-unit id="663">
+        <source>symfony-lsp installed: %path%</source>
+        <target>symfony-lsp installé : %path%</target>
+      </trans-unit>
+      <trans-unit id="664">
+        <source>symfony-lsp install failed: %why%</source>
+        <target>échec de l’installation de symfony-lsp : %why%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
