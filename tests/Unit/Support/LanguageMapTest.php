@@ -62,7 +62,8 @@ final class LanguageMapTest extends TestCase
 
         // Basename-driven, extension absent or misleading.
         yield 'dockerfile' => ['Dockerfile', 'dockerfile', 'plaintext'];
-        yield 'dotenv' => ['.env.local', 'dotenv', 'plaintext'];
+        yield 'dotenv' => ['.env.local', 'dotenv', 'dotenv'];
+        yield 'dotenv bare' => ['/proj/.env', 'dotenv', 'dotenv'];
         yield 'tsconfig' => ['tsconfig.json', 'jsonc', 'json'];
         yield 'jsconfig' => ['jsconfig.json', 'jsonc', 'json'];
         yield 'composer.lock' => ['composer.lock', 'json', 'plaintext'];

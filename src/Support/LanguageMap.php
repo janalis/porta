@@ -140,6 +140,13 @@ final class LanguageMap
     /** The LSP languageId for a path; `plaintext` when no server speaks it. */
     public static function lspForPath(string $path): string
     {
+        // `.env.local` / `.env.dev` resolve their EXTENSION as `local`/`dev`,
+        // so without this basename rule (the same one the highlight column
+        // has) only a bare `.env` would ever reach the dotenv server.
+        if (str_starts_with(strtolower(basename($path)), '.env')) {
+            return 'dotenv';
+        }
+
         return self::EXTENSIONS[ProjectPaths::extension($path)][1] ?? 'plaintext';
     }
 
