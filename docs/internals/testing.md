@@ -47,7 +47,7 @@ Roughly 700 duplicated lines once collapsed onto these.
 | `StatusReads` | `flashText()` reads the model, `statusRow()` the rendered row |
 | `Toasts` | the same model-vs-render choice for toasts |
 | `GitBinary` | `skipWithoutGit()` / `whichGit()` |
-| `TempProject` | `git()`, `initGit()`, `commitAll()` |
+| `TempProject` | `git()`, `initGit()`, `commitAll()` — hold it in a variable: an inline `new TempProject(...)->dir` is freed (dir deleted) before the enclosing call runs, and `composer arch` fails the line |
 | `TestOverlayPane`, `RendersRoot` | the presenter rigs |
 | `TestTui::create(cols, rows)` | the three-arg Tui rig |
 | `lsp-stub.php` | `sendMessage` / `readFrames` for stub servers |

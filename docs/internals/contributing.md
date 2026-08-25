@@ -69,10 +69,14 @@ is in `mago.toml` itself.
 
 **`composer arch`** — the architecture ratchet
 (`src/Console/ArchitectureCheckCommand`): the exact namespace import graph,
-class-level acyclicity with a pinned set of accepted cycles, and the E2e
-suite-size bound. **It fails on drift in either direction** — a new edge must be
-added to the embedded allowlist in the same commit, and a vanished edge must be
-removed from it. A stale allowlist is not a gate.
+class-level acyclicity with a pinned set of accepted cycles, the E2e
+suite-size bound, and no test line chaining off an inline
+`new TempProject(...)` temporary (PHP frees it — deleting the fixture dir —
+before the enclosing call runs, so the assertion silently tests the
+missing-dir case instead; hold the project in a variable). **It fails on
+drift in either direction** — a new edge must be added to the embedded
+allowlist in the same commit, and a vanished edge must be removed from it. A
+stale allowlist is not a gate.
 
 **`composer format:check`** — clean.
 
