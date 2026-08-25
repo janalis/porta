@@ -21,9 +21,13 @@ final class LspSessionPoolTest extends TestCase
     private FixedActiveFile $activeFile;
     private int $statusRepaints = 0;
 
+    /** What every factory-built client's start() reports; steer to Failed for retry scenarios. */
+    private \Porta\Support\Outcome $clientOutcome = \Porta\Support\Outcome::Ok;
+
     private function pool(array $servers, Presence $configure = Presence::With): LspSessionPool
     {
         $this->clients = [];
+        $this->clientOutcome = \Porta\Support\Outcome::Ok;
         $dispatcher = new EventDispatcher();
         $dispatcher->addListener(LspStatusChanged::class, function (): void {
             ++$this->statusRepaints;
@@ -34,6 +38,7 @@ final class LspSessionPoolTest extends TestCase
             new Translator('en'),
             function (array $command, string $rootDir, \Closure $onLog, ?array $options): FakeLspClient {
                 $client = new FakeLspClient();
+                $client->startOutcome = $this->clientOutcome;
                 $this->clients[] = ['command' => $command, 'client' => $client, 'onLog' => $onLog, 'options' => $options];
 
                 return $client;
@@ -98,6 +103,51 @@ final class LspSessionPoolTest extends TestCase
 
         $this->assertCount(1, $this->clients, 'JS and TS share the ts-ls process');
         $this->assertCount(2, $this->clients[0]['client']->notifications);
+    }
+
+    public function testAFailedStartRetriesOnLaterDidOpensThenGoesSticky(): void
+    {
+        // A dead server used to stay dead until a settings edit. Now the slot
+        // is evicted so a later didOpen relaunches — bounded, so a
+        // crash-looping binary is not respawned on every buffer switch.
+        $pool = $this->pool(self::SERVERS);
+        $this->clientOutcome = \Porta\Support\Outcome::Failed;
+
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $this->assertCount(1, $this->clients);
+        $this->assertSame('failed', $pool->statusFor('/tmp/proj/a.php'));
+
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 2);
+        $this->assertCount(2, $this->clients, 'the dead slot was evicted, so the next didOpen retried');
+
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 3);
+        $this->assertCount(3, $this->clients, 'third and final attempt');
+
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 4);
+        $this->assertCount(3, $this->clients, 'past the cap the failure is sticky until a reconfigure');
+        $this->assertSame('failed', $pool->statusFor('/tmp/proj/a.php'));
+    }
+
+    public function testASuccessResetsTheRetryBudgetAndAMidSessionDeathRelaunches(): void
+    {
+        $pool = $this->pool(self::SERVERS);
+        $this->clientOutcome = \Porta\Support\Outcome::Failed;
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1); // failure 1
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 2); // failure 2 — one attempt left
+
+        $this->clientOutcome = \Porta\Support\Outcome::Ok;
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 3);
+        $this->assertCount(3, $this->clients);
+        $this->assertSame('php-ls', $pool->statusFor('/tmp/proj/a.php'), 'recovered');
+
+        // Mid-session death: the same start callback fires a second time.
+        $onReady = $this->clients[2]['client']->lastOnReady;
+        $this->assertNotNull($onReady);
+        $onReady(\Porta\Support\Outcome::Failed);
+        $this->assertSame('failed', $pool->statusFor('/tmp/proj/a.php'));
+
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 4);
+        $this->assertCount(4, $this->clients, 'the death evicted the slot with a FRESH budget — the success reset the count');
     }
 
     public function testReconfigureWithAnIdenticalMapKeepsTheRunningSessions(): void

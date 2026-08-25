@@ -70,8 +70,12 @@ class FakeLspClient implements LspClientInterface
     /** The outcome start() reports — set Failed to exercise failure paths. */
     public Outcome $startOutcome = Outcome::Ok;
 
+    /** @var (callable(Outcome): void)|null the last start callback — invoke it again to simulate a mid-session death */
+    public $lastOnReady;
+
     public function start(callable $onReady): void
     {
+        $this->lastOnReady = $onReady;
         $this->started = true;
         if (!$this->startOutcome->isOk()) {
             $onReady($this->startOutcome);

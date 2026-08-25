@@ -35,6 +35,12 @@ final class LspSessionPool
     private array $sessions = [];
     /** @var array<string, string> server signature => 'starting…' | server name | 'failed' */
     private array $statuses = [];
+    /** @var array<string, int> server signature => failed starts since the last reconfigure/success */
+    private array $startFailures = [];
+
+    /** Failed starts per signature before the failure goes STICKY (until a reconfigure). */
+    private const int MAX_START_ATTEMPTS = 3;
+
     private bool $disabled = false;
     private bool $configured = false;
 
@@ -102,6 +108,7 @@ final class LspSessionPool
         $this->stop();
         $this->sessions = [];
         $this->statuses = [];
+        $this->startFailures = [];
         $this->servers = $servers;
 
         return true;
@@ -229,10 +236,12 @@ final class LspSessionPool
             if (StartMode::Reuse === $start) {
                 return null;
             }
-            $this->sessions[$signature] = $this->startSession($server, $signature);
+            $this->startSession($server, $signature);
         }
 
-        return $this->sessions[$signature];
+        // A synchronously failing start (spawn refusal) evicts its own slot,
+        // so the entry may already be gone again: nothing to route to.
+        return $this->sessions[$signature] ?? null;
     }
 
     /** The configured server key for $path: its exact languageId, else the catch-all. */
@@ -257,9 +266,13 @@ final class LspSessionPool
     }
 
     /** @param array{command: list<string>, name: string, initializationOptions?: array<string, mixed>} $server */
-    private function startSession(array $server, string $signature): LspSession
+    private function startSession(array $server, string $signature): void
     {
         $session = new LspSession($this->rootDir, $this->clientFactory);
+        // Stored BEFORE start(): a synchronous failure (a spawn refusal, a
+        // sync test fake) must be able to evict the very slot it occupies —
+        // stored after, the assignment would resurrect the dead session.
+        $this->sessions[$signature] = $session;
         $this->statuses[$signature] = $this->translator->trans('starting…');
         $onLog = $this->onLog;
         $session->start(
@@ -268,13 +281,29 @@ final class LspSessionPool
             $this->onDiagnostics ?? static function (array $params): void {},
             $this->onApplyEdit ?? static fn (array $edit): bool => false,
             function (Outcome $ok) use ($server, $signature): void {
-                $this->statuses[$signature] = $ok->isOk() ? $server['name'] : $this->translator->trans('failed');
+                if ($ok->isOk()) {
+                    // A server that came up earns fresh retries for its next
+                    // incident (this same callback fires again on a
+                    // mid-session death).
+                    unset($this->startFailures[$signature]);
+                    $this->statuses[$signature] = $server['name'];
+                } else {
+                    $attempts = ($this->startFailures[$signature] ?? 0) + 1;
+                    $this->startFailures[$signature] = $attempts;
+                    $this->statuses[$signature] = $this->translator->trans('failed');
+                    // Evict so the next didOpen relaunches — a dead server
+                    // used to stay dead until a settings edit. Bounded:
+                    // past MAX_START_ATTEMPTS the failure goes sticky, so a
+                    // crash-looping binary is not respawned on every buffer
+                    // switch for the rest of the session.
+                    if ($attempts < self::MAX_START_ATTEMPTS) {
+                        unset($this->sessions[$signature]);
+                    }
+                }
                 $this->dispatcher?->dispatch(new LspStatusChanged());
             },
             $server['initializationOptions'] ?? null,
         );
-
-        return $session;
     }
 
     /** @param array{command: list<string>, name: string, initializationOptions?: array<string, mixed>} $server */
