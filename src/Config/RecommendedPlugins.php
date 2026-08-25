@@ -31,6 +31,13 @@ final class RecommendedPlugins
     /** The bundled PHP language server. */
     public const string LANGUAGE_SERVER = 'phpantom';
 
+    /**
+     * The bundled Symfony language server, offered only when the project IS a
+     * Symfony application ({@see \Porta\Onboarding\SymfonyDetector}) — it runs
+     * beside the PHP server, serving twig/yaml/xml/json/dotenv.
+     */
+    public const string SYMFONY_LANGUAGE_SERVER = 'symfony-lsp';
+
     /** The bundled formatter. */
     public const string FORMATTER = 'php-cs-fixer';
 

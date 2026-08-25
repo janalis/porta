@@ -124,6 +124,35 @@ final class WelcomeScreenTest extends TestCase
         ]);
     }
 
+    /** A Symfony application gets one more card, and working it enables symfony-lsp. */
+    public function testASymfonyProjectOffersTheSymfonyLanguageToolsCard(): void
+    {
+        $project = new TempProject([
+            'a.php' => "<?php\nreturn 1;\n",
+            'composer.json' => (string) json_encode(['require' => ['symfony/framework-bundle' => '^7.0']]),
+        ]);
+
+        $this->runIde($project, $project->path('a.php'), [
+            120 => function ($tui, $terminal) use ($project): void {
+                $this->frame($tui); // the modal lays out from the first frame's rects
+                $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Symfony language tools'), what: 'the Symfony card to paint');
+                $this->assertStringContainsString('0 of 5 done', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the extra checkable card joins the count');
+
+                $tui->handleInput("\x1b[B"); // highlighting → PHP server
+                $tui->handleInput("\x1b[B"); // PHP server → Symfony tools
+                $tui->handleInput("\r");
+                $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugin "symfony-lsp" enabled'), what: 'the enable flash');
+
+                $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                $this->assertSame(
+                    [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'symfony-lsp'],
+                    \is_array($config) ? $config['enabledPlugins'] ?? null : null,
+                    'the card enables the Symfony server, exactly like Settings → Plugins would',
+                );
+            },
+        ]);
+    }
+
     /** Esc hands the main area back to the editor. */
     public function testEscapeReturnsToTheEditor(): void
     {

@@ -2614,6 +2614,14 @@
         <source>symfony-lsp install failed: %why%</source>
         <target>symfony-lsp のインストールに失敗しました: %why%</target>
       </trans-unit>
+      <trans-unit id="665">
+        <source>Symfony language tools</source>
+        <target>Symfony 言語ツール</target>
+      </trans-unit>
+      <trans-unit id="666">
+        <source>Routes, services, Twig and config — this project is a Symfony application</source>
+        <target>ルート、サービス、Twig、設定 — このプロジェクトは Symfony アプリケーションです</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -12,6 +12,7 @@ use Porta\Highlight\SyntaxHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\I18n\Translator;
 use Porta\Onboarding\MagoDetector;
+use Porta\Onboarding\SymfonyDetector;
 use Porta\Onboarding\WelcomeSteps;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\TempProject;
@@ -57,7 +58,13 @@ final class WelcomeStepsTest extends TestCase
 
     private function build(SyntaxHighlightProviderSource $source): WelcomeSteps
     {
-        return new WelcomeSteps(new Translator('en'), $source, $this->lifecycle, $this->commands, new MagoDetector($this->project->path()));
+        return new WelcomeSteps(new Translator('en'), $source, $this->lifecycle, $this->commands, new MagoDetector($this->project->path()), new SymfonyDetector($this->project->path()));
+    }
+
+    /** Make the project a Symfony application, adding the symfony-lsp card. */
+    private function withSymfony(): void
+    {
+        $this->project->write('composer.json', (string) json_encode(['require' => ['symfony/framework-bundle' => '^7.0']]));
     }
 
     /** Ship an executable mago in the project, flipping both tool steps' target. */
@@ -99,6 +106,24 @@ final class WelcomeStepsTest extends TestCase
         $titles = array_map(static fn ($step): string => $step->title, $this->steps()->all());
 
         $this->assertSame(['Syntax highlighting', 'PHP language server', 'Code style fixer', 'Static analysis', 'Read the guide'], $titles);
+    }
+
+    public function testASymfonyProjectGetsTheSymfonyLanguageToolsCardAfterThePhpServer(): void
+    {
+        $this->withSymfony();
+
+        $steps = $this->steps()->all();
+        $titles = array_map(static fn ($step): string => $step->title, $steps);
+
+        $this->assertSame(['Syntax highlighting', 'PHP language server', 'Symfony language tools', 'Code style fixer', 'Static analysis', 'Read the guide'], $titles);
+        $this->assertSame('Enable symfony-lsp', $steps[2]->actionLabel);
+        $this->assertFalse($steps[2]->isDone());
+
+        $steps[2]->run();
+        $this->assertSame([[RecommendedPlugins::SYMFONY_LANGUAGE_SERVER, true]], $this->lifecycle->toggled, 'the same enable call Settings → Plugins makes');
+
+        $this->lifecycle->names[] = RecommendedPlugins::SYMFONY_LANGUAGE_SERVER;
+        $this->assertTrue($this->steps()->all()[2]->isDone(), 'done the moment the plugin is enabled');
     }
 
     /** With no backend loaded the highlighting step is the thing to do. */

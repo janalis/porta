@@ -30,6 +30,7 @@ final class WelcomeSteps
         private readonly PluginEnablement $lifecycle,
         private readonly CommandRegistry $commands,
         private readonly MagoDetector $mago,
+        private readonly SymfonyDetector $symfony,
     ) {}
 
     /** @return list<WelcomeStep> */
@@ -62,6 +63,21 @@ final class WelcomeSteps
                 function (): void {
                     $this->lifecycle->enable(RecommendedPlugins::LANGUAGE_SERVER);
                 },
+            ),
+            // Only on a project that IS a Symfony application — the card would
+            // be noise anywhere else, and the server's features (routes,
+            // container, Twig) only exist against the framework.
+            ...(
+                $this->symfony->isSymfonyProject()
+                    ? [new WelcomeStep(
+                        $this->translator->trans('Symfony language tools'),
+                        $this->translator->trans('Routes, services, Twig and config — this project is a Symfony application'),
+                        $this->translator->trans('Enable %name%', ['%name%' => RecommendedPlugins::SYMFONY_LANGUAGE_SERVER]),
+                        fn (): bool => $this->isEnabled(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER),
+                        function (): void {
+                            $this->lifecycle->enable(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER);
+                        },
+                    )] : []
             ),
             // Enable-only: the plugin's format-on-save toggle stays where it
             // lives (its settings page) — flipping save behaviour from an

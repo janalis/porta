@@ -2614,6 +2614,14 @@
         <source>symfony-lsp install failed: %why%</source>
         <target>installazione di symfony-lsp non riuscita: %why%</target>
       </trans-unit>
+      <trans-unit id="665">
+        <source>Symfony language tools</source>
+        <target>Strumenti di linguaggio Symfony</target>
+      </trans-unit>
+      <trans-unit id="666">
+        <source>Routes, services, Twig and config — this project is a Symfony application</source>
+        <target>Route, servizi, Twig e configurazione — questo progetto è un’applicazione Symfony</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
