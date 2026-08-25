@@ -10,6 +10,13 @@ async work: LSP over stdio, git subprocesses, the integrated terminal PTYs (one
 per session), run configurations. **Nothing blocks.** Long operations are timers
 or callbacks on the shared loop.
 
+Recurring work that touches the filesystem is **sliced**: the reconciliation
+poll (`FilesystemReconciler::pollSlice()`, armed in `Ide::run()` at 4Hz) checks
+at most four buffers and eight tree directories per tick, so a big project
+degrades to slower change *detection*, never a longer loop stall. The
+synchronous full pass (`Ide::pollFilesystem()`) remains the seam tests drive
+when they need an external edit's effect observable immediately.
+
 ## Rendering
 
 Widgets render to `string[]` measured in **display columns**
@@ -23,6 +30,21 @@ clear render caches recursively. That is what the chrome-root sweep is for; see
 
 Layout is horizontal and vertical `ContainerWidget`s. Sizes come from rendered
 content, with proportions persisted per project.
+
+**Frame scheduling** lives in `Ui/BidiTui`, layered over the vendor's flag +
+adaptive-ticker model. `requestRender()` additionally queues ONE deferred
+`tick()` per burst, so input paints in the same loop iteration instead of
+waiting out the ticker's fresh 10ms repeat (the ticker stays as the retry
+fallback). While the `NonBlockingTerminal` still holds undelivered bytes,
+`processRender()` skips frame generation (back-pressure without blocking); the
+writer's `onDrain` hook, armed on the first skip, repaints the moment the tty
+catches up. An idle Tui goes fully quiet — `BidiTuiTest` soaks for it.
+
+The editor viewport **detaches from the caret on wheel scroll**
+(`Editor/EditorScroll`): the caret may leave the screen and the selection
+survives; any caret motion — version, line or column change — re-attaches via
+the render-time `clampToCaret`, the one choke point every caret move already
+crosses.
 
 ## Editor core
 
