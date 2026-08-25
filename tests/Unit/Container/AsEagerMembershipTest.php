@@ -52,14 +52,14 @@ final class AsEagerMembershipTest extends ContainerTestCase
         // SET, because their relative order is container discovery order and no
         // behaviour reads it — asserting it would pin an accident.
         //
-        // Empty, and that is the finding rather than an omission. Three left
-        // when a view took ownership of its pointer and its context menus, and
-        // the last two left with git: a plugin class can never be a container
+        // Three left when a view took ownership of its pointer and its context
+        // menus, and two left with git: a plugin class can never be a container
         // service, so what `plugin.php` builds by hand cannot carry a tag. The
-        // list stays because the tag is still the sanctioned way for a CORE
-        // service to exist for its side effect, and the day one does it must
-        // be written down here.
-        $unordered = [];
+        // tag is still the sanctioned way for a CORE service to exist for its
+        // side effect, and every one that does is written down here.
+        $unordered = [
+            \Porta\Support\PerfCollector::class, // registers its frame hook at construction
+        ];
 
         self::assertSame($ordered, \array_slice($actual, offset: 0, length: \count($ordered)), 'the contractual construction order');
 

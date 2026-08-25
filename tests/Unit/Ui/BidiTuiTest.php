@@ -106,6 +106,10 @@ final class BidiTuiTest extends TestCase
         $terminal->start(static function (): void {}, static function (): void {}, static function (): void {});
         $tui = $this->tuiWith($terminal);
 
+        $perfProject = new \Porta\Tests\Support\TempProject(); // held: its destructor removes the dir
+        $perf = new \Porta\Support\PerfCollector($perfProject->dir, new \Symfony\Component\Clock\MockClock());
+        $tui->setPerfSink($perf);
+
         $terminal->write(str_repeat('#', times: 524_288)); // a wedged tty: backlog past the socket buffer
         $backlog = $terminal->pendingBytes();
         $this->assertGreaterThan(0, $backlog);
@@ -113,6 +117,7 @@ final class BidiTuiTest extends TestCase
         $tui->requestRender();
         $tui->processRender();
 
+        $this->assertSame(1, Probe::get($perf, 'paceSkips'), 'the skipped generation was counted');
         $this->assertTrue((bool) Probe::get($tui, 'renderRequested'), 'the render request stays pending while the tty is behind');
         $this->assertSame($backlog, $terminal->pendingBytes(), 'no new frame bytes were generated into the backlog');
 
@@ -238,6 +243,7 @@ final class BidiTuiTest extends TestCase
         $terminal = new VirtualTerminal(columns: 20, rows: 2);
         $tui = $this->tuiWith($terminal);
         $tui->start(); // start() itself requests the first render
+        $tui->requestRender(); // a same-burst duplicate: with NO sink set, counting must be a no-op
 
         $this->microTurn();
 
@@ -249,6 +255,9 @@ final class BidiTuiTest extends TestCase
     {
         $terminal = new VirtualTerminal(columns: 20, rows: 2);
         $tui = $this->tuiWith($terminal);
+        $perfProject = new \Porta\Tests\Support\TempProject(); // held: its destructor removes the dir
+        $perf = new \Porta\Support\PerfCollector($perfProject->dir, new \Symfony\Component\Clock\MockClock());
+        $tui->setPerfSink($perf);
         $ticks = 0;
         $tui->onTick(static function () use (&$ticks): bool {
             ++$ticks;
@@ -263,6 +272,7 @@ final class BidiTuiTest extends TestCase
         $this->microTurn();
 
         self::assertSame(1, $ticks, 'N requests in one iteration coalesce into one tick');
+        self::assertGreaterThanOrEqual(1, Probe::get($perf, 'coalesced'), 'the deduped request was counted');
         self::assertFalse((bool) Probe::get($tui, 'immediateTickQueued'), 'the queue flag cleared after the tick');
         $tui->stop();
     }

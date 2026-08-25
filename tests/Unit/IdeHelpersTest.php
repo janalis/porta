@@ -80,6 +80,21 @@ final class IdeHelpersTest extends TestCase
         self::assertSame(Services::resolve($this->ide, Renderer::class), Services::resolve($this->ide, Renderer::class), 'the same shared instance every time');
     }
 
+    public function testThePerfCollectorIsWiredAsSinkAndInputListener(): void
+    {
+        $tui = Services::resolve($this->ide, Tui::class);
+        $perf = Services::resolve($this->ide, \Porta\Support\PerfCollector::class);
+
+        // The sink handed to BidiTui is the shared collector instance...
+        self::assertSame($perf, Probe::get($tui, 'perf'), 'setPerfSink received the collector');
+
+        // ...and the high-priority listener counts a wheel event even though
+        // the input dispatcher stops propagation on the mouse path.
+        $tui->handleInput("\x1b[<65;2;2M");
+        self::assertSame(1, Probe::get($perf, 'wheels'), 'the wheel notch was counted before the dispatcher swallowed it');
+        self::assertSame(1, Probe::get($perf, 'inputs'));
+    }
+
     private function workspaceEditor(): WorkspaceEditor
     {
         return Services::resolve($this->ide, WorkspaceEditor::class);

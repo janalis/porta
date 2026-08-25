@@ -17,6 +17,7 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
+use Porta\Support\FreezeWatchdog;
 use Porta\Ui\BidiTui;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\Themes;
@@ -159,6 +160,13 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // The wall clock (symfony/clock). A NativeClock backs Psr\Clock\ClockInterface
     // so time-dependent services autowire it; tests inject a MockClock.
     $services->set(ClockInterface::class, NativeClock::class);
+
+    // Tighter than the constructor defaults: at 1s/3s the watchdog can only
+    // see multi-second freezes — sub-second hitches are what make scrolling
+    // feel laggy, and this is the instrument that has to catch them.
+    $services->set(FreezeWatchdog::class)
+        ->arg('$interval', 0.25)
+        ->arg('$driftThreshold', 0.5);
 
     // symfony/filesystem, one shared stateless instance. Consumers declare it
     // as a trailing promoted param with a `new Filesystem()` default (the

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Ui;
 
 use Porta\I18n\PaneReorder;
+use Porta\Support\PerfCollector;
 use Revolt\EventLoop;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 use Symfony\Component\Tui\Render\Renderer;
@@ -55,6 +56,9 @@ final class BidiTui extends Tui implements FrameHooks
 
     /** The terminal's backlog-drained hook is installed (armed once, on first skip). */
     private bool $drainWakeupArmed = false;
+
+    /** Counter sink for skipped/coalesced frame generation; null outside a full Ide. */
+    private ?PerfCollector $perf = null;
 
     /**
      * The vendor Tui privates the mirrored frame path reads EVERY frame,
@@ -144,10 +148,21 @@ final class BidiTui extends Tui implements FrameHooks
         $this->queueImmediateTick();
     }
 
+    /** Install (or clear, with null) the perf-counter sink (the setPaneReorder idiom). */
+    public function setPerfSink(?PerfCollector $sink): void
+    {
+        $this->perf = $sink;
+    }
+
     /** Queue a same-iteration tick, at most one at a time, only while running. */
     private function queueImmediateTick(): void
     {
-        if ($this->immediateTickQueued || !$this->isRunning()) {
+        if ($this->immediateTickQueued) {
+            $this->perf?->countCoalesced();
+
+            return;
+        }
+        if (!$this->isRunning()) {
             return;
         }
         $this->immediateTickQueued = true;
@@ -172,6 +187,7 @@ final class BidiTui extends Tui implements FrameHooks
         // loop and without dropping bytes.
         $paced = $this->getTerminal();
         if ($paced instanceof NonBlockingTerminal && $paced->pendingBytes() > 0) {
+            $this->perf?->countPaceSkip();
             if (!$this->drainWakeupArmed) {
                 // Wake the moment the backlog empties: the skipped frame then
                 // paints at drain time instead of on the next ticker interval.

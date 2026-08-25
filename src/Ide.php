@@ -37,6 +37,7 @@ use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsLanguageController;
 use Porta\Support\DiagnosticLog;
 use Porta\Support\FreezeWatchdog;
+use Porta\Support\PerfCollector;
 use Porta\Ui\BidiTui;
 use Porta\Ui\NonBlockingTerminal;
 use Porta\Ui\TerminalRestorer;
@@ -74,6 +75,7 @@ final class Ide
     private CodeEditorWidget $editor;
     private Notifier $notifier;
     private FreezeWatchdog $watchdog;
+    private PerfCollector $perf;
     private EditorArea $editorArea;
     private TerminalStateRefresher $terminalRefresher;
     private RunController $run;
@@ -222,6 +224,12 @@ final class Ide
         $this->service(WidgetHooks::class)->wire();
         $this->menuRebuilder->rebuild();
         $this->tui->addListener($this->service(InputDispatcher::class)->dispatch(...));
+        // The perf collector counts BEFORE the dispatcher: the dispatcher stops
+        // propagation on most paths, so at default priority the counter would
+        // miss nearly every event.
+        $this->perf = $this->service(PerfCollector::class);
+        $this->bidiTui->setPerfSink($this->perf);
+        $this->tui->addListener($this->perf->countInput(...), priority: 1000);
         // Last: hand the plugin handlers their live runtime seam and flash the
         // config/plugin load warnings, once every service they reach exists.
         $this->service(StartupWiring::class)->wire();
@@ -288,6 +296,10 @@ final class Ide
         // Loop-stall detector: evidence for "the app froze" reports lands in
         // .porta/freeze.log (drift lines + a backtrace on a hard hang).
         $this->watchdog->start();
+
+        // Render/input evidence: one stats line per active second lands in
+        // .porta/perf.log, so a "feels laggy" report carries its own numbers.
+        $this->perf->start();
 
         // A termination signal must unwind through the finally below, not kill
         // the process mid-alternate-screen with mouse reporting still on:
@@ -369,6 +381,7 @@ final class Ide
             // git view's 2s status-poll repeat) so nothing re-arms below.
             $this->service(ViewRegistry::class)->closeAll();
             $this->watchdog->stop();
+            $this->perf->stop();
             EventLoop::cancel($watcher);
             EventLoop::cancel($refresher);
             foreach ($signals as $signal) {
