@@ -150,8 +150,14 @@ final class ArchitectureCheckCommandTest extends TestCase
         $this->assertStringContainsString(
             'LeakyTest.php:5 chains off an inline `new TempProject(...)`',
             $tester->getErrorOutput(),
-            'the failure names the file and line, not the comment or the held form',
+            'the failure names the file and line',
         );
+        // Anchored, not incidental: without these, dropping the comment-skip
+        // would only fail via whatever comment-mentions the REAL tree happens
+        // to carry that day.
+        $this->assertStringNotContainsString('Unit/LeakyTest.php:2', $tester->getErrorOutput(), 'the comment naming the trap is not flagged');
+        $this->assertStringNotContainsString('Unit/LeakyTest.php:3', $tester->getErrorOutput(), 'the held construction is not flagged');
+        $this->assertStringNotContainsString('Unit/LeakyTest.php:4', $tester->getErrorOutput(), 'reading a held variable is not flagged');
         $this->assertStringContainsString('AlsoLeakyTest.php:2 chains off', $tester->getErrorOutput(), 'plugin test dirs are scanned too');
     }
 
