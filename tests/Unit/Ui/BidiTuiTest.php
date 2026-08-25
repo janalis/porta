@@ -180,6 +180,130 @@ final class BidiTuiTest extends TestCase
         self::assertSame(7, $tui->logicalColumn(99, 7)); // row not in the last frame
     }
 
+    /**
+     * One loop turn that runs ONLY already-queued defers — no timers. Proves
+     * same-iteration behavior: the adaptive ticker's 10ms repeat cannot have
+     * fired inside a defer-only turn.
+     */
+    private function microTurn(): void
+    {
+        $suspension = \Revolt\EventLoop::getSuspension();
+        \Revolt\EventLoop::defer($suspension->resume(...));
+        $suspension->suspend();
+    }
+
+    public function testARequestedFramePaintsInTheSameLoopIterationWithoutTheTicker(): void
+    {
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $tui->start(); // start() itself requests the first render
+
+        $this->microTurn();
+
+        self::assertStringContainsString(self::SHALOM, $terminal->getOutput(), 'the frame painted before any 10ms ticker interval elapsed');
+        $tui->stop();
+    }
+
+    public function testARequestBurstTicksExactlyOnce(): void
+    {
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $ticks = 0;
+        $tui->onTick(static function () use (&$ticks): bool {
+            ++$ticks;
+
+            return false;
+        });
+        $tui->start();
+
+        $tui->requestRender();
+        $tui->requestRender();
+        self::assertTrue((bool) Probe::get($tui, 'immediateTickQueued'), 'a burst holds one queued tick');
+        $this->microTurn();
+
+        self::assertSame(1, $ticks, 'N requests in one iteration coalesce into one tick');
+        self::assertFalse((bool) Probe::get($tui, 'immediateTickQueued'), 'the queue flag cleared after the tick');
+        $tui->stop();
+    }
+
+    public function testARequestOnANeverStartedTuiQueuesNoTick(): void
+    {
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+
+        $tui->requestRender();
+
+        self::assertFalse((bool) Probe::get($tui, 'immediateTickQueued'), 'no tick is queued while the Tui is not running');
+    }
+
+    public function testAStopBetweenQueueAndFireSuppressesTheTick(): void
+    {
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $tui->start();
+        $this->microTurn(); // first frame out of the way
+        $terminal->clearOutput();
+
+        $tui->requestRender();
+        $tui->stop();
+        $baseline = $terminal->getOutput(); // stop()'s own teardown writes
+        $this->microTurn();
+
+        self::assertSame($baseline, $terminal->getOutput(), 'the queued tick did not paint into the stopped terminal');
+    }
+
+    public function testADefaultRequestRenderDiffsInsteadOfForcingAFullRepaint(): void
+    {
+        $terminal = new VirtualTerminal(columns: 20, rows: 3);
+        $this->renderer = new Renderer(new StyleSheet());
+        $tui = new BidiTui(terminal: $terminal, renderer: $this->renderer);
+        $widget = new class extends AbstractWidget {
+            public string $second = 'aaaa';
+
+            public function render(RenderContext $context): array
+            {
+                return ['stable', $this->second];
+            }
+        };
+        $tui->add($widget);
+        $tui->start();
+        $this->microTurn();
+        self::assertStringContainsString('stable', $terminal->getOutput());
+
+        $widget->second = 'bbbb';
+        $widget->invalidate();
+        $terminal->clearOutput();
+        $tui->requestRender();
+        $this->microTurn();
+
+        $out = $terminal->getOutput();
+        self::assertStringContainsString('bbbb', $out, 'the changed line was rewritten');
+        self::assertStringNotContainsString('stable', $out, 'a default request diffs — it must not reset the writer into a full repaint');
+        $tui->stop();
+    }
+
+    public function testAnIdleTuiWritesNothingAfterTheFrameSettles(): void
+    {
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $tui->start();
+        $this->microTurn();
+        $painted = \strlen($terminal->getOutput());
+        self::assertGreaterThan(0, $painted);
+
+        // Pump real time: no busy loop may replace the torn-down ticker.
+        $suspension = \Revolt\EventLoop::getSuspension();
+        $timer = \Revolt\EventLoop::delay(0.2, $suspension->resume(...));
+        try {
+            $suspension->suspend();
+        } finally {
+            \Revolt\EventLoop::cancel($timer);
+        }
+
+        self::assertSame($painted, \strlen($terminal->getOutput()), 'an idle Tui emits no further bytes');
+        $tui->stop();
+    }
+
     public function testOnColumnsChangedFiresOnWidthChangesOnly(): void
     {
         $terminal = new VirtualTerminal(columns: 80, rows: 24);

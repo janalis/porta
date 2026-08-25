@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Ui;
 
 use Porta\I18n\PaneReorder;
+use Revolt\EventLoop;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\ScreenWriter;
@@ -48,6 +49,9 @@ final class BidiTui extends Tui implements FrameHooks
 
     /** @var list<callable(): void> fired before every frame renders (both render paths) */
     private array $onBeforeFrame = [];
+
+    /** A same-iteration tick is already queued — a request burst queues exactly one. */
+    private bool $immediateTickQueued = false;
 
     /**
      * The vendor Tui privates the mirrored frame path reads EVERY frame,
@@ -120,6 +124,38 @@ final class BidiTui extends Tui implements FrameHooks
         }
 
         return $this->reorder->logicalColumn($this->lastLines[$row], $visualCol, $this->lastRuns[$row]);
+    }
+
+    /**
+     * The vendor's requestRender only raises a flag for the adaptive ticker,
+     * whose repeat timer is torn down after every idle frame — so each
+     * input-driven frame waited out a fresh ~10ms EventLoop::repeat before
+     * painting. Queue ONE deferred tick alongside: the frame paints in the
+     * same loop iteration as the input that requested it, and the ticker
+     * stays as the retry fallback (e.g. while the terminal back-pressures).
+     */
+    #[\Override]
+    public function requestRender(bool $force = false): void
+    {
+        parent::requestRender($force);
+        $this->queueImmediateTick();
+    }
+
+    /** Queue a same-iteration tick, at most one at a time, only while running. */
+    private function queueImmediateTick(): void
+    {
+        if ($this->immediateTickQueued || !$this->isRunning()) {
+            return;
+        }
+        $this->immediateTickQueued = true;
+        EventLoop::defer(function (): void {
+            $this->immediateTickQueued = false;
+            // Re-checked at fire time: a stop() between queue and defer must
+            // not tick a torn-down terminal.
+            if ($this->isRunning()) {
+                $this->tick();
+            }
+        });
     }
 
     #[\Override]
