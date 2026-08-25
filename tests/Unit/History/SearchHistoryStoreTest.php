@@ -12,7 +12,8 @@ final class SearchHistoryStoreTest extends TestCase
 {
     public function testAddRecordsMostRecentFirstAndDeduplicates(): void
     {
-        $store = new SearchHistoryStore(new TempProject([])->dir);
+        $tempProject = new TempProject();
+        $store = new SearchHistoryStore($tempProject->dir);
         $store->add('foo');
         $store->add('bar');
         $store->add('foo'); // moves foo back to the front
@@ -22,7 +23,8 @@ final class SearchHistoryStoreTest extends TestCase
 
     public function testBlankQueriesAreIgnored(): void
     {
-        $store = new SearchHistoryStore(new TempProject([])->dir);
+        $tempProject = new TempProject();
+        $store = new SearchHistoryStore($tempProject->dir);
         $store->add('   ');
         $store->add('');
 
@@ -31,7 +33,8 @@ final class SearchHistoryStoreTest extends TestCase
 
     public function testCapsAtTwentyEntries(): void
     {
-        $store = new SearchHistoryStore(new TempProject([])->dir);
+        $tempProject = new TempProject();
+        $store = new SearchHistoryStore($tempProject->dir);
         for ($i = 0; $i < 25; ++$i) {
             $store->add("q{$i}");
         }
@@ -68,7 +71,8 @@ final class SearchHistoryStoreTest extends TestCase
     public function testToleratesAbsentAndMalformedFiles(): void
     {
         // Absent file → empty.
-        $this->assertSame([], new SearchHistoryStore(new TempProject([])->dir)->all());
+        $tempProject = new TempProject();
+        $this->assertSame([], new SearchHistoryStore($tempProject->dir)->all());
 
         // Malformed JSON → empty.
         $bad = new TempProject([]);

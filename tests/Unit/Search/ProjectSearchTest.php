@@ -104,7 +104,8 @@ final class ProjectSearchTest extends TestCase
 
     public function testMatchOffsetsReturnsByteOffsetsOfEachHit(): void
     {
-        $search = new ProjectSearch(new TempProject([])->dir);
+        $tempProject = new TempProject();
+        $search = new ProjectSearch($tempProject->dir);
 
         $this->assertSame([0, 12], $search->matchOffsets('needle here needle', 'needle', new SearchOptions()));
         $this->assertSame([], $search->matchOffsets('', 'needle', new SearchOptions()), 'an empty line has no offsets');

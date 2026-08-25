@@ -14,7 +14,8 @@ final class SearchPrefsStoreTest extends TestCase
 {
     public function testDefaultsToWholeProjectAndNoMask(): void
     {
-        $store = new SearchPrefsStore(new TempProject([])->dir);
+        $tempProject = new TempProject();
+        $store = new SearchPrefsStore($tempProject->dir);
 
         $this->assertSame(ScopeKind::Project, $store->lastScope());
         $this->assertSame('', $store->lastMask());
@@ -35,7 +36,8 @@ final class SearchPrefsStoreTest extends TestCase
 
     public function testRecentMasksAreMostRecentFirstAndDeduplicated(): void
     {
-        $store = new SearchPrefsStore(new TempProject([])->dir);
+        $tempProject = new TempProject();
+        $store = new SearchPrefsStore($tempProject->dir);
         $store->addRecentMask('*.php');
         $store->addRecentMask('*.js');
         $store->addRecentMask('*.php'); // moves *.php back to the front
@@ -45,7 +47,8 @@ final class SearchPrefsStoreTest extends TestCase
 
     public function testBlankRecentMasksAreIgnored(): void
     {
-        $store = new SearchPrefsStore(new TempProject([])->dir);
+        $tempProject = new TempProject();
+        $store = new SearchPrefsStore($tempProject->dir);
         $store->addRecentMask('   ');
         $store->addRecentMask('');
 
@@ -54,7 +57,8 @@ final class SearchPrefsStoreTest extends TestCase
 
     public function testRecentMasksCapAtTwenty(): void
     {
-        $store = new SearchPrefsStore(new TempProject([])->dir);
+        $tempProject = new TempProject();
+        $store = new SearchPrefsStore($tempProject->dir);
         for ($i = 0; $i < 25; ++$i) {
             $store->addRecentMask("*.x{$i}");
         }
@@ -104,7 +108,8 @@ final class SearchPrefsStoreTest extends TestCase
     public function testToleratesAbsentMalformedAndInvalidValues(): void
     {
         // Absent file → defaults.
-        $this->assertSame(ScopeKind::Project, new SearchPrefsStore(new TempProject([])->dir)->lastScope());
+        $tempProject = new TempProject();
+        $this->assertSame(ScopeKind::Project, new SearchPrefsStore($tempProject->dir)->lastScope());
 
         // Malformed JSON → defaults.
         $bad = new TempProject([]);

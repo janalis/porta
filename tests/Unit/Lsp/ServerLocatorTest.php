@@ -119,9 +119,15 @@ final class ServerLocatorTest extends TestCase
 
     public function testMissingOrMalformedConfigDoesNotCrash(): void
     {
+        // Held in variables: the inline `new TempProject(...)->dir` form frees
+        // the fixture before locateAll runs, so both cases degenerated to the
+        // missing-directory path and the malformed file was never parsed.
         putenv('PATH=/nonexistent');
-        $this->assertSame([], ServerLocator::locateAll(new TempProject(['.porta.json' => json_encode(['keymap' => []])])->dir));
-        $this->assertSame([], ServerLocator::locateAll(new TempProject(['.porta.json' => '{not json'])->dir), 'a broken file degrades gracefully');
+        $noLspKey = new TempProject(['.porta.json' => json_encode(['keymap' => []])]);
+        $broken = new TempProject(['.porta.json' => '{not json']);
+
+        $this->assertSame([], ServerLocator::locateAll($noLspKey->dir));
+        $this->assertSame([], ServerLocator::locateAll($broken->dir), 'a broken file degrades gracefully');
     }
 
     // --- The plugin-server (default) layer ------------------------------------

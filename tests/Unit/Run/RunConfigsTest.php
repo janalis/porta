@@ -22,7 +22,8 @@ final class RunConfigsTest extends TestCase
 
     public function testComposerScriptsWhenAbsentOrScriptless(): void
     {
-        $this->assertSame([], new RunConfigs(new TempProject()->dir)->composerScripts());
+        $tempProject = new TempProject();
+        $this->assertSame([], new RunConfigs($tempProject->dir)->composerScripts());
 
         $noScripts = new TempProject(['composer.json' => json_encode(['name' => 'x'])]);
         $this->assertSame([], new RunConfigs($noScripts->dir)->composerScripts());
@@ -57,7 +58,8 @@ final class RunConfigsTest extends TestCase
 
     public function testMakeTargetsWhenAbsent(): void
     {
-        $this->assertSame([], new RunConfigs(new TempProject()->dir)->makeTargets());
+        $tempProject = new TempProject();
+        $this->assertSame([], new RunConfigs($tempProject->dir)->makeTargets());
     }
 
     public function testDiscoverCombinesEverythingWithCurrentFileFirst(): void

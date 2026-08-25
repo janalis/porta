@@ -60,7 +60,8 @@ final class LanguageSectionTest extends TestCase
         // languages->rows() returns 3 rows (indentStyle/indentSize/runCommand),
         // lsp->rows() returns exactly 1, debug->rows() returns 2 — spreading
         // "only the first" of any of them would silently drop rows.
-        $rows = $this->section(new TempProject()->dir, new StatusBarWidget())->rows('lang:php');
+        $tempProject = new TempProject();
+        $rows = $this->section($tempProject->dir, new StatusBarWidget())->rows('lang:php');
 
         $keys = array_column($rows, 'key');
         $this->assertSame(['indentStyle', 'indentSize', 'runCommand', 'lspServer', 'debugAdapter', 'debugLaunch'], $keys);

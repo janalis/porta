@@ -129,6 +129,32 @@ final class ArchitectureCheckCommandTest extends TestCase
         $this->assertStringNotContainsString('AaFineTest', $tester->getErrorOutput(), 'exactly at the cap is not over it');
     }
 
+    public function testAnInlineTempProjectTemporaryFails(): void
+    {
+        // The bad line chains off the temporary; the comment NAMES the trap
+        // (allowed — prose must be able to warn about it) and the held form
+        // is the fix. Only the chain trips the ratchet, with its line number.
+        // The pattern is spelled split ('TempProj'.'ect') so the ratchet,
+        // which scans THIS file too, only sees it inside the written fixture.
+        $chain = 'new TempProj'.'ect';
+        $project = new TempProject([
+            'src/Alpha/One.php' => $this->file('Alpha', 'One'),
+            'tests/Unit/LeakyTest.php' => "<?php\n// an inline {$chain}(...)->dir frees the fixture\n\$held = {$chain}([]);\n\$read = \$held->dir;\n\$leak = {$chain}([])->dir;\n",
+            'plugins/demo/tests/AlsoLeakyTest.php' => "<?php\n\$leak = {$chain}()->path('x');\n",
+        ]);
+
+        $tester = $this->tester();
+        $status = $tester->execute(['path' => $project->dir], ['capture_stderr_separately' => true]);
+
+        $this->assertSame(Command::FAILURE, $status);
+        $this->assertStringContainsString(
+            'LeakyTest.php:5 chains off an inline `new TempProject(...)`',
+            $tester->getErrorOutput(),
+            'the failure names the file and line, not the comment or the held form',
+        );
+        $this->assertStringContainsString('AlsoLeakyTest.php:2 chains off', $tester->getErrorOutput(), 'plugin test dirs are scanned too');
+    }
+
     public function testADotNamedFileIsStillScanned(): void
     {
         // ignoreDotFiles(false)/ignoreVCS(false) is deliberate faithfulness to

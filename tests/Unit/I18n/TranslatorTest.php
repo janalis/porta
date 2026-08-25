@@ -108,7 +108,8 @@ final class TranslatorTest extends TestCase
 
     public function testDirectionAndRtl(): void
     {
-        $translator = new Translator('he', new TempProject()->dir);
+        $tempProject = new TempProject();
+        $translator = new Translator('he', $tempProject->dir);
         $this->assertSame('rtl', $translator->direction());
         $this->assertTrue($translator->isRtl());
 
@@ -119,7 +120,8 @@ final class TranslatorTest extends TestCase
 
     public function testAnUnknownLocaleNormalizesToEnglish(): void
     {
-        $translator = new Translator('klingon', new TempProject()->dir);
+        $tempProject = new TempProject();
+        $translator = new Translator('klingon', $tempProject->dir);
         $this->assertSame('en', $translator->locale());
         $translator->setLocale('martian');
         $this->assertSame('en', $translator->locale());

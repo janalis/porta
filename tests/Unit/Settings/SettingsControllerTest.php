@@ -348,7 +348,8 @@ final class SettingsControllerTest extends TestCase
         Probe::set($controller, 'notifier', new Notifier($status, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24))));
         Probe::set($controller, 'translator', new Translator('en'));
         Probe::set($controller, 'writer', new PortaJsonWriter());
-        Probe::set($controller, 'rootDir', new TempProject()->dir);
+        $tempProject = new TempProject();
+        Probe::set($controller, 'rootDir', $tempProject->dir);
         Probe::set($controller, 'settings', ['restartOnly' => false]);
         Probe::set($controller, 'descriptors', [
             'restartOnly' => ['label' => 'Restart only', 'kind' => SettingsRowKind::Bool, 'group' => 'general', 'restart' => true, 'apply' => null],
@@ -471,7 +472,8 @@ final class SettingsControllerTest extends TestCase
         Probe::set($controller, 'notifier', new Notifier($status, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24))));
         Probe::set($controller, 'translator', new Translator('en'));
         Probe::set($controller, 'writer', new PortaJsonWriter());
-        Probe::set($controller, 'rootDir', new TempProject()->dir);
+        $tempProject = new TempProject();
+        Probe::set($controller, 'rootDir', $tempProject->dir);
         Probe::set($controller, 'descriptors', [
             'missing' => ['label' => 'Missing', 'kind' => SettingsRowKind::Bool, 'group' => 'general', 'restart' => false, 'apply' => null],
         ]);

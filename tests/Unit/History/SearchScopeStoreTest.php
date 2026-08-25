@@ -12,12 +12,14 @@ final class SearchScopeStoreTest extends TestCase
 {
     public function testEmptyByDefault(): void
     {
-        $this->assertSame([], new SearchScopeStore(new TempProject([])->dir)->all());
+        $tempProject = new TempProject();
+        $this->assertSame([], new SearchScopeStore($tempProject->dir)->all());
     }
 
     public function testRecentScopesAreMostRecentFirstAndDeduplicated(): void
     {
-        $store = new SearchScopeStore(new TempProject([])->dir);
+        $tempProject = new TempProject();
+        $store = new SearchScopeStore($tempProject->dir);
         $store->addRecent('src', ['src']);
         $store->addRecent('tests', ['tests']);
         $store->addRecent('src', ['src']); // moves src to the front
@@ -27,7 +29,8 @@ final class SearchScopeStoreTest extends TestCase
 
     public function testUnpinnedScopesEvictPastTheCap(): void
     {
-        $store = new SearchScopeStore(new TempProject([])->dir);
+        $tempProject = new TempProject();
+        $store = new SearchScopeStore($tempProject->dir);
         for ($i = 0; $i < 12; ++$i) {
             $store->addRecent("dir{$i}", ["dir{$i}"]);
         }

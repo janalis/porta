@@ -33,7 +33,8 @@ final class SettingsLanguageControllerTest extends TestCase
 
     public function testRowsReflectStoredOverridesAndDefaults(): void
     {
-        $controller = $this->controller(new TempProject()->dir, new CodeEditorWidget(), new StatusBarWidget(), ['php' => [
+        $tempProject = new TempProject();
+        $controller = $this->controller($tempProject->dir, new CodeEditorWidget(), new StatusBarWidget(), ['php' => [
             'indentStyle' => 'tabs',
             'indentSize' => 4,
             'runCommand' => 'frankenphp php-cli',
@@ -58,7 +59,8 @@ final class SettingsLanguageControllerTest extends TestCase
     {
         $editor = new CodeEditorWidget();
         $editor->openFile('x.php', "\ttabbed\n");
-        $controller = $this->controller(new TempProject()->dir, $editor, new StatusBarWidget(), ['php' => ['indentStyle' => 'spaces', 'indentSize' => 4]]);
+        $tempProject = new TempProject();
+        $controller = $this->controller($tempProject->dir, $editor, new StatusBarWidget(), ['php' => ['indentStyle' => 'spaces', 'indentSize' => 4]]);
 
         $controller->applyToEditor();
         $this->assertFalse($editor->getDocument()->usesTabs());

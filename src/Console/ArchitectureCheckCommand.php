@@ -30,6 +30,14 @@ use Symfony\Component\Finder\Finder;
  *      and pinned two lint ratchets; the plugin roots are graded too because
  *      testing.md SENDS plugin-driving E2e tests there — the documented
  *      migration path must not be the ratchet's blind spot.
+ *   4. No test may chain off an inline `new TempProject(...)` temporary —
+ *      PHP frees the object (whose destructor removes the fixture dir) the
+ *      moment `->dir`/`->path()` has been read, BEFORE the enclosing call
+ *      runs. Every such assertion silently degenerates to the missing-dir
+ *      case, and code that then writes into the freed path recreates it as
+ *      an orphan (12k of them were found in TMPDIR). Hold the project in a
+ *      variable. Single-line scan only: a multi-line construction dodges it,
+ *      but none exists and review catches what a ratchet misses.
  *
  * Runs from the dev console (`bin/porta-dev`, via `composer arch`): a
  * maintainer gate over Porta\'s own tree, which is why the vendor prefix and
@@ -357,6 +365,7 @@ final class ArchitectureCheckCommand extends Command
             ...$this->edgeDrift($current),
             ...$this->cycleDrift($sccs),
             ...$this->oversizedSuites($root.'/tests/E2e', ...$this->pluginTestDirs($root.'/plugins')),
+            ...$this->inlineTempProjects($root.'/tests', ...$this->pluginTestDirs($root.'/plugins')),
         ];
 
         if ([] !== $failures) {
@@ -369,7 +378,7 @@ final class ArchitectureCheckCommand extends Command
         }
 
         $output->writeln(\sprintf(
-            'architecture-check: OK (%d namespace edges, %d known SCCs, E2e suites within bounds)',
+            'architecture-check: OK (%d namespace edges, %d known SCCs, E2e suites within bounds, no inline TempProject temporaries)',
             \count($current),
             \count($sccs),
         ));
@@ -536,6 +545,38 @@ final class ArchitectureCheckCommand extends Command
                     continue;
                 }
                 $failures[] = "e2e: {$path} has {$count} test methods (max ".self::E2E_MAX_TESTS.') — split it before it regrows the monolith';
+            }
+        }
+
+        return $failures;
+    }
+
+    /**
+     * Flag any test line that chains off an inline `new TempProject(...)`:
+     * the temporary is freed — and its fixture dir removed — as soon as the
+     * property/method access has been read, before the enclosing call runs.
+     * Comment lines are skipped so prose may name the trap without tripping it.
+     *
+     * @return list<string>
+     */
+    private function inlineTempProjects(string ...$suiteDirs): array
+    {
+        $failures = [];
+        foreach ($suiteDirs as $dir) {
+            foreach ($this->phpFiles($dir) as $path) {
+                foreach (explode("\n", (string) file_get_contents($path)) as $i => $line) {
+                    $code = ltrim($line);
+                    if (str_starts_with($code, '//') || str_starts_with($code, '*') || str_starts_with($code, '/*')) {
+                        continue;
+                    }
+                    if (1 === preg_match('/new TempProject\([^;]*\)->/', $line)) {
+                        $failures[] = \sprintf(
+                            'tests: %s:%d chains off an inline `new TempProject(...)` — the temporary is freed (and its fixture dir removed) before the enclosing call runs; hold it in a variable',
+                            $path,
+                            $i + 1,
+                        );
+                    }
+                }
             }
         }
 
