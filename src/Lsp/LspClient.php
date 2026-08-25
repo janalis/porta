@@ -99,10 +99,25 @@ final class LspClient implements LspClientInterface
     #[\Override]
     public function start(callable $onReady): void
     {
-        $started = $this->transport->start(function (array $message): void {
-            /** @var array{id?: mixed, method?: string, result?: mixed, error?: array<array-key, mixed>, params?: array{items?: array<array-key, mixed>, edit?: array<array-key, mixed>}} $message */
-            $this->handleMessage($message);
-        });
+        $started = $this->transport->start(
+            function (array $message): void {
+                /** @var array{id?: mixed, method?: string, result?: mixed, error?: array<array-key, mixed>, params?: array{items?: array<array-key, mixed>, edit?: array<array-key, mixed>}} $message */
+                $this->handleMessage($message);
+            },
+            function () use ($onReady): void {
+                // The server closed stdout before answering initialize — a
+                // deferred exec failure or an instant crash (a spawn that never
+                // happened already failed below). The initialize response can no
+                // longer arrive, so without this the status would show
+                // "starting…" forever; Failed paints "failed" instead. stop()
+                // cancels the watcher first, so a deliberate shutdown never
+                // lands here, and the transport fires EOF at most once.
+                if (!$this->initialized) {
+                    $this->log('server exited before initialize completed');
+                    $onReady(Outcome::Failed);
+                }
+            },
+        );
         if (!$started) {
             $onReady(Outcome::Failed);
 

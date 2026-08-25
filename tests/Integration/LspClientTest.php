@@ -239,12 +239,35 @@ final class LspClientTest extends TestCase
             $ready = $ok->isOk();
         });
 
-        $this->await(static function () use (&$logs): bool {
-            return [] !== $logs;
-        }, 2.0);
-        $this->assertNull($ready, 'initialize never completes on a crashed server');
+        $this->await(
+            static function () use (&$ready): bool {
+                return null !== $ready;
+            },
+            2.0,
+            what: 'the crash to surface as a start outcome',
+        );
+        $this->assertFalse($ready, 'EOF before initialize reports Failed — "starting…" forever was the old defect');
         $this->assertFalse($client->isInitialized());
         $this->assertNotEmpty($logs, 'stderr and EOF are logged');
+    }
+
+    public function testAServerThatExitsSilentlyBeforeInitializeReportsFailed(): void
+    {
+        // Spawn SUCCEEDS (php is real) but the "server" exits at once with no
+        // output at all — the deferred-exec/instant-crash shape, distinct from
+        // the spawn failure the $started check already caught. The initialize
+        // response can never arrive, so the EOF is the only failure signal.
+        $outcome = null;
+        $client = $this->clients[] = new LspClient([\PHP_BINARY, '-r', 'exit(1);'], \dirname(__DIR__, levels: 2));
+        $client->start(static function (Outcome $ok) use (&$outcome): void {
+            $outcome = $ok;
+        });
+
+        $this->await(static function () use (&$outcome): bool {
+            return null !== $outcome;
+        }, what: 'the EOF-before-initialize failure to surface');
+        $this->assertSame(Outcome::Failed, $outcome);
+        $this->assertFalse($client->isInitialized());
     }
 
     public function testGarbageOutputIsResynced(): void
