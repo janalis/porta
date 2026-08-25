@@ -243,4 +243,81 @@ final class NonBlockingWriterTest extends TestCase
         $this->assertSame([], $this->errors);
         fclose($read);
     }
+
+    public function testTheDrainHookFiresOncePerBacklogDrain(): void
+    {
+        [$write, $read] = $this->pair();
+        $writer = $this->writer($write);
+        $drains = 0;
+        $writer->onDrain(static function () use (&$drains): void {
+            ++$drains;
+        });
+
+        $writer->write(str_repeat('a', times: 524_288)); // past the socket buffer → watcher armed
+        $this->assertGreaterThan(0, $writer->pendingBytes());
+        $this->await(static function () use ($read, $writer): bool {
+            fread($read, length: 65_536);
+
+            return 0 === $writer->pendingBytes();
+        });
+        $this->assertSame(1, $drains, 'the hook fired exactly once for the backlog');
+
+        $writer->write('small');
+        $this->assertSame(0, $writer->pendingBytes());
+        $this->assertSame(1, $drains, 'an immediately-accepted write never fires the hook');
+
+        $writer->write(str_repeat('b', times: 524_288));
+        $this->await(static function () use ($read, $writer): bool {
+            fread($read, length: 65_536);
+
+            return 0 === $writer->pendingBytes();
+        });
+        $this->assertSame(2, $drains, 'each backlog drain fires once');
+        $this->assertSame([], $this->errors);
+        $writer->close();
+        fclose($read);
+    }
+
+    public function testClearingTheDrainHookSilencesIt(): void
+    {
+        [$write, $read] = $this->pair();
+        $writer = $this->writer($write);
+        $drains = 0;
+        $writer->onDrain(static function () use (&$drains): void {
+            ++$drains;
+        });
+        $writer->onDrain(null);
+
+        $writer->write(str_repeat('a', times: 524_288));
+        $this->await(static function () use ($read, $writer): bool {
+            fread($read, length: 65_536);
+
+            return 0 === $writer->pendingBytes();
+        });
+
+        $this->assertSame(0, $drains, 'a cleared hook stays silent');
+        $writer->close();
+        fclose($read);
+    }
+
+    public function testAFailedWriterNeverFiresTheDrainHook(): void
+    {
+        [$write, $read] = $this->pair();
+        $writer = $this->writer($write);
+        $drains = 0;
+        $writer->onDrain(static function () use (&$drains): void {
+            ++$drains;
+        });
+
+        $writer->write(str_repeat('x', times: 524_288)); // watcher armed
+        $this->assertGreaterThan(0, $writer->pendingBytes());
+        fclose($read); // the peer dies with the backlog queued
+
+        $this->await(function (): bool {
+            return [] !== $this->errors;
+        });
+
+        $this->assertSame(['write failed'], $this->errors);
+        $this->assertSame(0, $drains, 'failure drops the queue without a drain signal');
+    }
 }

@@ -370,4 +370,57 @@ final class NonBlockingTerminalTest extends TestCase
         $terminal->stop();
         $this->assertContains('stop', $calls, 'stop still restores modes and stops the inner terminal');
     }
+
+    public function testADrainHookSetBeforeStartFiresWhenTheBacklogEmpties(): void
+    {
+        [$stream, $peer] = $this->pair();
+        $calls = [];
+        $received = [];
+        $terminal = new NonBlockingTerminal($this->inner($calls), $stream);
+        $drains = 0;
+        $terminal->onDrain(static function () use (&$drains): void {
+            ++$drains;
+        });
+        $this->start($terminal, $received);
+
+        $terminal->write(str_repeat('#', times: 524_288)); // past the socket buffer → backlog
+        $this->assertGreaterThan(0, $terminal->pendingBytes());
+        $this->await(static function () use ($peer, $terminal): bool {
+            fread($peer, length: 65_536);
+
+            return 0 === $terminal->pendingBytes();
+        });
+
+        $this->assertSame(1, $drains, 'the pre-start hook was forwarded to the writer at start');
+        $terminal->stop();
+        fclose($peer);
+    }
+
+    public function testTheDrainHookSurvivesAStopStartCycle(): void
+    {
+        [$stream, $peer] = $this->pair();
+        $calls = [];
+        $received = [];
+        $terminal = new NonBlockingTerminal($this->inner($calls), $stream);
+        $this->start($terminal, $received);
+        $drains = 0;
+        $terminal->onDrain(static function () use (&$drains): void {
+            ++$drains;
+        });
+
+        $terminal->stop();
+        $this->start($terminal, $received); // a fresh writer must re-receive the hook
+
+        $terminal->write(str_repeat('#', times: 524_288));
+        $this->assertGreaterThan(0, $terminal->pendingBytes());
+        $this->await(static function () use ($peer, $terminal): bool {
+            fread($peer, length: 65_536);
+
+            return 0 === $terminal->pendingBytes();
+        });
+
+        $this->assertSame(1, $drains, 'the hook survived the restart');
+        $terminal->stop();
+        fclose($peer);
+    }
 }

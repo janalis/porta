@@ -32,6 +32,9 @@ final class NonBlockingWriter
     private bool $failed = false;
     private readonly \Closure $onError;
 
+    /** @var (\Closure(): void)|null fired when a queued backlog finishes draining */
+    private ?\Closure $onDrain = null;
+
     /**
      * @param resource               $stream  a stream the OWNER has switched to non-blocking mode
      * @param \Closure(string): void $onError fired once with a reason; the writer is dead afterwards
@@ -64,6 +67,21 @@ final class NonBlockingWriter
     public function pendingBytes(): int
     {
         return \strlen($this->buffer);
+    }
+
+    /**
+     * Install (or clear, with null) a hook fired when a queued BACKLOG empties
+     * — i.e. only on the watcher-armed → drained transition, so a write the
+     * stream accepted immediately never fires it. An owner that paced itself
+     * on {@see pendingBytes()} uses this to resume the moment the peer catches
+     * up instead of polling. Not fired by {@see flushBlocking()} (the caller
+     * is synchronous and already knows) nor on failure/close.
+     *
+     * @param (\Closure(): void)|null $hook
+     */
+    public function onDrain(?\Closure $hook): void
+    {
+        $this->onDrain = $hook;
     }
 
     /**
@@ -136,6 +154,10 @@ final class NonBlockingWriter
             if (null !== $this->watcher) {
                 EventLoop::cancel($this->watcher);
                 $this->watcher = null;
+                // A backlog (not an immediately-accepted write) just drained.
+                if (null !== $this->onDrain) {
+                    ($this->onDrain)();
+                }
             }
 
             return;

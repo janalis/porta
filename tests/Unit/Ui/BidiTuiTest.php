@@ -24,6 +24,8 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  */
 final class BidiTuiTest extends TestCase
 {
+    use \Porta\Tests\Support\PumpsLoop;
+
     private const string SHALOM = "\u{05E9}\u{05DC}\u{05D5}\u{05DD}";
     private const string SHALOM_VISUAL = "\u{05DD}\u{05D5}\u{05DC}\u{05E9}";
 
@@ -130,6 +132,45 @@ final class BidiTuiTest extends TestCase
         $this->assertGreaterThan(0, $terminal->pendingBytes() + \strlen((string) fread($pair[1], length: 65_536)), 'the frame reached the terminal');
 
         $terminal->stop();
+        fclose($pair[1]);
+    }
+
+    public function testADrainedBacklogRepaintsWithoutAManualPump(): void
+    {
+        $pair = stream_socket_pair(\STREAM_PF_UNIX, \STREAM_SOCK_STREAM, protocol: 0);
+        \assert(false !== $pair, description: 'stream_socket_pair created a socket pair');
+        stream_set_blocking($pair[1], enable: false);
+        $terminal = new \Porta\Ui\NonBlockingTerminal(new VirtualTerminal(columns: 20, rows: 2), $pair[0]);
+        $tui = $this->tuiWith($terminal);
+        $tui->start();
+        $this->microTurn(); // first frame out into the socket
+        fread($pair[1], length: 65_536);
+
+        $terminal->write(str_repeat('#', times: 524_288)); // a wedged tty
+        $tui->requestRender();
+        $this->microTurn(); // the deferred tick skips generation and arms the wakeup
+
+        self::assertTrue((bool) Probe::get($tui, 'renderRequested'), 'the request stays pending while the tty is behind');
+        self::assertTrue((bool) Probe::get($tui, 'drainWakeupArmed'));
+        self::assertNotNull(Probe::get(Probe::object($terminal, 'writer'), 'onDrain'), 'the skip installed the drain hook on the live writer');
+
+        // Drain the peer using defer-only turns: the 10ms ticker cannot fire
+        // inside them, so ONLY the drain wakeup can paint the skipped frame.
+        for ($i = 0; $i < 500 && 0 !== $terminal->pendingBytes(); ++$i) {
+            fread($pair[1], length: 65_536);
+            $this->microTurn();
+        }
+        self::assertSame(0, $terminal->pendingBytes(), 'the backlog drained');
+        $this->microTurn(); // run the wakeup's deferred tick
+        $this->microTurn();
+
+        self::assertFalse((bool) Probe::get($tui, 'renderRequested'), 'the skipped frame painted at drain time, not on the ticker');
+
+        // Empty the socket buffer first: stop()'s teardown escapes flush
+        // BLOCKING, and a full buffer with no reader would park the worker.
+        while ('' !== (string) fread($pair[1], length: 65_536)) {
+        }
+        $tui->stop();
         fclose($pair[1]);
     }
 

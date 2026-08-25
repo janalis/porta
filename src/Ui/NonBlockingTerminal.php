@@ -38,6 +38,9 @@ final class NonBlockingTerminal implements TerminalInterface
     /** Non-null only between start() and stop() — the queueing window. */
     private ?NonBlockingWriter $writer = null;
 
+    /** @var (\Closure(): void)|null forwarded to the writer, surviving stop()/start() cycles */
+    private ?\Closure $onDrain = null;
+
     /** Whether this decorator switched the stream to non-blocking mode. */
     private bool $nonBlockingActive = false;
 
@@ -65,7 +68,22 @@ final class NonBlockingTerminal implements TerminalInterface
         // enforced here as a flush-first pre-check, because the writer's cap
         // would DROP the queue — never acceptable for terminal bytes.
         $this->writer = new NonBlockingWriter($this->stream, $this->onWriteError(...), \PHP_INT_MAX);
+        $this->writer->onDrain($this->onDrain);
         $this->nonBlockingActive = true;
+    }
+
+    /**
+     * Install (or clear, with null) the backlog-drained hook — the render
+     * loop's wake-up call: a frame skipped while {@see pendingBytes()} was
+     * positive repaints the moment the tty catches up instead of waiting for
+     * the ticker. Survives set-before-start and a stop()/start() cycle.
+     *
+     * @param (\Closure(): void)|null $hook
+     */
+    public function onDrain(?\Closure $hook): void
+    {
+        $this->onDrain = $hook;
+        $this->writer?->onDrain($hook);
     }
 
     #[\Override]
