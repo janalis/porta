@@ -48,6 +48,23 @@ final class BufferTest extends TestCase
         $this->assertNull($buffer->diskStampNow());
     }
 
+    public function testDiskStampNowSeesAnExternalRewriteImmediately(): void
+    {
+        // The poll no longer calls clearstatcache() each second: external-edit
+        // detection relies on consecutive stat calls seeing fresh values (true
+        // on the target runtime — this guards that assumption with a write the
+        // PHP process itself never made).
+        $project = new TempProject(['a.php' => 'one']);
+        $path = $project->path('a.php');
+        $buffer = new Buffer($path, new Document(''));
+        $before = $buffer->diskStampNow(); // any cached stat would date from here
+
+        exec('printf "a longer rewrite" > '.escapeshellarg($path));
+
+        $this->assertNotSame($before, $buffer->diskStampNow(), 'the external write is visible immediately');
+        $this->assertSame((string) \strlen('a longer rewrite'), explode(':', (string) $buffer->diskStampNow())[1]);
+    }
+
     public function testStampFromDiskRecordsTheCurrentFingerprint(): void
     {
         $project = new TempProject(['a.php' => 'hello']);

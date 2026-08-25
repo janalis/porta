@@ -7,9 +7,11 @@ namespace Porta\Tests\Unit\Widget;
 use PHPUnit\Framework\TestCase;
 use Porta\Event\TreeFileActivated;
 use Porta\Tests\Support\AttachedStyles;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\FileTreeWidget;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -215,6 +217,68 @@ final class FileTreeWidgetTest extends TestCase
         $this->assertStringContainsString('d.php', $this->plain($tree->render($context)));
     }
 
+    public function testRefreshDirsSliceWalksTheRingAndSeesALaterDirChange(): void
+    {
+        $project = new TempProject(['sub/b.php' => '', 'a.php' => '']);
+        $tree = new FileTreeWidget($project->dir);
+        $tree->setFocused(true);
+        $context = new RenderContext(30, 10);
+        $tree->handleInput("\r"); // expand sub/ → scanned dirs: [root, sub]
+        $tree->render($context);
+
+        $this->assertFalse($tree->refreshDirsSlice(1), 'slice 1: the root is unchanged');
+        $this->assertSame(1, Probe::get($tree, 'dirCursor'));
+
+        $project->write('sub/d.php', '');
+        $this->assertTrue($tree->refreshDirsSlice(1), 'slice 2: the cursor reached sub/ and saw the change');
+        $this->assertSame(0, Probe::get($tree, 'dirCursor'), 'a hit rewinds the cursor');
+        $this->assertStringContainsString('d.php', $this->plain($tree->render($context)));
+    }
+
+    public function testRefreshDirsSliceWrapsAroundTheRing(): void
+    {
+        $project = new TempProject(['sub/b.php' => '', 'a.php' => '']);
+        $tree = new FileTreeWidget($project->dir);
+        $tree->setFocused(true);
+        $tree->handleInput("\r"); // two scanned dirs
+        $tree->render(new RenderContext(30, 10));
+
+        $this->assertFalse($tree->refreshDirsSlice(1));
+        $this->assertFalse($tree->refreshDirsSlice(1));
+        $this->assertSame(0, Probe::get($tree, 'dirCursor'), 'the cursor wrapped back to the front');
+    }
+
+    public function testRefreshDirsSliceBudgetIsCappedAtTheDirCount(): void
+    {
+        $project = new TempProject(['sub/b.php' => '', 'a.php' => '']);
+        $tree = new FileTreeWidget($project->dir);
+        $tree->setFocused(true);
+        $tree->handleInput("\r");
+        $tree->render(new RenderContext(30, 10));
+
+        $this->assertFalse($tree->refreshDirsSlice(10), 'each dir is checked at most once per call');
+        $this->assertSame(0, Probe::get($tree, 'dirCursor'), 'two checks over two dirs land back at the front');
+
+        $project->write('c.php', '');
+        $this->assertTrue($tree->refreshDirsSlice(10), 'an over-budget slice still sees the change');
+    }
+
+    public function testTheSliceCursorSurvivesARebuildThatShrankTheMap(): void
+    {
+        $project = new TempProject(['sub/b.php' => '', 'a.php' => '']);
+        $tree = new FileTreeWidget($project->dir);
+        $tree->setFocused(true);
+        $context = new RenderContext(30, 10);
+        $tree->handleInput("\r"); // expand: [root, sub]
+        $tree->render($context);
+        $this->assertFalse($tree->refreshDirsSlice(1)); // cursor now 1
+
+        $tree->handleInput("\r"); // collapse sub/ → the map shrinks to [root]
+        $project->write('c.php', '');
+        $this->assertTrue($tree->refreshDirsSlice(1), 'the stale cursor re-clamps instead of missing the only dir');
+        $this->assertStringContainsString('c.php', $this->plain($tree->render($context)));
+    }
+
     public function testPollSkipsTheScandirWhenTheDirMtimeIsOldAndUnchanged(): void
     {
         $project = new TempProject(['a.php' => '']);
@@ -243,6 +307,21 @@ final class FileTreeWidgetTest extends TestCase
         $project->write('b.php', '');
         touch($project->dir, $mtime); // same-second change: mtime identical
         $this->assertTrue($tree->refreshIfChanged(), 'fresh dirs are scandir-compared even with an identical mtime');
+    }
+
+    public function testAnMtimeExactlyAtTheGraceBoundaryIsStillCompared(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $clock = new MockClock();
+        $boundary = $clock->now()->getTimestamp() - 2; // exactly POLL_GRACE_SECONDS old
+        touch($project->dir, $boundary);
+        $tree = new FileTreeWidget($project->dir, $clock);
+
+        // A same-mtime change AT the boundary: strictly-older-than is what
+        // trusts an mtime, so the boundary itself still gets the scandir.
+        $project->write('b.php', '');
+        touch($project->dir, $boundary);
+        $this->assertTrue($tree->refreshIfChanged(), 'the boundary mtime is not yet trusted');
     }
 
     public function testIgnoredEntriesHidden(): void

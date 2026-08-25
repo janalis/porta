@@ -16,13 +16,28 @@ use Symfony\Component\Tui\Tui;
 
 /**
  * Reconciles the open buffers and the file tree with on-disk state, driven by
- * the coordinator's 1s poll timer (via {@see BufferService::pollFilesystem()}).
+ * the coordinator's poll timer in bounded slices (via
+ * {@see BufferService::pollFilesystemSlice()}; tests and explicit refreshes
+ * take the synchronous full pass).
  * Split out of BufferService because it is a self-contained lifecycle — it only
  * reacts to external file changes (reload clean buffers, flash dirty/deleted
  * ones, re-decode images) and shares none of the open/close/save flow's state.
  */
 final class FilesystemReconciler
 {
+    /** Buffers re-checked per {@see pollSlice} call. */
+    private const int BUFFER_SLICE = 4;
+
+    /** Tree directories re-checked per {@see pollSlice} call. */
+    private const int TREE_SLICE = 8;
+
+    /**
+     * Buffer paths still to check this cycle — refilled from the open set when empty.
+     *
+     * @var list<string>
+     */
+    private array $pendingPaths = [];
+
     public function __construct(
         private readonly BufferManager $buffers,
         private readonly EditorPanes $panes,
@@ -42,6 +57,31 @@ final class FilesystemReconciler
             $this->pollBuffer($buffer);
         }
         if ($this->tree->refreshIfChanged()) {
+            $this->tui->requestRender();
+        }
+    }
+
+    /**
+     * The poll timer's amortized sibling of {@see pollFilesystem()}: a bounded
+     * slice of buffers and tree directories per tick, so reconciliation cost
+     * never lands on the event loop as one long synchronous stall (the proven
+     * `.porta/freeze.log` cause). Full coverage still completes within a few
+     * ticks at typical sizes; a huge tree degrades to slower DETECTION, not a
+     * longer stall. Paths are re-resolved through the manager so a buffer
+     * closed mid-cycle is skipped — never stat'd or flashed for.
+     */
+    public function pollSlice(): void
+    {
+        if ([] === $this->pendingPaths) {
+            $this->pendingPaths = array_map(static fn (Buffer $buffer): string => $buffer->path, $this->buffers->all());
+        }
+        foreach (array_splice($this->pendingPaths, 0, self::BUFFER_SLICE) as $path) {
+            $buffer = $this->buffers->get($path);
+            if (null !== $buffer) {
+                $this->pollBuffer($buffer);
+            }
+        }
+        if ($this->tree->refreshDirsSlice(self::TREE_SLICE)) {
             $this->tui->requestRender();
         }
     }

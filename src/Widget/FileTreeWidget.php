@@ -74,6 +74,9 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      */
     private array $scannedSigs = [];
 
+    /** The {@see refreshDirsSlice} scan position, persisted across poll ticks. */
+    private int $dirCursor = 0;
+
     /**
      * An unchanged dir mtime older than this many seconds is trusted without a
      * scandir; younger ones are re-scanned because a same-second rename can
@@ -351,22 +354,59 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      */
     public function refreshIfChanged(): bool
     {
-        clearstatcache();
         $freshBefore = $this->clock->now()->getTimestamp() - self::POLL_GRACE_SECONDS;
-        foreach ($this->scannedSigs as $dir => $scan) {
-            // Read the mtime BEFORE the signature it vouches for: a change
-            // landing after this read bumps the mtime again → caught next tick.
-            $mtime = is_dir($dir) ? (int) filemtime($dir) : -1;
-            if ($mtime === $scan['mtime'] && $mtime < $freshBefore && -1 !== $mtime) {
-                continue;
-            }
-            if ($this->dirSignature($dir) !== $scan['sig']) {
+        foreach (array_keys($this->scannedSigs) as $dir) {
+            if ($this->dirChangedSince($dir, $freshBefore)) {
                 $this->refresh();
 
                 return true;
             }
-            $this->scannedSigs[$dir]['mtime'] = $mtime; // signature verified at this mtime
         }
+
+        return false;
+    }
+
+    /**
+     * Check up to $budget scanned directories from a persistent cursor — the
+     * poll timer's amortized sibling of {@see refreshIfChanged()}, so a large
+     * expanded tree costs a bounded slice per tick instead of one long stall.
+     * A detected change refreshes immediately and rewinds the cursor. Returns
+     * whether a refresh happened.
+     */
+    public function refreshDirsSlice(int $budget): bool
+    {
+        $dirs = array_keys($this->scannedSigs);
+        $count = \count($dirs); // never 0: rebuild() always records the root
+        $freshBefore = $this->clock->now()->getTimestamp() - self::POLL_GRACE_SECONDS;
+        // The modulo also re-clamps the cursor after a rebuild shrank the map.
+        for ($i = 0; $i < min($budget, $count); ++$i) {
+            $dir = $dirs[$this->dirCursor % $count];
+            $this->dirCursor = ($this->dirCursor + 1) % $count;
+            if ($this->dirChangedSince($dir, $freshBefore)) {
+                $this->refresh();
+                $this->dirCursor = 0;
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Whether $dir's entry list no longer matches its recorded scan signature. */
+    private function dirChangedSince(string $dir, int $freshBefore): bool
+    {
+        $scan = $this->scannedSigs[$dir];
+        // Read the mtime BEFORE the signature it vouches for: a change
+        // landing after this read bumps the mtime again → caught next tick.
+        $mtime = is_dir($dir) ? (int) filemtime($dir) : -1;
+        if ($mtime === $scan['mtime'] && $mtime < $freshBefore && -1 !== $mtime) {
+            return false;
+        }
+        if ($this->dirSignature($dir) !== $scan['sig']) {
+            return true;
+        }
+        $this->scannedSigs[$dir]['mtime'] = $mtime; // signature verified at this mtime
 
         return false;
     }

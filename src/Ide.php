@@ -276,10 +276,14 @@ final class Ide
 
         // Poll the filesystem so external edits, branch switches and deletions are
         // reflected in the open buffers and the tree without a manual reload. The
-        // timer only fires once the event loop runs (inside tui->run()), so it is
-        // safe to arm before setup; arming it before the try guarantees the finally
-        // can always cancel it.
-        $watcher = EventLoop::repeat(1.0, $this->pollFilesystem(...));
+        // timers only fire once the event loop runs (inside tui->run()), so it is
+        // safe to arm them before setup; arming them before the try guarantees the
+        // finally can always cancel them. The buffer/tree poll runs as bounded
+        // SLICES at 4Hz (full coverage still lands within ~1s at typical sizes)
+        // because the old full pass was the proven loop-stall in .porta/freeze.log;
+        // the terminal-state refresher keeps its own tick-counting 1s cadence.
+        $watcher = EventLoop::repeat(0.25, $this->bufferService->pollFilesystemSlice(...));
+        $refresher = EventLoop::repeat(1.0, $this->terminalRefresher->tick(...));
 
         // Loop-stall detector: evidence for "the app froze" reports lands in
         // .porta/freeze.log (drift lines + a backtrace on a hard hang).
@@ -366,6 +370,7 @@ final class Ide
             $this->service(ViewRegistry::class)->closeAll();
             $this->watchdog->stop();
             EventLoop::cancel($watcher);
+            EventLoop::cancel($refresher);
             foreach ($signals as $signal) {
                 EventLoop::cancel($signal);
             }
@@ -413,9 +418,10 @@ final class Ide
     }
 
     /**
-     * Timer entry point — {@see run()}'s 1s EventLoop::repeat reconciles the open
-     * buffers and the file tree with the on-disk state (tests fire it directly
-     * instead of waiting out the timer).
+     * The synchronous full pass: reconcile every open buffer and the file tree
+     * with the on-disk state, and advance the terminal-state refresher. The
+     * live timers in {@see run()} take bounded slices instead; tests fire this
+     * directly so an external edit's effect is observable immediately.
      */
     public function pollFilesystem(): void
     {

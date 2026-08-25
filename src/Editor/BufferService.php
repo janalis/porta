@@ -570,6 +570,16 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
     }
 
     /**
+     * The poll timer's amortized entry point: one bounded reconciliation slice
+     * per call. Tests and explicit refreshes keep the synchronous full pass
+     * above; the live timer takes this one so the loop never stalls on it.
+     */
+    public function pollFilesystemSlice(): void
+    {
+        $this->reconciler->pollSlice();
+    }
+
+    /**
      * Activate the most recently focused text buffer (for the editor-hosted
      * modals that cannot open over an image tab). Null when only images are open.
      */
