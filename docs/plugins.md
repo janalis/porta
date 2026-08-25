@@ -31,7 +31,8 @@ serving twig, yaml, xml, json and dotenv — and PHP when neither PHP server is
 enabled — with runtime indexing as an explicit opt-in setting; it ships only
 as a GitHub-Releases binary, so the plugin's "Symfony LSP: Install Server"
 command downloads, checksum-verifies and lands it in `~/.porta/bin` for every
-project to share), and `todo`,
+project to share, and the Welcome screen offers it on projects that require
+`symfony/framework-bundle`), and `todo`,
 `local-history` and `git` (core features that moved out, keeping their ids by
 adoption). Every bundled plugin surfaces its commands in the Plugins menu and
 its knobs on its own settings page.
