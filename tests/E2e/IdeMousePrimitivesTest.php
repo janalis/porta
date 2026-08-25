@@ -141,6 +141,18 @@ final class IdeMousePrimitivesTest extends TestCase
                     $rendered = $editor->render(new \Symfony\Component\Tui\Render\RenderContext(69, 20));
                     $topLineNumber = (int) trim(AnsiUtils::stripAnsiCodes($rendered[0]));
                     $this->assertGreaterThan(1, $topLineNumber, 'wheel scrolled the viewport down');
+                    $this->assertSame(2, $editor->getDocument()->getCursorLine(), 'wheel scroll left the caret behind');
+                    // A caret move snaps the detached viewport back to the caret.
+                    $tui->handleInput("\x1b[B"); // down arrow -> caret line 3
+                    $scroll = EditorState::scroll($editor);
+                    $this->await(
+                        function () use ($tui, $scroll): bool {
+                            $this->frame($tui);
+
+                            return $scroll->vScroll() <= 3;
+                        },
+                        what: 'the viewport to snap back to the caret',
+                    );
                     // Wheel over the tree scrolls it (feeds arrow keys).
                     $tui->handleInput("\x1b[<65;6;7M");
                     $tui->handleInput("\x1b[<64;6;7M");

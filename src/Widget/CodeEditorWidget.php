@@ -731,8 +731,8 @@ final class CodeEditorWidget extends AbstractWidget implements
     }
 
     /**
-     * Scroll the viewport by $delta rows without moving the cursor line
-     * relationship (cursor is re-clamped into view on the next render).
+     * Scroll the viewport by $delta rows without moving the caret — the view
+     * detaches from the caret and snaps back on the next caret motion.
      */
     public function scrollBy(int $delta): void
     {

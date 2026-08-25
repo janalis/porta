@@ -22,6 +22,14 @@ final class EditorScroll
     private int $hScroll = 0;
     private int $contentRows = 24; // rows available for scrolled content (viewport minus the sticky band)
 
+    /** Wheel-scrolled away from the caret: the viewport is free until the caret moves. */
+    private bool $detached = false;
+
+    /** The caret position (document version, line, col) of the last attached render. */
+    private ?int $lastVersion = null;
+    private int $lastLine = 0;
+    private int $lastCol = 0;
+
     /**
      * @param \Closure(): void $invalidate repaint request back into the widget
      */
@@ -55,6 +63,7 @@ final class EditorScroll
     /** Centre the viewport on a line (the stripe-jump target). */
     public function centerOnLine(int $line): void
     {
+        $this->detached = false;
         $this->vScroll = max(0, $line - intdiv($this->contentRows, num2: 2));
     }
 
@@ -65,20 +74,16 @@ final class EditorScroll
     }
 
     /**
-     * Scroll the viewport by $delta rows without moving the cursor line
-     * relationship (cursor is re-clamped into view on the next render).
+     * Scroll the viewport by $delta rows, leaving the caret where it is — the
+     * caret may scroll out of view (and the selection survives). The viewport
+     * stays detached from the caret until the caret itself moves, when
+     * {@see clampToCaret} snaps the view back to it.
      */
     public function scrollBy(int $delta): void
     {
-        $doc = $this->document;
-        $max = max(0, $doc->getLineCount() - 1);
+        $max = max(0, $this->document->getLineCount() - 1);
         $this->vScroll = IntMath::clamp($this->vScroll + $delta, 0, $max);
-        // Keep the cursor within the visible window so a later render does
-        // not immediately scroll back.
-        $line = IntMath::clamp($doc->getCursorLine(), $this->vScroll, $this->vScroll + $this->contentRows - 1);
-        if ($line !== $doc->getCursorLine()) {
-            $doc->setCursor($line, min($doc->getCursorCol(), \strlen($doc->getLine($line))));
-        }
+        $this->detached = true;
         ($this->invalidate)();
     }
 
@@ -93,7 +98,23 @@ final class EditorScroll
      */
     public function clampToCaret(int $rows, \Closure $stickyCountAt): void
     {
-        $cursorLine = $this->document->getCursorLine();
+        $doc = $this->document;
+        $cursorLine = $doc->getCursorLine();
+        $caretUnmoved = $doc->getVersion() === $this->lastVersion && $cursorLine === $this->lastLine && $doc->getCursorCol() === $this->lastCol;
+        if ($this->detached && $caretUnmoved) {
+            // Wheel-detached and the caret has not moved: keep the viewport
+            // where the user put it, only snapped off fold interiors (folding
+            // can change without a version bump; any TEXT change bumps the
+            // version and re-attaches below). No revealCaretLine: an offscreen
+            // caret must not unfold its region.
+            $this->vScroll = $this->foldModel->snapVisible($this->vScroll);
+
+            return;
+        }
+        $this->detached = false;
+        $this->lastVersion = $doc->getVersion();
+        $this->lastLine = $cursorLine;
+        $this->lastCol = $doc->getCursorCol();
         $this->foldModel->revealCaretLine();
         $this->vScroll = $this->foldModel->snapVisible(IntMath::clamp($this->vScroll, 0, $this->document->getLineCount() - 1));
         for ($iter = 0; $iter <= self::MAX_STICKY_ROWS; ++$iter) {
