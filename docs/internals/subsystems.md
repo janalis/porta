@@ -299,6 +299,12 @@ launches separately rather than reusing whichever started first. An LSP-provider
 plugin supplies options via `registerLanguageServer()`'s optional closure,
 re-resolved on every (re)configure, and `LspClient` sends them in the
 `initialize` request; the config/env/`--lsp` override layers never carry any.
+A failed start — or a mid-session death, which reports through the same
+callback — evicts the session slot so the next `didOpen` relaunches, capped at
+three failed starts per signature (then sticky until a reconfigure); a
+successful start resets the budget. `reconfigure()` no-ops on an identical
+resolved map, so a provider-plugin setting the servers never see does not cost
+every language its warm session.
 
 Feature controllers extend `Lsp/AbstractLspController`.
 `NavigationController`'s position-bound verbs ride one private scaffold —
