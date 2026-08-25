@@ -2619,8 +2619,8 @@
         <target>Strumenti di linguaggio Symfony</target>
       </trans-unit>
       <trans-unit id="666">
-        <source>Routes, services, Twig and config — this project is a Symfony application</source>
-        <target>Route, servizi, Twig e configurazione — questo progetto è un’applicazione Symfony</target>
+        <source>Routes, services, Twig and config completion for this Symfony app</source>
+        <target>Completamento di route, servizi, Twig e configurazione per questa app Symfony</target>
       </trans-unit>
     </body>
   </file>

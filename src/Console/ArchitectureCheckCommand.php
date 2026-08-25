@@ -36,7 +36,8 @@ use Symfony\Component\Finder\Finder;
  *      runs. Every such assertion silently degenerates to the missing-dir
  *      case, and code that then writes into the freed path recreates it as
  *      an orphan (12k of them were found in TMPDIR). Hold the project in a
- *      variable. Single-line scan only: a multi-line construction dodges it,
+ *      variable. Comments are tokenizer-exempt (prose may name the trap);
+ *      the scan is single-line only — a multi-line construction dodges it,
  *      but none exists and review catches what a ratchet misses.
  *
  * Runs from the dev console (`bin/porta-dev`, via `composer arch`): a
@@ -555,7 +556,11 @@ final class ArchitectureCheckCommand extends Command
      * Flag any test line that chains off an inline `new TempProject(...)`:
      * the temporary is freed — and its fixture dir removed — as soon as the
      * property/method access has been read, before the enclosing call runs.
-     * Comment lines are skipped so prose may name the trap without tripping it.
+     * The scan runs over comment-stripped source (the tokenizer, not a line
+     * prefix heuristic), so prose may name the trap anywhere — a whole-line
+     * comment, a trailing one, a docblock — without tripping it; the
+     * stripper keeps dropped comments' newlines, so reported line numbers
+     * stay true.
      *
      * @return list<string>
      */
@@ -564,11 +569,7 @@ final class ArchitectureCheckCommand extends Command
         $failures = [];
         foreach ($suiteDirs as $dir) {
             foreach ($this->phpFiles($dir) as $path) {
-                foreach (explode("\n", (string) file_get_contents($path)) as $i => $line) {
-                    $code = ltrim($line);
-                    if (str_starts_with($code, '//') || str_starts_with($code, '*') || str_starts_with($code, '/*')) {
-                        continue;
-                    }
+                foreach (explode("\n", $this->stripComments((string) file_get_contents($path))) as $i => $line) {
                     if (1 === preg_match('/new TempProject\([^;]*\)->/', $line)) {
                         $failures[] = \sprintf(
                             'tests: %s:%d chains off an inline `new TempProject(...)` — the temporary is freed (and its fixture dir removed) before the enclosing call runs; hold it in a variable',
@@ -710,7 +711,12 @@ final class ArchitectureCheckCommand extends Command
         return $files;
     }
 
-    /** The source with comments and docblocks removed, so prose cannot fake a code edge. */
+    /**
+     * The source with comments and docblocks removed, so prose cannot fake a
+     * code edge. A dropped comment's newlines are kept, so line numbers in
+     * the stripped text still name the original lines — the TempProject scan
+     * reports by line.
+     */
     private function stripComments(string $source): string
     {
         $out = '';
@@ -720,6 +726,7 @@ final class ArchitectureCheckCommand extends Command
                 continue;
             }
             if (\T_COMMENT === $token[0] || \T_DOC_COMMENT === $token[0]) {
+                $out .= str_repeat("\n", substr_count($token[1], "\n"));
                 continue;
             }
             $out .= $token[1];

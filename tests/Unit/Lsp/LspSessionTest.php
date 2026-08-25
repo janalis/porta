@@ -56,6 +56,21 @@ final class LspSessionTest extends TestCase
         $this->assertNull($received[1], 'omitting the argument hands the factory null');
     }
 
+    public function testAFailedStartStopsTheClientBeforeDroppingIt(): void
+    {
+        // Dropping the reference without stop() would orphan a server that
+        // closed stdout but kept running, and its GC'd proc handle does a
+        // blocking waitpid on the loop.
+        $client = new FakeLspClient();
+        $client->startOutcome = Outcome::Failed;
+        $session = $this->session($client);
+
+        $this->start($session);
+
+        $this->assertTrue($client->stopped, 'the dropped client was terminated and reaped, not leaked');
+        $this->assertFalse($session->isActive());
+    }
+
     public function testStartUsesInjectedClientAndReportsState(): void
     {
         $client = new FakeLspClient();

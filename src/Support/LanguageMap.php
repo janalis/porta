@@ -129,25 +129,33 @@ final class LanguageMap
     public static function highlightForPath(string $path): ?string
     {
         $name = strtolower(basename($path));
-
-        if (str_starts_with($name, '.env')) {
-            return 'dotenv';
+        $mapped = self::FILENAMES[$name] ?? self::EXTENSIONS[ProjectPaths::extension($path)][0] ?? null;
+        if (null !== $mapped) {
+            return $mapped;
         }
 
-        return self::FILENAMES[$name] ?? self::EXTENSIONS[ProjectPaths::extension($path)][0] ?? null;
+        // The `.env*` basename fallback runs AFTER the lookups, same as the
+        // LSP column: `.env.local.php` is real PHP, not a dotenv file.
+        return str_starts_with($name, '.env') ? 'dotenv' : null;
     }
 
     /** The LSP languageId for a path; `plaintext` when no server speaks it. */
     public static function lspForPath(string $path): string
     {
+        $mapped = self::EXTENSIONS[ProjectPaths::extension($path)][1] ?? null;
+        if (null !== $mapped) {
+            return $mapped;
+        }
         // `.env.local` / `.env.dev` resolve their EXTENSION as `local`/`dev`,
-        // so without this basename rule (the same one the highlight column
-        // has) only a bare `.env` would ever reach the dotenv server.
+        // so without this basename fallback only a bare `.env` would ever
+        // reach the dotenv server. It runs AFTER the extension lookup: a
+        // `composer dump-env` product like `.env.local.php` is real PHP and
+        // must keep routing to the PHP server, not be announced as dotenv.
         if (str_starts_with(strtolower(basename($path)), '.env')) {
             return 'dotenv';
         }
 
-        return self::EXTENSIONS[ProjectPaths::extension($path)][1] ?? 'plaintext';
+        return 'plaintext';
     }
 
     /**

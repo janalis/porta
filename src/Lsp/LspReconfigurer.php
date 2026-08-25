@@ -32,7 +32,12 @@ final readonly class LspReconfigurer
     /** Re-resolve every server (config + plugins), swap the pool, and re-open buffers. */
     public function reconfigure(): void
     {
-        $this->lsp->reconfigure(ServerLocator::locateAll($this->rootDir, $this->lspCommand, $this->pluginServers->languageServers()));
-        $this->reopener->reopenAllInLsp();
+        // The pool skips an identical map, and then the buffers must not be
+        // re-opened either: the provider-setting hook fires for EVERY setting
+        // of a provider plugin, so without the diff a palette toggle of
+        // phpantom's fix-on-save would tear down and relaunch every server.
+        if ($this->lsp->reconfigure(ServerLocator::locateAll($this->rootDir, $this->lspCommand, $this->pluginServers->languageServers()))) {
+            $this->reopener->reopenAllInLsp();
+        }
     }
 }

@@ -52,9 +52,6 @@ final readonly class PluginRuntime
         public Clipboard $clipboard,
         public StatusBarWidget $statusBar,
         public EditorViewOptions $editorView,
-        // Nullable-with-default so the many positional test constructions
-        // stand; the container always resolves it, and the symfony-lsp E2e
-        // pins the wired behavior (changeSetting → live LSP reconfigure).
-        public ?PluginLifecycleOps $lifecycle = null,
+        public PluginLifecycleOps $lifecycle,
     ) {}
 }

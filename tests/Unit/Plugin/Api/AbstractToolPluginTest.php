@@ -15,6 +15,7 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Support\Clipboard;
+use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\RecordingChangeMarkSink;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
@@ -145,6 +146,7 @@ final class AbstractToolPluginTest extends TestCase
             new Clipboard($tui),
             new StatusBarWidget(),
             new CodeEditorWidget(),
+            new FakePluginLifecycle(),
         ));
 
         return new PluginApi($pluginName, $manager, $this->project->dir, $settings);

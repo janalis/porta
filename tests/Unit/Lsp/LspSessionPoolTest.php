@@ -100,6 +100,24 @@ final class LspSessionPoolTest extends TestCase
         $this->assertCount(2, $this->clients[0]['client']->notifications);
     }
 
+    public function testReconfigureWithAnIdenticalMapKeepsTheRunningSessions(): void
+    {
+        // The provider-setting hook reconfigures on EVERY setting of a
+        // provider plugin — a fix-on-save toggle must not cost every
+        // language its warm session and re-index.
+        $pool = $this->pool(self::SERVERS);
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $client = $this->clients[0]['client'];
+
+        $this->assertFalse($pool->reconfigure(self::SERVERS), 'identical map: no-op, and callers skip the buffer re-open');
+        $this->assertFalse($client->stopped, 'the warm session survived');
+        $pool->notifyDidOpen('/tmp/proj/b.php', 'y', 'php', 1);
+        $this->assertCount(1, $this->clients, 'and still serves didOpens');
+
+        $this->assertTrue($pool->reconfigure(['php' => ['command' => ['other-ls'], 'name' => 'other-ls']]), 'a changed map still applies');
+        $this->assertTrue($client->stopped, 'and tears the old session down');
+    }
+
     public function testInitializationOptionsReachTheClientFactoryAndSplitSessions(): void
     {
         $pool = $this->pool([

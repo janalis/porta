@@ -23,6 +23,7 @@ use Porta\Plugin\Runtime\PluginMenuSpec;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Support\Clipboard;
+use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RecordingChangeMarkSink;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
@@ -69,6 +70,7 @@ final class PluginManagerTest extends TestCase
                 new Clipboard($tui),
                 new StatusBarWidget(),
                 new CodeEditorWidget(),
+                new FakePluginLifecycle(),
             ),
         );
 
@@ -271,6 +273,22 @@ final class PluginManagerTest extends TestCase
 
         $this->assertSame([], $manager->languageServers());
         $this->assertNotEmpty($manager->warnings(), 'the failure is reported like a throwing command resolver');
+    }
+
+    public function testNonEncodableInitializationOptionsAreAReportedFailureNotARenderFault(): void
+    {
+        // The session pool json-encodes options into its session signature on
+        // the render path — a value json cannot carry must die here as one
+        // reported plugin failure, not recur as a render fault every frame.
+        $settings = new PluginSettings('/p', []);
+        $manager = new PluginManager(new EventDispatcher(), $settings);
+
+        $bad = new PluginApi('bad', $manager, '/p', $settings);
+        $bad->registerLanguageServer('twig', 'bad-ls', static fn (): array => ['/bin/bad'], static fn (): array => ['timeout' => \INF]);
+        $manager->commit($bad);
+
+        $this->assertSame([], $manager->languageServers(), 'the language stays unserved rather than carrying poison');
+        $this->assertNotEmpty($manager->warnings());
     }
 
     public function testLanguageServersReportAThrowingResolverAndDeactivateDropsProviders(): void

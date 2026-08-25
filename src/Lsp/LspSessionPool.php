@@ -86,14 +86,25 @@ final class LspSessionPool
      * settings): stop every running session and forget it, so the next didOpen
      * relaunches under the new configuration. The inbound hooks are kept.
      *
+     * An IDENTICAL map is a no-op returning false — the provider-setting hook
+     * reconfigures on every setting of a provider plugin, and a toggle that
+     * changes no command must not cost every language its running session.
+     *
      * @param array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}> $servers
+     *
+     * @return bool whether the map changed (callers skip the buffer re-open when it did not)
      */
-    public function reconfigure(array $servers): void
+    public function reconfigure(array $servers): bool
     {
+        if ($this->configured && !$this->disabled && $servers === $this->servers) {
+            return false;
+        }
         $this->stop();
         $this->sessions = [];
         $this->statuses = [];
         $this->servers = $servers;
+
+        return true;
     }
 
     public function stop(): void

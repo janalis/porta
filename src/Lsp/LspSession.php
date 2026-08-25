@@ -69,6 +69,13 @@ final class LspSession
         $this->client->onApplyEdit($onApplyEdit);
         $this->client->start(function (Outcome $ok) use ($onStarted): void {
             if (!$ok->isOk()) {
+                // stop() before dropping the reference: a server that closed
+                // stdout but is still alive (a wrapper script, a crashed I/O
+                // thread) must be terminated and reaped — an orphan would
+                // outlive the IDE, and its GC'd proc handle does a BLOCKING
+                // waitpid on the loop. On a never-spawned or already-dead
+                // process, stop() is a safe no-op.
+                $this->client?->stop();
                 $this->client = null;
             }
             $onStarted($ok);

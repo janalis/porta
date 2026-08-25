@@ -12,6 +12,7 @@ use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Search\ProjectSearch;
 use Porta\Support\Clipboard;
 use Porta\Support\ProjectPaths;
+use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RecordingChangeMarkSink;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
@@ -78,6 +79,7 @@ final class TodoScanTest extends TestCase
             new Clipboard($tui),
             new StatusBarWidget(),
             new CodeEditorWidget(),
+            new FakePluginLifecycle(),
         ));
 
         $api = new PluginApi('todo', $manager, $project->dir, $settings);

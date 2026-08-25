@@ -64,6 +64,8 @@ final class LanguageMapTest extends TestCase
         yield 'dockerfile' => ['Dockerfile', 'dockerfile', 'plaintext'];
         yield 'dotenv' => ['.env.local', 'dotenv', 'dotenv'];
         yield 'dotenv bare' => ['/proj/.env', 'dotenv', 'dotenv'];
+        yield 'dumped env is php' => ['.env.local.php', 'php', 'php'];
+        yield 'direnv rc' => ['.envrc', 'dotenv', 'dotenv'];
         yield 'tsconfig' => ['tsconfig.json', 'jsonc', 'json'];
         yield 'jsconfig' => ['jsconfig.json', 'jsonc', 'json'];
         yield 'composer.lock' => ['composer.lock', 'json', 'plaintext'];

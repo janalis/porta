@@ -67,15 +67,23 @@ class FakeLspClient implements LspClientInterface
         $this->applyEditHandler = $handler;
     }
 
+    /** The outcome start() reports — set Failed to exercise failure paths. */
+    public Outcome $startOutcome = Outcome::Ok;
+
     public function start(callable $onReady): void
     {
         $this->started = true;
+        if (!$this->startOutcome->isOk()) {
+            $onReady($this->startOutcome);
+
+            return;
+        }
         $this->initialized = true;
         foreach ($this->queued as $action) {
             $action();
         }
         $this->queued = [];
-        $onReady(Outcome::Ok);
+        $onReady($this->startOutcome);
     }
 
     public function whenReady(callable $action): void

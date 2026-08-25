@@ -139,7 +139,7 @@ final class ArchitectureCheckCommandTest extends TestCase
         $chain = 'new TempProj'.'ect';
         $project = new TempProject([
             'src/Alpha/One.php' => $this->file('Alpha', 'One'),
-            'tests/Unit/LeakyTest.php' => "<?php\n// an inline {$chain}(...)->dir frees the fixture\n\$held = {$chain}([]);\n\$read = \$held->dir;\n\$leak = {$chain}([])->dir;\n",
+            'tests/Unit/LeakyTest.php' => "<?php\n// an inline {$chain}(...)->dir frees the fixture\n\$held = {$chain}([]);\n\$read = \$held->dir; // beware {$chain}([])->dir here too\n\$leak = {$chain}([])->dir;\n",
             'plugins/demo/tests/AlsoLeakyTest.php' => "<?php\n\$leak = {$chain}()->path('x');\n",
         ]);
 
@@ -155,9 +155,13 @@ final class ArchitectureCheckCommandTest extends TestCase
         // Anchored, not incidental: without these, dropping the comment-skip
         // would only fail via whatever comment-mentions the REAL tree happens
         // to carry that day.
-        $this->assertStringNotContainsString('Unit/LeakyTest.php:2', $tester->getErrorOutput(), 'the comment naming the trap is not flagged');
+        $this->assertStringNotContainsString('Unit/LeakyTest.php:2', $tester->getErrorOutput(), 'a whole-line comment naming the trap is not flagged');
         $this->assertStringNotContainsString('Unit/LeakyTest.php:3', $tester->getErrorOutput(), 'the held construction is not flagged');
-        $this->assertStringNotContainsString('Unit/LeakyTest.php:4', $tester->getErrorOutput(), 'reading a held variable is not flagged');
+        $this->assertStringNotContainsString(
+            'Unit/LeakyTest.php:4',
+            $tester->getErrorOutput(),
+            'a TRAILING comment naming the trap beside real code is not flagged either — the exemption is the tokenizer, not a line prefix',
+        );
         $this->assertStringContainsString('AlsoLeakyTest.php:2 chains off', $tester->getErrorOutput(), 'plugin test dirs are scanned too');
     }
 

@@ -269,6 +269,12 @@ final class PluginManager implements
             try {
                 $command = $server['resolve']();
                 $options = null === $server['initOptions'] ? [] : $server['initOptions']();
+                // Validate encodability HERE, inside the per-plugin guard:
+                // the session pool json-encodes options into its session
+                // signature on the render path, where a NAN/INF/bad-UTF-8
+                // value from a plugin would otherwise become a recurring
+                // render fault instead of one reported plugin failure.
+                json_encode($options, \JSON_THROW_ON_ERROR);
             } catch (\Throwable $error) {
                 $this->reportFailure($server['plugin'], $error);
 

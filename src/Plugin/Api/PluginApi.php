@@ -1024,7 +1024,7 @@ final class PluginApi
         $runtime = $this->manager->runtime(); // activate()-phase gate
         $this->settings->change($this->pluginName, $key, $value);
         // The hook gets the COERCED value — what setting() reads back now.
-        $runtime->lifecycle?->onPluginSettingChanged($this->pluginName, $key, $this->settings->value($this->pluginName, $key));
+        $runtime->lifecycle->onPluginSettingChanged($this->pluginName, $key, $this->settings->value($this->pluginName, $key));
         $runtime->tui->requestRender();
     }
 

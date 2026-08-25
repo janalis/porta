@@ -412,8 +412,11 @@ final class WelcomeModalController implements ContributedView
         $this->lastBounds = $bounds;
 
         // Height budgets the frame chrome only (no breathing rows): on a
-        // 24-row terminal the content window keeps the 18 rows that fit all
-        // five onboarding cards — the padding must not scroll the last one off.
+        // 24-row terminal the content window keeps the 18 rows that fit the
+        // five standard onboarding cards — the padding must not scroll the
+        // last one off. A Symfony project adds a sixth card, which overflows
+        // this window by design: the widget's followHeights() scrolls the
+        // selection into view, so navigating down reveals what the fold hides.
         $innerWidth = max(20, min($this->userInnerWidth ?? self::MAX_INNER_WIDTH, $boundRight - $boundLeft - 8));
         $innerHeight = max(5, min($this->userInnerHeight ?? self::MAX_INNER_HEIGHT, $boundBottom - $boundTop - ModalFrame::CHROME_ROWS));
         $width = $innerWidth + ModalFrame::CHROME_COLS;

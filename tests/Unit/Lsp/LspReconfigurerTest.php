@@ -63,4 +63,21 @@ final class LspReconfigurerTest extends TestCase
         $this->assertSame(1, $this->reopened, 'buffers reopen so the new server relaunches');
         $this->assertSame('my-server', $pool->statusFor('/tmp/proj/a.php'), 'the resolved override server was applied to the pool');
     }
+
+    public function testAReconfigureThatResolvesTheSameMapDoesNotReopenBuffers(): void
+    {
+        // The provider-setting hook fires for EVERY setting of a provider
+        // plugin; when nothing about the resolved servers changed, reopening
+        // every buffer would relaunch every session for a toggle the LSP
+        // never sees.
+        $pool = new LspSessionPool('/tmp/proj', new FixedActiveFile(), new Translator('en'));
+        $pool->configure([], static function (string $line): void {}, static function (array $params): void {}, static fn (array $edit): bool => false);
+        $reconfigurer = $this->reconfigurer($pool, 'my-server --stdio');
+
+        $reconfigurer->reconfigure();
+        $this->assertSame(1, $this->reopened, 'the first resolve applies');
+
+        $reconfigurer->reconfigure();
+        $this->assertSame(1, $this->reopened, 'the identical second resolve is a no-op');
+    }
 }

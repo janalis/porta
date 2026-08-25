@@ -149,6 +149,14 @@ final class WelcomeScreenTest extends TestCase
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
                     'the card enables the Symfony server, exactly like Settings → Plugins would',
                 );
+
+                // Six cards overflow the 18-row window sized for five; the
+                // widget's followHeights() must scroll the selection into
+                // view, or the last card would be unreachable below the fold.
+                $tui->handleInput("\x1b[B"); // Symfony tools → fixer
+                $tui->handleInput("\x1b[B"); // fixer → analysis
+                $tui->handleInput("\x1b[B"); // analysis → the guide
+                $this->awaitPainted($tui, $terminal, 'Read the guide');
             },
         ]);
     }

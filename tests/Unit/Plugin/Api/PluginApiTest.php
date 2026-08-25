@@ -28,13 +28,13 @@ use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Support\Clipboard;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\EditorState;
+use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RecordingChangeMarkSink;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
-use Porta\Tests\Support\RecordingLifecycleOps;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
@@ -98,6 +98,7 @@ final class PluginApiTest extends TestCase
                     new Clipboard($tui),
                     new StatusBarWidget(),
                     $this->editor,
+                    new FakePluginLifecycle(),
                 ),
             );
         }
@@ -399,7 +400,7 @@ final class PluginApiTest extends TestCase
                 new Clipboard($tui),
                 new StatusBarWidget(),
                 new CodeEditorWidget(),
-                lifecycle: $lifecycle = new RecordingLifecycleOps(),
+                lifecycle: $lifecycle = new FakePluginLifecycle(),
             ),
         );
         $api = new PluginApi('demo', $manager, $project->dir, $settings);
@@ -413,7 +414,7 @@ final class PluginApiTest extends TestCase
         $this->assertSame(7, IdeConfig::load($project->dir)->plugins['demo']['jobs'], 'persisted to .porta.json');
         $this->assertSame(
             [['demo', 'jobs', 7]],
-            $lifecycle->settingChanges,
+            $lifecycle->pluginSettingChanged,
             'Settings-page parity: the lifecycle hook fires with the coerced value, so hooks run and a provider plugin reconfigures the LSP',
         );
 
@@ -586,6 +587,7 @@ final class PluginApiTest extends TestCase
             new Clipboard($tui),
             new StatusBarWidget(),
             new CodeEditorWidget(),
+            new FakePluginLifecycle(),
         ));
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
         $api->registerListTool('todo', 'TODO');
@@ -711,6 +713,7 @@ final class PluginApiTest extends TestCase
             new Clipboard($tui),
             $statusBar ?? new StatusBarWidget(),
             $editor,
+            new FakePluginLifecycle(),
         ));
 
         return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));

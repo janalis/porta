@@ -2619,8 +2619,8 @@
         <target>כלי השפה של Symfony</target>
       </trans-unit>
       <trans-unit id="666">
-        <source>Routes, services, Twig and config — this project is a Symfony application</source>
-        <target>ניתובים, שירותים, Twig ותצורה — הפרויקט הזה הוא יישום Symfony</target>
+        <source>Routes, services, Twig and config completion for this Symfony app</source>
+        <target>השלמה של ניתובים, שירותים, Twig ותצורה עבור אפליקציית Symfony זו</target>
       </trans-unit>
     </body>
   </file>

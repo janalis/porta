@@ -71,7 +71,7 @@ final class WelcomeSteps
                 $this->symfony->isSymfonyProject()
                     ? [new WelcomeStep(
                         $this->translator->trans('Symfony language tools'),
-                        $this->translator->trans('Routes, services, Twig and config — this project is a Symfony application'),
+                        $this->translator->trans('Routes, services, Twig and config completion for this Symfony app'),
                         $this->translator->trans('Enable %name%', ['%name%' => RecommendedPlugins::SYMFONY_LANGUAGE_SERVER]),
                         fn (): bool => $this->isEnabled(RecommendedPlugins::SYMFONY_LANGUAGE_SERVER),
                         function (): void {
