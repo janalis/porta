@@ -251,6 +251,34 @@ final class LspClientTest extends TestCase
         $this->assertNotEmpty($logs, 'stderr and EOF are logged');
     }
 
+    public function testAMidSessionServerDeathReportsFailedAndGatesFeatures(): void
+    {
+        // The server initializes fine, then dies. The second start-outcome is
+        // what flips the pool's status from the server's name to "failed"
+        // instead of advertising a dead process, and isInitialized() must go
+        // false so feature requests decline like an unserved language.
+        $outcomes = [];
+        $client = $this->client();
+        $client->start(static function (Outcome $ok) use (&$outcomes): void {
+            $outcomes[] = $ok;
+        });
+        $this->await(static function () use (&$outcomes): bool {
+            return [] !== $outcomes;
+        }, what: 'the handshake to complete');
+        $this->assertSame([Outcome::Ok], $outcomes);
+        $this->assertTrue($client->isInitialized());
+
+        $process = Probe::get(Probe::get($client, 'transport'), 'process');
+        \assert(\is_resource($process));
+        proc_terminate($process, signal: 9);
+
+        $this->await(static function () use (&$outcomes): bool {
+            return 2 === \count($outcomes);
+        }, what: 'the mid-session death to surface');
+        $this->assertSame([Outcome::Ok, Outcome::Failed], $outcomes);
+        $this->assertFalse($client->isInitialized(), 'a dead server is not an initialized one');
+    }
+
     public function testAServerThatExitsSilentlyBeforeInitializeReportsFailed(): void
     {
         // Spawn SUCCEEDS (php is real) but the "server" exits at once with no

@@ -105,17 +105,22 @@ final class LspClient implements LspClientInterface
                 $this->handleMessage($message);
             },
             function () use ($onReady): void {
-                // The server closed stdout before answering initialize — a
-                // deferred exec failure or an instant crash (a spawn that never
-                // happened already failed below). The initialize response can no
-                // longer arrive, so without this the status would show
-                // "starting…" forever; Failed paints "failed" instead. stop()
+                // The server closed stdout: it is gone. Before initialize
+                // that is a deferred exec failure or an instant crash (a
+                // spawn that never happened already failed below) and the
+                // handshake can never complete; after initialize it is a
+                // mid-session death, and the status must flip from the
+                // server's name to "failed" rather than keep advertising a
+                // dead process — the session drops its client on the second
+                // Failed and the pool's status write is idempotent, which is
+                // what makes reusing $onReady for both phases safe. stop()
                 // cancels the watcher first, so a deliberate shutdown never
                 // lands here, and the transport fires EOF at most once.
-                if (!$this->initialized) {
-                    $this->log('server exited before initialize completed');
-                    $onReady(Outcome::Failed);
-                }
+                $this->log($this->initialized ? 'server exited' : 'server exited before initialize completed');
+                // Feature requests gate on this; a dead server must decline
+                // them like an unserved language, not swallow them silently.
+                $this->initialized = false;
+                $onReady(Outcome::Failed);
             },
         );
         if (!$started) {
