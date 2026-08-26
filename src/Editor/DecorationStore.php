@@ -39,6 +39,9 @@ final class DecorationStore
     /** @var array<int, list<array{severity: int, message: string, col: int, endCol?: int}>> keyed by 0-based line */
     private array $diagnostics = [];
 
+    /** @var array{errors: int, warnings: int} maintained by {@see recountDiagnostics} on every diagnostics change */
+    private array $counts = ['errors' => 0, 'warnings' => 0];
+
     /** @var array<int, list<array{col: int, text: string}>> inlay hints per line: byte col => dim label */
     private array $inlayHints = [];
 
@@ -58,6 +61,7 @@ final class DecorationStore
     public function resetForBuffer(array $diagnostics): void
     {
         $this->diagnostics = $diagnostics;
+        $this->recountDiagnostics();
         $this->inlayHints = [];
         $this->lineAnnotations = [];
         $this->breakpointLines = [];
@@ -152,7 +156,25 @@ final class DecorationStore
     public function setDiagnostics(array $byLine): void
     {
         $this->diagnostics = $byLine;
+        $this->recountDiagnostics();
         ($this->invalidate)();
+    }
+
+    /**
+     * Counted once per diagnostics change, not once per status-bar frame: the
+     * bar polls the counts every frame, and only the two diagnostics mutators
+     * ({@see setDiagnostics}, {@see resetForBuffer}) can move them.
+     */
+    private function recountDiagnostics(): void
+    {
+        $warnings = 0;
+        $errors = 0;
+        foreach ($this->diagnostics as $list) {
+            foreach ($list as $d) {
+                1 === $d['severity'] ? ++$errors : ++$warnings;
+            }
+        }
+        $this->counts = ['errors' => $errors, 'warnings' => $warnings];
     }
 
     /** @return array<int, list<array{severity: int, message: string, col: int, endCol?: int}>> */
@@ -164,15 +186,7 @@ final class DecorationStore
     /** @return array{errors: int, warnings: int} */
     public function diagnosticCounts(): array
     {
-        $warnings = 0;
-        $errors = $warnings;
-        foreach ($this->diagnostics as $list) {
-            foreach ($list as $d) {
-                1 === $d['severity'] ? ++$errors : ++$warnings;
-            }
-        }
-
-        return ['errors' => $errors, 'warnings' => $warnings];
+        return $this->counts;
     }
 
     /** The first diagnostic message on $line (the status bar's caret readout), or null. */

@@ -21,6 +21,9 @@ final class Styles
         private ThemeDefinition $current,
     ) {}
 
+    /** @var array<string, Style> merged-style memo — Style is immutable (with* clones), so sharing is safe; cleared on theme switch */
+    private array $mergeMemo = [];
+
     /** The default theme, for hand-built widgets outside the container (tests). */
     public static function dark(): self
     {
@@ -31,6 +34,7 @@ final class Styles
     public function switchTo(ThemeDefinition $definition): void
     {
         $this->current = $definition;
+        $this->mergeMemo = []; // merged styles bake the old theme's colors
     }
 
     public function of(Role $role): Style
@@ -47,7 +51,9 @@ final class Styles
     /** Several roles merged into one Style — later roles win per property. */
     public function merge(Role ...$roles): Style
     {
-        return Style::mergeAll(array_map($this->current->of(...), $roles));
+        $key = implode('|', array_map(static fn (Role $role): string => $role->name, $roles));
+
+        return $this->mergeMemo[$key] ??= Style::mergeAll(array_map($this->current->of(...), $roles));
     }
 
     /** The SGR-58 underline-color sequence for $role ('' when the theme defines none). */

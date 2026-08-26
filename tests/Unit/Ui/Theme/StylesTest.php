@@ -50,6 +50,17 @@ final class StylesTest extends TestCase
         $this->assertEquals(new Style(background: 31, color: 110, bold: true), $styles->merge(Role::SelectedRow, Role::TabAccent), 'the later role overrides the color, the rest survives');
     }
 
+    public function testMergeIsMemoizedAndDropsTheMemoOnThemeSwitch(): void
+    {
+        $styles = new Styles(DarkTheme::definition());
+
+        $first = $styles->merge(Role::RowHighlightBg, Role::TabAccent);
+        $this->assertSame($first, $styles->merge(Role::RowHighlightBg, Role::TabAccent), 'per-frame callers share one merged instance');
+
+        $styles->switchTo(LightTheme::definition());
+        $this->assertNotEquals($first, $styles->merge(Role::RowHighlightBg, Role::TabAccent), 'a theme switch must re-merge — the memo baked the old colors');
+    }
+
     public function testUnderlineDelegates(): void
     {
         $styles = new Styles(DarkTheme::definition());
