@@ -286,6 +286,48 @@ final class LspSessionTest extends TestCase
         $this->assertFalse($session->isActive(), 'failed start nulls the client');
     }
 
+    public function testAFlushedEditRidesTheIncrementalPathNotFullText(): void
+    {
+        // An incremental-sync (kind 2) server with an established baseline:
+        // the flush a feature request forces (typing `->` triggers completion)
+        // must diff against that baseline, not re-ship the whole file — the
+        // old full-text flush made the incremental path nearly unreachable.
+        $client = new FakeLspClient(['textDocumentSync' => 2]);
+        $session = $this->session($client);
+        $this->start($session);
+
+        $doc = new Document("<?php\necho 1;\n");
+        $session->notifyFullChange('/tmp/project/a.php', $doc); // baseline
+        $doc->setCursor(1, 6);
+        $doc->insert('2'); // "echo 12;"
+
+        $session->scheduleDidChange($doc, static fn (): ?string => '/tmp/project/a.php', static function (): void {});
+        $session->flushPendingChange('/tmp/project/a.php', $doc);
+
+        $sent = end($client->notifications);
+        $this->assertNotFalse($sent);
+        $this->assertSame('textDocument/didChange', $sent['method']);
+        $change = $sent['params']['contentChanges'][0];
+        $this->assertArrayHasKey('range', $change, 'a ranged delta, not a whole-document replacement');
+        $this->assertSame('2', $change['text'], 'exactly the inserted character travels');
+    }
+
+    public function testAFlushForAFullSyncServerStillSendsTheWholeText(): void
+    {
+        // No incremental capability: the flush falls back to full text.
+        $client = new FakeLspClient(['textDocumentSync' => 1]);
+        $session = $this->session($client);
+        $this->start($session);
+
+        $doc = new Document("<?php\necho 1;\n");
+        $session->scheduleDidChange($doc, static fn (): ?string => '/tmp/project/a.php', static function (): void {});
+        $session->flushPendingChange('/tmp/project/a.php', $doc);
+
+        $sent = end($client->notifications);
+        $this->assertNotFalse($sent);
+        $this->assertSame([['text' => "<?php\necho 1;\n"]], $sent['params']['contentChanges']);
+    }
+
     public function testFlushPendingChangeNoOpsWithNothingPending(): void
     {
         $client = new FakeLspClient();

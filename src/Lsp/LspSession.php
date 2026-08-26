@@ -204,7 +204,12 @@ final class LspSession
         EventLoop::cancel($this->changeDebounce);
         $this->changeDebounce = null;
         if (null !== $path && null !== $document) {
-            $this->notifyFullChange($path, $document);
+            // The same route the debounce itself takes: a minimal incremental
+            // change when the server syncs incrementally, full text otherwise.
+            // Ready() flushes before every feature request — completion fires
+            // on `->` — so a full-text flush here shipped the whole file per
+            // trigger character and left the diff path nearly unreachable.
+            $this->sendDidChange($path, $document);
         }
     }
 
