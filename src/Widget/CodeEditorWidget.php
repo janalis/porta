@@ -151,6 +151,9 @@ final class CodeEditorWidget extends AbstractWidget implements
     private ?array $bracketsMemo = null;
     private string $bracketsKey = '';
 
+    /** @var array{key: string, spans: list<array{0: int, 1: int, 2: int}>} memoized identifier occurrences, keyed by version + caret + focus + selection + viewport */
+    private array $occurrencesMemo = ['key' => '', 'spans' => []];
+
     /** Mouse hit-testing + selection, rebuilt per document. */
     private EditorMouse $mouse;
 
@@ -1297,11 +1300,31 @@ final class CodeEditorWidget extends AbstractWidget implements
     {
         $multiActive = $this->focused && $this->multiCaret->hasMultiple();
 
+        // The bracketsMemo idiom, inline: the whole-viewport preg_match_all
+        // repeats an identical result on every frame a toast, diagnostic or
+        // git mark triggers — only these inputs can change its outcome.
+        $key = \sprintf(
+            '%d:%d:%d:%d:%d:%d:%d',
+            $doc->getVersion(),
+            $doc->getCursorLine(),
+            $doc->getCursorCol(),
+            (int) $this->focused,
+            (int) $doc->hasSelection(),
+            $vScroll,
+            $lastVisibleDocLine,
+        );
+        if ($key !== $this->occurrencesMemo['key']) {
+            $this->occurrencesMemo = [
+                'key' => $key,
+                'spans' => EditorRenderer::identifierOccurrences($doc, $this->focused ? PaneFocus::Focused : PaneFocus::Blurred, $vScroll, $lastVisibleDocLine),
+            ];
+        }
+
         return new EditorDecorations(
             multiActive: $multiActive,
             selection: $doc->getSelectionRange(),
             carets: $multiActive ? $this->multiCaret->allCarets() : [],
-            occurrences: EditorRenderer::identifierOccurrences($doc, $this->focused ? PaneFocus::Focused : PaneFocus::Blurred, $vScroll, $lastVisibleDocLine),
+            occurrences: $this->occurrencesMemo['spans'],
             brackets: $this->focused ? $this->matchingBrackets($doc) : null,
         );
     }

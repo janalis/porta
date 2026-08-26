@@ -353,6 +353,21 @@ final class CodeEditorWidgetTest extends TestCase
         $doc->setCursor(1, 6, selection: SelectionMode::Keep);
         $rendered = $editor->render(new RenderContext(80, 10));
         $this->assertStringNotContainsString("\x1b[48;5;23m", $rendered[2]);
+
+        // Dropping the selection brings the highlight back WITHOUT a caret
+        // move — the occurrence memo must key on the selection state, or this
+        // frame would serve the suppressed (empty) result forever.
+        $doc->clearSelection();
+        $rendered = $editor->render(new RenderContext(80, 10));
+        $this->assertStringContainsString("\x1b[48;5;23m", $rendered[2], 'clearing the selection restores the occurrence shade');
+
+        // Same for focus: blur suppresses, refocus restores, caret unmoved.
+        $editor->setFocused(false);
+        $rendered = $editor->render(new RenderContext(80, 10));
+        $this->assertStringNotContainsString("\x1b[48;5;23m", $rendered[2], 'a blurred pane lights nothing');
+        $editor->setFocused(true);
+        $rendered = $editor->render(new RenderContext(80, 10));
+        $this->assertStringContainsString("\x1b[48;5;23m", $rendered[2], 'refocusing restores the occurrence shade');
     }
 
     public function testSingleOccurrenceNotHighlighted(): void
