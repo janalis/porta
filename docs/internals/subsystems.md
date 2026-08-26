@@ -60,11 +60,29 @@ always lands. An idle→event frame still paints immediately, and
 cap. Pacing is wired by `Ide` via `setFramePacing()`; bare test rigs that skip
 the call are uncapped. `Support/PerfCollector` (always on) logs per-second
 frame/input evidence to `.porta/perf.log`, with the paint time split into
-`renderMs` (widget tree) and `writeMs` (ScreenWriter/tty), the terminal
-backlog and the 1-minute load average per beat — and any single frame over
-100ms gets an immediate `slow-paint` line naming the layer. BidiTui always
-runs the manual render path (byte-equivalent to the vendor's, verified) so the
-two phases can be timed separately.
+`renderMs` (widget tree) and `writeMs` (ScreenWriter/tty), the editor
+widget's own share as `edMs`, the syntax-parse kind counters
+(`hlFull`/`hlSplice` — whole-document re-parses vs incremental splices, fed
+by the highlighter's `onParse` seam), the terminal backlog and the 1-minute
+load average per beat — and any single frame over 100ms gets an immediate
+`slow-paint` line naming the layer. BidiTui always runs the manual render
+path (byte-equivalent to the vendor's, verified) so the two phases can be
+timed separately. The first painted frame also stamps a one-shot `boot` line
+from `Support/BootTrace` (created in the console entrypoint, published as a
+synthetic like IdeConfig): cumulative `prelude`/`container`/`plugins`/
+`eager`/`wired`/`firstPaint` milliseconds, so a "starts slowly" report
+carries its own phase numbers.
+
+**Overlay quiescence invariant**: the floating-surface presenters re-deliver
+their spans on every frame hook, so the three span setters in
+`MenuOverlayHostTrait` early-return on identical spans. An unconditional
+`invalidate()` there turns any visible toast/picker/modal into a
+self-sustaining 60fps repaint loop (invalidate → revision bump →
+`Tui::tick` re-requests → next frame → hook re-delivers). The flip side:
+that loop used to repaint everything constantly, hiding widgets whose
+Porta-level line memos (the file tree, the side tab bar) never saw a chrome
+sweep — which is why `ChromeInvalidator` must `invalidate()` (bump
+revisions), not merely `clearRenderCache()`, as it walks the tree.
 
 The editor viewport **detaches from the caret on wheel scroll**
 (`Editor/EditorScroll`): the caret may leave the screen and the selection

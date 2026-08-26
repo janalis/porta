@@ -89,6 +89,28 @@ it importing nothing from `Porta\`, or it grows the very edges it grades. That
 is also why it re-reads each plugin's `composer.json` by hand instead of using
 `PluginManifest`.
 
+## Startup performance notes
+
+Most of a Porta boot is PHP **source compilation**, not work: with
+`opcache.enable_cli=0` (the default) every launch recompiles the autoload
+maps, the ~212KB container dump and several hundred class files. Enabling
+opcache for the CLI cuts that ~4.7× (measured 122ms → 26ms compiling all of
+`src/`):
+
+```ini
+opcache.enable_cli = 1
+opcache.file_cache = /tmp/php-opcache   ; persists compiled code across runs
+```
+
+This is an environment setting — `bin/porta` cannot set it for itself. Two
+measurement caveats when quoting startup numbers: a **dev checkout** eagerly
+requires ~97 dev-only `autoload_files` (~30ms cold — phpunit assertions, the
+safe shims) that a `--no-dev` install never pays; and the git-checkout
+container-freshness gate (`ConfigCache` source tracking) adds ~10ms that
+shipped installs skip. The per-boot phase numbers land in `.porta/perf.log`
+as the one-shot `boot` line (see subsystems.md), so measure from there, not
+from guesses.
+
 ## Conventions
 
 **Final classes and constructor injection everywhere.** Collaborators are
