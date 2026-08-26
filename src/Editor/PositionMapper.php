@@ -106,13 +106,25 @@ final class PositionMapper
         }
         $this->visualLinesVersion = $version;
 
+        // Copy-on-write over the document's own array: the common tab-free
+        // file returns it as-is instead of rebuilding an N-slot copy per
+        // keystroke; a file with tabs pays one engine-level copy plus the
+        // expansion of exactly its tabbed lines.
         $tabWidth = $this->document->tabWidth();
-        $out = [];
-        foreach ($this->document->getLines() as $line) {
-            $out[] = str_contains($line, "\t") ? TextMetrics::expandTabs($line, $tabWidth) : $line;
+        $lines = $this->document->getLines();
+        /** @var list<string>|null $expanded only existing indexes are overwritten, so the list shape holds */
+        $expanded = null;
+        foreach ($lines as $i => $line) {
+            if (str_contains($line, "\t")) {
+                $expanded ??= $lines;
+                $expanded[$i] = TextMetrics::expandTabs($line, $tabWidth);
+            }
         }
 
-        return $this->visualLines = $out;
+        /** @var list<string> $result the loop only overwrites existing indexes, so the list shape holds */
+        $result = $expanded ?? $lines;
+
+        return $this->visualLines = $result;
     }
 
     /** Drop the tab-expansion cache after a tab-width change (next call rebuilds). */
