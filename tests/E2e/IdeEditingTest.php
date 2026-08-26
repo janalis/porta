@@ -14,6 +14,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Toasts;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
@@ -95,6 +96,37 @@ final class IdeEditingTest extends TestCase
                 },
                 420 => function ($tui): void {
                     $this->assertSame(4, $tui->getById('editor')->getDocument()->getCursorLine(), 'clicking the Service crumb jumped to the class declaration');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAVisibleToastDoesNotSelfSustainFrames(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    // A long expiry: the toast dismissing mid-step is a REAL
+                    // repaint and would fail the quiescence assert under load.
+                    Services::resolve($ide, Notifier::class)->flash('quiesce check', seconds: 60.0);
+                    $tui->tick(); // paint the toast
+                    $tui->tick(); // settle: the hook re-delivers identical spans
+                    $this->assertSame('quiesce check', Toasts::last($ide), 'the toast is up');
+
+                    Probe::set($tui, 'renderRequested', false);
+                    $tui->tick(); // hooks run — identical spans must not re-invalidate
+                    $tui->tick(); // a revision bump would surface as a request here
+                    $this->assertFalse(
+                        (bool) Probe::get($tui, 'renderRequested'),
+                        'a visible toast must not keep requesting frames (the perf.log in=0 passes=9 loop)',
+                    );
                 },
             ],
         );

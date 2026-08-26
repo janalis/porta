@@ -117,6 +117,27 @@ final class BreadcrumbsWidgetTest extends TestCase
         $this->assertStringContainsString('Paste', AnsiUtils::stripAnsiCodes($row), 'a dropdown span covers the breadcrumb row');
     }
 
+    public function testReDeliveringIdenticalOverlaySpansDoesNotInvalidate(): void
+    {
+        // The presenters re-deliver on every frame hook; only a CHANGE may
+        // invalidate, or any visible overlay self-sustains a repaint loop.
+        $bar = new BreadcrumbsWidget();
+        $span = static fn (): array => [['row' => 0, 'col' => 2, 'width' => 3, 'segment' => implode('', ['a', 'b', 'c'])]];
+        $bar->setMenuOverlay($span());
+        $bar->setModalOverlay($span());
+        $bar->setToastOverlay($span());
+        $rev = $bar->getRenderRevision();
+
+        // Fresh arrays, equal content — exactly what a frame hook re-delivers.
+        $bar->setMenuOverlay($span());
+        $bar->setModalOverlay($span());
+        $bar->setToastOverlay($span());
+        $this->assertSame($rev, $bar->getRenderRevision(), 'identical spans must not bump the revision');
+
+        $bar->setToastOverlay([]);
+        $this->assertGreaterThan($rev, $bar->getRenderRevision(), 'a real change still invalidates');
+    }
+
     public function testMenuOverlayIgnoredOnEmptyTrail(): void
     {
         $bar = new BreadcrumbsWidget();

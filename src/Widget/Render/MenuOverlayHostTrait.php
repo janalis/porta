@@ -31,6 +31,13 @@ trait MenuOverlayHostTrait
      */
     public function setMenuOverlay(array $spans): void
     {
+        // Identical spans must NOT invalidate (all three span setters): the
+        // presenters re-deliver on every frame hook, so an unconditional
+        // invalidate turns any visible overlay into a self-sustaining 60fps
+        // repaint loop — invalidate → revision bump → next frame → re-deliver.
+        if ($spans === $this->menuOverlay) {
+            return;
+        }
         $this->menuOverlay = $spans;
         $this->invalidate();
     }
@@ -40,6 +47,9 @@ trait MenuOverlayHostTrait
      */
     public function setModalOverlay(array $spans): void
     {
+        if ($spans === $this->modalOverlay) {
+            return; // see setMenuOverlay — the repaint-loop guard
+        }
         $this->modalOverlay = $spans;
         $this->invalidate();
     }
@@ -62,6 +72,9 @@ trait MenuOverlayHostTrait
      */
     public function setToastOverlay(array $spans): void
     {
+        if ($spans === $this->toastOverlay) {
+            return; // see setMenuOverlay — the repaint-loop guard
+        }
         $this->toastOverlay = $spans;
         $this->invalidate();
     }

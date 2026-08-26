@@ -38,6 +38,12 @@ final class ChromeInvalidator
     /** Clear one widget's cache tree recursively. */
     public function invalidate(AbstractWidget $widget): void
     {
+        // invalidate(), not only clearRenderCache(): widgets memoize rendered
+        // lines on their own revision (the file tree, the side tab bar), and a
+        // cache clear without a revision bump leaves those memos serving the
+        // old theme. The overlay repaint loop used to hide exactly this by
+        // invalidating every pane every frame; it no longer runs.
+        $widget->invalidate();
         $widget->clearRenderCache();
         if ($widget instanceof ContainerWidget) {
             foreach ($widget->all() as $child) {
