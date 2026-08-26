@@ -57,6 +57,8 @@ final class PerfCollector
     /** @var list<float> seconds spent in ScreenWriter::writeLines per painted frame */
     private array $writeDurations = [];
 
+    private bool $bootLogged = false;
+
     private int $inputs = 0;
     private int $wheels = 0;
     private int $passes = 0;
@@ -77,6 +79,7 @@ final class PerfCollector
         ?FrameHooks $frameHooks = null,
         private readonly float $interval = self::BEAT_INTERVAL,
         ?\Closure $loadAvg = null,
+        private readonly ?BootTrace $bootTrace = null,
     ) {
         $this->log = DiagnosticLog::forRoot($rootDir, 'perf');
         $this->loadAvg = $loadAvg ?? static fn (): float => (float) (sys_getloadavg() ?: [0.0])[0];
@@ -132,6 +135,18 @@ final class PerfCollector
     /** A frame actually painted: how long the widget tree and the terminal write took. */
     public function paintMark(float $renderSeconds, float $writeSeconds = 0.0): void
     {
+        if (!$this->bootLogged && null !== $this->bootTrace) {
+            // Once, before any slow-paint line this same frame could add: the
+            // boot line is the session's opening evidence, phase-stamped here
+            // because only the paint path knows when the first frame landed.
+            $this->bootLogged = true;
+            $this->bootTrace->mark('firstPaint');
+            $this->log->append(\sprintf(
+                '%s %s',
+                $this->clock->now()->format('Y-m-d H:i:s'),
+                $this->bootTrace->line(),
+            ));
+        }
         ++$this->paints;
         $total = $renderSeconds + $writeSeconds;
         if (\count($this->paintDurations) < self::MAX_SAMPLES) {

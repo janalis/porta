@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Support;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Support\BootTrace;
 use Porta\Support\PerfCollector;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\FrameHooks;
@@ -220,6 +221,48 @@ final class PerfCollectorTest extends TestCase
         // A probe-less slow paint reports the same zero-backlog fallback.
         $perf->paintMark(0.2, 0.0);
         $this->assertMatchesRegularExpression('/slow-paint render=200ms write=0ms pendingBytes=0 load=\d+\.\d$/m', $this->log($perf));
+    }
+
+    public function testTheFirstPaintStampsTheBootLineExactlyOnce(): void
+    {
+        $nanos = [0.0, 30e6];
+        $i = 0;
+        $trace = new BootTrace(nanos: static function () use (&$i, $nanos): float {
+            return $nanos[$i++];
+        });
+        $perf = new PerfCollector($this->project->dir, $this->clock, bootTrace: $trace);
+
+        $perf->paintMark(0.005);
+        $perf->paintMark(0.005);
+
+        $log = $this->log($perf);
+        $this->assertStringContainsString('2026-08-26 10:00:00 boot firstPaint=30ms', $log);
+        $this->assertSame(1, substr_count($log, 'boot '), 'the second paint must not re-stamp the line');
+    }
+
+    public function testTheBootLinePrecedesASlowPaintLineOfTheSameFrame(): void
+    {
+        $perf = new PerfCollector($this->project->dir, $this->clock, bootTrace: new BootTrace());
+
+        $perf->paintMark(0.2);
+
+        $log = $this->log($perf);
+        $bootAt = strpos($log, 'boot ');
+        $slowAt = strpos($log, 'slow-paint');
+        $this->assertNotFalse($bootAt);
+        $this->assertNotFalse($slowAt);
+        $this->assertLessThan($slowAt, $bootAt, 'the boot line is the opening evidence');
+    }
+
+    public function testWithoutATraceNoBootLineLands(): void
+    {
+        $perf = $this->collector();
+
+        $perf->passMark();
+        $perf->paintMark(0.005);
+        $perf->beat();
+
+        $this->assertStringNotContainsString('boot ', $this->log($perf));
     }
 
     public function testARealLoopBeatAppendsALine(): void

@@ -53,6 +53,11 @@ final class IdePerfLogTest extends TestCase
                     );
                     $log = (string) file_get_contents($project->path('.porta/perf.log'));
                     $this->assertMatchesRegularExpression('/in=\d+ wheel=1 passes=[1-9]/', $log, 'inputs and render passes were counted');
+                    $this->assertMatchesRegularExpression(
+                        '/boot container=\d+ms plugins=\d+ms eager=\d+ms wired=\d+ms firstPaint=\d+ms/',
+                        $log,
+                        'the first paint stamped the phase-marked boot line',
+                    );
                 },
             ],
         );

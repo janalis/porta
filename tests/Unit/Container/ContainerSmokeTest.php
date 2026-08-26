@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Container;
 
 use Porta\Config\IdeConfig;
+use Porta\Support\BootTrace;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\BidiTui;
 use Symfony\Component\DependencyInjection\ServiceLocator;
@@ -37,12 +38,13 @@ final class ContainerSmokeTest extends ContainerTestCase
         try {
             $container = $this->buildContainer();
 
-            // The four synthetics Ide::run() would set; doubles of the same shape.
+            // The five synthetics Ide::run() would set; doubles of the same shape.
             $renderer = new Renderer(new StyleSheet());
             $container->set(Renderer::class, $renderer);
             $container->set(Tui::class, new Tui(terminal: new VirtualTerminal(columns: 100, rows: 30), keybindings: new Keybindings([]), renderer: $renderer));
             $container->set(BidiTui::class, new BidiTui(terminal: new VirtualTerminal(columns: 100, rows: 30), renderer: $renderer));
             $container->set(IdeConfig::class, IdeConfig::load('/tmp/porta-container-test'));
+            $container->set(BootTrace::class, new BootTrace());
 
             $resolved = 0;
             $removed = $container->getRemovedIds();

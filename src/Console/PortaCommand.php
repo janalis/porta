@@ -7,6 +7,7 @@ namespace Porta\Console;
 use Porta\Container\Ansi;
 use Porta\Container\LspMode;
 use Porta\Ide;
+use Porta\Support\BootTrace;
 use Porta\Support\DiagnosticLog;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -164,6 +165,9 @@ final class PortaCommand extends Command
             lspCommand: $lspCommand,
             lspDisabled: LspMode::Disabled === $lsp,
             ansi: Ansi::Enabled === $ansi,
+            // REQUEST_TIME_FLOAT is the interpreter's own start: the trace's
+            // prelude covers PHP + autoload, which no later clock can see.
+            bootTrace: new BootTrace($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true)),
         );
         $onBooted();
         $ide->run();

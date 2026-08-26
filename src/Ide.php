@@ -35,6 +35,7 @@ use Porta\Run\RunController;
 use Porta\Search\SearchUiWiring;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsLanguageController;
+use Porta\Support\BootTrace;
 use Porta\Support\DiagnosticLog;
 use Porta\Support\FreezeWatchdog;
 use Porta\Support\PerfCollector;
@@ -115,7 +116,12 @@ final class Ide
         private readonly bool $lspDisabled = false,
         private readonly bool $ansi = true,
         ?string $docsDir = null,
+        ?BootTrace $bootTrace = null,
     ) {
+        // Boot-phase evidence: the entrypoint hands in a trace whose prelude
+        // covers the interpreter and autoload; test rigs get a fresh one so the
+        // wiring below never branches.
+        $boot = $bootTrace ?? new BootTrace();
         // The shipped user guides (F1), package-relative like the translations.
         $this->docsDir = $docsDir ?? \dirname(__DIR__).'/docs';
         $config = IdeConfig::load($this->rootDir);
@@ -134,9 +140,15 @@ final class Ide
         // container does (its settings steer the env parameters above), and
         // the plugin/keybindings services consume it by type.
         $this->container->set(IdeConfig::class, $config);
+        $boot->mark('container');
+        // The trace is synthetic for the same reason IdeConfig is: it exists
+        // before the container does, and PerfCollector consumes it by type to
+        // stamp the first paint.
+        $this->container->set(BootTrace::class, $boot);
         // Resolving the Keybindings map triggers the one-time plugin load —
         // plugin default keys must merge into the immutable map.
         $keybindings = $this->service(Keybindings::class);
+        $boot->mark('plugins');
 
         // Own the Renderer so mouse hit-testing can query widget rects. The
         // sheet is a TailwindStylesheet so rules and utility classes both
@@ -203,6 +215,7 @@ final class Ide
         // keeps the contractual find→picker→toast so a shared-span-slot
         // hand-over clears before it repaints.
         $this->service(EagerServices::class)->boot();
+        $boot->mark('eager');
         $this->pluginLifecycle->refreshNav();
 
         $this->service(SearchUiWiring::class)->wire();
@@ -245,6 +258,7 @@ final class Ide
         // Last: hand the plugin handlers their live runtime seam and flash the
         // config/plugin load warnings, once every service they reach exists.
         $this->service(StartupWiring::class)->wire();
+        $boot->mark('wired');
     }
 
     /**

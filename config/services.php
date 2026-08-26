@@ -17,6 +17,7 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
+use Porta\Support\BootTrace;
 use Porta\Support\FreezeWatchdog;
 use Porta\Ui\BidiTui;
 use Porta\Ui\Theme\Styles;
@@ -292,7 +293,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // tests/Support/Services' container fallback. Tripwire: if a private
     // synthetic ever loses its last internal consumer it is compile-removed
     // and set() throws AT BOOT — loud, caught by the first E2e test.
-    foreach ([Renderer::class, Tui::class, BidiTui::class, IdeConfig::class] as $syntheticId) {
+    foreach ([Renderer::class, Tui::class, BidiTui::class, IdeConfig::class, BootTrace::class] as $syntheticId) {
         // The class is passed explicitly: set(id) alone leaves the definition
         // classless, invisible to every reflection-driven pass.
         $services->set($syntheticId, $syntheticId)->synthetic();
