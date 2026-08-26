@@ -84,8 +84,16 @@ final readonly class EditorRowAssembler
         foreach ($sticky as $i => $header) {
             $result[] = $this->renderStickyRow($header['line'], $geo, $highlighted, $hScroll).$stripe[$i];
         }
+        // One walking cursor instead of docLineAtRow per row: that helper
+        // re-walks from $vScroll on every call, making the loop O(rows²).
+        // Same sequence — the row-th visible line at or after $vScroll.
+        $lineCount = $this->document->getLineCount();
+        $walk = $vScroll;
         for ($row = 0; $row < $contentRows; ++$row) {
-            $lineIndex = $this->foldModel->docLineAtRow($vScroll, $row);
+            $lineIndex = $walk < $lineCount ? $walk : null;
+            if (null !== $lineIndex) {
+                $walk = $this->foldModel->nextVisibleLine($walk);
+            }
 
             if (null === $lineIndex) {
                 $result[] = $this->styles->of(Role::Placeholder)->apply(str_pad('~', max(0, $geo->gutterWidth))).AnsiText::blank($geo->contentWidth).$stripe[$stickyCount + $row];
