@@ -26,9 +26,32 @@ final class TerminalBuffer
     private string $pending = ''; // incomplete escape sequence across chunk boundaries
     private string $pendingSgr = ''; // SGR emitted since the last text write, applied forward
 
+    /**
+     * The current (last) line's visible width, tracked as it is built:
+     * {@see writeText} needed a full ANSI width scan of the line per
+     * printable run, which made assembling a line from k colour-separated
+     * runs O(k·n) — the \r progress-bar path fires that many times a second.
+     *
+     * The asymmetry that matters: tracked too LARGE merely routes an append
+     * through the overwrite path, which degenerates to the same output
+     * (col ≤ real width always holds, so the head slice is whole and the tail
+     * empty); tracked too SMALL mis-routes an overwrite to the append path
+     * and garbles the line — the pinned case.
+     */
+    private int $curWidth = 0;
+
+    /**
+     * How far past the cap the buffer may run before one batch trim lands it
+     * back at exactly {@see $maxLines}: array_shift per overflowing line
+     * reindexed the whole array — ~500M element moves for a 100k-line burst.
+     */
+    private readonly int $trimSlack;
+
     public function __construct(
         private readonly int $maxLines = 5000,
-    ) {}
+    ) {
+        $this->trimSlack = max(1, intdiv($maxLines, num2: 16));
+    }
 
     public function lineCount(): int
     {
@@ -49,6 +72,7 @@ final class TerminalBuffer
     {
         $this->lines = [''];
         $this->col = 0;
+        $this->curWidth = 0;
         $this->pending = '';
         $this->pendingSgr = '';
     }
@@ -146,16 +170,20 @@ final class TerminalBuffer
         $cur = $this->lines[\count($this->lines) - 1];
         $width = AnsiUtils::visibleWidth($text);
 
-        $append = $this->col >= AnsiUtils::visibleWidth($cur);
+        // $curWidth stands in for visibleWidth($cur) everywhere below — the
+        // full ANSI scan per printable run is what this field removes.
+        $append = $this->col >= $this->curWidth;
         if ($append) {
             // Append (common case), padding any gap left by \t or cursor moves.
             $this->lines[\count($this->lines) - 1] = AnsiText::padRight($cur, $this->col).$text;
+            $this->curWidth = $this->col + $width;
         }
         if (!$append) {
             // Overwrite from the cursor column (e.g. after \r).
             $head = AnsiUtils::sliceByColumn($cur, 0, $this->col);
-            $tail = AnsiUtils::sliceByColumn($cur, $this->col + $width, AnsiUtils::visibleWidth($cur));
+            $tail = AnsiUtils::sliceByColumn($cur, $this->col + $width, $this->curWidth);
             $this->lines[\count($this->lines) - 1] = $head.$text.$tail;
+            $this->curWidth = max($this->curWidth, $this->col + $width);
         }
         $this->col += $width;
     }
@@ -164,14 +192,19 @@ final class TerminalBuffer
     {
         $cur = $this->lines[\count($this->lines) - 1];
         $this->lines[\count($this->lines) - 1] = AnsiUtils::sliceByColumn($cur, 0, $this->col);
+        $this->curWidth = min($this->curWidth, $this->col);
     }
 
     private function newline(): void
     {
         $this->lines[] = '';
         $this->col = 0;
-        if (\count($this->lines) > $this->maxLines) {
-            array_shift($this->lines);
+        $this->curWidth = 0;
+        // Amortized: run up to trimSlack past the cap, then one array_slice
+        // lands back at exactly maxLines — array_shift per line reindexes
+        // the whole array every time.
+        if (\count($this->lines) > ($this->maxLines + $this->trimSlack)) {
+            $this->lines = \array_slice($this->lines, -$this->maxLines);
         }
     }
 }

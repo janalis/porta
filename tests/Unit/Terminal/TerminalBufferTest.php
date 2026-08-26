@@ -38,6 +38,19 @@ final class TerminalBufferTest extends TestCase
         $this->assertSame(['XYZdef'], $this->rows($b->lines));
     }
 
+    public function testWritingRightAfterAShorterOverwriteStaysAnOverwrite(): void
+    {
+        // The tracked line width must not shrink to the overwrite's end: the
+        // line is still 5 wide after "abc" lands on "12345", so the next run
+        // at column 3 OVERWRITES the "4" — a width tracked too small would
+        // route it to the append path and produce "abc45X".
+        $b = new TerminalBuffer();
+        $b->feed("12345\rabc");
+        $b->feed('X');
+
+        $this->assertSame(['abcX5'], $this->rows($b->lines));
+    }
+
     public function testBackspace(): void
     {
         $b = new TerminalBuffer();
@@ -160,14 +173,20 @@ final class TerminalBufferTest extends TestCase
         $this->assertSame(['abc'], $this->rows($b->lines));
     }
 
-    public function testScrollbackCapDropsOldestLines(): void
+    public function testScrollbackCapTrimsInAmortizedBatches(): void
     {
-        $b = new TerminalBuffer(maxLines: 3);
-        $b->feed("l1\nl2\nl3\nl4\nl5\n");
+        // The trim is amortized: the buffer runs up to slack (maxLines/16,
+        // floor 1) past the cap, then one batch trim lands it back at exactly
+        // maxLines with the NEWEST lines kept — never a shift per line.
+        $b = new TerminalBuffer(maxLines: 3); // slack 1: trims once count exceeds 4
+        $b->feed("l1\nl2\nl3\nl4\n");
+        $this->assertSame(['l3', 'l4', ''], $this->rows($b->lines), 'the overshoot trimmed back to the cap, newest kept');
 
-        $lines = $this->rows($b->lines);
-        $this->assertCount(3, $lines);
-        $this->assertSame(['l4', 'l5', ''], $lines);
+        $b->feed("l5\n"); // 4 lines: inside the slack, untrimmed
+        $this->assertSame(['l3', 'l4', 'l5', ''], $this->rows($b->lines), 'within the slack nothing is dropped yet');
+
+        $b->feed("l6\n"); // exceeds cap+slack again
+        $this->assertSame(['l5', 'l6', ''], $this->rows($b->lines), 'the next batch trim lands on the cap again');
     }
 
     public function testTailAndLineCount(): void
