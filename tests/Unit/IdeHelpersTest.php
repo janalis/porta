@@ -252,6 +252,26 @@ final class IdeHelpersTest extends TestCase
         $this->assertSame('/elsewhere/file.php', new ProjectPaths($this->project->dir)->relative('/elsewhere/file.php'));
     }
 
+    public function testRelativeMemoizesResolvedPathsButNeverUnresolvedOnes(): void
+    {
+        $paths = new ProjectPaths($this->project->dir);
+        $missing = $this->project->dir.'/late.php';
+
+        // Not on disk yet: realpath fails, the raw path comes back — and it
+        // must NOT be cached, or the file's creation would never be seen.
+        $this->assertSame($missing, $paths->relative($missing));
+
+        file_put_contents($missing, data: '');
+        $this->assertSame('late.php', $paths->relative($missing), 'once the file exists, the same call resolves relative');
+        $this->assertSame('late.php', $paths->relative($missing), 'and the memoized answer matches');
+
+        // At the cap the memo flushes wholesale instead of growing unbounded.
+        $full = array_fill_keys(array_map(static fn (int $i): string => "/stale/{$i}", range(1, 1024)), 'stale');
+        Probe::set($paths, 'relativeMemo', $full);
+        $this->assertSame('late.php', $paths->relative($missing), 'a full memo still answers correctly');
+        $this->assertCount(1, (array) Probe::get($paths, 'relativeMemo'), 'the flush kept only the fresh entry');
+    }
+
     public function testLineAtReadsFromDiskForUnopenedFiles(): void
     {
         $path = $this->project->write('src/OnDisk.php', "<?php\nsecond line\n");

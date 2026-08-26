@@ -23,6 +23,10 @@ final class ProjectSearch
 
     private ?AsyncProcess $process = null;
 
+    /** The resolved `grep` binary; see {@see findGrep()} — resolved once, not per search. */
+    private ?string $grep = null;
+    private bool $grepResolved = false;
+
     public function __construct(
         private readonly string $rootDir,
     ) {}
@@ -478,6 +482,13 @@ final class ProjectSearch
 
     private function findGrep(): ?string
     {
-        return new ExecutableFinder()->find('grep');
+        // Resolved once: ExecutableFinder stats every $PATH entry, and this
+        // ran per debounced keystroke in Find in Files and Search Everywhere.
+        if (!$this->grepResolved) {
+            $this->grepResolved = true;
+            $this->grep = new ExecutableFinder()->find('grep');
+        }
+
+        return $this->grep;
     }
 }

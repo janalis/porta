@@ -16,13 +16,27 @@ use Symfony\Component\Filesystem\Path;
  * The path-only helpers (extension, languageId) stay static: they need no
  * root.
  */
-final readonly class ProjectPaths
+final class ProjectPaths
 {
     /** The root realpath'd and slash-trimmed once — relative() runs per frame, the root cannot change. */
-    private string $realRoot;
+    private readonly string $realRoot;
+
+    /**
+     * Memoized `absolute path → relative` (readonly had to go for this one
+     * mutable cache): relative() does a realpath() SYSCALL per call and runs
+     * per frame (the status bar, the tab strip, every search-result row).
+     * Only resolved paths are cached — a path that did not exist yet must
+     * re-resolve once it does. Flushed wholesale at the cap; the mapping for
+     * an existing file cannot otherwise change mid-session.
+     *
+     * @var array<string, string>
+     */
+    private array $relativeMemo = [];
+
+    private const int RELATIVE_MEMO_CAP = 1024;
 
     public function __construct(
-        private string $rootDir,
+        private readonly string $rootDir,
     ) {
         $realRoot = realpath($rootDir);
         $this->realRoot = rtrim($realRoot ? $realRoot : $rootDir, characters: '/');
@@ -37,10 +51,20 @@ final readonly class ProjectPaths
     /** Path relative to the project root, or the absolute path when outside it. */
     public function relative(string $path): string
     {
+        if (isset($this->relativeMemo[$path])) {
+            return $this->relativeMemo[$path];
+        }
         $realPath = realpath($path);
         $real = $realPath ? $realPath : $path;
+        $relative = str_starts_with($real, $this->realRoot.'/') ? substr($real, \strlen($this->realRoot) + 1) : $real;
+        if (false !== $realPath) {
+            if (\count($this->relativeMemo) >= self::RELATIVE_MEMO_CAP) {
+                $this->relativeMemo = [];
+            }
+            $this->relativeMemo[$path] = $relative;
+        }
 
-        return str_starts_with($real, $this->realRoot.'/') ? substr($real, \strlen($this->realRoot) + 1) : $real;
+        return $relative;
     }
 
     /** The absolute path of a project-relative one. */
