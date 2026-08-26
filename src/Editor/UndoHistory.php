@@ -21,10 +21,25 @@ final class UndoHistory
 {
     private const MAX_UNDO = 200;
 
+    /**
+     * Cumulative undo-stack budget, counted in retained lines: each snapshot
+     * keeps the whole lines array, and while the strings share storage
+     * (copy-on-write), the array slots do not — a saturated stack on a
+     * 50k-line file held ~360MB of structure under the step cap alone.
+     * Two million line-slots is ~72MB worst case; a small file never reaches
+     * it (the step cap governs first), a huge one keeps the newest steps.
+     */
+    private const MAX_RETAINED_LINES = 2_000_000;
+
     /** @var list<Snapshot> */
     private array $undoStack = [];
     /** @var list<Snapshot> */
     private array $redoStack = [];
+
+    /** Retained lines across the undo stack, for the budget. The redo stack
+     * needs no tally: mass undo moves snapshots between the stacks one-for-one,
+     * so the total never grows there, and the next edit clears redo anyway. */
+    private int $undoLines = 0;
 
     /** Coalescing state: consecutive edits with the same key within 1s merge. */
     private float $lastEditAt = 0.0;
@@ -39,6 +54,7 @@ final class UndoHistory
 
     public function __construct(
         private readonly ClockInterface $clock = new NativeClock(),
+        private readonly int $maxRetainedLines = self::MAX_RETAINED_LINES,
     ) {}
 
     /**
@@ -123,6 +139,7 @@ final class UndoHistory
         if (!($state = array_pop($this->undoStack))) {
             return null;
         }
+        $this->undoLines -= \count($state['lines']);
         $this->redoStack[] = $current;
         $this->lastEditKind = '';
 
@@ -141,6 +158,7 @@ final class UndoHistory
             return null;
         }
         $this->undoStack[] = $current;
+        $this->undoLines += \count($current['lines']);
         $this->lastEditKind = '';
 
         return $state;
@@ -150,9 +168,13 @@ final class UndoHistory
     private function store(array $snapshot): void
     {
         $this->undoStack[] = $snapshot;
+        $this->undoLines += \count($snapshot['lines']);
         $this->redoStack = [];
-        if (\count($this->undoStack) > self::MAX_UNDO) {
-            array_shift($this->undoStack);
+        // The step cap AND the line budget, oldest-first — but never the last
+        // snapshot: one giant undo step must stay undoable regardless.
+        while (\count($this->undoStack) > 1 && (\count($this->undoStack) > self::MAX_UNDO || $this->undoLines > $this->maxRetainedLines)) {
+            $dropped = array_shift($this->undoStack);
+            $this->undoLines -= \count($dropped['lines']);
         }
     }
 }

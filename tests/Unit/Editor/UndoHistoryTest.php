@@ -26,6 +26,55 @@ final class UndoHistoryTest extends TestCase
         $this->assertNull($h->redo($this->snap(1)), 'nothing left to redo');
     }
 
+    /** @return array{lines: string[], line: int, col: int} */
+    private function bigSnap(int $id, int $lines): array
+    {
+        return ['lines' => array_fill(0, $lines, "line of state{$id}"), 'line' => $id, 'col' => 0];
+    }
+
+    public function testTheLineBudgetDropsTheOldestStepsBeforeTheStepCap(): void
+    {
+        // Big-file snapshots: the retained-lines budget must govern, not the
+        // 200-step cap — a saturated stack held ~360MB of array slots.
+        $h = new UndoHistory(new MockClock('@1000.000000'), maxRetainedLines: 25);
+
+        $h->push($this->bigSnap(1, 10)); // 10 lines retained
+        $h->push($this->bigSnap(2, 10)); // 20
+        $h->push($this->bigSnap(3, 10)); // 30 → the oldest drops (20 again)
+
+        $this->assertSame($this->bigSnap(3, 10), $h->undo($this->snap(9)));
+        $this->assertSame($this->bigSnap(2, 10), $h->undo($this->snap(9)));
+        $this->assertNull($h->undo($this->snap(9)), 'state 1 fell to the budget');
+    }
+
+    public function testOneOverBudgetSnapshotIsStillKept(): void
+    {
+        // A single edit on a file larger than the whole budget must remain
+        // undoable — the budget trims history, never the present step.
+        $h = new UndoHistory(new MockClock('@1000.000000'), maxRetainedLines: 5);
+
+        $h->push($this->bigSnap(1, 50));
+
+        $this->assertSame($this->bigSnap(1, 50), $h->undo($this->snap(9)));
+    }
+
+    public function testUndoAndRedoKeepTheBudgetTallyHonest(): void
+    {
+        // Round-tripping through undo/redo must not leak tally: after the
+        // walk, pushing within budget must not evict what still fits.
+        $h = new UndoHistory(new MockClock('@1000.000000'), maxRetainedLines: 25);
+
+        $h->push($this->bigSnap(1, 10));
+        $h->push($this->bigSnap(2, 10));
+        $current = $this->bigSnap(9, 10);
+        $h->redo($h->undo($current) ?? []); // down and back up: tally unchanged
+        $h->push($this->bigSnap(3, 10)); // 30 retained → exactly one eviction
+
+        $this->assertSame($this->bigSnap(3, 10), $h->undo($this->snap(8)));
+        $this->assertSame($this->bigSnap(2, 10), $h->undo($this->snap(8)));
+        $this->assertNull($h->undo($this->snap(8)), 'a drifting tally would have evicted a second step (or none)');
+    }
+
     public function testEmptyStacksReturnNull(): void
     {
         $h = new UndoHistory();
