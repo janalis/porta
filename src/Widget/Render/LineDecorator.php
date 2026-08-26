@@ -50,6 +50,93 @@ final class LineDecorator
     }
 
     /**
+     * Apply many spans in ONE traversal of the line — never re-slicing already
+     * decorated output. Sequentially folding {@see apply()} over N spans is
+     * O(3^N) in escape bytes: each apply re-slices the previous result, and the
+     * slicer replays every escape it skipped into both slices, tripling them
+     * per pass (measured: 8 same-word occurrence spans on one prose line =
+     * 120KB and 3ms; 12 = OOM). A boundary sweep slices the RAW line once per
+     * segment instead: O(N·len), with closes emitted in reverse application
+     * order, still-active spans re-opened after a close (which also restores
+     * an outer background an inner close's reset used to lose), and active
+     * backgrounds re-applied across resets inside each segment.
+     *
+     * Byte-identical to a sequential apply() for the zero- and one-span cases.
+     * $spans in application (layering) order, each [startCol, endCol, openSgr,
+     * closeSgr, bgReapply].
+     *
+     * @param list<array{0: int, 1: int, 2: string, 3: string, 4: ?string}> $spans
+     */
+    public static function applyAll(string $line, array $spans): string
+    {
+        if ([] === $spans) {
+            return $line;
+        }
+        $lineWidth = AnsiUtils::visibleWidth($line);
+        $clamped = [];
+        foreach ($spans as $i => [$startCol, $endCol, $openSgr, $closeSgr, $bgReapply]) {
+            $startCol = max(0, $startCol);
+            $endCol = min($endCol, max($lineWidth, $startCol));
+            if ($endCol <= $startCol) {
+                continue;
+            }
+            $clamped[$i] = [$startCol, $endCol, $openSgr, $closeSgr, $bgReapply];
+        }
+        if ([] === $clamped) {
+            return $line;
+        }
+
+        $bounds = [];
+        foreach ($clamped as [$start, $end]) {
+            $bounds[$start] = true;
+            $bounds[$end] = true;
+        }
+        $bounds = array_keys($bounds);
+        sort($bounds);
+
+        $out = $bounds[0] > 0 ? AnsiUtils::sliceByColumn($line, 0, $bounds[0]) : '';
+        /** @var array<int, array{0: int, 1: int, 2: string, 3: string, 4: ?string}> $active keyed by application index */
+        $active = [];
+        foreach ($bounds as $bi => $col) {
+            $closed = false;
+            foreach (array_reverse($active, preserve_keys: true) as $i => $span) {
+                if ($span[1] === $col) {
+                    $out .= $span[3];
+                    unset($active[$i]);
+                    $closed = true;
+                }
+            }
+            if ($closed && [] !== $active) {
+                // A close's reset codes may have cancelled an outer span's
+                // effect (e.g. \x1b[49m under a selection): re-open survivors.
+                foreach ($active as $span) {
+                    $out .= $span[2];
+                }
+            }
+            foreach ($clamped as $i => $span) {
+                if ($span[0] === $col) {
+                    $active[$i] = $span;
+                    $out .= $span[2];
+                }
+            }
+            ksort($active); // application order for the restore and bg chains
+
+            $next = $bounds[$bi + 1] ?? $lineWidth;
+            if ($next <= $col) {
+                continue;
+            }
+            $segment = AnsiUtils::sliceByColumn($line, $col, $next - $col);
+            $bgChain = '';
+            foreach ($active as $span) {
+                $bgChain .= $span[4] ?? '';
+            }
+            $out .= '' === $bgChain ? $segment : AnsiUtils::reapplyBackgroundAfterResets($segment, $bgChain);
+        }
+
+        return $out;
+    }
+
+    /**
      * Replace the single cell at display column $col with $glyph rendered in
      * $style (foreground only, so any background is preserved). Used to draw
      * indent guides over leading-whitespace cells; the visible width is

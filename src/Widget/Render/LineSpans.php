@@ -98,6 +98,33 @@ final class LineSpans
     }
 
     /**
+     * Keep only the spans that intersect the visible window [$winStart,
+     * $winEnd), clamped to it — the decorated line is sliced to that window
+     * anyway (and every row closes with a full SGR reset), so span work
+     * outside it is pure waste, and bounding the span count to the viewport
+     * is what keeps a prose line with dozens of occurrence spans linear.
+     * Also collapses the PHP_INT_MAX "to end of line" diagnostic endCol.
+     *
+     * @param list<array{0: int, 1: int, 2: string, 3: string, 4: ?string}> $spans
+     *
+     * @return list<array{0: int, 1: int, 2: string, 3: string, 4: ?string}>
+     */
+    public static function clip(array $spans, int $winStart, int $winEnd): array
+    {
+        $clipped = [];
+        foreach ($spans as $span) {
+            if ($span[1] <= $winStart || $span[0] >= $winEnd) {
+                continue;
+            }
+            $span[0] = max($span[0], $winStart);
+            $span[1] = min($span[1], $winEnd);
+            $clipped[] = $span;
+        }
+
+        return $clipped;
+    }
+
+    /**
      * The display-column selection span an ordered byte range produces on one
      * line: from the range start on its first line, to the range end on its
      * last, spanning the full line in between.

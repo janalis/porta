@@ -28,6 +28,14 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 final class EditorRenderer
 {
     /**
+     * A line with more same-word matches than this contributes no occurrence
+     * spans: identifiers in code repeat at most a few times per line, so a
+     * denser line means the caret sits on a prose word — and per-line span
+     * count is what the decoration cost scales with.
+     */
+    public const int MAX_OCCURRENCES_PER_LINE = 8;
+
+    /**
      * Find the bracket at (or just before) the cursor and its match.
      * Naive scan that ignores strings/comments, capped for large files.
      *
@@ -139,7 +147,16 @@ final class EditorRenderer
         $occurrences = [];
         $matches = [];
         for ($line = $fromLine; $line <= $toLine; ++$line) {
-            if (0 === preg_match_all($pattern, $doc->getLine($line), $matches, \PREG_OFFSET_CAPTURE)) {
+            $count = preg_match_all($pattern, $doc->getLine($line), $matches, \PREG_OFFSET_CAPTURE);
+            if (0 === $count || false === $count) {
+                continue;
+            }
+            if ($count > self::MAX_OCCURRENCES_PER_LINE) {
+                // Code never repeats an identifier this densely on one line —
+                // this is the caret parked on a prose stopword ('the', 'and')
+                // in an unwrapped paragraph. Lighting those up is noise, and
+                // per-line skipping keeps highlighting alive on the code lines
+                // of mixed files.
                 continue;
             }
             /** @var mixed $rawMatches */

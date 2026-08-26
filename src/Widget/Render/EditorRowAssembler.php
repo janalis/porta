@@ -241,9 +241,9 @@ final readonly class EditorRowAssembler
                 $hlLine .= str_repeat(' ', max(0, $need - $width));
             }
         }
-        foreach ($spans as [$spanStart, $spanEnd, $openSgr, $closeSgr, $reapply]) {
-            $hlLine = LineDecorator::apply($hlLine, $spanStart, $spanEnd, $openSgr, $closeSgr, $reapply);
-        }
+        // One-pass application over viewport-clipped spans: the sequential
+        // fold was exponential in same-word spans per line (prose killer).
+        $hlLine = LineDecorator::applyAll($hlLine, LineSpans::clip($spans, $hScroll, $hScroll + $contentWidth));
 
         // Inlay hints: dim virtual text inserted after all decorations so
         // their SGR spans stay attached to the real characters.

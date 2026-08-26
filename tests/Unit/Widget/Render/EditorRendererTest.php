@@ -167,6 +167,34 @@ final class EditorRendererTest extends TestCase
         $this->assertSame([], EditorRenderer::identifierOccurrences($doc, PaneFocus::Blurred, 0, 0));
     }
 
+    public function testIdentifierOccurrencesSkipsAnOverDenseLineButKeepsItsSiblings(): void
+    {
+        // 9 same-word matches on one line = the caret parked on a prose
+        // stopword; that LINE contributes nothing (per-line skip), while a
+        // code-like sibling line keeps its highlighting.
+        $dense = implode(' ', array_fill(0, EditorRenderer::MAX_OCCURRENCES_PER_LINE + 1, 'the'));
+        $doc = new Document($dense."\nthe end of the\n");
+        $doc->setCursor(0, 1); // caret on the first 'the'
+
+        $occurrences = EditorRenderer::identifierOccurrences($doc, PaneFocus::Focused, 0, 1);
+
+        $this->assertCount(2, $occurrences, 'only line 1\'s two matches survive');
+        $this->assertSame([1, 1], array_column($occurrences, 0), 'both from the sibling line');
+    }
+
+    public function testIdentifierOccurrencesKeepsALineExactlyAtTheCap(): void
+    {
+        $atCap = implode(' ', array_fill(0, EditorRenderer::MAX_OCCURRENCES_PER_LINE, 'the'));
+        $doc = new Document($atCap."\n");
+        $doc->setCursor(0, 1);
+
+        $this->assertCount(
+            EditorRenderer::MAX_OCCURRENCES_PER_LINE,
+            EditorRenderer::identifierOccurrences($doc, PaneFocus::Focused, 0, 0),
+            'the cap is exclusive: exactly MAX matches still highlight',
+        );
+    }
+
     public function testIdentifierOccurrencesAcceptsATwoCharacterIdentifier(): void
     {
         // ltrim($word, '$') === "ab", length exactly 2 — the boundary between

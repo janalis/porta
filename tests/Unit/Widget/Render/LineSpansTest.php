@@ -191,4 +191,32 @@ final class LineSpansTest extends TestCase
         $this->assertSame([], $result['spans']);
         $this->assertSame(0, $result['padTo']);
     }
+
+    public function testClipDropsSpansOutsideTheWindowAndClampsStraddlers(): void
+    {
+        $mk = static fn (int $s, int $e): array => [$s, $e, 'O', 'C', null];
+
+        $clipped = LineSpans::clip(
+            [
+                $mk(0, 10), // ends exactly at winStart → dropped
+                $mk(30, 40), // starts exactly at winEnd → dropped
+                $mk(5, 15), // straddles the left edge → clamped to [10, 15)
+                $mk(25, 99), // straddles the right edge → clamped to [25, 30)
+                $mk(12, 18), // fully inside → untouched
+                $mk(0, \PHP_INT_MAX), // "to end of line" diagnostic → clamped to the window
+            ],
+            10,
+            30,
+        );
+
+        $this->assertSame(
+            [
+                $mk(10, 15),
+                $mk(25, 30),
+                $mk(12, 18),
+                $mk(10, 30),
+            ],
+            $clipped,
+        );
+    }
 }
