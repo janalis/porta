@@ -764,8 +764,8 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->mouse->extendColumnSelectionTo($relRow, $relCol, $this->viewport());
     }
 
-    /** The last-render viewport geometry {@see EditorMouse} needs to map a click cell to a document position. */
-    private function viewport(): EditorViewport
+    /** The last-render viewport geometry: {@see EditorMouse} maps click cells through it, the LSP inlay-hint range is derived from it. */
+    public function viewport(): EditorViewport
     {
         return new EditorViewport($this->scroll->vScroll(), $this->scroll->hScroll(), $this->lastGutterWidth, $this->lastStripeCol, $this->lastRenderRows, $this->stickyLines);
     }
@@ -783,6 +783,10 @@ final class CodeEditorWidget extends AbstractWidget implements
     public function scrollBy(int $delta): void
     {
         $this->scroll->scrollBy($delta);
+        // Viewport-scoped LSP features (inlay hints) fetch only a ranged
+        // window; a detach-scroll can leave it, and no didChange would ever
+        // tell them. The handler debounces, so a wheel flood costs one fetch.
+        $this->callbacks->completion?->viewportScrolled();
     }
 
     /**

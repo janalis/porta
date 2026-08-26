@@ -34,7 +34,7 @@ final class LspBufferListenerTest extends TestCase
             '/tmp/proj',
             $this->activeFile = new FixedActiveFile(),
             new Translator('en'),
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient(),
+            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient(['inlayHintProvider' => true]),
         );
         $pool->configure(
             ['php' => ['command' => ['php-ls'], 'name' => 'php-ls']],

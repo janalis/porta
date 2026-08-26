@@ -25,4 +25,11 @@ interface EditorCompletionHandler
 
     /** The document content changed (debounced didChange). */
     public function scheduleDidChange(Document $doc): void;
+
+    /**
+     * The viewport scrolled without an edit (wheel detach). Viewport-scoped
+     * features — inlay hints — re-fetch once the scrolling settles, if the
+     * view left the last range they requested.
+     */
+    public function viewportScrolled(): void;
 }

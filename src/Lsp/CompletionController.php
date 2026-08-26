@@ -5,7 +5,12 @@ declare(strict_types=1);
 namespace Porta\Lsp;
 
 use Porta\Editor\Document;
+use Porta\I18n\Translator;
+use Porta\Support\Scheduler;
+use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorCompletionHandler;
+use Porta\Workbench\Notifier;
+use Symfony\Component\Tui\Tui;
 
 /**
  * "As you type" language features: completion, its deferred resolve
@@ -14,6 +19,33 @@ use Porta\Widget\EditorCompletionHandler;
  */
 final class CompletionController extends AbstractLspController implements EditorCompletionHandler
 {
+    /**
+     * Lines fetched beyond the viewport on each side. Generous: a file under
+     * ~1000 lines is always fully hinted, and the settle re-fetch below only
+     * fires when a scroll actually leaves the window.
+     */
+    private const int HINT_MARGIN_LINES = 500;
+
+    /** How long the viewport must hold still before hints re-fetch. */
+    private const float SCROLL_SETTLE_SECONDS = 0.25;
+
+    /** @var array{string, int, int}|null path + line range of the last hint request */
+    private ?array $hintedRange = null;
+
+    /** Pending settle timer; null when none is armed. */
+    private ?string $settleTimer = null;
+
+    public function __construct(
+        LspSessionPool $lsp,
+        CodeEditorWidget $editor,
+        Tui $tui,
+        Notifier $notifier,
+        Translator $translator,
+        private readonly ?Scheduler $scheduler = null,
+    ) {
+        parent::__construct($lsp, $editor, $tui, $notifier, $translator);
+    }
+
     /** Debounce a didChange for $doc, then refresh inlay hints. */
     #[\Override]
     public function scheduleDidChange(Document $doc): void
@@ -48,20 +80,32 @@ final class CompletionController extends AbstractLspController implements Editor
     }
 
     /**
-     * Fetch inlay hints (parameter names / inferred types) for the whole
-     * document and hand them to the editor to render as dim inline text.
+     * Fetch inlay hints (parameter names / inferred types) for the viewport
+     * (± {@see self::HINT_MARGIN_LINES}) and hand them to the editor to render
+     * as dim inline text. Servers that never advertised `inlayHintProvider`
+     * are not asked — the old unconditional request earned an error response
+     * per edit burst.
      */
     public function requestInlayHints(): void
     {
+        /** @var array<string, mixed>|bool|null $capability LSP: boolean or an InlayHintOptions object */
+        $capability = $this->lsp->serverCapability($this->editor->getFilePath(), 'inlayHintProvider');
+        if (null === $capability || false === $capability) {
+            return;
+        }
         $path = (string) $this->editor->getFilePath();
-        $lineCount = $this->editor->getDocument()->getLineCount();
+        $lastLine = max(0, $this->editor->getDocument()->getLineCount() - 1);
+        $viewport = $this->editor->viewport();
+        $first = max(0, min($viewport->vScroll - self::HINT_MARGIN_LINES, $lastLine));
+        $last = min($lastLine, $viewport->vScroll + $viewport->renderRows + self::HINT_MARGIN_LINES);
+        $this->hintedRange = [$path, $first, $last];
         $this->lsp->request(
             'textDocument/inlayHint',
             [
                 'textDocument' => ['uri' => $this->uri($path)],
                 'range' => [
-                    'start' => ['line' => 0, 'character' => 0],
-                    'end' => ['line' => max(0, $lineCount - 1), 'character' => 0],
+                    'start' => ['line' => $first, 'character' => 0],
+                    'end' => ['line' => $last, 'character' => 0],
                 ],
             ],
             function (mixed $result) use ($path): void {
@@ -73,6 +117,43 @@ final class CompletionController extends AbstractLspController implements Editor
                 }
             },
         );
+    }
+
+    /**
+     * A detach-scroll moved the viewport: once it settles, re-fetch hints if
+     * the visible lines left the last requested window. (No scheduler = bare
+     * test construction: act immediately, the container always injects one.)
+     */
+    #[\Override]
+    public function viewportScrolled(): void
+    {
+        if (null === $this->scheduler) {
+            $this->refetchHintsIfViewportLeftRange();
+
+            return;
+        }
+        if (null !== $this->settleTimer) {
+            $this->scheduler->cancel($this->settleTimer);
+        }
+        $this->settleTimer = $this->scheduler->delay(self::SCROLL_SETTLE_SECONDS, function (): void {
+            $this->settleTimer = null;
+            $this->refetchHintsIfViewportLeftRange();
+        });
+    }
+
+    private function refetchHintsIfViewportLeftRange(): void
+    {
+        $path = $this->editor->getFilePath();
+        if (null === $path) {
+            return;
+        }
+        $viewport = $this->editor->viewport();
+        $lastVisible = min(max(0, $this->editor->getDocument()->getLineCount() - 1), $viewport->vScroll + $viewport->renderRows);
+        $range = $this->hintedRange;
+        if (null !== $range && $range[0] === $path && $range[1] <= $viewport->vScroll && $lastVisible <= $range[2]) {
+            return; // still inside the hinted window — nothing new to fetch
+        }
+        $this->requestInlayHints();
     }
 
     /**

@@ -219,6 +219,7 @@ final class LspSessionTest extends TestCase
         $session->notifyDidSave('/tmp/x.php');
         $session->notifyFullChange('/tmp/x.php', new Document('x'));
 
+        $this->assertNull($session->serverCapability('inlayHintProvider'), 'no client yet — no capabilities to read');
         $this->assertFalse($session->isActive());
         $this->assertSame([], $client->notifications, 'the client was never started — nothing to notify');
         $this->assertSame([], $client->requests);

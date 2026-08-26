@@ -25,6 +25,9 @@ foreach (readFrames($in) as $message) {
                 'capabilities' => [
                     'textDocumentSync' => 1,
                     'completionProvider' => ['triggerCharacters' => ['>', ':'], 'resolveProvider' => true],
+                    // Advertised because the handler below answers it — and the
+                    // client now skips hint requests for servers that stay silent.
+                    'inlayHintProvider' => true,
                 ],
                 'serverInfo' => ['name' => 'mock-lsp'],
             ],

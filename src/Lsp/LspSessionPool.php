@@ -205,6 +205,12 @@ final class LspSessionPool
         $this->sessionFor($path)?->flushPendingChange($path, $document);
     }
 
+    /** The named capability advertised by the server responsible for $path (null when none is up). */
+    public function serverCapability(?string $path, string $name): mixed
+    {
+        return $this->sessionFor($path)?->serverCapability($name);
+    }
+
     // --- routing --------------------------------------------------------------
 
     private function activeSession(): ?LspSession

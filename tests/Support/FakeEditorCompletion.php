@@ -14,6 +14,7 @@ final class FakeEditorCompletion implements EditorCompletionHandler
         private readonly ?\Closure $resolveCompletion = null,
         private readonly ?\Closure $requestSignatureHelp = null,
         private readonly ?\Closure $scheduleDidChange = null,
+        private readonly ?\Closure $viewportScrolled = null,
     ) {}
 
     public function requestCompletion(int $line, int $utf16Col): void
@@ -41,6 +42,13 @@ final class FakeEditorCompletion implements EditorCompletionHandler
     {
         if (null !== $this->scheduleDidChange) {
             ($this->scheduleDidChange)($doc);
+        }
+    }
+
+    public function viewportScrolled(): void
+    {
+        if (null !== $this->viewportScrolled) {
+            ($this->viewportScrolled)();
         }
     }
 }

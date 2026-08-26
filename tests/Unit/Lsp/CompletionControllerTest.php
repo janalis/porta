@@ -9,7 +9,9 @@ use Porta\Editor\Document;
 use Porta\I18n\Translator;
 use Porta\Lsp\CompletionController;
 use Porta\Lsp\LspSessionPool;
+use Porta\Support\Scheduler;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
 use Porta\Widget\CodeEditorWidget;
@@ -27,7 +29,8 @@ final class CompletionControllerTest extends TestCase
     private FakeLspClient $client;
     private Tui $tui;
 
-    private function controller(): CompletionController
+    /** @param array<string, mixed> $capabilities */
+    private function controller(array $capabilities = ['inlayHintProvider' => true], ?Scheduler $scheduler = null): CompletionController
     {
         $this->editor = new CodeEditorWidget();
         $this->tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20));
@@ -37,7 +40,7 @@ final class CompletionControllerTest extends TestCase
             '/p',
             $this->activeFile = new FixedActiveFile(),
             $translator,
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient(),
+            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient($capabilities),
         );
         $pool->configure(
             ['php' => ['command' => ['php-ls'], 'name' => 'php-ls']],
@@ -46,7 +49,7 @@ final class CompletionControllerTest extends TestCase
             static fn (array $edit): bool => false,
         );
 
-        return new CompletionController($pool, $this->editor, $this->tui, $notifier, $translator);
+        return new CompletionController($pool, $this->editor, $this->tui, $notifier, $translator, $scheduler);
     }
 
     /** Opens $path in the editor and the fake LSP session, ready to answer requests. */
@@ -57,8 +60,10 @@ final class CompletionControllerTest extends TestCase
         Probe::get($controller, 'lsp')->notifyDidOpen($path, $text, 'php', 1);
     }
 
-    public function testRequestInlayHintsSendsTheWholeDocumentRangeAndAppliesTheResult(): void
+    public function testRequestInlayHintsCoversASmallDocumentEntirelyAndAppliesTheResult(): void
     {
+        // A document inside the viewport margin: the ranged request degrades
+        // to the whole document, exactly as before the range existed.
         $controller = $this->controller();
         $this->readyOn($controller, '/p/a.php', "<?php\n\$a=1;\n\$b=2;\n"); // 4 lines (trailing blank line)
 
@@ -138,6 +143,73 @@ final class CompletionControllerTest extends TestCase
         });
 
         $this->assertFalse($requested, 'an error/null result must not repaint');
+    }
+
+    public function testRequestInlayHintsSkipsAServerWithoutTheProvider(): void
+    {
+        $controller = $this->controller(capabilities: []);
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$a=1;\n");
+
+        $controller->requestInlayHints();
+
+        $this->assertSame([], $this->client->requests, 'no inlayHintProvider advertised — no request, no error response per edit');
+    }
+
+    public function testRequestInlayHintsClampsToTheViewportPlusMargin(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', str_repeat("\$x = 1;\n", 2_000));
+        $this->editor->scrollBy(600);
+
+        $controller->requestInlayHints();
+
+        $range = $this->client->requests[0]['params']['range'];
+        $this->assertSame(100, $range['start']['line'], 'viewport top 600 minus the 500-line margin');
+        $this->assertSame(1124, $range['end']['line'], 'viewport top + 24 default rows + the margin');
+    }
+
+    public function testASettledScrollOutsideTheHintedWindowRefetches(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', str_repeat("\$x = 1;\n", 2_000));
+        $controller->requestInlayHints(); // hinted window: lines 0..524
+
+        $this->editor->scrollBy(600); // visible 600..624 — outside the window
+        $controller->viewportScrolled(); // no scheduler: settles immediately
+
+        $this->assertCount(2, $this->client->requests, 'the viewport left the window — hints re-fetch');
+        $this->assertSame(100, $this->client->requests[1]['params']['range']['start']['line']);
+
+        $controller->viewportScrolled(); // unchanged viewport: still covered
+        $this->assertCount(2, $this->client->requests, 'a settle inside the fresh window must not re-fetch');
+    }
+
+    public function testViewportScrolledDebouncesThroughTheScheduler(): void
+    {
+        $scheduler = new FakeScheduler();
+        $controller = $this->controller(scheduler: $scheduler);
+        $this->readyOn($controller, '/p/a.php', str_repeat("\$x = 1;\n", 2_000));
+        $controller->requestInlayHints();
+
+        $this->editor->scrollBy(600);
+        $controller->viewportScrolled();
+        $controller->viewportScrolled(); // a wheel flood re-arms, never stacks
+
+        $this->assertCount(1, $this->client->requests, 'nothing re-fetches while the wheel is still moving');
+        $this->assertCount(1, $scheduler->scheduled, 'one settle timer armed');
+        $this->assertSame(['1'], $scheduler->cancelled, 'the first arm was replaced');
+
+        $scheduler->fire();
+        $this->assertCount(2, $this->client->requests, 'the settled viewport fetched its window');
+    }
+
+    public function testViewportScrolledWithNoFileOpenIsInert(): void
+    {
+        $controller = $this->controller();
+
+        $controller->viewportScrolled();
+
+        $this->assertFalse(isset($this->client) && [] !== $this->client->requests, 'no file — nothing to fetch');
     }
 
     public function testRequestCompletionShowsMappedItems(): void

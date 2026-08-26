@@ -253,6 +253,12 @@ final class LspSession
         ]));
     }
 
+    /** A single advertised server capability, null while no server is up (or none advertised). */
+    public function serverCapability(string $name): mixed
+    {
+        return $this->client?->serverCapabilities()[$name] ?? null;
+    }
+
     /** Whether the language server declared incremental (kind 2) document sync. */
     private function serverUsesIncrementalSync(): bool
     {

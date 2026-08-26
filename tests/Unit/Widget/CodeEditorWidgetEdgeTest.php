@@ -12,6 +12,7 @@ use Porta\Editor\LineNumberMode;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Support\AnsiText;
 use Porta\Tests\Support\EditorState;
+use Porta\Tests\Support\FakeEditorCompletion;
 use Porta\Tests\Support\FakeEditorNavigation;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\Probe;
@@ -1049,6 +1050,21 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $second = $editor->scopes();
 
         $this->assertNotSame($first, $second, 'editing the SAME document must invalidate the memoized scope scan');
+    }
+
+    public function testAWheelScrollNotifiesTheCompletionHandler(): void
+    {
+        $editor = $this->editor(str_repeat("line\n", 100));
+        $scrolled = 0;
+        $editor->setCallbacks(new EditorCallbacks(completion: new FakeEditorCompletion(
+            viewportScrolled: static function () use (&$scrolled): void {
+                ++$scrolled;
+            },
+        )));
+
+        $editor->scrollBy(3);
+
+        $this->assertSame(1, $scrolled, 'viewport-scoped LSP features hear about the detach-scroll');
     }
 
     public function testASameDocumentEditDebouncesTheRescanAndStaysStaleUntilItFires(): void
