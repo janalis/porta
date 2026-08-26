@@ -6,9 +6,11 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Support\RevoltScheduler;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -93,6 +95,42 @@ final class IdeEditingTest extends TestCase
                 },
                 420 => function ($tui): void {
                     $this->assertSame(4, $tui->getById('editor')->getDocument()->getCursorLine(), 'clicking the Service crumb jumped to the class declaration');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testBreadcrumbTrailSettlesAfterTypingPauses(): void
+    {
+        putenv('PATH=/nonexistent');
+        $code = "<?php\n\nnamespace App;\n\nclass Service\n{\n    public function handle(): void\n    {\n        \$x = 1;\n    }\n}\n";
+        $project = new TempProject(['Service.php' => $code]);
+
+        $this->runIde(
+            $project,
+            $project->path('Service.php'),
+            [
+                200 => function ($tui): void {
+                    // Rename handle → handleX by typing at the end of the name.
+                    // The rescan debounces, so the settled trail is awaited on
+                    // the live loop — not asserted on the keystroke's frame.
+                    $editor = $tui->getById('editor');
+                    // The debounce only exists when the container actually
+                    // injected the scheduler — a silently-null optional would
+                    // put production back on the per-keystroke tokenizer path.
+                    $this->assertInstanceOf(RevoltScheduler::class, Probe::get($editor, 'scheduler'), 'the container wired the rescan scheduler');
+                    $editor->getDocument()->setCursor(6, 26);
+                    $tui->handleInput('X');
+                    $this->await(
+                        static function () use ($tui): bool {
+                            $rows = $tui->getById('breadcrumbs')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1));
+
+                            return [] !== $rows && str_contains(AnsiUtils::stripAnsiCodes($rows[0]), 'handleX');
+                        },
+                        what: 'the breadcrumb trail to settle after the edit',
+                    );
                 },
             ],
         );

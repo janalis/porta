@@ -13,6 +13,7 @@ use Porta\Highlight\CodeHighlighter;
 use Porta\Support\AnsiText;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FakeEditorNavigation;
+use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\Probe;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorCallbacks;
@@ -1048,6 +1049,66 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $second = $editor->scopes();
 
         $this->assertNotSame($first, $second, 'editing the SAME document must invalidate the memoized scope scan');
+    }
+
+    public function testASameDocumentEditDebouncesTheRescanAndStaysStaleUntilItFires(): void
+    {
+        $scheduler = new FakeScheduler();
+        $editor = new CodeEditorWidget(scheduler: $scheduler);
+        $editor->openFile('demo.php', "<?php\nclass Alpha\n{\n}\n");
+
+        $first = $editor->scopes();
+        $this->assertSame(['Alpha'], array_column($first, 'label'), 'the first look scans in place, scheduler or not');
+        $this->assertSame([], $scheduler->scheduled, 'a cache hit arms nothing');
+
+        // Rename the class: the trail must stay stale (no per-keystroke
+        // tokenizer pass), with one 150ms rescan armed.
+        $editor->getDocument()->setCursor(1, 11);
+        $editor->getDocument()->insert('X');
+        $this->assertSame($first, $editor->scopes(), 'mid-typing the stale trail is served');
+        $this->assertSame([0.15], array_values($scheduler->delays), 'one idle rescan armed');
+
+        // Frames keep calling scopes() at the same version: no re-arm, or an
+        // ambient repaint stream would push the rescan out forever.
+        $editor->scopes();
+        $this->assertCount(1, $scheduler->scheduled, 'a same-version call must not push the timer out');
+
+        $scheduler->fire();
+        $this->assertSame(['AlphaX'], array_column($editor->scopes(), 'label'), 'the settled rescan shows the edit');
+        $this->assertSame([], $scheduler->scheduled, 'nothing left armed after settling');
+    }
+
+    public function testAFurtherEditReArmsInPlaceOfThePendingRescan(): void
+    {
+        $scheduler = new FakeScheduler();
+        $editor = new CodeEditorWidget(scheduler: $scheduler);
+        $editor->openFile('demo.php', "<?php\nclass Alpha\n{\n}\n");
+        $editor->scopes();
+
+        $editor->getDocument()->setCursor(1, 11);
+        $editor->getDocument()->insert('X');
+        $editor->scopes();
+        $editor->getDocument()->insert('Y');
+        $editor->scopes();
+
+        $this->assertSame(['1'], $scheduler->cancelled, 'the first pending rescan was replaced, not stacked');
+        $this->assertCount(1, $scheduler->scheduled);
+
+        $scheduler->fire();
+        $this->assertSame(['AlphaXY'], array_column($editor->scopes(), 'label'), 'the one rescan sees both edits');
+    }
+
+    public function testSwitchingDocumentsRescansInPlaceEvenWithAScheduler(): void
+    {
+        $scheduler = new FakeScheduler();
+        $editor = new CodeEditorWidget(scheduler: $scheduler);
+        $editor->openFile('demo.php', "<?php\nclass Alpha\n{\n}\n");
+        $editor->scopes();
+
+        // Another buffer must never show Alpha's trail for a debounce window.
+        $editor->showDocument('other.php', new Document("<?php\nclass Beta\n{\n}\n"));
+        $this->assertSame(['Beta'], array_column($editor->scopes(), 'label'), 'a document switch cannot serve a stale trail');
+        $this->assertSame([], $scheduler->scheduled, 'the switch scanned synchronously');
     }
 
     // --- caretScreenCell / documentLineAt boundary math ------------------------

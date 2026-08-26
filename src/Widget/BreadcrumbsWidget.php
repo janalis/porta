@@ -75,7 +75,10 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost
     #[\Override]
     public function beforeRender(): void
     {
-        if (null === $this->provider) {
+        // The visible gate is load-bearing: the provider tokenizes the whole
+        // file, and a hidden bar must cost nothing — render() drawing no rows
+        // does not stop beforeRender from running every frame.
+        if (null === $this->provider || !$this->visible) {
             return;
         }
         // The hover column re-resolves per frame, so a relabel needs no

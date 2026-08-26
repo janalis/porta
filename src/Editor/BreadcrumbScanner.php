@@ -14,6 +14,13 @@ namespace Porta\Editor;
 final class BreadcrumbScanner
 {
     /**
+     * {@see \Porta\Highlight\CodeHighlighter}'s MAX_HIGHLIGHT_BYTES twin: past
+     * this, no crumbs and no sticky headers rather than a tokenizer pass whose
+     * cost scales with the file on every rescan.
+     */
+    public const int MAX_SCAN_BYTES = 512 * 1024;
+
+    /**
      * All named scopes in the source, as 1-based line spans. `kind` is
      * `namespace` / `type` (class/interface/trait/enum) / `function`.
      *
@@ -21,6 +28,9 @@ final class BreadcrumbScanner
      */
     public static function scan(string $source): array
     {
+        if (\strlen($source) > self::MAX_SCAN_BYTES) {
+            return [];
+        }
         // Editing buffers are often mid-edit (unbalanced braces, partial
         // syntax): swallow the tokenizer's warnings, keeping the tokens it
         // still returns.

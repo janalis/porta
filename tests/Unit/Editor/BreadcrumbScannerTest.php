@@ -258,4 +258,17 @@ final class BreadcrumbScannerTest extends TestCase
         $this->assertSame([], BreadcrumbScanner::scan("just some words\nno php here\n"));
         $this->assertSame([], BreadcrumbScanner::scan(''));
     }
+
+    public function testAFileOverTheByteCapYieldsNoScopesAtAll(): void
+    {
+        // Real scannable structure, padded past the cap with one long comment
+        // line: if the cap check vanished (or flipped to >=), the scan would
+        // find Demo and the assertions below would disagree.
+        $head = "<?php\nclass Demo\n{\n    public function foo(): void {}\n}\n// ";
+        $atCap = $head.str_repeat('x', BreadcrumbScanner::MAX_SCAN_BYTES - \strlen($head));
+        $this->assertSame(BreadcrumbScanner::MAX_SCAN_BYTES, \strlen($atCap));
+
+        $this->assertSame(['Demo', 'foo'], array_column(BreadcrumbScanner::scan($atCap), 'label'), 'exactly at the cap still scans');
+        $this->assertSame([], BreadcrumbScanner::scan($atCap.'x'), 'one byte past the cap scans nothing');
+    }
 }

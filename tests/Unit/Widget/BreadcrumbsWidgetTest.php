@@ -37,6 +37,25 @@ final class BreadcrumbsWidgetTest extends TestCase
         $this->assertNotSame([], $bar->render(new RenderContext(80, 1)), 'showing brings the trail back');
     }
 
+    public function testAHiddenBarNeverRunsItsProvider(): void
+    {
+        $calls = 0;
+        $bar = new BreadcrumbsWidget();
+        $bar->setProvider(static function () use (&$calls): array {
+            ++$calls;
+
+            return [['label' => 'App', 'line' => 1]];
+        });
+
+        $bar->hide();
+        $bar->beforeRender();
+        $this->assertSame(0, $calls, 'the provider tokenizes the file — a hidden bar must not pay that per frame');
+
+        $bar->show();
+        $bar->beforeRender();
+        $this->assertSame(1, $calls, 'showing the bar puts the provider back on the frame path');
+    }
+
     public function testRendersSegmentsJoinedAndExactWidth(): void
     {
         $bar = new BreadcrumbsWidget();

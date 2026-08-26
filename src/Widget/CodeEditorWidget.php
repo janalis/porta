@@ -50,6 +50,7 @@ use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Support\PerfCollector;
 use Porta\Support\ProjectPaths;
+use Porta\Support\Scheduler;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
@@ -137,6 +138,15 @@ final class CodeEditorWidget extends AbstractWidget implements
     private array $scopeCache = [];
     private string $scopeKey = '';
 
+    /** Same-document edits rescan after this much idle, not per keystroke. */
+    private const float SCOPE_DEBOUNCE_SECONDS = 0.15;
+
+    /** Pending debounced scope rescan; null when none is armed. */
+    private ?string $scopeTimer = null;
+
+    /** The doc-identity:version the pending rescan was armed for. */
+    private string $scopeTimerKey = '';
+
     /** @var array{0: array{0: int, 1: int}, 1: array{0: int, 1: int}}|null memoized bracket pair, keyed by version + caret */
     private ?array $bracketsMemo = null;
     private string $bracketsKey = '';
@@ -190,6 +200,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         private readonly ?ViewRegistry $views = null,
         ?OverlayHost $overlayHost = null,
         private readonly ?PerfCollector $perf = null,
+        private readonly ?Scheduler $scheduler = null,
     ) {
         $this->initStyles($styles);
         $this->callbacks = new EditorCallbacks();
@@ -628,10 +639,43 @@ final class CodeEditorWidget extends AbstractWidget implements
         if (null === $this->filePath || !str_ends_with($this->filePath, '.php')) {
             return [];
         }
-        $key = spl_object_id($this->document).':'.$this->document->getVersion();
-        if ($key !== $this->scopeKey) {
+        $docId = spl_object_id($this->document);
+        $key = $docId.':'.$this->document->getVersion();
+        if ($key === $this->scopeKey) {
+            return $this->scopeCache;
+        }
+
+        // A different document must never show the previous file's trail, and
+        // a first look must not open blank — those scan in place. Only a
+        // same-document edit debounces: the trail and the sticky band stay
+        // stale until the typing pauses, so a keystroke costs no whole-file
+        // tokenizer pass. (No scheduler = bare test construction: stay
+        // synchronous, the rigs need determinism, the container always has one.)
+        if (null === $this->scheduler || !str_starts_with($this->scopeKey, $docId.':')) {
             $this->scopeCache = BreadcrumbScanner::scan($this->document->getText());
             $this->scopeKey = $key;
+
+            return $this->scopeCache;
+        }
+
+        // Re-arm only when the version moved on, not per call: scopes() runs
+        // on every frame (sticky band + trail), and an ambient repaint stream
+        // pushing the timer out forever would keep the trail stale for as long
+        // as anything animates.
+        if ($this->scopeTimerKey !== $key) {
+            if (null !== $this->scopeTimer) {
+                $this->scheduler->cancel($this->scopeTimer);
+            }
+            $this->scopeTimerKey = $key;
+            $this->scopeTimer = $this->scheduler->delay(self::SCOPE_DEBOUNCE_SECONDS, function (): void {
+                $this->scopeTimer = null;
+                $this->scopeTimerKey = '';
+                // Re-key from the live document — it may have moved on (or
+                // been swapped) since the edit that armed this timer.
+                $this->scopeCache = BreadcrumbScanner::scan($this->document->getText());
+                $this->scopeKey = spl_object_id($this->document).':'.$this->document->getVersion();
+                $this->invalidate(); // the settled trail needs a frame to show
+            });
         }
 
         return $this->scopeCache;
