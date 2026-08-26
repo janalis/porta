@@ -68,15 +68,26 @@ final class Document
      */
     private ?array $compoundCaret = null;
 
-    /** Text as of the last save/load, for "undo back to saved state clears dirty". */
-    private string $savedText = '';
+    /**
+     * xxh128 of the text as of the last save/load, for "undo back to saved
+     * state clears dirty". A digest, not the text: the full copy retained one
+     * extra file-size of memory per open buffer for a comparison that only
+     * ever needs equality.
+     */
+    private string $savedDigest = '';
     private int $dirtyCheckedVersion = 0;
+
+    /** The joined text of {@see $textMemoVersion}; version identifies content (the PositionMapper invariant). */
+    private ?string $textMemo = null;
+    private int $textMemoVersion = -1;
 
     public function __construct(string $text = '')
     {
         $text = str_replace(["\r\n", "\r"], replace: "\n", subject: $text);
         $this->lines = '' === $text ? [''] : explode("\n", $text);
-        $this->savedText = implode("\n", $this->lines);
+        // The normalized $text IS what implode would rebuild — digest it
+        // directly instead of re-joining a copy of the file.
+        $this->savedDigest = hash('xxh128', $text);
         $this->indent = new IndentModel($this->detectTabIndentation(), self::TAB_SIZE, self::TAB_SIZE);
         $this->selection = new SelectionModel();
         $this->history = new UndoHistory();
@@ -185,7 +196,16 @@ final class Document
 
     public function getText(): string
     {
-        return implode("\n", $this->lines);
+        // Memoized on the version counter: isDirty, the LSP sync and the
+        // breadcrumb scan all join the buffer around the same keystroke, and
+        // only touch() moves the version.
+        if ($this->version !== $this->textMemoVersion) {
+            $this->textMemo = implode("\n", $this->lines);
+            $this->textMemoVersion = $this->version;
+        }
+
+        /** @var string */
+        return $this->textMemo;
     }
 
     public function getCursorLine(): int
@@ -214,7 +234,7 @@ final class Document
         // polls isDirty every frame without editing).
         if ($this->version !== $this->dirtyCheckedVersion) {
             $this->dirtyCheckedVersion = $this->version;
-            if ($this->getText() === $this->savedText) {
+            if (hash('xxh128', $this->getText()) === $this->savedDigest) {
                 $this->dirty = false;
             }
         }
@@ -225,7 +245,7 @@ final class Document
     public function markSaved(): void
     {
         $this->dirty = false;
-        $this->savedText = $this->getText();
+        $this->savedDigest = hash('xxh128', $this->getText());
         // Make the save a coalescing boundary so a later undo stops exactly here.
         $this->history->checkpoint();
     }

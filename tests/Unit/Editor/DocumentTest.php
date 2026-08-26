@@ -182,6 +182,20 @@ final class DocumentTest extends TestCase
         $this->assertFalse($doc->isDirty(), 'save is an undo boundary; undo lands on it');
     }
 
+    public function testUndoToSavedIsCleanForACrlfLoadedFile(): void
+    {
+        // The saved digest must be taken from the NORMALIZED text: undo
+        // rebuilds LF-joined lines, and a digest of the raw CRLF bytes would
+        // keep this file dirty forever after its first edit.
+        $doc = new Document("line\r\nnext\r\n");
+        $doc->setCursor(0, 4);
+        $doc->insert('!');
+        $this->assertTrue($doc->isDirty());
+
+        $doc->undo();
+        $this->assertFalse($doc->isDirty(), 'undo to the loaded CRLF content is clean');
+    }
+
     public function testCaretHooksRoundTripThroughASnapshot(): void
     {
         $doc = new Document("l1\nl2\nl3\n");
