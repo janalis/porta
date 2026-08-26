@@ -23,6 +23,16 @@ Widgets render to `string[]` measured in **display columns**
 (`mb_strwidth`, `AnsiUtils::visibleWidth`), so CJK and other wide characters and
 ANSI-styled text align correctly.
 
+**Never re-slice your own sliced ANSI output in a loop.** The vendor slicers
+(`AnsiUtils::sliceByColumn`/`sliceWithWidth`) replay every escape they skip
+into each slice, so an accumulate-and-reslice fold multiplies escapes
+*geometrically* — this one pattern produced four separate scroll-freeze bugs
+(the decoration-span fold, indent guides, inlay hints: OOM at ~12 iterations;
+see `LineDecorator::applyAll`'s docblock). Apply N decorations in ONE pass
+over the raw line: spans go through `LineDecorator::applyAll`, insert/overlay
+loops slice the raw line once per gap. A single bounded splice per row
+(`OverlayCompositor::into`, `ModalShadow`) is fine.
+
 Widgets cache their rendered output, and `invalidate()` only bubbles **up** — so
 a change that must relabel the whole tree, such as a live locale switch, has to
 clear render caches recursively. That is what the chrome-root sweep is for; see
