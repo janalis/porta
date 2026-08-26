@@ -2622,6 +2622,10 @@
         <source>Routes, services, Twig and config completion for this Symfony app</source>
         <target>השלמה של ניתובים, שירותים, Twig ותצורה עבור אפליקציית Symfony זו</target>
       </trans-unit>
+      <trans-unit id="667">
+        <source>Search vendor/ files</source>
+        <target>חיפוש בקובצי vendor/</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

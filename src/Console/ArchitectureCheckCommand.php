@@ -252,6 +252,9 @@ final class ArchitectureCheckCommand extends Command
         'Settings>Layout',
         'Settings>Lsp',
         'Settings>Plugin',
+        // The "Search vendor/ files" toggle applies straight to the shared
+        // FileIndex — the SettingsController's live-apply pattern.
+        'Settings>Search',
         'Settings>Support',
         'Settings>Ui',
         'Settings>Widget',

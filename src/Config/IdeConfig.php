@@ -38,6 +38,7 @@ final class IdeConfig
         'breadcrumbs' => true,
         'autoPairs' => true,
         'formatOnSave' => false,
+        'searchIncludeVendor' => false,
         'cursorShape' => 'bar',
         'tabBarPosition' => 'top',
     ];

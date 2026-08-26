@@ -35,6 +35,7 @@ use Porta\Plugin\Lifecycle\ToolInstaller;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Search\FileIndex;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\Section\GeneralSection;
 use Porta\Settings\Section\HighlightingSection;
@@ -159,6 +160,7 @@ final class SettingsViewControllerTest extends TestCase
             new PortaJsonWriter(),
             $applier,
             new BreadcrumbsWidget(),
+            new FileIndex($this->project->dir),
         );
         $bootKeys = new Keybindings([]);
         $keysHost = new PluginHost(IdeConfig::load($this->project->dir), new EventDispatcher(), $this->project->dir);

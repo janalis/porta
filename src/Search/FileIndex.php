@@ -20,9 +20,22 @@ final class FileIndex
     /** @var list<array{path: string, lower: string, boundary: int}>|null */
     private ?array $entries = null;
 
+    /** The "Search vendor/ files" setting; off by default — see {@see walk()}. */
+    private bool $includeVendor = false;
+
     public function __construct(
         private readonly string $rootDir,
     ) {}
+
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the setting's domain, the SettingsController pattern.
+    public function setIncludeVendor(bool $on): void
+    {
+        if ($on === $this->includeVendor) {
+            return;
+        }
+        $this->includeVendor = $on;
+        $this->entries = null; // the next query re-walks under the new scope
+    }
 
     /** Drop the cache so the next query re-walks (files may have changed). */
     public function refresh(): void
@@ -68,12 +81,20 @@ final class FileIndex
     /** @return list<array{path: string, lower: string, boundary: int}> sorted by path */
     private function walk(): array
     {
+        // vendor/ is excluded by default, like ProjectSearch::EXCLUDES: in a
+        // PHP project it can eat the whole MAX_FILES budget by itself, so the
+        // project's own files were the ones truncated away. The setting
+        // re-includes it for people who go-to-file into dependencies.
+        $excludes = ['.git', 'node_modules', '.idea', '.vscode'];
+        if (!$this->includeVendor) {
+            $excludes[] = 'vendor';
+        }
         $finder = new Finder()
             ->files()
             ->in($this->rootDir)
             ->ignoreDotFiles(false)
             ->ignoreVCS(false)
-            ->exclude(['.git', 'node_modules', '.idea', '.vscode'])
+            ->exclude($excludes)
             ->notName('.DS_Store');
 
         $paths = [];

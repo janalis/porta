@@ -25,7 +25,7 @@ final class FileIndexTest extends TestCase
 
     public function testExcludesVcsAndDependencyDirs(): void
     {
-        $project = new TempProject(['a.php' => '', '.git/config' => 'x', 'node_modules/lib.js' => 'x', '.idea/x.iml' => 'y']);
+        $project = new TempProject(['a.php' => '', '.git/config' => 'x', 'node_modules/lib.js' => 'x', '.idea/x.iml' => 'y', 'vendor/pkg/Lib.php' => 'z']);
 
         $paths = array_column(new FileIndex($project->dir)->entries(), 'path');
 
@@ -33,6 +33,23 @@ final class FileIndexTest extends TestCase
         $this->assertNotContains('.git/config', $paths);
         $this->assertStringNotContainsString('node_modules', implode('|', $paths));
         $this->assertStringNotContainsString('.idea', implode('|', $paths));
+        $this->assertStringNotContainsString('vendor', implode('|', $paths), 'vendor/ can eat the whole file budget by itself');
+    }
+
+    public function testTheVendorSettingReScopesTheIndexInPlace(): void
+    {
+        $project = new TempProject(['a.php' => '', 'vendor/pkg/Lib.php' => 'z']);
+        $index = new FileIndex($project->dir);
+        $this->assertSame(['a.php'], array_column($index->entries(), 'path'));
+
+        $index->setIncludeVendor(true);
+        $this->assertContains('vendor/pkg/Lib.php', array_column($index->entries(), 'path'), 'enabling the setting re-walks with vendor/ in scope');
+
+        $index->setIncludeVendor(true); // unchanged: must not drop the cache
+        $this->assertContains('vendor/pkg/Lib.php', array_column($index->entries(), 'path'));
+
+        $index->setIncludeVendor(false);
+        $this->assertSame(['a.php'], array_column($index->entries(), 'path'), 'disabling narrows back');
     }
 
     public function testSearchEmptyQueryReturnsTheFirstFilesUpToTheLimit(): void

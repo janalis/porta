@@ -40,6 +40,9 @@ final class SearchEverywhereFactory
         private readonly Scheduler $scheduler,
         private readonly ProjectPaths $paths,
         private readonly Translator $translator,
+        // The one shared index: both pickers and the container's TestNavigator
+        // consumer used to build their own, tripling the walk and the memory.
+        private readonly FileIndex $files,
     ) {}
 
     /**
@@ -53,7 +56,7 @@ final class SearchEverywhereFactory
 
         return new SearchEverywhereController(
             $this->overlay,
-            [new FilesSource(new FileIndex($this->paths->root()), $this->paths, $openFile)],
+            [new FilesSource($this->files, $this->paths, $openFile)],
             [],
             $this->buffers,
             $this->tui,
@@ -121,7 +124,7 @@ final class SearchEverywhereFactory
         return new SearchEverywhereController(
             $this->overlay,
             [
-                new FilesSource(new FileIndex($this->paths->root()), $this->paths, $openFile),
+                new FilesSource($this->files, $this->paths, $openFile),
                 new ActionsSource($this->commands),
             ],
             [

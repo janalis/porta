@@ -23,6 +23,7 @@ use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Onboarding\OnboardingState;
+use Porta\Search\FileIndex;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsRowKind;
@@ -75,6 +76,7 @@ final class SettingsControllerTest extends TestCase
     private array $tabBarPositionChanges = [];
 
     private FormatOnSave $formatOnSave;
+    private FileIndex $files;
 
     /**
      * @param array<string, int|bool|string> $settings
@@ -133,6 +135,7 @@ final class SettingsControllerTest extends TestCase
             new PortaJsonWriter(),
             $applier,
             $breadcrumbs,
+            $this->files = new FileIndex($rootDir),
         );
     }
 
@@ -145,7 +148,7 @@ final class SettingsControllerTest extends TestCase
         $byKey = array_column($rows, null, 'key');
 
         $this->assertSame(
-            ['inlineDiagnostics', 'autoPairs', 'formatOnSave'],
+            ['inlineDiagnostics', 'autoPairs', 'formatOnSave', 'searchIncludeVendor'],
             array_column($rows, 'key'),
             'General holds editor behavior (the viewer-tool paths live on their plugins\' pages now); appearance moved to Interface',
         );
@@ -417,6 +420,20 @@ final class SettingsControllerTest extends TestCase
         $this->assertSame(['light'], $this->themeChanges, 'the theme hook applies at boot too');
         $this->assertSame([CursorShape::Bar], $this->cursorShapeChanges, 'the cursor-shape hook applies at boot too');
         $this->assertSame(['top'], $this->tabBarPositionChanges, 'the tab-bar-position hook applies at boot too');
+    }
+
+    public function testSearchIncludeVendorReachesTheSharedFileIndex(): void
+    {
+        $project = new TempProject(['a.php' => '', 'vendor/pkg/Lib.php' => '']);
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget());
+
+        $controller->changeSetting('searchIncludeVendor', true);
+        $this->assertContains('vendor/pkg/Lib.php', array_column($this->files->entries(), 'path'), 'the toggle re-scopes go-to-file live');
+
+        $controller->changeSetting('searchIncludeVendor', false);
+        $paths = array_column($this->files->entries(), 'path');
+        $this->assertContains('a.php', $paths);
+        $this->assertNotContains('vendor/pkg/Lib.php', $paths, 'disabling narrows the live index back');
     }
 
     public function testApplyAllSkipsADescriptorWithNoApplyClosure(): void

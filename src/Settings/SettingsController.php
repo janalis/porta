@@ -9,6 +9,7 @@ use Porta\Container\AsIdeService;
 use Porta\Editor\EditorViewOptions;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
+use Porta\Search\FileIndex;
 use Porta\Ui\Theme\Theme;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Workbench\Notifier;
@@ -48,6 +49,7 @@ final class SettingsController
         private readonly PortaJsonWriter $writer,
         LiveSettingsApplier $applier,
         BreadcrumbsWidget $breadcrumbs,
+        FileIndex $files,
     ) {
         $this->descriptors = [
             // --- Interface (the "Interface" settings page) ---
@@ -134,6 +136,13 @@ final class SettingsController
                 'group' => 'general',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => (bool) $v ? $applier->enableFormatOnSave() : $applier->disableFormatOnSave(),
+            ],
+            'searchIncludeVendor' => [
+                'label' => 'Search vendor/ files',
+                'kind' => SettingsRowKind::Bool,
+                'group' => 'general',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $files->setIncludeVendor((bool) $v),
             ],
         ];
     }

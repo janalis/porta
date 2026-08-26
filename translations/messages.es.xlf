@@ -2622,6 +2622,10 @@
         <source>Routes, services, Twig and config completion for this Symfony app</source>
         <target>Autocompletado de rutas, servicios, Twig y configuración para esta app Symfony</target>
       </trans-unit>
+      <trans-unit id="667">
+        <source>Search vendor/ files</source>
+        <target>Buscar archivos de vendor/</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
