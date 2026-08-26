@@ -130,7 +130,8 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->bind('$ansi', env('PORTA_ANSI')->bool())
         ->bind('$lspCommand', env('default::PORTA_LSP_COMMAND'))
         ->bind('$lspDisabled', env('PORTA_LSP_DISABLED')->bool())
-        ->bind('$docsDir', env('PORTA_DOCS_DIR'));
+        ->bind('$docsDir', env('PORTA_DOCS_DIR'))
+        ->bind('$translationCacheDir', env('default::PORTA_TRANSLATION_CACHE_DIR'));
     // The composite tree's duplicate-typed sub-widgets (editorBody/main/git+
     // settings areas/separators) and the scoped Search Everywhere instances
     // (Ctrl+P / palette / go-to-symbol) are selected at the consumer with

@@ -38,6 +38,27 @@ final class TranslatorTest extends TestCase
         $this->assertSame('fr', $translator->locale());
     }
 
+    public function testACacheDirDumpsTheCatalogAndStaysHonestAgainstEdits(): void
+    {
+        // One staleness leg only: Symfony's SelfCheckingResourceChecker
+        // memoizes freshness PER PROCESS, so a translator that already
+        // fresh-checked a dump poisons any later staleness assertion in the
+        // same test. Real boots are separate processes — the dump's read-back
+        // is symfony's contract; what is Porta's to pin is that the dir is
+        // threaded through (the glob) and that debug=true re-parses an edit.
+        $catalogs = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', 'Enregistrer le fichier'))]);
+        $cache = new TempProject();
+
+        $first = new Translator('fr', $catalogs->dir, $cache->dir);
+        $this->assertSame('Enregistrer le fichier', $first->trans('Save File'));
+        $this->assertNotSame([], glob($cache->dir.'/catalogue.fr.*.php'), 'the first trans() dumped the parsed catalog');
+
+        $catalogs->write('messages.fr.xlf', $this->xliff('fr', $this->unit('Save File', 'Sauvegarder')));
+        touch($catalogs->path('messages.fr.xlf'), time() + 2); // a same-second edit needs a distinct mtime
+        $second = new Translator('fr', $catalogs->dir, $cache->dir);
+        $this->assertSame('Sauvegarder', $second->trans('Save File'), 'the edited catalog is re-parsed, not served stale');
+    }
+
     public function testPlaceholdersAreInterpolated(): void
     {
         $project = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Committed: %summary%', 'Validé : %summary%'))]);

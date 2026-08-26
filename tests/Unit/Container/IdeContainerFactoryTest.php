@@ -80,6 +80,16 @@ final class IdeContainerFactoryTest extends TestCase
         $this->assertSame('1', $_ENV['PORTA_LSP_DISABLED']);
     }
 
+    public function testTheTranslationCacheDirTravelsIntoTheEnvChannel(): void
+    {
+        $project = new TempProject();
+        putenv('PORTA_CACHE_DIR='.$project->dir);
+
+        new IdeContainerFactory()->build('/tmp/porta-factory-test', IdeConfig::load('/tmp/porta-factory-test'), Ansi::Enabled);
+
+        $this->assertSame($project->dir.'/translations', $_ENV['PORTA_TRANSLATION_CACHE_DIR'], 'the container-bound translator dumps its catalogs beside the container cache');
+    }
+
     public function testColdCacheDumpsAndServesTheCompiledContainer(): void
     {
         $project = new TempProject();

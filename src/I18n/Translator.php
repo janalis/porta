@@ -43,10 +43,21 @@ final class Translator
 
     private readonly SymfonyTranslator $translator;
 
-    public function __construct(string $locale = 'en', ?string $translationsDir = null)
+    /**
+     * @param string|null $translationCacheDir where parsed catalogs are dumped
+     *                                         (the container binds the shared
+     *                                         porta cache dir): the first
+     *                                         trans() of a boot DOM-parses
+     *                                         ~100KB per catalog otherwise —
+     *                                         ~20ms measured, ~0.7ms dumped.
+     *                                         debug=true keeps the dump honest
+     *                                         against edited catalogs at the
+     *                                         cost of a few file stats.
+     */
+    public function __construct(string $locale = 'en', ?string $translationsDir = null, ?string $translationCacheDir = null)
     {
         $dir = $translationsDir ?? \dirname(__DIR__, levels: 2).'/translations';
-        $this->translator = new SymfonyTranslator(self::normalize($locale));
+        $this->translator = new SymfonyTranslator(self::normalize($locale), null, $translationCacheDir, debug: true);
         $this->translator->setFallbackLocales(['en']);
         $this->translator->addLoader('xlf', new LenientXliffLoader());
         foreach (self::LOCALES as $l) {

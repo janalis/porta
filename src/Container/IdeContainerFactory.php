@@ -64,6 +64,10 @@ final class IdeContainerFactory
         $_ENV['PORTA_LSP_COMMAND'] = $lspCommand ?? ''; // '' resolves to null via env(default::…)
         $_ENV['PORTA_LSP_DISABLED'] = LspMode::Disabled === $lsp ? '1' : '0';
         $_ENV['PORTA_DOCS_DIR'] = $docsDir;
+        // The translator dumps its parsed XLIFF catalogs here (the container-
+        // cache argument, same dir): the first trans() of a boot DOM-parsed
+        // ~100KB per catalog otherwise. '' resolves to null via env(default::…).
+        $_ENV['PORTA_TRANSLATION_CACHE_DIR'] = null !== ($cache = $this->cacheDir()) ? $cache.'/translations' : '';
         // The per-project config arrays travel JSON-encoded through the env
         // channel (each consumer reads its own via env(json:PORTA_…)); one map,
         // one encode shape.

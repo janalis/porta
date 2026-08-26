@@ -62,6 +62,7 @@ final class ContainerDebugCommand extends Command
         'PORTA_LSP_COMMAND' => '',
         'PORTA_LSP_DISABLED' => '1',
         'PORTA_DOCS_DIR' => '',
+        'PORTA_TRANSLATION_CACHE_DIR' => '',
         'PORTA_SETTINGS' => '{}',
         'PORTA_LANGUAGES' => '{}',
         'PORTA_LSP_SERVERS' => '{}',
