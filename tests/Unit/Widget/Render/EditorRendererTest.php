@@ -167,6 +167,78 @@ final class EditorRendererTest extends TestCase
         $this->assertSame([], EditorRenderer::identifierOccurrences($doc, PaneFocus::Blurred, 0, 0));
     }
 
+    public function testManyInlayHintsOnOneLineStayLinearInSize(): void
+    {
+        // Same disease as the guide fold: per-hint insertAt re-sliced the
+        // accumulated line, multiplying escapes per hint — a parameter-hint-
+        // happy LSP line went exponential. One pass stays linear.
+        $doc = new Document(str_repeat('fn(x), ', 12)."\n");
+        $hints = [];
+        for ($i = 0; $i < 12; ++$i) {
+            $hints[] = ['col' => 3 + ($i * 7), 'text' => 'p:'];
+        }
+        $highlighter = new \Porta\Highlight\CodeHighlighter();
+        $highlighter->setFile('a.php');
+        $hlLine = $highlighter->highlight([str_repeat('fn(x), ', 12)], 1)[0];
+
+        $out = EditorRenderer::applyInlayHints($doc, 0, $hints, $hlLine, $this->styles());
+
+        $this->assertLessThan(4_096, \strlen($out), 'hint insertion must stay linear, never multiply per hint');
+        $this->assertSame(12, substr_count(AnsiUtils::stripAnsiCodes($out), 'p:'), 'every hint landed');
+        $this->assertStringContainsString('fn(p:x)', AnsiUtils::stripAnsiCodes($out), 'hints insert at their column, pushing content right');
+    }
+
+    public function testInlayHintsAtTheSameColumnKeepTheFoldOrder(): void
+    {
+        // Two hints at one column: the fold inserted rightmost-first, so the
+        // LATER-listed hint ended up left. The single pass must match.
+        $doc = new Document("abcd\n");
+        $out = EditorRenderer::applyInlayHints(
+            $doc,
+            0,
+            [
+                ['col' => 2, 'text' => 'A'],
+                ['col' => 2, 'text' => 'B'],
+            ],
+            'abcd',
+            $this->styles(),
+        );
+
+        $this->assertSame('abBAcd', AnsiUtils::stripAnsiCodes($out));
+    }
+
+    public function testAnInlayHintAtColumnZeroPrependsCleanly(): void
+    {
+        $doc = new Document("abcd\n");
+        $out = EditorRenderer::applyInlayHints(
+            $doc,
+            0,
+            [
+                ['col' => 0, 'text' => 'H'],
+                ['col' => 2, 'text' => 'I'],
+            ],
+            'abcd',
+            $this->styles(),
+        );
+
+        // Exact: a stale segment cursor would duplicate or drop characters.
+        $this->assertSame('HabIcd', AnsiUtils::stripAnsiCodes($out));
+
+        // Interior gaps with a non-zero start: an over-long segment slice
+        // would duplicate the characters after the gap.
+        $mid = EditorRenderer::applyInlayHints(
+            $doc,
+            0,
+            [
+                ['col' => 1, 'text' => 'H'],
+                ['col' => 3, 'text' => 'I'],
+            ],
+            'abcd',
+            $this->styles(),
+        );
+        $this->assertSame('aHbcId', AnsiUtils::stripAnsiCodes($mid));
+    }
+
     public function testIndentGuidesOnADeeplyIndentedLineStayLinearInSize(): void
     {
         // The regression this pins: overlaying one guide glyph at a time

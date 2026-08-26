@@ -137,24 +137,6 @@ final class LineDecorator
     }
 
     /**
-     * Insert $text at display column $col, pushing existing content right.
-     * Existing SGR spans stay attached to their characters, so this is safe to
-     * call after other decorations. Used for inlay-hint virtual text; appends
-     * when $col is at or past the line's end.
-     */
-    public static function insertAt(string $line, int $col, string $text): string
-    {
-        $lineWidth = AnsiUtils::visibleWidth($line);
-        if ($col >= $lineWidth) {
-            return $line.$text;
-        }
-        $before = 0 === $col ? '' : AnsiUtils::sliceByColumn($line, 0, $col);
-        $after = AnsiUtils::sliceByColumn($line, $col, $lineWidth - $col);
-
-        return $before.$text.$after;
-    }
-
-    /**
      * Apply a background over the whole line, padding it to $width first so
      * the background covers trailing space (current-line highlight). The
      * style's own apply() re-establishes the background after any reset

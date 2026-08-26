@@ -64,18 +64,6 @@ final class LineDecoratorTest extends TestCase
         $this->assertSame("a\x1b[4mbc\x1b[24m", $decorated);
     }
 
-    /** $col exactly at the line's width appends, rather than trying to insert "at" a non-existent column. */
-    public function testInsertAtExactlyTheLineEndAppends(): void
-    {
-        $this->assertSame('abcXYZ', LineDecorator::insertAt('abc', 3, 'XYZ'));
-    }
-
-    /** $col one past the end still appends (never throws walking off the line). */
-    public function testInsertAtPastTheLineEndAppends(): void
-    {
-        $this->assertSame('abcXYZ', LineDecorator::insertAt('abc', 99, 'XYZ'));
-    }
-
     public function testApplyFullWidthPadsAndReappliesBackground(): void
     {
         $decorated = LineDecorator::applyFullWidth('ab'."\x1b[0m".'cd', 8, new Style(background: 236));

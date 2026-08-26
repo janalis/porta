@@ -221,15 +221,33 @@ final class EditorRenderer
         if ([] === $lineHints) {
             return $hlLine;
         }
-        // Insert from the rightmost column first so earlier insertions do not
-        // shift the columns of the ones still to be placed.
-        usort($lineHints, static fn (array $a, array $b) => $b['col'] <=> $a['col']);
-        foreach ($lineHints as $hint) {
-            $col = $doc->displayColAt($line, $hint['col']);
-            $hlLine = LineDecorator::insertAt($hlLine, $col, $styles->of(Role::Inlay)->apply($hint['text']));
+        // One left-to-right pass over the raw line, NOT a per-hint insert fold: each
+        // insert re-slices the accumulated result and the slicer's escape
+        // replay multiplies the escapes per hint (the indent-guide/span-fold
+        // disease) — a parameter-hint-happy LSP line went exponential. Equal
+        // columns keep the fold's order: the later-listed hint lands left.
+        $placed = [];
+        foreach ($lineHints as $i => $hint) {
+            $placed[] = [$doc->displayColAt($line, $hint['col']), -$i, $styles->of(Role::Inlay)->apply($hint['text'])];
+        }
+        usort($placed, static fn (array $a, array $b) => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
+
+        $lineWidth = AnsiUtils::visibleWidth($hlLine);
+        $out = '';
+        $prev = 0;
+        foreach ($placed as [$col, , $text]) {
+            $col = min($col, $lineWidth);
+            if ($col > $prev) {
+                $out .= AnsiUtils::sliceByColumn($hlLine, $prev, $col - $prev);
+                $prev = $col;
+            }
+            $out .= $text;
+        }
+        if ($prev < $lineWidth) {
+            $out .= AnsiUtils::sliceByColumn($hlLine, $prev, $lineWidth - $prev);
         }
 
-        return $hlLine;
+        return $out;
     }
 
     /**
