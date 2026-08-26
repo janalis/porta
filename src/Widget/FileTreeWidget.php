@@ -452,9 +452,13 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     private function walk(string $dir, int $depth): void
     {
         $mtime = is_dir($dir) ? (int) filemtime($dir) : -1; // before the scandir it vouches for
-        $this->scannedSigs[$dir] = ['sig' => $this->dirSignature($dir), 'mtime' => $mtime];
         $scanned = is_dir($dir) ? scandir($dir) : false;
         $entries = $scanned ? $scanned : [];
+        // The one scandir serves both the walk and the recorded signature —
+        // byte-identical to what dirSignature() would produce over the same
+        // entries, so every expanded directory costs one read per rebuild,
+        // not two. The mtime above still precedes the scan it vouches for.
+        $this->scannedSigs[$dir] = ['sig' => implode("\0", $entries), 'mtime' => $mtime];
         $dirs = [];
         $files = [];
 

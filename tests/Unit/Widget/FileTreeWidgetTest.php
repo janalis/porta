@@ -295,6 +295,27 @@ final class FileTreeWidgetTest extends TestCase
         $this->assertStringContainsString('d.php', $this->plain($tree->render($context)));
     }
 
+    public function testRefreshDirsSliceSeesAnExpandedDirectoryVanish(): void
+    {
+        // Deleting the whole directory (a branch switch dropping a tree): the
+        // signature of a gone dir is '' — it must read as changed, not crash.
+        $project = new TempProject(['sub/b.php' => '', 'a.php' => '']);
+        $tree = new FileTreeWidget($project->dir);
+        $tree->setFocused(true);
+        $context = new RenderContext(30, 10);
+        $tree->handleInput("\r"); // expand sub/ → scanned dirs: [root, sub]
+        $tree->render($context);
+
+        // Park the cursor ON sub/ first, or the root's own change (sub left
+        // its entry list) would be the one detected and the gone-dir
+        // signature path would never run.
+        $this->assertFalse($tree->refreshDirsSlice(1), 'the root is unchanged; the cursor advances to sub/');
+        unlink($project->path('sub/b.php'));
+        rmdir($project->path('sub'));
+        $this->assertTrue($tree->refreshDirsSlice(1), 'the vanished directory reads as changed');
+        $this->assertStringNotContainsString('sub', $this->plain($tree->render($context)));
+    }
+
     public function testRefreshDirsSliceWrapsAroundTheRing(): void
     {
         $project = new TempProject(['sub/b.php' => '', 'a.php' => '']);
