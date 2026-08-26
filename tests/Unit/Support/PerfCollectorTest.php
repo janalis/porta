@@ -223,6 +223,32 @@ final class PerfCollectorTest extends TestCase
         $this->assertMatchesRegularExpression('/slow-paint render=200ms write=0ms pendingBytes=0 load=\d+\.\d$/m', $this->log($perf));
     }
 
+    public function testHighlightParsesAndEditorTimeLandInTheBeatAndReset(): void
+    {
+        $perf = $this->collector();
+
+        $perf->passMark();
+        $perf->countHighlightParse(false);
+        $perf->countHighlightParse(false);
+        $perf->countHighlightParse(true);
+        // Rounding-hostile values, the renderMs/writeMs pattern: an argument
+        // swap or a 999x multiplier mutant shifts the first decimal.
+        $perf->editorMark(0.0035);
+        $perf->editorMark(0.0125);
+        $perf->beat();
+
+        $log = $this->log($perf);
+        $this->assertStringContainsString('edMs p50=3.5 p95=12.5', $log);
+        $this->assertStringContainsString('hlFull=2 hlSplice=1', $log);
+
+        // The next window starts clean.
+        $perf->passMark();
+        $perf->beat();
+        $lines = array_values(array_filter(explode("\n", $this->log($perf))));
+        $this->assertStringContainsString('edMs p50=0.0 p95=0.0', $lines[1]);
+        $this->assertStringContainsString('hlFull=0 hlSplice=0', $lines[1]);
+    }
+
     public function testTheFirstPaintStampsTheBootLineExactlyOnce(): void
     {
         $nanos = [0.0, 30e6];

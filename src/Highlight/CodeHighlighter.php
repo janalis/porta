@@ -92,6 +92,9 @@ final class CodeHighlighter implements HighlightSink
 
     private readonly \Closure $onRepaint;
 
+    /** @var \Closure(bool): void */
+    private readonly \Closure $onParse;
+
     /** Timer id for the in-flight request's answer deadline; null when none is armed. */
     private ?string $timeoutTimer = null;
 
@@ -104,16 +107,22 @@ final class CodeHighlighter implements HighlightSink
      *                                                  the dark theme when none is injected
      * @param \Closure(): void|null        $onRepaint   called when an *asynchronous* delivery lands,
      *                                                  so the frame that shows it gets requested
+     * @param \Closure(bool): void|null    $onParse     told after each completed parse whether it
+     *                                                  was an incremental splice (true) or a full
+     *                                                  parse (false) — the perf beat's evidence
+     *                                                  for "typing re-parses the whole file"
      */
     public function __construct(
         ?SyntaxHighlightProvider $provider = null,
         ?TerminalTheme $syntaxTheme = null,
         ?\Closure $onRepaint = null,
         private readonly ?Scheduler $scheduler = null,
+        ?\Closure $onParse = null,
     ) {
         $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
         $this->provider = $provider ?? new TempestHighlightProvider($this->syntaxTheme);
         $this->onRepaint = $onRepaint ?? static function (): void {};
+        $this->onParse = $onParse ?? static function (): void {};
     }
 
     public function setFile(string $path): void
@@ -264,6 +273,7 @@ final class CodeHighlighter implements HighlightSink
         $this->staleEdits = 0;
         $this->strikes = 0;
         ++$this->fullParses;
+        ($this->onParse)(false);
 
         if (!$this->dispatching) {
             // A late answer: nothing else will ask for a frame.
@@ -419,6 +429,7 @@ final class CodeHighlighter implements HighlightSink
 
         ++$this->incrementalUpdates;
         ++$this->staleEdits;
+        ($this->onParse)(true);
 
         return [
             ...\array_slice($this->cache, offset: 0, length: $prefix),

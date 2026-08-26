@@ -48,6 +48,7 @@ use Porta\Search\Everywhere\SearchOverlay;
 use Porta\Search\Everywhere\SearchRow;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
+use Porta\Support\PerfCollector;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\LtrPane;
@@ -188,6 +189,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         private readonly Translator $translator = new Translator('en'),
         private readonly ?ViewRegistry $views = null,
         ?OverlayHost $overlayHost = null,
+        private readonly ?PerfCollector $perf = null,
     ) {
         $this->initStyles($styles);
         $this->callbacks = new EditorCallbacks();
@@ -1119,83 +1121,91 @@ final class CodeEditorWidget extends AbstractWidget implements
     #[\Override]
     public function render(RenderContext $context): array
     {
-        $columns = $context->getColumns();
-        $rows = max(1, $context->getRows() > 0 ? $context->getRows() : min(30, $this->document->getLineCount()));
+        // Timed as a whole (early returns included): the perf beat's edMs is
+        // this widget's share of renderMs, the split that says whether a slow
+        // frame is the editor row pipeline or the rest of the tree.
+        $startNs = hrtime(true);
+        try {
+            $columns = $context->getColumns();
+            $rows = max(1, $context->getRows() > 0 ? $context->getRows() : min(30, $this->document->getLineCount()));
 
-        // No file open: show a centered hint instead of a blank editable
-        // buffer, still compositing the floating overlays' spans so the
-        // app-menu dropdown (and a modal's slice) stay visible over it.
-        if (null === $this->filePath) {
-            $this->lastGutterWidth = 0;
-            $this->lastStripeCol = \PHP_INT_MAX; // no stripe over the empty-state pane
+            // No file open: show a centered hint instead of a blank editable
+            // buffer, still compositing the floating overlays' spans so the
+            // app-menu dropdown (and a modal's slice) stay visible over it.
+            if (null === $this->filePath) {
+                $this->lastGutterWidth = 0;
+                $this->lastStripeCol = \PHP_INT_MAX; // no stripe over the empty-state pane
 
-            return $this->withMenuOverlay($this->renderEmptyState($columns, $rows), $columns);
+                return $this->withMenuOverlay($this->renderEmptyState($columns, $rows), $columns);
+            }
+
+            $doc = $this->document;
+            $lineCount = $doc->getLineCount();
+            $geo = $this->computeGeometry($columns, $lineCount);
+            $this->lastGutterWidth = $geo->gutterWidth;
+            $this->lastRenderRows = $rows;
+            $this->lastStripeCol = $geo->stripeCol;
+
+            // Clamp scroll to cursor: the caret must stay visible below whatever
+            // sticky-scroll band the settled scroll position pins at the top.
+            $cursorLine = $doc->getCursorLine();
+            $this->scroll->clampToCaret($rows, fn (int $vScroll): int => \count($this->stickyHeadersAt($vScroll, $rows)));
+            $vScroll = $this->scroll->vScroll();
+
+            // The pinned headers for the settled scroll position.
+            $sticky = $this->stickyHeadersAt($vScroll, $rows);
+            $this->stickyLines = array_map(static fn (array $h): int => $h['line'], $sticky);
+            $contentRows = $rows - \count($sticky);
+            $this->scroll->setContentRows($contentRows);
+
+            $cursorDisplayCol = $this->followCaret($doc, $cursorLine, $geo->contentWidth);
+            $hScroll = $this->scroll->hScroll();
+
+            // Highlight/render tab-expanded lines so widths line up with the
+            // display-column math; the buffer keeps its raw tabs.
+            $highlighted = $this->highlighter->highlight($doc->getVisualLines(), $doc->getVersion());
+            $lastVisibleDocLine = $this->foldModel->docLineAtRow($vScroll, $contentRows - 1) ?? ($lineCount - 1);
+            $decorations = $this->collectDecorations($doc, $vScroll, $lastVisibleDocLine);
+
+            // Right-margin error stripe: one styled cell per screen row, a whole-file
+            // overview of diagnostics plus a faint viewport thumb. Appended to every
+            // produced row so each reaches the full terminal width.
+            $stripe = ErrorStripe::cells($this->decorations->diagnostics(), $rows, $lineCount, $vScroll, $lastVisibleDocLine, $this->styles);
+
+            $assembler = new EditorRowAssembler(
+                $doc,
+                $this->foldModel,
+                $this->decorations,
+                $this->display->lineNumbers(),
+                $this->display->indentGuides(),
+                $this->display->vcsGutter(),
+                $this->display->inlineDiagnostics(),
+                $this->focused,
+                $this->focused && !$this->findModal->isOpen() && !$this->overlayHost->anyOpen(), // an open modal owns the caret
+                $this->styles,
+                $this->cursorStyle,
+            );
+            $result = $assembler->assemble($geo, $decorations, $sticky, $highlighted, $stripe, $contentRows, $vScroll, $cursorLine, $cursorDisplayCol, $hScroll);
+
+            $result = $this->composePopups($result, new EditorPopupGeometry(
+                columns: $columns,
+                rows: $rows,
+                vScroll: $vScroll,
+                hScroll: $hScroll,
+                cursorLine: $cursorLine,
+                cursorDisplayCol: $cursorDisplayCol,
+                gutterWidth: $geo->gutterWidth,
+                stickyCount: \count($sticky),
+            ));
+
+            // The pickers (list overlay, Search Everywhere, prompt) float over the
+            // whole workspace via PickerModalPresenter — nothing composites into
+            // the pane's own lines here; the application-menu dropdown floats
+            // above everything else.
+            return $this->withMenuOverlay($result, $columns);
+        } finally {
+            $this->perf?->editorMark((hrtime(true) - $startNs) / 1_000_000_000.0);
         }
-
-        $doc = $this->document;
-        $lineCount = $doc->getLineCount();
-        $geo = $this->computeGeometry($columns, $lineCount);
-        $this->lastGutterWidth = $geo->gutterWidth;
-        $this->lastRenderRows = $rows;
-        $this->lastStripeCol = $geo->stripeCol;
-
-        // Clamp scroll to cursor: the caret must stay visible below whatever
-        // sticky-scroll band the settled scroll position pins at the top.
-        $cursorLine = $doc->getCursorLine();
-        $this->scroll->clampToCaret($rows, fn (int $vScroll): int => \count($this->stickyHeadersAt($vScroll, $rows)));
-        $vScroll = $this->scroll->vScroll();
-
-        // The pinned headers for the settled scroll position.
-        $sticky = $this->stickyHeadersAt($vScroll, $rows);
-        $this->stickyLines = array_map(static fn (array $h): int => $h['line'], $sticky);
-        $contentRows = $rows - \count($sticky);
-        $this->scroll->setContentRows($contentRows);
-
-        $cursorDisplayCol = $this->followCaret($doc, $cursorLine, $geo->contentWidth);
-        $hScroll = $this->scroll->hScroll();
-
-        // Highlight/render tab-expanded lines so widths line up with the
-        // display-column math; the buffer keeps its raw tabs.
-        $highlighted = $this->highlighter->highlight($doc->getVisualLines(), $doc->getVersion());
-        $lastVisibleDocLine = $this->foldModel->docLineAtRow($vScroll, $contentRows - 1) ?? ($lineCount - 1);
-        $decorations = $this->collectDecorations($doc, $vScroll, $lastVisibleDocLine);
-
-        // Right-margin error stripe: one styled cell per screen row, a whole-file
-        // overview of diagnostics plus a faint viewport thumb. Appended to every
-        // produced row so each reaches the full terminal width.
-        $stripe = ErrorStripe::cells($this->decorations->diagnostics(), $rows, $lineCount, $vScroll, $lastVisibleDocLine, $this->styles);
-
-        $assembler = new EditorRowAssembler(
-            $doc,
-            $this->foldModel,
-            $this->decorations,
-            $this->display->lineNumbers(),
-            $this->display->indentGuides(),
-            $this->display->vcsGutter(),
-            $this->display->inlineDiagnostics(),
-            $this->focused,
-            $this->focused && !$this->findModal->isOpen() && !$this->overlayHost->anyOpen(), // an open modal owns the caret
-            $this->styles,
-            $this->cursorStyle,
-        );
-        $result = $assembler->assemble($geo, $decorations, $sticky, $highlighted, $stripe, $contentRows, $vScroll, $cursorLine, $cursorDisplayCol, $hScroll);
-
-        $result = $this->composePopups($result, new EditorPopupGeometry(
-            columns: $columns,
-            rows: $rows,
-            vScroll: $vScroll,
-            hScroll: $hScroll,
-            cursorLine: $cursorLine,
-            cursorDisplayCol: $cursorDisplayCol,
-            gutterWidth: $geo->gutterWidth,
-            stickyCount: \count($sticky),
-        ));
-
-        // The pickers (list overlay, Search Everywhere, prompt) float over the
-        // whole workspace via PickerModalPresenter — nothing composites into
-        // the pane's own lines here; the application-menu dropdown floats
-        // above everything else.
-        return $this->withMenuOverlay($result, $columns);
     }
 
     /**

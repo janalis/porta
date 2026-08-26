@@ -57,6 +57,9 @@ final class PerfCollector
     /** @var list<float> seconds spent in ScreenWriter::writeLines per painted frame */
     private array $writeDurations = [];
 
+    /** @var list<float> seconds spent inside CodeEditorWidget::render per frame */
+    private array $editorDurations = [];
+
     private bool $bootLogged = false;
 
     private int $inputs = 0;
@@ -66,6 +69,8 @@ final class PerfCollector
     private int $paceSkips = 0;
     private int $capSkips = 0;
     private int $coalesced = 0;
+    private int $hlFull = 0;
+    private int $hlSplices = 0;
 
     /**
      * @param (\Closure(): float)|null $loadAvg the FreezeWatchdog-style test
@@ -187,6 +192,29 @@ final class PerfCollector
         ++$this->coalesced;
     }
 
+    /**
+     * A syntax parse completed — a whole-document one, or an incremental
+     * splice. The ratio is the edit path's cost attribution: a beat full of
+     * `hlFull` while typing means every keystroke re-parsed the file.
+     */
+    public function countHighlightParse(bool $incremental): void
+    {
+        if ($incremental) {
+            ++$this->hlSplices;
+
+            return;
+        }
+        ++$this->hlFull;
+    }
+
+    /** The editor widget finished one render — its share of the frame's renderMs. */
+    public function editorMark(float $seconds): void
+    {
+        if (\count($this->editorDurations) < self::MAX_SAMPLES) {
+            $this->editorDurations[] = $seconds;
+        }
+    }
+
     /** Timer entry point — {@see start()}'s EventLoop::repeat fires this every `$interval` seconds. */
     public function beat(): void
     {
@@ -196,7 +224,7 @@ final class PerfCollector
             return;
         }
         $this->log->append(\sprintf(
-            '%s in=%d wheel=%d passes=%d paints=%d paceSkip=%d capSkip=%d coalesced=%d gapMs p50=%.1f p95=%.1f max=%.1f paintMs p50=%.1f p95=%.1f busy=%d renderMs p50=%.1f p95=%.1f writeMs p50=%.1f p95=%.1f pend=%d load=%.1f',
+            '%s in=%d wheel=%d passes=%d paints=%d paceSkip=%d capSkip=%d coalesced=%d gapMs p50=%.1f p95=%.1f max=%.1f paintMs p50=%.1f p95=%.1f busy=%d renderMs p50=%.1f p95=%.1f writeMs p50=%.1f p95=%.1f edMs p50=%.1f p95=%.1f hlFull=%d hlSplice=%d pend=%d load=%.1f',
             $this->clock->now()->format('Y-m-d H:i:s'),
             $this->inputs,
             $this->wheels,
@@ -215,6 +243,10 @@ final class PerfCollector
             1000 * self::percentile($this->renderDurations, 0.95),
             1000 * self::percentile($this->writeDurations, 0.50),
             1000 * self::percentile($this->writeDurations, 0.95),
+            1000 * self::percentile($this->editorDurations, 0.50),
+            1000 * self::percentile($this->editorDurations, 0.95),
+            $this->hlFull,
+            $this->hlSplices,
             null !== $this->pendingBytes ? (int) ($this->pendingBytes)() : 0,
             (float) ($this->loadAvg)(),
         ));
@@ -248,10 +280,13 @@ final class PerfCollector
         $this->paceSkips = 0;
         $this->capSkips = 0;
         $this->coalesced = 0;
+        $this->hlFull = 0;
+        $this->hlSplices = 0;
         $this->passGaps = [];
         $this->paintDurations = [];
         $this->renderDurations = [];
         $this->writeDurations = [];
+        $this->editorDurations = [];
         // A fresh window starts gap-free: an idle stretch between windows must
         // not land as one giant sample.
         $this->lastPassAt = null;

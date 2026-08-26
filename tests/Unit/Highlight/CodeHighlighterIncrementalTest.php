@@ -34,6 +34,24 @@ final class CodeHighlighterIncrementalTest extends TestCase
         return $highlighter;
     }
 
+    public function testTheParseSeamIsToldFullVersusSplice(): void
+    {
+        /** @var list<bool> $parses */
+        $parses = [];
+        $highlighter = new CodeHighlighter(onParse: static function (bool $incremental) use (&$parses): void {
+            $parses[] = $incremental;
+        });
+        $highlighter->setFile('big.php');
+        $doc = $this->bigDocument();
+
+        $highlighter->highlight($doc, 1);
+        $this->assertSame([false], $parses, 'the first parse is a full one');
+
+        $doc[1500] = '$edited = "new text";';
+        $highlighter->highlight($doc, 2);
+        $this->assertSame([false, true], $parses, 'the local edit reports a splice');
+    }
+
     public function testLocalEditReusesUnchangedLines(): void
     {
         $highlighter = $this->highlighter();

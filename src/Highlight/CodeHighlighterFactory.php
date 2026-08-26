@@ -6,6 +6,7 @@ namespace Porta\Highlight;
 
 use Porta\Editor\EditorInvalidator;
 use Porta\Support\LanguageMap;
+use Porta\Support\PerfCollector;
 use Porta\Support\Scheduler;
 use Symfony\Component\Tui\Tui;
 use Tempest\Highlight\TerminalTheme;
@@ -35,6 +36,7 @@ final class CodeHighlighterFactory
         private readonly ?Tui $tui = null,
         private readonly ?EditorInvalidator $editor = null,
         private readonly ?Scheduler $scheduler = null,
+        private readonly ?PerfCollector $perf = null,
     ) {
         $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
         $this->registry = $registry ?? new HighlightRegistry(new NoHighlightPlugins(), new HighlightPreferences());
@@ -45,7 +47,15 @@ final class CodeHighlighterFactory
     {
         $provider = $this->registry->providerFor(LanguageMap::highlightForPath($path) ?? '');
 
-        return new CodeHighlighter($provider, $this->syntaxTheme, $this->repaint(...), $this->scheduler);
+        // Only real buffers feed the perf beat's full-vs-splice counters —
+        // fragment highlighters (diff hunks) would drown the typing signal.
+        return new CodeHighlighter(
+            $provider,
+            $this->syntaxTheme,
+            $this->repaint(...),
+            $this->scheduler,
+            null !== $this->perf ? $this->perf->countHighlightParse(...) : null,
+        );
     }
 
     /**

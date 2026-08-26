@@ -66,6 +66,7 @@ final class EventListenerWiringTest extends TestCase
             \Porta\Ui\BidiTui::class,
             new \Porta\Ui\BidiTui(terminal: new VirtualTerminal(columns: 80, rows: 10), keybindings: new \Symfony\Component\Tui\Input\Keybindings([]), renderer: new Renderer(new StyleSheet())),
         );
+        $container->set(\Porta\Support\BootTrace::class, new \Porta\Support\BootTrace());
         $locator = $container->get('porta.ide');
         \assert($locator instanceof ServiceLocator, description: 'the public boundary is a ServiceLocator');
         $dispatcher = $locator->get(EventDispatcherInterface::class);
