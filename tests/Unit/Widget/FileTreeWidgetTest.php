@@ -217,6 +217,66 @@ final class FileTreeWidgetTest extends TestCase
         $this->assertStringContainsString('d.php', $this->plain($tree->render($context)));
     }
 
+    public function testARepeatRenderAtTheSameRevisionServesTheMemo(): void
+    {
+        // The vendor's flex:0 intrinsic measure force-clears the widget cache
+        // and renders every frame — the private memo is what keeps a pure
+        // editor-scroll frame from re-rendering the tree twice. Proof by
+        // sentinel: plant fake memo lines; only a true memo HIT can return
+        // them, and only a true MISS (revision bump) can replace them.
+        $project = new TempProject(['a.php' => '']);
+        $tree = new FileTreeWidget($project->dir);
+        $context = new RenderContext(30, 10);
+        $tree->render($context);
+        $tree->clearRenderCache(); // what the measure pass does to the stock cache
+
+        Probe::set($tree, 'memoLines', ['SENTINEL']);
+        $this->assertSame(['SENTINEL'], $tree->render($context), 'same revision: the memo answered, no re-render happened');
+
+        $this->assertTrue($tree->hoverRow(1), 'hovering the a.php row changes the tint state');
+        $rerendered = $tree->render($context);
+        $this->assertNotContains('SENTINEL', $rerendered, 'the revision bump missed the memo and re-rendered');
+        $this->assertStringContainsString('a.php', $this->plain($rerendered));
+    }
+
+    public function testANarrowerContextReRenders(): void
+    {
+        $project = new TempProject(['a-rather-long-filename.php' => '']);
+        $tree = new FileTreeWidget($project->dir);
+
+        $wide = $tree->render(new RenderContext(30, 10));
+        $narrow = $tree->render(new RenderContext(12, 10));
+
+        $this->assertNotSame($wide, $narrow, 'the width is part of the memo key');
+        $this->assertNotSame($this->plain($wide), $this->plain($narrow), 'the narrow render truncates');
+    }
+
+    public function testADifferentRowCountReRenders(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $tree = new FileTreeWidget($project->dir);
+
+        $tall = $tree->render(new RenderContext(30, 10));
+        $short = $tree->render(new RenderContext(30, 4));
+
+        $this->assertNotSame($tall, $short, 'the row count is part of the memo key');
+        $this->assertCount(4, $short);
+    }
+
+    public function testAWidthDragReRenders(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $tree = new FileTreeWidget($project->dir);
+        $context = new RenderContext(60, 10);
+        $first = $tree->render($context);
+
+        $tree->setWidth(45); // the separator drag: invalidates, so the memo misses
+        $second = $tree->render($context);
+
+        $this->assertNotSame($first, $second);
+        $this->assertNotSame($this->plain($first), $this->plain($second), 'the rows re-padded to the dragged width');
+    }
+
     public function testRefreshDirsSliceWalksTheRingAndSeesALaterDirChange(): void
     {
         $project = new TempProject(['sub/b.php' => '', 'a.php' => '']);

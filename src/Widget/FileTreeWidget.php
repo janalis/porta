@@ -78,6 +78,23 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     private int $dirCursor = 0;
 
     /**
+     * The last rendered lines and their (revision, width, rows) key. A private
+     * memo rather than the widget cache because the vendor's layout engine
+     * intrinsic-measures every flex:0 child per frame with render() +
+     * clearRenderCache() (LayoutEngine + Renderer::measureIntrinsicWidth), so
+     * the stock cache is force-cleared twice per frame and the tree would
+     * otherwise re-render twice on EVERY editor scroll frame. Everything that
+     * changes the tree's output — selection, expand, hover, drag-resize, the
+     * menu overlay — goes through invalidate(), which bumps the revision.
+     *
+     * @var list<string>|null
+     */
+    private ?array $memoLines = null;
+
+    /** @var array{int, int, int}|null */
+    private ?array $memoKey = null;
+
+    /**
      * An unchanged dir mtime older than this many seconds is trusted without a
      * scandir; younger ones are re-scanned because a same-second rename can
      * leave the mtime identical.
@@ -298,6 +315,14 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $rows = max(1, $context->getRows() > 0 ? $context->getRows() : 24);
         $this->lastRows = $rows;
 
+        // Both per-frame calls (the intrinsic measure and the real pass) clamp
+        // to the same effective width, so one memo entry serves them both; a
+        // pure editor scroll leaves the revision untouched and both hit.
+        $key = [$this->getRenderRevision(), $width, $rows];
+        if (null !== $this->memoLines && $key === $this->memoKey) {
+            return $this->memoLines;
+        }
+
         // Row 0 is the header, so $rows - 1 entries are visible.
         $scroll = $this->list->follow($rows - 1);
 
@@ -334,7 +359,9 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         // width: the tree's rows are exactly $width wide, and a measuring layout
         // pass can hand us a wider context — padding to that would blow out the
         // tree's reported width and starve the editor pane.
-        return $this->withMenuOverlay($lines, $width);
+        $this->memoKey = $key;
+
+        return $this->memoLines = $this->withMenuOverlay($lines, $width);
     }
 
     private function rebuild(): void
