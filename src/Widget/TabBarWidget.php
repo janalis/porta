@@ -68,6 +68,15 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     /** The tab the cell last resolved to — repaint change-detection at tab granularity. */
     private ?int $hoverResolved = null;
 
+    /** @var list<string>|null vertical strip memo — in side position the layout engine's intrinsic measure renders this widget a second time per frame */
+    private ?array $memoLines = null;
+
+    /** @var array{int, int} the [revision, rows] the memo was rendered for */
+    private array $memoKey = [-1, -1];
+
+    /** @var list<array{row: int, col: int, width: int, step: int}> the memoized render's ▲/▼ zones */
+    private array $memoZones = [];
+
     public function setPosition(TabBarPosition $position): void
     {
         if ($position === $this->position) {
@@ -231,6 +240,21 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     private function renderVertical(RenderContext $context): array
     {
         $rows = max(1, $context->getRows());
+
+        // The FileTreeWidget idiom: in side position the layout engine's
+        // intrinsic-width measure renders this widget and clears the vendor
+        // cache, so the real pass rendered it AGAIN every frame. Content
+        // changes miss via the beforeRender fingerprint's invalidate. Only the
+        // ▲/▼ zones need restoring on a hit — render() clears them before
+        // dispatching here; the hit-test layout is untouched since the miss
+        // that built it.
+        $key = [$this->getRenderRevision(), $rows];
+        if (null !== $this->memoLines && $key === $this->memoKey) {
+            $this->indicatorZones = $this->memoZones;
+
+            return $this->memoLines;
+        }
+        $this->memoKey = $key;
         $tabs = null !== $this->provider ? ($this->provider)() : [];
 
         $this->lastLayout = [];
@@ -287,7 +311,9 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             $lines[] = AnsiText::blank(self::VERTICAL_WIDTH);
         }
 
-        return $this->withMenuOverlay($lines, self::VERTICAL_WIDTH);
+        $this->memoZones = $this->indicatorZones;
+
+        return $this->memoLines = $this->withMenuOverlay($lines, self::VERTICAL_WIDTH);
     }
 
     /** One clickable full-width ▲/▼ scroll row of the vertical list. */

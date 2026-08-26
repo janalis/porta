@@ -58,6 +58,12 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
 
     /** @var list<Entry> */
     private array $entries;
+
+    /** @var list<string>|null rendered-lines memo — the flex-0 side pane renders twice per frame otherwise */
+    private ?array $memoLines = null;
+
+    /** @var array{int, int, int} the [revision, width, rows] the memo was rendered for */
+    private array $memoKey = [-1, -1, -1];
     private readonly ListSelection $list;
 
     /** @var (callable(string): void)|null selection moved to this entry id */
@@ -259,6 +265,14 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         $width = min($this->width, $context->getColumns());
         $rows = max(1, $context->getRows() > 0 ? $context->getRows() : 12);
 
+        // The FileTreeWidget idiom: this flex-0 side pane is rendered twice
+        // per frame (intrinsic measure + real pass); one memo serves both.
+        $key = [$this->getRenderRevision(), $width, $rows];
+        if (null !== $this->memoLines && $key === $this->memoKey) {
+            return $this->memoLines;
+        }
+        $this->memoKey = $key;
+
         $scroll = $this->list->follow($rows);
         $lines = [];
         for ($row = 0; $row < $rows; ++$row) {
@@ -284,7 +298,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
             $lines[] = $this->shadeRow($text, $index === $this->list->selected(), $index === $this->hoveredIndex);
         }
 
-        return $this->withMenuOverlay($lines, $width);
+        return $this->memoLines = $this->withMenuOverlay($lines, $width);
     }
 
     /** @return array<string, string[]> */

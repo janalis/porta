@@ -28,6 +28,21 @@ final class SettingsNavWidgetTest extends TestCase
         return $widget;
     }
 
+    public function testRenderIsMemoizedUntilSomethingInvalidates(): void
+    {
+        // The flex-0 side pane renders twice per frame (intrinsic measure +
+        // real pass); the memo serves both and misses after a selection move.
+        $widget = $this->widget();
+
+        $first = $widget->render(new RenderContext(24, 20));
+        $this->assertSame($first, $widget->render(new RenderContext(24, 20)), 'a same-revision render serves the memo');
+
+        $widget->handleInput("\x1b[B"); // move the selection: invalidates
+        $second = $widget->render(new RenderContext(24, 20));
+        $this->assertNotSame($first, $second, 'a selection move must miss the memo');
+        $this->assertNotSame(implode('', $first), implode('', $second), 'the moved shade recolors the rows');
+    }
+
     public function testRendersSectionsHeaderAndLanguages(): void
     {
         $screen = $this->plain($this->widget()->render(new RenderContext(24, 20)));

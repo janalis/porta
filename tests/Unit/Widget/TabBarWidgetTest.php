@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\Probe;
+use Porta\Ui\Glyphs;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -288,6 +290,47 @@ final class TabBarWidgetTest extends TestCase
         $this->assertFalse(TabBarPosition::Bottom->tabsFirst());
         $this->assertTrue(TabBarPosition::Left->tabsFirst());
         $this->assertFalse(TabBarPosition::Right->tabsFirst());
+    }
+
+    public function testVerticalRenderIsMemoizedAcrossTheDoubleRenderOfAFrame(): void
+    {
+        // In side position the layout engine's intrinsic measure renders the
+        // widget, clears the vendor cache, and the real pass renders again —
+        // one memo entry must serve both, hit-test layout included.
+        $tabs = [
+            ['name' => 'a.php', 'dirty' => false, 'active' => true],
+            ['name' => 'b.php', 'dirty' => false, 'active' => false],
+        ];
+        $bar = $this->verticalBar($tabs);
+
+        $first = $bar->render(new RenderContext(80, 6));
+        $second = $bar->render(new RenderContext(80, 6));
+        $this->assertSame($first, $second, 'the second same-revision render serves the memo');
+        $this->assertSame(1, $bar->tabIndexAt(1, 2), 'the hit-test layout survives a memo hit');
+
+        // A content change invalidates through the beforeRender fingerprint,
+        // so the memo must miss and show it — a stale dirty dot would be the
+        // symptom of a memo key that stopped listening.
+        $tabs[0]['dirty'] = true;
+        $bar->setProvider(static fn (): array => $tabs);
+        $bar->beforeRender();
+        $third = $bar->render(new RenderContext(80, 6));
+        $this->assertNotSame($second, $third);
+        $this->assertStringContainsString(Glyphs::DIRTY, AnsiUtils::stripAnsiCodes($third[0]).$third[0], 'the edit shows');
+    }
+
+    public function testVerticalMemoRestoresTheScrollIndicatorZones(): void
+    {
+        $tabs = [];
+        for ($i = 0; $i < 12; ++$i) {
+            $tabs[] = ['name' => "f{$i}.php", 'dirty' => false, 'active' => 5 === $i];
+        }
+        $bar = $this->verticalBar($tabs);
+
+        $bar->render(new RenderContext(80, 6)); // overflows: ▲/▼ rows exist
+        $bar->render(new RenderContext(80, 6)); // memo hit
+
+        $this->assertNotSame([], Probe::get($bar, 'indicatorZones'), 'the ▲/▼ click zones survive a memo hit');
     }
 
     public function testVerticalRendersOneTabPerRowWithMarkersAndPadding(): void
