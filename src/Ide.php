@@ -38,6 +38,7 @@ use Porta\Settings\SettingsLanguageController;
 use Porta\Support\DiagnosticLog;
 use Porta\Support\FreezeWatchdog;
 use Porta\Support\PerfCollector;
+use Porta\Support\RevoltScheduler;
 use Porta\Ui\BidiTui;
 use Porta\Ui\NonBlockingTerminal;
 use Porta\Ui\TerminalRestorer;
@@ -51,6 +52,7 @@ use Porta\Workbench\TerminalStateRefresher;
 use Porta\Workbench\View\ViewRegistrar;
 use Porta\Workbench\View\ViewRegistry;
 use Revolt\EventLoop;
+use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -148,6 +150,10 @@ final class Ide
             keybindings: $keybindings,
             renderer: $this->renderer,
         );
+        // The frame-rate cap: an input flood coalesces to 60fps instead of one
+        // full frame per wheel event. Wired by setter — BidiTui is built before
+        // the container exists; unit rigs that skip this call stay uncapped.
+        $this->bidiTui->setFramePacing(new NativeClock(), new RevoltScheduler());
         $this->tui = $this->bidiTui;
         // Hand the manually-built infrastructure to the container as synthetic
         // services (declared synthetic in config/services.php) right after each

@@ -87,6 +87,8 @@ final class IdeHelpersTest extends TestCase
 
         // The sink handed to BidiTui is the shared collector instance...
         self::assertSame($perf, Probe::get($tui, 'perf'), 'setPerfSink received the collector');
+        self::assertNotNull(Probe::get($tui, 'clock'), 'Ide wired the frame pacing clock');
+        self::assertNotNull(Probe::get($tui, 'scheduler'), 'Ide wired the frame pacing scheduler');
 
         // ...and the high-priority listener counts a wheel event even though
         // the input dispatcher stops propagation on the mouse path.

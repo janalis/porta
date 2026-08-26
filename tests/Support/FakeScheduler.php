@@ -12,6 +12,9 @@ final class FakeScheduler implements Scheduler
     /** @var array<string, \Closure> pending timers by id */
     public array $scheduled = [];
 
+    /** @var array<string, float> requested delay seconds by id, kept after firing */
+    public array $delays = [];
+
     /** @var list<string> */
     public array $cancelled = [];
 
@@ -21,6 +24,7 @@ final class FakeScheduler implements Scheduler
     {
         $id = (string) $this->nextId++;
         $this->scheduled[$id] = $callback;
+        $this->delays[$id] = $seconds;
 
         return $id;
     }

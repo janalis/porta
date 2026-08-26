@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Porta\Ui;
 
 use Porta\I18n\PaneReorder;
+use Porta\Support\Clocks;
 use Porta\Support\PerfCollector;
+use Porta\Support\Scheduler;
+use Psr\Clock\ClockInterface;
 use Revolt\EventLoop;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 use Symfony\Component\Tui\Render\Renderer;
@@ -54,11 +57,32 @@ final class BidiTui extends Tui implements FrameHooks
     /** A same-iteration tick is already queued — a request burst queues exactly one. */
     private bool $immediateTickQueued = false;
 
+    /** The queued defer's id, so stop() can cancel a pending one (no leaked callback). */
+    private ?string $immediateTickId = null;
+
     /** The terminal's backlog-drained hook is installed (armed once, on first skip). */
     private bool $drainWakeupArmed = false;
 
     /** Counter sink for skipped/coalesced frame generation; null outside a full Ide. */
     private ?PerfCollector $perf = null;
+
+    /** Minimum seconds between generated frames while pacing is wired (60fps). */
+    public const float MIN_FRAME_INTERVAL = 1 / 60;
+
+    /** Wall clock for the frame cap; null (bare test rigs) leaves the cap inert. */
+    private ?ClockInterface $clock = null;
+
+    /** Timer seam for the trailing-edge wakeup; null leaves only the ticker retry. */
+    private ?Scheduler $scheduler = null;
+
+    /** When the last frame reached the terminal (Clocks::seconds), null before the first. */
+    private ?float $lastFrameAt = null;
+
+    /** A forced request (resize, test frames) is pending: the cap must not delay it. */
+    private bool $forceRequested = false;
+
+    /** The armed trailing-edge wakeup, at most one per cap window. */
+    private ?string $capTimer = null;
 
     /**
      * The vendor Tui privates the mirrored frame path reads EVERY frame,
@@ -144,6 +168,11 @@ final class BidiTui extends Tui implements FrameHooks
     #[\Override]
     public function requestRender(bool $force = false): void
     {
+        if ($force) {
+            // A resize (or a test's frame()) demands an immediate full repaint;
+            // the cap steps aside until it lands.
+            $this->forceRequested = true;
+        }
         parent::requestRender($force);
         $this->queueImmediateTick();
     }
@@ -152,6 +181,18 @@ final class BidiTui extends Tui implements FrameHooks
     public function setPerfSink(?PerfCollector $sink): void
     {
         $this->perf = $sink;
+    }
+
+    /**
+     * Wire the frame-rate cap (the setPaneReorder idiom — BidiTui is built by
+     * hand before the container exists, so it cannot take these in a
+     * constructor). Until this is called the cap is inert: bare test rigs and
+     * direct processRender() drives behave exactly as before.
+     */
+    public function setFramePacing(ClockInterface $clock, Scheduler $scheduler): void
+    {
+        $this->clock = $clock;
+        $this->scheduler = $scheduler;
     }
 
     /** Queue a same-iteration tick, at most one at a time, only while running. */
@@ -166,8 +207,9 @@ final class BidiTui extends Tui implements FrameHooks
             return;
         }
         $this->immediateTickQueued = true;
-        EventLoop::defer(function (): void {
+        $this->immediateTickId = EventLoop::defer(function (): void {
             $this->immediateTickQueued = false;
+            $this->immediateTickId = null;
             // Re-checked at fire time: a stop() between queue and defer must
             // not tick a torn-down terminal.
             if ($this->isRunning()) {
@@ -200,6 +242,35 @@ final class BidiTui extends Tui implements FrameHooks
             return;
         }
 
+        $this->tuiPrivates ??= [
+            'requested' => new \ReflectionProperty(Tui::class, 'renderRequested'),
+            'root' => new \ReflectionProperty(Tui::class, 'root'),
+            'renderer' => new \ReflectionProperty(Tui::class, 'renderer'),
+            'screenWriter' => new \ReflectionProperty(Tui::class, 'screenWriter'),
+        ];
+        $privates = $this->tuiPrivates;
+        $requested = true === $privates['requested']->getValue($this);
+
+        // Frame-rate cap: during an input flood (a trackpad emits 30-120 wheel
+        // events per second, each arriving as its own stdin chunk) every event
+        // would otherwise generate a full frame and saturate the loop. A frame
+        // inside the minimum interval is skipped and ONE trailing wakeup armed
+        // for the remainder, so the flood coalesces to the cap rate and the
+        // final resting frame always lands. An idle→event frame paints
+        // immediately (lastFrameAt is old), and force (resize, test frames)
+        // bypasses the cap entirely.
+        if ($requested && !$this->forceRequested && null !== $this->clock && null !== $this->lastFrameAt) {
+            $elapsed = Clocks::seconds($this->clock) - $this->lastFrameAt;
+            if ($elapsed < self::MIN_FRAME_INTERVAL) {
+                $this->perf?->countCapSkip();
+                if (null === $this->capTimer && null !== $this->scheduler) {
+                    $this->capTimer = $this->scheduler->delay(self::MIN_FRAME_INTERVAL - $elapsed, $this->capWakeup(...));
+                }
+
+                return; // renderRequested stays set — the wakeup (or ticker) retries
+            }
+        }
+
         $columns = $this->getTerminal()->getColumns();
         if ($columns !== $this->lastColumns) {
             $this->lastColumns = $columns;
@@ -214,24 +285,21 @@ final class BidiTui extends Tui implements FrameHooks
         $segmenter = $this->segmenter;
         $reorder = $this->reorder;
         if (null === $segmenter || null === $reorder) {
+            $start = null !== $this->clock ? Clocks::seconds($this->clock) : null;
             parent::processRender();
+            if ($requested) {
+                // The parent paints exactly when renderRequested was set going in.
+                $this->framePainted($start);
+            }
 
             return;
         }
 
-        $this->tuiPrivates ??= [
-            'requested' => new \ReflectionProperty(Tui::class, 'renderRequested'),
-            'root' => new \ReflectionProperty(Tui::class, 'root'),
-            'renderer' => new \ReflectionProperty(Tui::class, 'renderer'),
-            'screenWriter' => new \ReflectionProperty(Tui::class, 'screenWriter'),
-        ];
-        $privates = $this->tuiPrivates;
-
-        $requested = $privates['requested'];
-        if (true !== $requested->getValue($this)) {
+        if (!$requested) {
             return;
         }
-        $requested->setValue($this, false);
+        $privates['requested']->setValue($this, false);
+        $start = null !== $this->clock ? Clocks::seconds($this->clock) : null;
 
         /** @var ContainerWidget $root */
         $root = $privates['root']->getValue($this);
@@ -252,5 +320,43 @@ final class BidiTui extends Tui implements FrameHooks
             $out[] = array_key_exists($row, $this->lastRuns) ? $reorder->reorderRow($line, $this->lastRuns[$row]) : $line;
         }
         $screenWriter->writeLines($out);
+        $this->framePainted($start);
+    }
+
+    /** The trailing-edge wakeup: the cap window elapsed, repaint the pending state. */
+    private function capWakeup(): void
+    {
+        $this->capTimer = null;
+        $this->queueImmediateTick();
+    }
+
+    /** A frame reached the terminal: stamp the cap window and feed the sink. */
+    private function framePainted(?float $startedAt): void
+    {
+        $this->forceRequested = false;
+        if (null === $this->clock) {
+            $this->perf?->paintMark(0.0);
+
+            return;
+        }
+        $now = Clocks::seconds($this->clock);
+        $this->lastFrameAt = $now;
+        $this->perf?->paintMark(null !== $startedAt ? $now - $startedAt : 0.0);
+    }
+
+    #[\Override]
+    public function stop(): void
+    {
+        // Pending wakeups must not survive into the next test's loop.
+        if (null !== $this->capTimer) {
+            $this->scheduler?->cancel($this->capTimer);
+            $this->capTimer = null;
+        }
+        if (null !== $this->immediateTickId) {
+            EventLoop::cancel($this->immediateTickId);
+            $this->immediateTickId = null;
+            $this->immediateTickQueued = false;
+        }
+        parent::stop();
     }
 }

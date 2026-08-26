@@ -307,8 +307,7 @@ final class IdeDockToolsTest extends TestCase
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'beta here'));
                     $tui->handleInput("\x1b\r"); // a SECOND wide tab → the two overflow 30 cols
                     $this->await(static fn (): bool => \count($dock($ide)->aliveTabs()) >= 2);
-                    $tui->requestRender();
-                    $tui->tick();
+                    $this->frame($tui); // a capped bare tick paints nothing — the strip window needs a real frame
 
                     $renderer = Services::resolve($ide, Renderer::class);
                     /** @var DockTabsWidget $dockTabs */
@@ -327,7 +326,7 @@ final class IdeDockToolsTest extends TestCase
                     $clickCol = null !== $leftStep ? 0 : $lastCol;
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $clickCol + 1, $rect->row + 1));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + $clickCol + 1, $rect->row + 1));
-                    $tui->tick();
+                    $this->frame($tui);
 
                     $opposite = null !== $leftStep ? $dockTabs->scrollIndicatorAt(0, $lastCol) : $dockTabs->scrollIndicatorAt(0, 0);
                     $this->assertNotNull($opposite, 'clicking the indicator scrolled the strip, revealing the other end');
@@ -570,10 +569,10 @@ final class IdeDockToolsTest extends TestCase
 
                     // Settings: nav and form both scroll under the wheel.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $tui->tick();
+                    $this->frame($tui); // a capped bare tick paints nothing — rects need a real frame
                     $navRect = $renderer->getWidgetRect($tui->getById('settings-nav'));
                     $wheel($tui, $navRect->col + 2, $navRect->row + 2);
-                    $tui->tick();
+                    $this->frame($tui);
                     // Whichever pane the nav's wheel landed on: the section list
                     // swaps the form for the keybindings list, and the point here
                     // is that the *content* pane scrolls, not which one it is.

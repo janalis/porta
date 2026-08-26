@@ -71,7 +71,7 @@ final class HighlightingSettingsTest extends TestCase
                 Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                 $tui->tick();
                 $this->selectSettingsSection($tui->getById('settings-nav'), 'highlighting');
-                $tui->tick();
+                $this->frame($tui); // a bare tick inside the 60fps cap window is not a frame
 
                 $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                 $this->assertStringContainsString('No highlighting engine is enabled', $screen);
@@ -83,7 +83,7 @@ final class HighlightingSettingsTest extends TestCase
                 // the offer row.
                 $tui->setFocus($tui->getById('settings-form'));
                 $tui->handleInput("\r"); // actuate the button
-                $tui->tick();
+                $this->frame($tui); // a bare tick inside the 60fps cap window is not a frame
 
                 $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
                 $this->assertSame(

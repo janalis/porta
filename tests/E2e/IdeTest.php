@@ -68,9 +68,12 @@ final class IdeTest extends TestCase
 
     private function screen(): string
     {
-        // Flush any pending render before reading, so assertions do not
-        // depend on the adaptive ticker having fired between steps.
-        Services::resolve($this->ide, Tui::class)->tick();
+        // Force a frame before reading: a bare tick inside the 60fps cap
+        // window paints nothing, and assertions must not depend on the
+        // adaptive ticker or the trailing wakeup having fired between steps.
+        $tui = Services::resolve($this->ide, Tui::class);
+        $tui->requestRender(force: true);
+        $tui->tick();
 
         return AnsiUtils::stripAnsiCodes($this->terminal->getOutput());
     }

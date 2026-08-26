@@ -115,7 +115,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project->path('a.php'),
             [
                 100 => function ($tui, $terminal, $ide) use ($embedded): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $titles = array_column($this->menus($tui), 'title');
                     // No Git: this project is not a repository, and git's group
                     // is not built where none of its verbs is registered.
@@ -131,13 +131,13 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $tui->handleInput("\t"); // form → nav
                     $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
                     $tui->handleInput("\t"); // nav → form
-                    $tui->tick();
+                    $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('bundled (built-in)  [Built-in]', $screen, 'no Remove button for embedded plugins');
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\x1b[B"); // the built-in row
                     $tui->handleInput("\r"); // inert
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertDirectoryExists($embedded->path('bundled'), 'nothing was removed');
                 },
                 150 => function ($tui, $terminal, $ide) use ($project): void {
@@ -153,7 +153,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                         $tui->handleInput($char);
                     }
                     $tui->handleInput("\r");
-                    $tui->tick();
+                    $this->frame($tui);
 
                     $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
                     $this->assertSame('/opt/tool', $config['plugins']['bundled']['binary'] ?? null, 'the setting persisted');
@@ -161,7 +161,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     // Outside the settings view (which gates every non-safe item),
                     // the entry is now enabled and the plugin reads the live value.
                     $tui->handleInput("\x1b"); // close the settings view
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertTrue($this->menus($tui)[4]->items[0]->enabled(), 'the menu entry enabled once configured');
                     Services::resolve($ide, CommandRegistry::class)->run('bundled:run');
                     $this->awaitPainted($tui, $terminal, 'bundled ran /opt/tool');
@@ -253,7 +253,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $tui->handleInput("\x1b[B"); // bundled (project) Remove
                     $tui->handleInput("\r");
                     $tui->handleInput("\r");
-                    $tui->tick();
+                    $this->frame($tui);
                     $labels = array_column($commands->paletteCommands(), 'label');
                     $this->assertNotContains('Project Run', $labels, 'the override died');
                     $this->assertContains('Bundled Run', $labels, 'the shadowed embedded copy took over live');
@@ -261,7 +261,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     // Removing a plugin whose fallback copy is broken flashes the loader error.
                     $tui->handleInput("\r"); // the shadowfail Remove row slid into the selection
                     $tui->handleInput("\r");
-                    $tui->tick();
+                    $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin "shadowfail" failed to load', $screen);
                     $this->assertNotContains('Shadow OK', array_column($commands->paletteCommands(), 'label'));
@@ -308,7 +308,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $tui->handleInput("\t");
                     $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
                     $tui->handleInput("\x1b[B"); // bundled sub-item
-                    $tui->tick();
+                    $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('[ ] Enabled', $screen, 'listed and re-enableable');
                 },

@@ -87,17 +87,17 @@ final class IdePluginTest extends TestCase
             [
                 100 => function ($tui, $terminal): void {
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugins'));
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Plugins', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the Plugins menu title is in the bar');
                     $tui->handleInput("\x1b\x19"); // ctrl+alt+y (legacy: ESC + ctrl+y) → demo:hello
-                    $tui->tick();
+                    $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('PLUGGED', $screen, 'the plugin inserted at the caret');
                     $this->assertStringContainsString('hello ran in a.php', $screen, 'action methods reach the live IDE');
                 },
                 340 => function ($tui, $terminal, $ide) use ($project): void {
                     $tui->handleInput("\x13"); // ctrl+s → save → the plugin hook fires
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertSame('yes', (string) file_get_contents($project->path('a.php.hooked')), 'the onFileSaved hook ran');
                     $tui->handleInput("\x1b\x15"); // ctrl+alt+u → demo:boom (throws)
                     $this->awaitPainted($tui, $terminal, 'Plugin "demo" failed: kaboom');
@@ -129,7 +129,7 @@ final class IdePluginTest extends TestCase
             [
                 100 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b[97;6u"); // ctrl+shift+a → command palette
-                    $tui->tick();
+                    $this->frame($tui);
                     foreach (str_split('Say') as $char) {
                         $tui->handleInput($char);
                     }
@@ -141,7 +141,7 @@ final class IdePluginTest extends TestCase
                     // F8 is a core debug key, but its `when` guard is false while no
                     // session runs — the key falls through to the user's plugin rebind.
                     $tui->handleInput("\x1b[19~");
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('PLUGGED', $tui->getById('editor')->getDocument()->getText(), 'the .porta.json rebind dispatched');
                 },
             ],
@@ -187,9 +187,9 @@ final class IdePluginTest extends TestCase
             [
                 100 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b\x19"); // ctrl+alt+y → the PROJECT demo wins
-                    $tui->tick(); // render its flash before the next one replaces it
+                    $this->frame($tui); // render its flash before the next one replaces it
                     $tui->handleInput("\x1b\x17"); // ctrl+alt+w → the global-only plugin
-                    $tui->tick();
+                    $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('hello ran in a.php', $screen, 'the project copy shadowed the global one');
                     $this->assertStringNotContainsString('GLOBAL ran in', $screen);
@@ -215,7 +215,7 @@ final class IdePluginTest extends TestCase
             [
                 100 => function ($tui, $terminal): void {
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugin "broken" failed to load'));
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Plugin "broken" failed to load', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput('X');
                 },
@@ -269,8 +269,8 @@ final class IdePluginTest extends TestCase
                 PHP,
         ]);
 
-        $this->runIde($project, $project->path('a.php'), [200 => static function ($tui): void {
-            $tui->tick();
+        $this->runIde($project, $project->path('a.php'), [200 => function ($tui): void {
+            $this->frame($tui);
         }]);
 
         $this->assertSame(
@@ -316,10 +316,10 @@ final class IdePluginTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function ($tui, $terminal, $ide): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('editor'));
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 1)); // right-click
-                    $tui->tick();
+                    $this->frame($tui);
 
                     // The menu floats via the overlay and occupies no layout
                     // row, so its rows come from segments(), not render().

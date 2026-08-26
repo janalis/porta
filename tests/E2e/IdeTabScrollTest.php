@@ -89,7 +89,7 @@ final class IdeTabScrollTest extends TestCase
                 self::openAll($ide, $project, self::FILES);
             },
             300 => function (Tui $tui, $terminal, $ide): void {
-                $tui->tick();
+                $this->frame($tui);
                 /** @var TabBarWidget $tabs */
                 $tabs = $tui->getById('tabs');
                 $this->assertNotNull($tabs->tabAnchor(self::FILES - 1), 'the strip followed the last-opened (active) tab');
@@ -97,18 +97,18 @@ final class IdeTabScrollTest extends TestCase
 
                 // Vertical wheel up pages back one tab per notch.
                 self::wheel($tui, self::tabsRect($ide, $tui), 64, times: self::FILES);
-                $tui->tick();
+                $this->frame($tui);
                 $this->assertNotNull($tabs->tabAnchor(0), 'wheel-up walked back to the first tab');
 
                 self::wheel($tui, self::tabsRect($ide, $tui), 65, times: 3);
-                $tui->tick();
+                $this->frame($tui);
                 $this->assertNull($tabs->tabAnchor(0), 'wheel-down pages forward again');
 
                 // Hebrew locale: the strip renders mirrored, so the horizontal
                 // wheel's visual direction flips — wheel-right (67) pages back
                 // toward the first tab instead of forward.
                 self::wheel($tui, self::tabsRect($ide, $tui), 67, times: 3);
-                $tui->tick();
+                $this->frame($tui);
                 $this->assertNotNull($tabs->tabAnchor(0), 'RTL: wheel-right follows the mirrored order');
             },
         ]);
@@ -128,7 +128,7 @@ final class IdeTabScrollTest extends TestCase
                 self::openAll($ide, $project, self::TALL_FILES);
             },
             300 => function (Tui $tui, $terminal, $ide): void {
-                $tui->tick();
+                $this->frame($tui);
                 /** @var TabBarWidget $tabs */
                 $tabs = $tui->getById('tabs');
                 $this->assertNotNull($tabs->tabAnchor(self::TALL_FILES - 1), 'the list followed the active tab');
@@ -136,14 +136,14 @@ final class IdeTabScrollTest extends TestCase
 
                 // One notch scrolls three rows on the vertical list.
                 self::wheel($tui, self::tabsRect($ide, $tui), 64, times: 4);
-                $tui->tick();
+                $this->frame($tui);
                 $this->assertNotNull($tabs->tabAnchor(0), 'wheel-up reached the first tab');
                 $this->assertNull($tabs->tabAnchor(self::TALL_FILES - 1), 'the last tab scrolled out below');
 
                 // The bottom ▼ indicator row is clickable and pages forward.
                 $rect = self::tabsRect($ide, $tui);
                 self::click($tui, $rect, $rect->rows - 1, 2);
-                $tui->tick();
+                $this->frame($tui);
                 $this->assertNull($tabs->tabAnchor(0), 'clicking ▼ scrolled the first tab out');
                 $this->assertNotNull($tabs->tabAnchor(3), 'clicking ▼ paged three rows forward');
             },

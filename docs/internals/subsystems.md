@@ -40,6 +40,17 @@ fallback). While the `NonBlockingTerminal` still holds undelivered bytes,
 writer's `onDrain` hook, armed on the first skip, repaints the moment the tty
 catches up. An idle Tui goes fully quiet — `BidiTuiTest` soaks for it.
 
+Frame generation is **capped at 60fps** (`MIN_FRAME_INTERVAL`): a trackpad
+fling delivers each wheel report as its own stdin chunk, and uncapped that was
+one full frame per event — enough to saturate the loop. A frame inside the
+window is skipped with ONE trailing `Scheduler::delay` wakeup for the
+remainder, so floods coalesce to the cap rate and the final resting frame
+always lands. An idle→event frame still paints immediately, and
+`requestRender(force: true)` (resize, the test `frame()` idiom) bypasses the
+cap. Pacing is wired by `Ide` via `setFramePacing()`; bare test rigs that skip
+the call are uncapped. `Support/PerfCollector` (always on) logs per-second
+frame/input evidence to `.porta/perf.log`.
+
 The editor viewport **detaches from the caret on wheel scroll**
 (`Editor/EditorScroll`): the caret may leave the screen and the selection
 survives; any caret motion — version, line or column change — re-attaches via
