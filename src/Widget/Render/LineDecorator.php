@@ -137,21 +137,6 @@ final class LineDecorator
     }
 
     /**
-     * Replace the single cell at display column $col with $glyph rendered in
-     * $style (foreground only, so any background is preserved). Used to draw
-     * indent guides over leading-whitespace cells; the visible width is
-     * unchanged. $col must be within the line (0 <= $col < visible width).
-     */
-    public static function overlayGlyph(string $line, int $col, string $glyph, Style $style): string
-    {
-        $lineWidth = AnsiUtils::visibleWidth($line);
-        $before = 0 === $col ? '' : AnsiUtils::sliceByColumn($line, 0, $col);
-        $after = AnsiUtils::sliceByColumn($line, $col + 1, $lineWidth - $col - 1);
-
-        return $before.$style->apply($glyph).$after;
-    }
-
-    /**
      * Insert $text at display column $col, pushing existing content right.
      * Existing SGR spans stay attached to their characters, so this is safe to
      * call after other decorations. Used for inlay-hint virtual text; appends

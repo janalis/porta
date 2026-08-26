@@ -243,12 +243,28 @@ final class EditorRenderer
         if (0 === $wsBytes) {
             return $hlLine;
         }
+        // One pass over the raw line, NOT a per-glyph overlay fold: each overlay
+        // re-slices the accumulated result, and the slicer's escape replay
+        // DOUBLES the escapes per glyph — 16 indent levels (a deeply indented
+        // ASCII-art block in a README) turned one row into 2^20 bytes and a
+        // frame into 5MB. Slicing the raw line once per gap stays linear.
         $leadingWidth = $doc->displayColAt($lineIndex, $wsBytes);
-        for ($col = 0; $col < $leadingWidth; $col += $doc->indentDisplayWidth()) {
-            $hlLine = LineDecorator::overlayGlyph($hlLine, $col, Glyphs::INDENT_GUIDE, $styles->of(Role::IndentGuide));
+        $lineWidth = AnsiUtils::visibleWidth($hlLine);
+        $glyph = $styles->of(Role::IndentGuide)->apply(Glyphs::INDENT_GUIDE);
+        $out = '';
+        $prev = 0;
+        for ($col = 0; $col < $leadingWidth && $col < $lineWidth; $col += $doc->indentDisplayWidth()) {
+            if ($col > $prev) {
+                $out .= AnsiUtils::sliceByColumn($hlLine, $prev, $col - $prev);
+            }
+            $out .= $glyph;
+            $prev = $col + 1;
+        }
+        if ($prev < $lineWidth) {
+            $out .= AnsiUtils::sliceByColumn($hlLine, $prev, $lineWidth - $prev);
         }
 
-        return $hlLine;
+        return $out;
     }
 
     /**

@@ -167,6 +167,30 @@ final class EditorRendererTest extends TestCase
         $this->assertSame([], EditorRenderer::identifierOccurrences($doc, PaneFocus::Blurred, 0, 0));
     }
 
+    public function testIndentGuidesOnADeeplyIndentedLineStayLinearInSize(): void
+    {
+        // The regression this pins: overlaying one guide glyph at a time
+        // re-sliced the accumulated line, and the slicer's escape replay
+        // DOUBLED the escapes per glyph — 16 indent levels made a 2^20-byte
+        // row and a 5MB frame (a deeply indented ASCII-art block in a README).
+        $indent = str_repeat(' ', 32); // 8 guide columns at the default indent width of 4
+        $doc = new Document($indent."x\n");
+        $doc->setCursor(0, 0);
+        $styles = $this->styles();
+        $highlighter = new \Porta\Highlight\CodeHighlighter();
+        $highlighter->setFile('a.md');
+        $hlLine = $highlighter->highlight([$indent.'x'], 1)[0];
+
+        $guided = EditorRenderer::applyIndentGuides($doc, $hlLine, 0, $styles);
+
+        $this->assertLessThan(2_048, \strlen($guided), 'guide overlay must stay linear, never double per glyph');
+        $this->assertSame(
+            str_repeat(\Porta\Ui\Glyphs::INDENT_GUIDE.'   ', 8).'x',
+            AnsiUtils::stripAnsiCodes($guided),
+            'one guide per indent level, visible text otherwise untouched',
+        );
+    }
+
     public function testIdentifierOccurrencesSkipsAnOverDenseLineButKeepsItsSiblings(): void
     {
         // 9 same-word matches on one line = the caret parked on a prose
