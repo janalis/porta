@@ -80,6 +80,21 @@ final class IdeHelpersTest extends TestCase
         self::assertSame(Services::resolve($this->ide, Renderer::class), Services::resolve($this->ide, Renderer::class), 'the same shared instance every time');
     }
 
+    public function testANonBlockingTerminalGetsThePendingBytesProbe(): void
+    {
+        $stream = fopen('php://memory', 'w+');
+        \assert(false !== $stream);
+        $terminal = new \Porta\Ui\NonBlockingTerminal(new VirtualTerminal(columns: 80, rows: 24), $stream);
+        $ide = new Ide($this->project->dir, null, $terminal);
+        try {
+            $perf = Services::resolve($ide, \Porta\Support\PerfCollector::class);
+            self::assertNotNull(Probe::get($perf, 'pendingBytes'), 'the real-terminal boot wired the backlog probe');
+        } finally {
+            Services::resolve($ide, ViewRegistry::class)->closeAll();
+            Services::resolve($ide, Notifier::class)->dismissAll();
+        }
+    }
+
     public function testThePerfCollectorIsWiredAsSinkAndInputListener(): void
     {
         $tui = Services::resolve($this->ide, Tui::class);

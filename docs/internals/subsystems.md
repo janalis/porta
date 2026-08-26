@@ -49,7 +49,12 @@ always lands. An idle→event frame still paints immediately, and
 `requestRender(force: true)` (resize, the test `frame()` idiom) bypasses the
 cap. Pacing is wired by `Ide` via `setFramePacing()`; bare test rigs that skip
 the call are uncapped. `Support/PerfCollector` (always on) logs per-second
-frame/input evidence to `.porta/perf.log`.
+frame/input evidence to `.porta/perf.log`, with the paint time split into
+`renderMs` (widget tree) and `writeMs` (ScreenWriter/tty), the terminal
+backlog and the 1-minute load average per beat — and any single frame over
+100ms gets an immediate `slow-paint` line naming the layer. BidiTui always
+runs the manual render path (byte-equivalent to the vendor's, verified) so the
+two phases can be timed separately.
 
 The editor viewport **detaches from the caret on wheel scroll**
 (`Editor/EditorScroll`): the caret may leave the screen and the selection

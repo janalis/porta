@@ -101,7 +101,7 @@ final class IdeGraphViewerTest extends TestCase
 
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 over the focused graph pane
-                    $tui->tick();
+                    $this->frame($tui);
 
                     $this->assertStringContainsString('Close Others', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'a graph tab gets the tab context menu');
                 },
@@ -125,7 +125,7 @@ final class IdeGraphViewerTest extends TestCase
                 200 => function ($tui, $terminal, $ide): void {
                     // The stub answers on the loop: await the layout instead of sleeping.
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout to land');
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertSame('graph-viewer', $tui->getFocus()?->getId(), 'the viewer takes editor-area focus');
                     $output = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('g.dot', $output, 'the tab title is the basename');
@@ -149,7 +149,7 @@ final class IdeGraphViewerTest extends TestCase
                     $tui->handleInput('0'); // back to fit
                 },
                 560 => function ($tui, $terminal, $ide) use ($dotPath): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertSame('graph-viewer', $tui->getFocus()?->getId(), 'drag interactions keep the viewer focused');
                     // Break the document on disk: the reconciler re-shows it, the
                     // failing layout keeps the previous rendering under a banner.
@@ -241,7 +241,7 @@ final class IdeGraphViewerTest extends TestCase
             $project->path('seq.puml'),
             [
                 200 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'the text path, as before');
                     $this->assertStringContainsString('@startuml', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
@@ -262,7 +262,7 @@ final class IdeGraphViewerTest extends TestCase
             $project->path('g.dot'),
             [
                 200 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     $output = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('graphviz not found', $output);
                     $this->assertStringContainsString('dotPath', $output, 'the message names the setting');
@@ -303,7 +303,7 @@ final class IdeGraphViewerTest extends TestCase
                     $this->assertCount(1, $buffers->all(), 'the existing tab was reused');
 
                     $service->openFile($phpPath);
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertCount(2, $buffers->all());
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'a text tab swaps the editor back in');
 
@@ -331,14 +331,14 @@ final class IdeGraphViewerTest extends TestCase
                     $this->assertSame('graph-viewer', $tui->getFocus()?->getId(), 'OpenFocus::Editor lands on the viewer');
 
                     $service->closeTabsExcept($phpPath); // graph tabs bulk-close through forget()
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertCount(1, $buffers->all());
                     $service->openFile($dotPath); // reopen for the close step below
                     $this->await(static fn (): bool => true, what: 'noop');
                 },
                 420 => function ($tui, $terminal, $ide) use ($dotPath): void {
                     $tui->handleInput("\x1bw"); // alt+w: close the graph tab through the handler
-                    $tui->tick();
+                    $this->frame($tui);
                     $buffers = Services::resolve($ide, BufferManager::class);
                     $this->assertCount(1, $buffers->all(), 'the graph tab closed');
                     $this->assertFalse($buffers->has($dotPath));
@@ -367,7 +367,7 @@ final class IdeGraphViewerTest extends TestCase
                     $artifact = $project->path('architecture.dot');
                     $this->assertFileExists($artifact);
                     $this->assertStringContainsString('App\\\\Editor', (string) file_get_contents($artifact), 'the scanner produced the namespace graph');
-                    $tui->tick();
+                    $this->frame($tui);
                     $this->assertStringContainsString('Project Architecture', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the titled tab');
 
                     $buffers = Services::resolve($ide, BufferManager::class);

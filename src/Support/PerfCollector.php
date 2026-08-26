@@ -31,18 +31,31 @@ final class PerfCollector
 {
     public const float BEAT_INTERVAL = 1.0;
 
+    /** A single frame at least this slow gets its own immediate log line. */
+    public const float SLOW_PAINT_SECONDS = 0.1;
+
     /** Hard memory bound on samples within one beat window. */
     private const int MAX_SAMPLES = 1024;
 
     private readonly DiagnosticLog $log;
+    private readonly \Closure $loadAvg;
     private ?string $timer = null;
     private ?float $lastPassAt = null;
+
+    /** @var (\Closure(): int)|null reads the terminal's undelivered-byte backlog */
+    private ?\Closure $pendingBytes = null;
 
     /** @var list<float> seconds between consecutive render passes */
     private array $passGaps = [];
 
-    /** @var list<float> seconds spent generating each painted frame */
+    /** @var list<float> seconds spent generating each painted frame (render + write) */
     private array $paintDurations = [];
+
+    /** @var list<float> seconds spent in Renderer::render per painted frame */
+    private array $renderDurations = [];
+
+    /** @var list<float> seconds spent in ScreenWriter::writeLines per painted frame */
+    private array $writeDurations = [];
 
     private int $inputs = 0;
     private int $wheels = 0;
@@ -52,14 +65,34 @@ final class PerfCollector
     private int $capSkips = 0;
     private int $coalesced = 0;
 
+    /**
+     * @param (\Closure(): float)|null $loadAvg the FreezeWatchdog-style test
+     *                                          seam over sys_getloadavg — a
+     *                                          syscall no MockClock can stand
+     *                                          in for
+     */
     public function __construct(
         string $rootDir,
         private readonly ClockInterface $clock,
         ?FrameHooks $frameHooks = null,
         private readonly float $interval = self::BEAT_INTERVAL,
+        ?\Closure $loadAvg = null,
     ) {
         $this->log = DiagnosticLog::forRoot($rootDir, 'perf');
+        $this->loadAvg = $loadAvg ?? static fn (): float => (float) (sys_getloadavg() ?: [0.0])[0];
         $frameHooks?->onBeforeFrame($this->passMark(...));
+    }
+
+    /**
+     * Install (or clear, with null) the terminal-backlog probe, sampled at
+     * beat time and on slow-paint lines — it separates "the widget tree was
+     * slow" from "the outer terminal stopped draining".
+     *
+     * @param (\Closure(): int)|null $probe
+     */
+    public function setPendingBytesProbe(?\Closure $probe): void
+    {
+        $this->pendingBytes = $probe;
     }
 
     public function start(): void
@@ -96,12 +129,28 @@ final class PerfCollector
         }
     }
 
-    /** A frame actually painted, taking this long to generate. */
-    public function paintMark(float $durationSeconds): void
+    /** A frame actually painted: how long the widget tree and the terminal write took. */
+    public function paintMark(float $renderSeconds, float $writeSeconds = 0.0): void
     {
         ++$this->paints;
+        $total = $renderSeconds + $writeSeconds;
         if (\count($this->paintDurations) < self::MAX_SAMPLES) {
-            $this->paintDurations[] = $durationSeconds;
+            $this->paintDurations[] = $total;
+            $this->renderDurations[] = $renderSeconds;
+            $this->writeDurations[] = $writeSeconds;
+        }
+        if ($total >= self::SLOW_PAINT_SECONDS) {
+            // One immediate line per bad frame, naming the layer on the spot:
+            // render-heavy = the widget tree, write-heavy = the tty, both tiny
+            // while the wall clock stalled = the machine's scheduler.
+            $this->log->append(\sprintf(
+                '%s slow-paint render=%.0fms write=%.0fms pendingBytes=%d load=%.1f',
+                $this->clock->now()->format('Y-m-d H:i:s'),
+                1000 * $renderSeconds,
+                1000 * $writeSeconds,
+                null !== $this->pendingBytes ? (int) ($this->pendingBytes)() : 0,
+                (float) ($this->loadAvg)(),
+            ));
         }
     }
 
@@ -132,7 +181,7 @@ final class PerfCollector
             return;
         }
         $this->log->append(\sprintf(
-            '%s in=%d wheel=%d passes=%d paints=%d paceSkip=%d capSkip=%d coalesced=%d gapMs p50=%.1f p95=%.1f max=%.1f paintMs p50=%.1f p95=%.1f busy=%d',
+            '%s in=%d wheel=%d passes=%d paints=%d paceSkip=%d capSkip=%d coalesced=%d gapMs p50=%.1f p95=%.1f max=%.1f paintMs p50=%.1f p95=%.1f busy=%d renderMs p50=%.1f p95=%.1f writeMs p50=%.1f p95=%.1f pend=%d load=%.1f',
             $this->clock->now()->format('Y-m-d H:i:s'),
             $this->inputs,
             $this->wheels,
@@ -147,6 +196,12 @@ final class PerfCollector
             1000 * self::percentile($this->paintDurations, 0.50),
             1000 * self::percentile($this->paintDurations, 0.95),
             (int) (1000 * array_sum($this->paintDurations)),
+            1000 * self::percentile($this->renderDurations, 0.50),
+            1000 * self::percentile($this->renderDurations, 0.95),
+            1000 * self::percentile($this->writeDurations, 0.50),
+            1000 * self::percentile($this->writeDurations, 0.95),
+            null !== $this->pendingBytes ? (int) ($this->pendingBytes)() : 0,
+            (float) ($this->loadAvg)(),
         ));
         $this->reset();
     }
@@ -180,6 +235,8 @@ final class PerfCollector
         $this->coalesced = 0;
         $this->passGaps = [];
         $this->paintDurations = [];
+        $this->renderDurations = [];
+        $this->writeDurations = [];
         // A fresh window starts gap-free: an idle stretch between windows must
         // not land as one giant sample.
         $this->lastPassAt = null;

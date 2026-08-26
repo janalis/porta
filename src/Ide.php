@@ -235,6 +235,12 @@ final class Ide
         // miss nearly every event.
         $this->perf = $this->service(PerfCollector::class);
         $this->bidiTui->setPerfSink($this->perf);
+        $terminal = $this->tui->getTerminal();
+        if ($terminal instanceof NonBlockingTerminal) {
+            // The backlog probe on the beat and slow-paint lines separates a
+            // slow widget tree from a terminal that stopped draining.
+            $this->perf->setPendingBytesProbe($terminal->pendingBytes(...));
+        }
         $this->tui->addListener($this->perf->countInput(...), priority: 1000);
         // Last: hand the plugin handlers their live runtime seam and flash the
         // config/plugin load warnings, once every service they reach exists.

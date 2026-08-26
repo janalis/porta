@@ -274,9 +274,40 @@ final class BidiTuiFramePacingTest extends TestCase
         $tui->start();
         $this->microTurn();
 
-        $durations = Probe::get($perf, 'paintDurations');
+        $durations = Probe::get($perf, 'renderDurations');
         self::assertIsArray($durations);
-        self::assertEqualsWithDelta(0.003, $durations[0], 0.0001, 'the frame generation time was measured');
+        self::assertEqualsWithDelta(0.003, $durations[0], 0.0001, 'the widget-tree time lands in the render split');
+        $writes = Probe::get($perf, 'writeDurations');
+        self::assertIsArray($writes);
+        self::assertEqualsWithDelta(0.0, $writes[0], 0.0001, 'the frozen clock puts nothing in the write split');
+        $tui->stop();
+    }
+
+    public function testASlowRenderWritesTheSlowPaintLineThroughTheRealPaintPath(): void
+    {
+        $tui = new BidiTui(terminal: $this->terminal, renderer: $this->renderer);
+        $clock = $this->clock;
+        $tui->add(new class($clock) extends AbstractWidget {
+            public function __construct(
+                private readonly MockClock $clock,
+            ) {}
+
+            public function render(RenderContext $context): array
+            {
+                $this->clock->sleep(0.15); // a genuinely slow widget tree
+
+                return ['x'];
+            }
+        });
+        $tui->setFramePacing($this->clock, $this->scheduler);
+        $perfProject = new TempProject(); // held: its destructor removes the dir
+        $perf = new PerfCollector($perfProject->dir, $this->clock, loadAvg: static fn (): float => 1.0);
+        $tui->setPerfSink($perf);
+        $tui->start();
+        $this->microTurn();
+
+        $log = (string) file_get_contents($perf->logFile());
+        self::assertStringContainsString('slow-paint render=150ms write=0ms', $log, 'the bad frame named its layer on the spot');
         $tui->stop();
     }
 

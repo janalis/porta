@@ -282,24 +282,15 @@ final class BidiTui extends Tui implements FrameHooks
             $hook();
         }
 
-        $segmenter = $this->segmenter;
-        $reorder = $this->reorder;
-        if (null === $segmenter || null === $reorder) {
-            $start = null !== $this->clock ? Clocks::seconds($this->clock) : null;
-            parent::processRender();
-            if ($requested) {
-                // The parent paints exactly when renderRequested was set going in.
-                $this->framePainted($start);
-            }
-
-            return;
-        }
-
         if (!$requested) {
             return;
         }
+        // The manual path runs for LTR too — the vendor's processRender does
+        // exactly this (clear the flag, render, writeLines; verified, nothing
+        // else) and delegating to it hides where a slow frame spends its time.
+        // Timing render and write separately is what lets a real session's
+        // perf.log say "widget tree" vs "terminal write" for a 350ms paint.
         $privates['requested']->setValue($this, false);
-        $start = null !== $this->clock ? Clocks::seconds($this->clock) : null;
 
         /** @var ContainerWidget $root */
         $root = $privates['root']->getValue($this);
@@ -309,18 +300,30 @@ final class BidiTui extends Tui implements FrameHooks
         $screenWriter = $privates['screenWriter']->getValue($this);
 
         $terminal = $this->getTerminal();
-        $columns = $terminal->getColumns();
         $rows = $terminal->getRows();
-        $lines = array_values($renderer->render($root, $columns, $rows));
-        $this->lastLines = $lines; // pre-reorder, row-indexed, for click column mapping
-        $this->lastRuns = $segmenter->segment($root, $columns, $rows);
 
-        $out = [];
-        foreach ($lines as $row => $line) {
-            $out[] = array_key_exists($row, $this->lastRuns) ? $reorder->reorderRow($line, $this->lastRuns[$row]) : $line;
+        $t0 = null !== $this->clock ? Clocks::seconds($this->clock) : null;
+        $lines = array_values($renderer->render($root, $columns, $rows));
+        $t1 = null !== $this->clock ? Clocks::seconds($this->clock) : null;
+
+        $segmenter = $this->segmenter;
+        $reorder = $this->reorder;
+        if (null !== $segmenter && null !== $reorder) {
+            $this->lastLines = $lines; // pre-reorder, row-indexed, for click column mapping
+            $this->lastRuns = $segmenter->segment($root, $columns, $rows);
+            $out = [];
+            foreach ($lines as $row => $line) {
+                $out[] = array_key_exists($row, $this->lastRuns) ? $reorder->reorderRow($line, $this->lastRuns[$row]) : $line;
+            }
+            $lines = $out;
         }
-        $screenWriter->writeLines($out);
-        $this->framePainted($start);
+        $screenWriter->writeLines($lines);
+        $t2 = null !== $this->clock ? Clocks::seconds($this->clock) : null;
+
+        $this->framePainted(
+            null !== $t0 && null !== $t1 ? $t1 - $t0 : 0.0,
+            null !== $t1 && null !== $t2 ? $t2 - $t1 : 0.0,
+        );
     }
 
     /** The trailing-edge wakeup: the cap window elapsed, repaint the pending state. */
@@ -331,17 +334,13 @@ final class BidiTui extends Tui implements FrameHooks
     }
 
     /** A frame reached the terminal: stamp the cap window and feed the sink. */
-    private function framePainted(?float $startedAt): void
+    private function framePainted(float $renderSeconds, float $writeSeconds): void
     {
         $this->forceRequested = false;
-        if (null === $this->clock) {
-            $this->perf?->paintMark(0.0);
-
-            return;
+        if (null !== $this->clock) {
+            $this->lastFrameAt = Clocks::seconds($this->clock);
         }
-        $now = Clocks::seconds($this->clock);
-        $this->lastFrameAt = $now;
-        $this->perf?->paintMark(null !== $startedAt ? $now - $startedAt : 0.0);
+        $this->perf?->paintMark($renderSeconds, $writeSeconds);
     }
 
     #[\Override]

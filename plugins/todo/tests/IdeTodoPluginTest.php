@@ -49,14 +49,14 @@ final class IdeTodoPluginTest extends TestCase
                 200 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b8"); // alt+8 — core's key, the plugin's handler
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'FIXME races'));
-                    $tui->tick();
+                    $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('TODO extract this', $screen, 'the scan found both markers');
                     $this->assertStringContainsString('2 results', $screen);
                     $tui->handleInput("\r");
                 },
                 400 => function ($tui, $terminal) use ($project): void {
-                    $tui->tick();
+                    $this->frame($tui);
                     // grep walks the directory in its own order, so either row
                     // may be the selected one; both are TODO hits.
                     $this->assertMatchesRegularExpression('~src/[AB]\.php$~', (string) $tui->getById('editor')->getFilePath(), 'Enter took the default open-and-jump');
@@ -113,7 +113,7 @@ final class IdeTodoPluginTest extends TestCase
                 200 => function ($tui, $terminal, $ide): void {
                     $tui->handleInput("\x1b8");
                     $this->pump(0.2); // a genuine negative: prove nothing opened
-                    $tui->tick();
+                    $this->frame($tui);
 
                     // Model truth, not the screen: the editor is showing a file
                     // whose text literally contains the marker, so scraping for
