@@ -199,6 +199,94 @@ final class PluginManagerTest extends TestCase
         $this->assertNotContains('Say Hi', $labels, 'no stale duplicate came back');
     }
 
+    public function testADisposablePluginIsTornDownExactlyOnceOnDeactivate(): void
+    {
+        $settings = new PluginSettings('/p', []);
+        $manager = new PluginManager(new EventDispatcher(), $settings);
+        $plugin = $this->disposablePlugin('demo');
+        $manager->commit(new PluginApi('demo', $manager, '/p', $settings), $plugin);
+
+        $manager->deactivate('demo', new CommandRegistry());
+        $manager->deactivate('demo', new CommandRegistry()); // unknown now → no-op
+
+        $this->assertSame(1, $plugin->tornDown, 'teardown runs once, not per call');
+    }
+
+    public function testAThrowingTeardownIsReportedAndTheRegistriesStillEmpty(): void
+    {
+        // The barrier placement is the invariant: a teardown that throws must
+        // not leave the plugin's commands or menu entries standing.
+        $settings = new PluginSettings('/p', []);
+        $manager = new PluginManager(new EventDispatcher(), $settings);
+        $registry = new CommandRegistry();
+        $api = new PluginApi('demo', $manager, '/p', $settings);
+        $api->registerCommand('hi', 'Say Hi', static function (): void {});
+        $api->addMenuItem('hi');
+        $plugin = new class('demo') extends \Porta\Plugin\Api\AbstractPlugin implements \Porta\Plugin\Api\DisposablePlugin {
+            public function activate(PluginApi $api): void {}
+
+            public function deactivate(): void
+            {
+                throw new \RuntimeException('teardown exploded');
+            }
+        };
+        $manager->commit($api, $plugin);
+        $manager->registerCommands($registry);
+
+        $manager->deactivate('demo', $registry);
+
+        $this->assertFalse($manager->hasPlugin('demo'));
+        $this->assertNotContains('demo:hi', $registry->keyBoundIds(), 'the registries emptied despite the throw');
+        $this->assertSame([], $manager->menuSpecs());
+        $this->assertStringContainsString('teardown exploded', $manager->warnings()[0]->params['%message%'] ?? '', 'the throw is reported, not swallowed');
+    }
+
+    public function testACommitWithoutAnInstanceDeactivatesUntouched(): void
+    {
+        // The drain-only callers (tests, incremental drains) pass no instance;
+        // deactivation must not trip over the absence.
+        $settings = new PluginSettings('/p', []);
+        $manager = new PluginManager(new EventDispatcher(), $settings);
+        $manager->commit(new PluginApi('demo', $manager, '/p', $settings));
+
+        $manager->deactivate('demo', new CommandRegistry());
+
+        $this->assertFalse($manager->hasPlugin('demo'));
+    }
+
+    public function testAReinstallStoresTheFreshInstanceForItsOwnTeardown(): void
+    {
+        // The shadow-fallback path: deactivate one copy, commit the next. The
+        // second deactivate must tear down the SECOND instance, not a stale ref.
+        $settings = new PluginSettings('/p', []);
+        $manager = new PluginManager(new EventDispatcher(), $settings);
+        $first = $this->disposablePlugin('demo');
+        $manager->commit(new PluginApi('demo', $manager, '/p', $settings), $first);
+        $manager->deactivate('demo', new CommandRegistry());
+
+        $second = $this->disposablePlugin('demo');
+        $manager->commit(new PluginApi('demo', $manager, '/p', $settings), $second);
+        $manager->deactivate('demo', new CommandRegistry());
+
+        $this->assertSame(1, $first->tornDown);
+        $this->assertSame(1, $second->tornDown, 'the fresh instance owns the second teardown');
+    }
+
+    /** @return \Porta\Plugin\Api\AbstractPlugin&\Porta\Plugin\Api\DisposablePlugin&object{tornDown: int} */
+    private function disposablePlugin(string $name): object
+    {
+        return new class($name) extends \Porta\Plugin\Api\AbstractPlugin implements \Porta\Plugin\Api\DisposablePlugin {
+            public int $tornDown = 0;
+
+            public function activate(PluginApi $api): void {}
+
+            public function deactivate(): void
+            {
+                ++$this->tornDown;
+            }
+        };
+    }
+
     public function testLanguageServersResolveWithFirstAvailableWinningTheLanguage(): void
     {
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));

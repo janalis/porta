@@ -613,6 +613,15 @@ them from a command handler or a hook, never from `activate()`.
   still alive. The event loop has already stopped, so finish synchronously:
   a timer or subprocess you start there will never run. Persisting state is
   what it is for.
+- Implement `Porta\Plugin\Api\DisposablePlugin` (`deactivate(): void`) if your
+  plugin's own code starts things the registries cannot remove for it —
+  event-loop timers, subprocesses, open handles. It runs when the plugin is
+  disabled or removed **live**, inside your fault barrier; it does NOT run at
+  IDE shutdown (that is `onShutdown()`'s moment). Without it, a live disable
+  strips your listeners — the shutdown hook among them — and whatever you
+  started keeps running in an IDE that no longer knows you.
+  `AbstractSubprocessHighlighter` already implements it for its debounce
+  timers.
 - Registrations buffer inside `activate()` and commit **atomically** — if
   `activate()` throws, the plugin contributes nothing and a warning is
   flashed.

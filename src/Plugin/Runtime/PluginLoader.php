@@ -254,7 +254,7 @@ final class PluginLoader
 
             $api = new PluginApi($name, $manager, $this->rootDir, $this->settings, $this->syntaxTheme);
             $plugin->activate($api);
-            $manager->commit($api); // atomic: a throwing activate() lands nothing
+            $manager->commit($api, $plugin); // atomic: a throwing activate() lands nothing
         } catch (\Throwable $error) {
             return new ConfigWarning('Plugin "%name%" failed to load: %message%', ['%name%' => basename(\dirname($file)), '%message%' => $error->getMessage()]);
         }

@@ -17,8 +17,10 @@ use Porta\Highlight\CallableHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\Lsp\LanguageServerProvider;
+use Porta\Plugin\Api\DisposablePlugin;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
+use Porta\Plugin\Api\PortaPlugin;
 use Porta\Search\TokenSpanProvider;
 use Porta\Workbench\Dock\DockToolSource;
 use Porta\Workbench\Menu\ContributedMenuSource;
@@ -100,6 +102,14 @@ final class PluginManager implements
     /** @var array<string, true> loaded plugin names */
     private array $names = [];
     /**
+     * The committed plugin instances, kept so {@see deactivate()} can run an
+     * opt-in {@see DisposablePlugin} teardown. They were already reachable
+     * through their registered closures; this map only makes it explicit.
+     *
+     * @var array<string, PortaPlugin>
+     */
+    private array $instances = [];
+    /**
      * The WRAPPED listeners each plugin registered, so deactivate() can hand
      * the same instances back to removeListener().
      *
@@ -149,20 +159,21 @@ final class PluginManager implements
     /** Whether $plugin has registered a language server (so an enable/disable/setting change reconfigures LSP). */
     public function providesLanguageServer(string $plugin): bool
     {
-        foreach ($this->languageServers as $server) {
-            if ($plugin === $server['plugin']) {
-                return true;
-            }
-        }
-
-        return false;
+        return null !== array_find($this->languageServers, static fn (array $server): bool => $plugin === $server['plugin']);
     }
 
-    /** Land one successfully activated plugin's buffered registrations. */
-    public function commit(PluginApi $api): void
+    /**
+     * Land one successfully activated plugin's buffered registrations. The
+     * instance rides along (optional trailing, so the drain-only callers keep
+     * compiling) so a {@see DisposablePlugin} can be torn down on deactivate.
+     */
+    public function commit(PluginApi $api, ?PortaPlugin $plugin = null): void
     {
         $name = $api->pluginName();
         $this->names[$name] = true;
+        if (null !== $plugin) {
+            $this->instances[$name] = $plugin;
+        }
         foreach ($api->bufferedCommands() as $command) {
             $this->commands[] = $command;
             if ([] !== $command['keys']) {
@@ -308,6 +319,19 @@ final class PluginManager implements
             return;
         }
         unset($this->names[$name]);
+
+        // Plugin-owned resources first, in the plugin's own fault barrier: a
+        // throwing teardown is reported and the deactivation still completes —
+        // the registries below must empty either way.
+        $instance = $this->instances[$name] ?? null;
+        unset($this->instances[$name]);
+        if ($instance instanceof DisposablePlugin) {
+            try {
+                $instance->deactivate();
+            } catch (\Throwable $error) {
+                $this->reportFailure($name, $error);
+            }
+        }
 
         $removed = [];
         $this->commands = array_values(array_filter($this->commands, function (array $command) use ($name, &$removed): bool {
@@ -539,8 +563,9 @@ final class PluginManager implements
     }
 
     /**
-     * Every committed pane registration, in load order — drained once by
-     * {@see PluginPanes} into the core registry that actually holds them.
+     * Every committed pane registration, in load order — drained by
+     * {@see \Porta\Editor\PaneRegistrar} into the core registry that actually
+     * holds them.
      *
      * @return list<array{plugin: string, id: string, pane: \Closure, load: \Closure}>
      */

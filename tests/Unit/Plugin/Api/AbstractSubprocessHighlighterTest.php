@@ -262,6 +262,22 @@ final class AbstractSubprocessHighlighterTest extends TestCase
         $this->assertSame(['one', 'two'], $delivered, 'the third run never started');
     }
 
+    public function testDeactivateKillsThePendingDebounceTimer(): void
+    {
+        // A live disable drops the highlighter from the registry, but a timer
+        // already armed would still fire and spawn a subprocess for a plugin
+        // the user just turned off. Deactivate must cancel it.
+        $highlight = $this->backend('echo json_encode([["type" => "Text", "value" => "late"]]);', debounceMs: 60);
+
+        $highlight('doomed');
+        $this->plugin->deactivate();
+        $this->pump(0.2); // well past the debounce: a surviving timer would have fired
+
+        $this->assertSame([], $this->delivered, 'the pending run never started');
+        $this->assertSame([], Probe::get($this->plugin, 'timers'));
+        $this->assertSame([], Probe::get($this->plugin, 'latest'));
+    }
+
     public function testAMissingBinaryDeclines(): void
     {
         $highlight = $this->backend('echo "[]";', binaryName: 'porta-nonexistent-tool');

@@ -38,7 +38,7 @@ use Tempest\Highlight\Tokens\TokenTypeEnum;
  * before returning (see the bundled tempest plugin, which is a plain
  * {@see AbstractPlugin}).
  */
-abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin
+abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin implements DisposablePlugin
 {
     /** Hard ceiling on concurrent tool processes across every language. */
     private const int MAX_CONCURRENT = 2;
@@ -95,6 +95,23 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin
             },
             isAvailable: $this->binaryAvailable($api),
         );
+    }
+
+    /**
+     * A live disable must kill the pending debounce timers: the registry drops
+     * the highlighter, but a timer already armed would still fire and spawn a
+     * subprocess for a plugin the user just turned off. In-flight processes
+     * are left to their own timeout — they only decrement the ceiling on exit,
+     * and their delivery is dropped by the registry removal anyway.
+     */
+    #[\Override]
+    public function deactivate(): void
+    {
+        foreach ($this->timers as $timer) {
+            EventLoop::cancel($timer);
+        }
+        $this->timers = [];
+        $this->latest = [];
     }
 
     /** Debounce this request, replacing any pending one for the same language. */

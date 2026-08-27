@@ -106,6 +106,14 @@ says so. Disabling cascades to dependents. **Boot deliberately does not rewrite
 config** — a startup that silently re-enables what the user turned off is the
 worse surprise.
 
+Deactivation strips everything a plugin REGISTERED, but what its own code
+STARTED — timers, subprocesses — needs the plugin's cooperation: a committed
+instance implementing `Plugin/Api/DisposablePlugin` gets `deactivate()` called
+first, in its own fault barrier, before the registries empty. Opt-in and
+separate from `PortaPlugin` on purpose: adding a method there would break every
+existing plugin for a hook most never need, and it must NOT run at IDE shutdown
+(`onShutdown()` covers that; process exit reclaims the rest).
+
 ## Autoloading a plugin's own classes
 
 `Plugin/Runtime/PluginAutoloader` holds one `spl_autoload_register` over a
