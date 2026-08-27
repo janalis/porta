@@ -20,7 +20,10 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\EditorPaneWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
-/** Plugin pane registrations become live panes in the core registry — once, at the ctor tail. */
+/**
+ * Plugin pane registrations become live panes in the core registry — the full
+ * drain at the ctor tail, and one plugin's slice on live enable.
+ */
 final class PaneRegistrarTest extends TestCase
 {
     private PluginManager $manager;
@@ -125,6 +128,81 @@ final class PaneRegistrarTest extends TestCase
 
         $this->assertNull($this->registry->paneFor('bad'));
         $this->assertSame($pane, $this->registry->paneFor('good'), 'a later registration must still land after an earlier failure');
+    }
+
+    public function testRegisterForBuildsOnlyTheNamedPluginsPanes(): void
+    {
+        $settings = new PluginSettings('/p', []);
+        $this->manager = new PluginManager(new EventDispatcher(), $settings);
+        $mine = new TestPane('mine');
+        $api = new PluginApi('my-plugin', $this->manager, '/p', $settings);
+        $api->registerPane('mine', static fn (PaneServices $services): EditorPaneWidget => $mine, static fn (string $path): string => '');
+        $this->manager->commit($api);
+        $theirs = new TestPane('theirs');
+        $other = new PluginApi('their-plugin', $this->manager, '/p', $settings);
+        $other->registerPane('theirs', static fn (PaneServices $services): EditorPaneWidget => $theirs, static fn (string $path): string => '');
+        $this->manager->commit($other);
+
+        $this->drain()->registerFor('my-plugin');
+
+        $this->assertSame($mine, $this->registry->paneFor('mine'));
+        $this->assertNull($this->registry->paneFor('theirs'), 'a live enable builds one plugin, not everyone');
+    }
+
+    public function testRegisterForKeepsThePluginsOwnStandingPane(): void
+    {
+        // Disable→re-enable: disable left the pane standing (an open tab is
+        // rendering in it), and the re-committed registration must not evict
+        // it. The identity assert is the point — a rebuilt pane would orphan
+        // the open tab's widget.
+        $builds = 0;
+        $first = new TestPane('demo');
+        $this->commit(static function (PaneServices $services) use (&$builds, $first): EditorPaneWidget {
+            ++$builds;
+
+            return $first;
+        });
+        $registrar = $this->drain();
+        $registrar->register();
+        $this->assertSame($first, $this->registry->paneFor('demo'));
+        $this->assertSame(1, $builds);
+
+        $registrar->registerFor('demo');
+
+        $this->assertSame($first, $this->registry->paneFor('demo'), 're-enable keeps the standing instance');
+        $this->assertSame(1, $builds, 'the factory must not even run for a standing same-owner pane');
+    }
+
+    public function testRegisterForReplacesAPaneAnotherOwnerHolds(): void
+    {
+        // Boot parity: "a plugin claiming a built-in id replaces it". The live
+        // path keeps the same contract when the standing owner differs.
+        $this->commit(static fn (PaneServices $services): EditorPaneWidget => new TestPane('shared'), plugin: 'my-plugin', id: 'shared');
+        $registrar = $this->drain();
+        $core = new TestPane('shared');
+        $this->registry->register($core, static fn (): string => '');
+
+        $registrar->registerFor('my-plugin');
+
+        $this->assertNotSame($core, $this->registry->paneFor('shared'), 'a different owner is replaced, not kept');
+        $this->assertSame('my-plugin', $this->registry->ownerOf('shared'));
+    }
+
+    public function testRegisterForReportsAThrowingFactoryAndSparesSiblings(): void
+    {
+        $settings = new PluginSettings('/p', []);
+        $this->manager = new PluginManager(new EventDispatcher(), $settings);
+        $good = new TestPane('good');
+        $api = new PluginApi('demo', $this->manager, '/p', $settings);
+        $api->registerPane('bad', static fn (PaneServices $services): EditorPaneWidget => throw new \RuntimeException('no pane today'), static fn (string $path): string => '');
+        $api->registerPane('good', static fn (PaneServices $services): EditorPaneWidget => $good, static fn (string $path): string => '');
+        $this->manager->commit($api);
+
+        $this->drain()->registerFor('demo');
+
+        $this->assertNull($this->registry->paneFor('bad'));
+        $this->assertSame($good, $this->registry->paneFor('good'), 'the sibling still lands after the failure');
+        $this->assertNotSame([], $this->manager->warnings());
     }
 
     public function testAWronglyTypedFactoryDoesNotStopLaterOnesFromLanding(): void

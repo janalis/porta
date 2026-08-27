@@ -81,6 +81,24 @@ final class EditorPanesTest extends TestCase
         $this->assertSame($core, $panes->paneFor('help'), 'core registrations have no owner and survive');
     }
 
+    public function testOwnerOfDistinguishesPluginCoreAndNobody(): void
+    {
+        // The three answers carry the live-enable skip: a plugin's own standing
+        // pane keeps its slot, core's ('') is replaced, an unanswered id (null)
+        // is built fresh. Collapsing null and '' would make a first-time enable
+        // of a core-id-claiming plugin a silent no-op.
+        $panes = new EditorPanes();
+        $panes->register(new TestPane('mine'), static fn (): string => '', 'my-plugin');
+        $panes->register(new TestPane('help'), static fn (): string => '');
+
+        $this->assertSame('my-plugin', $panes->ownerOf('mine'));
+        $this->assertSame('', $panes->ownerOf('help'), 'core owns without a name');
+        $this->assertNull($panes->ownerOf('nothing'), 'an unanswered id is nobody, not core');
+
+        $panes->forget('my-plugin');
+        $this->assertNull($panes->ownerOf('mine'), 'forgetting clears ownership with the pane');
+    }
+
     public function testForgettingAPluginRemovesItsPaneEvenWhenAnEarlierEntryBelongsToSomeoneElse(): void
     {
         // A `continue`/`break` mix-up in the loop would stop scanning as soon

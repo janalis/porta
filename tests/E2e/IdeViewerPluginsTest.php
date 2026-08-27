@@ -107,6 +107,49 @@ final class IdeViewerPluginsTest extends TestCase
         );
     }
 
+    public function testFirstTimeEnableBuildsThePaneSoTheFileActuallyRoutes(): void
+    {
+        // The defect this pins: a plugin enabled for the FIRST time in a
+        // session committed its pane registration, viewerFor() answered with
+        // the id — and no pane existed to serve it, so the file silently fell
+        // through to the text path (here: the not-text refusal). The live
+        // enable must build the pane, not just the claim.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => (string) json_encode(['enabledPlugins' => []]), // viewers off AT BOOT
+            'a.php' => "<?php\n",
+            'img.png' => $this->onePixelPng(),
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $panes = Services::resolve($ide, EditorPanes::class);
+                    $this->assertNull($panes->paneFor('image'), 'disabled at boot: no pane was built');
+
+                    Services::resolve($ide, PluginLifecycle::class)->enable('image-viewer');
+
+                    $built = $panes->paneFor('image');
+                    $this->assertNotNull($built, 'a first-time enable builds the pane live');
+                    $imgPath = (string) realpath($project->path('img.png'));
+                    Services::resolve($ide, BufferService::class)->openFile($imgPath);
+                    $tui->tick();
+                    $buffers = Services::resolve($ide, BufferManager::class);
+                    $this->assertSame('image', $buffers->get($imgPath)?->paneId, 'the image routes to the freshly built pane, not the text path');
+
+                    // Disable→re-enable keeps the standing instance: the open
+                    // tab is rendering in it, and rebuilding would orphan it.
+                    $lifecycle = Services::resolve($ide, PluginLifecycle::class);
+                    $lifecycle->disable('image-viewer');
+                    $lifecycle->enable('image-viewer');
+                    $this->assertSame($built, $panes->paneFor('image'), 're-enable keeps the pane the open tab lives in');
+                },
+            ],
+        );
+    }
+
     public function testAPluginShipsItsOwnPane(): void
     {
         // The whole point of the registry: a pane that core has never heard of,

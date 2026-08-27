@@ -101,6 +101,9 @@ final class PluginLifecycle implements PluginLifecycleOps
             return $this->translator->trans($error->key, $error->params);
         }
         $this->plugins->registerCommands($this->commands);
+        // Identity is the plugin's directory basename — the same convention
+        // enabledPlugins, requires and the installer's listing all key on.
+        $this->panes->registerFor(basename(\dirname($file)));
         $this->keys->rebuild();
         $this->menuRebuilder->rebuild();
         $this->refreshNav();
@@ -117,21 +120,32 @@ final class PluginLifecycle implements PluginLifecycleOps
     #[\Override]
     public function deactivate(string $name): void
     {
+        // Decided BEFORE the deactivate empties the slot: only a plugin that
+        // was actually running gets its shadowed copy loaded in its place. A
+        // name the user had already turned off was not loaded, and reviving a
+        // lower-precedence copy of it would undo the persisted choice.
+        $wasActive = $this->plugins->hasPlugin($name);
         $this->plugins->deactivate($name, $this->commands);
         $this->panes->forget($name);
-        foreach ($this->installer->installed() as $candidate) {
-            if ($candidate['name'] !== $name) {
-                continue;
-            }
+        if ($wasActive) {
+            foreach ($this->installer->installed() as $candidate) {
+                if ($candidate['name'] !== $name) {
+                    continue;
+                }
 
-            $error = $this->loader->loadFile($candidate['dir'].'/plugin.php', $this->plugins);
-            if (null !== $error) {
-                $this->notifier->error($this->translator->trans($error->key, $error->params));
+                $error = $this->loader->loadFile($candidate['dir'].'/plugin.php', $this->plugins);
+                if (null !== $error) {
+                    $this->notifier->error($this->translator->trans($error->key, $error->params));
+                }
+                if (null === $error) {
+                    $this->plugins->registerCommands($this->commands);
+                    // The forget() above emptied the slot, so the fallback
+                    // copy's pane must be rebuilt — unlike disable(), which
+                    // leaves the standing pane in place.
+                    $this->panes->registerFor($name);
+                }
+                break;
             }
-            if (null === $error) {
-                $this->plugins->registerCommands($this->commands);
-            }
-            break;
         }
         $this->keys->rebuild();
         $this->menuRebuilder->rebuild();
@@ -452,6 +466,7 @@ final class PluginLifecycle implements PluginLifecycleOps
             return false;
         }
         $this->plugins->registerCommands($this->commands);
+        $this->panes->registerFor($name);
         $this->reconfigureLspIf($this->plugins->providesLanguageServer($name));
 
         return true;

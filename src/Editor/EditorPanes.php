@@ -17,7 +17,7 @@ use Porta\Widget\EditorPaneWidget;
  * consumer-owned-source shape {@see ViewerProviderSource} uses. Core registers
  * its own help pane here, and doing that through a `Porta\Plugin` service would
  * be an Editor→Plugin edge pointing the wrong way; the plugin subsystem instead
- * drains its registrations in through {@see \Porta\Plugin\Runtime\PluginPanes}.
+ * drains its registrations in through {@see PaneRegistrar}.
  *
  * A pane arrives with a LOADER: the closure that turns a path into the payload
  * that pane understands. That is what keeps `BufferService` from reading image
@@ -55,6 +55,17 @@ final class EditorPanes
     public function paneFor(string $id): ?EditorPaneWidget
     {
         return $this->panes[$id] ?? null;
+    }
+
+    /**
+     * Who registered the pane answering $id: the plugin name, '' for core, or
+     * null when nothing answers. The distinction carries the live-enable skip:
+     * a re-enabled plugin's own standing pane keeps the slot, anyone else's is
+     * replaced.
+     */
+    public function ownerOf(string $id): ?string
+    {
+        return $this->owners[$id] ?? null;
     }
 
     /** @return \Closure(string): mixed|null */
