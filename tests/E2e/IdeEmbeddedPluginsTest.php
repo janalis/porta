@@ -310,7 +310,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $tui->handleInput("\x1b[B"); // bundled sub-item
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('[ ] Enabled', $screen, 'listed and re-enableable');
+                    $this->assertMatchesRegularExpression('/Enabled\s+\[ \]/', $screen, 'listed and re-enableable');
                 },
             ],
         );

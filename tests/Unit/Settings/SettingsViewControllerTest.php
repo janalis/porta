@@ -501,7 +501,7 @@ final class SettingsViewControllerTest extends TestCase
         $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
         $this->assertStringContainsString('Install into', $screen);
         $this->assertStringContainsString('Install plugin', $screen);
-        $this->assertStringContainsString('demo (project)  [Remove]', $screen);
+        $this->assertMatchesRegularExpression('/demo \(project\)\s+\[Remove\]/', $screen);
 
         // Actuating the Remove row twice (two-press confirm) routes to the
         // plugins controller and the refreshed rows drop the plugin.
@@ -529,7 +529,7 @@ final class SettingsViewControllerTest extends TestCase
         file_put_contents($this->project->dir.'/.porta/plugins/late/plugin.php', data: "<?php\n");
         $controller->refresh(); // re-reads the rows: the late plugin appears
         $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
-        $this->assertStringContainsString('late (project)  [Remove]', $screen);
+        $this->assertMatchesRegularExpression('/late \(project\)\s+\[Remove\]/', $screen);
     }
 
     public function testPluginPageRoutesRowsAndChangesAndFallsBackWhenRemoved(): void
@@ -763,7 +763,7 @@ final class SettingsViewControllerTest extends TestCase
 
         $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'refresh() on the plugins section must request a render');
         $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
-        $this->assertStringContainsString('late (project)  [Remove]', $screen);
+        $this->assertMatchesRegularExpression('/late \(project\)\s+\[Remove\]/', $screen);
     }
 
     /**

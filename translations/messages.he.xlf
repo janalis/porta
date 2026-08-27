@@ -2638,6 +2638,10 @@
         <source>⏎ save · Esc cancel</source>
         <target>⏎ שמירה · Esc ביטול</target>
       </trans-unit>
+      <trans-unit id="671">
+        <source>Install</source>
+        <target>התקן</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

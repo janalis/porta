@@ -2638,6 +2638,10 @@
         <source>⏎ save · Esc cancel</source>
         <target>⏎ salva · Esc annulla</target>
       </trans-unit>
+      <trans-unit id="671">
+        <source>Install</source>
+        <target>Installa</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

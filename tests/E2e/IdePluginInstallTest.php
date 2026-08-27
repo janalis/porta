@@ -110,7 +110,7 @@ final class IdePluginInstallTest extends TestCase
                     $this->openPluginsSection($tui, $ide);
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Install into  < This project >', $screen);
+                    $this->assertMatchesRegularExpression('/Install into\s+< This project >/', $screen);
                     $this->assertStringContainsString('git URL, local path, or vendor/name package', $screen, 'the empty install field shows its hint');
 
                     $tui->handleInput("\x1b[B"); // → the install row
@@ -123,7 +123,7 @@ final class IdePluginInstallTest extends TestCase
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin installed', \Porta\Tests\Support\Toasts::last($ide));
                     $this->assertFileExists($project->path('.porta/plugins/installee/plugin.php'));
-                    $this->assertStringContainsString('installee (project)  [Remove]', $screen, 'the new plugin lists with a Remove button');
+                    $this->assertMatchesRegularExpression('/installee \(project\)\s+\[Remove\]/', $screen, 'the new plugin lists with a Remove button');
 
                     // Live activation: the command is in the registry and the palette.
                     $commands = Services::resolve($ide, CommandRegistry::class);
@@ -272,7 +272,7 @@ final class IdePluginInstallTest extends TestCase
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin installed', \Porta\Tests\Support\Toasts::last($ide));
                     $this->assertFileExists($project->path('.porta/plugins/cloned/plugin.php'));
-                    $this->assertStringContainsString('cloned (project)  [Remove]', $screen, 'the async refresh re-listed the section');
+                    $this->assertMatchesRegularExpression('/cloned \(project\)\s+\[Remove\]/', $screen, 'the async refresh re-listed the section');
 
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $commands->run('cloned:hi');
@@ -302,8 +302,11 @@ final class IdePluginInstallTest extends TestCase
                 100 => function ($tui, $terminal, $ide) use ($project, $home): void {
                     $this->openPluginsSection($tui, $ide);
                     $tui->handleInput("\r"); // cycle the scope row: project → global
-                    $this->awaitPainted($tui, $terminal, 'Install into  < Global (all projects) >');
-                    $this->assertStringContainsString('Install into  < Global (all projects) >', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    // A substring that does not spell the gap: the value column is aligned
+                    // per page, and a stale literal here is a ten-second timeout
+                    // rather than a failure.
+                    $this->awaitPainted($tui, $terminal, '< Global (all projects) >');
+                    $this->assertMatchesRegularExpression('/Install into\s+< Global \(all projects\) >/', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
 
                     $tui->handleInput("\x1b[B"); // install row
                     $tui->handleInput("\r");
@@ -314,7 +317,7 @@ final class IdePluginInstallTest extends TestCase
 
                     $this->assertFileExists($home->dir.'/.porta/plugins/worldwide/plugin.php');
                     $this->assertDirectoryDoesNotExist($project->path('.porta/plugins/worldwide'));
-                    $this->assertStringContainsString('worldwide (global)  [Remove]', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->assertMatchesRegularExpression('/worldwide \(global\)\s+\[Remove\]/', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
         );

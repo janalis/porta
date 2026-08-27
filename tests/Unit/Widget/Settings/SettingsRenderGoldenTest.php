@@ -117,8 +117,8 @@ final class SettingsRenderGoldenTest extends TestCase
                 10,
             ],
 
-            // An armed destructive action: today it wears DangerBg over every
-            // other row state, selection included.
+            // An armed destructive action: the danger shade is on the CONTROL,
+            // so the row underneath still shows it is selected.
             'danger-armed-and-selected' => [
                 static function (SettingsFormWidget $w): void {
                     $w->setFocused(true);
@@ -131,7 +131,10 @@ final class SettingsRenderGoldenTest extends TestCase
                 6,
             ],
 
-            // The empty-caption Action the plugins page ships today.
+            // The fallback for an Action built without a caption: the button
+            // wears the row's own label and the label column goes blank rather
+            // than saying it twice. No producer does this any more — the
+            // plugins page passed `value: false` and rendered `[]`.
             'action-without-a-caption' => [
                 static function (SettingsFormWidget $w): void {
                     $w->setFocused(true);
@@ -143,8 +146,8 @@ final class SettingsRenderGoldenTest extends TestCase
                 5,
             ],
 
-            // A hint on a Text row shows; the identical hints on the Choice and
-            // Int rows below it do not.
+            // A hint on a Text row shows; the identical hints on the Choice
+            // and Int rows below it do not. Fixed in the detail-column commit.
             'hints-across-kinds' => [
                 static function (SettingsFormWidget $w): void {
                     $w->setFocused(true);

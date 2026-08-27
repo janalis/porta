@@ -314,6 +314,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $this->lastRows = max(1, $rows - $this->headerRowCount() - 1);
         $scroll = $this->list->follow($this->lastRows);
 
+        $layout = SettingsRowLayout::measure($this->rows, $width);
         $lines = [HeaderRenderer::title($this->titleLine(), $width, $this->styles)];
         for ($offset = 0; $offset < $this->lastRows; ++$offset) {
             $i = $scroll + $offset;
@@ -323,12 +324,19 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
                 continue;
             }
 
-            $text = match ($row->kind) {
-                SettingsRowKind::Bool => ' '.((bool) $row->value ? Glyphs::CHECKBOX_ON : Glyphs::CHECKBOX_OFF).' '.$row->label,
-                SettingsRowKind::Text => ' '.$row->label.'  '.$this->textValue($row, $i),
-                SettingsRowKind::Action => ' '.$row->label.'  ['.(string) $row->value.']',
-                default => ' '.$row->label.'  < '.$this->choiceLabel($row).' >',
-            };
+            $control = $this->control($row, $i);
+            // The armed destructive row (the two-press remove confirm) tints
+            // its CONTROL, not the whole line: wearing DangerBg over the row
+            // beat both the selection bar and the hover tint, so the one row
+            // where confirming matters was the one row you could not tell was
+            // selected.
+            if ($row->danger) {
+                $control = $this->styles->merge(Role::DangerBg, Role::Bright)->apply($control);
+            }
+            // A button whose caption fell back to its own label leaves the
+            // label column blank rather than saying it twice.
+            $label = SettingsRowKind::Action === $row->kind && '' === (string) $row->value ? '' : $row->label;
+            $text = ' '.AnsiText::padRight($label, $layout->label).'  '.$control;
             if ($row->restart) {
                 $text .= $this->styles->of(Role::Dim)->apply(' · '.$this->translator->trans('applies on restart'));
             }
@@ -339,15 +347,43 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
                 $i === $this->editing && null !== $this->editField
                     ? AnsiText::scrollLineToCaret($text, $width)
                     : AnsiText::truncate($text, $width, pad: true);
-            // An armed destructive action (the two-press remove confirm)
-            // wears the danger shade over every other row state.
-            $lines[] = $row->danger
-                ? $this->styles->merge(Role::DangerBg, Role::Bright)->apply($text)
-                : $this->shadeRow($text, $this->list->isSelected($i), $i === $this->hoveredIndex);
+            $lines[] = $this->shadeRow($text, $this->list->isSelected($i), $i === $this->hoveredIndex);
         }
         $lines[] = $this->footer($width);
 
         return $this->withMenuOverlay($lines, $width);
+    }
+
+    /**
+     * A row's control: the part that shows the value and that actuating moves.
+     *
+     * Every kind renders it in the SAME column, which is the whole point —
+     * `Bool` used to put its checkbox at column 1, ahead of its label, while
+     * the others put theirs after.
+     */
+    private function control(SettingsRow $row, int $index): string
+    {
+        return match ($row->kind) {
+            SettingsRowKind::Bool => (bool) $row->value ? Glyphs::CHECKBOX_ON : Glyphs::CHECKBOX_OFF,
+            SettingsRowKind::Text => $this->textValue($row, $index),
+            SettingsRowKind::Action => '['.$this->actionCaption($row).']',
+            SettingsRowKind::Int => '< '.(string) $row->value.' >',
+            default => '< '.$this->choiceLabel($row).' >',
+        };
+    }
+
+    /**
+     * A button's caption, falling back to its own label.
+     *
+     * The plugins page builds its install offer with `value: false`, which
+     * stringifies to '' and rendered as `Install phpstan  []` — a button with
+     * nothing written on it.
+     */
+    private function actionCaption(SettingsRow $row): string
+    {
+        $caption = (string) $row->value;
+
+        return '' === $caption ? $row->label : $caption;
     }
 
     /** `<page> — N settings`, or just the count before a page has named itself. */

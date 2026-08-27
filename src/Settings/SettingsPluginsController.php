@@ -125,7 +125,10 @@ final class SettingsPluginsController
                 key: 'pluginInstallBinary',
                 label: $this->translator->trans('Install %tool%', ['%tool%' => $offer['tool']]),
                 kind: SettingsRowKind::Action,
-                value: false,
+                // A caption, not `false`: an Action's value IS the text on its
+                // button, and false stringifies to '' — the row rendered as
+                // `Install phpstan  []`, a button with nothing written on it.
+                value: $this->translator->trans('Install'),
                 restart: false,
             );
         }

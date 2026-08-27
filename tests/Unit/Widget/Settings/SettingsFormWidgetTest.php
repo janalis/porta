@@ -69,10 +69,13 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $screen = $this->plain($this->widget()->render(new RenderContext(60, 8)));
 
-        $this->assertStringContainsString('[x] Inline diagnostics', $screen);
-        $this->assertStringContainsString('[ ] Relative line numbers', $screen);
-        $this->assertStringContainsString('Theme  < dark >', $screen);
-        $this->assertStringContainsString('Tab width  < 4 >', $screen);
+        // Label first, control in the shared column — a Bool's checkbox used to
+        // sit at column 1, ahead of its label and out of line with every other
+        // kind's control.
+        $this->assertMatchesRegularExpression('/Inline diagnostics\s+\[x\]/', $screen);
+        $this->assertMatchesRegularExpression('/Relative line numbers\s+\[ \]/', $screen);
+        $this->assertMatchesRegularExpression('/Theme\s+< dark >/', $screen);
+        $this->assertMatchesRegularExpression('/Tab width\s+< 4 >/', $screen);
         $this->assertStringContainsString('· applies on restart', $screen, 'restart rows are annotated');
     }
 
@@ -752,7 +755,7 @@ final class SettingsFormWidgetTest extends TestCase
 
         $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(20, 4))[1]);
 
-        $this->assertStringStartsWith(' [x] A very long', $screen, 'not being edited: the left edge (label start) is kept, not scrolled');
+        $this->assertStringStartsWith(' A very long', $screen, 'not being edited: the left edge (label start) is kept, not scrolled');
     }
 
     public function testShortRowsArePaddedToTheFullColumnWidth(): void
