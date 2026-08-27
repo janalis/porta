@@ -6,11 +6,13 @@ namespace Porta\Settings;
 
 use Porta\Config\PortaJsonWriter;
 use Porta\Config\RecommendedPlugins;
+use Porta\Event\SettingsRowsStale;
 use Porta\Highlight\HighlightPreferences;
 use Porta\Highlight\HighlightRegistry;
 use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\PluginEnablement;
 use Porta\Support\LanguageMap;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
  * The Settings → Highlighting page: which syntax-highlighting backend serves
@@ -30,6 +32,19 @@ use Porta\Support\LanguageMap;
  */
 final class SettingsHighlightController
 {
+    /**
+     * Which backends claim each grammar, resolved at most once per generation.
+     *
+     * A provider only answers `supports()`, so the claim set is discovered by
+     * probing every grammar against every backend — and {@see rows()} did that
+     * walk TWICE, once in {@see allBackendIds()} and once in
+     * {@see contestedLanguages()}. The settings nav rebuilds the page on every
+     * arrow press, so the cost was paid per keypress.
+     *
+     * @var array<string, list<string>>
+     */
+    private array $claims = [];
+
     /** Row key for the global default; per-language keys are `lang:<grammar>`. */
     public const string DEFAULT_KEY = 'highlightDefault';
 
@@ -104,6 +119,10 @@ final class SettingsHighlightController
     public function change(string $key, string $value): void
     {
         if (self::ENABLE_KEY === $key) {
+            // Enabling the engine is the one claim-set change this screen makes
+            // itself, and the caller re-pulls these rows the moment it returns —
+            // so drop the probe here rather than waiting for an event.
+            $this->claims = [];
             $this->lifecycle?->enable(RecommendedPlugins::HIGHLIGHTER);
 
             return;
@@ -158,18 +177,36 @@ final class SettingsHighlightController
     private function plainId(): string
     {
         // Nothing claims the empty language except the always-present fallback.
-        return $this->registry->available('')[0]->id();
+        // Through the same memo as every other grammar: this is asked once per
+        // allBackendIds() call and there are several of those per page.
+        return $this->backendIdsFor('')[0];
     }
 
     /** @return list<string> */
     private function backendIdsFor(string $language): array
     {
+        if (\array_key_exists($language, $this->claims)) {
+            return $this->claims[$language];
+        }
         $ids = [];
         foreach ($this->registry->available($language) as $provider) {
             $ids[] = $provider->id();
         }
 
-        return $ids;
+        return $this->claims[$language] = $ids;
+    }
+
+    /**
+     * Forget which backends claim what.
+     *
+     * The claim set moves only when the loaded backends move, which is a
+     * plugin being installed, removed, enabled or disabled — so this rides
+     * {@see SettingsRowsStale} rather than a timer or a per-call re-probe.
+     */
+    #[AsEventListener]
+    public function onSettingsRowsStale(SettingsRowsStale $event): void
+    {
+        $this->claims = [];
     }
 
     /**

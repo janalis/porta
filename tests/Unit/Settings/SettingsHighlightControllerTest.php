@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Config\RecommendedPlugins;
+use Porta\Event\SettingsRowsStale;
 use Porta\Highlight\CallableHighlightProvider;
 use Porta\Highlight\HighlightPreferences;
 use Porta\Highlight\HighlightRegistry;
@@ -236,6 +237,51 @@ final class SettingsHighlightControllerTest extends TestCase
         $keys = array_column($rows, 'key');
         $this->assertContains('lang:rust', $keys);
         $this->assertSame('chroma', $rows[1]->value);
+    }
+
+    /**
+     * A provider only answers supports(), so the claim set is discovered by
+     * probing every grammar against every backend — and rows() walked that
+     * twice, once for the backend list and once for the contested list, on a
+     * page the nav rebuilds per arrow press.
+     */
+    public function testTheGrammarProbeRunsOncePerGeneration(): void
+    {
+        $probes = 0;
+        $counting = new class($probes) implements SyntaxHighlightProviderSource {
+            public function __construct(
+                private int &$probes,
+            ) {}
+
+            public function highlightProviders(): array
+            {
+                ++$this->probes;
+
+                return [];
+            }
+        };
+        $preferences = new HighlightPreferences();
+        $controller = new SettingsHighlightController(
+            new HighlightRegistry($counting, $preferences),
+            new Translator('en'),
+            $this->project->dir,
+            $preferences,
+            new PortaJsonWriter(),
+            $this->lifecycle,
+        );
+
+        $controller->rows();
+        $first = $probes;
+        $controller->rows();
+        $controller->rows();
+
+        $this->assertSame($first, $probes, 'three page builds, one probe generation');
+        $this->assertGreaterThan(0, $first, 'and it really did probe — otherwise this asserts nothing');
+
+        $controller->onSettingsRowsStale(new SettingsRowsStale());
+        $controller->rows();
+
+        $this->assertGreaterThan($first, $probes, 'a plugin toggle re-probes: the claim set may have moved');
     }
 
     /**
