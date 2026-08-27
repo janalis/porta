@@ -2627,8 +2627,8 @@
         <target>vendor/-Dateien durchsuchen</target>
       </trans-unit>
       <trans-unit id="668">
-        <source>%count% settings</source>
-        <target>%count% Einstellungen</target>
+        <source>%count% setting|%count% settings</source>
+        <target>%count% Einstellung|%count% Einstellungen</target>
       </trans-unit>
       <trans-unit id="669">
         <source>⏎ edit · ←/→ change · Tab panes · 2 keybindings</source>

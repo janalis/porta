@@ -2627,8 +2627,8 @@
         <target>Cerca nei file vendor/</target>
       </trans-unit>
       <trans-unit id="668">
-        <source>%count% settings</source>
-        <target>%count% impostazioni</target>
+        <source>%count% setting|%count% settings</source>
+        <target>%count% impostazione|%count% impostazioni</target>
       </trans-unit>
       <trans-unit id="669">
         <source>⏎ edit · ←/→ change · Tab panes · 2 keybindings</source>

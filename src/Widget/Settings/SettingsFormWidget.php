@@ -353,7 +353,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     /** `<page> — N settings`, or just the count before a page has named itself. */
     private function titleLine(): string
     {
-        $count = $this->translator->trans('%count% settings', ['%count%' => \count($this->rows)]);
+        $count = $this->translator->trans('%count% setting|%count% settings', ['%count%' => \count($this->rows)]);
 
         return ' '.('' === $this->title ? $count : $this->title.' — '.$count);
     }

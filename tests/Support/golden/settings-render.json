@@ -1,0 +1,121 @@
+{
+    "every-kind-focused": [
+        "\u001b[48;5;237m\u001b[1m Interface — 5 settings                                                 \u001b[22m\u001b[49m",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m [x] Sticky scroll                                                      \u001b[22m\u001b[49m\u001b[39m",
+        " Theme  < dark >                                                        ",
+        " Tab width  < 4 >                                                       ",
+        " LSP server  phpactor language-server                                   ",
+        " demo (project)  [Remove]                                               ",
+        "                                                                        ",
+        "                                                                        ",
+        "                                                                        ",
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · Tab panes · 2 keybindings                        \u001b[49m\u001b[39m"
+    ],
+    "every-kind-unfocused": [
+        "\u001b[48;5;237m\u001b[1m Interface — 5 settings                                                 \u001b[22m\u001b[49m",
+        "\u001b[48;5;237m [x] Sticky scroll                                                      \u001b[49m",
+        " Theme  < dark >                                                        ",
+        " Tab width  < 4 >                                                       ",
+        " LSP server  phpactor language-server                                   ",
+        " demo (project)  [Remove]                                               ",
+        "                                                                        ",
+        "                                                                        ",
+        "                                                                        ",
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · Tab panes · 2 keybindings                        \u001b[49m\u001b[39m"
+    ],
+    "selection-moved": [
+        "\u001b[48;5;237m\u001b[1m Interface — 5 settings                                                 \u001b[22m\u001b[49m",
+        " [x] Sticky scroll                                                      ",
+        " Theme  < dark >                                                        ",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m Tab width  < 4 >                                                       \u001b[22m\u001b[49m\u001b[39m",
+        " LSP server  phpactor language-server                                   ",
+        " demo (project)  [Remove]                                               ",
+        "                                                                        ",
+        "                                                                        ",
+        "                                                                        ",
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · Tab panes · 2 keybindings                        \u001b[49m\u001b[39m"
+    ],
+    "hovered-row": [
+        "\u001b[48;5;237m\u001b[1m Interface — 5 settings                                                 \u001b[22m\u001b[49m",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m [x] Sticky scroll                                                      \u001b[22m\u001b[49m\u001b[39m",
+        " Theme  < dark >                                                        ",
+        "\u001b[48;5;236m Tab width  < 4 >                                                       \u001b[49m",
+        " LSP server  phpactor language-server                                   ",
+        " demo (project)  [Remove]                                               ",
+        "                                                                        ",
+        "                                                                        ",
+        "                                                                        ",
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · Tab panes · 2 keybindings                        \u001b[49m\u001b[39m"
+    ],
+    "danger-armed-and-selected": [
+        "\u001b[48;5;237m\u001b[1m Plugins — 2 settings                                                   \u001b[22m\u001b[49m",
+        "\u001b[38;5;231m\u001b[48;5;88m demo (project)  [Remove]                                               \u001b[49m\u001b[39m",
+        " other (project)  [Remove]                                              ",
+        "                                                                        ",
+        "                                                                        ",
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · Tab panes · 2 keybindings                        \u001b[49m\u001b[39m"
+    ],
+    "action-without-a-caption": [
+        "\u001b[48;5;237m\u001b[1m phpstan — 1 setting                                                    \u001b[22m\u001b[49m",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m Install phpstan  []                                                    \u001b[22m\u001b[49m\u001b[39m",
+        "                                                                        ",
+        "                                                                        ",
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · Tab panes · 2 keybindings                        \u001b[49m\u001b[39m"
+    ],
+    "hints-across-kinds": [
+        "\u001b[48;5;237m\u001b[1m image-viewer — 3 settings                                              \u001b[22m\u001b[49m",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m LSP server  \u001b[38;5;245mauto: phpactor\u001b[39m                                             \u001b[22m\u001b[49m\u001b[39m",
+        " Default highlighter  < auto (first available) >                        ",
+        " Skip images larger than (bytes)  < 20971520 >                          ",
+        "                                                                        ",
+        "                                                                        ",
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · Tab panes · 2 keybindings                        \u001b[49m\u001b[39m"
+    ],
+    "ragged-value-column": [
+        "\u001b[48;5;237m\u001b[1m General — 3 settings                                                   \u001b[22m\u001b[49m",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m Theme  < dark >                                                        \u001b[22m\u001b[49m\u001b[39m",
+        " [x] Sticky scroll                                                      ",
+        " Skip images larger than (bytes)  < 4 >                                 ",
+        "                                                                        ",
+        "                                                                        ",
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · Tab panes · 2 keybindings                        \u001b[49m\u001b[39m"
+    ],
+    "restart-note": [
+        "\u001b[48;5;237m\u001b[1m PHP — 1 setting                                                        \u001b[22m\u001b[49m",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m Run/debug command  frankenphp php-cli\u001b[38;5;245m · applies on restart\u001b[39m             \u001b[22m\u001b[49m\u001b[39m",
+        "                                                                        ",
+        "                                                                        ",
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · Tab panes · 2 keybindings                        \u001b[49m\u001b[39m"
+    ],
+    "truncating-long-label": [
+        "\u001b[48;5;237m\u001b[1m General — 1 setting          \u001b[22m\u001b[49m",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m [x] A very long setting labe…\u001b[22m\u001b[49m\u001b[39m",
+        "                              ",
+        "                              ",
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · Tab pa\u001b[0m\u001b[48;5;235m…\u001b[49m\u001b[39m"
+    ],
+    "editing-a-text-row": [
+        "\u001b[48;5;237m\u001b[1m PHP — 1 setting                                                        \u001b[22m\u001b[49m",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m LSP server  my-ls\u001b_pi:c;5\u0007                                                      \u001b[22m\u001b[49m\u001b[39m",
+        "                                                                        ",
+        "                                                                        ",
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ save · Esc cancel                                                    \u001b[49m\u001b[39m"
+    ],
+    "scrolled-page": [
+        "\u001b[48;5;237m\u001b[1m Long — 20 settings                                                     \u001b[22m\u001b[49m",
+        " [ ] Setting 7                                                          ",
+        " [x] Setting 8                                                          ",
+        " [ ] Setting 9                                                          ",
+        " [x] Setting 10                                                         ",
+        " [ ] Setting 11                                                         ",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m [x] Setting 12                                                         \u001b[22m\u001b[49m\u001b[39m",
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · Tab panes · 2 keybindings                        \u001b[49m\u001b[39m"
+    ],
+    "empty-page": [
+        "\u001b[48;5;237m\u001b[1m Nothing — 0 settings                                                   \u001b[22m\u001b[49m",
+        "                                                                        ",
+        "                                                                        ",
+        "                                                                        ",
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · Tab panes · 2 keybindings                        \u001b[49m\u001b[39m"
+    ]
+}

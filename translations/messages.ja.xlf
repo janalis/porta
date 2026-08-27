@@ -2627,8 +2627,8 @@
         <target>vendor/ 内のファイルを検索</target>
       </trans-unit>
       <trans-unit id="668">
-        <source>%count% settings</source>
-        <target>%count% 件の設定</target>
+        <source>%count% setting|%count% settings</source>
+        <target>%count% 件の設定|%count% 件の設定</target>
       </trans-unit>
       <trans-unit id="669">
         <source>⏎ edit · ←/→ change · Tab panes · 2 keybindings</source>

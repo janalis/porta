@@ -2627,8 +2627,8 @@
         <target>Search vendor/ files</target>
       </trans-unit>
       <trans-unit id="668">
-        <source>%count% settings</source>
-        <target>%count% settings</target>
+        <source>%count% setting|%count% settings</source>
+        <target>%count% setting|%count% settings</target>
       </trans-unit>
       <trans-unit id="669">
         <source>⏎ edit · ←/→ change · Tab panes · 2 keybindings</source>

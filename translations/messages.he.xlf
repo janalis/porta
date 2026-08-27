@@ -2627,8 +2627,8 @@
         <target>חיפוש בקובצי vendor/</target>
       </trans-unit>
       <trans-unit id="668">
-        <source>%count% settings</source>
-        <target>%count% הגדרות</target>
+        <source>%count% setting|%count% settings</source>
+        <target>הגדרה %count%|%count% הגדרות</target>
       </trans-unit>
       <trans-unit id="669">
         <source>⏎ edit · ←/→ change · Tab panes · 2 keybindings</source>
