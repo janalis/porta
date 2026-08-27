@@ -25,8 +25,9 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * editor, the theme, the cursor shape, or the locale) the instant it
  * changes, and the value is persisted. (The viewer-tool paths — Graphviz,
  * SVG converter, PlantUML — live on their PLUGINS' settings pages now, with
- * the graph generator command; they were the table's only restart-required
- * rows.)
+ * the graph generator command. They were the table's only restart-required
+ * rows while it owned them, and are live there too: each engine resolves its
+ * binary per spawn.)
  *
  * @phpstan-type Descriptor array{label: string, kind: SettingsRowKind, group: 'general'|'interface', restart: bool, apply: (\Closure(int|bool|string): void)|null, options?: list<string>, optionLabels?: array<string, string>, min?: int, max?: int}
  */
