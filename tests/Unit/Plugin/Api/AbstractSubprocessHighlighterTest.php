@@ -273,7 +273,13 @@ final class AbstractSubprocessHighlighterTest extends TestCase
         $this->plugin->deactivate();
         $this->pump(0.2); // well past the debounce: a surviving timer would have fired
 
-        $this->assertSame([], $this->delivered, 'the pending run never started');
+        // The SPAWN is the observable, not the delivery: clearing $latest alone
+        // would make a fired timer's answer read as superseded and get dropped,
+        // so asserting "nothing was delivered" passes whether or not the timer
+        // was cancelled — while a chroma process still ran for a plugin the
+        // user just turned off, which is the whole point of the cancel.
+        $this->assertSame(0, Probe::get($this->plugin, 'running'), 'no subprocess was started for the disabled plugin');
+        $this->assertSame([], $this->delivered);
         $this->assertSame([], Probe::get($this->plugin, 'timers'));
         $this->assertSame([], Probe::get($this->plugin, 'latest'));
     }
