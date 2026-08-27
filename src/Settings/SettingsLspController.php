@@ -7,11 +7,13 @@ namespace Porta\Settings;
 use Porta\Config\IdeConfig;
 use Porta\Config\LanguageCatalog;
 use Porta\Config\PortaJsonWriter;
+use Porta\Event\SettingsRowsStale;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspReconfigurer;
 use Porta\Lsp\ServerLocator;
 use Porta\Workbench\Notifier;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
  * The per-language LSP-server model behind the settings view's Languages
@@ -22,6 +24,19 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  */
 final class SettingsLspController
 {
+    /**
+     * The auto-detected servers, resolved at most once per generation.
+     *
+     * {@see ServerLocator::autoDetected()} walks every PATH entry for each
+     * server it knows, and the ones it looks for are usually absent — three
+     * full misses at ~3ms each. That is paid per {@see rows()} call, and the
+     * settings nav rebuilds the page on EVERY arrow press, so walking the
+     * thirteen language pages cost ~110ms of pure PATH scanning.
+     *
+     * @var array<string, array{command: list<string>, name: string}>|null
+     */
+    private ?array $detected = null;
+
     /**
      * @param array<string, string> $overrides languageId => command from {@see IdeConfig::$lspServers}
      */
@@ -43,7 +58,8 @@ final class SettingsLspController
      */
     public function rows(string $language): array
     {
-        $auto = ServerLocator::autoDetected($this->rootDir)[$language]['name'] ?? null;
+        $this->detected ??= ServerLocator::autoDetected($this->rootDir);
+        $auto = $this->detected[$language]['name'] ?? null;
 
         return [new SettingsRow(
             key: 'lspServer',
@@ -87,6 +103,17 @@ final class SettingsLspController
             '%shown%' => $shown,
             '%saved%' => $saved,
         ]));
+    }
+
+    /**
+     * A tool that was not on PATH when the page was first drawn may be there
+     * now — installing one is exactly what raises this event — so the probe is
+     * dropped rather than kept for the session.
+     */
+    #[AsEventListener]
+    public function onSettingsRowsStale(SettingsRowsStale $event): void
+    {
+        $this->detected = null;
     }
 
     private function flash(string $message): void

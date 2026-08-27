@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Settings;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
+use Porta\Event\SettingsRowsStale;
 use Porta\I18n\Translator;
 use Porta\Lsp\BufferReopener;
 use Porta\Lsp\LanguageServerProvider;
@@ -87,11 +88,47 @@ final class SettingsLspControllerTest extends TestCase
         $this->assertSame('auto-detect', $controller->rows('typescript')[0]->hint, 'no server on PATH → generic hint');
         $this->assertSame('auto-detect', $controller->rows('php')[0]->hint, 'PHP is not auto-detected — it comes from a plugin');
 
-        // With a detectable server on PATH, the hint names it.
+        // With a detectable server on PATH, the hint names it. A FRESH
+        // controller, because the probe is memoized — see the test below for
+        // what refreshes it.
+        $tools = $this->toolsOnPath('typescript-language-server');
+        $this->assertSame('auto: typescript-language-server', $this->controller($project->dir, new StatusBarWidget())->rows('typescript')[0]->hint);
+        $this->assertDirectoryExists($tools->dir);
+    }
+
+    /**
+     * The probe walks every PATH entry for servers that are usually absent, and
+     * the settings nav rebuilds the page on every arrow press — thirteen
+     * language pages cost ~110ms of pure PATH scanning before this. So it is
+     * resolved once and dropped when something might have installed a tool.
+     */
+    public function testTheAutoDetectProbeIsMemoizedUntilTheRowsGoStale(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new StatusBarWidget());
+        $this->assertSame('auto-detect', $controller->rows('typescript')[0]->hint, 'nothing on PATH to begin with');
+
+        // A server appears mid-session. The memoized answer stands: the page is
+        // rebuilt per keypress and must not pay for a PATH walk each time.
+        $tools = $this->toolsOnPath('typescript-language-server');
+        $this->assertSame('auto-detect', $controller->rows('typescript')[0]->hint, 'the probe is not repeated per call');
+
+        // Installing a tool is exactly what raises this, and it is what makes
+        // the new server visible without a restart.
+        $controller->onSettingsRowsStale(new SettingsRowsStale());
+
+        $this->assertSame('auto: typescript-language-server', $controller->rows('typescript')[0]->hint, 'the stale event drops the probe');
+        $this->assertDirectoryExists($tools->dir);
+    }
+
+    /** A throwaway bin dir on PATH holding one executable stub. */
+    private function toolsOnPath(string $binary): TempProject
+    {
         $tools = new TempProject([], 'porta-bin-');
-        chmod($tools->write('typescript-language-server', "#!/bin/sh\n"), permissions: 0o755);
+        chmod($tools->write($binary, "#!/bin/sh\n"), permissions: 0o755);
         putenv('PATH='.$tools->dir);
-        $this->assertSame('auto: typescript-language-server', $controller->rows('typescript')[0]->hint);
+
+        return $tools;
     }
 
     public function testChangingAServerPersistsReopensAndFlashes(): void
