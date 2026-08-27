@@ -11,6 +11,7 @@ use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\ReadsSettingsForm;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -19,6 +20,23 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 final class SettingsFormWidgetTest extends TestCase
 {
+    use ReadsSettingsForm;
+
+    /**
+     * The setting rows only: the form renders a title above them and a key
+     * legend below, and neither is addressable by a row index. Tests that
+     * genuinely assert ORDER slice through here; tests that assert one named
+     * row's content use {@see ReadsSettingsForm::settingRow()} instead.
+     *
+     * @param list<string> $rendered
+     *
+     * @return list<string>
+     */
+    private function body(array $rendered): array
+    {
+        return array_values(array_slice($rendered, 1, -1));
+    }
+
     use RendersWidget;
 
     /** @return list<SettingsRow> */
@@ -79,7 +97,7 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertSame([], $changes, 'a button has no value to step back');
 
         $widget->handleInput("\r"); // Enter actuates
-        $widget->handleClick(0); // so does a click
+        $widget->handleClick(1); // so does a click on the selected row
         $this->assertSame(
             [
                 ['pluginRemove:project:demo', 'Remove'],
@@ -101,9 +119,9 @@ final class SettingsFormWidgetTest extends TestCase
         ];
 
         $widget->setRows($row(false));
-        $calm = $widget->render(new RenderContext(60, 2))[0];
+        $calm = $widget->render(new RenderContext(60, 2))[1];
         $widget->setRows($row(true));
-        $armed = $widget->render(new RenderContext(60, 2))[0];
+        $armed = $widget->render(new RenderContext(60, 2))[1];
 
         $this->assertNotSame($calm, $armed, 'arming restyles the row');
         $this->assertSame($this->plain([$calm]), $this->plain([$armed]), 'same text, different shade');
@@ -146,17 +164,17 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $rendered = $widget->render(new RenderContext(60, 8));
-        $this->assertStringContainsString("\x1b[48;5;31m", $rendered[0], 'row 0 selected + focused');
+        $this->assertStringContainsString("\x1b[48;5;31m", $this->body($rendered)[0], 'row 0 selected + focused');
 
         $widget->handleInput("\x1b[B"); // down
-        $this->assertSame(1, Probe::get($widget, 'selected'));
+        $this->assertSame(1, Probe::object($widget, 'list')->selected());
         $rendered = $widget->render(new RenderContext(60, 8));
-        $this->assertStringNotContainsString("\x1b[48;5;31m", $rendered[0]);
-        $this->assertStringContainsString("\x1b[48;5;31m", $rendered[1], 'the highlight followed');
+        $this->assertStringNotContainsString("\x1b[48;5;31m", $this->body($rendered)[0]);
+        $this->assertStringContainsString("\x1b[48;5;31m", $this->body($rendered)[1], 'the highlight followed');
 
         $widget->handleInput("\x1b[A"); // up
         $widget->handleInput("\x1b[A"); // clamps at the top
-        $this->assertSame(0, Probe::get($widget, 'selected'));
+        $this->assertSame(0, Probe::object($widget, 'list')->selected());
     }
 
     public function testUnfocusedSelectionUsesADimmerBar(): void
@@ -164,7 +182,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->setFocused(false);
         $rendered = $widget->render(new RenderContext(60, 8));
-        $this->assertStringContainsString("\x1b[48;5;237m", $rendered[0], 'a resting selection bar, not the focused blue');
+        $this->assertStringContainsString("\x1b[48;5;237m", $this->body($rendered)[0], 'a resting selection bar, not the focused blue');
     }
 
     public function testSpaceTogglesABoolean(): void
@@ -254,15 +272,36 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertSame(['keybindings', 'next', 'exit'], $fired);
     }
 
-    public function testClickSelectsAndActuatesButIgnoresDeadRows(): void
+    /**
+     * A click SELECTS; only a click on the already-selected row actuates.
+     *
+     * The first click used to mutate outright, so a stray click on this screen
+     * toggled a setting or armed a plugin removal. Pane row 0 is the title, so
+     * the first setting is at pane row 1.
+     */
+    public function testAFirstClickSelectsWithoutChangingAnything(): void
     {
         $widget = $this->widget($changes);
-        $widget->handleClick(1); // Relative line numbers row
-        $this->assertSame(1, Probe::get($widget, 'selected'));
-        $this->assertSame([['relativeLineNumbers', true]], $changes);
 
+        $widget->handleClick(2); // pane row 2 = the second setting
+
+        $this->assertSame(1, Probe::object($widget, 'list')->selected(), 'the click moved the selection');
+        $this->assertSame([], $changes, 'and changed nothing');
+
+        $widget->handleClick(2); // the same row, now selected
+
+        $this->assertSame([['relativeLineNumbers', true]], $changes, 'the second click actuates');
+    }
+
+    public function testAClickOnTheTitleOrPastTheLastRowDoesNothing(): void
+    {
+        $widget = $this->widget($changes);
+
+        $widget->handleClick(0); // the title row
         $widget->handleClick(99); // past the last row
-        $this->assertCount(1, $changes, 'a click in dead space does nothing');
+
+        $this->assertSame(0, Probe::object($widget, 'list')->selected());
+        $this->assertSame([], $changes);
     }
 
     public function testActuateWithoutAChangeHandlerIsSafe(): void
@@ -290,7 +329,7 @@ final class SettingsFormWidgetTest extends TestCase
             $widget->handleInput("\x1b[B"); // selected = 4
         }
         $widget->setRows([new SettingsRow(key: 'inlineDiagnostics', label: 'Inline diagnostics', kind: SettingsRowKind::Bool, value: true, restart: false)]);
-        $this->assertSame(0, Probe::get($widget, 'selected'));
+        $this->assertSame(0, Probe::object($widget, 'list')->selected());
     }
 
     public function testInputHookConsumesFirst(): void
@@ -317,6 +356,8 @@ final class SettingsFormWidgetTest extends TestCase
     public function testOverlayComposites(): void
     {
         $widget = $this->widget();
+        // Pane coordinates, not row indices: a dropdown falls where it falls,
+        // including over the title row.
         $widget->setMenuOverlay([['row' => 0, 'col' => 0, 'width' => 8, 'segment' => "\x1b[7mDROPDOWN\x1b[0m"]]);
         $line = $widget->render(new RenderContext(60, 8))[0];
         $this->assertStringContainsString('DROPDOWN', $line);
@@ -342,9 +383,9 @@ final class SettingsFormWidgetTest extends TestCase
     public function testTextRowRendersValueAndDimmedHint(): void
     {
         $rendered = $this->textWidget()->render(new RenderContext(60, 4));
-        $this->assertStringContainsString('LSP server  phpactor', AnsiUtils::stripAnsiCodes($rendered[0]));
-        $this->assertStringContainsString('auto: none', AnsiUtils::stripAnsiCodes($rendered[1]), 'empty text row shows its hint');
-        $this->assertStringContainsString("\x1b[38;5;245mauto: none", $rendered[1], 'hint is dimmed');
+        $this->assertStringContainsString('LSP server  phpactor', AnsiUtils::stripAnsiCodes($this->body($rendered)[0]));
+        $this->assertStringContainsString('auto: none', AnsiUtils::stripAnsiCodes($this->body($rendered)[1]), 'empty text row shows its hint');
+        $this->assertStringContainsString("\x1b[38;5;245mauto: none", $this->body($rendered)[1], 'hint is dimmed');
     }
 
     public function testEditingATextRowTypesAndCommits(): void
@@ -355,7 +396,7 @@ final class SettingsFormWidgetTest extends TestCase
 
         $widget->handleInput('-');
         $widget->handleInput('x');
-        $this->assertStringContainsString('phpactor-x', AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[0]));
+        $this->assertStringContainsString('phpactor-x', AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[1]));
 
         $widget->handleInput("\x7f"); // backspace
         $widget->handleInput("\r"); // Enter commits
@@ -376,12 +417,14 @@ final class SettingsFormWidgetTest extends TestCase
     public function testClickStartsTextEditingAndNavIsSuppressedWhileEditing(): void
     {
         $widget = $this->textWidget($changes);
-        $widget->handleClick(1); // the empty text row
+        $widget->handleClick(2); // pane row 2 = the empty text row: selects it
+        $this->assertNull(Probe::get($widget, 'editing'), 'the first click only selects');
+        $widget->handleClick(2); // the second opens the editor
         $this->assertTrue(null !== Probe::get($widget, 'editing'));
-        $this->assertSame(1, Probe::get($widget, 'selected'));
+        $this->assertSame(1, Probe::object($widget, 'list')->selected());
 
         $widget->handleInput("\x1b[B"); // arrow ignored while editing
-        $this->assertSame(1, Probe::get($widget, 'selected'));
+        $this->assertSame(1, Probe::object($widget, 'list')->selected());
         $widget->handleInput('a');
         $widget->handleInput("\r");
         $this->assertSame([['other', 'a']], $changes);
@@ -422,7 +465,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->setRows([]);
 
-        $this->assertSame(0, Probe::get($widget, 'selected'));
+        $this->assertSame(0, Probe::object($widget, 'list')->selected());
     }
 
     public function testSetRowsWithTheSameRowCountKeepsAnUpperBoundSelection(): void
@@ -434,7 +477,7 @@ final class SettingsFormWidgetTest extends TestCase
 
         $widget->setRows($this->rows()); // same 5 rows, re-supplied
 
-        $this->assertSame(4, Probe::get($widget, 'selected'), 'the last row is still in range, selection must not shift');
+        $this->assertSame(4, Probe::object($widget, 'list')->selected(), 'the last row is still in range, selection must not shift');
     }
 
     public function testSetRowsInvalidatesTheRenderRevision(): void
@@ -462,7 +505,7 @@ final class SettingsFormWidgetTest extends TestCase
 
         $widget->handleInput("\x1b[B"); // must navigate, not type into the stale editor
 
-        $this->assertSame(1, Probe::get($widget, 'selected'));
+        $this->assertSame(1, Probe::object($widget, 'list')->selected());
         $this->assertSame([], $changes);
     }
 
@@ -477,7 +520,7 @@ final class SettingsFormWidgetTest extends TestCase
             new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'phpactor', restart: false),
         ]);
 
-        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[0]);
+        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[1]);
 
         $this->assertStringContainsString('phpactor', $screen);
         $this->assertStringNotContainsString('Z', $screen, 'the stale editor from before setRows() must not render');
@@ -492,7 +535,7 @@ final class SettingsFormWidgetTest extends TestCase
 
         $widget->handleInput("\x1b[A"); // up once
 
-        $this->assertSame(2, Probe::get($widget, 'selected'));
+        $this->assertSame(2, Probe::object($widget, 'list')->selected());
     }
 
     public function testMoveDownPastTheLastRowClampsAtTheLastIndexNotBeyond(): void
@@ -502,7 +545,7 @@ final class SettingsFormWidgetTest extends TestCase
             $widget->handleInput("\x1b[B");
         }
 
-        $this->assertSame(4, Probe::get($widget, 'selected'));
+        $this->assertSame(4, Probe::object($widget, 'list')->selected());
     }
 
     public function testMoveToInvalidatesTheRenderRevision(): void
@@ -520,7 +563,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = $this->widget($changes);
         $widget->setRows([new SettingsRow(key: 'theme', label: 'Theme', kind: SettingsRowKind::Choice, value: 'dark', restart: false, options: ['dark', 'mid', 'light'])]);
 
-        $widget->handleClick(0);
+        $widget->handleClick(1); // the selected row: a click actuates it
 
         $this->assertSame([['theme', 'mid']], $changes, 'a click steps by exactly one option, not two');
     }
@@ -584,6 +627,57 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertGreaterThan($revision, $widget->getRenderRevision());
     }
 
+    /**
+     * The defect this pins: render() looped from index 0 with no scroll offset,
+     * so a page taller than the pane had rows that could not be reached and a
+     * selection that walked off-screen invisibly. The keybindings list beside
+     * it has always scrolled; this one never did.
+     */
+    public function testAPageTallerThanThePaneScrollsToKeepTheSelectionOnScreen(): void
+    {
+        $rows = [];
+        for ($i = 0; $i < 30; ++$i) {
+            $rows[] = new SettingsRow(key: 'k'.$i, label: 'Setting '.$i, kind: SettingsRowKind::Bool, value: false, restart: false);
+        }
+        $widget = new SettingsFormWidget(new Translator('en'));
+        AttachedStyles::attach($widget); // the selection shade resolves through the themed sheet
+        $widget->setFocused(true);
+        $widget->setRows($rows);
+
+        // A ten-row pane: a title, eight settings and a footer.
+        $this->assertTrue($this->hasSettingRow($widget->render(new RenderContext(60, 10)), 'Setting 0'));
+        $this->assertFalse($this->hasSettingRow($widget->render(new RenderContext(60, 10)), 'Setting 20'), 'row 20 is below the fold to begin with');
+
+        for ($i = 0; $i < 20; ++$i) {
+            $widget->handleInput("\x1b[B");
+        }
+        $lines = $widget->render(new RenderContext(60, 10));
+
+        $this->assertTrue($this->hasSettingRow($lines, 'Setting 20'), 'the window followed the selection down');
+        $this->assertStringContainsString('Setting 20', $this->selectedSettingRow($widget, 60, 10), 'and it is the selected row, not merely visible');
+        $this->assertFalse($this->hasSettingRow($lines, 'Setting 0'), 'the top scrolled away');
+    }
+
+    /** Every row must be reachable — the last one included. */
+    public function testTheLastRowOfALongPageCanBeReached(): void
+    {
+        $rows = [];
+        for ($i = 0; $i < 30; ++$i) {
+            $rows[] = new SettingsRow(key: 'k'.$i, label: 'Setting '.$i, kind: SettingsRowKind::Bool, value: false, restart: false);
+        }
+        $widget = new SettingsFormWidget(new Translator('en'));
+        AttachedStyles::attach($widget);
+        $widget->setFocused(true);
+        $widget->setRows($rows);
+
+        for ($i = 0; $i < 40; ++$i) { // past the end: the selection clamps
+            $widget->handleInput("\x1b[B");
+        }
+
+        $this->assertStringContainsString('Setting 29', $this->selectedSettingRow($widget, 60, 10));
+        $this->assertTrue($this->hasSettingRow($widget->render(new RenderContext(60, 10)), 'Setting 29'));
+    }
+
     public function testRenderWithZeroRowsAndAZeroRowContextProducesNoLines(): void
     {
         $widget = new SettingsFormWidget(new Translator('en'));
@@ -605,14 +699,14 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $lines = $this->widget()->render(new RenderContext(60, 8)); // 5 real rows + 3 blank
 
-        $this->assertStringContainsString('Inline diagnostics', AnsiUtils::stripAnsiCodes($lines[0]), 'the first real row still renders after the loop keeps going past index bounds');
+        $this->assertStringContainsString('Inline diagnostics', AnsiUtils::stripAnsiCodes($this->body($lines)[0]), 'the first real row still renders after the loop keeps going past index bounds');
         $this->assertSame(8, \count($lines));
-        $this->assertStringContainsString('Tab width', AnsiUtils::stripAnsiCodes($lines[4]), 'the last real row (index 4) is reached — a break at row 0 would prevent this');
+        $this->assertStringContainsString('Tab width', AnsiUtils::stripAnsiCodes($this->body($lines)[4]), 'the last real row (index 4) is reached — a break at row 0 would prevent this');
     }
 
     public function testTextRowConcatenatesALeadingSpaceBeforeTheLabel(): void
     {
-        $screen = AnsiUtils::stripAnsiCodes($this->textWidget()->render(new RenderContext(60, 4))[0]);
+        $screen = AnsiUtils::stripAnsiCodes($this->textWidget()->render(new RenderContext(60, 4))[1]);
 
         $this->assertStringStartsWith(' LSP server', $screen);
     }
@@ -622,7 +716,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = new SettingsFormWidget(new Translator('en'));
         $widget->setRows([new SettingsRow(key: 'k', label: 'Remove', kind: SettingsRowKind::Action, value: 'Go', restart: false)]);
 
-        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[0]);
+        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[1]);
 
         $this->assertStringStartsWith(' Remove  [Go]', $screen);
     }
@@ -632,7 +726,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = new SettingsFormWidget(new Translator('en'));
         $widget->setRows([new SettingsRow(key: 'k', label: 'Theme', kind: SettingsRowKind::Choice, value: 'dark', restart: false, options: ['dark', 'light'])]);
 
-        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[0]);
+        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[1]);
 
         $this->assertStringStartsWith(' Theme  < dark >', $screen);
     }
@@ -643,7 +737,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->setRows([new SettingsRow(key: 'k', label: 'A very long label that will not fit', kind: SettingsRowKind::Text, value: str_repeat('x', times: 100), restart: false)]);
         $widget->handleInput("\r"); // edit: the caret sits at the end of 100 x's
 
-        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(20, 4))[0]);
+        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(20, 4))[1]);
 
         // Truncation would keep the LEFT edge (the label); scroll-to-caret
         // keeps the caret (the tail of the value) in view instead.
@@ -656,14 +750,14 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = new SettingsFormWidget(new Translator('en'));
         $widget->setRows([new SettingsRow(key: 'k', label: 'A very long label that will not fit at all', kind: SettingsRowKind::Bool, value: true, restart: false)]);
 
-        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(20, 4))[0]);
+        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(20, 4))[1]);
 
         $this->assertStringStartsWith(' [x] A very long', $screen, 'not being edited: the left edge (label start) is kept, not scrolled');
     }
 
     public function testShortRowsArePaddedToTheFullColumnWidth(): void
     {
-        $screen = AnsiUtils::stripAnsiCodes($this->widget()->render(new RenderContext(60, 8))[0]);
+        $screen = AnsiUtils::stripAnsiCodes($this->widget()->render(new RenderContext(60, 8))[1]);
 
         $this->assertSame(60, mb_strlen($screen));
     }
@@ -673,10 +767,10 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = $this->textWidget();
         $widget->setFocused(true);
         $widget->handleInput("\r");
-        $focused = $widget->render(new RenderContext(60, 4))[0];
+        $focused = $widget->render(new RenderContext(60, 4))[1];
 
         $widget->setFocused(false);
-        $unfocused = $widget->render(new RenderContext(60, 4))[0];
+        $unfocused = $widget->render(new RenderContext(60, 4))[1];
 
         $this->assertNotSame($focused, $unfocused, 'the caret visibility marker must differ between focused and unfocused edit');
     }
@@ -686,7 +780,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = new SettingsFormWidget(new Translator('en'));
         $widget->setRows([new SettingsRow(key: 'k', label: 'K', kind: SettingsRowKind::Text, value: 'set', restart: false, hint: 'auto: none')]);
 
-        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[0]);
+        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[1]);
 
         $this->assertStringContainsString('set', $screen);
         $this->assertStringNotContainsString('auto: none', $screen, 'a non-empty value wins over the hint, even with a hint set');
@@ -694,14 +788,13 @@ final class SettingsFormWidgetTest extends TestCase
 
     public function testHoverTintsARowVisualOnlyAndClears(): void
     {
-        $widget = $this->widget();
-        $widget->handleClick(0); // selection sits on row 0
+        $widget = $this->widget(); // the selection starts on row 0
 
-        $this->assertTrue($widget->hoverRow(2), 'hovering another row tints it');
-        $this->assertFalse($widget->hoverRow(2), 'same row: no change');
+        $this->assertTrue($widget->hoverRow(3), 'hovering another row tints it');
+        $this->assertFalse($widget->hoverRow(3), 'same row: no change');
         $lines = $widget->render(new RenderContext(60, 10));
-        $this->assertStringContainsString("\x1b[48;5;236m", $lines[2], 'the hovered row sits on RowHighlightBg');
-        $this->assertStringNotContainsString("\x1b[48;5;236m", $lines[0], 'the selection keeps its own shade');
+        $this->assertStringContainsString("\x1b[48;5;236m", $this->body($lines)[2], 'the hovered row sits on RowHighlightBg');
+        $this->assertStringNotContainsString("\x1b[48;5;236m", $this->body($lines)[0], 'the selection keeps its own shade');
 
         $this->assertTrue($widget->hoverRow(99), 'past the rows the tint clears (a change)');
         $this->assertFalse($widget->clearHover(), 'already clear');

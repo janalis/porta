@@ -2626,6 +2626,18 @@
         <source>Search vendor/ files</source>
         <target>חיפוש בקובצי vendor/</target>
       </trans-unit>
+      <trans-unit id="668">
+        <source>%count% settings</source>
+        <target>%count% הגדרות</target>
+      </trans-unit>
+      <trans-unit id="669">
+        <source>⏎ edit · ←/→ change · Tab panes · 2 keybindings</source>
+        <target>⏎ עריכה · ←/→ שינוי · Tab חלוניות · 2 קיצורי מקשים</target>
+      </trans-unit>
+      <trans-unit id="670">
+        <source>⏎ save · Esc cancel</source>
+        <target>⏎ שמירה · Esc ביטול</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

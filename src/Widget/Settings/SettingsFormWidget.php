@@ -14,11 +14,14 @@ use Porta\Support\IntMath;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Glyphs;
+use Porta\Ui\ListNavigation;
+use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\HoverableList;
 use Porta\Widget\PaneNavigationCallbacks;
+use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Support\ArrowScrollTrait;
@@ -69,12 +72,17 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->initStyles($styles);
+        $this->list = new ListSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
     }
 
     /** @var list<SettingsRow> */
     private array $rows = [];
-    private int $selected = 0;
+    private readonly ListSelection $list;
+    /** Rows the pane last had room for — the page size for PgUp/PgDn and the scroll window. */
+    private int $lastRows = 10;
+    /** The page title, shown in the header row. */
+    private string $title = '';
     /** The row index whose text field is being edited inline, or null. */
     private ?int $editing = null;
     private ?TextField $editField = null;
@@ -95,10 +103,11 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      *
      * @param list<SettingsRow> $rows
      */
-    public function setRows(array $rows): void
+    public function setRows(array $rows, string $title = ''): void
     {
         $this->rows = $rows;
-        $this->selected = IntMath::clamp($this->selected, 0, \count($rows) - 1);
+        $this->title = $title;
+        $this->list->clamp(\count($rows));
         $this->editing = null;
         $this->invalidate();
     }
@@ -132,16 +141,6 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
 
             return;
         }
-        if ($kb->matches($data, 'move_up')) {
-            $this->moveTo($this->selected - 1);
-
-            return;
-        }
-        if ($kb->matches($data, 'move_down')) {
-            $this->moveTo($this->selected + 1);
-
-            return;
-        }
         if ($kb->matches($data, 'increment')) {
             $this->actuate(1);
 
@@ -149,6 +148,11 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         }
         if ($kb->matches($data, 'decrement')) {
             $this->actuate(-1);
+
+            return;
+        }
+        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->rows), page: $this->lastRows)) {
+            $this->invalidate();
         }
     }
 
@@ -156,38 +160,58 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     #[\Override]
     public function hoverRow(int $relRow): bool
     {
-        return $this->setHovered(array_key_exists($relRow, $this->rows) ? $relRow : null);
+        return $this->setHovered($this->rowIndexAt($relRow));
     }
 
-    /** A click selects the row under the pointer and advances it one step. */
+    /**
+     * A click SELECTS the row; a click on the already-selected row actuates it.
+     *
+     * Deliberately not the results/tree contract, where the first click also
+     * activates: those rows exist to be jumped to, and jumping is free. A
+     * settings row's activation writes persisted config — a stray click used to
+     * toggle a setting or arm a plugin removal outright.
+     */
     public function handleClick(int $relRow): void
     {
-        if (!array_key_exists($relRow, $this->rows)) {
+        $index = $this->rowIndexAt($relRow);
+        if (null === $index) {
             return;
         }
-        $this->selected = $relRow;
-        $this->actuate(1);
+        if ($index === $this->list->selected()) {
+            $this->actuate(1);
+
+            return;
+        }
+        $this->list->select($index);
+        $this->invalidate();
     }
 
-    private function moveTo(int $index): void
+    /** The row index under a pane-relative row, accounting for the header and the scroll. */
+    private function rowIndexAt(int $relRow): ?int
     {
-        $index = IntMath::clamp($index, 0, \count($this->rows) - 1);
-        if ($index !== $this->selected) {
-            $this->selected = $index;
-            $this->invalidate();
-        }
+        return $this->list->rowIndexAt($relRow, \count($this->rows), $this->headerRowCount());
+    }
+
+    /**
+     * Rows above the first setting. One title today; a filter row would make it
+     * two, and every index conversion in this widget goes through here so that
+     * stays a one-line change.
+     */
+    private function headerRowCount(): int
+    {
+        return 1;
     }
 
     /** Advance (delta +1) or step back (delta -1) the selected row's value. */
     private function actuate(int $delta): void
     {
-        $row = $this->rows[$this->selected] ?? null;
+        $row = $this->rows[$this->list->selected()] ?? null;
         if (null === $row) {
             return;
         }
         if (SettingsRowKind::Text === $row->kind) {
             $this->editField = new TextField((string) $row->value, $this->cursorStyle);
-            $this->editing = $this->selected;
+            $this->editing = $this->list->selected();
             $this->invalidate();
 
             return;
@@ -282,10 +306,17 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     public function render(RenderContext $context): array
     {
         $width = $context->getColumns();
-        $rows = max(\count($this->rows), $context->getRows() > 0 ? $context->getRows() : \count($this->rows));
+        $rows = $context->getRows();
+        if ($rows <= 0) {
+            return []; // no pane, no lines — never more than the allotted rows
+        }
+        // The window the rows get: the pane less the header and the footer.
+        $this->lastRows = max(1, $rows - $this->headerRowCount() - 1);
+        $scroll = $this->list->follow($this->lastRows);
 
-        $lines = [];
-        for ($i = 0; $i < $rows; ++$i) {
+        $lines = [HeaderRenderer::title($this->titleLine(), $width, $this->styles)];
+        for ($offset = 0; $offset < $this->lastRows; ++$offset) {
+            $i = $scroll + $offset;
             $row = $this->rows[$i] ?? null;
             if (null === $row) {
                 $lines[] = AnsiText::blank($width);
@@ -312,10 +343,33 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             // wears the danger shade over every other row state.
             $lines[] = $row->danger
                 ? $this->styles->merge(Role::DangerBg, Role::Bright)->apply($text)
-                : $this->shadeRow($text, $i === $this->selected, $i === $this->hoveredIndex);
+                : $this->shadeRow($text, $this->list->isSelected($i), $i === $this->hoveredIndex);
         }
+        $lines[] = $this->footer($width);
 
         return $this->withMenuOverlay($lines, $width);
+    }
+
+    /** `<page> — N settings`, or just the count before a page has named itself. */
+    private function titleLine(): string
+    {
+        $count = $this->translator->trans('%count% settings', ['%count%' => \count($this->rows)]);
+
+        return ' '.('' === $this->title ? $count : $this->title.' — '.$count);
+    }
+
+    /**
+     * The key legend. Every one of these was undiscoverable: the form renders
+     * no title, no footer and no affordance, so `[`/`]` stepping and the bare
+     * `2` that jumps to Keybindings existed only in the keymap.
+     */
+    private function footer(int $width): string
+    {
+        $hint = null !== $this->editing
+            ? $this->translator->trans('⏎ save · Esc cancel')
+            : $this->translator->trans('⏎ edit · ←/→ change · Tab panes · 2 keybindings');
+
+        return $this->styles->merge(Role::Toolbar, Role::Dim)->apply(AnsiText::truncate(' '.$hint, $width, pad: true));
     }
 
     /**
@@ -348,7 +402,12 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             'confirm' => [Key::ENTER],
             'delete_char_backward' => [Key::BACKSPACE],
             'show_keybindings' => ['2'],
-            'focus_next_pane' => [Key::TAB],
+            // Shift+Tab is the same destination, not a second one: the view has
+            // exactly two panes, so back and forward coincide. That is also why
+            // SettingsViewController::cycleFocus() ignores its direction.
+            'focus_next_pane' => [Key::TAB, 'shift+tab'],
+            'page_up' => [Key::PAGE_UP],
+            'page_down' => [Key::PAGE_DOWN],
             'exit_view' => [Key::ESCAPE],
         ];
     }

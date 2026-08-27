@@ -2626,6 +2626,18 @@
         <source>Search vendor/ files</source>
         <target>vendor/-Dateien durchsuchen</target>
       </trans-unit>
+      <trans-unit id="668">
+        <source>%count% settings</source>
+        <target>%count% Einstellungen</target>
+      </trans-unit>
+      <trans-unit id="669">
+        <source>⏎ edit · ←/→ change · Tab panes · 2 keybindings</source>
+        <target>⏎ bearbeiten · ←/→ ändern · Tab Bereiche · 2 Tastenkürzel</target>
+      </trans-unit>
+      <trans-unit id="670">
+        <source>⏎ save · Esc cancel</source>
+        <target>⏎ speichern · Esc abbrechen</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

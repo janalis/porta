@@ -175,7 +175,7 @@ final class SettingsViewController implements ContributedView
             $this->region->content()->add($this->keymapList);
         }
         if ('keybindings' !== $id) {
-            $this->form->setRows($this->rowsForSection());
+            $this->form->setRows($this->rowsForSection(), $this->nav->activeLabel());
             $this->region->content()->add($this->form);
         }
         $this->host->invalidate();
@@ -205,7 +205,7 @@ final class SettingsViewController implements ContributedView
     private function changeSetting(string $key, bool|int|string $value): void
     {
         $this->activeSection()->change($this->section, $key, $value);
-        $this->form->setRows($this->rowsForSection());
+        $this->form->setRows($this->rowsForSection(), $this->nav->activeLabel());
     }
 
     /**
@@ -236,7 +236,7 @@ final class SettingsViewController implements ContributedView
             return;
         }
         if ('plugins' === $this->section || str_starts_with($this->section, 'plugin:')) {
-            $this->form->setRows($this->rowsForSection());
+            $this->form->setRows($this->rowsForSection(), $this->nav->activeLabel());
             $this->host->invalidate();
         }
     }

@@ -94,8 +94,9 @@ final class IdeSettingsThemeTest extends TestCase
                     $this->assertStringContainsString('Languages', $screen);
                     $this->assertStringContainsString('Inline diagnostics', $screen, 'General content shown');
                     // Toggle Inline diagnostics (General row 0, now that the appearance rows moved to Interface) in the content pane.
-                    $tui->handleInput("\x1b[<0;40;2M");
-                    $tui->handleInput("\x1b[<0;40;2m");
+                    // Screen row 3: the form renders its page title above the rows.
+                    $tui->handleInput("\x1b[<0;40;3M");
+                    $tui->handleInput("\x1b[<0;40;3m");
                     // Hover the nav sidebar (a tint).
                     $tui->handleInput("\x1b[<35;5;3M");
                 },
@@ -131,12 +132,19 @@ final class IdeSettingsThemeTest extends TestCase
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Indent style', $screen, 'the PHP section shows indent settings');
                     $this->assertStringContainsString('LSP server', $screen, 'and its LSP server row');
-                    // Actuate the indent-style row (auto → spaces) in the content pane.
-                    $tui->handleInput("\x1b[<0;40;2M");
-                    $tui->handleInput("\x1b[<0;40;2m");
-                    // Edit the LSP server row (form row 3 = screen row 5, after the run-command row): a click starts inline editing.
-                    $tui->handleInput("\x1b[<0;40;5M");
-                    $tui->handleInput("\x1b[<0;40;5m");
+                    // Actuate the indent-style row (auto → spaces) in the content
+                    // pane. Form row 0, which starts selected, so one click
+                    // actuates it; screen row 3 because of the page title.
+                    $tui->handleInput("\x1b[<0;40;3M");
+                    $tui->handleInput("\x1b[<0;40;3m");
+                    // Edit the LSP server row (form row 3 = screen row 6, after
+                    // the run-command row). TWO clicks: the first selects, and
+                    // only a click on the already-selected row opens the editor
+                    // — a single click no longer mutates whatever it lands on.
+                    $tui->handleInput("\x1b[<0;40;6M");
+                    $tui->handleInput("\x1b[<0;40;6m");
+                    $tui->handleInput("\x1b[<0;40;6M");
+                    $tui->handleInput("\x1b[<0;40;6m");
                     foreach (str_split('my-ls --stdio') as $char) {
                         $tui->handleInput($char);
                     }

@@ -2626,6 +2626,18 @@
         <source>Search vendor/ files</source>
         <target>vendor/ 内のファイルを検索</target>
       </trans-unit>
+      <trans-unit id="668">
+        <source>%count% settings</source>
+        <target>%count% 件の設定</target>
+      </trans-unit>
+      <trans-unit id="669">
+        <source>⏎ edit · ←/→ change · Tab panes · 2 keybindings</source>
+        <target>⏎ 編集 · ←/→ 変更 · Tab ペイン · 2 キー割り当て</target>
+      </trans-unit>
+      <trans-unit id="670">
+        <source>⏎ save · Esc cancel</source>
+        <target>⏎ 保存 · Esc キャンセル</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -384,7 +384,9 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertStringContainsString('LSP server', $screen, 'the language section also shows its LSP server row');
 
         // Actuate the indent-style row (auto → spaces) → persists to the languages block.
-        $this->form->handleClick(0);
+        // Pane row 1: row 0 is the title, and the first setting starts selected
+        // so one click on it actuates.
+        $this->form->handleClick(1);
         $this->assertSame('spaces', IdeConfig::load($this->project->dir)->languages['php']['indentStyle']);
     }
 
@@ -431,7 +433,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open();
 
-        $this->form->handleClick(0); // Inline diagnostics is General's first row now (default true → false)
+        $this->form->handleClick(1); // pane row 1 = General's first row, Inline diagnostics (default true → false)
         $this->assertFalse(IdeConfig::load($this->project->dir)->settings['inlineDiagnostics']);
     }
 

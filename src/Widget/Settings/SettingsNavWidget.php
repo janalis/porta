@@ -154,6 +154,23 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     }
 
     /** The id of the currently selected entry ('general' | 'keybindings' | 'plugins' | 'plugin:<name>' | 'lang:<id>'). */
+    /**
+     * The selected entry's display label — the form's page title.
+     *
+     * Section names are translated here and plugin/language names deliberately
+     * are not (they are identifiers the user typed or installed), which is the
+     * same rule the nav renders by.
+     */
+    public function activeLabel(): string
+    {
+        // Indexed, not searched: the entry list is never empty and the
+        // selection is always clamped into it, so there is no "no selection"
+        // case to invent a fallback for.
+        $entry = $this->entries[$this->list->selected()];
+
+        return NavEntryKind::Section === $entry['kind'] ? $this->translator->trans($entry['label']) : $entry['label'];
+    }
+
     public function selectedId(): ?string
     {
         return $this->entries[$this->list->selected()]['id'] ?? null;
