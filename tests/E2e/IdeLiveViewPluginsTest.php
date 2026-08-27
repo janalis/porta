@@ -9,6 +9,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Layout\ViewRegions;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
@@ -29,6 +30,7 @@ use Porta\Workbench\View\ViewRegistry;
 final class IdeLiveViewPluginsTest extends TestCase
 {
     use ClearsPortaLsp;
+    use NavigatesSettings;
     use PreservesPath;
     use RunsIde;
 
@@ -143,6 +145,76 @@ final class IdeLiveViewPluginsTest extends TestCase
     private function menuTitles($tui): array
     {
         return array_column(Probe::get($tui->getById('menu'), 'menus'), 'title');
+    }
+
+    public function testTogglingFromTheRealSettingsScreenBuildsAndRetractsTheView(): void
+    {
+        // The same lifecycle as the test below, but driven the way a USER
+        // does it: keystrokes into Settings → Plugins → the plugin's own page
+        // → the Enabled row. What this adds is the wiring between the form and
+        // the lifecycle — a view that only appears when the API is called
+        // directly would pass every other test in this file and still be dead
+        // on the screen the user actually touches.
+        $embedded = $this->embeddedViewFixture();
+        putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
+        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => (string) json_encode(['enabledPlugins' => []])]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $views = Services::resolve($ide, ViewRegistry::class);
+                    $regions = Services::resolve($ide, ViewRegions::class);
+                    $this->frame($tui);
+                    $this->assertNull($views->find('demo-view'), 'off at boot');
+
+                    // Settings → Plugins → the demo plugin's own sub-item.
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                    $this->frame($tui); // the view's widgets attach on the next frame
+                    $tui->handleInput("\t"); // form → nav
+                    $this->selectSettingsSection($tui->getById('settings-nav'), 'plugin:demo');
+                    $tui->handleInput("\t"); // nav → form, landing on the Enabled row
+                    $this->frame($tui);
+
+                    // Enter on the Enabled row is the whole gesture.
+                    $tui->handleInput("\r");
+                    $this->awaitPainted($tui, $terminal, 'Plugin "demo" enabled');
+
+                    $this->assertNotNull($views->find('demo-view'), 'the view was built from the Settings screen');
+                    $this->assertNotNull($regions->find('demo-view'), 'and its region minted');
+                    $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+                    $this->assertSame(['demo'], \is_array($config) ? $config['enabledPlugins'] ?? null : null, 'and the choice persisted');
+
+                    // Leave the settings view — through the same command that
+                    // opened it, which is what actually toggles it; Escape is
+                    // the form's key, not the view's — and confirm the
+                    // contributed group reached the bar.
+                    $settings = static fn (): mixed => Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                    $settings();
+                    $this->frame($tui);
+                    $this->assertFalse($views->isOpen('settings'), 'back to the editor');
+                    $this->assertContains('Demo', $this->menuTitles($tui), 'the contributed menu is on the bar');
+
+                    // Back to the same row and toggle it off.
+                    $settings();
+                    $this->frame($tui);
+                    $tui->handleInput("\t");
+                    $this->selectSettingsSection($tui->getById('settings-nav'), 'plugin:demo');
+                    $tui->handleInput("\t");
+                    $tui->handleInput("\r");
+                    $this->awaitPainted($tui, $terminal, 'Plugin "demo" disabled');
+
+                    $this->assertNull($views->find('demo-view'), 'and retracted from the same screen');
+                    $this->assertNull($regions->find('demo-view'));
+                    $settings();
+                    $this->frame($tui);
+                    $this->assertNotContains('Demo', $this->menuTitles($tui));
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
     }
 
     public function testAViewPluginTogglesLiveThroughItsWholeLifecycle(): void
