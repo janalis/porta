@@ -25,14 +25,18 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  *
  * An empty id means "no preference", which is not the same as a *bad* one: an
  * unknown id is a user error the registry warns about and falls through.
+ *
+ * This is a **live holder**, not a boot snapshot: the Settings → Highlighting
+ * page pushes each edit through {@see change()} so resolution follows without a
+ * restart, the same shared-mutable-holder shape every core setting uses.
  */
 #[Autoconfigure(constructor: 'fromConfig')]
-final readonly class HighlightPreferences
+final class HighlightPreferences
 {
     /** @param array<string, string> $languages grammar name => provider id */
     public function __construct(
-        public string $default = '',
-        public array $languages = [],
+        private string $default = '',
+        private array $languages = [],
     ) {}
 
     /**
@@ -52,5 +56,38 @@ final readonly class HighlightPreferences
         $id = $this->languages[$language] ?? $this->default;
 
         return '' === $id ? null : $id;
+    }
+
+    /** The configured global default id, '' when none. */
+    public function defaultId(): string
+    {
+        return $this->default;
+    }
+
+    /** @return array<string, string> grammar name => provider id */
+    public function languages(): array
+    {
+        return $this->languages;
+    }
+
+    /**
+     * Apply one Settings-page edit: null $language is the global default, and
+     * an empty $id clears the entry — mirroring
+     * {@see \Porta\Config\PortaJsonWriter::persistHighlighter()}, so what
+     * resolves and what persists cannot drift. Unsetting (rather than storing
+     * '') is what keeps a cleared language falling through to the default.
+     */
+    public function change(?string $language, string $id): void
+    {
+        if (null === $language) {
+            $this->default = $id;
+
+            return;
+        }
+
+        $this->languages[$language] = $id;
+        if ('' === $id) {
+            unset($this->languages[$language]);
+        }
     }
 }

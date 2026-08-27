@@ -35,6 +35,8 @@ final class SettingsHighlightControllerTest extends TestCase
 
     private FakePluginLifecycle $lifecycle;
 
+    private HighlightPreferences $preferences;
+
     /** @param list<SyntaxHighlightProvider> $providers */
     private function controller(array $providers = [], string $config = ''): SettingsHighlightController
     {
@@ -54,11 +56,14 @@ final class SettingsHighlightControllerTest extends TestCase
             }
         };
 
+        // One shared holder between registry and controller, as in the container.
+        $this->preferences = HighlightPreferences::fromConfig(IdeConfig::load($this->project->dir)->highlight);
+
         return new SettingsHighlightController(
-            new HighlightRegistry($source, new HighlightPreferences()),
+            new HighlightRegistry($source, $this->preferences),
             new Translator('en'),
             $this->project->dir,
-            IdeConfig::load($this->project->dir),
+            $this->preferences,
             new PortaJsonWriter(),
             $this->lifecycle,
         );
@@ -125,7 +130,7 @@ final class SettingsHighlightControllerTest extends TestCase
             }, new HighlightPreferences()),
             new Translator('en'),
             $this->project->dir,
-            IdeConfig::load($this->project->dir),
+            new HighlightPreferences(),
             new PortaJsonWriter(),
         );
 
@@ -231,6 +236,39 @@ final class SettingsHighlightControllerTest extends TestCase
         $keys = array_column($rows, 'key');
         $this->assertContains('lang:rust', $keys);
         $this->assertSame('chroma', $rows[1]->value);
+    }
+
+    /**
+     * The defect this pins: change() used to only persist, so the form redrew
+     * the OLD value from the boot snapshot and resolution never moved.
+     */
+    public function testAChangeShowsInTheRowsImmediately(): void
+    {
+        $controller = $this->controller([$this->provider('chroma', ['rust'])]);
+
+        $controller->change(SettingsHighlightController::DEFAULT_KEY, 'chroma');
+
+        $this->assertSame('chroma', $controller->rows()[0]->value, 'the form must repaint the new value with no restart');
+        $this->assertSame(['default' => 'chroma'], $this->written()['highlight'] ?? null, 'and it still persists');
+    }
+
+    /** The registry shares the holder, so resolution follows the same edit. */
+    public function testAChangeMovesLiveResolution(): void
+    {
+        $this->controller([$this->provider('chroma', ['rust'])])
+            ->change('lang:rust', 'chroma');
+
+        $this->assertSame('chroma', $this->preferences->preferredFor('rust'));
+    }
+
+    /** Clearing an override live drops its configured row along with the entry. */
+    public function testClearingAnOverrideClearsTheLiveRows(): void
+    {
+        $controller = $this->controller([], '{"highlight":{"languages":{"rust":"chroma"}}}');
+
+        $controller->change('lang:rust', '');
+
+        $this->assertNotContains('lang:rust', array_column($controller->rows(), 'key'));
     }
 
     /** @return array<string, mixed> */

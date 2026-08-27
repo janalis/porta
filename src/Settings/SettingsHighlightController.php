@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
-use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Config\RecommendedPlugins;
+use Porta\Highlight\HighlightPreferences;
 use Porta\Highlight\HighlightRegistry;
 use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\PluginEnablement;
@@ -43,7 +43,7 @@ final class SettingsHighlightController
         private readonly HighlightRegistry $registry,
         private readonly Translator $translator,
         private readonly string $rootDir,
-        private readonly IdeConfig $config,
+        private readonly HighlightPreferences $preferences,
         private readonly PortaJsonWriter $writer,
         private readonly ?PluginEnablement $lifecycle = null,
     ) {}
@@ -96,9 +96,10 @@ final class SettingsHighlightController
     }
 
     /**
-     * Persist a row change. Takes effect for files opened afterwards — the
-     * backend is resolved once per buffer, like the plugin caveat on default
-     * keybindings.
+     * Apply a row change to the live {@see HighlightPreferences} holder, then
+     * persist it — mutate before write, like every core setting. Resolution
+     * still happens once per buffer, so an already-open file keeps its backend;
+     * files opened afterwards use the new choice.
      */
     public function change(string $key, string $value): void
     {
@@ -110,6 +111,7 @@ final class SettingsHighlightController
 
         $language = self::DEFAULT_KEY === $key ? null : substr($key, offset: 5);
 
+        $this->preferences->change($language, $value);
         $this->writer->persistHighlighter($this->rootDir, $language, $value);
     }
 
@@ -195,12 +197,12 @@ final class SettingsHighlightController
 
     private function configuredDefault(): string
     {
-        return $this->config->highlight['default'];
+        return $this->preferences->defaultId();
     }
 
     /** @return array<string, string> */
     private function configuredLanguages(): array
     {
-        return $this->config->highlight['languages'];
+        return $this->preferences->languages();
     }
 }

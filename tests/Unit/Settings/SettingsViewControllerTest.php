@@ -262,7 +262,7 @@ final class SettingsViewControllerTest extends TestCase
                     new HighlightRegistry(new NoHighlightPlugins(), new HighlightPreferences()),
                     new Translator('en'),
                     $this->project->dir,
-                    IdeConfig::load($this->project->dir),
+                    new HighlightPreferences(),
                     new PortaJsonWriter(),
                     $this->lifecycle,
                 )),
