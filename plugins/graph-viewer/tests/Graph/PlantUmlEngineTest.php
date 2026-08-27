@@ -133,4 +133,20 @@ final class PlantUmlEngineTest extends TestCase
         $this->assertSame('plantuml not found', $error, 'synchronous — no process was involved');
         $this->assertNull($engine->binary());
     }
+
+    public function testAClosurePathIsReReadPerCallSoASettingsEditApplies(): void
+    {
+        // The plugin hands a closure over its `plantumlPath` setting, which is
+        // what makes the setting live; memoizing would make it restart-required.
+        putenv('PATH=/nonexistent');
+        $configured = null;
+        $engine = new PlantUmlEngine(sys_get_temp_dir(), static function () use (&$configured): ?string {
+            return $configured;
+        });
+        $this->assertNull($engine->binary(), 'nothing configured, nothing on PATH');
+
+        $configured = \dirname(__DIR__, levels: 4).'/tests/Support/fake-plantuml';
+
+        $this->assertNotNull($engine->binary(), 'the new value is picked up with no rebuild');
+    }
 }

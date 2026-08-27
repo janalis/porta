@@ -109,8 +109,9 @@ final class GraphViewerWidget extends NavigablePaneWidget
         // so the widget-tree tests need not thread one through.
         ?ImageDecoder $decoder = null,
         ?Scheduler $scheduler = null,
-        // The `graphRender` CORE setting, read by the plugin file and passed in;
-        // anything unrecognized reads as the picture.
+        // The `renderMode` setting, read by the plugin file and passed in;
+        // anything unrecognized reads as the picture. A later Settings edit
+        // arrives through {@see setRenderMode()}.
         ?string $renderMode = null,
         ?Styles $styles = null,
     ) {
@@ -494,7 +495,27 @@ final class GraphViewerWidget extends NavigablePaneWidget
         if (!$this->kind->hasLayout()) {
             return; // there is no cell rendering of a picture
         }
-        $this->mode = $this->mode->toggled();
+        $this->apply($this->mode->toggled());
+    }
+
+    /**
+     * The Settings page wrote `renderMode`. Unlike the in-pane toggle this
+     * does not consult {@see GraphKind::hasLayout()}: the setting is the
+     * standing preference for every document this pane will show, and a
+     * picture that cannot honour it now still should when a DOT file arrives.
+     */
+    public function setRenderMode(?string $id): void
+    {
+        $mode = GraphRenderMode::fromId($id);
+        if ($mode !== $this->mode) {
+            $this->apply($mode);
+        }
+    }
+
+    /** Adopt $mode and repaint through it: invalidate, refine, tell the tab. */
+    private function apply(GraphRenderMode $mode): void
+    {
+        $this->mode = $mode;
         $this->invalidate();
         $this->scheduleRefine();
         $this->handler?->viewChanged();

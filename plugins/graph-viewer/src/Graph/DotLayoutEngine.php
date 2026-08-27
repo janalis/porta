@@ -25,10 +25,15 @@ use Symfony\Component\Process\ExecutableFinder;
  */
 final class DotLayoutEngine implements LayoutEngine
 {
+    /**
+     * @param null|(\Closure(): ?string)|string $dotPath the "Graphviz dot path" setting; '' resolves to
+     *                                                   null (auto-discover). A CLOSURE is read per call,
+     *                                                   so a Settings edit applies without a restart — the
+     *                                                   AbstractToolPlugin::binary() idiom
+     */
     public function __construct(
         private readonly string $rootDir,
-        // The "Graphviz dot path" setting; '' resolves to null (auto-discover).
-        private readonly ?string $dotPath = null,
+        private readonly \Closure|string|null $dotPath = null,
         private readonly SingleSlotProcess $layoutSlot = new SingleSlotProcess(),
         private readonly SingleSlotProcess $renderSlot = new SingleSlotProcess(),
         private readonly SingleSlotProcess $exportSlot = new SingleSlotProcess(),
@@ -44,8 +49,9 @@ final class DotLayoutEngine implements LayoutEngine
     public function binary(): ?string
     {
         // An explicit path (the dotPath setting) wins over discovery, the gitPath pattern.
-        if (null !== $this->dotPath && '' !== $this->dotPath) {
-            return $this->dotPath;
+        $configured = $this->dotPath instanceof \Closure ? ($this->dotPath)() : $this->dotPath;
+        if (null !== $configured && '' !== $configured) {
+            return $configured;
         }
 
         return new ExecutableFinder()->find('dot');

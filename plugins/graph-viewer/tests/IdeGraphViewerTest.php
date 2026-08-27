@@ -9,6 +9,8 @@ use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
+use Porta\Plugin\Lifecycle\PluginLifecycle;
+use Porta\Plugin\Runtime\PluginHost;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
@@ -73,6 +75,63 @@ final class IdeGraphViewerTest extends TestCase
 
                         return \is_array($file) && ($file['plugins']['graph-viewer']['dotPath'] ?? null) === self::fakeDot();
                     }, what: 'the adoption written through to plugins.graph-viewer');
+                },
+            ],
+        );
+        $this->addToAssertionCount(1);
+    }
+
+    public function testTheDotPathAndRenderModeSettingsApplyWithoutARestart(): void
+    {
+        // Both used to be baked at activate(): the engine held the resolved
+        // path and the pane the mode, so editing either in Settings did
+        // nothing until the next launch — which their hints admitted.
+        $project = new TempProject([
+            '.porta.json' => (string) json_encode([
+                // image-viewer too: graph-viewer `requires` it, and PluginOrder
+                // skips a plugin whose requirement is off.
+                'enabledPlugins' => ['graph-viewer', 'image-viewer'],
+                'plugins' => ['graph-viewer' => ['dotPath' => '/nonexistent/dot']],
+            ]),
+            'g.dot' => self::SMALL_DOT,
+            'h.dot' => self::SMALL_DOT,
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            $project->path('g.dot'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    // A bogus path: the engine reports rather than laying out.
+                    $this->await(
+                        static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'could not start dot'),
+                        what: 'the graph pane to report the bogus binary',
+                    );
+                    $this->assertStringNotContainsString('nodes', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nothing laid out yet');
+
+                    // Point it at the working stub through the Settings path.
+                    $lifecycle = Services::resolve($ide, PluginLifecycle::class);
+                    $settings = Services::resolve($ide, PluginHost::class)->settings();
+                    $settings->change('graph-viewer', 'dotPath', self::fakeDot());
+                    $lifecycle->onPluginSettingChanged('graph-viewer', 'dotPath', self::fakeDot());
+
+                    // A DIFFERENT document, so the pane asks the engine again
+                    // rather than reusing the layout it cached by hash; the NEW
+                    // binary is what answers, with no restart.
+                    Services::resolve($ide, BufferService::class)->openFile((string) realpath($project->path('h.dot')));
+                    $this->await(
+                        static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'),
+                        what: 'the edited dotPath laying out the graph',
+                    );
+
+                    // renderMode reaches the pane already on screen.
+                    $settings->change('graph-viewer', 'renderMode', 'cells');
+                    $lifecycle->onPluginSettingChanged('graph-viewer', 'renderMode', 'cells');
+                    $this->await(
+                        static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '┌'),
+                        what: 'the standing pane switching to cell rendering',
+                    );
                 },
             ],
         );

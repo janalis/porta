@@ -24,10 +24,14 @@ use Porta\Support\SingleSlotProcess;
  */
 final class PlantUmlEngine implements DiagramEngine
 {
+    /**
+     * @param null|(\Closure(): ?string)|string $toolPath the "PlantUML" setting: a launcher, a .jar, or ''
+     *                                                    to auto-discover. A CLOSURE is read per call, so a
+     *                                                    Settings edit applies without a restart
+     */
     public function __construct(
         private readonly string $rootDir,
-        // The "PlantUML" setting: a launcher, a .jar, or '' to auto-discover.
-        private readonly ?string $toolPath = null,
+        private readonly \Closure|string|null $toolPath = null,
         private readonly SingleSlotProcess $slot = new SingleSlotProcess(),
     ) {}
 
@@ -38,7 +42,7 @@ final class PlantUmlEngine implements DiagramEngine
 
     public function binary(): ?string
     {
-        return PlantUmlCommand::tool($this->toolPath);
+        return PlantUmlCommand::tool($this->toolPath instanceof \Closure ? ($this->toolPath)() : $this->toolPath);
     }
 
     public function render(string $source, int $dpi, \Closure $onPng, \Closure $onError): void

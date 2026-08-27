@@ -153,6 +153,32 @@ final class DotLayoutEngineTest extends TestCase
         $this->assertSame(self::stub('fake-dot'), $this->engine('fake-dot')->binary());
     }
 
+    public function testAClosurePathIsReReadPerCallSoASettingsEditApplies(): void
+    {
+        // The plugin hands a closure over its `dotPath` setting rather than a
+        // string, which is what makes the setting live. Memoizing the first
+        // answer would make it restart-required again.
+        $configured = self::stub('fake-dot');
+        $engine = new DotLayoutEngine(sys_get_temp_dir(), static function () use (&$configured): ?string {
+            return $configured;
+        });
+        $this->assertSame(self::stub('fake-dot'), $engine->binary());
+
+        $configured = self::stub('fake-dot-fail');
+
+        $this->assertSame(self::stub('fake-dot-fail'), $engine->binary(), 'the new value is picked up with no rebuild');
+    }
+
+    public function testAClosureReturningNothingFallsBackToDiscovery(): void
+    {
+        // Clearing the setting means "discover on PATH" — the same '' -to-null
+        // the string form has always had, through the closure.
+        putenv('PATH=/nonexistent');
+        $engine = new DotLayoutEngine(sys_get_temp_dir(), static fn (): ?string => null);
+
+        $this->assertNull($engine->binary());
+    }
+
     public function testExportWritesTheTargetFile(): void
     {
         $out = sys_get_temp_dir().'/porta-graph-export-'.getmypid().'.svg';

@@ -622,6 +622,41 @@ final class GraphViewerWidgetTest extends TestCase
         $this->assertStringContainsString('▀', implode("\n", $widget->render(new RenderContext(80, 24))));
     }
 
+    public function testTheRenderModeSettingAppliesToAStandingPane(): void
+    {
+        // The Settings page writes `renderMode`; the plugin pushes it here, so
+        // the pane already on screen changes without a restart.
+        $this->engine->nextResult = self::layout();
+        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $widget = $this->widget();
+        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $this->settle();
+        $this->assertStringContainsString('▀', implode("\n", $widget->render(new RenderContext(80, 24))), 'the picture, as configured');
+
+        $widget->setRenderMode('cells');
+        $this->settle();
+
+        $screen = self::plain($widget->render(new RenderContext(80, 24)));
+        $this->assertStringContainsString('┌', $screen, 'the live edit switched it to cells');
+        $this->assertStringContainsString('calls', $screen, 'with labels as real text');
+    }
+
+    public function testSettingTheRenderModeItAlreadyHasChangesNothing(): void
+    {
+        // A no-op must stay one: repainting and re-scheduling a refine on every
+        // unrelated settings write would be work per keystroke on the page.
+        $this->engine->nextResult = self::layout();
+        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $widget = new GraphViewerWidget($this->engine, new Translator('en'), scheduler: $this->scheduler, renderMode: 'cells');
+        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->render(new RenderContext(80, 24));
+        $this->scheduler->scheduled = [];
+
+        $widget->setRenderMode('cells');
+
+        $this->assertSame([], $this->scheduler->scheduled, 'nothing was scheduled for a mode it already had');
+    }
+
     public function testAnUnknownRenderModeReadsAsThePicture(): void
     {
         $this->engine->nextResult = self::layout();

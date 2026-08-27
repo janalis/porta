@@ -34,17 +34,21 @@ return new class('graph-viewer') extends AbstractPlugin {
     /** Held so the routing claim can read this plugin's own settings. */
     private ?PluginApi $api = null;
 
+    /** The standing pane, so a `renderMode` edit can be pushed into it. */
+    private ?GraphViewerWidget $widget = null;
+
     public function activate(PluginApi $api): void
     {
         $api->registerSetting('plantuml', 'Render PlantUML diagrams', 'bool', true);
         // The three tool knobs were CORE settings until this plugin owned
         // them (the git-keys precedent): `dotPath`, `graphRender` and the
         // core `plantuml` PATH — renamed, since this plugin's `plantuml` was
-        // already the bool above. The engines read them once, here, which is
-        // why each is restart-to-apply.
-        $api->registerSetting('dotPath', 'Graphviz dot path', hint: 'empty = discover on PATH; takes effect on restart');
-        $api->registerSetting('renderMode', 'Graph rendering', 'choice', 'bitmap', ['bitmap', 'cells'], hint: 'takes effect on restart');
-        $api->registerSetting('plantumlPath', 'PlantUML path (or .jar)', hint: 'empty = discover; takes effect on restart');
+        // already the bool above. All three apply live: the two paths are read
+        // per spawn through the closures below, and `renderMode` is pushed
+        // into the standing pane by the onSettingChanged hook.
+        $api->registerSetting('dotPath', 'Graphviz dot path', hint: 'empty = discover on PATH');
+        $api->registerSetting('renderMode', 'Graph rendering', 'choice', 'bitmap', ['bitmap', 'cells']);
+        $api->registerSetting('plantumlPath', 'PlantUML path (or .jar)', hint: 'empty = discover');
         $api->registerViewer('graph', fn (string $path): bool => DotFiles::isDotPath($path) || $this->claimsPlantUml($path));
         // A value written under the pre-move core key is adopted once and
         // written through from onReady (persisting is an IDE action).
@@ -55,11 +59,24 @@ return new class('graph-viewer') extends AbstractPlugin {
                 $api->changeSetting($key, $value);
             }
         });
+        // What is still answered by a pre-move core key. Read per use below,
+        // alongside the live setting, and dropped the moment that key is
+        // written — the adoption is a snapshot of the file at boot, so keeping
+        // it after a Settings edit would shadow the new value forever.
+        $adopted = $legacy->adoptions();
+        // By REFERENCE on purpose, and never an arrow fn: the hook below unsets
+        // a key from $adopted, and a by-value capture would keep answering with
+        // the adopted value forever.
+        $setting = static function (string $key) use (&$adopted, $api): bool|int|string {
+            return $adopted[$key] ?? $api->setting($key);
+        };
         // The two diagram tools are built here rather than inside the factory:
         // one statement per engine keeps them legible (and individually
-        // attributable in coverage).
-        $dot = new DotLayoutEngine($api->projectRoot(), self::path($values['dotPath']));
-        $plantUml = new PlantUmlEngine($api->projectRoot(), self::path($values['plantumlPath']));
+        // attributable in coverage). Each takes a CLOSURE rather than a path:
+        // the binary is resolved per spawn, so a Settings edit applies with no
+        // restart — the AbstractToolPlugin::binary() idiom.
+        $dot = new DotLayoutEngine($api->projectRoot(), static fn (): ?string => self::path($setting('dotPath')));
+        $plantUml = new PlantUmlEngine($api->projectRoot(), static fn (): ?string => self::path($setting('plantumlPath')));
         $renderMode = (string) $values['renderMode'];
         $api->registerActions([
             'graph_zoom_in' => 'Graph: Zoom In',
@@ -76,7 +93,12 @@ return new class('graph-viewer') extends AbstractPlugin {
         ]);
         $api->registerPane(
             'graph',
-            static fn (PaneServices $pane): EditorPaneWidget => new GraphViewerWidget($dot, $pane->translator, $plantUml, new ImageDecoder(), $pane->scheduler, $renderMode, $pane->styles),
+            // Not an arrow fn: the widget is kept so a later `renderMode` edit
+            // can be pushed into the standing pane (the two paths need no push,
+            // being read per spawn).
+            function (PaneServices $pane) use ($dot, $plantUml, $renderMode): EditorPaneWidget {
+                return $this->widget = new GraphViewerWidget($dot, $pane->translator, $plantUml, new ImageDecoder(), $pane->scheduler, $renderMode, $pane->styles);
+            },
             // The pane's payload is the DOT (or PlantUML) source. The size guard
             // is the plugin's own: core has no opinion about how big a diagram
             // may be, and this is the same constant the claim reads.
@@ -95,6 +117,18 @@ return new class('graph-viewer') extends AbstractPlugin {
         $api->registerSetting('command', 'Architecture command (stdout = DOT)', hint: 'empty = built-in PHP namespace scanner');
         $api->registerSetting('outputDir', 'Architecture output directory', hint: 'empty = project root; relative paths resolve from it');
 
+        // What makes all three tool knobs live. A write under this plugin's own
+        // key retires whatever a pre-move core key was still answering — that
+        // includes the boot write-through of the adoption itself — and
+        // `renderMode` additionally has to reach the pane that already exists,
+        // since nothing re-reads it per paint the way the paths are per spawn.
+        $api->onSettingChanged(function (string $key, bool|int|string $value) use (&$adopted): void {
+            unset($adopted[$key]);
+            if ('renderMode' === $key) {
+                $this->widget?->setRenderMode((string) $value);
+            }
+        });
+
         $this->api = $api;
 
         $api->registerCommand('architecture', 'Project Architecture', static function () use ($api): void {
@@ -111,22 +145,24 @@ return new class('graph-viewer') extends AbstractPlugin {
         });
         $api->addMenuItem('architecture');
 
-        $export = static function (GraphExportFormat $format) use ($api): void {
+        $export = static function (GraphExportFormat $format) use ($api, $setting): void {
             $file = $api->activeFile();
             if (null === $file || !DotFiles::isDotPath($file)) {
                 return; // palette self-guard: only a graph tab exports
             }
             $out = \sprintf('%s/%s.%s', \dirname($file), pathinfo($file, \PATHINFO_FILENAME), $format->extension());
-            // The export follows the same dotPath setting the pane's engine
-            // read at activate — one knob, read live here.
-            new DotLayoutEngine($api->projectRoot(), self::path($api->setting('dotPath')))->export((string) file_get_contents($file), $format, $out, static function (?string $error) use (
-                $api,
+            // One knob: this throwaway engine resolves `dotPath` exactly as the
+            // pane's long-lived one does, per spawn.
+            new DotLayoutEngine($api->projectRoot(), static fn (): ?string => self::path($setting('dotPath')))->export(
+                (string) file_get_contents($file),
+                $format,
                 $out,
-            ): void {
-                null === $error
-                    ? $api->flash($api->trans('Exported %file%', ['%file%' => basename($out)]))
-                    : $api->flash($api->trans('Export failed: %error%', ['%error%' => $error]), 5.0);
-            });
+                static function (?string $error) use ($api, $out): void {
+                    null === $error
+                        ? $api->flash($api->trans('Exported %file%', ['%file%' => basename($out)]))
+                        : $api->flash($api->trans('Export failed: %error%', ['%error%' => $error]), 5.0);
+                },
+            );
         };
         $api->registerCommand('export-svg', 'Graph: Export SVG', static fn () => $export(GraphExportFormat::Svg));
         $api->registerCommand('export-png', 'Graph: Export PNG', static fn () => $export(GraphExportFormat::Png));
