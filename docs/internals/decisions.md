@@ -285,6 +285,22 @@ installed closure *is* the identity).
 `LogEntry`; scalarising them would force listeners to re-look-up the selected
 entry.
 
+**`PluginContributionsActivated` / `…Retracted` are events to break a CONTAINER
+cycle, not to fan out.** Each has exactly one listener
+(`Workbench/View/ViewContributionListener`), which normally reads as a command
+wearing the wrong suffix — the direct call is what a reviewer expects. It does
+not compile: `PluginLifecycle → ViewRegistrar → ViewHost → PaneLayout →`
+the overlay stack `→ WelcomeSteps → PluginEnablement` closes the loop back on
+the lifecycle, and Symfony refuses it at build time. Inverting the edge instead
+(the view surface polling the lifecycle) trades a cycle for a poll, and moving
+the registrar out of the layout's reach means a view that cannot mint the
+region it is built with. The dispatcher resolves listeners lazily, so the edge
+disappears while the call stays synchronous and correctly ordered — the view is
+built before the lifecycle's own tail runs. **Reach for this only when the cycle
+is real**; a single-listener fact is otherwise a smell, and this pair is
+deliberately not `PluginObservable` (plugins do not get told about each other's
+lifecycles).
+
 ## Testing and gates
 
 **The `[loop-leak]` escalation is refused on evidence.** Three full serial runs
