@@ -22,6 +22,15 @@ final class JsonRpcFramer
 
     private string $buffer = '';
 
+    /**
+     * Consumed-prefix offset into {@see $buffer}: each extracted frame used to
+     * `substr` the whole remainder, making a k-frame burst O(n·k). Frames now
+     * advance this cursor and the buffer compacts ONCE per feed(), on both
+     * return paths — so the offset is always 0 between calls and the overflow
+     * cap keeps measuring only unconsumed bytes.
+     */
+    private int $offset = 0;
+
     /** @var (callable(string): void)|null */
     private $onOverflow;
 
@@ -51,8 +60,9 @@ final class JsonRpcFramer
 
         $messages = [];
         while (true) {
-            $headerEnd = strpos($this->buffer, needle: "\r\n\r\n");
+            $headerEnd = strpos($this->buffer, needle: "\r\n\r\n", offset: $this->offset);
             if (false === $headerEnd) {
+                $this->compact();
                 if (\strlen($this->buffer) > $this->maxFrame) {
                     // Not speaking the protocol at all: discard, resync on
                     // whatever header eventually arrives.
@@ -63,11 +73,11 @@ final class JsonRpcFramer
                 return $messages;
             }
 
-            $headers = substr($this->buffer, offset: 0, length: $headerEnd);
+            $headers = substr($this->buffer, $this->offset, $headerEnd - $this->offset);
             $m = [];
             if (!preg_match('/Content-Length:\s*(\d+)/i', $headers, $m)) {
                 // Corrupt frame; drop the header block and resync.
-                $this->buffer = substr($this->buffer, $headerEnd + 4);
+                $this->offset = $headerEnd + 4;
                 continue;
             }
 
@@ -76,22 +86,33 @@ final class JsonRpcFramer
                 // An absurd declaration must not park the parser accumulating
                 // "body" bytes forever — corrupt-header semantics instead.
                 $this->overflow(\sprintf('declared Content-Length %d exceeds the %d cap — resyncing', $length, $this->maxFrame));
-                $this->buffer = substr($this->buffer, $headerEnd + 4);
+                $this->offset = $headerEnd + 4;
                 continue;
             }
             $bodyStart = $headerEnd + 4;
             if (\strlen($this->buffer) < ($bodyStart + $length)) {
+                $this->compact();
+
                 return $messages; // wait for more data
             }
 
             $body = substr($this->buffer, $bodyStart, $length);
-            $this->buffer = substr($this->buffer, $bodyStart + $length);
+            $this->offset = $bodyStart + $length;
 
             /** @var array<array-key, mixed>|scalar|null $message */
             $message = json_decode($body, associative: true);
             if (\is_array($message)) {
                 $messages[] = $message;
             }
+        }
+    }
+
+    /** Drop the consumed prefix — once per feed(), not once per frame. */
+    private function compact(): void
+    {
+        if ($this->offset > 0) {
+            $this->buffer = substr($this->buffer, $this->offset);
+            $this->offset = 0;
         }
     }
 

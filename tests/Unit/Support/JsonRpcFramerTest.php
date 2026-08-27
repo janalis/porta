@@ -109,6 +109,21 @@ final class JsonRpcFramerTest extends TestCase
         $this->assertSame([['ok' => true]], $framer->feed(JsonRpcFramer::encode(['ok' => true])));
     }
 
+    public function testConsumedFramesDoNotCountTowardTheHeaderlessOverflowCap(): void
+    {
+        // The framer keeps a consumed-prefix offset and compacts once per
+        // feed(); a compaction skipped on either return path would leave the
+        // already-delivered frame's bytes counting against the cap here.
+        $overflows = [];
+        $framer = new JsonRpcFramer(static function (string $reason) use (&$overflows): void {
+            $overflows[] = $reason;
+        }, maxFrame: 64);
+
+        $this->assertCount(1, $framer->feed(JsonRpcFramer::encode(['ok' => 1])), 'a frame larger than half the cap is consumed');
+        $this->assertSame([], $framer->feed(str_repeat('x', times: 60)), 'a headerless tail inside the cap on its own');
+        $this->assertSame([], $overflows, 'consumed bytes were compacted away, not measured against the cap');
+    }
+
     public function testAnAbsurdDeclaredLengthIsDroppedLikeACorruptHeader(): void
     {
         $overflows = [];
