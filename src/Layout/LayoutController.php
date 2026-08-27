@@ -281,6 +281,16 @@ final class LayoutController
         $this->tui->requestRender();
     }
 
+    /**
+     * Drop a retracted view's cached resize state: after an un-mint + re-mint
+     * it would resize the DEAD region's widgets. The persisted
+     * `viewSidebarWidthPercent` entry stays, so a re-enable restores the width.
+     */
+    public function forgetView(string $id): void
+    {
+        unset($this->viewResizes[$id]);
+    }
+
     /** A fresh left-press ends any armed resize drag. */
     public function cancelDrags(): void
     {

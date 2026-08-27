@@ -61,6 +61,12 @@ final class ViewPointers
         $this->pointers[$viewId] = $pointer;
     }
 
+    /** Drop a retracted view's pointer; {@see of()} already answers with the null pointer. */
+    public function forget(string $viewId): void
+    {
+        unset($this->pointers[$viewId]);
+    }
+
     /** The pointer for $viewId — never null, so callers need no branch. */
     public function of(?string $viewId): ViewPointer
     {

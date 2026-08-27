@@ -24,6 +24,12 @@ final class ViewMenuSources
         $this->sources[$viewId] = $source;
     }
 
+    /** Drop a retracted view's context menus; {@see of()} already answers null. */
+    public function forget(string $viewId): void
+    {
+        unset($this->sources[$viewId]);
+    }
+
     public function of(?string $viewId): ?ViewMenuSource
     {
         return null === $viewId ? null : $this->sources[$viewId] ?? null;

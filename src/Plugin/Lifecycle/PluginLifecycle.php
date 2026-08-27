@@ -9,6 +9,8 @@ use Porta\Config\LiveKeybindings;
 use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
 use Porta\Editor\PaneRegistrar;
+use Porta\Event\PluginContributionsActivated;
+use Porta\Event\PluginContributionsRetracted;
 use Porta\Event\SettingsRowsStale;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspReconfigurer;
@@ -16,6 +18,7 @@ use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginManifest;
 use Porta\Workbench\Menu\MenuRebuilder;
+use Porta\Workbench\Menu\MenuRegistrar;
 use Porta\Workbench\Notifier;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -52,6 +55,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly MenuRebuilder $menuRebuilder,
+        private readonly MenuRegistrar $menuRegistrar,
         private readonly PluginPagesSync $pages,
         private readonly EventDispatcherInterface $events,
         private readonly Tui $tui,
@@ -103,7 +107,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         $this->plugins->registerCommands($this->commands);
         // Identity is the plugin's directory basename — the same convention
         // enabledPlugins, requires and the installer's listing all key on.
-        $this->panes->registerFor(basename(\dirname($file)));
+        $this->registerContributionsOf(basename(\dirname($file)));
         $this->keys->rebuild();
         $this->menuRebuilder->rebuild();
         $this->refreshNav();
@@ -127,6 +131,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         $wasActive = $this->plugins->hasPlugin($name);
         $this->plugins->deactivate($name, $this->commands);
         $this->panes->forget($name);
+        $this->retractContributionsOf($name);
         if ($wasActive) {
             foreach ($this->installer->installed() as $candidate) {
                 if ($candidate['name'] !== $name) {
@@ -139,10 +144,10 @@ final class PluginLifecycle implements PluginLifecycleOps
                 }
                 if (null === $error) {
                     $this->plugins->registerCommands($this->commands);
-                    // The forget() above emptied the slot, so the fallback
-                    // copy's pane must be rebuilt — unlike disable(), which
-                    // leaves the standing pane in place.
-                    $this->panes->registerFor($name);
+                    // The forgets above emptied the slots, so the fallback
+                    // copy's panes, view and menus must be rebuilt — unlike
+                    // disable(), which leaves the standing pane in place.
+                    $this->registerContributionsOf($name);
                 }
                 break;
             }
@@ -169,6 +174,7 @@ final class PluginLifecycle implements PluginLifecycleOps
             $this->persistDisabledChoice($target);
             $wasProvider = $this->plugins->providesLanguageServer($target);
             $this->plugins->deactivate($target, $this->commands); // no shadow fallback: the NAME is off
+            $this->retractContributionsOf($target);
             $this->reconfigureLspIf($wasProvider);
         }
         // AFTER the deactivate loop, never before: deleting first could pull a
@@ -466,10 +472,40 @@ final class PluginLifecycle implements PluginLifecycleOps
             return false;
         }
         $this->plugins->registerCommands($this->commands);
-        $this->panes->registerFor($name);
+        $this->registerContributionsOf($name);
         $this->reconfigureLspIf($this->plugins->providesLanguageServer($name));
 
         return true;
+    }
+
+    /**
+     * Build one just-activated plugin's contributed surfaces: its panes, its
+     * top-level menus, and — through the {@see PluginContributionsActivated}
+     * fact — its full-screen view, region minted and layout recompiled. The
+     * view surface listens rather than being held here, because a constructor
+     * edge to it cycles through the overlay stack back to this very service
+     * via WelcomeSteps; dispatch is synchronous, so the view exists before the
+     * caller's tail runs. Commands are the caller's job — their registration
+     * is watermarked, not per-plugin.
+     */
+    private function registerContributionsOf(string $name): void
+    {
+        $this->panes->registerFor($name);
+        $this->menuRegistrar->registerFor($name);
+        $this->events->dispatch(new PluginContributionsActivated($name));
+    }
+
+    /**
+     * Retract them on disable/removal. Panes are deliberately ABSENT: a tab
+     * opened before the toggle still renders in its pane, so disable leaves it
+     * standing ({@see PaneRegistrar::forget()}'s docblock) — while an open
+     * view is closed and un-minted (by the {@see PluginContributionsRetracted}
+     * listener), because the main area must return to the editor.
+     */
+    private function retractContributionsOf(string $name): void
+    {
+        $this->menuRegistrar->forget($name);
+        $this->events->dispatch(new PluginContributionsRetracted($name));
     }
 
     /**

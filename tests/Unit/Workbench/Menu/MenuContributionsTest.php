@@ -10,7 +10,8 @@ use Porta\Workbench\Menu\MenuContributions;
 
 /**
  * The registry that replaced `DEFS['Git']`, `VIEW_SAFE['git']` and the
- * rebuilder's one-group visibility closure.
+ * rebuilder's one-group visibility closure — plugin-keyed, so a live disable
+ * retracts exactly its contributor's menus.
  */
 final class MenuContributionsTest extends TestCase
 {
@@ -21,7 +22,7 @@ final class MenuContributionsTest extends TestCase
         // and must not appear in the map keyed by '' — which would then gate
         // every menu item the moment ANY unnamed view was open.
         $registry = new MenuContributions();
-        $registry->register(new MenuContribution(title: 'Tools', after: 'Run', items: ['i:x']));
+        $registry->register('demo', new MenuContribution(title: 'Tools', after: 'Run', items: ['i:x']));
 
         $this->assertSame([], $registry->viewSafe());
         $this->assertCount(1, $registry->all(), 'the menu itself is still contributed');
@@ -33,8 +34,8 @@ final class MenuContributionsTest extends TestCase
         // menus may name the same view; silently keeping the last would
         // disable the other's items while that view is open.
         $registry = new MenuContributions();
-        $registry->register(new MenuContribution('A', 'Run', ['i:a'], viewId: 'vcs', viewSafe: ['a']));
-        $registry->register(new MenuContribution('B', 'Run', ['i:b'], viewId: 'vcs', viewSafe: ['b']));
+        $registry->register('a', new MenuContribution('A', 'Run', ['i:a'], viewId: 'vcs', viewSafe: ['a']));
+        $registry->register('b', new MenuContribution('B', 'Run', ['i:b'], viewId: 'vcs', viewSafe: ['b']));
 
         $this->assertSame(['vcs' => ['a', 'b']], $registry->viewSafe());
     }
@@ -45,8 +46,8 @@ final class MenuContributionsTest extends TestCase
         // it — otherwise any menu registered without a view would silently
         // blind every later contribution's view-safe list too.
         $registry = new MenuContributions();
-        $registry->register(new MenuContribution('Tools', 'Run', ['i:x']));
-        $registry->register(new MenuContribution('A', 'Run', ['i:a'], viewId: 'vcs', viewSafe: ['a']));
+        $registry->register('demo', new MenuContribution('Tools', 'Run', ['i:x']));
+        $registry->register('vcs-plugin', new MenuContribution('A', 'Run', ['i:a'], viewId: 'vcs', viewSafe: ['a']));
 
         $this->assertSame(['vcs' => ['a']], $registry->viewSafe());
     }
@@ -55,9 +56,24 @@ final class MenuContributionsTest extends TestCase
     {
         // The order menus appear in, after their shared `after` title.
         $registry = new MenuContributions();
-        $registry->register($first = new MenuContribution('A', 'Run', []));
-        $registry->register($second = new MenuContribution('B', 'Run', []));
+        $registry->register('a', $first = new MenuContribution('A', 'Run', []));
+        $registry->register('b', $second = new MenuContribution('B', 'Run', []));
 
         $this->assertSame([$first, $second], $registry->all());
+    }
+
+    public function testForgettingAPluginDropsOnlyItsMenus(): void
+    {
+        // The disable half: a disabled plugin's top-level menu used to keep
+        // rendering forever, because nothing could remove it.
+        $registry = new MenuContributions();
+        $registry->register('mine', new MenuContribution('Mine', 'Run', [], viewId: 'mine', viewSafe: ['x']));
+        $registry->register('theirs', $kept = new MenuContribution('Theirs', 'Run', []));
+        $registry->register('mine', new MenuContribution('Mine Too', 'Run', []));
+
+        $registry->forget('mine');
+
+        $this->assertSame([$kept], $registry->all(), 'both of the plugin\'s menus went, the other plugin\'s stayed');
+        $this->assertSame([], $registry->viewSafe(), 'its view-safe list went with it');
     }
 }

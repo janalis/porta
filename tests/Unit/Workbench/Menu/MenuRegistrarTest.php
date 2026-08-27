@@ -11,7 +11,8 @@ use Porta\Workbench\Menu\MenuContributions;
 use Porta\Workbench\Menu\MenuRegistrar;
 
 /**
- * Draining the plugin-contributed top-level menus, once, after plugins commit.
+ * Draining the plugin-contributed top-level menus: everything after plugins
+ * commit at boot, one plugin's slice on a live toggle.
  *
  * The {@see \Porta\Workbench\View\ViewRegistrar} shape, and for the same
  * reason: a plugin class can never be a container service, so nothing it
@@ -25,11 +26,11 @@ use Porta\Workbench\Menu\MenuRegistrar;
  */
 final class MenuRegistrarTest extends TestCase
 {
-    /** @param list<MenuContribution> $menus */
+    /** @param list<array{plugin: string, contribution: MenuContribution}> $menus */
     private function source(array $menus): ContributedMenuSource
     {
         return new class($menus) implements ContributedMenuSource {
-            /** @param list<MenuContribution> $menus */
+            /** @param list<array{plugin: string, contribution: MenuContribution}> $menus */
             public function __construct(
                 private readonly array $menus,
             ) {}
@@ -41,15 +42,19 @@ final class MenuRegistrarTest extends TestCase
         };
     }
 
-    private function contribution(string $title): MenuContribution
+    /** @return array{plugin: string, contribution: MenuContribution} */
+    private function contribution(string $plugin, string $title): array
     {
-        return new MenuContribution($title, after: 'Run', items: ['i:demo'], viewId: strtolower($title), viewSafe: ['ide_quit']);
+        return [
+            'plugin' => $plugin,
+            'contribution' => new MenuContribution($title, after: 'Run', items: ['i:demo'], viewId: strtolower($title), viewSafe: ['ide_quit']),
+        ];
     }
 
     public function testEveryContributionReachesTheModelWithItsViewSafeList(): void
     {
         $menus = new MenuContributions();
-        new MenuRegistrar($this->source([$this->contribution('Git'), $this->contribution('Demo')]), $menus)->register();
+        new MenuRegistrar($this->source([$this->contribution('git', 'Git'), $this->contribution('demo', 'Demo')]), $menus)->register();
 
         $this->assertSame(['Git', 'Demo'], array_map(static fn (MenuContribution $c): string => $c->title, $menus->all()), 'in load order');
         $this->assertSame(['git' => ['ide_quit'], 'demo' => ['ide_quit']], $menus->viewSafe(), 'and both halves travelled');
@@ -68,16 +73,41 @@ final class MenuRegistrarTest extends TestCase
 
     public function testRegisteringTwiceWouldDuplicate_soItIsCalledOnce(): void
     {
-        // Not a guard, a fact: `MenuContributions` appends, so this class is
-        // safe only because `Ide` calls it exactly once. Pinned because the
+        // Not a guard, a fact: `MenuContributions` appends, so the FULL drain
+        // is safe only because `Ide` calls it exactly once. Pinned because the
         // symptom of a second call is two identical top-level menus, which
-        // reads as a rendering bug rather than a wiring one.
+        // reads as a rendering bug rather than a wiring one. The live path is
+        // registerFor(), which is idempotent below.
         $menus = new MenuContributions();
-        $registrar = new MenuRegistrar($this->source([$this->contribution('Git')]), $menus);
+        $registrar = new MenuRegistrar($this->source([$this->contribution('git', 'Git')]), $menus);
 
         $registrar->register();
         $registrar->register();
 
         $this->assertCount(2, $menus->all());
+    }
+
+    public function testRegisterForDrainsOnlyTheNamedPluginAndIsIdempotent(): void
+    {
+        // Forget-then-add is what makes a re-enable safe: without it, every
+        // toggle would append a second copy of the same title.
+        $menus = new MenuContributions();
+        $registrar = new MenuRegistrar($this->source([$this->contribution('git', 'Git'), $this->contribution('demo', 'Demo')]), $menus);
+
+        $registrar->registerFor('git');
+        $registrar->registerFor('git');
+
+        $this->assertSame(['Git'], array_map(static fn (MenuContribution $c): string => $c->title, $menus->all()), 'one copy, only the named plugin');
+    }
+
+    public function testForgetRetractsThePluginsMenus(): void
+    {
+        $menus = new MenuContributions();
+        $registrar = new MenuRegistrar($this->source([$this->contribution('git', 'Git'), $this->contribution('demo', 'Demo')]), $menus);
+        $registrar->register();
+
+        $registrar->forget('git');
+
+        $this->assertSame(['Demo'], array_map(static fn (MenuContribution $c): string => $c->title, $menus->all()));
     }
 }

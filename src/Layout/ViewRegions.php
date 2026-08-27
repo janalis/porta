@@ -45,6 +45,16 @@ final class ViewRegions
         );
     }
 
+    /**
+     * Drop a retracted view's region. The next {@see mint()} of the same id
+     * builds FRESH widgets — which is what makes disable→re-enable safe: a
+     * reused region's containers would still hold the dead view's children.
+     */
+    public function forget(string $id): void
+    {
+        unset($this->regions[$id]);
+    }
+
     /** The region for $id if one has been minted, else null — no minting side effect. */
     public function find(string $id): ?ViewRegion
     {

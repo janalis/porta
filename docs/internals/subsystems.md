@@ -188,10 +188,24 @@ does not know at build time, and the container is built before any plugin PHP
 runs.
 
 A plugin registers one with `PluginApi::registerView($id, $factory)`. The
-factory runs ONCE, after plugins commit, with the seven-member `ViewServices`;
-its region is minted before the call, so it can fill both panes immediately.
-The git view is the proof that this carries a real one — see
+factory runs after plugins commit, with the seven-member `ViewServices`; its
+region is minted before the call, so it can fill both panes immediately. The
+git view is the proof that this carries a real one — see
 `docs/internals/decisions.md`.
+
+**A contributed view arrives and leaves live.** `ViewRegistrar::registerFor()`
+builds one plugin's views on enable and `forget()` retracts them on disable, so
+the factory runs once per *activation* rather than once per process. Retraction
+closes an open view first (the editor takes the workspace back, and the view
+gets to cancel its own timers), then un-mints the region — the next enable
+mints fresh containers, because reusing one would hand the new view the dead
+one's children. `LayoutController::forgetView()` drops the cached
+`SidebarResizeState` at the same moment, or a later drag would resize widgets
+that are no longer on screen. The layout recompile after a live build mirrors
+Ide's boot tail exactly: `applyDirection()` then `applyLayout()`, in that
+order, because the arrangement has to mount the region before a persisted width
+can be applied to it. See `docs/internals/plugin-system.md` for why that runs
+from an event listener rather than a direct call.
 
 ## Floating surfaces
 

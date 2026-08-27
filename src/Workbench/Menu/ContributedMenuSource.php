@@ -13,6 +13,12 @@ namespace Porta\Workbench\Menu;
  */
 interface ContributedMenuSource
 {
-    /** @return list<MenuContribution> in load order; a plugin's own barrier already caught anything that failed to build */
+    /**
+     * In load order, each with the plugin that contributed it — the key a live
+     * enable/disable retracts by. A plugin's own barrier already caught
+     * anything that failed to build.
+     *
+     * @return list<array{plugin: string, contribution: MenuContribution}>
+     */
     public function contributedMenus(): array;
 }

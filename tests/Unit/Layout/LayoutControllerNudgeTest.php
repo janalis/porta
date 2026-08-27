@@ -39,6 +39,7 @@ final class LayoutControllerNudgeTest extends TestCase
     private SettingsNavWidget $settingsSidebar;
     private Tui $tui;
     private Renderer $renderer;
+    private ViewRegions $regions;
 
     private function controller(int $columns = 100): LayoutController
     {
@@ -54,13 +55,15 @@ final class LayoutControllerNudgeTest extends TestCase
         );
         $this->settingsSidebar = new SettingsNavWidget(new Translator('en'));
 
+        $this->regions = self::regionsWith($this->gitSidebar, $this->settingsSidebar);
+
         return new LayoutController(
             new LayoutStore($this->project->dir),
             $this->tui,
             $this->renderer,
             $this->tree,
             TestBottomDock::create($this->tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
-            self::regionsWith($this->gitSidebar, $this->settingsSidebar),
+            $this->regions,
             new Translator('en'),
         );
     }
@@ -129,6 +132,33 @@ final class LayoutControllerNudgeTest extends TestCase
         $file = $this->layoutFile();
         $this->assertSame(30, $file['viewSidebarWidthPercent']['git']);
         $this->assertArrayHasKey('settings', $file['viewSidebarWidthPercent']);
+    }
+
+    public function testForgetViewDropsTheCachedResizeStateSoAReMintResizesTheFreshSidebar(): void
+    {
+        // The live view lifecycle un-mints a region and mints a fresh one on
+        // re-enable. Without forgetView() the cached SidebarResizeState keeps
+        // wrapping the DEAD region's sidebar — nudges and drags would resize
+        // widgets no longer on screen while the visible ones never move.
+        $layout = $this->controller();
+        $layout->nudgeViewSidebar('git', 2);
+        $oldSidebar = $this->gitSidebar;
+        $oldWidth = $oldSidebar->width();
+
+        $layout->forgetView('git');
+        $this->regions->forget('git');
+        $fresh = new GitSidebar(
+            new GitTabsWidget(new Translator('en')),
+            new ChangesListWidget(new Translator('en')),
+            new CommitBoxWidget(new Translator('en')),
+            new HistoryListWidget(new Translator('en')),
+        );
+        $this->regions->mint('git')->setSidebarPanes($fresh);
+
+        $layout->nudgeViewSidebar('git', 4);
+
+        $this->assertSame($oldWidth, $oldSidebar->width(), 'the dead sidebar is not touched again');
+        $this->assertNotSame($oldWidth, $fresh->width(), 'the nudge landed on the freshly minted sidebar');
     }
 
     public function testNudgeBottomPanelIsANoOpWhenNoPanelIsOpen(): void

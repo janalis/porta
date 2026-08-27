@@ -16,8 +16,8 @@ use Tempest\Highlight\TerminalTheme;
  *
  * Resolution happens here, at construction, rather than per call — the backend
  * is fixed for a buffer's lifetime, so enabling or disabling a highlighter
- * plugin takes effect for files opened afterwards. That matches the existing
- * plugin caveat that default keybindings need a restart.
+ * plugin, or changing the Settings → Highlighting choice, takes effect for
+ * files opened afterwards while an open buffer keeps the backend it resolved.
  *
  * {@see forFragments()} is deliberately separate. The diff view highlights a
  * synthetic, non-contiguous array of lines gathered from different hunks, under

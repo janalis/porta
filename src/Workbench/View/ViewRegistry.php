@@ -53,6 +53,19 @@ final class ViewRegistry
         }
     }
 
+    /**
+     * Retract a view: it stops answering, and its pointer and context menus go
+     * with it, mirroring {@see register()}. Deliberately does NOT close the
+     * view first — closing runs plugin code, which belongs behind the
+     * registrar's fault barrier, not inside a registry mutation.
+     */
+    public function forget(string $id): void
+    {
+        unset($this->views[$id]);
+        $this->pointers->forget($id);
+        $this->menus->forget($id);
+    }
+
     /** The registered view for $id, or null. The way to reach a view's own verbs. */
     public function find(string $id): ?ContributedView
     {

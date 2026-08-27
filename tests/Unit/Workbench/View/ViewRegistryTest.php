@@ -224,6 +224,24 @@ final class ViewRegistryTest extends TestCase
         $this->assertSame($source, $menus->of('git'));
     }
 
+    public function testForgettingAViewRetractsItsPointerAndMenusWithIt(): void
+    {
+        // The disable half of the register() symmetry. A pointer left behind
+        // would keep consuming clicks for a region no longer on screen, and a
+        // stale menu source would open a dead view's context menus.
+        $pointers = new ViewPointers();
+        $menus = new ViewMenuSources();
+        $views = new ViewRegistry($pointers, $menus);
+        $pointer = $this->fakePointer();
+        $views->register($this->fakeView('git', pointer: $pointer, menus: $this->fakeMenuSource()));
+
+        $views->forget('git');
+
+        $this->assertNull($views->find('git'));
+        $this->assertNotSame($pointer, $pointers->of('git'), 'the null pointer answers now');
+        $this->assertNull($menus->of('git'));
+    }
+
     public function testAViewWithNoPanesToClickWiresNeither(): void
     {
         // Not the same as "wires a null": ViewPointers hands back a null object

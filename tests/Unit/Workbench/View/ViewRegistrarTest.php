@@ -5,18 +5,26 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Workbench\View;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\LayoutStore;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
 use Porta\Input\HitTester;
 use Porta\Layout\EditorAreaPanes;
+use Porta\Layout\LayoutController;
 use Porta\Layout\ViewRegions;
 use Porta\Tests\Support\FakeScheduler;
+use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestTui;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\FileTreeWidget;
 use Porta\Widget\MenuBarWidget;
+use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\View\ContributedView;
 use Porta\Workbench\View\ContributedViewSource;
@@ -26,12 +34,14 @@ use Porta\Workbench\View\ViewRegistry;
 use Porta\Workbench\View\ViewServices;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 
 /**
- * The drain that turns a plugin's registerView() into a live view.
+ * The drain that turns a plugin's registerView() into a live view — the whole
+ * of it at boot, one plugin's slice on enable, and the retraction on disable.
  *
  * The `PaneRegistrar` shape, and its failure contract too: a factory that
  * throws costs its own plugin its view and leaves every other one registered.
@@ -44,10 +54,22 @@ final class ViewRegistrarTest extends TestCase
     /** @var list<array{plugin: string, error: \Throwable}> */
     private array $reported = [];
 
+    private TempProject $project;
+    private ContainerWidget $main;
+    private CodeEditorWidget $editorPane;
+
     /** @param list<array{plugin: string, id: string, factory: \Closure}> $views */
     private function registrar(array $views, ViewRegistry $registry, ViewRegions $regions): ViewRegistrar
     {
+        $this->project = new TempProject();
         $tui = TestTui::create(100, 24);
+        $renderer = new Renderer(new StyleSheet());
+        $translator = new Translator('en');
+        $tree = new FileTreeWidget($this->project->dir);
+        $this->main = new ContainerWidget();
+        $this->editorPane = new CodeEditorWidget();
+        $editorPane = $this->editorPane;
+
         $reported = &$this->reported;
         $source = new class($views, $reported) implements ContributedViewSource {
             /** @param list<array{plugin: string, id: string, factory: \Closure}> $views */
@@ -72,30 +94,48 @@ final class ViewRegistrarTest extends TestCase
             $registry,
             $regions,
             new ViewHost(
-                new ContainerWidget(),
+                $this->main,
                 new MenuBarWidget(),
-                new class implements EditorAreaPanes {
+                new class($editorPane) implements EditorAreaPanes {
+                    public function __construct(
+                        private readonly CodeEditorWidget $pane,
+                    ) {}
+
                     public function orderedEditorPanes(): array
                     {
-                        return [];
+                        return [$this->pane];
                     }
                 },
                 new EditorArea(new BufferManager(), new CodeEditorWidget(), new EditorPanes(), $tui),
                 $tui,
             ),
-            new HitTester(new Renderer(new StyleSheet())),
+            new HitTester($renderer),
             Styles::dark(),
-            new Translator('en'),
+            $translator,
             new FakeScheduler(),
             new CursorStyle(),
+            new LayoutController(
+                new LayoutStore($this->project->dir),
+                $tui,
+                $renderer,
+                $tree,
+                TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
+                $regions,
+                $translator,
+            ),
         );
     }
 
-    private function view(string $id): ContributedView
+    /** A view whose open state and close behaviour the test scripts. */
+    private function view(string $id, bool $open = false, bool $throwOnClose = false): ContributedView
     {
-        return new class($id) implements ContributedView {
+        return new class($id, $open, $throwOnClose) implements ContributedView {
+            public int $closes = 0;
+
             public function __construct(
                 private readonly string $id,
+                private bool $open,
+                private readonly bool $throwOnClose,
             ) {}
 
             public function viewId(): string
@@ -110,14 +150,27 @@ final class ViewRegistrarTest extends TestCase
 
             public function isOpen(): bool
             {
-                return false;
+                return $this->open;
             }
 
-            public function open(): void {}
+            public function open(): void
+            {
+                $this->open = true;
+            }
 
-            public function close(): void {}
+            public function close(): void
+            {
+                ++$this->closes;
+                if ($this->throwOnClose) {
+                    throw new \RuntimeException('close exploded');
+                }
+                $this->open = false;
+            }
 
-            public function toggle(): void {}
+            public function toggle(): void
+            {
+                $this->open = !$this->open;
+            }
 
             public function focusTarget(): AbstractWidget&FocusableInterface
             {
@@ -168,9 +221,10 @@ final class ViewRegistrarTest extends TestCase
         $this->assertSame($regions->mint('vcs'), $seen->region, 'and handed the region for that id');
     }
 
-    public function testAThrowingFactoryCostsOnlyItsOwnPluginItsView(): void
+    public function testAThrowingFactoryCostsOnlyItsOwnPluginItsViewAndItsRegion(): void
     {
         $registry = new ViewRegistry();
+        $regions = new ViewRegions(Styles::dark());
 
         $this->registrar(
             [
@@ -178,10 +232,11 @@ final class ViewRegistrarTest extends TestCase
                 ['plugin' => 'acme', 'id' => 'good', 'factory' => fn (): ContributedView => $this->view('good')],
             ],
             $registry,
-            new ViewRegions(Styles::dark()),
+            $regions,
         )->register();
 
         $this->assertNull($registry->find('bad'));
+        $this->assertNull($regions->find('bad'), 'the failed view\'s mint is rolled back — an empty region left mounted renders as a blank workspace');
         $this->assertNotNull($registry->find('good'), 'one plugin\'s fault does not cost the others theirs');
         $this->assertCount(1, $this->reported);
         $this->assertSame('broken', $this->reported[0]['plugin'], 'reported through the registering plugin\'s own barrier');
@@ -206,5 +261,170 @@ final class ViewRegistrarTest extends TestCase
         $this->assertNull($registry->find('vcs'));
         $this->assertCount(1, $this->reported);
         $this->assertStringContainsString('must return a ContributedView', $this->reported[0]['error']->getMessage());
+    }
+
+    public function testRegisterForBuildsOnlyTheNamedPluginAndOnlyOnce(): void
+    {
+        $registry = new ViewRegistry();
+        $builds = 0;
+
+        $registrar = $this->registrar(
+            [
+                [
+                    'plugin' => 'acme',
+                    'id' => 'vcs',
+                    'factory' => function () use (&$builds): ContributedView {
+                        ++$builds;
+
+                        return $this->view('vcs');
+                    },
+                ],
+                ['plugin' => 'other', 'id' => 'docs', 'factory' => fn (): ContributedView => $this->view('docs')],
+            ],
+            $registry,
+            new ViewRegions(Styles::dark()),
+        );
+
+        $registrar->registerFor('acme');
+        $registrar->registerFor('acme');
+
+        $this->assertNotNull($registry->find('vcs'));
+        $this->assertNull($registry->find('docs'), 'a live enable builds one plugin, not everyone');
+        $this->assertSame(1, $builds, 'the second drain is a no-op, not a rebuild');
+    }
+
+    public function testAPluginMayNotDisplaceAViewAnotherRegistrarOwns(): void
+    {
+        // `settings` and `welcome` register from their own constructors during
+        // boot; a plugin claiming one of their ids live must be refused — and
+        // forget() must never retract what it did not build.
+        $registry = new ViewRegistry();
+        $core = $this->view('settings');
+        $registry->register($core);
+
+        $registrar = $this->registrar(
+            [['plugin' => 'acme', 'id' => 'settings', 'factory' => fn (): ContributedView => $this->view('settings')]],
+            $registry,
+            new ViewRegions(Styles::dark()),
+        );
+        $registrar->registerFor('acme');
+        $this->assertSame($core, $registry->find('settings'), 'the core view kept its id');
+
+        $registrar->forget('acme');
+        $this->assertSame($core, $registry->find('settings'), 'and forget() cannot take it either');
+    }
+
+    public function testForgetClosesAnOpenViewAndRetractsEverything(): void
+    {
+        $registry = new ViewRegistry();
+        $regions = new ViewRegions(Styles::dark());
+        $view = $this->view('vcs');
+
+        $registrar = $this->registrar(
+            [['plugin' => 'acme', 'id' => 'vcs', 'factory' => static fn (): ContributedView => $view]],
+            $registry,
+            $regions,
+        );
+        $registrar->register();
+        $view->open();
+
+        $registrar->forget('acme');
+
+        $this->assertSame(1, $view->closes, 'the open view was closed — that is what returns the main area to the editor');
+        $this->assertNull($registry->find('vcs'));
+        $this->assertNull($regions->find('vcs'), 'the region is un-minted, so a re-enable mints fresh widgets');
+        $this->assertFalse($view->isOpen());
+    }
+
+    public function testForgetOfAClosedViewDoesNotCallClose(): void
+    {
+        $registry = new ViewRegistry();
+        $view = $this->view('vcs');
+
+        $registrar = $this->registrar(
+            [['plugin' => 'acme', 'id' => 'vcs', 'factory' => static fn (): ContributedView => $view]],
+            $registry,
+            new ViewRegions(Styles::dark()),
+        );
+        $registrar->register();
+
+        $registrar->forget('acme');
+
+        $this->assertSame(0, $view->closes, 'nothing to give back: close() runs plugin code and is not called idly');
+        $this->assertNull($registry->find('vcs'));
+    }
+
+    public function testACloseThatThrowsStillRestoresTheEditorAndRetracts(): void
+    {
+        // The dying plugin's close() must not leave the workspace showing its
+        // dead view: the host is restored by hand and the retraction finishes.
+        $registry = new ViewRegistry();
+        $regions = new ViewRegions(Styles::dark());
+        $view = $this->view('vcs', throwOnClose: true);
+
+        $registrar = $this->registrar(
+            [['plugin' => 'acme', 'id' => 'vcs', 'factory' => static fn (): ContributedView => $view]],
+            $registry,
+            $regions,
+        );
+        $registrar->register();
+        $view->open();
+
+        $registrar->forget('acme');
+
+        $this->assertNull($registry->find('vcs'), 'retraction completed despite the throw');
+        $this->assertNull($regions->find('vcs'));
+        $this->assertCount(1, $this->reported);
+        $this->assertSame('acme', $this->reported[0]['plugin']);
+        $this->assertContains($this->editorPane, $this->main->all(), 'the editor layout got the main area back by hand');
+    }
+
+    public function testForgetRetractsAMatchThatFollowsAnotherPluginsView(): void
+    {
+        // A `continue`/`break` mix-up in the loop would stop scanning at the
+        // first owner it must skip, silently keeping every later match.
+        // Registering the OTHER plugin's view first is what exposes that.
+        $registry = new ViewRegistry();
+        $regions = new ViewRegions(Styles::dark());
+
+        $registrar = $this->registrar(
+            [
+                ['plugin' => 'other', 'id' => 'docs', 'factory' => fn (): ContributedView => $this->view('docs')],
+                ['plugin' => 'acme', 'id' => 'vcs', 'factory' => fn (): ContributedView => $this->view('vcs')],
+            ],
+            $registry,
+            $regions,
+        );
+        $registrar->register();
+
+        $registrar->forget('acme');
+
+        $this->assertNull($registry->find('vcs'), 'a match after a non-match must still be retracted');
+        $this->assertNull($regions->find('vcs'));
+        $this->assertNotNull($registry->find('docs'), 'and the other plugin keeps its view');
+        $this->assertNotNull($regions->find('docs'));
+    }
+
+    public function testReEnableMintsAFreshRegion(): void
+    {
+        // A reused region would still hold the dead view's children — the
+        // freshness of the second mint is what disable→re-enable rides on.
+        $registry = new ViewRegistry();
+        $regions = new ViewRegions(Styles::dark());
+
+        $registrar = $this->registrar(
+            [['plugin' => 'acme', 'id' => 'vcs', 'factory' => fn (): ContributedView => $this->view('vcs')]],
+            $registry,
+            $regions,
+        );
+        $registrar->registerFor('acme');
+        $first = $regions->find('vcs');
+        $registrar->forget('acme');
+
+        $registrar->registerFor('acme');
+
+        $this->assertNotNull($registry->find('vcs'));
+        $this->assertNotNull($regions->find('vcs'));
+        $this->assertNotSame($first, $regions->find('vcs'), 'a fresh region, not the dead one');
     }
 }

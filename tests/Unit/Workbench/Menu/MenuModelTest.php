@@ -492,7 +492,7 @@ final class MenuModelTest extends TestCase
         // view but left its list empty greys out its OWN menu the moment that
         // view opens, which is the failure with no error message.
         $registry = new MenuContributions();
-        $registry->register(self::gitContribution());
+        $registry->register('git', self::gitContribution());
         $map = [...$map, ...$registry->viewSafe()];
 
         $this->assertSame(['settings', 'welcome', 'git'], array_keys($map));

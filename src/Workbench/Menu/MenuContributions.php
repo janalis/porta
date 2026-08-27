@@ -6,22 +6,34 @@ namespace Porta\Workbench\Menu;
 
 use Porta\Container\AsIdeService;
 
-/** The contributed top-level menus, in registration order. */
+/**
+ * The contributed top-level menus, in registration order — keyed to the plugin
+ * that contributed each one, so a live disable can retract exactly its menus.
+ */
 #[AsIdeService]
 final class MenuContributions
 {
-    /** @var list<MenuContribution> */
+    /** @var list<array{plugin: string, contribution: MenuContribution}> */
     private array $contributions = [];
 
-    public function register(MenuContribution $contribution): void
+    public function register(string $plugin, MenuContribution $contribution): void
     {
-        $this->contributions[] = $contribution;
+        $this->contributions[] = ['plugin' => $plugin, 'contribution' => $contribution];
+    }
+
+    /** Drop everything $plugin contributed — the disable half of the symmetry. */
+    public function forget(string $plugin): void
+    {
+        $this->contributions = array_values(array_filter(
+            $this->contributions,
+            static fn (array $entry): bool => $plugin !== $entry['plugin'],
+        ));
     }
 
     /** @return list<MenuContribution> */
     public function all(): array
     {
-        return $this->contributions;
+        return array_column($this->contributions, 'contribution');
     }
 
     /**
@@ -33,7 +45,7 @@ final class MenuContributions
     public function viewSafe(): array
     {
         $map = [];
-        foreach ($this->contributions as $contribution) {
+        foreach ($this->all() as $contribution) {
             if ('' === $contribution->viewId) {
                 continue;
             }

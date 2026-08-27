@@ -98,6 +98,17 @@ Three rules constrain what an event may carry and where it may be dispatched:
   says so — see `DockToolBound`, dispatched at the tail of the bind for exactly
   this reason.
 
+There is a fourth use, rarer and worth naming because it looks like
+over-engineering until you hit it: **an event breaks a container cycle the
+call graph cannot.** `PluginContributionsActivated` / `…Retracted` exist for
+that — the plugin lifecycle has to drive the view registrar, but taking it as a
+constructor argument closes the loop `PluginLifecycle → ViewRegistrar →
+ViewHost → PaneLayout →` overlay stack `→ WelcomeSteps → PluginEnablement`.
+The dispatcher resolves listeners lazily, so the edge disappears while the call
+stays synchronous and ordered. Reach for this only when the cycle is real:
+these two are facts with a single listener each, which would otherwise read as
+a command wearing the wrong suffix.
+
 ## What the gates check
 
 Two tests, both of which exist because the failure mode here is *silence*

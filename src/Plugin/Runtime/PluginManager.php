@@ -741,11 +741,11 @@ final class PluginManager implements
         }
     }
 
-    /** @return list<MenuContribution> */
+    /** @return list<array{plugin: string, contribution: MenuContribution}> */
     #[\Override]
     public function contributedMenus(): array
     {
-        return array_map(static fn (array $entry): MenuContribution => $entry['contribution'], $this->menus);
+        return $this->menus;
     }
 
     /** @return list<array{plugin: string, id: string, factory: \Closure}> */

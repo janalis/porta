@@ -221,12 +221,50 @@ descriptors) stay plain arrays, each saying why at its declaration.
 
 **Commit is the deadline, and a contributed VIEW arrives after it.** A view's
 factory needs the region core mints for it, which cannot exist until the view
-has registered — so `registerView()`'s closure runs once, after the drain. That
-is a real ordering constraint, not a detail: anything a view has to be reachable
-from — a command that toggles it, a listener that answers it — has to be
-registered during `activate()`, against a slot the factory fills. The git
-plugin's `ViewSlot` is that, and the symptom of getting it wrong is a
-`PluginException` about a listener arriving after the plugin was committed.
+has registered — so `registerView()`'s closure runs after the drain, once per
+activation. That is a real ordering constraint, not a detail: anything a view
+has to be reachable from — a command that toggles it, a listener that answers
+it — has to be registered during `activate()`, against a slot the factory
+fills. The git plugin's `ViewSlot` is that, and the symptom of getting it wrong
+is a `PluginException` about a listener arriving after the plugin was
+committed.
+
+## The three registrars are live, not boot-only
+
+`Editor/PaneRegistrar`, `Workbench/View/ViewRegistrar` and
+`Workbench/Menu/MenuRegistrar` each drain everything at the `Ide` constructor
+tail AND one plugin's slice on a live toggle, so enabling a plugin mid-session
+builds its panes, its full-screen view and its top-level menus without a
+restart. Before that, all three were one-shot: a first-time enable committed a
+pane whose widget was never built (the file fell silently to the text path), a
+view nothing could open, and a menu that never appeared — and a disable left a
+dead plugin's menu rendering forever.
+
+The retraction side is not symmetric, deliberately. A **pane stays** on
+disable, because a tab opened before the toggle is still rendering in it; only
+removal drops it. A **view is closed and its region un-minted**, because the
+main area has to go back to the editor — `ViewRegistrar::forget()` closes an
+open view first (which is also what lets the view cancel its own timers),
+restores the host by hand if that `close()` throws, and un-mints so the next
+enable builds FRESH widgets rather than a container still holding the dead
+view's children. `LayoutController::forgetView()` drops the cached resize state
+in the same breath, or a drag would resize widgets no longer on screen.
+
+**The lifecycle reaches the view surface through an event, not a constructor
+argument.** `PluginContributionsActivated` / `PluginContributionsRetracted` are
+facts `Workbench/View/ViewContributionListener` answers, because the direct
+edge is a container cycle: `PluginLifecycle → ViewRegistrar → ViewHost →
+PaneLayout →` the overlay stack `→ WelcomeSteps → PluginEnablement`, which is
+the lifecycle again. Dispatch is synchronous, so the view exists before the
+lifecycle's own tail (`keys->rebuild()`, `menuRebuilder->rebuild()`, the
+repaint) runs. That listener also mirrors Ide's boot tail in order —
+`applyDirection()` then `applyLayout()` — since the arrangement has to mount
+the minted region before a persisted sidebar width can land on it.
+
+A view id already registered is refused: `settings` and `welcome` register from
+their own constructors, and a plugin may not displace one live. Symmetrically,
+`forget()` iterates only the ids the registrar itself built, so it can never
+retract a core view.
 
 Consumer-owned interfaces are how a subsystem consumes plugin registrations
 without depending on `Porta\Plugin`: `Editor/EditorPaneSource`,

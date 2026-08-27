@@ -318,9 +318,11 @@ final class PluginViewerTest extends TestCase
 
         $menus = $manager->contributedMenus();
         self::assertCount(1, $menus);
-        $this->assertSame('Git', $menus[0]->title);
-        $this->assertSame('Run', $menus[0]->after);
-        $this->assertSame(['ide_quit'], $menus[0]->viewSafe);
+        // Plugin-keyed, so a live disable can retract exactly its contributor's.
+        $this->assertSame('vcs', $menus[0]['plugin']);
+        $this->assertSame('Git', $menus[0]['contribution']->title);
+        $this->assertSame('Run', $menus[0]['contribution']->after);
+        $this->assertSame(['ide_quit'], $menus[0]['contribution']->viewSafe);
 
         $manager->deactivate('vcs', new CommandRegistry());
         $this->assertSame([], $manager->contributedMenus(), 'a removed plugin takes its menu with it');

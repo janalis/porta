@@ -326,6 +326,18 @@ Plugins in the settings sidebar). Disabling deactivates it live and persists
 as a `disabledPlugins` list in `.porta.json`, so it stays off across
 restarts until re-enabled.
 
+**Nothing about a toggle needs a restart**, including the surfaces that used
+to: a plugin enabled for the first time in a session gets its panes built,
+its `registerView()` view minted and mounted, and its `registerMenu()`
+top-level menu added; disabling closes an open contributed view (the editor
+takes the workspace back), un-mints its region and drops its menu. Two
+caveats, both by design: a **tab already open** in your pane keeps rendering
+in it after a disable — only removal drops the pane — and the highlighting
+backend a **buffer already open** resolved stays put, so a highlighter toggle
+applies to files opened afterwards. If your plugin starts timers or
+subprocesses of its own, implement `DisposablePlugin` (see Lifecycle below);
+nothing else can stop them for you.
+
 You can still hand-place a plugin directory (or one a previous Porta version
 git-cloned/copied) directly under `.porta/plugins/<name>` — it is picked up
 on the next launch and removes with a plain directory delete, exactly as
@@ -646,7 +658,7 @@ Registration (during `activate()`):
 | `registerSetting(string $key, string $label, string $kind = 'text', $default = '', ?array $options = null, ?string $hint = null)` | Declare a user-editable setting shown on the plugin's settings page; kinds: `text`, `bool`, `int`, `choice` (with `$options`). Values persist under `plugins.<name>.<key>` in `.porta.json` |
 | `registerListTool(string $id, string $title, ?\Closure $rerun = null, ?\Closure $activate = null)` | Declare a bottom-dock list of results with jump-to-location |
 | `registerStatusSegment(\Closure $segment)` | Contribute ambient state to the status bar; pulled once per render. Return a string to share the plugins' cell, or a `StatusCell` to claim one with its own tone and right-click menu |
-| `registerView(string $id, \Closure $factory)` | Contribute a **full-screen view** — a workspace takeover with its own sidebar, drag separator and content pane, opened with `openView($id)`. `$factory(ViewServices $s): ContributedView` runs ONCE after plugins commit, with the region already minted for `$id` |
+| `registerView(string $id, \Closure $factory)` | Contribute a **full-screen view** — a workspace takeover with its own sidebar, drag separator and content pane, opened with `openView($id)`. `$factory(ViewServices $s): ContributedView` runs after plugins commit, with the region already minted for `$id` — once per activation, so a disable→re-enable runs it again against a FRESH region |
 | `registerMenu(string $title, string $after, array $items, ?\Closure $visible = null, string $viewId = '', array $viewSafe = [])` | Contribute a **top-level menu** rather than an entry in the trailing Plugins one. `$items` are `'i:<command-id>'` and separators; `$after` names the core menu it follows; `$viewSafe` lists the ids that stay enabled while `$viewId`'s view owns the main area — a menu without one greys out its own items the moment its view opens |
 | `registerDebugAdapter(string $languageId, \Closure $resolveCommand)` | Supply a DAP adapter's argv for a language (consulted below `.porta.json`) |
 | `registerLanguageServer(string $languageId, string $name, \Closure $resolveCommand, ?\Closure $initializationOptions = null)` | Provide a language server for a language: `$resolveCommand` returns the launch argv (null = binary missing, the language falls to the next provider; first available in load order wins), and the optional `$initializationOptions` closure returns the LSP `initializationOptions` for the initialize handshake. Both are re-resolved lazily on every LSP (re)configure, so they may read this plugin's live settings. Plugin servers sit below the user's `.porta.json`/`$PORTA_LSP`/`--lsp` config |

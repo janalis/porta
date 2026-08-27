@@ -41,6 +41,23 @@ final class ViewRegionsTest extends TestCase
         $this->assertCount(1, $regions->all());
     }
 
+    public function testAForgottenIdMintsAFreshRegion(): void
+    {
+        // The un-mint half of the live view lifecycle: a reused region's
+        // containers would still hold the retracted view's children, so a
+        // re-enable must get FRESH widgets under the same id.
+        $regions = $this->regions();
+        $first = $regions->mint('git');
+
+        $regions->forget('git');
+
+        $this->assertNull($regions->find('git'), 'gone without a minting side effect');
+        $this->assertSame([], $regions->all());
+        $second = $regions->mint('git');
+        $this->assertNotSame($first, $second);
+        $this->assertNotSame($first->sidebar(), $second->sidebar(), 'fresh containers, not the dead view\'s');
+    }
+
     public function testARegionCarriesTheFourWidgetsAViewNeedsUnderItsOwnIds(): void
     {
         $region = $this->regions()->mint('git');
