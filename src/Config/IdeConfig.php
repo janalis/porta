@@ -145,50 +145,231 @@ final class IdeConfig
         public readonly array $warnings,
     ) {}
 
+    /**
+     * The effective config: the global file under the project file.
+     *
+     * Merged HERE, at the bottom, and that placement is the whole design. The
+     * container's cache key is VERSION + PHP_VERSION + path + cacheDir +
+     * installedPackages, and config reaches services through separate $_ENV
+     * JSON channels — so a `load()` that returns a merged config with unchanged
+     * property shapes leaves IdeContainerFactory, every env channel, every
+     * #[Autowire] consumer and LiveKeybindings untouched, and
+     * LiveKeybindings::rebuild() keeps the global layer for free because it
+     * re-reads through here. Merging any later pays for all of that and buys
+     * nothing.
+     */
     public static function load(string $rootDir): self
     {
-        $file = $rootDir.'/.porta.json';
-        if (!is_file($file)) {
-            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], self::DEFAULT_ENABLED_PLUGINS, self::NO_HIGHLIGHT, []);
+        $files = ConfigFiles::for($rootDir);
+        $warnings = [];
+        $layers = [];
+        foreach (ConfigScope::inPrecedenceOrder() as $scope) {
+            $layer = self::readLayer($files->path($scope), $files->label($scope), $warnings);
+            if (null !== $layer) {
+                $layers[] = $layer;
+            }
+        }
+
+        return self::merge($layers, $warnings);
+    }
+
+    /**
+     * One file, parsed into only what it actually said — no defaults.
+     *
+     * That is what makes the merge decidable: "global set lineNumbers to
+     * absolute" and "global did not mention lineNumbers" are the same array
+     * once DEFAULT_SETTINGS has been folded in, and they must not be. Defaults
+     * are applied once, in {@see merge()}, after the layers have been resolved.
+     *
+     * Null when the file is absent or unreadable as JSON. Warnings carry
+     * $label, so a mistake in the global file says so instead of blaming the
+     * project's.
+     *
+     * @param list<ConfigWarning> $warnings
+     *
+     * @return array{keymap: array<string, list<string>>, settings: array<string, bool|int|string>, languages: array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}>, lsp: array<string, string>, plugins: array<string, array<string, bool|int|string>>, disabledPlugins: list<string>, enabledPlugins: ?list<string>, highlight: ?array{default: string, languages: array<string, string>}}|null
+     */
+    private static function readLayer(?string $file, string $label, array &$warnings): ?array
+    {
+        if (null === $file || !is_file($file)) {
+            return null;
         }
 
         $jsonError = null;
         $config = JsonFile::read($file, $jsonError);
         if (null === $config) {
-            return new self([], self::DEFAULT_SETTINGS, [], [], [], [], self::DEFAULT_ENABLED_PLUGINS, self::NO_HIGHLIGHT, [
-                null !== $jsonError
-                    ? new ConfigWarning('.porta.json is not valid JSON (%error%)', ['%error%' => $jsonError])
-                    : new ConfigWarning('.porta.json is not valid JSON'),
-            ]);
+            // Always with a reason. JsonFile::read omits one only for a missing
+            // file, and this one is not missing — the is_file above is what
+            // makes the reasonless variant unreachable, which is why it no
+            // longer exists.
+            $warnings[] = new ConfigWarning('%file% is not valid JSON (%error%)', ['%file%' => $label, '%error%' => (string) $jsonError]);
+
+            return null;
         }
 
-        $keymap = [];
-        $warnings = [];
         /** @var array<string, string|int|list<string>> $keymapConfig */
         $keymapConfig = $config['keymap'] ?? [];
-        foreach ($keymapConfig as $action => $keys) {
-            // Only the SHAPE is judged here. Whether an id exists is a question
-            // this class cannot answer: it parses .porta.json before the
-            // container exists, let alone the plugins, and a plugin pane's
-            // actions ("image_zoom_in") are as real as core's. KeybindingsFactory
-            // asks that once the catalog is complete, and warns there.
+        /** @var array<string, scalar> $settingsConfig */
+        $settingsConfig = $config['settings'] ?? [];
+        /** @var array<string, mixed> $languagesConfig */
+        $languagesConfig = \is_array($config['languages'] ?? null) ? $config['languages'] : [];
+
+        return [
+            'keymap' => self::parseKeymap($keymapConfig, $label, $warnings),
+            'settings' => self::parseSettings($settingsConfig, $label, $warnings),
+            'languages' => self::parseLanguages($languagesConfig, $label, $warnings),
+            'lsp' => self::parseLspServers($config['lsp'] ?? null),
+            'plugins' => self::parsePluginSettings(\is_array($config['plugins'] ?? null) ? $config['plugins'] : [], $warnings),
+            'disabledPlugins' => self::stringList($config['disabledPlugins'] ?? null),
+            // Nullable on purpose — see the enabledPlugins clause in merge().
+            'enabledPlugins' => \array_key_exists('enabledPlugins', $config) ? self::stringList($config['enabledPlugins']) : null,
+            'highlight' => \array_key_exists('highlight', $config) ? self::parseHighlight($config['highlight'], $label, $warnings) : null,
+        ];
+    }
+
+    /**
+     * Fold the layers together, lowest precedence first, and apply the defaults.
+     *
+     * Each block is merged at the finest granularity that keeps its meaning,
+     * which is not the same granularity for all of them:
+     *
+     * - `settings`, `plugins`, `lsp`, `highlight.languages` — per key. Setting
+     *   your theme globally and your tab width per project is the ordinary case.
+     * - `keymap` — per ACTION, never per chord list. Merging two lists of keys
+     *   for one action produces a binding nobody asked for.
+     * - `languages` — per language, then per field, except `debug.launch`,
+     *   which replaces whole. A half-merged DAP launch config has never been a
+     *   thing that runs.
+     * - `disabledPlugins` — UNION. Both layers are saying "not this one", and
+     *   an override that silently re-enables a plugin the user turned off
+     *   globally is the opposite of what either layer asked for.
+     * - `enabledPlugins` — the nearest PRESENT layer replaces, and an empty
+     *   list counts as present. See the clause below; this is the one rule that
+     *   cannot be a union.
+     *
+     * @param list<array{keymap: array<string, list<string>>, settings: array<string, bool|int|string>, languages: array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}>, lsp: array<string, string>, plugins: array<string, array<string, bool|int|string>>, disabledPlugins: list<string>, enabledPlugins: ?list<string>, highlight: ?array{default: string, languages: array<string, string>}}> $layers
+     * @param list<ConfigWarning> $warnings
+     */
+    private static function merge(array $layers, array $warnings): self
+    {
+        $keymap = [];
+        $settings = self::DEFAULT_SETTINGS;
+        $languages = [];
+        $lsp = [];
+        $plugins = [];
+        $disabled = [];
+        $enabled = null;
+        $highlight = null;
+
+        foreach ($layers as $layer) {
+            $keymap = [...$keymap, ...$layer['keymap']];
+            $settings = [...$settings, ...$layer['settings']];
+            $languages = self::mergeLanguages($languages, $layer['languages']);
+            $lsp = [...$lsp, ...$layer['lsp']];
+            foreach ($layer['plugins'] as $plugin => $values) {
+                $plugins[$plugin] = [...($plugins[$plugin] ?? []), ...$values];
+            }
+            $disabled = [...$disabled, ...$layer['disabledPlugins']];
+            // NOT a union, and this is the sentence the whole scope feature
+            // rests on: `enabledPlugins` is an explicit list that REPLACES,
+            // even when empty — that invariant is why persistBundled*
+            // materialises the effective list before writing. Unioned, a
+            // project could never turn off what global turned on, because
+            // there would be no way to express the absence.
+            $enabled = $layer['enabledPlugins'] ?? $enabled;
+            $highlight = null === $layer['highlight']
+                ? $highlight
+                : [
+                    'default' => '' !== $layer['highlight']['default'] ? $layer['highlight']['default'] : $highlight['default'] ?? '',
+                    'languages' => [...($highlight['languages'] ?? []), ...$layer['highlight']['languages']],
+                ];
+        }
+
+        return new self(
+            $keymap,
+            $settings,
+            $languages,
+            $lsp,
+            $plugins,
+            array_values(array_unique($disabled)),
+            $enabled ?? self::DEFAULT_ENABLED_PLUGINS,
+            $highlight ?? self::NO_HIGHLIGHT,
+            $warnings,
+        );
+    }
+
+    /**
+     * Per language, then per field — except `debug`, whose `launch` object
+     * replaces whole rather than merging key by key. A launch configuration is
+     * one thing an adapter either understands or does not; half of a project's
+     * and half of the global one is a config nobody wrote.
+     *
+     * @param array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}> $base
+     * @param array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}> $over
+     *
+     * @return array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}>
+     */
+    private static function mergeLanguages(array $base, array $over): array
+    {
+        foreach ($over as $language => $fields) {
+            $under = $base[$language] ?? [];
+            $merged = [...$under, ...$fields];
+            if (\array_key_exists('debug', $under) && \array_key_exists('debug', $fields)) {
+                $merged['debug'] = [...$under['debug'], ...$fields['debug']];
+            }
+            $base[$language] = $merged;
+        }
+
+        return $base;
+    }
+
+    /**
+     * The `keymap` block: action id => list of key chords.
+     *
+     * Only the SHAPE is judged here. Whether an id exists is a question this
+     * class cannot answer: it parses config before the container exists, let
+     * alone the plugins, and a plugin pane's actions ("image_zoom_in") are as
+     * real as core's. KeybindingsFactory asks that once the catalog is
+     * complete, and warns there.
+     *
+     * @param array<string, string|int|list<string>> $config
+     * @param list<ConfigWarning>                    $warnings
+     *
+     * @return array<string, list<string>>
+     */
+    private static function parseKeymap(array $config, string $label, array &$warnings): array
+    {
+        $keymap = [];
+        foreach ($config as $action => $keys) {
             $keys = \is_string($keys) ? [$keys] : $keys;
             if (!\is_array($keys)) {
-                $warnings[] = new ConfigWarning('Keymap action "%action%" must map to a key or list of keys', ['%action%' => $action]);
+                $warnings[] = new ConfigWarning('Keymap action "%action%" in %file% must map to a key or list of keys', ['%action%' => $action, '%file%' => $label]);
                 continue;
             }
             $keymap[$action] = array_values(array_map('strval', $keys));
         }
 
-        $settings = self::DEFAULT_SETTINGS;
-        /** @var array<string, scalar> $settingsConfig */
-        $settingsConfig = $config['settings'] ?? [];
-        foreach ($settingsConfig as $key => $value) {
+        return $keymap;
+    }
+
+    /**
+     * The `settings` block: only the keys this file actually set, coerced to
+     * each default's type and checked against any closed value domain.
+     *
+     * @param array<string, scalar> $config
+     * @param list<ConfigWarning>   $warnings
+     *
+     * @return array<string, bool|int|string>
+     */
+    private static function parseSettings(array $config, string $label, array &$warnings): array
+    {
+        $settings = [];
+        foreach ($config as $key => $value) {
             if (\in_array($key, self::LEGACY_SETTINGS, strict: true)) {
                 continue;
             }
             if (!\array_key_exists($key, self::DEFAULT_SETTINGS)) {
-                $warnings[] = new ConfigWarning('Unknown setting "%key%" in .porta.json', ['%key%' => $key]);
+                $warnings[] = new ConfigWarning('Unknown setting "%key%" in %file%', ['%key%' => $key, '%file%' => $label]);
                 continue;
             }
             // Coerce to the default's type (bool, int, or string).
@@ -198,13 +379,14 @@ final class IdeConfig
                 \is_int($default) => (int) $value,
                 default => (string) $value,
             };
-            // A choice setting's value domain is closed: an unknown value
-            // would otherwise flow into the env channel and resolve to
-            // whatever fallback its consumer happens to apply, silently.
+            // A choice setting's value domain is closed: an unknown value would
+            // otherwise flow into the env channel and resolve to whatever
+            // fallback its consumer happens to apply, silently.
             $allowed = self::CHOICE_SETTINGS[$key] ?? null;
             if (null !== $allowed && null === FieldNode::enum($allowed, $coerced)) {
-                $warnings[] = new ConfigWarning('Setting "%key%" must be one of %choices%, got "%value%"', [
+                $warnings[] = new ConfigWarning('Setting "%key%" in %file% must be one of %choices%, got "%value%"', [
                     '%key%' => $key,
+                    '%file%' => $label,
                     '%choices%' => implode('|', $allowed),
                     '%value%' => (string) $coerced,
                 ]);
@@ -214,24 +396,12 @@ final class IdeConfig
         }
 
         // Migrate the legacy `relativeLineNumbers` bool into the `lineNumbers`
-        // mode (an explicit `lineNumbers` in the file wins).
-        if (\array_key_exists('relativeLineNumbers', $settingsConfig) && !\array_key_exists('lineNumbers', $settingsConfig)) {
-            $settings['lineNumbers'] = (bool) $settingsConfig['relativeLineNumbers'] ? 'relative' : 'absolute';
+        // mode (an explicit `lineNumbers` in the same file wins).
+        if (\array_key_exists('relativeLineNumbers', $config) && !\array_key_exists('lineNumbers', $config)) {
+            $settings['lineNumbers'] = (bool) $config['relativeLineNumbers'] ? 'relative' : 'absolute';
         }
 
-        /** @var array<string, mixed> $languagesConfig */
-        $languagesConfig = \is_array($config['languages'] ?? null) ? $config['languages'] : [];
-        $languages = self::parseLanguages($languagesConfig, $warnings);
-        $lspServers = self::parseLspServers($config['lsp'] ?? null);
-        $plugins = self::parsePluginSettings(\is_array($config['plugins'] ?? null) ? $config['plugins'] : [], $warnings);
-        $disabledPlugins = self::stringList($config['disabledPlugins'] ?? null);
-        $enabledPlugins = \array_key_exists('enabledPlugins', $config)
-            ? self::stringList($config['enabledPlugins'])
-            : self::DEFAULT_ENABLED_PLUGINS;
-
-        $highlight = self::parseHighlight($config['highlight'] ?? null, $warnings);
-
-        return new self($keymap, $settings, $languages, $lspServers, $plugins, $disabledPlugins, $enabledPlugins, $highlight, $warnings);
+        return $settings;
     }
 
     /**
@@ -252,20 +422,17 @@ final class IdeConfig
      *
      * @return array{default: string, languages: array<string, string>}
      */
-    private static function parseHighlight(mixed $highlight, array &$warnings): array
+    private static function parseHighlight(mixed $highlight, string $label, array &$warnings): array
     {
-        if (null === $highlight) {
-            return self::NO_HIGHLIGHT;
-        }
         if (!\is_array($highlight)) {
-            $warnings[] = new ConfigWarning('"highlight" in .porta.json must be an object');
+            $warnings[] = new ConfigWarning('"highlight" in %file% must be an object', ['%file%' => $label]);
 
             return self::NO_HIGHLIGHT;
         }
 
         return [
             'default' => self::highlighterId($highlight['default'] ?? null) ?? '',
-            'languages' => self::highlighterLanguages($highlight['languages'] ?? null, $warnings),
+            'languages' => self::highlighterLanguages($highlight['languages'] ?? null, $label, $warnings),
         ];
     }
 
@@ -282,7 +449,7 @@ final class IdeConfig
      *
      * @return array<string, string>
      */
-    private static function highlighterLanguages(mixed $raw, array &$warnings): array
+    private static function highlighterLanguages(mixed $raw, string $label, array &$warnings): array
     {
         if (!\is_array($raw)) {
             return [];
@@ -292,7 +459,7 @@ final class IdeConfig
         foreach (array_keys($raw) as $language) {
             $id = self::highlighterId($raw[$language]);
             if (null === $id) {
-                $warnings[] = new ConfigWarning('Highlighter for "%language%" in .porta.json must be a non-empty string', ['%language%' => (string) $language]);
+                $warnings[] = new ConfigWarning('Highlighter for "%language%" in %file% must be a non-empty string', ['%language%' => (string) $language, '%file%' => $label]);
                 continue;
             }
             $languages[(string) $language] = $id;
@@ -385,13 +552,13 @@ final class IdeConfig
      *
      * @return array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}>
      */
-    private static function parseLanguages(array $config, array &$warnings): array
+    private static function parseLanguages(array $config, string $label, array &$warnings): array
     {
         $languages = [];
         foreach (array_keys($config) as $lang) {
             $lang = (string) $lang;
             if (!LanguageCatalog::isKnown($lang)) {
-                $warnings[] = new ConfigWarning('Unknown language "%lang%" in .porta.json', ['%lang%' => $lang]);
+                $warnings[] = new ConfigWarning('Unknown language "%lang%" in %file%', ['%lang%' => $lang, '%file%' => $label]);
                 continue;
             }
             $entry = self::languageEntry($config[$lang]);

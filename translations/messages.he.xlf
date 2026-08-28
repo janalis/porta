@@ -2454,41 +2454,37 @@
         <source>run command</source>
         <target>פקודת הרצה</target>
       </trans-unit>
-      <trans-unit id="625">
-        <source>.porta.json is not valid JSON</source>
-        <target>.porta.json אינו JSON תקין</target>
-      </trans-unit>
       <trans-unit id="626">
-        <source>.porta.json is not valid JSON (%error%)</source>
-        <target>.porta.json אינו JSON תקין (%error%)</target>
+        <source>%file% is not valid JSON (%error%)</source>
+        <target>%file% אינו JSON תקין (%error%)</target>
       </trans-unit>
       <trans-unit id="627">
-        <source>Keymap action "%action%" must map to a key or list of keys</source>
-        <target>פעולת מקשים "%action%" חייבת להיות ממופה למקש או לרשימת מקשים</target>
+        <source>Keymap action "%action%" in %file% must map to a key or list of keys</source>
+        <target>פעולת מקשים "%action%" חייבת להיות ממופה למקש או לרשימת מקשים (%file%)</target>
       </trans-unit>
       <trans-unit id="628">
-        <source>Unknown setting "%key%" in .porta.json</source>
-        <target>הגדרה לא ידועה "%key%" ב-.porta.json</target>
+        <source>Unknown setting "%key%" in %file%</source>
+        <target>הגדרה לא ידועה "%key%" ב-%file%</target>
       </trans-unit>
       <trans-unit id="629">
-        <source>Setting "%key%" must be one of %choices%, got "%value%"</source>
-        <target>ההגדרה "%key%" חייבת להיות אחת מ-%choices%, והתקבל "%value%"</target>
+        <source>Setting "%key%" in %file% must be one of %choices%, got "%value%"</source>
+        <target>ההגדרה "%key%" חייבת להיות אחת מ-%choices%, והתקבל "%value%" (%file%)</target>
       </trans-unit>
       <trans-unit id="630">
-        <source>"highlight" in .porta.json must be an object</source>
-        <target>"highlight" ב-.porta.json חייב להיות אובייקט</target>
+        <source>"highlight" in %file% must be an object</source>
+        <target>"highlight" ב-%file% חייב להיות אובייקט</target>
       </trans-unit>
       <trans-unit id="631">
-        <source>Highlighter for "%language%" in .porta.json must be a non-empty string</source>
-        <target>ההדגשה עבור "%language%" ב-.porta.json חייבת להיות מחרוזת לא ריקה</target>
+        <source>Highlighter for "%language%" in %file% must be a non-empty string</source>
+        <target>ההדגשה עבור "%language%" ב-%file% חייבת להיות מחרוזת לא ריקה</target>
       </trans-unit>
       <trans-unit id="632">
         <source>Plugin settings for "%plugin%" must be an object</source>
         <target>הגדרות התוסף "%plugin%" חייבות להיות אובייקט</target>
       </trans-unit>
       <trans-unit id="633">
-        <source>Unknown language "%lang%" in .porta.json</source>
-        <target>שפה לא ידועה "%lang%" ב-.porta.json</target>
+        <source>Unknown language "%lang%" in %file%</source>
+        <target>שפה לא ידועה "%lang%" ב-%file%</target>
       </trans-unit>
       <trans-unit id="634">
         <source>Language "%lang%" must map to an object of indent settings</source>

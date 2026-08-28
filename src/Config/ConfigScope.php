@@ -30,6 +30,8 @@ enum ConfigScope: string
     /**
      * Lowest precedence first, which is the order a merge applies them in:
      * global sets the baseline, project overrides it.
+     *
+     * @return list<self>
      */
     public static function inPrecedenceOrder(): array
     {

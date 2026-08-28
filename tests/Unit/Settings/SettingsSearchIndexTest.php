@@ -94,7 +94,7 @@ final class SettingsSearchIndexTest extends TestCase
      */
     public function testTheRowSetIsRebuiltAfterSettingsRowsStale(): void
     {
-        $pages = new MutableSectionSource();
+        $pages = $this->mutableSection();
         $index = new SettingsSearchIndex(new SettingsPages([$pages]), new Translator());
         $this->assertSame([], $index->search('late', 10));
 
@@ -112,7 +112,7 @@ final class SettingsSearchIndexTest extends TestCase
      */
     public function testTheIndexIsRebuiltAfterALocaleChange(): void
     {
-        $pages = new MutableSectionSource();
+        $pages = $this->mutableSection();
         $translator = new Translator();
         $index = new SettingsSearchIndex(new SettingsPages([$pages]), $translator);
         $index->search('', 1); // build
@@ -179,43 +179,52 @@ final class SettingsSearchIndexTest extends TestCase
             public function reset(string $section, string $key): void {}
         };
     }
-}
 
-/** A section whose row set can move between searches, as a plugin toggle moves it. */
-final class MutableSectionSource implements SettingsSection
-{
-    /** @var array<string, string> */
-    private array $rows = ['theme' => 'Theme'];
-
-    public function addRow(string $key, string $label): void
+    /**
+     * A section whose row set can move between searches, as a plugin toggle
+     * moves it.
+     *
+     * Anonymous rather than a second named class in this file: it is this
+     * suite's fixture and nothing else's, and a named one would be the only
+     * file in the tree declaring two classes.
+     */
+    private function mutableSection(): SettingsSection
     {
-        $this->rows[$key] = $label;
+        return new class implements SettingsSection {
+            /** @var array<string, string> */
+            private array $rows = ['theme' => 'Theme'];
+
+            public function addRow(string $key, string $label): void
+            {
+                $this->rows[$key] = $label;
+            }
+
+            public function handles(string $section): bool
+            {
+                return 'general' === $section;
+            }
+
+            public function pages(): array
+            {
+                return [new SettingsPage('general', 'General')];
+            }
+
+            public function rows(string $section): array
+            {
+                $out = [];
+                foreach ($this->rows as $key => $label) {
+                    $out[] = new SettingsRow(key: $key, label: $label, kind: SettingsRowKind::Bool, value: true, restart: false);
+                }
+
+                return $out;
+            }
+
+            public function change(string $section, string $key, bool|int|string $value): bool
+            {
+                return true;
+            }
+
+            public function reset(string $section, string $key): void {}
+        };
     }
-
-    public function handles(string $section): bool
-    {
-        return 'general' === $section;
-    }
-
-    public function pages(): array
-    {
-        return [new SettingsPage('general', 'General')];
-    }
-
-    public function rows(string $section): array
-    {
-        $out = [];
-        foreach ($this->rows as $key => $label) {
-            $out[] = new SettingsRow(key: $key, label: $label, kind: SettingsRowKind::Bool, value: true, restart: false);
-        }
-
-        return $out;
-    }
-
-    public function change(string $section, string $key, bool|int|string $value): bool
-    {
-        return true;
-    }
-
-    public function reset(string $section, string $key): void {}
 }

@@ -2454,41 +2454,37 @@
         <source>run command</source>
         <target>comando de ejecución</target>
       </trans-unit>
-      <trans-unit id="625">
-        <source>.porta.json is not valid JSON</source>
-        <target>.porta.json no es un JSON válido</target>
-      </trans-unit>
       <trans-unit id="626">
-        <source>.porta.json is not valid JSON (%error%)</source>
-        <target>.porta.json no es un JSON válido (%error%)</target>
+        <source>%file% is not valid JSON (%error%)</source>
+        <target>%file% no es un JSON válido (%error%)</target>
       </trans-unit>
       <trans-unit id="627">
-        <source>Keymap action "%action%" must map to a key or list of keys</source>
-        <target>La acción de atajo «%action%» debe asignarse a una tecla o lista de teclas</target>
+        <source>Keymap action "%action%" in %file% must map to a key or list of keys</source>
+        <target>La acción de atajo «%action%» debe asignarse a una tecla o lista de teclas (%file%)</target>
       </trans-unit>
       <trans-unit id="628">
-        <source>Unknown setting "%key%" in .porta.json</source>
-        <target>Ajuste desconocido «%key%» en .porta.json</target>
+        <source>Unknown setting "%key%" in %file%</source>
+        <target>Ajuste desconocido «%key%» en %file%</target>
       </trans-unit>
       <trans-unit id="629">
-        <source>Setting "%key%" must be one of %choices%, got "%value%"</source>
-        <target>El ajuste «%key%» debe ser uno de %choices%, se obtuvo «%value%»</target>
+        <source>Setting "%key%" in %file% must be one of %choices%, got "%value%"</source>
+        <target>El ajuste «%key%» debe ser uno de %choices%, se obtuvo «%value%» (%file%)</target>
       </trans-unit>
       <trans-unit id="630">
-        <source>"highlight" in .porta.json must be an object</source>
-        <target>«highlight» en .porta.json debe ser un objeto</target>
+        <source>"highlight" in %file% must be an object</source>
+        <target>«highlight» en %file% debe ser un objeto</target>
       </trans-unit>
       <trans-unit id="631">
-        <source>Highlighter for "%language%" in .porta.json must be a non-empty string</source>
-        <target>El resaltador para «%language%» en .porta.json debe ser una cadena no vacía</target>
+        <source>Highlighter for "%language%" in %file% must be a non-empty string</source>
+        <target>El resaltador para «%language%» en %file% debe ser una cadena no vacía</target>
       </trans-unit>
       <trans-unit id="632">
         <source>Plugin settings for "%plugin%" must be an object</source>
         <target>Los ajustes del complemento «%plugin%» deben ser un objeto</target>
       </trans-unit>
       <trans-unit id="633">
-        <source>Unknown language "%lang%" in .porta.json</source>
-        <target>Idioma desconocido «%lang%» en .porta.json</target>
+        <source>Unknown language "%lang%" in %file%</source>
+        <target>Idioma desconocido «%lang%» en %file%</target>
       </trans-unit>
       <trans-unit id="634">
         <source>Language "%lang%" must map to an object of indent settings</source>

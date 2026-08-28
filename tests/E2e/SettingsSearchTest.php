@@ -75,7 +75,7 @@ final class SettingsSearchTest extends TestCase
                     $this->assertNotNull($this->rowOf($grid, 'Sticky scroll'), 'the Interface page is showing');
 
                     $form = $tui->getById('settings-form');
-                    \assert($form instanceof SettingsFormWidget);
+                    \assert($form instanceof SettingsFormWidget, description: 'the settings form is the content pane while the view is open');
                     $this->assertStringContainsString(
                         'Sticky scroll',
                         $this->selectedSettingRow($form),
@@ -126,7 +126,7 @@ final class SettingsSearchTest extends TestCase
                     $this->assertNull($this->rowOf($grid, 'Inline diagnostics'), 'NOT on General, which is where open() resets to');
 
                     $form = $tui->getById('settings-form');
-                    \assert($form instanceof SettingsFormWidget);
+                    \assert($form instanceof SettingsFormWidget, description: 'the settings form is the content pane while the view is open');
                     $this->assertStringContainsString('Sticky scroll', $this->selectedSettingRow($form), 'landed on the row');
                 },
             ],
@@ -172,7 +172,7 @@ final class SettingsSearchTest extends TestCase
                     $this->assertNotNull($this->rowOf($grid, 'Sticky scroll'), 'picking it opened the settings view on Interface');
 
                     $form = $tui->getById('settings-form');
-                    \assert($form instanceof SettingsFormWidget);
+                    \assert($form instanceof SettingsFormWidget, description: 'the settings form is the content pane while the view is open');
                     $this->assertStringContainsString('Sticky scroll', $this->selectedSettingRow($form), 'landed on the row');
                 },
             ],

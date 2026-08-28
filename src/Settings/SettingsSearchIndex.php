@@ -75,7 +75,11 @@ final class SettingsSearchIndex
         }
         // Score first, then the shorter label — a tie between "Theme" and
         // "Theme overrides" should put the plain one on top.
-        usort($scored, static fn (array $a, array $b): int => $b[0] <=> $a[0] ?: \strlen($a[1]->label) <=> \strlen($b[1]->label));
+        usort($scored, static function (array $a, array $b): int {
+            $byScore = $b[0] <=> $a[0];
+
+            return 0 !== $byScore ? $byScore : \strlen($a[1]->label) <=> \strlen($b[1]->label);
+        });
 
         return array_map(static fn (array $row): SettingsSearchEntry => $row[1], \array_slice($scored, offset: 0, length: $limit));
     }
