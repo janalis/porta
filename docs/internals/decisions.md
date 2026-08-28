@@ -481,3 +481,16 @@ Rejected, each with what would re-open it:
 - **`<home>/.porta.json` as the global file.** People run `porta ~`, and that
   spelling collapses the two layers into one file where a project write and a
   global write are silently the same write.
+- **The one-time "there is a global file now" notice**, which this plan called
+  for and which the shipped default made redundant. The notice existed to
+  explain a surprise: an existing user's next edit landing in a file they had
+  not heard of. `SettingsScope` does not create that surprise — a project whose
+  `.porta.json` already has a `settings` block keeps writing there, and a
+  project that has none has no old values to be confused about. What remains is
+  a feature announcement, and the "Save changes to" row at the top of every
+  page announces it better than a flash that scrolls away. The notice also had
+  a real cost: marking "already told" means WRITING the global file at boot,
+  for every existing user, creating a file nobody asked for and giving the test
+  suite a boot-time write into its shared fixture home. *Re-opens if* the
+  default ever moves an existing user's writes without their asking — then the
+  surprise is real again and has to be explained.
