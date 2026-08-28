@@ -536,4 +536,48 @@ final class SettingsControllerTest extends TestCase
             TestTui::create(80, 24),
         );
     }
+
+    /**
+     * A hand-edited `.porta.json` may hold `1` where the default holds `true`.
+     * The row's value is cast to its kind for exactly that reason, and the
+     * marker compares against a default produced by the same call — otherwise
+     * `1 !== true` and every checkbox on the page reads as modified.
+     */
+    public function testABooleanAtItsDefaultIsNotMarkedHoweverTheConfigSpelledIt(): void
+    {
+        $project = new TempProject();
+        // `1`, not `true` — what a hand-edited .porta.json may well hold.
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), ['inlineDiagnostics' => 1] + IdeConfig::DEFAULT_SETTINGS);
+
+        $row = $this->rowFor($controller->formRows(), 'inlineDiagnostics');
+
+        $this->assertTrue($row->value, 'the value coerced to the row kind');
+        $this->assertFalse($row->isModified(), 'and so did the default, so they compare equal');
+    }
+
+    public function testTheMarkerFollowsAChangeAndClearsWhenItIsPutBack(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), IdeConfig::DEFAULT_SETTINGS);
+
+        $this->assertFalse($this->rowFor($controller->formRows(), 'inlineDiagnostics')->isModified(), 'a fresh project is at its defaults');
+
+        $controller->changeSetting('inlineDiagnostics', false);
+        $this->assertTrue($this->rowFor($controller->formRows(), 'inlineDiagnostics')->isModified(), 'the marker follows the change');
+
+        $controller->changeSetting('inlineDiagnostics', true);
+        $this->assertFalse($this->rowFor($controller->formRows(), 'inlineDiagnostics')->isModified(), 'and clears when it is put back');
+    }
+
+    /** @param list<\Porta\Settings\SettingsRow> $rows */
+    private function rowFor(array $rows, string $key): \Porta\Settings\SettingsRow
+    {
+        foreach ($rows as $row) {
+            if ($key === $row->key) {
+                return $row;
+            }
+        }
+
+        self::fail(\sprintf('No row keyed "%s"', $key));
+    }
 }

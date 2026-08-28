@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
+use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
 use Porta\Editor\EditorViewOptions;
@@ -192,20 +193,31 @@ final class SettingsController
             if ($group !== $descriptor['group']) {
                 continue;
             }
-            $raw = $this->settings[$key] ?? '';
-            $value = SettingsRowKind::Bool === $descriptor['kind'] ? (bool) $raw : (string) $raw;
             $rows[] = new SettingsRow(
                 key: $key,
                 label: $this->translator->trans($descriptor['label']),
                 kind: $descriptor['kind'],
-                value: $value,
+                value: self::coerce($this->settings[$key] ?? '', $descriptor['kind']),
                 restart: $descriptor['restart'],
                 options: $descriptor['options'] ?? null,
                 optionLabels: $descriptor['optionLabels'] ?? null,
+                // Through the SAME call as the value above, so the two operands
+                // of isModified() cannot be produced differently. DEFAULT_SETTINGS
+                // holds well-typed values today, so this is symmetry rather than
+                // a live fix — but a loosely-typed default added later would
+                // otherwise make every row on its page read as modified, and
+                // nothing else would catch that.
+                default: self::coerce(IdeConfig::DEFAULT_SETTINGS[$key] ?? '', $descriptor['kind']),
             );
         }
 
         return $rows;
+    }
+
+    /** A stored value as its row's kind renders it. */
+    private static function coerce(bool|int|string $raw, SettingsRowKind $kind): bool|string
+    {
+        return SettingsRowKind::Bool === $kind ? (bool) $raw : (string) $raw;
     }
 
     /** Cycle the line-numbers mode off → absolute → relative → off (the View menu command). */

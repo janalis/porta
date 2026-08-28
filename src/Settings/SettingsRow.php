@@ -38,5 +38,30 @@ final readonly class SettingsRow
         public bool $danger = false,
         /** How far one keypress moves an int; 1 when unset. */
         public ?int $step = null,
+        /**
+         * The value this row has when the user has not chosen one; null when
+         * the row has no default to differ from (a button, or session state).
+         */
+        public bool|int|string|null $default = null,
     ) {}
+
+    /**
+     * Whether the row differs from its default VALUE — not whether its key is
+     * present in `.porta.json`.
+     *
+     * Presence is the right question for a migration (has the new owner
+     * spoken yet?) and the wrong one here: a file that says `"theme": "dark"`
+     * when dark is the default would light a marker meaning nothing, and a
+     * user asking "what have I changed on this page?" means changed from
+     * stock. It also costs no I/O and works the same for a plugin row, whose
+     * default lives on its descriptor.
+     *
+     * The default must be coerced through this row's kind exactly as the value
+     * was, or an int 1 will not equal a bool true and every checkbox reads as
+     * modified.
+     */
+    public function isModified(): bool
+    {
+        return null !== $this->default && $this->value !== $this->default;
+    }
 }

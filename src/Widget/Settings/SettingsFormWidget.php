@@ -336,7 +336,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             // A button whose caption fell back to its own label leaves the
             // label column blank rather than saying it twice.
             $label = SettingsRowKind::Action === $row->kind && '' === (string) $row->value ? '' : $row->label;
-            $text = ' '.AnsiText::padRight($label, $layout->label).'  '.$control;
+            $text = $this->marker($row).AnsiText::padRight($label, $layout->label).'  '.$control;
             $detail = SettingsRowDetail::of($row, $this->translator);
             if ('' !== $detail) {
                 // No dangling separator when the control is empty — an unset
@@ -356,6 +356,19 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $lines[] = $this->footer($width);
 
         return $this->withMenuOverlay($lines, $width);
+    }
+
+    /**
+     * The leading marker column: a dot on a row that differs from its default.
+     *
+     * Leading, so one vertical scan of the page answers "what have I changed
+     * here?" — which nothing on this screen could answer before.
+     */
+    private function marker(SettingsRow $row): string
+    {
+        return $row->isModified()
+            ? $this->styles->of(Role::Modified)->apply(Glyphs::SETTING_MODIFIED).' '
+            : '  ';
     }
 
     /**

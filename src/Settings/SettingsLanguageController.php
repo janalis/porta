@@ -23,6 +23,9 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 #[AsIdeService]
 final class SettingsLanguageController
 {
+    /** Both indent rows default to following the file / editor rather than forcing a value. */
+    private const string AUTO = 'auto';
+
     private const array STYLE_OPTIONS = ['auto', 'spaces', 'tabs'];
     private const array SIZE_OPTIONS = ['auto', '1', '2', '3', '4', '5', '6', '7', '8'];
 
@@ -75,6 +78,7 @@ final class SettingsLanguageController
                 value: $entry->indentStyle,
                 restart: false,
                 options: self::STYLE_OPTIONS,
+                default: self::AUTO,
             ),
             new SettingsRow(
                 key: 'indentSize',
@@ -83,6 +87,7 @@ final class SettingsLanguageController
                 value: (string) $entry->indentSize,
                 restart: false,
                 options: self::SIZE_OPTIONS,
+                default: self::AUTO,
             ),
             new SettingsRow(
                 key: 'runCommand',
@@ -91,6 +96,7 @@ final class SettingsLanguageController
                 value: $this->runCommand[$language] ?? '',
                 restart: true,
                 hint: $this->translator->trans('e.g. frankenphp php-cli — empty = bundled php'),
+                default: '',
             ),
         ];
     }

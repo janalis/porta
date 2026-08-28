@@ -88,6 +88,7 @@ final class SettingsHighlightController
                 kind: SettingsRowKind::Choice,
                 value: $this->configuredDefault(),
                 restart: false,
+                default: self::AUTO,
                 options: [self::AUTO, ...$this->allBackendIds()],
                 optionLabels: [self::AUTO => $this->translator->trans('auto (first available)')],
                 hint: $this->translator->trans('Used for any language without its own choice below'),
@@ -102,6 +103,7 @@ final class SettingsHighlightController
                 kind: SettingsRowKind::Choice,
                 value: $configured[$language] ?? self::AUTO,
                 restart: false,
+                default: self::AUTO,
                 options: [self::AUTO, ...$ids],
                 optionLabels: [self::AUTO => $this->translator->trans('default')],
             );

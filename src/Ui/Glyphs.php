@@ -68,6 +68,9 @@ final class Glyphs
 
     // Tab strips.
     public const string DIRTY = '●';
+    // Same value as DIRTY and BREAKPOINT — disjoint surfaces again (a settings
+    // row's marker column vs a tab label vs the editor gutter).
+    public const string SETTING_MODIFIED = '●';
     public const string SESSION_STOPPED = '○';
     public const string SEPARATOR = '│'; // between two tabs of one family
     public const string FAMILY_SEPARATOR = '┃'; // between two families — heavier, because a drag cannot cross it

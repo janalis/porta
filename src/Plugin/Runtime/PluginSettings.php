@@ -81,6 +81,9 @@ final class PluginSettings
                 max: $descriptor['max'],
                 hint: $descriptor['hint'],
                 step: $descriptor['step'],
+                // Through the same coercion as the value above, so a bool
+                // default declared as 1 does not read as modified.
+                default: $this->coerce($descriptor, null),
             );
         }
 
@@ -113,10 +116,10 @@ final class PluginSettings
     /** @param Descriptor $descriptor */
     private function coerce(array $descriptor, bool|int|string|null $value): bool|int|string
     {
-        if (null === $value) {
-            return $descriptor['default'];
-        }
-
-        return SettingsRowKind::from($descriptor['kind'])->coerce($value, $descriptor['default'], $descriptor['options'] ?? []);
+        // The DEFAULT goes through the same coercion as a set value, not
+        // straight out of the descriptor: a plugin may declare a bool default
+        // as 1, and an unset row reporting int 1 while a toggled-and-restored
+        // row reports bool true would make the second read as modified.
+        return SettingsRowKind::from($descriptor['kind'])->coerce($value ?? $descriptor['default'], $descriptor['default'], $descriptor['options'] ?? []);
     }
 }

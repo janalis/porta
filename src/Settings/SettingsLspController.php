@@ -67,6 +67,7 @@ final class SettingsLspController
             kind: SettingsRowKind::Text,
             value: $this->overrides[$language] ?? '',
             restart: false,
+            default: '', // unset means auto-detect
             hint: null !== $auto ? $this->translator->trans('auto: %server%', ['%server%' => $auto]) : $this->translator->trans('auto-detect'),
         )];
     }

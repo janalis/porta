@@ -707,31 +707,45 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertStringContainsString('Tab width', AnsiUtils::stripAnsiCodes($this->body($lines)[4]), 'the last real row (index 4) is reached — a break at row 0 would prevent this');
     }
 
-    public function testTextRowConcatenatesALeadingSpaceBeforeTheLabel(): void
-    {
-        $screen = AnsiUtils::stripAnsiCodes($this->textWidget()->render(new RenderContext(60, 4))[1]);
-
-        $this->assertStringStartsWith(' LSP server', $screen);
-    }
-
-    public function testActionRowConcatenatesALeadingSpaceBeforeTheLabel(): void
+    /**
+     * Every kind reserves the same leading marker column, so the label column
+     * lines up whether or not a row is modified.
+     */
+    public function testEveryKindReservesTheMarkerColumn(): void
     {
         $widget = new SettingsFormWidget(new Translator('en'));
-        $widget->setRows([new SettingsRow(key: 'k', label: 'Remove', kind: SettingsRowKind::Action, value: 'Go', restart: false)]);
+        $widget->setRows([
+            new SettingsRow(key: 'a', label: 'Remove', kind: SettingsRowKind::Action, value: 'Go', restart: false),
+            new SettingsRow(key: 'b', label: 'Theme', kind: SettingsRowKind::Choice, value: 'dark', restart: false, options: ['dark', 'light']),
+            new SettingsRow(key: 'c', label: 'Sticky', kind: SettingsRowKind::Bool, value: true, restart: false),
+        ]);
 
-        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[1]);
+        $rendered = $widget->render(new RenderContext(60, 6));
 
-        $this->assertStringStartsWith(' Remove  [Go]', $screen);
+        foreach ([0, 1, 2] as $i) {
+            $this->assertStringStartsWith('  ', AnsiUtils::stripAnsiCodes($this->body($rendered)[$i]), 'an unmarked row leaves the marker column blank');
+        }
+        $this->assertMatchesRegularExpression('/^  Remove\s+\[Go\]/', AnsiUtils::stripAnsiCodes($this->body($rendered)[0]));
     }
 
-    public function testDefaultChoiceRowConcatenatesALeadingSpaceBeforeTheLabel(): void
+    /**
+     * The marker answers "what have I changed on this page?" — a question the
+     * screen could not answer at all before.
+     */
+    public function testAModifiedRowIsMarkedAndAStockRowIsNot(): void
     {
         $widget = new SettingsFormWidget(new Translator('en'));
-        $widget->setRows([new SettingsRow(key: 'k', label: 'Theme', kind: SettingsRowKind::Choice, value: 'dark', restart: false, options: ['dark', 'light'])]);
+        $widget->setRows([
+            new SettingsRow(key: 'a', label: 'Stock', kind: SettingsRowKind::Choice, value: 'dark', restart: false, options: ['dark', 'light'], default: 'dark'),
+            new SettingsRow(key: 'b', label: 'Changed', kind: SettingsRowKind::Choice, value: 'light', restart: false, options: ['dark', 'light'], default: 'dark'),
+            new SettingsRow(key: 'c', label: 'Defaultless', kind: SettingsRowKind::Action, value: 'Go', restart: false),
+        ]);
 
-        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[1]);
+        $rendered = array_map(AnsiUtils::stripAnsiCodes(...), $this->body($widget->render(new RenderContext(60, 6))));
 
-        $this->assertStringStartsWith(' Theme  < dark >', $screen);
+        $this->assertStringStartsWith('  Stock', $rendered[0], 'a row at its default is not marked');
+        $this->assertStringStartsWith('● Changed', $rendered[1], 'a row that differs is');
+        $this->assertStringStartsWith('  Defaultless', $rendered[2], 'a row with no default never marks');
     }
 
     public function testAnOverflowingEditedRowScrollsToTheCaretInsteadOfTruncating(): void
@@ -755,7 +769,7 @@ final class SettingsFormWidgetTest extends TestCase
 
         $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(20, 4))[1]);
 
-        $this->assertStringStartsWith(' A very long', $screen, 'not being edited: the left edge (label start) is kept, not scrolled');
+        $this->assertStringStartsWith('  A very long', $screen, 'not being edited: the left edge (marker column, then label) is kept, not scrolled');
     }
 
     public function testShortRowsArePaddedToTheFullColumnWidth(): void

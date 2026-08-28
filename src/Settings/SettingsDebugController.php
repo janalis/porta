@@ -38,6 +38,7 @@ final class SettingsDebugController
                 kind: SettingsRowKind::Text,
                 value: $this->adapters->adapterCommand($language),
                 restart: false,
+                default: '', // unset means no adapter configured
                 hint: $this->translator->trans('not configured'),
             ),
             new SettingsRow(
@@ -46,6 +47,7 @@ final class SettingsDebugController
                 kind: SettingsRowKind::Text,
                 value: [] === $launch ? '' : (string) json_encode($launch, \JSON_UNESCAPED_SLASHES),
                 restart: false,
+                default: '',
                 hint: $this->translator->trans('JSON merged into the DAP launch request'),
             ),
         ];

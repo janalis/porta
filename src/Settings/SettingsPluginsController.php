@@ -113,6 +113,10 @@ final class SettingsPluginsController
                 kind: SettingsRowKind::Bool,
                 value: $enabled,
                 restart: false,
+                // No default on purpose: "enabled" has no single stock value
+                // to differ from. A bundled plugin is off unless it is in
+                // DEFAULT_ENABLED_PLUGINS; a project or global one is on. A
+                // marker here would be wrong for one of the two.
             ),
             ...$this->pluginSettings->rows($name),
         ];
