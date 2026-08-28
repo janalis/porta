@@ -26,9 +26,16 @@ paging it: `composer analyze > /tmp/x.log 2>&1; echo "exit=$?"`.
 - `composer test` — green.
 - `composer coverage:check` — **100% line coverage**, over `src/` AND every plugin's own
   `src/`. Plugin code must be covered by that plugin's OWN tests.
-- `composer analyze` — zero issues, warnings or help messages.
-- `composer lint` — **zero findings** (the standing tail was retired 2026-08). Fix a new
-  finding, or suppress it in place with a reasoned `// @mago-expect lint:<rule> -- why`.
+- `composer analyze` — zero issues, warnings or help messages. Suppress in place with
+  `// @mago-expect analysis:<rule> -- why` ONLY when the cause is outside this codebase
+  (a wrong stub) or narrowing would add a branch coverage cannot reach.
+- `composer lint` — **zero findings**. Fix a new finding, or suppress it in place with a
+  reasoned `// @mago-expect lint:<rule> -- why`. **Both gates exit 0 while reporting
+  issues**, so the exit code is not the gate — read the tail of the output. The tail
+  reached 93 findings once before anyone noticed, and the run that noticed is the one
+  that caught `mago lint --fix` deleting a pipe-drain loop and deadlocking the suite.
+  Never run `--fix` unattended; verify with the FULL suite, since every file it touched
+  passed on its own.
 - `composer arch` — fails on drift in EITHER direction. A new edge is added to the
   allowlist in the same commit; a vanished edge is removed from it.
 - `composer format:check` — clean.
