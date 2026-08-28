@@ -1,5 +1,41 @@
 # Configuration
 
+Porta reads two files, and the second wins:
+
+| Scope | File | For |
+| --- | --- | --- |
+| Global | `~/.porta/config.json` | your preferences, on every project |
+| Project | `<root>/.porta.json` | the team's, committed with the repo |
+
+Both use the same format, described below. The global file is optional and
+does not exist until something writes it. Neither is required.
+
+`PORTA_HOME` overrides `HOME` when resolving the global file, which is also
+how the global plugin directory is found — the two are siblings.
+
+## How the two are merged
+
+Per key for `settings`, `plugins`, `lsp` and `highlight.languages`: setting your
+theme globally and your indentation per project is the ordinary case.
+
+Three blocks are deliberately coarser, because a partial merge of one would
+produce a configuration nobody wrote:
+
+- **`keymap`** merges per ACTION. A project naming `save` replaces that action's
+  whole chord list rather than adding to it.
+- **`languages.<lang>.debug.launch`** replaces whole. A launch configuration is
+  something an adapter either understands or does not.
+- **`enabledPlugins`** is taken from the nearest file that names it, and an
+  empty list counts as naming it. This is what lets a project turn off a
+  bundled plugin that your global file turned on.
+
+**`disabledPlugins` is the one that unions.** Both files are saying "not this
+one", and an override that silently re-enabled a plugin you turned off globally
+would be the opposite of what either file asked for.
+
+A warning names the file it came from, so a mistake in one is not reported
+against the other.
+
 ## `.porta.json`
 
 Per-project configuration, read from the project root. All keys are

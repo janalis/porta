@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ConfigFiles;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Config\RecommendedPlugins;
@@ -63,9 +64,8 @@ final class SettingsHighlightControllerTest extends TestCase
         return new SettingsHighlightController(
             new HighlightRegistry($source, $this->preferences),
             new Translator('en'),
-            $this->project->dir,
             $this->preferences,
-            new PortaJsonWriter(),
+            new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
             $this->lifecycle,
         );
     }
@@ -130,9 +130,8 @@ final class SettingsHighlightControllerTest extends TestCase
                 }
             }, new HighlightPreferences()),
             new Translator('en'),
-            $this->project->dir,
             new HighlightPreferences(),
-            new PortaJsonWriter(),
+            new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
         );
 
         $controller->change(SettingsHighlightController::ENABLE_KEY, '');
@@ -264,9 +263,8 @@ final class SettingsHighlightControllerTest extends TestCase
         $controller = new SettingsHighlightController(
             new HighlightRegistry($counting, $preferences),
             new Translator('en'),
-            $this->project->dir,
             $preferences,
-            new PortaJsonWriter(),
+            new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
             $this->lifecycle,
         );
 

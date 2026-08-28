@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ConfigFiles;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Event\SettingsRowsStale;
@@ -70,7 +71,7 @@ final class SettingsLspControllerTest extends TestCase
             $reconfigurer,
             new Notifier($status, $tui),
             new Translator('en'),
-            new PortaJsonWriter(),
+            new PortaJsonWriter(ConfigFiles::for($rootDir)),
         );
     }
 

@@ -8,9 +8,11 @@ use Porta\Support\JsonFile;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
- * Writes settings back into a project's `.porta.json`, merging with and
+ * Writes settings back into one of the two config files, merging with and
  * preserving everything already there (including keys this build does not
- * know). The read half is {@see IdeConfig}; the two share nothing but that
+ * know). Which file is a {@see ConfigScope} on every method — a type change on
+ * the parameter that used to be the project root, rather than a second method
+ * per verb. The read half is {@see IdeConfig}; the two share nothing but that
  * file's value vocabulary ({@see IdeConfig::stringList()},
  * {@see IdeConfig::commandString()}, {@see IdeConfig::LEGACY_SETTINGS}) and no
  * state at all, which is why they are separate classes.
@@ -26,9 +28,8 @@ use Symfony\Component\Filesystem\Filesystem;
  */
 final readonly class PortaJsonWriter
 {
-    private const string FILE = '/.porta.json';
-
     public function __construct(
+        private ConfigFiles $files,
         private Filesystem $fs = new Filesystem(),
     ) {}
 
@@ -36,9 +37,9 @@ final readonly class PortaJsonWriter
      * Persist a single setting into .porta.json, merging with and preserving
      * any existing content (including unknown keys). Returns true on success.
      */
-    public function persistSetting(string $rootDir, string $key, int|bool|string $value): bool
+    public function persistSetting(ConfigScope $scope, string $key, int|bool|string $value): bool
     {
-        return $this->edit($rootDir, static function (array &$config) use ($key, $value): void {
+        return $this->edit($scope, static function (array &$config) use ($key, $value): void {
             $settings = self::section($config, 'settings');
             $settings[$key] = $value;
             // Only core-obsoleted keys are stripped here. Stripping EVERY
@@ -68,9 +69,9 @@ final readonly class PortaJsonWriter
      *
      * @param list<string> $keys
      */
-    public function persistKeymap(string $rootDir, string $action, array $keys): bool
+    public function persistKeymap(ConfigScope $scope, string $action, array $keys): bool
     {
-        return $this->edit($rootDir, static function (array &$config) use ($action, $keys): void {
+        return $this->edit($scope, static function (array &$config) use ($action, $keys): void {
             $keymap = self::section($config, 'keymap');
             $keymap[$action] = array_values($keys);
             $config['keymap'] = $keymap;
@@ -78,27 +79,27 @@ final readonly class PortaJsonWriter
     }
 
     /** Persist a project/global plugin as enabled by dropping it from the `disabledPlugins` list. */
-    public function persistPluginEnabled(string $rootDir, string $plugin): bool
+    public function persistPluginEnabled(ConfigScope $scope, string $plugin): bool
     {
-        return $this->persistPluginMembership($rootDir, 'disabledPlugins', $plugin, member: false);
+        return $this->persistPluginMembership($scope, 'disabledPlugins', $plugin, member: false);
     }
 
     /** Persist a project/global plugin as disabled by adding it to the `disabledPlugins` list. */
-    public function persistPluginDisabled(string $rootDir, string $plugin): bool
+    public function persistPluginDisabled(ConfigScope $scope, string $plugin): bool
     {
-        return $this->persistPluginMembership($rootDir, 'disabledPlugins', $plugin, member: true);
+        return $this->persistPluginMembership($scope, 'disabledPlugins', $plugin, member: true);
     }
 
     /** Persist a bundled plugin as enabled by adding it to the `enabledPlugins` list (the absent-key default materialized first). */
-    public function persistBundledEnabled(string $rootDir, string $plugin): bool
+    public function persistBundledEnabled(ConfigScope $scope, string $plugin): bool
     {
-        return $this->persistPluginMembership($rootDir, 'enabledPlugins', $plugin, member: true, default: IdeConfig::DEFAULT_ENABLED_PLUGINS);
+        return $this->persistPluginMembership($scope, 'enabledPlugins', $plugin, member: true, default: IdeConfig::DEFAULT_ENABLED_PLUGINS);
     }
 
     /** Persist a bundled plugin as disabled by dropping it from the `enabledPlugins` list (the absent-key default materialized first). */
-    public function persistBundledDisabled(string $rootDir, string $plugin): bool
+    public function persistBundledDisabled(ConfigScope $scope, string $plugin): bool
     {
-        return $this->persistPluginMembership($rootDir, 'enabledPlugins', $plugin, member: false, default: IdeConfig::DEFAULT_ENABLED_PLUGINS);
+        return $this->persistPluginMembership($scope, 'enabledPlugins', $plugin, member: false, default: IdeConfig::DEFAULT_ENABLED_PLUGINS);
     }
 
     /**
@@ -112,9 +113,9 @@ final readonly class PortaJsonWriter
      * it — which is the whole reason {@see \Porta\Plugin\Api\LegacyCoreSettings}
      * exists to repair.
      */
-    public function resetSetting(string $rootDir, string $key): bool
+    public function resetSetting(ConfigScope $scope, string $key): bool
     {
-        return $this->edit($rootDir, static function (array &$config) use ($key): void {
+        return $this->edit($scope, static function (array &$config) use ($key): void {
             $settings = self::section($config, 'settings');
             unset($settings[$key]);
             $config['settings'] = $settings;
@@ -125,9 +126,9 @@ final readonly class PortaJsonWriter
     }
 
     /** The same, for a plugin's own `plugins.<name>.<key>`. */
-    public function resetPluginSetting(string $rootDir, string $plugin, string $key): bool
+    public function resetPluginSetting(ConfigScope $scope, string $plugin, string $key): bool
     {
-        return $this->edit($rootDir, static function (array &$config) use ($plugin, $key): void {
+        return $this->edit($scope, static function (array &$config) use ($plugin, $key): void {
             $plugins = self::section($config, 'plugins');
             $entry = \is_array($plugins[$plugin] ?? null) ? $plugins[$plugin] : [];
             unset($entry[$key]);
@@ -143,9 +144,9 @@ final readonly class PortaJsonWriter
     }
 
     /** Persist one plugin-defined setting value under the top-level `plugins.<name>.<key>`. */
-    public function persistPluginSetting(string $rootDir, string $plugin, string $key, bool|int|string $value): bool
+    public function persistPluginSetting(ConfigScope $scope, string $plugin, string $key, bool|int|string $value): bool
     {
-        return $this->edit($rootDir, static function (array &$config) use ($plugin, $key, $value): void {
+        return $this->edit($scope, static function (array &$config) use ($plugin, $key, $value): void {
             $plugins = self::section($config, 'plugins');
             $entry = \is_array($plugins[$plugin] ?? null) ? $plugins[$plugin] : [];
             $entry[$key] = $value;
@@ -159,9 +160,9 @@ final readonly class PortaJsonWriter
      * "no preference" and "prefer nothing" are the same thing, and leaving an
      * empty string behind would look like a configured backend named "".
      */
-    public function persistHighlighter(string $rootDir, ?string $language, string $id): bool
+    public function persistHighlighter(ConfigScope $scope, ?string $language, string $id): bool
     {
-        return $this->edit($rootDir, static function (array &$config) use ($language, $id): void {
+        return $this->edit($scope, static function (array &$config) use ($language, $id): void {
             $highlight = self::section($config, 'highlight');
 
             if (null === $language) {
@@ -195,9 +196,9 @@ final readonly class PortaJsonWriter
      * block, merging with and preserving existing content. Returns true on
      * success.
      */
-    public function persistLanguageSetting(string $rootDir, string $language, string $key, int|string $value): bool
+    public function persistLanguageSetting(ConfigScope $scope, string $language, string $key, int|string $value): bool
     {
-        return $this->edit($rootDir, static function (array &$config) use ($language, $key, $value): void {
+        return $this->edit($scope, static function (array &$config) use ($language, $key, $value): void {
             $languages = self::section($config, 'languages');
             $entry = \is_array($languages[$language] ?? null) ? $languages[$language] : [];
             $entry[$key] = $value;
@@ -214,9 +215,9 @@ final readonly class PortaJsonWriter
      *
      * @param string|array<string, mixed>|null $value
      */
-    public function persistLanguageDebug(string $rootDir, string $language, string $key, string|array|null $value): bool
+    public function persistLanguageDebug(ConfigScope $scope, string $language, string $key, string|array|null $value): bool
     {
-        return $this->edit($rootDir, static function (array &$config) use ($language, $key, $value): void {
+        return $this->edit($scope, static function (array &$config) use ($language, $key, $value): void {
             $languages = self::section($config, 'languages');
             $entry = \is_array($languages[$language] ?? null) ? $languages[$language] : [];
             $debug = \is_array($entry['debug'] ?? null) ? $entry['debug'] : [];
@@ -246,9 +247,9 @@ final readonly class PortaJsonWriter
      * an empty map drops the whole `lsp` block. A single-command form is
      * converted to a map (its command kept as the `*` catch-all). True on success.
      */
-    public function persistLspServer(string $rootDir, string $languageId, string $command): bool
+    public function persistLspServer(ConfigScope $scope, string $languageId, string $command): bool
     {
-        return $this->edit($rootDir, static function (array &$config) use ($languageId, $command): void {
+        return $this->edit($scope, static function (array &$config) use ($languageId, $command): void {
             $map = self::lspMap($config['lsp'] ?? null);
 
             $command = trim($command);
@@ -278,9 +279,9 @@ final readonly class PortaJsonWriter
      *                              result must stay as an explicit `[]`, or the
      *                              unset key would flip the default back on)
      */
-    private function persistPluginMembership(string $rootDir, string $key, string $plugin, bool $member, array $default = []): bool
+    private function persistPluginMembership(ConfigScope $scope, string $key, string $plugin, bool $member, array $default = []): bool
     {
-        return $this->edit($rootDir, static function (array &$config) use ($key, $plugin, $member, $default): void {
+        return $this->edit($scope, static function (array &$config) use ($key, $plugin, $member, $default): void {
             $current = \array_key_exists($key, $config) ? IdeConfig::stringList($config[$key]) : $default;
             $without = array_values(array_diff($current, [$plugin]));
             $list = $member ? [...$without, $plugin] : $without;
@@ -321,15 +322,24 @@ final readonly class PortaJsonWriter
     }
 
     /**
-     * The read-modify-write every persist* shares: load the file (missing or
-     * unparseable reads as empty), hand the decoded config to $mutate by
-     * reference, write it back. Spelled once here rather than eight times.
+     * The read-modify-write every persist* shares: load the scope's file
+     * (missing or unparseable reads as empty), hand the decoded config to
+     * $mutate by reference, write it back. Spelled once here rather than eight
+     * times.
+     *
+     * False when the scope has no file at all — a global write in an
+     * environment with neither PORTA_HOME nor HOME. Every caller already reads
+     * false as "the write failed" and flashes accordingly, so nothing new has
+     * to learn about the case.
      *
      * @param \Closure(array<array-key, mixed>): void $mutate
      */
-    private function edit(string $rootDir, \Closure $mutate): bool
+    private function edit(ConfigScope $scope, \Closure $mutate): bool
     {
-        $file = $rootDir.self::FILE;
+        $file = $this->files->path($scope);
+        if (null === $file) {
+            return false;
+        }
         $config = JsonFile::read($file) ?? [];
         $mutate($config);
 

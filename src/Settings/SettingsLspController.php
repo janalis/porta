@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
+use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
 use Porta\Config\LanguageCatalog;
 use Porta\Config\PortaJsonWriter;
@@ -90,7 +91,7 @@ final class SettingsLspController
         }
 
         $command = trim($command);
-        $persisted = $this->writer->persistLspServer($this->rootDir, $language, $command);
+        $persisted = $this->writer->persistLspServer(ConfigScope::Project, $language, $command);
         if ('' === $command) {
             unset($this->overrides[$language]);
         }

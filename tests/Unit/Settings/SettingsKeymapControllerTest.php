@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Settings;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ActionRegistry;
 use Porta\Config\CommandRegistry;
+use Porta\Config\ConfigFiles;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
 use Porta\Config\KeyDispatch;
@@ -72,9 +73,8 @@ final class SettingsKeymapControllerTest extends TestCase
             $this->live,
             $rebuilder,
             new Notifier($status, $tui),
-            $rootDir,
             new Translator('en'),
-            new PortaJsonWriter(),
+            new PortaJsonWriter(ConfigFiles::for($rootDir)),
         );
     }
 

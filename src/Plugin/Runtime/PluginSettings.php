@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Runtime;
 
+use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Plugin\Api\PluginApi;
@@ -30,15 +32,18 @@ final class PluginSettings
     /** @var array<string, array<string, bool|int|string>> live values (config-seeded, updated on change) */
     private array $values;
 
+    private readonly PortaJsonWriter $writer;
+
     /** @param array<string, array<string, bool|int|string>> $values IdeConfig's plugins block */
     public function __construct(
-        private readonly string $rootDir,
+        string $rootDir,
         array $values,
         // Optional trailing (the widget-Translator idiom): PluginHost hands in
         // the container's shared writer; direct constructions default to a real one.
-        private readonly PortaJsonWriter $writer = new PortaJsonWriter(),
+        ?PortaJsonWriter $writer = null,
     ) {
         $this->values = $values;
+        $this->writer = $writer ?? new PortaJsonWriter(ConfigFiles::for($rootDir));
     }
 
     /** @param list<Descriptor> $descriptors a committed plugin's buffered setting descriptors */
@@ -98,7 +103,7 @@ final class PluginSettings
     public function reset(string $plugin, string $key): void
     {
         unset($this->values[$plugin][$key]);
-        $this->writer->resetPluginSetting($this->rootDir, $plugin, $key);
+        $this->writer->resetPluginSetting(ConfigScope::Project, $plugin, $key);
     }
 
     /** The current value coerced to the descriptor's kind (its default when unset/unknown). */
@@ -121,7 +126,7 @@ final class PluginSettings
         }
         $coerced = $this->coerce($descriptor, $value);
         $this->values[$plugin][$key] = $coerced;
-        $this->writer->persistPluginSetting($this->rootDir, $plugin, $key, $coerced);
+        $this->writer->persistPluginSetting(ConfigScope::Project, $plugin, $key, $coerced);
     }
 
     /** @param Descriptor $descriptor */

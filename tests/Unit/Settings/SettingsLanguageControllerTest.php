@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ConfigFiles;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\I18n\Translator;
@@ -28,7 +29,7 @@ final class SettingsLanguageControllerTest extends TestCase
     {
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
 
-        return new SettingsLanguageController($editor, new Notifier($status, $tui), $rootDir, new Translator('en'), $overrides, new PortaJsonWriter());
+        return new SettingsLanguageController($editor, new Notifier($status, $tui), new Translator('en'), $overrides, new PortaJsonWriter(ConfigFiles::for($rootDir)));
     }
 
     public function testRowsReflectStoredOverridesAndDefaults(): void

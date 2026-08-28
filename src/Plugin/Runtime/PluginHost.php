@@ -31,7 +31,7 @@ final class PluginHost
 
     private readonly PluginLoader $loader;
 
-    public function __construct(IdeConfig $config, EventDispatcherInterface $events, string $rootDir, ?TerminalTheme $syntaxTheme = null, PortaJsonWriter $writer = new PortaJsonWriter())
+    public function __construct(IdeConfig $config, EventDispatcherInterface $events, string $rootDir, ?TerminalTheme $syntaxTheme = null, ?PortaJsonWriter $writer = null)
     {
         $this->settings = new PluginSettings($rootDir, $config->plugins, $writer);
         $this->manager = new PluginManager($events, $this->settings);

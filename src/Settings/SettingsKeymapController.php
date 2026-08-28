@@ -7,6 +7,7 @@ namespace Porta\Settings;
 use Porta\Config\ActionCatalog;
 use Porta\Config\ActionRegistry;
 use Porta\Config\CommandRegistry;
+use Porta\Config\ConfigScope;
 use Porta\Config\KeybindingRow;
 use Porta\Config\LiveKeybindings;
 use Porta\Config\PortaJsonWriter;
@@ -38,7 +39,6 @@ final class SettingsKeymapController
         private readonly LiveKeybindings $ideKeys,
         private readonly MenuRebuilder $menuRebuilder,
         private readonly Notifier $notifier,
-        private readonly string $rootDir,
         private readonly Translator $translator,
         private readonly PortaJsonWriter $writer,
         private readonly KeyParser $parser = new KeyParser(),
@@ -96,7 +96,7 @@ final class SettingsKeymapController
         }
 
         $token = $parsed['key'];
-        $persisted = $this->writer->persistKeymap($this->rootDir, $action, [$token]);
+        $persisted = $this->writer->persistKeymap(ConfigScope::Project, $action, [$token]);
         if ($persisted) {
             // The file is the keymap's truth: re-merge it into the live map,
             // then rebake the menus' shortcut labels from the fresh map.

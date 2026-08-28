@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ConfigFiles;
 use Porta\Config\PortaJsonWriter;
 use Porta\Debug\DebugAdapters;
 use Porta\I18n\Translator;
@@ -30,7 +31,7 @@ final class SettingsDebugControllerTest extends TestCase
         $this->statusBar = new StatusBarWidget();
         $notifier = new Notifier($this->statusBar, new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20)));
 
-        return new SettingsDebugController($this->project->dir, $this->adapters, $notifier, new Translator('en'), new PortaJsonWriter());
+        return new SettingsDebugController($this->adapters, $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($this->project->dir)));
     }
 
     private function flashed(): string
@@ -66,7 +67,7 @@ final class SettingsDebugControllerTest extends TestCase
         $this->adapters = new DebugAdapters(['php' => ['debug' => ['adapter' => 'node a.js', 'launch' => ['bad' => "\xB1\x31"]]]]);
         $this->statusBar = new StatusBarWidget();
         $notifier = new Notifier($this->statusBar, new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20)));
-        $controller = new SettingsDebugController($this->project->dir, $this->adapters, $notifier, new Translator('en'), new PortaJsonWriter());
+        $controller = new SettingsDebugController($this->adapters, $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($this->project->dir)));
 
         $rows = $controller->rows('php');
 

@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Settings;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ActionRegistry;
 use Porta\Config\CommandRegistry;
+use Porta\Config\ConfigFiles;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
 use Porta\Config\LiveKeybindings;
@@ -160,9 +161,8 @@ final class SettingsViewControllerTest extends TestCase
             IdeConfig::DEFAULT_SETTINGS,
             $editor,
             $notifier,
-            $this->project->dir,
             new Translator('en'),
-            new PortaJsonWriter(),
+            new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
             $applier,
             new BreadcrumbsWidget(),
             new FileIndex($this->project->dir),
@@ -189,11 +189,10 @@ final class SettingsViewControllerTest extends TestCase
             $liveKeys,
             $keymapRebuilder,
             $notifier,
-            $this->project->dir,
             new Translator('en'),
-            new PortaJsonWriter(),
+            new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
         );
-        $languages = new SettingsLanguageController($editor, $notifier, $this->project->dir, new Translator('en'), [], new PortaJsonWriter());
+        $languages = new SettingsLanguageController($editor, $notifier, new Translator('en'), [], new PortaJsonWriter(ConfigFiles::for($this->project->dir)));
         $pool = new LspSessionPool($this->project->dir, new FixedActiveFile(), new Translator('en'));
         $reconfigurer = new LspReconfigurer(
             $pool,
@@ -209,8 +208,8 @@ final class SettingsViewControllerTest extends TestCase
             $this->project->dir,
             null,
         );
-        $lsp = new SettingsLspController($this->project->dir, [], $reconfigurer, $notifier, new Translator('en'), new PortaJsonWriter());
-        $debug = new SettingsDebugController($this->project->dir, new DebugAdapters([]), $notifier, new Translator('en'), new PortaJsonWriter());
+        $lsp = new SettingsLspController($this->project->dir, [], $reconfigurer, $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($this->project->dir)));
+        $debug = new SettingsDebugController(new DebugAdapters([]), $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($this->project->dir)));
         $this->pluginSettings = new PluginSettings($this->project->dir, []);
         $this->lifecycle = new FakePluginLifecycle();
         $plugins = new SettingsPluginsController(
@@ -267,9 +266,8 @@ final class SettingsViewControllerTest extends TestCase
                     new HighlightingSection(new SettingsHighlightController(
                         new HighlightRegistry(new NoHighlightPlugins(), new HighlightPreferences()),
                         new Translator('en'),
-                        $this->project->dir,
                         new HighlightPreferences(),
-                        new PortaJsonWriter(),
+                        new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
                         $this->lifecycle,
                     ), new Translator('en')),
                     new PluginsSection($plugins, new Translator('en')),

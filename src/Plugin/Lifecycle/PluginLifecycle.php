@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin\Lifecycle;
 
 use Porta\Config\CommandRegistry;
+use Porta\Config\ConfigScope;
 use Porta\Config\LiveKeybindings;
 use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
@@ -61,7 +62,6 @@ final class PluginLifecycle implements PluginLifecycleOps
         private readonly Tui $tui,
         private readonly LspReconfigurer $lspReconfigurer,
         private readonly PortaJsonWriter $writer,
-        private readonly string $rootDir,
         #[Autowire('%env(json:PORTA_DISABLED_PLUGINS)%')]
         array $disabledPlugins,
         #[Autowire('%env(json:PORTA_ENABLED_PLUGINS)%')]
@@ -600,12 +600,12 @@ final class PluginLifecycle implements PluginLifecycleOps
     {
         if ($this->isBundled($name)) {
             unset($this->enabled[$name]);
-            $this->writer->persistBundledDisabled($this->rootDir, $name);
+            $this->writer->persistBundledDisabled(ConfigScope::Project, $name);
 
             return;
         }
         $this->disabled[$name] = true;
-        $this->writer->persistPluginDisabled($this->rootDir, $name);
+        $this->writer->persistPluginDisabled(ConfigScope::Project, $name);
     }
 
     /**
@@ -616,12 +616,12 @@ final class PluginLifecycle implements PluginLifecycleOps
     {
         if ($this->isBundled($name)) {
             $this->enabled[$name] = true;
-            $this->writer->persistBundledEnabled($this->rootDir, $name);
+            $this->writer->persistBundledEnabled(ConfigScope::Project, $name);
 
             return;
         }
         unset($this->disabled[$name]);
-        $this->writer->persistPluginEnabled($this->rootDir, $name);
+        $this->writer->persistPluginEnabled(ConfigScope::Project, $name);
     }
 
     /** Re-resolve the LSP servers when a toggled plugin provides one (and no --lsp override wins). */

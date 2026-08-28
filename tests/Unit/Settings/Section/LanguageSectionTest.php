@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Settings\Section;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ConfigFiles;
 use Porta\Config\PortaJsonWriter;
 use Porta\Debug\DebugAdapters;
 use Porta\I18n\Translator;
@@ -33,7 +34,7 @@ final class LanguageSectionTest extends TestCase
     {
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
         $notifier = new Notifier($status, $tui);
-        $languages = new SettingsLanguageController(new CodeEditorWidget(), $notifier, $rootDir, new Translator('en'), [], new PortaJsonWriter());
+        $languages = new SettingsLanguageController(new CodeEditorWidget(), $notifier, new Translator('en'), [], new PortaJsonWriter(ConfigFiles::for($rootDir)));
         $pool = new LspSessionPool($rootDir, new FixedActiveFile(), new Translator('en'));
         $reconfigurer = new LspReconfigurer(
             $pool,
@@ -49,8 +50,8 @@ final class LanguageSectionTest extends TestCase
             $rootDir,
             null,
         );
-        $lsp = new SettingsLspController($rootDir, [], $reconfigurer, $notifier, new Translator('en'), new PortaJsonWriter());
-        $debug = new SettingsDebugController($rootDir, new DebugAdapters([]), $notifier, new Translator('en'), new PortaJsonWriter());
+        $lsp = new SettingsLspController($rootDir, [], $reconfigurer, $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($rootDir)));
+        $debug = new SettingsDebugController(new DebugAdapters([]), $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($rootDir)));
 
         return new LanguageSection($languages, $lsp, $debug);
     }

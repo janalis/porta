@@ -419,3 +419,65 @@ Rejected, each for the reason the extraction audit already established:
   by `items()`, which already owns every one of those params itself; wrapping
   them travels the same data through a new object with no consumer outside
   this one file.
+
+## The global config scope (2026-08)
+
+Every setting used to be written into the project's tracked `.porta.json`, so
+changing your theme dirtied the repository and there was nowhere to put a
+preference that is yours rather than the team's. `<home>/.porta/config.json` is
+that place, merged UNDER the project file.
+
+**The merge happens inside `IdeConfig::load()`.** Measured, not assumed: the
+container's cache key is `VERSION + PHP_VERSION + path + cacheDir +
+installedPackages`, and config reaches services through separate `$_ENV` JSON
+channels. So a `load()` returning a merged config with unchanged property shapes
+leaves `IdeContainerFactory`, every env channel, every `#[Autowire]` consumer
+and `LiveKeybindings` untouched — and `LiveKeybindings::rebuild()`, which
+re-reads the file, keeps the global layer for free. Merging any later pays for
+all of that and buys nothing. **What would re-open it:** a config value that has
+to differ per scope AFTER the merge (provenance does not — it re-reads both
+files on demand).
+
+`load()` splits into `readLayer()`, which parses one file into only what that
+file actually said with NO defaults, and `merge()`, which folds the layers and
+applies the defaults once. The split is not tidiness: with `DEFAULT_SETTINGS`
+folded in per layer, "global set `lineNumbers` to absolute" and "global never
+mentioned `lineNumbers`" are the same array, and the merge cannot tell them
+apart.
+
+Rejected, each with what would re-open it:
+
+- **A union merge for `enabledPlugins`.** This is the one rule that cannot be a
+  union. The invariant is that an explicit list REPLACES, even an empty one —
+  that is why `persistBundled*` materialises the effective list before writing.
+  Unioned, a project could never turn off what global turned on, because there
+  would be no way to express the absence. The rule generalises by one word:
+  materialise **the effective list of the layer below**, not the constant
+  default. *Re-opens if* `enabledPlugins` ever stops being an explicit list —
+  e.g. gains an `"inherit"` sentinel that can express "add to the layer below".
+- **Provenance on the Keybindings page.** Its bindings come from three merged
+  *widget* keymaps, not from config layers; answering "where did this binding
+  come from" would mean re-deriving that merge outside the merge, for an
+  approximate answer. *Re-opens if* `KeybindingsFactory` ever exposes the
+  per-source contribution it already computes internally.
+- **Deep-merging `debug.launch`.** Half a project's launch config and half the
+  global one is a configuration nobody wrote and no adapter accepts. It
+  replaces whole. *Re-opens if* an adapter ships a launch schema that says
+  which keys are independently overridable.
+- **Any new `PORTA_*` env channel.** Provenance is computed by re-reading both
+  files, which costs one `is_file` plus a decode on a settings page that is
+  already doing filesystem work — and keeps the container cache key untouched.
+  *Re-opens if* provenance is ever needed on a hot path.
+- **Auto-migrating anything.** A `.porta.json` in a repo is often *meant* to be
+  shared; relocating it on upgrade breaks teammates silently and cannot be
+  undone from inside the IDE. Nothing moves; a one-time notice is marked in the
+  **global** file so it never touches the project's. *Re-opens if* Porta ever
+  gains a reversible, previewable migration surface.
+- **Widening `ConfigScope` to absorb `PluginInstaller`'s scope strings.** That
+  vocabulary has a third value, `embedded`, for plugins shipped inside the
+  package. There is no embedded CONFIG — nothing writes to the package — so the
+  case would be one every consumer must handle and none can reach. *Re-opens if*
+  the package ever ships a default config file.
+- **`<home>/.porta.json` as the global file.** People run `porta ~`, and that
+  spelling collapses the two layers into one file where a project write and a
+  global write are silently the same write.

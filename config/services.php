@@ -15,6 +15,7 @@ use Porta\Plugin\Runtime\PluginHost;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Config\ConfigFiles;
 use Porta\Settings\SettingsSearchSource;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
@@ -284,6 +285,10 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     $services->set('porta.go_to_file', SearchEverywhereController::class)->factory([service(SearchEverywhereFactory::class), 'createGoToFile']);
     $services->set('porta.command_palette', SearchEverywhereController::class)->factory([service(SearchEverywhereFactory::class), 'createCommandPalette']);
     $services->set('porta.go_to_symbol', SearchEverywhereController::class)->factory([service(SearchEverywhereFactory::class), 'createGoToSymbol']);
+    // ConfigFiles resolves the home base from the environment, which is a
+    // static call rather than a constructor argument — IdeConfig::load() builds
+    // one before the container exists and must get the same answer.
+    $services->set(ConfigFiles::class)->factory([ConfigFiles::class, 'for'])->args([env('PORTA_ROOT_DIR')]);
     // The settings source, under a name the factory can ask for by id. It is
     // the composition root's job to know that the SearchSource the aggregate
     // wants is a Settings class: `Settings` imports `Search`, and the factory

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
+use Porta\Config\ConfigScope;
 use Porta\Config\LanguageCatalog;
 use Porta\Config\PortaJsonWriter;
 use Porta\Debug\DebugAdapters;
@@ -19,7 +20,6 @@ use Porta\Workbench\Notifier;
 final class SettingsDebugController
 {
     public function __construct(
-        private readonly string $rootDir,
         private readonly DebugAdapters $adapters,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
@@ -67,7 +67,7 @@ final class SettingsDebugController
 
     private function changeAdapter(string $language, string $command): void
     {
-        $persisted = $this->writer->persistLanguageDebug($this->rootDir, $language, 'adapter', $command);
+        $persisted = $this->writer->persistLanguageDebug(ConfigScope::Project, $language, 'adapter', $command);
         $this->adapters->set($language, $command, $this->adapters->launchOverrides($language));
 
         $shown = '' === $command ? $this->translator->trans('not configured') : $command;
@@ -93,7 +93,7 @@ final class SettingsDebugController
             $launch = $decoded;
         }
 
-        $persisted = $this->writer->persistLanguageDebug($this->rootDir, $language, 'launch', [] === $launch ? null : $launch);
+        $persisted = $this->writer->persistLanguageDebug(ConfigScope::Project, $language, 'launch', [] === $launch ? null : $launch);
         $this->adapters->set($language, $this->adapters->adapterCommand($language), $launch);
 
         $saved = SettingsFlash::savedSuffix($this->translator, $persisted);

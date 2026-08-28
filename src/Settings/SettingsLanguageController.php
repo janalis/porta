@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
+use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
 use Porta\Config\LanguageCatalog;
 use Porta\Config\LanguageIndent;
@@ -41,7 +42,6 @@ final class SettingsLanguageController
     public function __construct(
         private readonly EditorIndentTarget $editor,
         private readonly Notifier $notifier,
-        private readonly string $rootDir,
         private readonly Translator $translator,
         #[Autowire('%env(json:PORTA_LANGUAGES)%')]
         array $overrides,
@@ -125,7 +125,7 @@ final class SettingsLanguageController
             ? new LanguageIndent((string) $stored, $current->indentSize)
             : new LanguageIndent($current->indentStyle, $stored);
 
-        $persisted = $this->writer->persistLanguageSetting($this->rootDir, $language, $key, $stored);
+        $persisted = $this->writer->persistLanguageSetting(ConfigScope::Project, $language, $key, $stored);
         $this->applyToEditor();
         $label = $this->translator->trans('indentSize' === $key ? 'indent size' : 'indent style');
         $saved = SettingsFlash::savedSuffix($this->translator, $persisted);
@@ -139,7 +139,7 @@ final class SettingsLanguageController
     private function changeRunCommand(string $language, string $command): void
     {
         $this->runCommand[$language] = $command;
-        $persisted = $this->writer->persistLanguageSetting($this->rootDir, $language, 'runCommand', $command);
+        $persisted = $this->writer->persistLanguageSetting(ConfigScope::Project, $language, 'runCommand', $command);
         $note = ' · '.$this->translator->trans('applies on restart');
         $saved = SettingsFlash::savedSuffix($this->translator, $persisted);
         $shown = '' === $command ? $this->translator->trans('bundled php') : $command;

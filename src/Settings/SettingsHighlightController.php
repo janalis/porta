@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
+use Porta\Config\ConfigScope;
 use Porta\Config\PortaJsonWriter;
 use Porta\Config\RecommendedPlugins;
 use Porta\Event\SettingsRowsStale;
@@ -57,7 +58,6 @@ final class SettingsHighlightController
     public function __construct(
         private readonly HighlightRegistry $registry,
         private readonly Translator $translator,
-        private readonly string $rootDir,
         private readonly HighlightPreferences $preferences,
         private readonly PortaJsonWriter $writer,
         private readonly ?PluginEnablement $lifecycle = null,
@@ -133,7 +133,7 @@ final class SettingsHighlightController
         $language = self::DEFAULT_KEY === $key ? null : substr($key, offset: 5);
 
         $this->preferences->change($language, $value);
-        $this->writer->persistHighlighter($this->rootDir, $language, $value);
+        $this->writer->persistHighlighter(ConfigScope::Project, $language, $value);
     }
 
     /**

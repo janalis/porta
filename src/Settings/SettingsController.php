@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
+use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
@@ -46,7 +47,6 @@ final class SettingsController
         private array $settings,
         EditorViewOptions $editor,
         private readonly Notifier $notifier,
-        private readonly string $rootDir,
         private readonly Translator $translator,
         private readonly PortaJsonWriter $writer,
         LiveSettingsApplier $applier,
@@ -268,7 +268,7 @@ final class SettingsController
         if (null !== $descriptor['apply']) {
             $descriptor['apply']($default);
         }
-        $persisted = $this->writer->resetSetting($this->rootDir, $key);
+        $persisted = $this->writer->resetSetting(ConfigScope::Project, $key);
         $this->notifier->flash($this->translator->trans('%label% reset to default%saved%', [
             '%label%' => $this->translator->trans($descriptor['label']),
             '%saved%' => SettingsFlash::savedSuffix($this->translator, $persisted),
@@ -293,7 +293,7 @@ final class SettingsController
             $descriptor['apply']($value);
         }
 
-        $persisted = $this->writer->persistSetting($this->rootDir, $key, $value);
+        $persisted = $this->writer->persistSetting(ConfigScope::Project, $key, $value);
         $state = \is_bool($value) ? $this->translator->trans($value ? 'on' : 'off') : (string) $value;
         $note = $descriptor['restart'] ? ' · '.$this->translator->trans('applies on restart') : '';
         $saved = SettingsFlash::savedSuffix($this->translator, $persisted);

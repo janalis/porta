@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ConfigFiles;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Editor\BufferManager;
@@ -130,9 +131,8 @@ final class SettingsControllerTest extends TestCase
             $settings + IdeConfig::DEFAULT_SETTINGS,
             $editor,
             new Notifier($status, $tui),
-            $rootDir,
             $translator,
-            new PortaJsonWriter(),
+            new PortaJsonWriter(ConfigFiles::for($rootDir)),
             $applier,
             $breadcrumbs,
             $this->files = new FileIndex($rootDir),
@@ -350,9 +350,8 @@ final class SettingsControllerTest extends TestCase
         $status = new StatusBarWidget();
         Probe::set($controller, 'notifier', new Notifier($status, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24))));
         Probe::set($controller, 'translator', new Translator('en'));
-        Probe::set($controller, 'writer', new PortaJsonWriter());
         $tempProject = new TempProject();
-        Probe::set($controller, 'rootDir', $tempProject->dir);
+        Probe::set($controller, 'writer', new PortaJsonWriter(ConfigFiles::for($tempProject->dir)));
         Probe::set($controller, 'settings', ['restartOnly' => false]);
         Probe::set($controller, 'descriptors', [
             'restartOnly' => ['label' => 'Restart only', 'kind' => SettingsRowKind::Bool, 'group' => 'general', 'restart' => true, 'apply' => null],
@@ -488,9 +487,8 @@ final class SettingsControllerTest extends TestCase
         $status = new StatusBarWidget();
         Probe::set($controller, 'notifier', new Notifier($status, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24))));
         Probe::set($controller, 'translator', new Translator('en'));
-        Probe::set($controller, 'writer', new PortaJsonWriter());
         $tempProject = new TempProject();
-        Probe::set($controller, 'rootDir', $tempProject->dir);
+        Probe::set($controller, 'writer', new PortaJsonWriter(ConfigFiles::for($tempProject->dir)));
         Probe::set($controller, 'descriptors', [
             'missing' => ['label' => 'Missing', 'kind' => SettingsRowKind::Bool, 'group' => 'general', 'restart' => false, 'apply' => null],
         ]);
