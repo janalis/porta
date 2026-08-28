@@ -36,5 +36,7 @@ final readonly class SettingsRow
         public ?string $hint = null,
         public ?array $optionLabels = null,
         public bool $danger = false,
+        /** How far one keypress moves an int; 1 when unset. */
+        public ?int $step = null,
     ) {}
 }

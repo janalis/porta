@@ -156,7 +156,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->assertTrue($rows[0]->value);
 
         $this->pluginSettings->registerFor('demo', [
-            ['key' => 'binary', 'label' => 'Binary', 'kind' => 'text', 'default' => '', 'options' => null, 'hint' => null],
+            ['key' => 'binary', 'label' => 'Binary', 'kind' => 'text', 'default' => '', 'options' => null, 'hint' => null, 'min' => null, 'max' => null, 'step' => null],
         ]);
         $rows = $controller->pluginRows('demo');
         $this->assertSame(['pluginEnabled', 'pluginSetting:binary'], array_column($rows, 'key'));

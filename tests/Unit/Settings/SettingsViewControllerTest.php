@@ -537,7 +537,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
         $this->pluginSettings->registerFor('demo', [
-            ['key' => 'binary', 'label' => 'Binary path', 'kind' => 'text', 'default' => '', 'options' => null, 'hint' => null],
+            ['key' => 'binary', 'label' => 'Binary path', 'kind' => 'text', 'default' => '', 'options' => null, 'hint' => null, 'min' => null, 'max' => null, 'step' => null],
         ]);
         $controller->open();
 
@@ -658,7 +658,7 @@ final class SettingsViewControllerTest extends TestCase
         // pointing at it.
         $this->lifecycle->names = ['demo'];
         $this->pluginSettings->registerFor('demo', [
-            ['key' => 'binary', 'label' => 'Binary path', 'kind' => 'text', 'default' => '', 'options' => null, 'hint' => null],
+            ['key' => 'binary', 'label' => 'Binary path', 'kind' => 'text', 'default' => '', 'options' => null, 'hint' => null, 'min' => null, 'max' => null, 'step' => null],
         ]);
         $controller->open();
         $this->nav->setPluginEntries(['demo']);

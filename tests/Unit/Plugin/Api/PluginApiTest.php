@@ -313,7 +313,7 @@ final class PluginApiTest extends TestCase
         $api->registerSetting('binary', 'Binary', 'text', '');
         $api->registerSetting('strict', 'Strict', 'bool', false);
         $api->registerSetting('level', 'Level', 'choice', 'low', ['low', 'high']);
-        $api->registerSetting('jobs', 'Jobs', 'int', 4);
+        $api->registerSetting('jobs', 'Jobs', 'int', 4, min: 1, max: 64, step: 2);
         $this->assertSame('/opt/x', $api->setting('binary'));
         $this->assertTrue($api->setting('strict'), 'coerced to the declared bool kind');
         $this->assertSame('low', $api->setting('level'), 'out-of-options choice falls back to the default');
@@ -327,6 +327,12 @@ final class PluginApiTest extends TestCase
             ['bad kind', static fn () => $api->registerSetting('x', 'X', 'float')],
             ['choice needs options', static fn () => $api->registerSetting('y', 'Y', 'choice', 'a')],
             ['default not in options', static fn () => $api->registerSetting('z', 'Z', 'choice', 'a', ['b'])],
+            // A bound on anything but a number would advertise a range nothing
+            // keeps: the stepper only clamps ints.
+            ['range on a bool', static fn () => $api->registerSetting('r1', 'R', 'bool', false, min: 1)],
+            ['range on a text', static fn () => $api->registerSetting('r2', 'R', 'text', '', max: 9)],
+            ['step on a choice', static fn () => $api->registerSetting('r3', 'R', 'choice', 'a', ['a'], step: 2)],
+            ['inverted range', static fn () => $api->registerSetting('r4', 'R', 'int', 1, min: 9, max: 2)],
             ['unknown read', static fn () => $api->setting('ghost')],
         ] as [$label, $action]) {
             try {
@@ -405,7 +411,7 @@ final class PluginApiTest extends TestCase
         );
         $api = new PluginApi('demo', $manager, $project->dir, $settings);
 
-        $api->registerSetting('jobs', 'Jobs', 'int', 4);
+        $api->registerSetting('jobs', 'Jobs', 'int', 4, min: 1, max: 64, step: 2);
         $settings->registerFor('demo', $api->bufferedSettings()); // what PluginManager::commit does
 
         $api->changeSetting('jobs', '7');

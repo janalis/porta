@@ -77,7 +77,7 @@ final class PluginApi
     /**
      * Plain array: keyed by setting key for dedup, drains into PluginSettings.
      *
-     * @var array<string, array{key: string, label: string, kind: string, default: bool|int|string, options: list<string>|null, hint: string|null}> by key
+     * @var array<string, array{key: string, label: string, kind: string, default: bool|int|string, options: list<string>|null, hint: string|null, min: int|null, max: int|null, step: int|null}> by key
      */
     private array $settingDescriptors = [];
     /** @var PluginBuffer<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null), initOptions: (\Closure(): array<string, mixed>)|null}> */
@@ -261,11 +261,23 @@ final class PluginApi
      * type coercion. Kinds: 'text', 'bool', 'int', 'choice' (with $options).
      *
      * @param list<string>|null $options required for 'choice'; must contain the default
+     * @param ?int              $min     'int' only: the floor the stepper clamps to (default 1)
+     * @param ?int              $max     'int' only: the ceiling it clamps to (default unbounded)
+     * @param ?int              $step    'int' only: how far one keypress moves it (default 1)
      *
      * @throws PluginException
      */
-    public function registerSetting(string $key, string $label, string $kind = 'text', bool|int|string $default = '', ?array $options = null, ?string $hint = null): void
-    {
+    public function registerSetting(
+        string $key,
+        string $label,
+        string $kind = 'text',
+        bool|int|string $default = '',
+        ?array $options = null,
+        ?string $hint = null,
+        ?int $min = null,
+        ?int $max = null,
+        ?int $step = null,
+    ): void {
         if (1 !== preg_match(self::ID_PATTERN, $key)) {
             throw new PluginException(\sprintf('Invalid setting key "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $key));
         }
@@ -278,6 +290,14 @@ final class PluginApi
         if ('choice' === $kind && (null === $options || [] === $options || !\in_array($default, $options, strict: true))) {
             throw new PluginException(\sprintf('Setting "%s": a choice needs options containing its default', $key));
         }
+        // A bound on anything but a number is a mistake worth naming: nothing
+        // would clamp it, and the row would advertise a range it does not keep.
+        if ('int' !== $kind && (null !== $min || null !== $max || null !== $step)) {
+            throw new PluginException(\sprintf('Setting "%s": min/max/step apply to an int, not a %s', $key, $kind));
+        }
+        if (null !== $min && null !== $max && $min > $max) {
+            throw new PluginException(\sprintf('Setting "%s": min %d is above max %d', $key, $min, $max));
+        }
         $this->settingDescriptors[$key] = [
             'key' => $key,
             'label' => $label,
@@ -285,6 +305,9 @@ final class PluginApi
             'default' => $default,
             'options' => $options,
             'hint' => $hint,
+            'min' => $min,
+            'max' => $max,
+            'step' => $step,
         ];
     }
 
@@ -1333,7 +1356,7 @@ final class PluginApi
         return $this->hooks;
     }
 
-    /** @return list<array{key: string, label: string, kind: string, default: bool|int|string, options: list<string>|null, hint: string|null}> */
+    /** @return list<array{key: string, label: string, kind: string, default: bool|int|string, options: list<string>|null, hint: string|null, min: int|null, max: int|null, step: int|null}> */
     public function bufferedSettings(): array
     {
         return array_values($this->settingDescriptors);

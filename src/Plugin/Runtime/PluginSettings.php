@@ -20,7 +20,7 @@ use Porta\Settings\SettingsRowKind;
  * untranslated. {@see removeFor} drops a removed plugin's descriptors only —
  * persisted values survive a reinstall.
  *
- * @phpstan-type Descriptor array{key: string, label: string, kind: string, default: bool|int|string, options: list<string>|null, hint: string|null}
+ * @phpstan-type Descriptor array{key: string, label: string, kind: string, default: bool|int|string, options: list<string>|null, hint: string|null, min: int|null, max: int|null, step: int|null}
  */
 final class PluginSettings
 {
@@ -77,7 +77,10 @@ final class PluginSettings
                 value: $this->value($plugin, $descriptor['key']),
                 restart: false,
                 options: $descriptor['options'],
+                min: $descriptor['min'],
+                max: $descriptor['max'],
                 hint: $descriptor['hint'],
+                step: $descriptor['step'],
             );
         }
 

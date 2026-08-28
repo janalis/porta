@@ -299,7 +299,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $min = $row->min ?? 1;
         $max = $row->max ?? \PHP_INT_MAX;
 
-        return IntMath::clamp((int) $row->value + $delta, $min, $max);
+        return IntMath::clamp((int) $row->value + ($delta * ($row->step ?? 1)), $min, $max);
     }
 
     #[\Override]
@@ -337,8 +337,12 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             // label column blank rather than saying it twice.
             $label = SettingsRowKind::Action === $row->kind && '' === (string) $row->value ? '' : $row->label;
             $text = ' '.AnsiText::padRight($label, $layout->label).'  '.$control;
-            if ($row->restart) {
-                $text .= $this->styles->of(Role::Dim)->apply(' · '.$this->translator->trans('applies on restart'));
+            $detail = SettingsRowDetail::of($row, $this->translator);
+            if ('' !== $detail) {
+                // No dangling separator when the control is empty — an unset
+                // text row reads as `LSP server    auto: phpactor`, which is
+                // what its hint always meant.
+                $text .= $this->styles->of(Role::Dim)->apply(('' === $control ? '  ' : ' · ').$detail);
             }
             // An overflowing value being edited must keep its caret on screen:
             // scroll the assembled row to the marker instead of a hard clip that
@@ -410,7 +414,12 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
 
     /**
      * The rendered value of a text row: the live editor (with a cursor) while
-     * editing, else the value, else a dimmed hint when empty.
+     * editing, else the value.
+     *
+     * The hint used to stand in for an empty value here, which is why it never
+     * reached any other kind and why it read as a placeholder rather than a
+     * description. It lives in the detail column now, for every kind and
+     * whether or not the row has a value.
      *
      * @param SettingsRow $row
      */
@@ -419,12 +428,8 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         if ($index === $this->editing && null !== $this->editField) {
             return $this->editField->render(cursor: $this->focused ? CaretVisibility::Shown : CaretVisibility::Hidden);
         }
-        $value = (string) $row->value;
-        if ('' === $value && null !== $row->hint) {
-            return $this->styles->of(Role::Dim)->apply($row->hint);
-        }
 
-        return $value;
+        return (string) $row->value;
     }
 
     /** @return array<string, string[]> */

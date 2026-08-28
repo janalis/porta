@@ -383,12 +383,12 @@ final class SettingsFormWidgetTest extends TestCase
         return $widget;
     }
 
-    public function testTextRowRendersValueAndDimmedHint(): void
+    public function testTextRowRendersItsValueAndItsHintAsADimmedDetail(): void
     {
         $rendered = $this->textWidget()->render(new RenderContext(60, 4));
-        $this->assertStringContainsString('LSP server  phpactor', AnsiUtils::stripAnsiCodes($this->body($rendered)[0]));
-        $this->assertStringContainsString('auto: none', AnsiUtils::stripAnsiCodes($this->body($rendered)[1]), 'empty text row shows its hint');
-        $this->assertStringContainsString("\x1b[38;5;245mauto: none", $this->body($rendered)[1], 'hint is dimmed');
+        $this->assertMatchesRegularExpression('/LSP server\s+phpactor/', AnsiUtils::stripAnsiCodes($this->body($rendered)[0]));
+        $this->assertStringContainsString('auto: none', AnsiUtils::stripAnsiCodes($this->body($rendered)[1]), 'the hint describes the row');
+        $this->assertStringContainsString("\x1b[38;5;245m", $this->body($rendered)[1], 'and is dimmed');
     }
 
     public function testEditingATextRowTypesAndCommits(): void
@@ -778,7 +778,12 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertNotSame($focused, $unfocused, 'the caret visibility marker must differ between focused and unfocused edit');
     }
 
-    public function testATextRowWithBothAValueAndAHintShowsTheValue(): void
+    /**
+     * A hint is a description, not a placeholder. It used to stand in for an
+     * empty text value — which is why it reached no other kind, and why a row
+     * that had a value lost its explanation.
+     */
+    public function testARowShowsItsValueAndItsHintTogether(): void
     {
         $widget = new SettingsFormWidget(new Translator('en'));
         $widget->setRows([new SettingsRow(key: 'k', label: 'K', kind: SettingsRowKind::Text, value: 'set', restart: false, hint: 'auto: none')]);
@@ -786,7 +791,49 @@ final class SettingsFormWidgetTest extends TestCase
         $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 4))[1]);
 
         $this->assertStringContainsString('set', $screen);
-        $this->assertStringNotContainsString('auto: none', $screen, 'a non-empty value wins over the hint, even with a hint set');
+        $this->assertStringContainsString('auto: none', $screen, 'the hint survives a row that has a value');
+    }
+
+    /** The hint reaches every kind, not only Text rows with nothing in them. */
+    public function testAHintRendersOnEveryKind(): void
+    {
+        $widget = new SettingsFormWidget(new Translator('en'));
+        $widget->setRows([
+            new SettingsRow(key: 'a', label: 'Bool', kind: SettingsRowKind::Bool, value: true, restart: false, hint: 'bool hint'),
+            new SettingsRow(key: 'b', label: 'Choice', kind: SettingsRowKind::Choice, value: 'x', restart: false, options: ['x', 'y'], hint: 'choice hint'),
+            new SettingsRow(key: 'c', label: 'Int', kind: SettingsRowKind::Int, value: 2, restart: false, hint: 'int hint'),
+            new SettingsRow(key: 'd', label: 'Text', kind: SettingsRowKind::Text, value: 'v', restart: false, hint: 'text hint'),
+            new SettingsRow(key: 'e', label: 'Action', kind: SettingsRowKind::Action, value: 'Go', restart: false, hint: 'action hint'),
+        ]);
+
+        $screen = AnsiUtils::stripAnsiCodes(implode("\n", $widget->render(new RenderContext(80, 8))));
+
+        foreach (['bool hint', 'choice hint', 'int hint', 'text hint', 'action hint'] as $hint) {
+            $this->assertStringContainsString($hint, $screen, $hint.' must reach the screen');
+        }
+    }
+
+    public function testABoundedIntShowsItsRangeAndStepsByItsDeclaredStep(): void
+    {
+        $widget = $this->widget($changes);
+        $widget->setRows([new SettingsRow(key: 'maxBytes', label: 'Max bytes', kind: SettingsRowKind::Int, value: 4_194_304, restart: false, min: 0, max: 8_388_608, step: 1_048_576)]);
+
+        $screen = AnsiUtils::stripAnsiCodes(implode("\n", $widget->render(new RenderContext(80, 5))));
+        $this->assertStringContainsString('0–8388608', $screen, 'the range is visible without hammering the key');
+
+        $widget->handleInput("\x1b[C"); // one step right
+
+        $this->assertSame([['maxBytes', 5_242_880]], $changes, 'one keypress moves it one declared step, not one byte');
+    }
+
+    public function testAnUnboundedIntStillStepsByOne(): void
+    {
+        $widget = $this->widget($changes);
+        $widget->setRows([new SettingsRow(key: 'n', label: 'N', kind: SettingsRowKind::Int, value: 5, restart: false)]);
+
+        $widget->handleInput("\x1b[C");
+
+        $this->assertSame([['n', 6]], $changes);
     }
 
     public function testHoverTintsARowVisualOnlyAndClears(): void

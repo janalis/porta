@@ -83,8 +83,9 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin implemen
         int $maxBytes = 262_144,
     ): void {
         $api->registerSetting('languages', 'Languages', 'text', $languages, hint: 'comma-separated grammar names, or * for all');
-        $api->registerSetting('debounce', 'Debounce (ms)', 'int', $debounceMs);
-        $api->registerSetting('maxBytes', 'Skip files larger than (bytes)', 'int', $maxBytes);
+        // 0 is meaningful for both: no debounce, and claim nothing.
+        $api->registerSetting('debounce', 'Debounce (ms)', 'int', $debounceMs, min: 0, max: 5_000, step: 10);
+        $api->registerSetting('maxBytes', 'Skip files larger than (bytes)', 'int', $maxBytes, min: 0, step: 65_536);
 
         $theme = $api->syntaxTheme();
         $api->registerHighlighter(

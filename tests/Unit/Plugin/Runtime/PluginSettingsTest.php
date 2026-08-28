@@ -13,7 +13,7 @@ final class PluginSettingsTest extends TestCase
     /** @return array{key: string, label: string, kind: string, default: bool|int|string, options: list<string>|null, hint: string|null} */
     private function descriptor(string $key, string $kind, bool|int|string $default, ?array $options = null): array
     {
-        return ['key' => $key, 'label' => ucfirst($key), 'kind' => $kind, 'default' => $default, 'options' => $options, 'hint' => null];
+        return ['key' => $key, 'label' => ucfirst($key), 'kind' => $kind, 'default' => $default, 'options' => $options, 'hint' => null, 'min' => null, 'max' => null, 'step' => null];
     }
 
     public function testRowsCarryCoercedValuesAndDefaults(): void
