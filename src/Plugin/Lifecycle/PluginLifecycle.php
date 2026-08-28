@@ -639,6 +639,11 @@ final class PluginLifecycle implements PluginLifecycleOps
         $this->keys->rebuild();
         $this->menuRebuilder->rebuild();
         $this->refreshNav();
+        // SettingsRowsStale's own docblock has always claimed it covers a
+        // plugin being "installed, enabled, disabled or removed", and removal
+        // raised it — but the enable/disable tail never did. Anything caching
+        // the row set across a toggle was quietly wrong.
+        $this->events->dispatch(new SettingsRowsStale());
         $this->tui->requestRender();
     }
 
