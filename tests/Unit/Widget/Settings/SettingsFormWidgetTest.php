@@ -748,6 +748,62 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertSame(['theme'], $reset, 'a row with no default has nothing to reset to');
     }
 
+    public function testFixingATypoAtTheStartOfAValueWithoutRetypingIt(): void
+    {
+        // The case that made append-only editing untenable: a JSON launch
+        // config with a wrong first character.
+        $widget = $this->widget($changes);
+        $widget->setRows([new SettingsRow(key: 'debugLaunch', label: 'Launch', kind: SettingsRowKind::Text, value: '{"stopOnEntry": true}', restart: false)]);
+
+        $widget->handleInput("\r"); // open the editor
+        $widget->handleInput("\x1b[H"); // Home
+        $widget->handleInput("\x1b[3~"); // Delete the '{'
+        $widget->handleInput('[');
+        $widget->handleInput("\r"); // commit
+
+        $this->assertSame([['debugLaunch', '["stopOnEntry": true}']], $changes);
+    }
+
+    public function testTheCaretKeysMoveWithinTheValueWhileEditing(): void
+    {
+        $widget = $this->widget($changes);
+        $widget->setRows([new SettingsRow(key: 'k', label: 'K', kind: SettingsRowKind::Text, value: 'ad', restart: false)]);
+
+        $widget->handleInput("\r");
+        $widget->handleInput("\x1b[D"); // left, between a and d
+        $widget->handleInput('bc');
+        $widget->handleInput("\x1b[F"); // End
+        $widget->handleInput('!');
+        $widget->handleInput("\r");
+
+        $this->assertSame([['k', 'abcd!']], $changes);
+    }
+
+    public function testCtrlWDeletesTheWordBeforeTheCaretAndRightMovesBackOverIt(): void
+    {
+        $widget = $this->widget($changes);
+        $widget->setRows([new SettingsRow(key: 'runCommand', label: 'Run', kind: SettingsRowKind::Text, value: 'php -d memory_limit', restart: false)]);
+
+        $widget->handleInput("\r");
+        $widget->handleInput("\x17"); // Ctrl+W: drop the last word
+        $widget->handleInput("\x1b[D"); // left, into the value
+        $widget->handleInput("\x1b[C"); // and back right again
+        $widget->handleInput('x');
+        $widget->handleInput("\r");
+
+        $this->assertSame([['runCommand', 'php -d x']], $changes);
+    }
+
+    /** ← on a Text row is the no-op it already was on a button. */
+    public function testSteppingBackDoesNotOpenTheTextEditor(): void
+    {
+        $widget = $this->textWidget();
+
+        $widget->handleInput("\x1b[D");
+
+        $this->assertNull(Probe::get($widget, 'editing'), 'a step-back key does not start an edit');
+    }
+
     public function testRIsInertWhileTheInlineEditorHasTheKeys(): void
     {
         // Otherwise typing an `r` into an LSP command would wipe the row.

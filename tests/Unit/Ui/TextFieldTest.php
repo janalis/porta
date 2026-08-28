@@ -137,4 +137,109 @@ final class TextFieldTest extends TestCase
         $this->assertSame('slow ', $dash->value());
         $this->assertTrue(mb_check_encoding($dash->value(), encoding: 'UTF-8'));
     }
+
+    public function testTheCaretMovesAndTypingLandsWhereItIs(): void
+    {
+        $field = new TextField('worl');
+        $field->insert('d');
+        $field->moveHome();
+        $field->insert('hello ');
+
+        $this->assertSame('hello world', $field->value());
+    }
+
+    /** The gesture that made append-only editing untenable: a typo at the start. */
+    public function testATypoAtTheStartIsFixableWithoutRetypingTheRest(): void
+    {
+        $field = new TextField('{"stopOnEntry": true}');
+        $field->moveHome();
+        $field->deleteForward();
+        $field->insert('[');
+
+        $this->assertSame('["stopOnEntry": true}', $field->value());
+    }
+
+    public function testLeftAndRightStopAtTheEnds(): void
+    {
+        $field = new TextField('ab');
+
+        $this->assertFalse($field->moveRight(), 'already past the last character');
+        $this->assertTrue($field->moveLeft());
+        $this->assertTrue($field->moveLeft());
+        $this->assertFalse($field->moveLeft(), 'already at the start');
+        $this->assertTrue($field->moveRight());
+    }
+
+    public function testHomeAndEndReportWhetherTheyMoved(): void
+    {
+        $field = new TextField('ab');
+
+        $this->assertFalse($field->moveEnd(), 'the caret starts at the end');
+        $this->assertTrue($field->moveHome());
+        $this->assertFalse($field->moveHome(), 'already there');
+        $this->assertTrue($field->moveEnd());
+    }
+
+    public function testBackspaceAndDeleteActAroundTheCaretNotTheTail(): void
+    {
+        $field = new TextField('abcd');
+        $field->moveLeft();
+        $field->moveLeft(); // caret between b and c
+
+        $this->assertTrue($field->backspace());
+        $this->assertSame('acd', $field->value(), 'the character BEFORE the caret went');
+
+        $this->assertTrue($field->deleteForward());
+        $this->assertSame('ad', $field->value(), 'and then the one after it');
+    }
+
+    public function testDeleteForwardAtTheEndReportsNoChange(): void
+    {
+        $this->assertFalse(new TextField('ab')->deleteForward());
+    }
+
+    public function testTheCaretMovesByWholeMultibyteCharacters(): void
+    {
+        $field = new TextField('a😀b');
+        $field->moveLeft();
+        $field->moveLeft();
+
+        $this->assertTrue($field->backspace());
+        $this->assertSame('😀b', $field->value(), 'a whole character either side, never a stray byte');
+    }
+
+    public function testDeleteWordBackwardTakesTheWordAndItsTrailingSpaces(): void
+    {
+        $field = new TextField('php -d memory_limit=1G');
+
+        $this->assertTrue($field->deleteWordBackward());
+        $this->assertSame('php -d ', $field->value());
+
+        $this->assertTrue($field->deleteWordBackward());
+        $this->assertSame('php ', $field->value(), 'the spaces before the word go with it');
+    }
+
+    public function testDeleteWordBackwardOnAnEmptyFieldReportsNoChange(): void
+    {
+        $this->assertFalse(new TextField()->deleteWordBackward());
+    }
+
+    public function testTheMarkerRendersAtTheCaretNotTheTail(): void
+    {
+        $field = new TextField('abcd');
+        $field->moveLeft();
+        $field->moveLeft();
+
+        $this->assertSame('ab'.new CursorStyle()->marker().'cd', $field->render(CaretVisibility::Shown));
+    }
+
+    public function testAnOverflowingValueScrollsToTheCaretWhereverItIs(): void
+    {
+        $field = new TextField(str_repeat('x', times: 40).'END');
+        $field->moveHome();
+
+        $rendered = $field->render(CaretVisibility::Shown, width: 10);
+
+        $this->assertStringNotContainsString('END', $rendered, 'the window followed the caret to the start');
+    }
 }
