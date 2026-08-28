@@ -47,6 +47,7 @@ final class SettingsLanguageController
         array $overrides,
         private readonly PortaJsonWriter $writer,
         private readonly SettingsScope $scope,
+        private readonly SettingsProvenance $provenance,
     ) {
         foreach (LanguageCatalog::ids() as $id) {
             $entry = $overrides[$id] ?? [];
@@ -80,6 +81,8 @@ final class SettingsLanguageController
                 restart: false,
                 options: self::STYLE_OPTIONS,
                 default: self::AUTO,
+                origin: $this->provenance->originOf(['languages', $language, 'indentStyle']),
+                shadowed: $this->provenance->shadowsGlobal(['languages', $language, 'indentStyle']),
             ),
             new SettingsRow(
                 key: 'indentSize',
@@ -89,6 +92,8 @@ final class SettingsLanguageController
                 restart: false,
                 options: self::SIZE_OPTIONS,
                 default: self::AUTO,
+                origin: $this->provenance->originOf(['languages', $language, 'indentSize']),
+                shadowed: $this->provenance->shadowsGlobal(['languages', $language, 'indentSize']),
             ),
             new SettingsRow(
                 key: 'runCommand',
@@ -98,6 +103,8 @@ final class SettingsLanguageController
                 restart: true,
                 hint: $this->translator->trans('e.g. frankenphp php-cli — empty = bundled php'),
                 default: '',
+                origin: $this->provenance->originOf(['languages', $language, 'runCommand']),
+                shadowed: $this->provenance->shadowsGlobal(['languages', $language, 'runCommand']),
             ),
         ];
     }

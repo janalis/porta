@@ -53,6 +53,7 @@ use Porta\Settings\SettingsLspController;
 use Porta\Settings\SettingsMouseRouter;
 use Porta\Settings\SettingsPages;
 use Porta\Settings\SettingsPluginsController;
+use Porta\Settings\SettingsProvenance;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsScope;
 use Porta\Settings\SettingsScopeRow;
@@ -207,6 +208,7 @@ final class SettingsViewControllerTest extends TestCase
             new Translator('en'),
             new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
             $scope,
+            new SettingsProvenance(ConfigFiles::for($this->project->dir)),
             $applier,
             new BreadcrumbsWidget(),
             new FileIndex($this->project->dir),
@@ -237,7 +239,15 @@ final class SettingsViewControllerTest extends TestCase
             new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
             $scope,
         );
-        $languages = new SettingsLanguageController($editor, $notifier, new Translator('en'), [], new PortaJsonWriter(ConfigFiles::for($this->project->dir)), $scope);
+        $languages = new SettingsLanguageController(
+            $editor,
+            $notifier,
+            new Translator('en'),
+            [],
+            new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
+            $scope,
+            new SettingsProvenance(ConfigFiles::for($this->project->dir)),
+        );
         $pool = new LspSessionPool($this->project->dir, new FixedActiveFile(), new Translator('en'));
         $reconfigurer = new LspReconfigurer(
             $pool,
@@ -317,6 +327,7 @@ final class SettingsViewControllerTest extends TestCase
                             new HighlightPreferences(),
                             new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
                             $scope,
+                            new SettingsProvenance(ConfigFiles::for($this->project->dir)),
                             $this->lifecycle,
                         ),
                         new Translator('en'),

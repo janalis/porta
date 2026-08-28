@@ -18,6 +18,7 @@ use Porta\Settings\Section\LanguageSection;
 use Porta\Settings\SettingsDebugController;
 use Porta\Settings\SettingsLanguageController;
 use Porta\Settings\SettingsLspController;
+use Porta\Settings\SettingsProvenance;
 use Porta\Settings\SettingsScope;
 use Porta\Settings\SettingsScopeRow;
 use Porta\Tests\Support\FixedActiveFile;
@@ -42,7 +43,15 @@ final class LanguageSectionTest extends TestCase
         // the scope defaults to Global, i.e. the suite's fixture home.
         $scope = new SettingsScope($files);
         $scope->set(ConfigScope::Project);
-        $languages = new SettingsLanguageController(new CodeEditorWidget(), $notifier, new Translator('en'), [], new PortaJsonWriter(ConfigFiles::for($rootDir)), $scope);
+        $languages = new SettingsLanguageController(
+            new CodeEditorWidget(),
+            $notifier,
+            new Translator('en'),
+            [],
+            new PortaJsonWriter(ConfigFiles::for($rootDir)),
+            $scope,
+            new SettingsProvenance($files),
+        );
         $pool = new LspSessionPool($rootDir, new FixedActiveFile(), new Translator('en'));
         $reconfigurer = new LspReconfigurer(
             $pool,

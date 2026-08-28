@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
+use Porta\Config\ConfigScope;
+
 /**
  * One row of the settings form: a labelled setting the {@see \Porta\Widget\Settings\SettingsFormWidget}
  * renders and actuates. Replaces the string-keyed array the settings controllers
@@ -43,6 +45,13 @@ final readonly class SettingsRow
          * the row has no default to differ from (a button, or session state).
          */
         public bool|int|string|null $default = null,
+        /**
+         * Which config file this row's value actually came from, and whether
+         * that file's value hides one in the layer below it. Null origin means
+         * neither file sets it — the value is a default, which needs no tag.
+         */
+        public ?ConfigScope $origin = null,
+        public bool $shadowed = false,
     ) {}
 
     /**

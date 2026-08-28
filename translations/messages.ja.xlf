@@ -2666,6 +2666,14 @@
         <source>for this session</source>
         <target>このセッションのみ</target>
       </trans-unit>
+      <trans-unit id="679">
+        <source>from global</source>
+        <target>グローバル設定</target>
+      </trans-unit>
+      <trans-unit id="680">
+        <source>overrides global</source>
+        <target>グローバル設定を上書き</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

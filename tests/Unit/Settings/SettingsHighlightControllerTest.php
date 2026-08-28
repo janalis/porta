@@ -18,6 +18,7 @@ use Porta\Highlight\SyntaxHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsHighlightController;
+use Porta\Settings\SettingsProvenance;
 use Porta\Settings\SettingsRowKind;
 use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\FakePluginLifecycle;
@@ -74,6 +75,7 @@ final class SettingsHighlightControllerTest extends TestCase
             $this->preferences,
             new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
             $scope,
+            new SettingsProvenance(ConfigFiles::for($this->project->dir)),
             $this->lifecycle,
         );
     }
@@ -145,6 +147,7 @@ final class SettingsHighlightControllerTest extends TestCase
             new HighlightPreferences(),
             new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
             $scope,
+            new SettingsProvenance(ConfigFiles::for($this->project->dir)),
         );
 
         $controller->change(SettingsHighlightController::ENABLE_KEY, '');
@@ -279,6 +282,7 @@ final class SettingsHighlightControllerTest extends TestCase
             $preferences,
             new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
             new SettingsScope(ConfigFiles::for($this->project->dir)),
+            new SettingsProvenance(ConfigFiles::for($this->project->dir)),
             $this->lifecycle,
         );
 

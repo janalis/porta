@@ -8,6 +8,7 @@ use Porta\Config\ConfigFiles;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Plugin\Api\PluginApi;
+use Porta\Settings\SettingsProvenance;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
 use Porta\Settings\SettingsScope;
@@ -36,6 +37,8 @@ final class PluginSettings
 
     private readonly SettingsScope $scope;
 
+    private readonly SettingsProvenance $provenance;
+
     /** @param array<string, array<string, bool|int|string>> $values IdeConfig's plugins block */
     public function __construct(
         string $rootDir,
@@ -47,11 +50,13 @@ final class PluginSettings
         // hands in the container's shared holder, while a direct construction
         // gets one built on the same ConfigFiles.
         ?SettingsScope $scope = null,
+        ?SettingsProvenance $provenance = null,
     ) {
         $this->values = $values;
         $files = ConfigFiles::for($rootDir);
         $this->writer = $writer ?? new PortaJsonWriter($files);
         $this->scope = $scope ?? new SettingsScope($files);
+        $this->provenance = $provenance ?? new SettingsProvenance($files);
     }
 
     /** @param list<Descriptor> $descriptors a committed plugin's buffered setting descriptors */
@@ -97,6 +102,8 @@ final class PluginSettings
                 // Through the same coercion as the value above, so a bool
                 // default declared as 1 does not read as modified.
                 default: $this->coerce($descriptor, null),
+                origin: $this->provenance->originOf(['plugins', $plugin, $descriptor['key']]),
+                shadowed: $this->provenance->shadowsGlobal(['plugins', $plugin, $descriptor['key']]),
             );
         }
 

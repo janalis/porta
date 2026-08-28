@@ -28,6 +28,7 @@ use Porta\Onboarding\OnboardingState;
 use Porta\Search\FileIndex;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\SettingsController;
+use Porta\Settings\SettingsProvenance;
 use Porta\Settings\SettingsRowKind;
 use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\EditorState;
@@ -141,6 +142,7 @@ final class SettingsControllerTest extends TestCase
             $translator,
             new PortaJsonWriter(ConfigFiles::for($rootDir)),
             $scope,
+            new SettingsProvenance(ConfigFiles::for($rootDir)),
             $applier,
             $breadcrumbs,
             $this->files = new FileIndex($rootDir),

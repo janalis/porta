@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Settings;
 
+use Porta\Config\ConfigScope;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
@@ -47,8 +48,36 @@ final class SettingsRowDetail
         if ('' !== $domain) {
             $clauses[] = $domain;
         }
+        $origin = self::origin($row, $translator);
+        if ('' !== $origin) {
+            $clauses[] = $origin;
+        }
 
         return implode(' · ', $clauses);
+    }
+
+    /**
+     * Where the shown value came from, when that is not obvious.
+     *
+     * Silent for the ordinary case — a value the project file sets and nothing
+     * else — because a tag on every row is a tag on no row. It speaks up for
+     * the two cases a user cannot otherwise see: a value coming from the file
+     * they are not currently editing, and a project value quietly hiding a
+     * global one.
+     *
+     * Last of the clauses, so a narrow row truncates this before it truncates
+     * what the setting is for.
+     */
+    private static function origin(SettingsRow $row, Translator $translator): string
+    {
+        if (null === $row->origin) {
+            return ''; // a default; nothing set it anywhere
+        }
+        if ($row->shadowed) {
+            return $translator->trans('overrides global');
+        }
+
+        return ConfigScope::Global === $row->origin ? $translator->trans('from global') : '';
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ConfigScope;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
@@ -13,6 +14,40 @@ use Porta\Widget\Settings\SettingsRowDetail;
 /** The dim trailing clause: what a row is for, and what its control may become. */
 final class SettingsRowDetailTest extends TestCase
 {
+    /**
+     * Silent for the ordinary case — a value the project file sets and nothing
+     * else. A tag on every row is a tag on no row.
+     */
+    public function testAnOrdinaryProjectValueIsNotTagged(): void
+    {
+        $this->assertSame('', $this->detail($this->row(SettingsRowKind::Bool, true, origin: ConfigScope::Project)));
+    }
+
+    /** A value coming from the file the user is not looking at says so. */
+    public function testAGlobalValueSaysWhereItCameFrom(): void
+    {
+        $this->assertSame('from global', $this->detail($this->row(SettingsRowKind::Bool, true, origin: ConfigScope::Global)));
+    }
+
+    /**
+     * The case the tag exists for: the screen shows the project's value while
+     * a different one sits in the global file, and nothing else says so.
+     */
+    public function testAProjectValueHidingAGlobalOneSaysThat(): void
+    {
+        $row = $this->row(SettingsRowKind::Bool, true, origin: ConfigScope::Project, shadowed: true);
+
+        $this->assertSame('overrides global', $this->detail($row));
+    }
+
+    /** Last of the clauses: a narrow row should lose this before the hint. */
+    public function testTheOriginTrailsTheHint(): void
+    {
+        $row = $this->row(SettingsRowKind::Text, 'x', hint: 'why this exists', origin: ConfigScope::Global);
+
+        $this->assertSame('why this exists · from global', $this->detail($row));
+    }
+
     public function testARowWithNothingToAddSaysNothing(): void
     {
         $this->assertSame('', $this->detail($this->row(SettingsRowKind::Bool, true)));
@@ -98,8 +133,16 @@ final class SettingsRowDetailTest extends TestCase
         return SettingsRowDetail::of($row, new Translator('en'));
     }
 
-    private function row(SettingsRowKind $kind, bool|int|string $value, bool $restart = false, ?string $hint = null, ?int $min = null, ?int $max = null): SettingsRow
-    {
-        return new SettingsRow(key: 'k', label: 'L', kind: $kind, value: $value, restart: $restart, min: $min, max: $max, hint: $hint);
+    private function row(
+        SettingsRowKind $kind,
+        bool|int|string $value,
+        bool $restart = false,
+        ?string $hint = null,
+        ?int $min = null,
+        ?int $max = null,
+        ?ConfigScope $origin = null,
+        bool $shadowed = false,
+    ): SettingsRow {
+        return new SettingsRow(key: 'k', label: 'L', kind: $kind, value: $value, restart: $restart, min: $min, max: $max, hint: $hint, origin: $origin, shadowed: $shadowed);
     }
 }

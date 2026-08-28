@@ -11,6 +11,7 @@ use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsLanguageController;
+use Porta\Settings\SettingsProvenance;
 use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
@@ -36,7 +37,15 @@ final class SettingsLanguageControllerTest extends TestCase
         $scope = new SettingsScope(ConfigFiles::for($rootDir));
         $scope->set(ConfigScope::Project);
 
-        return new SettingsLanguageController($editor, new Notifier($status, $tui), new Translator('en'), $overrides, new PortaJsonWriter(ConfigFiles::for($rootDir)), $scope);
+        return new SettingsLanguageController(
+            $editor,
+            new Notifier($status, $tui),
+            new Translator('en'),
+            $overrides,
+            new PortaJsonWriter(ConfigFiles::for($rootDir)),
+            $scope,
+            new SettingsProvenance(ConfigFiles::for($rootDir)),
+        );
     }
 
     public function testRowsReflectStoredOverridesAndDefaults(): void

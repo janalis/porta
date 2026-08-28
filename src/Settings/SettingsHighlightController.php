@@ -61,6 +61,7 @@ final class SettingsHighlightController
         private readonly HighlightPreferences $preferences,
         private readonly PortaJsonWriter $writer,
         private readonly SettingsScope $scope,
+        private readonly SettingsProvenance $provenance,
         private readonly ?PluginEnablement $lifecycle = null,
     ) {}
 
@@ -93,6 +94,8 @@ final class SettingsHighlightController
                 options: [self::AUTO, ...$this->allBackendIds()],
                 optionLabels: [self::AUTO => $this->translator->trans('auto (first available)')],
                 hint: $this->translator->trans('Used for any language without its own choice below'),
+                origin: $this->provenance->originOf(['highlight', 'default']),
+                shadowed: $this->provenance->shadowsGlobal(['highlight', 'default']),
             ),
         ];
 
@@ -107,6 +110,8 @@ final class SettingsHighlightController
                 default: self::AUTO,
                 options: [self::AUTO, ...$ids],
                 optionLabels: [self::AUTO => $this->translator->trans('default')],
+                origin: $this->provenance->originOf(['highlight', 'languages', $language]),
+                shadowed: $this->provenance->shadowsGlobal(['highlight', 'languages', $language]),
             );
         }
 

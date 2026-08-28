@@ -2666,6 +2666,14 @@
         <source>for this session</source>
         <target>for this session</target>
       </trans-unit>
+      <trans-unit id="679">
+        <source>from global</source>
+        <target>from global</target>
+      </trans-unit>
+      <trans-unit id="680">
+        <source>overrides global</source>
+        <target>overrides global</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

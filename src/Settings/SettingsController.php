@@ -50,6 +50,7 @@ final class SettingsController
         private readonly Translator $translator,
         private readonly PortaJsonWriter $writer,
         private readonly SettingsScope $scope,
+        private readonly SettingsProvenance $provenance,
         LiveSettingsApplier $applier,
         BreadcrumbsWidget $breadcrumbs,
         FileIndex $files,
@@ -209,6 +210,8 @@ final class SettingsController
                 // otherwise make every row on its page read as modified, and
                 // nothing else would catch that.
                 default: self::coerce(IdeConfig::DEFAULT_SETTINGS[$key] ?? '', $descriptor['kind']),
+                origin: $this->provenance->originOf(['settings', $key]),
+                shadowed: $this->provenance->shadowsGlobal(['settings', $key]),
             );
         }
 

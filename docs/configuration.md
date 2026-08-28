@@ -36,6 +36,33 @@ would be the opposite of what either file asked for.
 A warning names the file it came from, so a mistake in one is not reported
 against the other.
 
+## Which file the Settings screen writes
+
+Every page that persists something leads with a **Save changes to** row. It is
+a session choice, not a stored setting — there is no good file in which to
+store "which file".
+
+It starts on the global file, so a preference does not dirty a repository. The
+exception: if the project's `.porta.json` already has a `settings` block, it
+starts on the project instead. Your next edit landing somewhere new while the
+old values sit visibly in that file, still overriding it, is the surprising
+outcome — not the safe one.
+
+The same choice decides where a plugin is installed, because it is the same
+question: are you configuring this project, or yourself?
+
+## Where a shown value came from
+
+Rows carry a dim tag when the answer is not obvious:
+
+- **`from global`** — the value comes from `~/.porta/config.json`, which is not
+  the file you are editing if the scope row says otherwise.
+- **`overrides global`** — the project file sets this, and a *different* value
+  sits in the global file underneath it.
+
+Nothing is tagged in the ordinary case: a value the project sets and nothing
+else, or a value nothing sets at all. A tag on every row is a tag on no row.
+
 ## `.porta.json`
 
 Per-project configuration, read from the project root. All keys are
