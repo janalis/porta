@@ -179,6 +179,12 @@ excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server
 # round CAN move — it lost two git-shaped branches to ViewPointers. The other
 # eight are unmoved, and the git ones deliberately so: `plugins` is a linted
 # path, so moving a class out of `src/` does not take it out of the gate.
+# Round 33 (the settings screen: live plugin settings, the form's scroll and
+# per-kind controls, reset, a caret in TextField, the search index) re-bisected
+# all nine: none moved. Expected, and for the reason above — the round's one
+# structurally heavy class, SettingsFormWidget, was EXTRACTED into five
+# collaborators before any behaviour was added to it, precisely so it would not
+# become a new pin. It is not one.
 #
 # Re-bisect and lower again after the next structural change — AND after a mago
 # upgrade, which can change how a metric is counted without a line of code
