@@ -29,7 +29,7 @@ final class SettingsRowLayoutTest extends TestCase
      */
     public function testAPathologicalLabelIsCappedAtHalfThePane(): void
     {
-        $layout = SettingsRowLayout::measure([$this->row(str_repeat('x', 200))], 60);
+        $layout = SettingsRowLayout::measure([$this->row(str_repeat('x', times: 200))], 60);
 
         $this->assertSame(30, $layout->label);
     }
@@ -37,7 +37,7 @@ final class SettingsRowLayoutTest extends TestCase
     /** A narrow pane still leaves a usable column rather than collapsing to nothing. */
     public function testAVeryNarrowPaneKeepsAMinimumColumn(): void
     {
-        $layout = SettingsRowLayout::measure([$this->row(str_repeat('x', 40))], 6);
+        $layout = SettingsRowLayout::measure([$this->row(str_repeat('x', times: 40))], 6);
 
         $this->assertSame(8, $layout->label);
     }

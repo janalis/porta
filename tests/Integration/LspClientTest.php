@@ -269,7 +269,7 @@ final class LspClientTest extends TestCase
         $this->assertTrue($client->isInitialized());
 
         $process = Probe::get(Probe::get($client, 'transport'), 'process');
-        \assert(\is_resource($process));
+        \assert(\is_resource($process), description: 'the transport holds a live process while the client is up');
         proc_terminate($process, signal: 9);
 
         $this->await(static function () use (&$outcomes): bool {
@@ -286,7 +286,8 @@ final class LspClientTest extends TestCase
         // the spawn failure the $started check already caught. The initialize
         // response can never arrive, so the EOF is the only failure signal.
         $outcome = null;
-        $client = $this->clients[] = new LspClient([\PHP_BINARY, '-r', 'exit(1);'], \dirname(__DIR__, levels: 2));
+        $client = new LspClient([\PHP_BINARY, '-r', 'exit(1);'], \dirname(__DIR__, levels: 2));
+        $this->clients[] = $client;
         $client->start(static function (Outcome $ok) use (&$outcome): void {
             $outcome = $ok;
         });

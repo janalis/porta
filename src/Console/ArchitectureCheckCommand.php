@@ -731,7 +731,7 @@ final class ArchitectureCheckCommand extends Command
                 continue;
             }
             if (\T_COMMENT === $token[0] || \T_DOC_COMMENT === $token[0]) {
-                $out .= str_repeat("\n", substr_count($token[1], "\n"));
+                $out .= str_repeat("\n", substr_count($token[1], needle: "\n"));
                 continue;
             }
             $out .= $token[1];

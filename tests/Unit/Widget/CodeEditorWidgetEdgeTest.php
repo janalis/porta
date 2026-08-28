@@ -1054,7 +1054,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
     public function testAWheelScrollNotifiesTheCompletionHandler(): void
     {
-        $editor = $this->editor(str_repeat("line\n", 100));
+        $editor = $this->editor(str_repeat("line\n", times: 100));
         $scrolled = 0;
         $editor->setCallbacks(new EditorCallbacks(completion: new FakeEditorCompletion(
             viewportScrolled: static function () use (&$scrolled): void {

@@ -96,6 +96,7 @@ return new class('graph-viewer') extends AbstractPlugin {
             // Not an arrow fn: the widget is kept so a later `renderMode` edit
             // can be pushed into the standing pane (the two paths need no push,
             // being read per spawn).
+            // @mago-expect lint:prefer-arrow-function -- the body ASSIGNS to $this->widget; an arrow function hides a side effect inside an expression
             function (PaneServices $pane) use ($dot, $plantUml, $renderMode): EditorPaneWidget {
                 return $this->widget = new GraphViewerWidget($dot, $pane->translator, $plantUml, new ImageDecoder(), $pane->scheduler, $renderMode, $pane->styles);
             },

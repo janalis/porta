@@ -27,7 +27,7 @@ final class IdePerfLogTest extends TestCase
     public function testAnActiveSecondAppendsAStatsLine(): void
     {
         putenv('PATH=/nonexistent');
-        $project = new TempProject(['a.php' => "<?php\n".str_repeat("// filler\n", 40)]);
+        $project = new TempProject(['a.php' => "<?php\n".str_repeat("// filler\n", times: 40)]);
 
         $this->runIde(
             $project,

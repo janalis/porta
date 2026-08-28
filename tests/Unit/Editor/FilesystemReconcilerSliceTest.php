@@ -48,7 +48,7 @@ final class FilesystemReconcilerSliceTest extends TestCase
     private function buffers(): BufferService
     {
         $buffers = Services::resolve($this->ide, BufferService::class);
-        \assert($buffers instanceof BufferService);
+        \assert($buffers instanceof BufferService, description: 'the locator serves the buffer service');
 
         return $buffers;
     }
@@ -61,12 +61,12 @@ final class FilesystemReconcilerSliceTest extends TestCase
         $buffers->openFile($a, focus: OpenFocus::Editor);
         $buffers->openFile($b, focus: OpenFocus::Editor);
 
-        file_put_contents($b, "<?php // b v2\n");
+        file_put_contents($b, data: "<?php // b v2\n");
         touch($b, time() + 2);
         $buffers->pollFilesystemSlice();
 
         $manager = Services::resolve($this->ide, BufferManager::class);
-        \assert($manager instanceof BufferManager);
+        \assert($manager instanceof BufferManager, description: 'the locator serves the buffer manager');
         $this->assertSame("<?php // b v2\n", $manager->get($b)?->document->getText(), 'one slice covered both open buffers');
     }
 
@@ -106,7 +106,7 @@ final class FilesystemReconcilerSliceTest extends TestCase
     {
         $deep = $this->project->write('d1/d2/d3/d4/d5/d6/d7/d8/d9/leaf.php', "<?php\n");
         $tree = Services::resolve($this->ide, FileTreeWidget::class);
-        \assert($tree instanceof FileTreeWidget);
+        \assert($tree instanceof FileTreeWidget, description: 'the locator serves the file tree');
         $tree->revealPath((string) realpath($deep)); // ten scanned dirs: root + d1..d9
 
         $this->buffers()->pollFilesystemSlice();
@@ -117,7 +117,7 @@ final class FilesystemReconcilerSliceTest extends TestCase
     public function testATreeChangeFoundByTheSliceRequestsARender(): void
     {
         $tree = Services::resolve($this->ide, FileTreeWidget::class);
-        \assert($tree instanceof FileTreeWidget);
+        \assert($tree instanceof FileTreeWidget, description: 'the locator serves the file tree');
         $tui = Services::resolve($this->ide, \Symfony\Component\Tui\Tui::class);
         Probe::invoke($tui, 'processRender'); // settle: clear any pending request
 

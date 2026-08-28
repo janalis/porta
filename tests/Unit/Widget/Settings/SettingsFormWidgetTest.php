@@ -34,7 +34,7 @@ final class SettingsFormWidgetTest extends TestCase
      */
     private function body(array $rendered): array
     {
-        return array_values(array_slice($rendered, 1, -1));
+        return array_values(array_slice($rendered, offset: 1, length: -1));
     }
 
     use RendersWidget;

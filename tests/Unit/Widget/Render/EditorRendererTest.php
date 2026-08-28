@@ -172,19 +172,19 @@ final class EditorRendererTest extends TestCase
         // Same disease as the guide fold: per-hint insertAt re-sliced the
         // accumulated line, multiplying escapes per hint — a parameter-hint-
         // happy LSP line went exponential. One pass stays linear.
-        $doc = new Document(str_repeat('fn(x), ', 12)."\n");
+        $doc = new Document(str_repeat('fn(x), ', times: 12)."\n");
         $hints = [];
         for ($i = 0; $i < 12; ++$i) {
             $hints[] = ['col' => 3 + ($i * 7), 'text' => 'p:'];
         }
         $highlighter = new \Porta\Highlight\CodeHighlighter();
         $highlighter->setFile('a.php');
-        $hlLine = $highlighter->highlight([str_repeat('fn(x), ', 12)], 1)[0];
+        $hlLine = $highlighter->highlight([str_repeat('fn(x), ', times: 12)], 1)[0];
 
         $out = EditorRenderer::applyInlayHints($doc, 0, $hints, $hlLine, $this->styles());
 
         $this->assertLessThan(4_096, \strlen($out), 'hint insertion must stay linear, never multiply per hint');
-        $this->assertSame(12, substr_count(AnsiUtils::stripAnsiCodes($out), 'p:'), 'every hint landed');
+        $this->assertSame(12, substr_count(AnsiUtils::stripAnsiCodes($out), needle: 'p:'), 'every hint landed');
         $this->assertStringContainsString('fn(p:x)', AnsiUtils::stripAnsiCodes($out), 'hints insert at their column, pushing content right');
     }
 
@@ -245,7 +245,7 @@ final class EditorRendererTest extends TestCase
         // re-sliced the accumulated line, and the slicer's escape replay
         // DOUBLED the escapes per glyph — 16 indent levels made a 2^20-byte
         // row and a 5MB frame (a deeply indented ASCII-art block in a README).
-        $indent = str_repeat(' ', 32); // 8 guide columns at the default indent width of 4
+        $indent = str_repeat(' ', times: 32); // 8 guide columns at the default indent width of 4
         $doc = new Document($indent."x\n");
         $doc->setCursor(0, 0);
         $styles = $this->styles();
@@ -257,7 +257,7 @@ final class EditorRendererTest extends TestCase
 
         $this->assertLessThan(2_048, \strlen($guided), 'guide overlay must stay linear, never double per glyph');
         $this->assertSame(
-            str_repeat(\Porta\Ui\Glyphs::INDENT_GUIDE.'   ', 8).'x',
+            str_repeat(\Porta\Ui\Glyphs::INDENT_GUIDE.'   ', times: 8).'x',
             AnsiUtils::stripAnsiCodes($guided),
             'one guide per indent level, visible text otherwise untouched',
         );
@@ -268,7 +268,7 @@ final class EditorRendererTest extends TestCase
         // 9 same-word matches on one line = the caret parked on a prose
         // stopword; that LINE contributes nothing (per-line skip), while a
         // code-like sibling line keeps its highlighting.
-        $dense = implode(' ', array_fill(0, EditorRenderer::MAX_OCCURRENCES_PER_LINE + 1, 'the'));
+        $dense = implode(' ', array_fill(0, EditorRenderer::MAX_OCCURRENCES_PER_LINE + 1, value: 'the'));
         $doc = new Document($dense."\nthe end of the\n");
         $doc->setCursor(0, 1); // caret on the first 'the'
 
@@ -280,7 +280,7 @@ final class EditorRendererTest extends TestCase
 
     public function testIdentifierOccurrencesKeepsALineExactlyAtTheCap(): void
     {
-        $atCap = implode(' ', array_fill(0, EditorRenderer::MAX_OCCURRENCES_PER_LINE, 'the'));
+        $atCap = implode(' ', array_fill(0, EditorRenderer::MAX_OCCURRENCES_PER_LINE, value: 'the'));
         $doc = new Document($atCap."\n");
         $doc->setCursor(0, 1);
 

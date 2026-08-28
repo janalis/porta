@@ -313,9 +313,7 @@ final class NonBlockingWriterTest extends TestCase
         $this->assertGreaterThan(0, $writer->pendingBytes());
         fclose($read); // the peer dies with the backlog queued
 
-        $this->await(function (): bool {
-            return [] !== $this->errors;
-        });
+        $this->await(fn (): bool => [] !== $this->errors);
 
         $this->assertSame(['write failed'], $this->errors);
         $this->assertSame(0, $drains, 'failure drops the queue without a drain signal');

@@ -21,11 +21,24 @@ final class SettingsScopeRowTest extends TestCase
 
     private TempProject $home;
 
-    private function row(bool $withHome = true): SettingsScopeRow
+    /** The ordinary case: a home exists, so both scopes are offerable. */
+    private function row(): SettingsScopeRow
+    {
+        $this->home = new TempProject([]);
+
+        return $this->rowFor($this->home->dir);
+    }
+
+    /** No home: one writable file, so there is nothing to choose between. */
+    private function rowWithoutAHome(): SettingsScopeRow
+    {
+        return $this->rowFor(null);
+    }
+
+    private function rowFor(?string $home): SettingsScopeRow
     {
         $this->project = new TempProject([]);
-        $this->home = new TempProject([]);
-        $files = new ConfigFiles($this->project->dir, $withHome ? $this->home->dir : null);
+        $files = new ConfigFiles($this->project->dir, $home);
 
         return new SettingsScopeRow(new SettingsScope($files), $files, new Translator('en'));
     }
@@ -47,7 +60,7 @@ final class SettingsScopeRowTest extends TestCase
      */
     public function testThereIsNoRowWhenThereIsNothingToChoose(): void
     {
-        $this->assertNull($this->row(withHome: false)->row());
+        $this->assertNull($this->rowWithoutAHome()->row());
     }
 
     public function testLeadPutsTheChoiceAboveThePagesOwnRows(): void
@@ -64,7 +77,7 @@ final class SettingsScopeRowTest extends TestCase
     {
         $own = new SettingsRow(key: 'theme', label: 'Theme', kind: SettingsRowKind::Bool, value: true, restart: false);
 
-        $this->assertSame([$own], $this->row(withHome: false)->lead([$own]));
+        $this->assertSame([$own], $this->rowWithoutAHome()->lead([$own]));
     }
 
     public function testChoosingAScopeMovesWhereWritesLand(): void

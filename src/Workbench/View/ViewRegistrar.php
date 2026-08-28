@@ -118,7 +118,7 @@ final class ViewRegistrar
      */
     private function registerEntry(array $entry): bool
     {
-        if (isset($this->built[$entry['id']]) || null !== $this->registry->find($entry['id'])) {
+        if (\array_key_exists($entry['id'], $this->built) || null !== $this->registry->find($entry['id'])) {
             return false;
         }
         try {

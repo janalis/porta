@@ -165,6 +165,7 @@ final class BidiTui extends Tui implements FrameHooks
      * same loop iteration as the input that requested it, and the ticker
      * stays as the retry fallback (e.g. while the terminal back-pressures).
      */
+    // @mago-expect lint:no-boolean-flag-parameter -- an #[\Override]: the signature is Tui's, not ours to change
     #[\Override]
     public function requestRender(bool $force = false): void
     {

@@ -87,6 +87,7 @@ final class PerfCollector
         private readonly ?BootTrace $bootTrace = null,
     ) {
         $this->log = DiagnosticLog::forRoot($rootDir, 'perf');
+        // @mago-expect lint:no-shorthand-ternary -- spelling it out needs a narrowing branch no test can reach: mago's sys_getloadavg() stub returns an untyped array, so every rewrite trades this warning for two analyzer ERRORS
         $this->loadAvg = $loadAvg ?? static fn (): float => (float) (sys_getloadavg() ?: [0.0])[0];
         $frameHooks?->onBeforeFrame($this->passMark(...));
     }
@@ -197,6 +198,7 @@ final class PerfCollector
      * splice. The ratio is the edit path's cost attribution: a beat full of
      * `hlFull` while typing means every keystroke re-parsed the file.
      */
+    // @mago-expect lint:no-boolean-flag-parameter -- whole-parse vs splice IS the measurement, not a mode switch
     public function countHighlightParse(bool $incremental): void
     {
         if ($incremental) {

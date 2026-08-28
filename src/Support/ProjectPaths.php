@@ -51,7 +51,7 @@ final class ProjectPaths
     /** Path relative to the project root, or the absolute path when outside it. */
     public function relative(string $path): string
     {
-        if (isset($this->relativeMemo[$path])) {
+        if (\array_key_exists($path, $this->relativeMemo)) {
             return $this->relativeMemo[$path];
         }
         $realPath = realpath($path);

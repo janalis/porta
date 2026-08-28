@@ -263,7 +263,7 @@ final class PerfCollectorTest extends TestCase
 
         $log = $this->log($perf);
         $this->assertStringContainsString('2026-08-26 10:00:00 boot firstPaint=30ms', $log);
-        $this->assertSame(1, substr_count($log, 'boot '), 'the second paint must not re-stamp the line');
+        $this->assertSame(1, substr_count($log, needle: 'boot '), 'the second paint must not re-stamp the line');
     }
 
     public function testTheBootLinePrecedesASlowPaintLineOfTheSameFrame(): void
@@ -273,8 +273,8 @@ final class PerfCollectorTest extends TestCase
         $perf->paintMark(0.2);
 
         $log = $this->log($perf);
-        $bootAt = strpos($log, 'boot ');
-        $slowAt = strpos($log, 'slow-paint');
+        $bootAt = strpos($log, needle: 'boot ');
+        $slowAt = strpos($log, needle: 'slow-paint');
         $this->assertNotFalse($bootAt);
         $this->assertNotFalse($slowAt);
         $this->assertLessThan($slowAt, $bootAt, 'the boot line is the opening evidence');

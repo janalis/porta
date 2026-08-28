@@ -158,7 +158,7 @@ final class CompletionControllerTest extends TestCase
     public function testRequestInlayHintsClampsToTheViewportPlusMargin(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', str_repeat("\$x = 1;\n", 2_000));
+        $this->readyOn($controller, '/p/a.php', str_repeat("\$x = 1;\n", times: 2_000));
         $this->editor->scrollBy(600);
 
         $controller->requestInlayHints();
@@ -171,7 +171,7 @@ final class CompletionControllerTest extends TestCase
     public function testASettledScrollOutsideTheHintedWindowRefetches(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', str_repeat("\$x = 1;\n", 2_000));
+        $this->readyOn($controller, '/p/a.php', str_repeat("\$x = 1;\n", times: 2_000));
         $controller->requestInlayHints(); // hinted window: lines 0..524
 
         $this->editor->scrollBy(600); // visible 600..624 — outside the window
@@ -188,7 +188,7 @@ final class CompletionControllerTest extends TestCase
     {
         $scheduler = new FakeScheduler();
         $controller = $this->controller(scheduler: $scheduler);
-        $this->readyOn($controller, '/p/a.php', str_repeat("\$x = 1;\n", 2_000));
+        $this->readyOn($controller, '/p/a.php', str_repeat("\$x = 1;\n", times: 2_000));
         $controller->requestInlayHints();
 
         $this->editor->scrollBy(600);
@@ -209,6 +209,7 @@ final class CompletionControllerTest extends TestCase
 
         $controller->viewportScrolled();
 
+        // @mago-expect lint:no-isset -- $client is an UNINITIALIZED typed property here; array_key_exists does not apply and reading it would throw
         $this->assertFalse(isset($this->client) && [] !== $this->client->requests, 'no file — nothing to fetch');
     }
 

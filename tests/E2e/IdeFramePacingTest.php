@@ -27,7 +27,7 @@ final class IdeFramePacingTest extends TestCase
     public function testAWheelBurstIsCappedAndTheRestingFrameStillLands(): void
     {
         putenv('PATH=/nonexistent');
-        $lines = "<?php\n".implode("\n", array_map(static fn (int $i): string => "// line {$i}", range(1, 60)))."\n";
+        $lines = "<?php\n".implode("\n", array_map(static fn (int $i): string => "// line {$i}", range(start: 1, end: 60)))."\n";
         $project = new TempProject(['a.php' => $lines]);
 
         $this->runIde(
@@ -54,9 +54,7 @@ final class IdeFramePacingTest extends TestCase
                     $scroll = \Porta\Tests\Support\EditorState::scroll($editor);
                     $this->assertSame(6, $scroll->vScroll(), 'both notches scrolled the model immediately');
                     $this->await(
-                        static function () use ($tui): bool {
-                            return false === (bool) Probe::get($tui, 'renderRequested');
-                        },
+                        static fn (): bool => false === (bool) Probe::get($tui, 'renderRequested'),
                         what: 'the capped frame to land via the trailing wakeup',
                     );
                 },

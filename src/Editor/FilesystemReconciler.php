@@ -75,7 +75,7 @@ final class FilesystemReconciler
         if ([] === $this->pendingPaths) {
             $this->pendingPaths = array_map(static fn (Buffer $buffer): string => $buffer->path, $this->buffers->all());
         }
-        foreach (array_splice($this->pendingPaths, 0, self::BUFFER_SLICE) as $path) {
+        foreach (array_splice($this->pendingPaths, offset: 0, length: self::BUFFER_SLICE) as $path) {
             $buffer = $this->buffers->get($path);
             if (null !== $buffer) {
                 $this->pollBuffer($buffer);

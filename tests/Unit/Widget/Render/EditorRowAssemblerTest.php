@@ -227,7 +227,7 @@ final class EditorRowAssemblerTest extends TestCase
         // O(3^N) in escape bytes — 8 same-word spans on one line produced
         // ~120KB, 12 ran out of memory. Feed 12 occurrence spans directly
         // (bypassing the renderer's per-line cap) through a full assemble.
-        $prose = str_repeat('the quick brown fox jumps over the lazy dog ', 3);
+        $prose = str_repeat('the quick brown fox jumps over the lazy dog ', times: 3);
         $doc = new Document($prose."\n");
         [$assembler] = $this->assembler($doc);
         $occurrences = [];
@@ -262,12 +262,12 @@ final class EditorRowAssemblerTest extends TestCase
 
     public function testASpanLeftOfTheScrolledWindowIsClippedAway(): void
     {
-        $doc = new Document(str_repeat('x', 40)."\n");
+        $doc = new Document(str_repeat('x', times: 40)."\n");
         [$assembler] = $this->assembler($doc);
         // Occurrence entirely inside [0,3) — invisible at hScroll 10.
         $decorations = new EditorDecorations(false, null, [], [[0, 0, 3]], null);
         $geo = new EditorGeometry(numberWidth: 0, gutterWidth: 3, contentWidth: 10, stripeCol: 0);
-        $line = str_repeat('x', 40);
+        $line = str_repeat('x', times: 40);
 
         $clippedRows = $assembler->assemble($geo, $decorations, sticky: [], highlighted: [$line], stripe: [''], contentRows: 1, vScroll: 0, cursorLine: -1, cursorDisplayCol: 0, hScroll: 10);
         $plainRows = $assembler->assemble($geo, $this->noSelection(), sticky: [], highlighted: [$line], stripe: [''], contentRows: 1, vScroll: 0, cursorLine: -1, cursorDisplayCol: 0, hScroll: 10);

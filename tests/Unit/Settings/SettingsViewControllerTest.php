@@ -173,8 +173,9 @@ final class SettingsViewControllerTest extends TestCase
         $files = ConfigFiles::for($this->project->dir);
         // Pinned to Project so every persist below lands in the temp project;
         // the scope defaults to Global, i.e. the suite's fixture home.
-        $scope = $this->scope = new SettingsScope($files);
+        $scope = new SettingsScope($files);
         $scope->set(ConfigScope::Project);
+        $this->scope = $scope;
         $scopeRow = new SettingsScopeRow($scope, $files, new Translator('en'));
 
         $renderer = new Renderer(new StyleSheet());

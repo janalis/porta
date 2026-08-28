@@ -287,6 +287,7 @@ final class LspSessionPool
             $this->onDiagnostics ?? static function (array $params): void {},
             $this->onApplyEdit ?? static fn (array $edit): bool => false,
             function (Outcome $ok) use ($server, $signature): void {
+                // @mago-expect lint:no-else-clause -- the dispatch below runs in BOTH branches, so an early return would skip it and a guard would duplicate it
                 if ($ok->isOk()) {
                     // A server that came up earns fresh retries for its next
                     // incident (this same callback fires again on a

@@ -89,7 +89,7 @@ trait ReadsSettingsForm
     private function selectedSettingRow(SettingsFormWidget $form, int $columns = 80, int $rows = 24): string
     {
         $lines = $form->render(new RenderContext($columns, $rows));
-        foreach (array_slice($lines, 1, -1) as $line) {
+        foreach (array_slice($lines, offset: 1, length: -1) as $line) {
             if (str_contains($line, "\x1b[48;5;")) {
                 return rtrim(AnsiUtils::stripAnsiCodes($line));
             }

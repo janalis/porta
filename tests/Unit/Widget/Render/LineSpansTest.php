@@ -198,11 +198,11 @@ final class LineSpansTest extends TestCase
 
         $clipped = LineSpans::clip(
             [
-                $mk(0, 10), // ends exactly at winStart → dropped
-                $mk(30, 40), // starts exactly at winEnd → dropped
-                $mk(5, 15), // straddles the left edge → clamped to [10, 15)
-                $mk(25, 99), // straddles the right edge → clamped to [25, 30)
-                $mk(12, 18), // fully inside → untouched
+                $mk(s: 0, e: 10), // ends exactly at winStart → dropped
+                $mk(s: 30, e: 40), // starts exactly at winEnd → dropped
+                $mk(s: 5, e: 15), // straddles the left edge → clamped to [10, 15)
+                $mk(s: 25, e: 99), // straddles the right edge → clamped to [25, 30)
+                $mk(s: 12, e: 18), // fully inside → untouched
                 $mk(0, \PHP_INT_MAX), // "to end of line" diagnostic → clamped to the window
             ],
             10,
@@ -211,10 +211,10 @@ final class LineSpansTest extends TestCase
 
         $this->assertSame(
             [
-                $mk(10, 15),
-                $mk(25, 30),
-                $mk(12, 18),
-                $mk(10, 30),
+                $mk(s: 10, e: 15),
+                $mk(s: 25, e: 30),
+                $mk(s: 12, e: 18),
+                $mk(s: 10, e: 30),
             ],
             $clipped,
         );

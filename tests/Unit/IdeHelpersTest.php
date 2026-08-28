@@ -88,8 +88,8 @@ final class IdeHelpersTest extends TestCase
 
     public function testANonBlockingTerminalGetsThePendingBytesProbe(): void
     {
-        $stream = fopen('php://memory', 'w+');
-        \assert(false !== $stream);
+        $stream = fopen('php://memory', mode: 'w+');
+        \assert(false !== $stream, description: 'php://memory always opens');
         $terminal = new \Porta\Ui\NonBlockingTerminal(new VirtualTerminal(columns: 80, rows: 24), $stream);
         $ide = new Ide($this->project->dir, null, $terminal);
         try {
@@ -272,7 +272,7 @@ final class IdeHelpersTest extends TestCase
         $this->assertSame('late.php', $paths->relative($missing), 'and the memoized answer matches');
 
         // At the cap the memo flushes wholesale instead of growing unbounded.
-        $full = array_fill_keys(array_map(static fn (int $i): string => "/stale/{$i}", range(1, 1024)), 'stale');
+        $full = array_fill_keys(array_map(static fn (int $i): string => "/stale/{$i}", range(start: 1, end: 1024)), value: 'stale');
         Probe::set($paths, 'relativeMemo', $full);
         $this->assertSame('late.php', $paths->relative($missing), 'a full memo still answers correctly');
         $this->assertCount(1, (array) Probe::get($paths, 'relativeMemo'), 'the flush kept only the fresh entry');
