@@ -6,6 +6,7 @@ namespace Porta\Widget\Settings;
 
 use Porta\Config\LanguageCatalog;
 use Porta\Container\AsWidget;
+use Porta\Event\SettingsSearchRequested;
 use Porta\I18n\Translator;
 use Porta\Layout\ResizableSidebar;
 use Porta\Support\AnsiText;
@@ -23,6 +24,7 @@ use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\PanelRowStyle;
 use Porta\Widget\Support\PanelWidth;
 use Porta\Widget\Support\WheelScrollable;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -73,6 +75,10 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         private readonly Translator $translator,
         int $width = 22,
         ?Styles $styles = null,
+        // Trailing and optional, as the widget rule has it. Only Ctrl+F uses
+        // it: section selection is a callback because the view owns it, while
+        // the picker is nobody's in particular.
+        private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->width = $width;
         $this->initStyles($styles);
@@ -209,6 +215,11 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
 
             return;
         }
+        if ($kb->matches($data, 'find_setting')) {
+            $this->events?->dispatch(new SettingsSearchRequested());
+
+            return;
+        }
         if ($kb->matches($data, 'move_up')) {
             $this->moveTo($this->prevSelectable($this->list->selected()));
 
@@ -325,6 +336,10 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
             'move_up' => [Key::UP],
             'move_down' => [Key::DOWN],
             'focus_next_pane' => [Key::TAB],
+            // Same key on both of the view's stops. Tab lands here, and a Ctrl+F
+            // that works on one pane and not the other is the kind of dead key
+            // people stop trying.
+            'find_setting' => ['ctrl+f'],
             'exit_view' => [Key::ESCAPE],
         ];
     }

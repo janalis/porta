@@ -2650,6 +2650,18 @@
         <source>Interface</source>
         <target>インターフェース</target>
       </trans-unit>
+      <trans-unit id="674">
+        <source>Settings</source>
+        <target>設定</target>
+      </trans-unit>
+      <trans-unit id="675">
+        <source>Find Setting</source>
+        <target>設定を検索</target>
+      </trans-unit>
+      <trans-unit id="676">
+        <source>⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings</source>
+        <target>⏎ 編集 · ←/→ 変更 · r 既定に戻す · Ctrl+F 検索 · Tab ペイン · 2 キー割当</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

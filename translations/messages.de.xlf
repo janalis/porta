@@ -2650,6 +2650,18 @@
         <source>Interface</source>
         <target>Oberfläche</target>
       </trans-unit>
+      <trans-unit id="674">
+        <source>Settings</source>
+        <target>Einstellungen</target>
+      </trans-unit>
+      <trans-unit id="675">
+        <source>Find Setting</source>
+        <target>Einstellung suchen</target>
+      </trans-unit>
+      <trans-unit id="676">
+        <source>⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings</source>
+        <target>⏎ bearbeiten · ←/→ ändern · r zurücksetzen · Ctrl+F suchen · Tab Bereiche · 2 Tastenkürzel</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

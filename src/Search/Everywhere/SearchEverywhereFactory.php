@@ -69,6 +69,37 @@ final class SearchEverywhereFactory
     }
 
     /**
+     * The centered overlay scoped to one already-built source.
+     *
+     * The three methods around this one each know their source's dependencies
+     * and assemble it here. This one deliberately does not: it exists for
+     * sources owned by a namespace this factory must not import. `Settings`
+     * is the first — it already imports `Search`, and the reverse edge would
+     * make the pair mutually dependent to save one caller from passing an
+     * object it has already built.
+     *
+     * Sync-only, no recent-files tray. An async source needs its own
+     * cancellation story, and a scoped picker over one is not yet a thing that
+     * exists.
+     */
+    public function createScoped(SearchSource $source, string $title): SearchEverywhereController
+    {
+        return new SearchEverywhereController(
+            $this->overlay,
+            [$source],
+            [],
+            $this->buffers,
+            $this->tui,
+            $this->paths,
+            $this->bufferService,
+            $this->scheduler,
+            $this->translator,
+            $title,
+            seedRecentFiles: false,
+        );
+    }
+
+    /**
      * The command palette behind Ctrl+Shift+A: the centered overlay scoped to the
      * actions source alone. An empty query lists every command (no recent-files
      * tray), and activating a hit runs it.

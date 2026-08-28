@@ -2650,6 +2650,18 @@
         <source>Interface</source>
         <target>ממשק</target>
       </trans-unit>
+      <trans-unit id="674">
+        <source>Settings</source>
+        <target>הגדרות</target>
+      </trans-unit>
+      <trans-unit id="675">
+        <source>Find Setting</source>
+        <target>חיפוש הגדרה</target>
+      </trans-unit>
+      <trans-unit id="676">
+        <source>⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings</source>
+        <target>⏎ עריכה · ←/→ שינוי · r איפוס · Ctrl+F חיפוש · Tab חלוניות · 2 קיצורי מקשים</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

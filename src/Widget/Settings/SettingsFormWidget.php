@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Settings;
 
 use Porta\Container\AsWidget;
+use Porta\Event\SettingsSearchRequested;
 use Porta\Event\SettingsSectionRequested;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsRow;
@@ -166,6 +167,11 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         }
         if ($kb->matches($data, 'focus_next_pane')) {
             $this->fire($this->onFocusNext);
+
+            return;
+        }
+        if ($kb->matches($data, 'find_setting')) {
+            $this->events?->dispatch(new SettingsSearchRequested());
 
             return;
         }
@@ -516,7 +522,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     {
         $hint = null !== $this->editing
             ? $this->translator->trans('⏎ save · Esc cancel')
-            : $this->translator->trans('⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings');
+            : $this->translator->trans('⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings');
 
         return $this->styles->merge(Role::Toolbar, Role::Dim)->apply(AnsiText::truncate(' '.$hint, $width, pad: true));
     }
@@ -552,6 +558,11 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             'confirm' => [Key::ENTER],
             'delete_char_backward' => [Key::BACKSPACE],
             'show_keybindings' => ['2'],
+            // Widget-local and uncatalogued, like every other binding in this
+            // map. The help viewer catalogues some of its keys because they are
+            // rebindable; none of this form's are, and making one of the six
+            // the exception would be the surprise.
+            'find_setting' => ['ctrl+f'],
             // A bare letter, the dialect this pane already speaks ('1', '2',
             // '[', ']'), and inert while the inline editor owns the keys.
             'reset_row' => ['r'],

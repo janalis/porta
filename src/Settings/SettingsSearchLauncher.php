@@ -1,0 +1,71 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Settings;
+
+use Porta\Container\AsIdeService;
+use Porta\Event\SettingsSearchRequested;
+use Porta\Event\SettingsSectionRequested;
+use Porta\Search\Everywhere\SearchEverywhereController;
+use Porta\Search\Everywhere\SearchEverywhereFactory;
+use Porta\Workbench\View\ViewRegistry;
+use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+
+/**
+ * "Find Setting": the centered picker, scoped to settings.
+ *
+ * The surface is the existing overlay rather than a filter row inside the
+ * view. `PickerModalPresenter` reads `OverlayHost` directly *because* pickers
+ * went dark under a full-screen view, and `InputDispatcher` consults
+ * `isSearchOpen()` ahead of any view path — so Esc keeps its one meaning and
+ * the settings view needs no third focus stop, no region surgery and no caret
+ * negotiation with a widget that already owns the keyboard.
+ *
+ * The controller is built once and reused. Each `open()` bumps its own
+ * generation and clears its hits, so a second open is a fresh picker; building
+ * a new one per keypress would only add garbage.
+ */
+#[AsIdeService]
+final class SettingsSearchLauncher
+{
+    private ?SearchEverywhereController $picker = null;
+
+    public function __construct(
+        private readonly SearchEverywhereFactory $pickers,
+        private readonly SettingsSearchIndex $index,
+        private readonly ViewRegistry $views,
+        private readonly EventDispatcherInterface $events,
+    ) {}
+
+    #[AsEventListener]
+    public function onSearchRequested(SettingsSearchRequested $event): void
+    {
+        $this->open();
+    }
+
+    public function open(): void
+    {
+        $this->picker ??= $this->pickers->createScoped(
+            new SettingsSearchSource($this->index, $this->reveal(...)),
+            'Find Setting',
+        );
+        $this->picker->open();
+    }
+
+    /**
+     * Show the picked setting.
+     *
+     * The view is opened BEFORE the event goes out, and the order is not
+     * cosmetic: `SettingsViewController::open()` resets to the General page, so
+     * opening afterwards would throw away the very section the event carried.
+     * Opening an already-open view is a no-op, which is what makes this safe
+     * for the common case — the picker was reached from inside the view.
+     */
+    private function reveal(string $section, string $key): void
+    {
+        $this->views->open('settings');
+        $this->events->dispatch(new SettingsSectionRequested($section, $key));
+    }
+}

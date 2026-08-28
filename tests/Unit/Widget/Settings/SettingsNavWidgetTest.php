@@ -5,15 +5,35 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Event\SettingsSearchRequested;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class SettingsNavWidgetTest extends TestCase
 {
     use RendersWidget;
+
+    /**
+     * Tab lands on the nav, so Ctrl+F has to work from there too. A key that
+     * works on one of a view's two panes and not the other is the kind people
+     * stop trying.
+     */
+    public function testCtrlFAsksForTheSettingsPickerFromTheNavToo(): void
+    {
+        $events = new EventDispatcher();
+        $fired = 0;
+        $events->addListener(SettingsSearchRequested::class, static function () use (&$fired): void {
+            ++$fired;
+        });
+
+        new SettingsNavWidget(new Translator('en'), events: $events)->handleInput("\x06");
+
+        $this->assertSame(1, $fired);
+    }
 
     private function widget(?array &$selected = null): SettingsNavWidget
     {

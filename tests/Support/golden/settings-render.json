@@ -9,7 +9,7 @@
         "                                                                        ",
         "                                                                        ",
         "                                                                        ",
-        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings              \u001b[49m\u001b[39m"
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings\u001b[49m\u001b[39m"
     ],
     "every-kind-unfocused": [
         "\u001b[48;5;237m\u001b[1m Interface — 5 settings                                                 \u001b[22m\u001b[49m",
@@ -21,7 +21,7 @@
         "                                                                        ",
         "                                                                        ",
         "                                                                        ",
-        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings              \u001b[49m\u001b[39m"
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings\u001b[49m\u001b[39m"
     ],
     "selection-moved": [
         "\u001b[48;5;237m\u001b[1m Interface — 5 settings                                                 \u001b[22m\u001b[49m",
@@ -33,7 +33,7 @@
         "                                                                        ",
         "                                                                        ",
         "                                                                        ",
-        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings              \u001b[49m\u001b[39m"
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings\u001b[49m\u001b[39m"
     ],
     "hovered-row": [
         "\u001b[48;5;237m\u001b[1m Interface — 5 settings                                                 \u001b[22m\u001b[49m",
@@ -45,7 +45,7 @@
         "                                                                        ",
         "                                                                        ",
         "                                                                        ",
-        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings              \u001b[49m\u001b[39m"
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings\u001b[49m\u001b[39m"
     ],
     "danger-armed-and-selected": [
         "\u001b[48;5;237m\u001b[1m Plugins — 2 settings                                                   \u001b[22m\u001b[49m",
@@ -53,14 +53,14 @@
         "  other (project)  [Remove]                                             ",
         "                                                                        ",
         "                                                                        ",
-        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings              \u001b[49m\u001b[39m"
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings\u001b[49m\u001b[39m"
     ],
     "action-without-a-caption": [
         "\u001b[48;5;237m\u001b[1m phpstan — 1 setting                                                    \u001b[22m\u001b[49m",
         "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m                   [Install phpstan]                                    \u001b[22m\u001b[49m\u001b[39m",
         "                                                                        ",
         "                                                                        ",
-        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings              \u001b[49m\u001b[39m"
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings\u001b[49m\u001b[39m"
     ],
     "hints-across-kinds": [
         "\u001b[48;5;237m\u001b[1m image-viewer — 3 settings                                              \u001b[22m\u001b[49m",
@@ -69,7 +69,7 @@
         "  Skip images larger than (bytes)  < 20971520 >\u001b[38;5;245m · routing only\u001b[39m          ",
         "                                                                        ",
         "                                                                        ",
-        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings              \u001b[49m\u001b[39m"
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings\u001b[49m\u001b[39m"
     ],
     "ragged-value-column": [
         "\u001b[48;5;237m\u001b[1m General — 3 settings                                                   \u001b[22m\u001b[49m",
@@ -78,14 +78,14 @@
         "  Skip images larger than (bytes)  < 4 >                                ",
         "                                                                        ",
         "                                                                        ",
-        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings              \u001b[49m\u001b[39m"
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings\u001b[49m\u001b[39m"
     ],
     "restart-note": [
         "\u001b[48;5;237m\u001b[1m PHP — 1 setting                                                        \u001b[22m\u001b[49m",
         "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  Run/debug command  frankenphp php-cli\u001b[38;5;245m · applies on restart\u001b[39m            \u001b[22m\u001b[49m\u001b[39m",
         "                                                                        ",
         "                                                                        ",
-        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings              \u001b[49m\u001b[39m"
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings\u001b[49m\u001b[39m"
     ],
     "truncating-long-label": [
         "\u001b[48;5;237m\u001b[1m General — 1 setting          \u001b[22m\u001b[49m",
@@ -109,13 +109,13 @@
         "  Setting 10  [x]                                                       ",
         "  Setting 11  [ ]                                                       ",
         "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  Setting 12  [x]                                                       \u001b[22m\u001b[49m\u001b[39m",
-        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings              \u001b[49m\u001b[39m"
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings\u001b[49m\u001b[39m"
     ],
     "empty-page": [
         "\u001b[48;5;237m\u001b[1m Nothing — 0 settings                                                   \u001b[22m\u001b[49m",
         "                                                                        ",
         "                                                                        ",
         "                                                                        ",
-        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings              \u001b[49m\u001b[39m"
+        "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings\u001b[49m\u001b[39m"
     ]
 }

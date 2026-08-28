@@ -15,6 +15,7 @@ enum SearchCategory
     case Symbols;
     case Actions;
     case Text;
+    case Settings;
 
     /** The group header label (English source string; {@see SearchEverywhereController::render()} translates it). */
     public function title(): string
@@ -25,6 +26,7 @@ enum SearchCategory
             self::Symbols => 'Symbols',
             self::Actions => 'Actions',
             self::Text => 'Text',
+            self::Settings => 'Settings',
         };
     }
 
@@ -37,6 +39,10 @@ enum SearchCategory
             self::Symbols => 2,
             self::Actions => 3,
             self::Text => 4,
+            // Last on purpose. A settings hit is never what you meant when you
+            // typed a filename, and the categories above are the ones people
+            // reach Search Everywhere for.
+            self::Settings => 5,
         };
     }
 
