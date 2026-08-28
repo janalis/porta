@@ -2646,6 +2646,10 @@
         <source>%label% reset to default%saved%</source>
         <target>%label% を既定値に戻しました%saved%</target>
       </trans-unit>
+      <trans-unit id="673">
+        <source>Interface</source>
+        <target>インターフェース</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -25,6 +25,20 @@ interface SettingsSection
     /** Does this section own the nav id ('interface', 'plugin:foo', 'lang:php', …)? */
     public function handles(string $section): bool;
 
+    /**
+     * Every page this section can show, display labels included.
+     *
+     * A section is a FAMILY of pages, so this is where the family lists itself:
+     * the plugins section knows which plugins are installed and the language
+     * section knows the catalog. Anything that needs the full set of pages —
+     * searching across them, say — asks here rather than growing a second copy
+     * of a list the nav already hardcodes, which is how a page ends up
+     * reachable in one and missing from the other.
+     *
+     * @return list<SettingsPage>
+     */
+    public function pages(): array;
+
     /** @return list<SettingsRow> */
     public function rows(string $section): array;
 

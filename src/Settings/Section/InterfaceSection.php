@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Settings\Section;
 
+use Porta\I18n\Translator;
 use Porta\Settings\SettingsController;
+use Porta\Settings\SettingsPage;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsSection;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
@@ -15,7 +17,15 @@ final readonly class InterfaceSection implements SettingsSection
 {
     public function __construct(
         private SettingsController $settings,
+        private Translator $translator,
     ) {}
+
+    /** @return list<SettingsPage> */
+    #[\Override]
+    public function pages(): array
+    {
+        return [new SettingsPage('interface', $this->translator->trans('Interface'))];
+    }
 
     #[\Override]
     public function handles(string $section): bool

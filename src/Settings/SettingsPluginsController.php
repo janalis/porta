@@ -150,6 +150,19 @@ final class SettingsPluginsController
      * Only `pluginSetting:` rows: Enabled is a lifecycle toggle with no stock
      * value, and the two action rows are buttons.
      */
+    /**
+     * Every installed plugin's name, in the order the nav lists them.
+     *
+     * Delegates to the SAME call that feeds the nav's sub-items, so a page
+     * cannot be reachable in one place and missing from the other.
+     *
+     * @return list<string>
+     */
+    public function pluginNames(): array
+    {
+        return $this->lifecycle->listedNames();
+    }
+
     public function resetPlugin(string $name, string $key): void
     {
         if (!str_starts_with($key, self::SETTING_PREFIX)) {

@@ -49,6 +49,7 @@ use Porta\Settings\SettingsKeymapController;
 use Porta\Settings\SettingsLanguageController;
 use Porta\Settings\SettingsLspController;
 use Porta\Settings\SettingsMouseRouter;
+use Porta\Settings\SettingsPages;
 use Porta\Settings\SettingsPluginsController;
 use Porta\Settings\SettingsSection;
 use Porta\Settings\SettingsViewController;
@@ -260,20 +261,22 @@ final class SettingsViewControllerTest extends TestCase
             $this->tui,
             // Same order the porta.settings_section tag priorities produce, with
             // the catch-all general section last.
-            $sections ?? [
-                new InterfaceSection($settings),
-                new HighlightingSection(new SettingsHighlightController(
-                    new HighlightRegistry(new NoHighlightPlugins(), new HighlightPreferences()),
-                    new Translator('en'),
-                    $this->project->dir,
-                    new HighlightPreferences(),
-                    new PortaJsonWriter(),
-                    $this->lifecycle,
-                )),
-                new PluginsSection($plugins),
-                new LanguageSection($languages, $lsp, $debug),
-                new GeneralSection($settings),
-            ],
+            new SettingsPages(
+                $sections ?? [
+                    new InterfaceSection($settings, new Translator('en')),
+                    new HighlightingSection(new SettingsHighlightController(
+                        new HighlightRegistry(new NoHighlightPlugins(), new HighlightPreferences()),
+                        new Translator('en'),
+                        $this->project->dir,
+                        new HighlightPreferences(),
+                        new PortaJsonWriter(),
+                        $this->lifecycle,
+                    ), new Translator('en')),
+                    new PluginsSection($plugins, new Translator('en')),
+                    new LanguageSection($languages, $lsp, $debug),
+                    new GeneralSection($settings, new Translator('en')),
+                ],
+            ),
             $keymap,
             $plugins,
             views: $views ?? new ViewRegistry(),
@@ -494,6 +497,41 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertNotNull(Probe::get($this->form, 'editing'), 'still editing, so the value can be corrected');
         $screen = AnsiUtils::stripAnsiCodes(implode('', $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 10))));
         $this->assertStringContainsString('{not json', $screen, 'and the typing survived the refusal');
+    }
+
+    /**
+     * The drift guard: every id the NAV can select must be a page the
+     * catalogue lists, and vice versa.
+     *
+     * The nav's section list is a hardcoded const in a widget, and the
+     * catalogue is assembled from the sections. Two lists of the same thing
+     * drift, and the failure is silent — a page you can reach and not search,
+     * or search and not reach. Walked by id, never by counting rows: see
+     * NavigatesSettings' docblock for what index-counting cost last time.
+     */
+    public function testTheNavAndThePageCatalogueListTheSameIds(): void
+    {
+        $controller = $this->controller();
+        $pages = array_column(Probe::object($controller, 'pages')->all(), 'id');
+
+        $navIds = [];
+        for ($i = 0; $i < 64; ++$i) {
+            $id = $this->nav->selectedId();
+            if (null !== $id && !\in_array($id, $navIds, strict: true)) {
+                $navIds[] = $id;
+            }
+            $this->nav->handleInput("\x1b[B");
+        }
+
+        // Keybindings is the one nav entry that is NOT a settings section: the
+        // view swaps in a different widget for it, and it has no SettingsRows
+        // to catalogue. Named here rather than silently filtered, so adding a
+        // second such entry has to come past this assertion.
+        $navIds = array_values(array_filter($navIds, static fn (string $id): bool => 'keybindings' !== $id));
+
+        sort($navIds);
+        sort($pages);
+        $this->assertSame($navIds, $pages, 'the nav and the page catalogue disagree about which pages exist');
     }
 
     public function testChangingAGeneralSettingPersistsToTheSettingsBlock(): void

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Settings\Section;
 
+use Porta\Config\LanguageCatalog;
 use Porta\Settings\SettingsDebugController;
 use Porta\Settings\SettingsLanguageController;
 use Porta\Settings\SettingsLspController;
+use Porta\Settings\SettingsPage;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsSection;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
@@ -34,6 +36,26 @@ final readonly class LanguageSection implements SettingsSection
     public function handles(string $section): bool
     {
         return str_starts_with($section, self::PREFIX);
+    }
+
+    /**
+     * One page per catalogued language.
+     *
+     * Names come from {@see LanguageCatalog} and are NOT translated — 'PHP'
+     * and 'JavaScript' are what they are called, which is the rule the nav
+     * renders by.
+     *
+     * @return list<SettingsPage>
+     */
+    #[\Override]
+    public function pages(): array
+    {
+        $pages = [];
+        foreach (LanguageCatalog::LANGUAGES as $id => $name) {
+            $pages[] = new SettingsPage(self::PREFIX.$id, $name);
+        }
+
+        return $pages;
     }
 
     /** @return list<SettingsRow> */

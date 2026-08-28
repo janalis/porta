@@ -2646,6 +2646,10 @@
         <source>%label% reset to default%saved%</source>
         <target>%label% אופס לברירת המחדל%saved%</target>
       </trans-unit>
+      <trans-unit id="673">
+        <source>Interface</source>
+        <target>ממשק</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

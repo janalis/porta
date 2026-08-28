@@ -17,7 +17,6 @@ use Porta\Workbench\View\ContributedView;
 use Porta\Workbench\View\ViewHost;
 use Porta\Workbench\View\ViewPointer;
 use Porta\Workbench\View\ViewRegistry;
-use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -47,9 +46,7 @@ final class SettingsViewController implements ContributedView
         private readonly ViewHost $host,
         private readonly SettingsMouseRouter $mouse,
         private readonly Tui $tui,
-        /** @var iterable<SettingsSection> in #[AsTaggedItem] priority order; the general section claims everything and sorts last */
-        #[AutowireIterator('porta.settings_section')]
-        private readonly iterable $sections,
+        private readonly SettingsPages $pages,
         private readonly SettingsKeymapController $keymap,
         private readonly SettingsPluginsController $plugins,
         ViewRegistry $views,
@@ -188,13 +185,7 @@ final class SettingsViewController implements ContributedView
      */
     private function activeSection(): SettingsSection
     {
-        foreach ($this->sections as $section) {
-            if ($section->handles($this->section)) {
-                return $section;
-            }
-        }
-
-        throw new \LogicException('No settings section claimed '.$this->section);
+        return $this->pages->sectionFor($this->section);
     }
 
     /** @return list<SettingsRow> */
