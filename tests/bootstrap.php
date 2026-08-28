@@ -35,6 +35,13 @@ foreach (false === $pluginFiles ? [] : $pluginFiles as $pluginFile) {
 // later paratest worker method (→ a git test flashing "Git not available").
 define('PORTA_TEST_PRISTINE_PATH', (string) getenv('PATH'));
 
+// The same trick for PORTA_HOME, which steers BOTH the global plugin dir and —
+// since the config layer grew a global scope — the global config file. A test
+// that points it at a temp home and fails to put it back would have later tests
+// reading a home that no longer exists. `false` when unset, which is what
+// putenv() needs to actually clear it rather than set it empty.
+define('PORTA_TEST_PRISTINE_PORTA_HOME', getenv('PORTA_HOME'));
+
 // Every Ide boot in the suite shares one container dump here instead of each
 // recompiling (~124 ms) or touching the developer's real ~/.cache/porta.
 // putenv() deliberately, so exec()'d subprocess tests inherit the pin.

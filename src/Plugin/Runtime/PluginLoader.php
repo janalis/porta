@@ -42,18 +42,10 @@ final class PluginLoader
         private readonly ?TerminalTheme $syntaxTheme = null,
     ) {}
 
-    /** The home directory used for the global plugin dir (PORTA_HOME overrides HOME). */
-    public static function globalBase(): ?string
-    {
-        $portaHome = getenv('PORTA_HOME');
-        $base = $portaHome ? $portaHome : getenv('HOME');
-
-        return \is_string($base) && '' !== $base ? $base : null;
-    }
-
     /**
      * The plugins bundled inside the Porta package itself — a plugins dir, not
-     * a base like {@see globalBase()}, because it is package-relative.
+     * a base like {@see \Porta\Config\PortaHome::base()}, because it is
+     * package-relative.
      * PORTA_EMBEDDED_PLUGINS overrides (the test suite pins it to /nonexistent
      * so scenarios opt in explicitly).
      */

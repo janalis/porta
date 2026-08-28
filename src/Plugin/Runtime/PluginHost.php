@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin\Runtime;
 
 use Porta\Config\IdeConfig;
+use Porta\Config\PortaHome;
 use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -34,7 +35,7 @@ final class PluginHost
     {
         $this->settings = new PluginSettings($rootDir, $config->plugins, $writer);
         $this->manager = new PluginManager($events, $this->settings);
-        $this->loader = new PluginLoader($rootDir, PluginLoader::globalBase(), $this->settings, PluginLoader::embeddedDir(), $config->disabledPlugins, $config->enabledPlugins, $syntaxTheme);
+        $this->loader = new PluginLoader($rootDir, PortaHome::base(), $this->settings, PluginLoader::embeddedDir(), $config->disabledPlugins, $config->enabledPlugins, $syntaxTheme);
     }
 
     /** Load and activate every plugin file exactly once per boot. */

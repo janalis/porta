@@ -9,23 +9,13 @@ use Porta\Config\ConfigWarning;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class PluginLoaderTest extends TestCase
 {
-    private ?string $portaHome = null;
-
-    protected function setUp(): void
-    {
-        $home = getenv('PORTA_HOME');
-        $this->portaHome = $home ? $home : null;
-    }
-
-    protected function tearDown(): void
-    {
-        putenv(null !== $this->portaHome ? 'PORTA_HOME='.$this->portaHome : 'PORTA_HOME');
-    }
+    use PreservesPortaHome;
 
     /** A plugin.php source registering one command named after the plugin. */
     private function pluginSource(string $name, string $extra = ''): string
@@ -267,19 +257,6 @@ final class PluginLoaderTest extends TestCase
         $error = $loader->loadFile($project->path('.porta/plugins/broken/plugin.php'), $manager);
         $this->assertEquals(new ConfigWarning('Plugin "%name%" failed to load: %message%', ['%name%' => 'broken', '%message%' => 'plugin.php must return a PortaPlugin instance']), $error);
         $this->assertSame([], $manager->warnings(), 'the caller owns the failure, no warning is queued');
-    }
-
-    public function testGlobalBaseResolvesPortaHomeThenHome(): void
-    {
-        putenv('PORTA_HOME=/tmp/porta-test-home');
-        $this->assertSame('/tmp/porta-test-home', PluginLoader::globalBase());
-
-        putenv('PORTA_HOME');
-        $home = getenv('HOME');
-        $this->assertSame(\is_string($home) && '' !== $home ? $home : null, PluginLoader::globalBase(), 'falls back to HOME');
-
-        putenv('PORTA_HOME='); // empty string → treated as unset, falls through to HOME
-        $this->assertSame(\is_string($home) && '' !== $home ? $home : null, PluginLoader::globalBase());
     }
 
     public function testEmbeddedDirResolvesTheEnvOverrideThenThePackage(): void

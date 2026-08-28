@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Lifecycle;
 
+use Porta\Config\PortaHome;
 use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManifest;
@@ -77,7 +78,7 @@ final class PluginInstaller
     {
         $finder = new ExecutableFinder();
 
-        return new self($rootDir, PluginLoader::globalBase(), $translator, $finder->find('git'), PluginLoader::embeddedDir(), $finder->find('composer'));
+        return new self($rootDir, PortaHome::base(), $translator, $finder->find('git'), PluginLoader::embeddedDir(), $finder->find('composer'));
     }
 
     /**
