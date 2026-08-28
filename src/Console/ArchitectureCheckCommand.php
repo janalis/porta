@@ -573,13 +573,15 @@ final class ArchitectureCheckCommand extends Command
         foreach ($suiteDirs as $dir) {
             foreach ($this->phpFiles($dir) as $path) {
                 foreach (explode("\n", $this->stripComments((string) file_get_contents($path))) as $i => $line) {
-                    if (1 === preg_match('/new TempProject\([^;]*\)->/', $line)) {
-                        $failures[] = \sprintf(
-                            'tests: %s:%d chains off an inline `new TempProject(...)` — the temporary is freed (and its fixture dir removed) before the enclosing call runs; hold it in a variable',
-                            $path,
-                            $i + 1,
-                        );
+                    if (1 !== preg_match('/new TempProject\([^;]*\)->/', $line)) {
+                        continue;
                     }
+
+                    $failures[] = \sprintf(
+                        'tests: %s:%d chains off an inline `new TempProject(...)` — the temporary is freed (and its fixture dir removed) before the enclosing call runs; hold it in a variable',
+                        $path,
+                        $i + 1,
+                    );
                 }
             }
         }

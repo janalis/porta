@@ -7,7 +7,6 @@ namespace Porta\Settings;
 use Porta\Config\ActionCatalog;
 use Porta\Config\ActionRegistry;
 use Porta\Config\CommandRegistry;
-use Porta\Config\ConfigScope;
 use Porta\Config\KeybindingRow;
 use Porta\Config\LiveKeybindings;
 use Porta\Config\PortaJsonWriter;

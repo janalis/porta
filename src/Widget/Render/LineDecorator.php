@@ -100,11 +100,13 @@ final class LineDecorator
         foreach ($bounds as $bi => $col) {
             $closed = false;
             foreach (array_reverse($active, preserve_keys: true) as $i => $span) {
-                if ($span[1] === $col) {
-                    $out .= $span[3];
-                    unset($active[$i]);
-                    $closed = true;
+                if ($span[1] !== $col) {
+                    continue;
                 }
+
+                $out .= $span[3];
+                unset($active[$i]);
+                $closed = true;
             }
             if ($closed && [] !== $active) {
                 // A close's reset codes may have cancelled an outer span's
@@ -114,10 +116,12 @@ final class LineDecorator
                 }
             }
             foreach ($clamped as $i => $span) {
-                if ($span[0] === $col) {
-                    $active[$i] = $span;
-                    $out .= $span[2];
+                if ($span[0] !== $col) {
+                    continue;
                 }
+
+                $active[$i] = $span;
+                $out .= $span[2];
             }
             ksort($active); // application order for the restore and bg chains
 

@@ -7,7 +7,6 @@ namespace Porta\Tests\Unit\Settings;
 use PHPUnit\Framework\TestCase;
 use Porta\Settings\SettingsPage;
 use Porta\Settings\SettingsPages;
-use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsSection;
 
 /**

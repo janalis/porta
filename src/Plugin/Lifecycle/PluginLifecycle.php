@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Plugin\Lifecycle;
 
 use Porta\Config\CommandRegistry;
-use Porta\Config\ConfigScope;
 use Porta\Config\LiveKeybindings;
 use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;

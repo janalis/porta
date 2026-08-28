@@ -137,12 +137,14 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     public function selectKey(string $key): void
     {
         foreach ($this->rows as $index => $row) {
-            if ($row->key === $key) {
-                $this->list->select($index);
-                $this->invalidate();
-
-                return;
+            if ($row->key !== $key) {
+                continue;
             }
+
+            $this->list->select($index);
+            $this->invalidate();
+
+            return;
         }
     }
 

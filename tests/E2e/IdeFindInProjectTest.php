@@ -405,7 +405,7 @@ final class IdeFindInProjectTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                200 => function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
                     foreach (str_split('foo()') as $ch) {
                         $tui->handleInput($ch);

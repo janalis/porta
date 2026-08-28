@@ -136,7 +136,7 @@ final class ArchitectureCheckCommandTest extends TestCase
         // is the fix. Only the chain trips the ratchet, with its line number.
         // The pattern is spelled split ('TempProj'.'ect') so the ratchet,
         // which scans THIS file too, only sees it inside the written fixture.
-        $chain = 'new TempProj'.'ect';
+        $chain = 'new TempProject';
         $project = new TempProject([
             'src/Alpha/One.php' => $this->file('Alpha', 'One'),
             'tests/Unit/LeakyTest.php' => "<?php\n// an inline {$chain}(...)->dir frees the fixture\n\$held = {$chain}([]);\n\$read = \$held->dir; // beware {$chain}([])->dir here too\n\$leak = {$chain}([])->dir;\n",

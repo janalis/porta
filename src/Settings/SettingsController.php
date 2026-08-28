@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
-use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;

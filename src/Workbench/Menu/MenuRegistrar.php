@@ -45,9 +45,11 @@ final readonly class MenuRegistrar
     {
         $this->menus->forget($plugin);
         foreach ($this->source->contributedMenus() as $entry) {
-            if ($plugin === $entry['plugin']) {
-                $this->menus->register($entry['plugin'], $entry['contribution']);
+            if ($plugin !== $entry['plugin']) {
+                continue;
             }
+
+            $this->menus->register($entry['plugin'], $entry['contribution']);
         }
     }
 

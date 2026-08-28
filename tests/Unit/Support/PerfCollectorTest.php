@@ -174,14 +174,14 @@ final class PerfCollectorTest extends TestCase
 
         // Values whose 999x multiple crosses a rounding boundary (150.51 vs
         // 150.36; 100.51 vs 100.41), so a 1000-vs-999 mutant changes the digit.
-        $perf->paintMark(0.15051, 0.10051);
+        $perf->paintMark(0.150_51, 0.100_51);
 
         $log = $this->log($perf);
         $this->assertStringContainsString('slow-paint render=151ms write=101ms pendingBytes=7 load=12.3', $log);
 
         // The complementary rounding boundary (149.49 vs 149.64) catches a
         // 1001x mutant the first pair cannot.
-        $perf->paintMark(0.14949, 0.10049);
+        $perf->paintMark(0.149_49, 0.100_49);
         $this->assertStringContainsString('slow-paint render=149ms write=100ms', $this->log($perf));
 
         $perf->paintMark(0.1, 0.0); // exactly the threshold still fires

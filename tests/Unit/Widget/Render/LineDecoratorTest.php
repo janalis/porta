@@ -195,7 +195,7 @@ final class LineDecoratorTest extends TestCase
         // the expectation is built with the vendor helper itself so the
         // reapply placement stays the vendor's business.
         $middle = AnsiUtils::reapplyBackgroundAfterResets($line, $r1.$r2);
-        $this->assertSame($r1.$r2.$middle."\x1b[49m"."\x1b[49m", $out);
+        $this->assertSame($r1.$r2.$middle."\x1b[49m\x1b[49m", $out);
     }
 
     public function testApplyAllKeepsSpansAfterADroppedOne(): void
@@ -225,7 +225,7 @@ final class LineDecoratorTest extends TestCase
 
         $segment = AnsiUtils::reapplyBackgroundAfterResets(AnsiUtils::sliceByColumn($line, 3, 3), $r1.$r2);
         $this->assertSame(
-            $r2.AnsiUtils::sliceByColumn($line, 0, 3).$r1.$segment."\x1b[49m"."\x1b[49m",
+            $r2.AnsiUtils::sliceByColumn($line, 0, 3).$r1.$segment."\x1b[49m\x1b[49m",
             $out,
         );
     }

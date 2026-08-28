@@ -383,11 +383,13 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     {
         $freshBefore = $this->clock->now()->getTimestamp() - self::POLL_GRACE_SECONDS;
         foreach (array_keys($this->scannedSigs) as $dir) {
-            if ($this->dirChangedSince($dir, $freshBefore)) {
-                $this->refresh();
-
-                return true;
+            if (!$this->dirChangedSince($dir, $freshBefore)) {
+                continue;
             }
+
+            $this->refresh();
+
+            return true;
         }
 
         return false;

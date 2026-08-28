@@ -173,6 +173,13 @@ final class BidiTuiTest extends TestCase
 
         // Empty the socket buffer first: stop()'s teardown escapes flush
         // BLOCKING, and a full buffer with no reader would park the worker.
+        //
+        // The body is empty because the WORK IS THE CONDITION — fread() drains,
+        // and the loop ends when there is nothing left. `mago lint --fix`
+        // deleted this once as an empty loop and turned the suite into a
+        // deadlock at 99%, so the rule is suppressed here rather than left to
+        // be rediscovered.
+        // @mago-expect lint:no-empty-loop -- the fread in the condition is the body
         while ('' !== (string) fread($pair[1], length: 65_536)) {
         }
         $tui->stop();

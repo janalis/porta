@@ -223,7 +223,7 @@ final class SettingsRenderGoldenTest extends TestCase
 
             // A page taller than the pane, scrolled so the window is off the top.
             'scrolled-page' => [
-                function (SettingsFormWidget $w): void {
+                static function (SettingsFormWidget $w): void {
                     $w->setFocused(true);
                     $rows = [];
                     for ($i = 0; $i < 20; ++$i) {

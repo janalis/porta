@@ -115,10 +115,12 @@ final class PositionMapper
         /** @var list<string>|null $expanded only existing indexes are overwritten, so the list shape holds */
         $expanded = null;
         foreach ($lines as $i => $line) {
-            if (str_contains($line, "\t")) {
-                $expanded ??= $lines;
-                $expanded[$i] = TextMetrics::expandTabs($line, $tabWidth);
+            if (!str_contains($line, "\t")) {
+                continue;
             }
+
+            $expanded ??= $lines;
+            $expanded[$i] = TextMetrics::expandTabs($line, $tabWidth);
         }
 
         /** @var list<string> $result the loop only overwrites existing indexes, so the list shape holds */
