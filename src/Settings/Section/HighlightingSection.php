@@ -31,9 +31,11 @@ final readonly class HighlightingSection implements SettingsSection
     }
 
     #[\Override]
-    public function change(string $section, string $key, bool|int|string $value): void
+    public function change(string $section, string $key, bool|int|string $value): bool
     {
         $this->highlighting->change($key, (string) $value);
+
+        return true; // a backend id is a closed choice; nothing to refuse
     }
 
     /** A blank id already means "no preference", which IS this page's default. */

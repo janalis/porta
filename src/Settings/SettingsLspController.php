@@ -78,12 +78,15 @@ final class SettingsLspController
      * live. A `--lsp` override on the command line wins over config, so an edit
      * is refused with a flash while it is in force.
      */
-    public function changeLspServer(string $language, string $command): void
+    public function changeLspServer(string $language, string $command): bool
     {
         if ($this->reconfigurer->isOverridden()) {
+            // Refused, so the form keeps the editor open: the command line
+            // wins while --lsp is in force, and losing what was typed as well
+            // would make an already-surprising refusal worse.
             $this->flash($this->translator->trans('LSP is set via --lsp; the settings change was not applied'));
 
-            return;
+            return false;
         }
 
         $command = trim($command);
@@ -104,6 +107,8 @@ final class SettingsLspController
             '%shown%' => $shown,
             '%saved%' => $saved,
         ]));
+
+        return true;
     }
 
     /**

@@ -58,8 +58,10 @@ final class SettingsFormWidgetTest extends TestCase
         AttachedStyles::attach($widget); // the selection shade resolves through the themed sheet
         $widget->setFocused(true);
         $widget->setRows($this->rows());
-        $widget->onChange(static function (string $key, bool|int|string $value) use (&$changes): void {
+        $widget->onChange(static function (string $key, bool|int|string $value) use (&$changes): bool {
             $changes[] = [$key, $value];
+
+            return true;
         });
 
         return $widget;
@@ -93,8 +95,10 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertStringContainsString('demo (project)  [Remove]', $screen);
 
         $widget->handleInput("\x1b[D"); // ← is a no-op on a button, even without onChange
-        $widget->onChange(static function (string $key, bool|int|string $value) use (&$changes): void {
+        $widget->onChange(static function (string $key, bool|int|string $value) use (&$changes): bool {
             $changes[] = [$key, $value];
+
+            return true;
         });
         $widget->handleInput("\x1b[D");
         $this->assertSame([], $changes, 'a button has no value to step back');
@@ -154,8 +158,10 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->setRows([
             new SettingsRow(key: 'language', label: 'Language', kind: SettingsRowKind::Choice, value: 'en', restart: false, options: Translator::LOCALES, optionLabels: Translator::LOCALE_NAMES),
         ]);
-        $widget->onChange(static function (string $key, bool|int|string $value) use (&$changes): void {
+        $widget->onChange(static function (string $key, bool|int|string $value) use (&$changes): bool {
             $changes[] = [$key, $value];
+
+            return true;
         });
 
         $widget->handleInput("\x1b[C"); // right → next
@@ -376,8 +382,10 @@ final class SettingsFormWidgetTest extends TestCase
             new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'phpactor', restart: false),
             new SettingsRow(key: 'other', label: 'Other', kind: SettingsRowKind::Text, value: '', restart: false, hint: 'auto: none'),
         ]);
-        $widget->onChange(static function (string $key, bool|int|string $value) use (&$changes): void {
+        $widget->onChange(static function (string $key, bool|int|string $value) use (&$changes): bool {
             $changes[] = [$key, $value];
+
+            return true;
         });
 
         return $widget;
@@ -405,6 +413,44 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->handleInput("\r"); // Enter commits
         $this->assertFalse(null !== Probe::get($widget, 'editing'));
         $this->assertSame([['lspServer', 'phpactor-']], $changes);
+    }
+
+    /**
+     * A refused value keeps the editor open with the text as typed.
+     *
+     * The commit used to close the editor regardless, and the controller's
+     * setRows() then snapped the row back to the persisted value — so invalid
+     * JSON in a debug launch config was reported and destroyed in the same
+     * breath, leaving nothing to correct.
+     */
+    public function testARefusedValueKeepsTheEditorOpenWithWhatWasTyped(): void
+    {
+        $widget = new SettingsFormWidget(new Translator('en'));
+        AttachedStyles::attach($widget);
+        $widget->setFocused(true);
+        $widget->setRows([new SettingsRow(key: 'debugLaunch', label: 'Launch', kind: SettingsRowKind::Text, value: '', restart: false)]);
+        $widget->onChange(static fn (string $key, bool|int|string $value): bool => false); // always refuses
+
+        $widget->handleInput("\r"); // open
+        foreach (str_split('{bad') as $char) {
+            $widget->handleInput($char);
+        }
+        $widget->handleInput("\r"); // commit → refused
+
+        $this->assertNotNull(Probe::get($widget, 'editing'), 'still editing');
+        $this->assertStringContainsString('{bad', AnsiUtils::stripAnsiCodes(implode('', $widget->render(new RenderContext(60, 5)))), 'and the typing survived');
+    }
+
+    public function testAnAcceptedValueClosesTheEditor(): void
+    {
+        $widget = $this->textWidget($changes);
+
+        $widget->handleInput("\r");
+        $widget->handleInput('x');
+        $widget->handleInput("\r");
+
+        $this->assertNull(Probe::get($widget, 'editing'), 'accepted, so the editor closed');
+        $this->assertSame([['lspServer', 'phpactorx']], $changes);
     }
 
     public function testEscapeCancelsTextEditingWithoutFiring(): void

@@ -87,13 +87,16 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     private ?int $editing = null;
     private ?TextField $editField = null;
 
-    /** @var (callable(string, bool|int|string): void)|null a row's value changed */
+    /**
+     * @var (callable(string, bool|int|string): bool)|null a row's value changed;
+     *                                                     false = refused
+     */
     private $onChange = null;
 
     /** @var (callable(string): void)|null a row was put back to its default */
     private $onReset = null;
 
-    /** @param callable(string, bool|int|string): void $callback */
+    /** @param callable(string, bool|int|string): bool $callback returns false to refuse the value */
     public function onChange(callable $callback): self
     {
         $this->onChange = $callback;
@@ -267,11 +270,19 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         }
         if ($kb->matches($data, 'confirm')) {
             $key = ($this->rows[$index] ?? null)?->key;
-            $value = $field->value();
-            $this->editing = null;
             $this->invalidate();
-            if (null !== $key && null !== $this->onChange) {
-                ($this->onChange)($key, $value);
+            if (null === $key || null === $this->onChange) {
+                $this->editing = null;
+
+                return;
+            }
+            // A REFUSED value keeps the editor open with the text as typed. It
+            // used to close regardless, and setRows() then snapped the row back
+            // to the persisted value — so an invalid JSON launch config was
+            // reported and destroyed in the same breath, with nothing to
+            // correct.
+            if (($this->onChange)($key, $field->value())) {
+                $this->editing = null;
             }
 
             return;

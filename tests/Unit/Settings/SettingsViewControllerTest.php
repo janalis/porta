@@ -52,11 +52,13 @@ use Porta\Settings\SettingsMouseRouter;
 use Porta\Settings\SettingsPluginsController;
 use Porta\Settings\SettingsSection;
 use Porta\Settings\SettingsViewController;
+use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\ReadsSettingsForm;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
@@ -79,6 +81,7 @@ use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewHost;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
@@ -90,6 +93,7 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
 final class SettingsViewControllerTest extends TestCase
 {
     use NavigatesSettings;
+    use ReadsSettingsForm;
 
     private TempProject $project;
     private Tui $tui;
@@ -464,6 +468,32 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame('', IdeConfig::load($this->project->dir)->highlight['default'], 'back to no preference');
 
         $this->addToAssertionCount(1);
+    }
+
+    /**
+     * The whole refusal path, through the form: a section that refuses must
+     * NOT have its rows re-pushed, because re-pushing is exactly what used to
+     * snap the row back to the persisted value and destroy the typing.
+     */
+    public function testARefusedEditKeepsTheEditorOpenWithTheTypedText(): void
+    {
+        $controller = $this->controller();
+        // As the real view has it: the form owns focus and resolves its shading
+        // through the themed sheet, which is what makes the selection findable.
+        AttachedStyles::attach($this->form);
+        $this->form->setFocused(true);
+        $this->sectionEvents->dispatch(new SettingsSectionRequested('lang:php'));
+        $this->selectSettingRow($this->form, 'Launch config');
+
+        $this->form->handleInput("\r"); // open the inline editor
+        foreach (str_split('{not json') as $char) {
+            $this->form->handleInput($char);
+        }
+        $this->form->handleInput("\r"); // commit → the controller refuses
+
+        $this->assertNotNull(Probe::get($this->form, 'editing'), 'still editing, so the value can be corrected');
+        $screen = AnsiUtils::stripAnsiCodes(implode('', $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 10))));
+        $this->assertStringContainsString('{not json', $screen, 'and the typing survived the refusal');
     }
 
     public function testChangingAGeneralSettingPersistsToTheSettingsBlock(): void

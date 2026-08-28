@@ -28,7 +28,12 @@ interface SettingsSection
     /** @return list<SettingsRow> */
     public function rows(string $section): array;
 
-    public function change(string $section, string $key, bool|int|string $value): void;
+    /**
+     * Apply a row's edit. FALSE means the value was refused — the form keeps
+     * the inline editor open with the text as typed, so a rejection is
+     * something to correct rather than something that eats your work.
+     */
+    public function change(string $section, string $key, bool|int|string $value): bool;
 
     /**
      * Put one row back to its default.

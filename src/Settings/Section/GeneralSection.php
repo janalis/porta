@@ -35,9 +35,9 @@ final readonly class GeneralSection implements SettingsSection
     }
 
     #[\Override]
-    public function change(string $section, string $key, bool|int|string $value): void
+    public function change(string $section, string $key, bool|int|string $value): bool
     {
-        $this->settings->changeSetting($key, $value);
+        return $this->settings->changeSetting($key, $value);
     }
 
     #[\Override]

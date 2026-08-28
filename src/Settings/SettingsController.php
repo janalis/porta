@@ -279,13 +279,13 @@ final class SettingsController
      * Set a setting to a specific value from the settings form: live ones apply
      * to the editor immediately; the rest persist and take effect next launch.
      */
-    public function changeSetting(string $key, int|bool|string $value): void
+    public function changeSetting(string $key, int|bool|string $value): bool
     {
         $descriptor = $this->descriptors[$key] ?? null;
         if (null === $descriptor) {
             $this->notifier->flash($this->translator->trans('Unknown setting "%key%"', ['%key%' => $key]));
 
-            return;
+            return false;
         }
 
         $this->settings[$key] = $value;
@@ -298,5 +298,7 @@ final class SettingsController
         $note = $descriptor['restart'] ? ' · '.$this->translator->trans('applies on restart') : '';
         $saved = SettingsFlash::savedSuffix($this->translator, $persisted);
         $this->notifier->flash(\sprintf('%s %s%s%s', $this->translator->trans($descriptor['label']), $state, $note, $saved));
+
+        return true;
     }
 }

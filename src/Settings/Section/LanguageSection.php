@@ -46,21 +46,18 @@ final readonly class LanguageSection implements SettingsSection
     }
 
     #[\Override]
-    public function change(string $section, string $key, bool|int|string $value): void
+    public function change(string $section, string $key, bool|int|string $value): bool
     {
         $language = $this->language($section);
         if ('lspServer' === $key) {
-            $this->lsp->changeLspServer($language, (string) $value);
-
-            return;
+            return $this->lsp->changeLspServer($language, (string) $value);
         }
         if ('debugAdapter' === $key || 'debugLaunch' === $key) {
-            $this->debug->change($language, $key, (string) $value);
-
-            return;
+            return $this->debug->change($language, $key, (string) $value);
         }
-
         $this->languages->changeLanguageSetting($language, $key, $value);
+
+        return true;
     }
 
     /**

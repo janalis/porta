@@ -92,7 +92,7 @@ final class SettingsDebugControllerTest extends TestCase
     public function testLaunchChangeValidatesJson(): void
     {
         $controller = $this->controller();
-        $controller->change('php', 'debugLaunch', '{"stopOnEntry": true}');
+        $this->assertTrue($controller->change('php', 'debugLaunch', '{"stopOnEntry": true}'), 'accepted');
 
         $written = json_decode((string) file_get_contents($this->project->path('.porta.json')), associative: true);
         $this->assertSame(['stopOnEntry' => true], $written['languages']['php']['debug']['launch']);
@@ -127,5 +127,19 @@ final class SettingsDebugControllerTest extends TestCase
 
         $this->assertSame([], $this->adapters->launchOverrides('php'), 'whitespace-only trims to blank, which clears the overrides');
         $this->assertStringNotContainsString('Invalid JSON', $this->flashed());
+    }
+
+    /**
+     * A refusal is now type-visible, which is what lets the form keep the
+     * inline editor open with the text as typed instead of snapping the row
+     * back to the persisted value and losing it.
+     */
+    public function testInvalidJsonIsRefusedRatherThanSilentlyDropped(): void
+    {
+        $controller = $this->controller();
+
+        $this->assertFalse($controller->change('php', 'debugLaunch', '{not json'), 'the caller is told, not just the status bar');
+        $this->assertStringContainsString('Invalid JSON', $this->flashed());
+        $this->assertTrue($controller->change('php', 'debugAdapter', 'node dbg.js'), 'an adapter change has nothing to refuse');
     }
 }

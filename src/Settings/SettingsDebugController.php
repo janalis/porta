@@ -54,14 +54,15 @@ final class SettingsDebugController
     }
 
     /** Route a settings edit for one of the two debug keys. */
-    public function change(string $language, string $key, string $value): void
+    public function change(string $language, string $key, string $value): bool
     {
         if ('debugAdapter' === $key) {
             $this->changeAdapter($language, trim($value));
 
-            return;
+            return true;
         }
-        $this->changeLaunch($language, trim($value));
+
+        return $this->changeLaunch($language, trim($value));
     }
 
     private function changeAdapter(string $language, string $command): void
@@ -74,16 +75,19 @@ final class SettingsDebugController
         $this->notifier->flash(\sprintf('%s: %s%s', LanguageCatalog::displayName($language), $shown, $saved));
     }
 
-    private function changeLaunch(string $language, string $json): void
+    private function changeLaunch(string $language, string $json): bool
     {
         $launch = [];
         if ('' !== $json) {
             /** @var array<array-key, mixed>|scalar|null $decoded */
             $decoded = json_decode($json, associative: true);
             if (!\is_array($decoded) || array_is_list($decoded)) {
+                // FALSE, so the form keeps the editor open with what was
+                // typed: the row used to snap back to the persisted value and
+                // the user's text was gone with no way to correct it.
                 $this->notifier->error($this->translator->trans('Invalid JSON — not saved'));
 
-                return;
+                return false;
             }
             /** @var array<string, mixed> $decoded */
             $launch = $decoded;
@@ -94,5 +98,7 @@ final class SettingsDebugController
 
         $saved = SettingsFlash::savedSuffix($this->translator, $persisted);
         $this->notifier->flash(\sprintf('%s: %s%s', LanguageCatalog::displayName($language), $this->translator->trans('Launch config (JSON)'), $saved));
+
+        return true;
     }
 }

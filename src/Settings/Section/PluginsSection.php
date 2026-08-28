@@ -37,16 +37,18 @@ final readonly class PluginsSection implements SettingsSection
     }
 
     #[\Override]
-    public function change(string $section, string $key, bool|int|string $value): void
+    public function change(string $section, string $key, bool|int|string $value): bool
     {
         if ('plugins' === $section) {
             $this->plugins->change($key, (string) $value);
 
-            return;
+            return true;
         }
 
         // The scalar passes through untouched — bool/int rows need their types.
         $this->plugins->changePlugin($this->name($section), $key, $value);
+
+        return true;
     }
 
     /**

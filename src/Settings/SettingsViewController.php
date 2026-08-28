@@ -210,10 +210,20 @@ final class SettingsViewController implements ContributedView
         $this->form->setRows($this->rowsForSection(), $this->nav->activeLabel());
     }
 
-    private function changeSetting(string $key, bool|int|string $value): void
+    /**
+     * Apply a row's edit and repaint the page. FALSE propagates the section's
+     * refusal to the form, which then keeps the inline editor open with the
+     * text as typed — the rows are NOT re-pushed in that case, because doing
+     * so is exactly what used to destroy it.
+     */
+    private function changeSetting(string $key, bool|int|string $value): bool
     {
-        $this->activeSection()->change($this->section, $key, $value);
+        if (!$this->activeSection()->change($this->section, $key, $value)) {
+            return false;
+        }
         $this->form->setRows($this->rowsForSection(), $this->nav->activeLabel());
+
+        return true;
     }
 
     /**
