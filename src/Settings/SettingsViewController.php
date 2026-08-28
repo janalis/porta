@@ -161,6 +161,9 @@ final class SettingsViewController implements ContributedView
     public function onSectionRequested(SettingsSectionRequested $event): void
     {
         $this->selectSection($event->section);
+        if (null !== $event->row) {
+            $this->form->selectKey($event->row);
+        }
     }
 
     private function selectSection(string $id): void

@@ -126,6 +126,25 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $this->invalidate();
     }
 
+    /**
+     * Put the selection on the row with this key, if the page has one.
+     *
+     * Silently does nothing when it does not, which is the useful behaviour for
+     * the only caller: a search result naming a row that a plugin toggle or a
+     * locale switch has since removed should still open its page, not throw.
+     */
+    public function selectKey(string $key): void
+    {
+        foreach ($this->rows as $index => $row) {
+            if ($row->key === $key) {
+                $this->list->select($index);
+                $this->invalidate();
+
+                return;
+            }
+        }
+    }
+
     #[\Override]
     public function handleInput(string $data): void
     {

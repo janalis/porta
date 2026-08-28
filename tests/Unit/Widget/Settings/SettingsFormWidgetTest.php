@@ -67,6 +67,30 @@ final class SettingsFormWidgetTest extends TestCase
         return $widget;
     }
 
+    public function testSelectKeyPutsTheSelectionOnTheNamedRow(): void
+    {
+        $widget = $this->widget();
+        $this->assertStringContainsString('Inline diagnostics', $this->selectedSettingRow($widget), 'starts on the first row');
+
+        $widget->selectKey('theme');
+
+        $this->assertStringContainsString('Theme', $this->selectedSettingRow($widget));
+    }
+
+    /**
+     * A search result can name a row that a plugin toggle or a locale switch
+     * has since removed. Opening its page and staying put beats throwing.
+     */
+    public function testSelectKeyLeavesTheSelectionAloneWhenThePageHasNoSuchRow(): void
+    {
+        $widget = $this->widget();
+        $widget->selectKey('theme');
+
+        $widget->selectKey('aSettingThatMovedPages');
+
+        $this->assertStringContainsString('Theme', $this->selectedSettingRow($widget));
+    }
+
     public function testRendersCheckboxesSteppersAndRestartNote(): void
     {
         $screen = $this->plain($this->widget()->render(new RenderContext(60, 8)));

@@ -474,6 +474,40 @@ final class SettingsViewControllerTest extends TestCase
     }
 
     /**
+     * The event's whole reason for carrying a row: a search result names a
+     * page AND a setting, and landing on the page alone leaves the user
+     * scanning for the row they just picked out of a list.
+     */
+    public function testASectionRequestCarryingARowLandsOnThatRow(): void
+    {
+        $controller = $this->controller();
+        AttachedStyles::attach($this->form);
+        $this->form->setFocused(true);
+
+        $this->sectionEvents->dispatch(new SettingsSectionRequested('lang:php', 'debugLaunch'));
+
+        $this->assertStringContainsString('Launch config', $this->selectedSettingRow($this->form));
+    }
+
+    /**
+     * Row keys are NOT unique across pages — `indentStyle` is on all thirteen
+     * language pages — so the page has to be switched before the key is
+     * resolved, or the same key lands somewhere else entirely.
+     */
+    public function testTheRowIsResolvedOnTheRequestedPageNotTheOneAlreadyShowing(): void
+    {
+        $controller = $this->controller();
+        AttachedStyles::attach($this->form);
+        $this->form->setFocused(true);
+        $this->sectionEvents->dispatch(new SettingsSectionRequested('general'));
+
+        $this->sectionEvents->dispatch(new SettingsSectionRequested('lang:php', 'indentStyle'));
+
+        $this->assertSame('lang:php', Probe::get($controller, 'section'));
+        $this->assertStringContainsString('Indent style', $this->selectedSettingRow($this->form));
+    }
+
+    /**
      * The whole refusal path, through the form: a section that refuses must
      * NOT have its rows re-pushed, because re-pushing is exactly what used to
      * snap the row back to the persisted value and destroy the typing.
