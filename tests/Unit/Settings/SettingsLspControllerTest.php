@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Event\SettingsRowsStale;
@@ -16,6 +17,7 @@ use Porta\Lsp\LspReconfigurer;
 use Porta\Lsp\LspSessionPool;
 use Porta\Settings\SettingsLspController;
 use Porta\Settings\SettingsRowKind;
+use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\StatusReads;
@@ -65,6 +67,11 @@ final class SettingsLspControllerTest extends TestCase
         };
         $reconfigurer = new LspReconfigurer($pool, $reopener, $provider, $rootDir, $lspOverride);
 
+        // Every assertion below reads the project's .porta.json back, so the
+        // session scope is pinned to Project; SettingsScope defaults to Global.
+        $scope = new SettingsScope(ConfigFiles::for($rootDir));
+        $scope->set(ConfigScope::Project);
+
         return new SettingsLspController(
             $rootDir,
             $overrides,
@@ -72,6 +79,7 @@ final class SettingsLspControllerTest extends TestCase
             new Notifier($status, $tui),
             new Translator('en'),
             new PortaJsonWriter(ConfigFiles::for($rootDir)),
+            $scope,
         );
     }
 

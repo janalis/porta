@@ -14,7 +14,7 @@ use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Workbench\Notifier;
 
 /**
- * The Plugins section of the settings view: a scope choice (project/global),
+ * The Plugins section of the settings view: the shared scope choice,
  * an install field (a git URL, a local path, or a vendor/name package, handed
  * to {@see PluginInstaller}) and one row per installed plugin — a removal
  * button, or an inert "Built-in" marker for the plugins bundled with Porta. A
@@ -30,8 +30,6 @@ final class SettingsPluginsController
     /** Prefix marking a row that belongs to the plugin's own descriptors. */
     private const string SETTING_PREFIX = 'pluginSetting:';
 
-    /** Session-only install target; not persisted. */
-    private string $scope = 'project';
     /** The removal row key awaiting its confirming second press. */
     private ?string $armed = null;
 
@@ -43,24 +41,14 @@ final class SettingsPluginsController
         private readonly PluginLifecycleOps $lifecycle,
         private readonly PluginManager $plugins,
         private readonly ToolInstaller $installerTool,
+        private readonly SettingsScopeRow $scopeRow,
+        private readonly SettingsScope $scope,
     ) {}
 
     /** @return list<SettingsRow> */
     public function rows(): array
     {
-        $rows = [
-            new SettingsRow(
-                key: 'pluginScope',
-                label: $this->translator->trans('Install into'),
-                kind: SettingsRowKind::Choice,
-                value: $this->scope,
-                restart: false,
-                options: ['project', 'global'],
-                optionLabels: [
-                    'project' => $this->translator->trans('This project'),
-                    'global' => $this->translator->trans('Global (all projects)'),
-                ],
-            ),
+        $rows = $this->scopeRow->lead([
             new SettingsRow(
                 key: 'pluginInstall',
                 label: $this->translator->trans('Install plugin'),
@@ -69,7 +57,7 @@ final class SettingsPluginsController
                 restart: false,
                 hint: $this->translator->trans('git URL, local path, or vendor/name package'),
             ),
-        ];
+        ]);
         foreach ($this->installer->installed() as $plugin) {
             $rows[] = 'embedded' === $plugin['scope']
                 ? new SettingsRow(
@@ -229,8 +217,8 @@ final class SettingsPluginsController
     /** Route a settings edit/actuation for one of this section's keys. */
     public function change(string $key, string $value): void
     {
-        if ('pluginScope' === $key) {
-            $this->scope = $value;
+        if ($this->scopeRow->owns($key)) {
+            $this->scopeRow->change($value);
             $this->armed = null;
 
             return;
@@ -252,7 +240,7 @@ final class SettingsPluginsController
         if ('' === $source) {
             return;
         }
-        $this->installer->install($source, $this->scope, function (?string $error, ?string $file): void {
+        $this->installer->install($source, $this->scope->installerScope(), function (?string $error, ?string $file): void {
             $message = $error ?? $this->lifecycle->activateInstalled((string) $file) ?? $this->translator->trans('Plugin installed');
             $this->notifier->flash($message, 5.0);
             $this->lifecycle->refreshView();

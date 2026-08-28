@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Lifecycle\PluginInstaller;
@@ -13,6 +15,8 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\SettingsPluginsController;
 use Porta\Settings\SettingsRowKind;
+use Porta\Settings\SettingsScope;
+use Porta\Settings\SettingsScopeRow;
 use Porta\Tests\Support\FakeComposer;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\Probe;
@@ -49,7 +53,15 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->lifecycle = new FakePluginLifecycle();
         $tui = TestTui::create(80, 24);
 
-        $this->pluginSettings = new PluginSettings($this->project->dir, []);
+        $files = ConfigFiles::for($this->project->dir);
+        // Pinned to Project — the scope defaults to Global for a project with
+        // no settings block, and these tests read the install routing back
+        // from a deliberate switch AWAY from Project. PluginSettings gets the
+        // same holder, so its persists land in the temp project too.
+        $scope = new SettingsScope($files);
+        $scope->set(ConfigScope::Project);
+
+        $this->pluginSettings = new PluginSettings($this->project->dir, [], null, $scope);
         $this->plugins = new PluginManager(new EventDispatcher(), $this->pluginSettings);
         $this->installerTool = new ToolInstaller($this->project->dir, $this->managerBinaries);
 
@@ -61,6 +73,8 @@ final class SettingsPluginsControllerTest extends TestCase
             $this->lifecycle,
             $this->plugins,
             $this->installerTool,
+            new SettingsScopeRow($scope, $files, new Translator('en')),
+            $scope,
         );
     }
 
@@ -105,11 +119,11 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->seedPlugin($this->global, 'shared');
 
         $rows = $controller->rows();
-        $this->assertSame(['pluginScope', 'pluginInstall', 'pluginRemove:project:local', 'pluginRemove:global:shared'], array_column($rows, 'key'));
+        $this->assertSame(['configScope', 'pluginInstall', 'pluginRemove:project:local', 'pluginRemove:global:shared'], array_column($rows, 'key'));
         $this->assertSame([SettingsRowKind::Choice, SettingsRowKind::Text, SettingsRowKind::Action, SettingsRowKind::Action], array_column($rows, 'kind'));
         $this->assertSame('project', $rows[0]->value);
-        $this->assertSame(['project', 'global'], $rows[0]->options);
-        $this->assertSame('This project', $rows[0]->optionLabels['project'] ?? null);
+        $this->assertSame(['global', 'project'], $rows[0]->options);
+        $this->assertSame('.porta.json', $rows[0]->optionLabels['project'] ?? null);
         $this->assertSame('git URL, local path, or vendor/name package', $rows[1]->hint);
         $this->assertSame('local (project)', $rows[2]->label);
         $this->assertSame('shared (global)', $rows[3]->label);
@@ -190,7 +204,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $controller->change('pluginInstall', '   ');
         $this->assertSame(0, $this->lifecycle->refreshed, 'an empty source does nothing');
 
-        $controller->change('pluginScope', 'global');
+        $controller->change('configScope', 'global');
         $this->assertSame('global', $controller->rows()[0]->value);
 
         $controller->change('pluginInstall', $this->sourceDir('demo'));
@@ -228,7 +242,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->assertStringContainsString('Press Enter again to remove "demo"', $this->statusRow($this->status, 120));
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/demo');
 
-        $controller->change('pluginScope', 'global'); // anything else disarms
+        $controller->change('configScope', 'global'); // anything else disarms
         $controller->change('pluginRemove:project:demo', 'Remove');
         $this->assertStringContainsString('Press Enter again to remove "demo"', $this->statusRow($this->status, 120));
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/demo');

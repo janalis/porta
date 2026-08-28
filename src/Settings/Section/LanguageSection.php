@@ -10,6 +10,7 @@ use Porta\Settings\SettingsLanguageController;
 use Porta\Settings\SettingsLspController;
 use Porta\Settings\SettingsPage;
 use Porta\Settings\SettingsRow;
+use Porta\Settings\SettingsScopeRow;
 use Porta\Settings\SettingsSection;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
@@ -30,6 +31,7 @@ final readonly class LanguageSection implements SettingsSection
         private SettingsLanguageController $languages,
         private SettingsLspController $lsp,
         private SettingsDebugController $debug,
+        private SettingsScopeRow $scopeRow,
     ) {}
 
     #[\Override]
@@ -64,12 +66,17 @@ final readonly class LanguageSection implements SettingsSection
     {
         $language = $this->language($section);
 
-        return [...$this->languages->rows($language), ...$this->lsp->rows($language), ...$this->debug->rows($language)];
+        return $this->scopeRow->lead([...$this->languages->rows($language), ...$this->lsp->rows($language), ...$this->debug->rows($language)]);
     }
 
     #[\Override]
     public function change(string $section, string $key, bool|int|string $value): bool
     {
+        if ($this->scopeRow->owns($key)) {
+            $this->scopeRow->change($value);
+
+            return true;
+        }
         $language = $this->language($section);
         if ('lspServer' === $key) {
             return $this->lsp->changeLspServer($language, (string) $value);

@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\ActionRegistry;
 use Porta\Config\CommandRegistry;
 use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
 use Porta\Config\LiveKeybindings;
@@ -52,6 +53,9 @@ use Porta\Settings\SettingsLspController;
 use Porta\Settings\SettingsMouseRouter;
 use Porta\Settings\SettingsPages;
 use Porta\Settings\SettingsPluginsController;
+use Porta\Settings\SettingsRow;
+use Porta\Settings\SettingsScope;
+use Porta\Settings\SettingsScopeRow;
 use Porta\Settings\SettingsSection;
 use Porta\Settings\SettingsViewController;
 use Porta\Tests\Support\AttachedStyles;
@@ -111,6 +115,38 @@ final class SettingsViewControllerTest extends TestCase
     private ViewRegions $regions;
 
     /** @param list<SettingsSection>|null $sections */
+    /** The session scope the sections share; set by {@see controller()}. */
+    private SettingsScope $scope;
+
+    /**
+     * Every page that writes a config file leads with the scope chooser, and
+     * routes it itself — the controllers behind these pages have not heard of
+     * the key, so a section that forgot to claim it would hand it on as an
+     * unknown setting.
+     *
+     * One test across the pages rather than one each: the property is a rule
+     * about the SET, and a per-page test cannot notice a page that is missing.
+     */
+    public function testEveryWritingPageLeadsWithTheScopeChooserAndRoutesIt(): void
+    {
+        $controller = $this->controller();
+
+        foreach (['general', 'interface', 'highlighting', 'plugins', 'lang:php'] as $page) {
+            $this->scope->set(ConfigScope::Project);
+            $this->sectionEvents->dispatch(new SettingsSectionRequested($page));
+            $rows = Probe::get($this->form, 'rows');
+            \assert(\is_array($rows) && [] !== $rows, description: 'every settings page renders at least one row');
+            $first = $rows[0];
+            \assert($first instanceof SettingsRow, description: 'the form holds SettingsRow objects');
+            $this->assertSame(SettingsScopeRow::KEY, $first->key, $page.' leads with the chooser');
+            $this->assertSame('project', $first->value, $page.' shows the pinned scope');
+
+            $this->form->handleInput("\r"); // actuate the leading row
+
+            $this->assertSame(ConfigScope::Global, $this->scope->current(), $page.' routed the choice');
+        }
+    }
+
     private function controller(?ViewRegistry $views = null, ?array $sections = null): SettingsViewController
     {
         $this->project = new TempProject();
@@ -132,6 +168,13 @@ final class SettingsViewControllerTest extends TestCase
         $this->content = $regions->mint('settings')->content();
         $menuBar = new MenuBarWidget();
         $menuBar->setId('menu');
+
+        $files = ConfigFiles::for($this->project->dir);
+        // Pinned to Project so every persist below lands in the temp project;
+        // the scope defaults to Global, i.e. the suite's fixture home.
+        $scope = $this->scope = new SettingsScope($files);
+        $scope->set(ConfigScope::Project);
+        $scopeRow = new SettingsScopeRow($scope, $files, new Translator('en'));
 
         $renderer = new Renderer(new StyleSheet());
         $this->tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), keybindings: new Keybindings([]), renderer: $renderer);
@@ -163,6 +206,7 @@ final class SettingsViewControllerTest extends TestCase
             $notifier,
             new Translator('en'),
             new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
+            $scope,
             $applier,
             new BreadcrumbsWidget(),
             new FileIndex($this->project->dir),
@@ -178,7 +222,7 @@ final class SettingsViewControllerTest extends TestCase
             $liveKeys,
             new Translator('en'),
             new ViewRegistry(),
-            new PluginManager(new EventDispatcher(), $this->pluginSettings ?? new PluginSettings($this->project->dir, [])),
+            new PluginManager(new EventDispatcher(), $this->pluginSettings ?? new PluginSettings($this->project->dir, [], null, $scope)),
             new MenuContributions(),
         );
         $keymap = new SettingsKeymapController(
@@ -191,8 +235,9 @@ final class SettingsViewControllerTest extends TestCase
             $notifier,
             new Translator('en'),
             new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
+            $scope,
         );
-        $languages = new SettingsLanguageController($editor, $notifier, new Translator('en'), [], new PortaJsonWriter(ConfigFiles::for($this->project->dir)));
+        $languages = new SettingsLanguageController($editor, $notifier, new Translator('en'), [], new PortaJsonWriter(ConfigFiles::for($this->project->dir)), $scope);
         $pool = new LspSessionPool($this->project->dir, new FixedActiveFile(), new Translator('en'));
         $reconfigurer = new LspReconfigurer(
             $pool,
@@ -208,9 +253,9 @@ final class SettingsViewControllerTest extends TestCase
             $this->project->dir,
             null,
         );
-        $lsp = new SettingsLspController($this->project->dir, [], $reconfigurer, $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($this->project->dir)));
-        $debug = new SettingsDebugController(new DebugAdapters([]), $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($this->project->dir)));
-        $this->pluginSettings = new PluginSettings($this->project->dir, []);
+        $lsp = new SettingsLspController($this->project->dir, [], $reconfigurer, $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($this->project->dir)), $scope);
+        $debug = new SettingsDebugController(new DebugAdapters([]), $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($this->project->dir)), $scope);
+        $this->pluginSettings = new PluginSettings($this->project->dir, [], null, $scope);
         $this->lifecycle = new FakePluginLifecycle();
         $plugins = new SettingsPluginsController(
             new PluginInstaller($this->project->dir, null, new Translator('en'), null),
@@ -220,6 +265,8 @@ final class SettingsViewControllerTest extends TestCase
             $this->lifecycle,
             new PluginManager(new EventDispatcher(), $this->pluginSettings),
             new ToolInstaller($this->project->dir, []),
+            $scopeRow,
+            $scope,
         );
         $editorArea = new EditorArea(
             new BufferManager(),
@@ -262,17 +309,22 @@ final class SettingsViewControllerTest extends TestCase
             // the catch-all general section last.
             new SettingsPages(
                 $sections ?? [
-                    new InterfaceSection($settings, new Translator('en')),
-                    new HighlightingSection(new SettingsHighlightController(
-                        new HighlightRegistry(new NoHighlightPlugins(), new HighlightPreferences()),
+                    new InterfaceSection($settings, new Translator('en'), $scopeRow),
+                    new HighlightingSection(
+                        new SettingsHighlightController(
+                            new HighlightRegistry(new NoHighlightPlugins(), new HighlightPreferences()),
+                            new Translator('en'),
+                            new HighlightPreferences(),
+                            new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
+                            $scope,
+                            $this->lifecycle,
+                        ),
                         new Translator('en'),
-                        new HighlightPreferences(),
-                        new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
-                        $this->lifecycle,
-                    ), new Translator('en')),
+                        $scopeRow,
+                    ),
                     new PluginsSection($plugins, new Translator('en')),
-                    new LanguageSection($languages, $lsp, $debug),
-                    new GeneralSection($settings, new Translator('en')),
+                    new LanguageSection($languages, $lsp, $debug, $scopeRow),
+                    new GeneralSection($settings, new Translator('en'), $scopeRow),
                 ],
             ),
             $keymap,
@@ -329,6 +381,7 @@ final class SettingsViewControllerTest extends TestCase
         $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 12)));
         $this->assertStringContainsString('Default highlighter', $screen);
 
+        $this->form->handleInput("\x1b[B"); // past the "Save changes to" lead row
         $this->form->handleInput("\r"); // cycle the default choice off "auto"
         $config = json_decode((string) file_get_contents($this->project->path('.porta.json')), associative: true);
 
@@ -365,6 +418,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertStringNotContainsString('Inline diagnostics', $screen, 'editor behavior stays in General');
 
         // Toggle Sticky scroll (a Bool) → routes through changeSetting and persists.
+        $this->form->handleInput("\x1b[B"); // past the "Save changes to" lead row
         $this->form->handleInput("\x1b[B"); // Theme
         $this->form->handleInput("\x1b[B"); // Cursor shape
         $this->form->handleInput("\x1b[B"); // Tab bar position
@@ -389,9 +443,11 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertStringContainsString('LSP server', $screen, 'the language section also shows its LSP server row');
 
         // Actuate the indent-style row (auto → spaces) → persists to the languages block.
-        // Pane row 1: row 0 is the title, and the first setting starts selected
-        // so one click on it actuates.
-        $this->form->handleClick(1);
+        // Pane row 0 is the title and pane row 1 is the "Save changes to" lead
+        // row SettingsScopeRow prepends, so Indent style sits at pane row 2:
+        // the first click moves the selection onto it, the second actuates it.
+        $this->form->handleClick(2);
+        $this->form->handleClick(2);
         $this->assertSame('spaces', IdeConfig::load($this->project->dir)->languages['php']['indentStyle']);
     }
 
@@ -402,6 +458,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->selectSettingsSection($this->nav, 'lang:php');
 
         // The LSP row is the fourth row of a language section (after indent + run command); edit it inline.
+        $this->form->handleInput("\x1b[B"); // past the "Save changes to" lead row
         $this->form->handleInput("\x1b[B");
         $this->form->handleInput("\x1b[B");
         $this->form->handleInput("\x1b[B");
@@ -421,6 +478,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->selectSettingsSection($this->nav, 'lang:php');
 
         // The debug-adapter row is the fifth row of a language section (after indent + run command + LSP).
+        $this->form->handleInput("\x1b[B"); // past the "Save changes to" lead row
         for ($i = 0; $i < 4; ++$i) {
             $this->form->handleInput("\x1b[B");
         }
@@ -444,7 +502,12 @@ final class SettingsViewControllerTest extends TestCase
 
         // General: a core setting, removed from the file.
         $this->sectionEvents->dispatch(new SettingsSectionRequested('general'));
-        $this->form->handleInput("\r"); // toggle the first row off its default
+        // Every page below is led by SettingsScopeRow's "Save changes to" row.
+        // Step past it once: setRows() clamps the selection rather than
+        // resetting it, so row 1 — the page's own first row — stays selected
+        // across each section switch below.
+        $this->form->handleInput("\x1b[B"); // past the "Save changes to" lead row
+        $this->form->handleInput("\r"); // toggle the first own row off its default
         $this->assertFalse(IdeConfig::load($this->project->dir)->settings['inlineDiagnostics'], 'set first');
         $this->form->handleInput('r');
         $written = json_decode((string) file_get_contents($this->project->path('.porta.json')), associative: true);
@@ -571,7 +634,11 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open();
 
-        $this->form->handleClick(1); // pane row 1 = General's first row, Inline diagnostics (default true → false)
+        // Pane row 1 is the "Save changes to" lead row, so General's first own
+        // row, Inline diagnostics, is pane row 2 — click once to select it,
+        // once to actuate (default true → false).
+        $this->form->handleClick(2);
+        $this->form->handleClick(2);
         $this->assertFalse(IdeConfig::load($this->project->dir)->settings['inlineDiagnostics']);
     }
 
@@ -637,7 +704,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
         $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
-        $this->assertStringContainsString('Install into', $screen);
+        $this->assertStringContainsString('Save changes to', $screen);
         $this->assertStringContainsString('Install plugin', $screen);
         $this->assertMatchesRegularExpression('/demo \(project\)\s+\[Remove\]/', $screen);
 

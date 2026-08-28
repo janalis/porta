@@ -6,10 +6,12 @@ namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsLanguageController;
+use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
@@ -29,7 +31,12 @@ final class SettingsLanguageControllerTest extends TestCase
     {
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
 
-        return new SettingsLanguageController($editor, new Notifier($status, $tui), new Translator('en'), $overrides, new PortaJsonWriter(ConfigFiles::for($rootDir)));
+        // Every assertion below reads the project's .porta.json back, so the
+        // session scope is pinned to Project; SettingsScope defaults to Global.
+        $scope = new SettingsScope(ConfigFiles::for($rootDir));
+        $scope->set(ConfigScope::Project);
+
+        return new SettingsLanguageController($editor, new Notifier($status, $tui), new Translator('en'), $overrides, new PortaJsonWriter(ConfigFiles::for($rootDir)), $scope);
     }
 
     public function testRowsReflectStoredOverridesAndDefaults(): void

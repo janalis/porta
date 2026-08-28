@@ -2658,6 +2658,14 @@
         <source>⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings</source>
         <target>⏎ editar · ←/→ cambiar · r restablecer · Ctrl+F buscar · Tab paneles · 2 atajos</target>
       </trans-unit>
+      <trans-unit id="677">
+        <source>Save changes to</source>
+        <target>Guardar los cambios en</target>
+      </trans-unit>
+      <trans-unit id="678">
+        <source>for this session</source>
+        <target>para esta sesión</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

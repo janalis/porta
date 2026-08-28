@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Config\RecommendedPlugins;
@@ -18,6 +19,7 @@ use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsHighlightController;
 use Porta\Settings\SettingsRowKind;
+use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\TempProject;
 
@@ -61,11 +63,17 @@ final class SettingsHighlightControllerTest extends TestCase
         // One shared holder between registry and controller, as in the container.
         $this->preferences = HighlightPreferences::fromConfig(IdeConfig::load($this->project->dir)->highlight);
 
+        // Every assertion below reads the project's .porta.json back, so the
+        // session scope is pinned to Project; SettingsScope defaults to Global.
+        $scope = new SettingsScope(ConfigFiles::for($this->project->dir));
+        $scope->set(ConfigScope::Project);
+
         return new SettingsHighlightController(
             new HighlightRegistry($source, $this->preferences),
             new Translator('en'),
             $this->preferences,
             new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
+            $scope,
             $this->lifecycle,
         );
     }
@@ -122,6 +130,10 @@ final class SettingsHighlightControllerTest extends TestCase
     /** No lifecycle wired (a settings page built before the plugin system boots) must not crash on the offer. */
     public function testActuatingTheOfferWithNoLifecycleWiredIsInert(): void
     {
+        // Pinned to Project so the persist lands in the temp project rather
+        // than the suite's shared fixture home, which the Global default names.
+        $scope = new SettingsScope(ConfigFiles::for($this->project->dir));
+        $scope->set(ConfigScope::Project);
         $controller = new SettingsHighlightController(
             new HighlightRegistry(new class implements SyntaxHighlightProviderSource {
                 public function highlightProviders(): array
@@ -132,6 +144,7 @@ final class SettingsHighlightControllerTest extends TestCase
             new Translator('en'),
             new HighlightPreferences(),
             new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
+            $scope,
         );
 
         $controller->change(SettingsHighlightController::ENABLE_KEY, '');
@@ -265,6 +278,7 @@ final class SettingsHighlightControllerTest extends TestCase
             new Translator('en'),
             $preferences,
             new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
+            new SettingsScope(ConfigFiles::for($this->project->dir)),
             $this->lifecycle,
         );
 

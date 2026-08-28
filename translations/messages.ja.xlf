@@ -2658,6 +2658,14 @@
         <source>⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings</source>
         <target>⏎ 編集 · ←/→ 変更 · r 既定に戻す · Ctrl+F 検索 · Tab ペイン · 2 キー割当</target>
       </trans-unit>
+      <trans-unit id="677">
+        <source>Save changes to</source>
+        <target>変更の保存先</target>
+      </trans-unit>
+      <trans-unit id="678">
+        <source>for this session</source>
+        <target>このセッションのみ</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

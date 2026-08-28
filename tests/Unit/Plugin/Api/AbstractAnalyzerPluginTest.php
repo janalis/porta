@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Plugin\Api;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
@@ -15,6 +17,7 @@ use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Settings\SettingsScope;
 use Porta\Support\Clipboard;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\Probe;
@@ -41,6 +44,20 @@ use Symfony\Component\EventDispatcher\EventDispatcher;
  */
 final class AbstractAnalyzerPluginTest extends TestCase
 {
+    /**
+     * A scope pinned to Project. SettingsScope defaults to Global for a
+     * project with no `settings` block, and Global is the suite's SHARED
+     * fixture home — a plugin setting persisted there leaks into every later
+     * test in the run.
+     */
+    private static function projectScope(string $rootDir): SettingsScope
+    {
+        $scope = new SettingsScope(ConfigFiles::for($rootDir));
+        $scope->set(ConfigScope::Project);
+
+        return $scope;
+    }
+
     use PumpsLoop;
     use StatusReads;
 
@@ -100,7 +117,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
     /** A live api over a temp project, with the runtime wired so action methods work. */
     private function api(): PluginApi
     {
-        $settings = new PluginSettings($this->project->dir, []);
+        $settings = new PluginSettings($this->project->dir, [], null, self::projectScope($this->project->dir));
         $this->manager = new PluginManager(new EventDispatcher(), $settings);
         $this->status = new StatusBarWidget();
         $this->buffers = new BufferManager();

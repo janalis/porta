@@ -2658,6 +2658,14 @@
         <source>⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings</source>
         <target>⏎ עריכה · ←/→ שינוי · r איפוס · Ctrl+F חיפוש · Tab חלוניות · 2 קיצורי מקשים</target>
       </trans-unit>
+      <trans-unit id="677">
+        <source>Save changes to</source>
+        <target>שמירת שינויים אל</target>
+      </trans-unit>
+      <trans-unit id="678">
+        <source>for this session</source>
+        <target>להפעלה זו</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

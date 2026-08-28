@@ -11,3 +11,16 @@ plugins/*/vendor/
 /architecture.dot
 /architecture.svg
 /architecture.png
+
+# Written only when a test leaks a global-scope settings write into the shared
+# fixture home (tests pin their scope to Project to prevent it). Ignored so a
+# leak can never be committed; tests/bootstrap.php deletes it on every run.
+/tests/Support/fixtures/home/.porta/config.json
+
+# Artifacts of the plugin-install E2e tests, which install into the fixture
+# home for real. `tempest` beside them IS a committed fixture; these are not.
+/tests/Support/fixtures/home/.porta/composer.json
+# No trailing slash: these two are SYMLINKS into vendor/, not directories.
+/tests/Support/fixtures/home/.porta/plugins/cloned
+/tests/Support/fixtures/home/.porta/plugins/demo
+/tests/Support/fixtures/home/.porta/vendor/

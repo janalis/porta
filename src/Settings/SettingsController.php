@@ -49,6 +49,7 @@ final class SettingsController
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly PortaJsonWriter $writer,
+        private readonly SettingsScope $scope,
         LiveSettingsApplier $applier,
         BreadcrumbsWidget $breadcrumbs,
         FileIndex $files,
@@ -268,7 +269,7 @@ final class SettingsController
         if (null !== $descriptor['apply']) {
             $descriptor['apply']($default);
         }
-        $persisted = $this->writer->resetSetting(ConfigScope::Project, $key);
+        $persisted = $this->writer->resetSetting($this->scope->current(), $key);
         $this->notifier->flash($this->translator->trans('%label% reset to default%saved%', [
             '%label%' => $this->translator->trans($descriptor['label']),
             '%saved%' => SettingsFlash::savedSuffix($this->translator, $persisted),
@@ -293,7 +294,7 @@ final class SettingsController
             $descriptor['apply']($value);
         }
 
-        $persisted = $this->writer->persistSetting(ConfigScope::Project, $key, $value);
+        $persisted = $this->writer->persistSetting($this->scope->current(), $key, $value);
         $state = \is_bool($value) ? $this->translator->trans($value ? 'on' : 'off') : (string) $value;
         $note = $descriptor['restart'] ? ' · '.$this->translator->trans('applies on restart') : '';
         $saved = SettingsFlash::savedSuffix($this->translator, $persisted);

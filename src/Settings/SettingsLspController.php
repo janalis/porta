@@ -49,6 +49,7 @@ final class SettingsLspController
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly PortaJsonWriter $writer,
+        private readonly SettingsScope $scope,
     ) {}
 
     /**
@@ -91,7 +92,7 @@ final class SettingsLspController
         }
 
         $command = trim($command);
-        $persisted = $this->writer->persistLspServer(ConfigScope::Project, $language, $command);
+        $persisted = $this->writer->persistLspServer($this->scope->current(), $language, $command);
         if ('' === $command) {
             unset($this->overrides[$language]);
         }

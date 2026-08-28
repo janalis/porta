@@ -60,6 +60,7 @@ final class SettingsHighlightController
         private readonly Translator $translator,
         private readonly HighlightPreferences $preferences,
         private readonly PortaJsonWriter $writer,
+        private readonly SettingsScope $scope,
         private readonly ?PluginEnablement $lifecycle = null,
     ) {}
 
@@ -133,7 +134,7 @@ final class SettingsHighlightController
         $language = self::DEFAULT_KEY === $key ? null : substr($key, offset: 5);
 
         $this->preferences->change($language, $value);
-        $this->writer->persistHighlighter(ConfigScope::Project, $language, $value);
+        $this->writer->persistHighlighter($this->scope->current(), $language, $value);
     }
 
     /**

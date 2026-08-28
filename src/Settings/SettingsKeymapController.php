@@ -41,6 +41,7 @@ final class SettingsKeymapController
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly PortaJsonWriter $writer,
+        private readonly SettingsScope $scope,
         private readonly KeyParser $parser = new KeyParser(),
     ) {}
 
@@ -96,7 +97,7 @@ final class SettingsKeymapController
         }
 
         $token = $parsed['key'];
-        $persisted = $this->writer->persistKeymap(ConfigScope::Project, $action, [$token]);
+        $persisted = $this->writer->persistKeymap($this->scope->current(), $action, [$token]);
         if ($persisted) {
             // The file is the keymap's truth: re-merge it into the live map,
             // then rebake the menus' shortcut labels from the fresh map.

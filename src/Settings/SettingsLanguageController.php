@@ -46,6 +46,7 @@ final class SettingsLanguageController
         #[Autowire('%env(json:PORTA_LANGUAGES)%')]
         array $overrides,
         private readonly PortaJsonWriter $writer,
+        private readonly SettingsScope $scope,
     ) {
         foreach (LanguageCatalog::ids() as $id) {
             $entry = $overrides[$id] ?? [];
@@ -125,7 +126,7 @@ final class SettingsLanguageController
             ? new LanguageIndent((string) $stored, $current->indentSize)
             : new LanguageIndent($current->indentStyle, $stored);
 
-        $persisted = $this->writer->persistLanguageSetting(ConfigScope::Project, $language, $key, $stored);
+        $persisted = $this->writer->persistLanguageSetting($this->scope->current(), $language, $key, $stored);
         $this->applyToEditor();
         $label = $this->translator->trans('indentSize' === $key ? 'indent size' : 'indent style');
         $saved = SettingsFlash::savedSuffix($this->translator, $persisted);
@@ -139,7 +140,7 @@ final class SettingsLanguageController
     private function changeRunCommand(string $language, string $command): void
     {
         $this->runCommand[$language] = $command;
-        $persisted = $this->writer->persistLanguageSetting(ConfigScope::Project, $language, 'runCommand', $command);
+        $persisted = $this->writer->persistLanguageSetting($this->scope->current(), $language, 'runCommand', $command);
         $note = ' · '.$this->translator->trans('applies on restart');
         $saved = SettingsFlash::savedSuffix($this->translator, $persisted);
         $shown = '' === $command ? $this->translator->trans('bundled php') : $command;

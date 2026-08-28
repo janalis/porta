@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Settings\Section;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
 use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Plugin\Lifecycle\ToolInstaller;
@@ -12,6 +14,8 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\Section\PluginsSection;
 use Porta\Settings\SettingsPluginsController;
+use Porta\Settings\SettingsScope;
+use Porta\Settings\SettingsScopeRow;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
@@ -24,8 +28,13 @@ final class PluginsSectionTest extends TestCase
     public function testChangeOnTheTopLevelPluginsSectionRoutesOnlyToChangeNotChangePlugin(): void
     {
         $project = new TempProject();
+        $files = ConfigFiles::for($project->dir);
+        // Pinned to Project so the reset below writes into the temp project;
+        // the scope defaults to Global, i.e. the suite's fixture home.
+        $scope = new SettingsScope($files);
+        $scope->set(ConfigScope::Project);
         $lifecycle = new FakePluginLifecycle();
-        $pluginSettings = new PluginSettings($project->dir, []);
+        $pluginSettings = new PluginSettings($project->dir, [], null, $scope);
         $plugins = new SettingsPluginsController(
             new PluginInstaller($project->dir, $project->dir, new Translator('en'), null, null, null),
             $pluginSettings,
@@ -34,6 +43,8 @@ final class PluginsSectionTest extends TestCase
             $lifecycle,
             new PluginManager(new EventDispatcher(), $pluginSettings),
             new ToolInstaller($project->dir, []),
+            new SettingsScopeRow($scope, $files, new Translator('en')),
+            $scope,
         );
         $section = new PluginsSection($plugins, new Translator('en'));
 
@@ -53,8 +64,13 @@ final class PluginsSectionTest extends TestCase
     public function testResetOnTheTopLevelPluginsSectionIsInert(): void
     {
         $project = new TempProject();
+        $files = ConfigFiles::for($project->dir);
+        // Pinned to Project so the reset below writes into the temp project;
+        // the scope defaults to Global, i.e. the suite's fixture home.
+        $scope = new SettingsScope($files);
+        $scope->set(ConfigScope::Project);
         $lifecycle = new FakePluginLifecycle();
-        $pluginSettings = new PluginSettings($project->dir, ['demo' => ['binary' => '/custom']]);
+        $pluginSettings = new PluginSettings($project->dir, ['demo' => ['binary' => '/custom']], null, $scope);
         $pluginSettings->registerFor('demo', [
             ['key' => 'binary', 'label' => 'Binary', 'kind' => 'text', 'default' => '/stock', 'options' => null, 'hint' => null, 'min' => null, 'max' => null, 'step' => null],
         ]);
@@ -66,6 +82,8 @@ final class PluginsSectionTest extends TestCase
             $lifecycle,
             new PluginManager(new EventDispatcher(), $pluginSettings),
             new ToolInstaller($project->dir, []),
+            new SettingsScopeRow($scope, $files, new Translator('en')),
+            $scope,
         ), new Translator('en'));
 
         $section->reset('plugins', 'pluginSetting:binary');
@@ -83,9 +101,14 @@ final class PluginsSectionTest extends TestCase
     public function testPagesListTheIndexAndEveryInstalledPlugin(): void
     {
         $project = new TempProject();
+        $files = ConfigFiles::for($project->dir);
+        // Pinned to Project so the reset below writes into the temp project;
+        // the scope defaults to Global, i.e. the suite's fixture home.
+        $scope = new SettingsScope($files);
+        $scope->set(ConfigScope::Project);
         $lifecycle = new FakePluginLifecycle();
         $lifecycle->names = ['git', 'todo'];
-        $pluginSettings = new PluginSettings($project->dir, []);
+        $pluginSettings = new PluginSettings($project->dir, [], null, $scope);
         $section = new PluginsSection(new SettingsPluginsController(
             new PluginInstaller($project->dir, $project->dir, new Translator('en'), null, null, null),
             $pluginSettings,
@@ -94,6 +117,8 @@ final class PluginsSectionTest extends TestCase
             $lifecycle,
             new PluginManager(new EventDispatcher(), $pluginSettings),
             new ToolInstaller($project->dir, []),
+            new SettingsScopeRow($scope, $files, new Translator('en')),
+            $scope,
         ), new Translator('en'));
 
         $pages = $section->pages();

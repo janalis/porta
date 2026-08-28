@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
+use Porta\Config\ConfigScope;
 use Porta\GitPlugin\Process\ProcessLane;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
+use Porta\Settings\SettingsScope;
 use Porta\Workbench\View\ViewRegistry;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -81,6 +83,26 @@ trait RunsIde
     }
 
     /**
+     * Write settings into the scenario's OWN project, not into a home shared
+     * with every other scenario.
+     *
+     * A real first-time user defaults to the global scope, which is the whole
+     * point of it — but a global write here lands in `PORTA_HOME`, which for
+     * most suites is the committed fixture home and for the rest is the
+     * developer's actual one. Either way it outlives the test: a toggled
+     * `tabBarPosition` sat in that file and broke four later scenarios that
+     * had never heard of it.
+     *
+     * An E2e scenario asserts about its TempProject, so that is where its
+     * writes belong. A test that means to exercise the global scope sets it
+     * back with {@see \Porta\Settings\SettingsScope::set()} in a step.
+     */
+    private function pinSettingsScope(Ide $ide): void
+    {
+        Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Project);
+    }
+
+    /**
      * @param array<int, callable> $steps ms => step($tui, $terminal, $ide)
      */
     private function runIde(TempProject $project, ?string $file, array $steps, ?float $duration = null, ?string $docsDir = null, int $columns = 160): VirtualTerminal
@@ -88,6 +110,7 @@ trait RunsIde
         $terminal = new VirtualTerminal(columns: $columns, rows: 24);
         $this->suppressFirstRunWelcome($project);
         $ide = new Ide($project->dir, $file, $terminal, docsDir: $docsDir);
+        $this->pinSettingsScope($ide);
         $tui = Services::resolve($ide, Tui::class);
 
         // Steps chain sequentially: each schedules the next with the key

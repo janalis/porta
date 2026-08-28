@@ -24,6 +24,7 @@ final class SettingsDebugController
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly PortaJsonWriter $writer,
+        private readonly SettingsScope $scope,
     ) {}
 
     /** @return list<SettingsRow> */
@@ -67,7 +68,7 @@ final class SettingsDebugController
 
     private function changeAdapter(string $language, string $command): void
     {
-        $persisted = $this->writer->persistLanguageDebug(ConfigScope::Project, $language, 'adapter', $command);
+        $persisted = $this->writer->persistLanguageDebug($this->scope->current(), $language, 'adapter', $command);
         $this->adapters->set($language, $command, $this->adapters->launchOverrides($language));
 
         $shown = '' === $command ? $this->translator->trans('not configured') : $command;
@@ -93,7 +94,7 @@ final class SettingsDebugController
             $launch = $decoded;
         }
 
-        $persisted = $this->writer->persistLanguageDebug(ConfigScope::Project, $language, 'launch', [] === $launch ? null : $launch);
+        $persisted = $this->writer->persistLanguageDebug($this->scope->current(), $language, 'launch', [] === $launch ? null : $launch);
         $this->adapters->set($language, $this->adapters->adapterCommand($language), $launch);
 
         $saved = SettingsFlash::savedSuffix($this->translator, $persisted);

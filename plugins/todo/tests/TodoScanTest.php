@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace Porta\Todo\Tests;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Search\ProjectSearch;
+use Porta\Settings\SettingsScope;
 use Porta\Support\Clipboard;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\FakePluginLifecycle;
@@ -56,7 +59,12 @@ final class TodoScanTest extends TestCase
 
     private function api(TempProject $project, string $tags = ''): PluginApi
     {
-        $settings = new PluginSettings($project->dir, []);
+        // Pinned to Project: SettingsScope defaults to Global for a project
+        // with no `settings` block, and Global is the suite's SHARED fixture
+        // home — a setting persisted there leaks into every later test.
+        $scope = new SettingsScope(ConfigFiles::for($project->dir));
+        $scope->set(ConfigScope::Project);
+        $settings = new PluginSettings($project->dir, [], null, $scope);
         $manager = new PluginManager(new EventDispatcher(), $settings);
         $tui = TestTui::create(120, 24);
         $this->results = new ResultsPanelWidget();

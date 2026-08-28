@@ -14,6 +14,7 @@ use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FindModalReads;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -29,6 +30,7 @@ final class IdeSettingsThemeTest extends TestCase
     use FindModalReads;
     use PreservesPath;
     use RunsIde;
+    use ScreenReads;
 
     private ?string $portaHomeToRestore = null;
 
@@ -93,10 +95,18 @@ final class IdeSettingsThemeTest extends TestCase
                     $this->assertStringContainsString('General', $screen, 'the nav sidebar lists sections');
                     $this->assertStringContainsString('Languages', $screen);
                     $this->assertStringContainsString('Inline diagnostics', $screen, 'General content shown');
-                    // Toggle Inline diagnostics (General row 0, now that the appearance rows moved to Interface) in the content pane.
-                    // Screen row 3: the form renders its page title above the rows.
-                    $tui->handleInput("\x1b[<0;40;3M");
-                    $tui->handleInput("\x1b[<0;40;3m");
+                    // Toggle Inline diagnostics in the content pane. Screen row
+                    // 4: a title row, then the "Save changes to" chooser that
+                    // leads every page that writes a file, then this one.
+                    //
+                    // Twice, because a click on a row that is not already
+                    // selected only selects it — the first click used to
+                    // actuate only because Inline diagnostics happened to be
+                    // the row the page opens on, and it no longer is.
+                    $tui->handleInput("\x1b[<0;40;4M");
+                    $tui->handleInput("\x1b[<0;40;4m");
+                    $tui->handleInput("\x1b[<0;40;4M");
+                    $tui->handleInput("\x1b[<0;40;4m");
                     // Hover the nav sidebar (a tint).
                     $tui->handleInput("\x1b[<35;5;3M");
                 },
@@ -132,19 +142,30 @@ final class IdeSettingsThemeTest extends TestCase
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Indent style', $screen, 'the PHP section shows indent settings');
                     $this->assertStringContainsString('LSP server', $screen, 'and its LSP server row');
-                    // Actuate the indent-style row (auto → spaces) in the content
-                    // pane. Form row 0, which starts selected, so one click
-                    // actuates it; screen row 3 because of the page title.
-                    $tui->handleInput("\x1b[<0;40;3M");
-                    $tui->handleInput("\x1b[<0;40;3m");
-                    // Edit the LSP server row (form row 3 = screen row 6, after
-                    // the run-command row). TWO clicks: the first selects, and
-                    // only a click on the already-selected row opens the editor
-                    // — a single click no longer mutates whatever it lands on.
+                    // Park the selection on a row we are not about to actuate.
+                    // Switching pages CLAMPS the selection rather than resetting
+                    // it, so which row a language page opens on depends on where
+                    // the previous page left it — and "click twice" then means
+                    // one step or two. Screen row 6 is Run/debug command, a Text
+                    // row that a single click only selects.
                     $tui->handleInput("\x1b[<0;40;6M");
                     $tui->handleInput("\x1b[<0;40;6m");
-                    $tui->handleInput("\x1b[<0;40;6M");
-                    $tui->handleInput("\x1b[<0;40;6m");
+                    // Now actuate indent style (auto → spaces). Screen row 4:
+                    // the page title, then the "Save changes to" chooser that
+                    // leads every page writing a file, then this. Two clicks:
+                    // select, then actuate.
+                    $tui->handleInput("\x1b[<0;40;4M");
+                    $tui->handleInput("\x1b[<0;40;4m");
+                    $tui->handleInput("\x1b[<0;40;4M");
+                    $tui->handleInput("\x1b[<0;40;4m");
+                    // Edit the LSP server row, one lower than it was for the
+                    // same reason. TWO clicks: the first selects, and only a
+                    // click on the already-selected row opens the editor — a
+                    // single click no longer mutates whatever it lands on.
+                    $tui->handleInput("\x1b[<0;40;7M");
+                    $tui->handleInput("\x1b[<0;40;7m");
+                    $tui->handleInput("\x1b[<0;40;7M");
+                    $tui->handleInput("\x1b[<0;40;7m");
                     foreach (str_split('my-ls --stdio') as $char) {
                         $tui->handleInput($char);
                     }

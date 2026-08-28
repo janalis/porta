@@ -18,6 +18,7 @@ use Porta\Lsp\LspReconfigurer;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginManifest;
+use Porta\Settings\SettingsScope;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Menu\MenuRegistrar;
 use Porta\Workbench\Notifier;
@@ -59,6 +60,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         private readonly MenuRegistrar $menuRegistrar,
         private readonly PluginPagesSync $pages,
         private readonly EventDispatcherInterface $events,
+        private readonly SettingsScope $scope,
         private readonly Tui $tui,
         private readonly LspReconfigurer $lspReconfigurer,
         private readonly PortaJsonWriter $writer,
@@ -600,12 +602,12 @@ final class PluginLifecycle implements PluginLifecycleOps
     {
         if ($this->isBundled($name)) {
             unset($this->enabled[$name]);
-            $this->writer->persistBundledDisabled(ConfigScope::Project, $name);
+            $this->writer->persistBundledDisabled($this->scope->current(), $name);
 
             return;
         }
         $this->disabled[$name] = true;
-        $this->writer->persistPluginDisabled(ConfigScope::Project, $name);
+        $this->writer->persistPluginDisabled($this->scope->current(), $name);
     }
 
     /**
@@ -616,12 +618,12 @@ final class PluginLifecycle implements PluginLifecycleOps
     {
         if ($this->isBundled($name)) {
             $this->enabled[$name] = true;
-            $this->writer->persistBundledEnabled(ConfigScope::Project, $name);
+            $this->writer->persistBundledEnabled($this->scope->current(), $name);
 
             return;
         }
         unset($this->disabled[$name]);
-        $this->writer->persistPluginEnabled(ConfigScope::Project, $name);
+        $this->writer->persistPluginEnabled($this->scope->current(), $name);
     }
 
     /** Re-resolve the LSP servers when a toggled plugin provides one (and no --lsp override wins). */

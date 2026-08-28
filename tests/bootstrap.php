@@ -42,6 +42,18 @@ define('PORTA_TEST_PRISTINE_PATH', (string) getenv('PATH'));
 // turns back into a clear rather than a set-to-empty.
 define('PORTA_TEST_PRISTINE_PORTA_HOME', (string) getenv('PORTA_HOME'));
 
+// phpunit.xml.dist points PORTA_HOME at a COMMITTED fixture home, so the
+// global config scope's file there is shared by every test in the suite and
+// outlives the run. Tests pin their session scope to Project for that reason,
+// but a stale file from a run that predates the pin — or from a hand-run
+// experiment — would silently reconfigure every later boot, and the failure
+// surfaces somewhere with no connection to the cause. Removing it here makes
+// that class of mystery impossible to carry between runs.
+$portaLeakedGlobalConfig = __DIR__.'/Support/fixtures/home/.porta/config.json';
+if (is_file($portaLeakedGlobalConfig)) {
+    unlink($portaLeakedGlobalConfig);
+}
+
 // Every Ide boot in the suite shares one container dump here instead of each
 // recompiling (~124 ms) or touching the developer's real ~/.cache/porta.
 // putenv() deliberately, so exec()'d subprocess tests inherit the pin.

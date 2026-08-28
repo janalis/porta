@@ -8,6 +8,7 @@ use Porta\Config\IdeConfig;
 use Porta\Config\PortaHome;
 use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
+use Porta\Settings\SettingsScope;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Tempest\Highlight\TerminalTheme;
 
@@ -31,9 +32,9 @@ final class PluginHost
 
     private readonly PluginLoader $loader;
 
-    public function __construct(IdeConfig $config, EventDispatcherInterface $events, string $rootDir, ?TerminalTheme $syntaxTheme = null, ?PortaJsonWriter $writer = null)
+    public function __construct(IdeConfig $config, EventDispatcherInterface $events, string $rootDir, ?TerminalTheme $syntaxTheme = null, ?PortaJsonWriter $writer = null, ?SettingsScope $scope = null)
     {
-        $this->settings = new PluginSettings($rootDir, $config->plugins, $writer);
+        $this->settings = new PluginSettings($rootDir, $config->plugins, $writer, $scope);
         $this->manager = new PluginManager($events, $this->settings);
         $this->loader = new PluginLoader($rootDir, PortaHome::base(), $this->settings, PluginLoader::embeddedDir(), $config->disabledPlugins, $config->enabledPlugins, $syntaxTheme);
     }

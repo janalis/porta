@@ -5,11 +5,27 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Plugin\Runtime;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\TempProject;
 
 final class PluginSettingsTest extends TestCase
 {
+    /**
+     * A scope pinned to Project: the assertions below read the project's
+     * .porta.json back, and SettingsScope otherwise defaults to Global — the
+     * suite's shared fixture home.
+     */
+    private static function projectScope(string $rootDir): SettingsScope
+    {
+        $scope = new SettingsScope(ConfigFiles::for($rootDir));
+        $scope->set(ConfigScope::Project);
+
+        return $scope;
+    }
+
     /** @return array{key: string, label: string, kind: string, default: bool|int|string, options: list<string>|null, hint: string|null} */
     private function descriptor(string $key, string $kind, bool|int|string $default, ?array $options = null): array
     {
@@ -41,7 +57,7 @@ final class PluginSettingsTest extends TestCase
     public function testChangeCoercesPersistsAndRemoveForDropsDescriptorsOnly(): void
     {
         $project = new TempProject();
-        $settings = new PluginSettings($project->dir, []);
+        $settings = new PluginSettings($project->dir, [], null, self::projectScope($project->dir));
         $settings->registerFor('demo', [
             $this->descriptor('binary', 'text', ''),
             $this->descriptor('level', 'choice', 'low', ['low', 'high']),
@@ -68,7 +84,7 @@ final class PluginSettingsTest extends TestCase
     public function testResetDropsTheLiveValueAndThePersistedOne(): void
     {
         $project = new TempProject(['.porta.json' => (string) json_encode(['plugins' => ['demo' => ['binary' => '/usr/bin/x', 'strict' => true]]])]);
-        $settings = new PluginSettings($project->dir, ['demo' => ['binary' => '/usr/bin/x', 'strict' => true]]);
+        $settings = new PluginSettings($project->dir, ['demo' => ['binary' => '/usr/bin/x', 'strict' => true]], null, self::projectScope($project->dir));
         $settings->registerFor('demo', [$this->descriptor('binary', 'text', '/default/bin'), $this->descriptor('strict', 'bool', false)]);
         $this->assertSame('/usr/bin/x', $settings->value('demo', 'binary'));
 
@@ -84,7 +100,7 @@ final class PluginSettingsTest extends TestCase
     public function testResettingAPluginsLastSettingDropsItsEntryAndTheBlock(): void
     {
         $project = new TempProject(['.porta.json' => (string) json_encode(['plugins' => ['demo' => ['binary' => '/usr/bin/x']]])]);
-        $settings = new PluginSettings($project->dir, ['demo' => ['binary' => '/usr/bin/x']]);
+        $settings = new PluginSettings($project->dir, ['demo' => ['binary' => '/usr/bin/x']], null, self::projectScope($project->dir));
         $settings->registerFor('demo', [$this->descriptor('binary', 'text', '')]);
 
         $settings->reset('demo', 'binary');

@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Config\ConfigScope;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\Document;
@@ -21,6 +22,7 @@ use Porta\Lsp\Uri;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Onboarding\OnboardingState;
 use Porta\Search\SearchActions;
+use Porta\Settings\SettingsScope;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\AwaitsGit;
 use Porta\Tests\Support\EditorState;
@@ -51,6 +53,10 @@ final class IdeHelpersTest extends TestCase
         $this->project = new TempProject(['composer.json' => '{}']);
         new OnboardingState($this->project->dir)->markWelcomeSeen();
         $this->ide = new Ide($this->project->dir, null, new VirtualTerminal(columns: 80, rows: 24));
+        // Palette commands below toggle real settings, and the session scope
+        // defaults to Global — the suite's SHARED fixture home. Pin the writes
+        // to this project, which goes away with its temp dir.
+        Services::resolve($this->ide, SettingsScope::class)->set(ConfigScope::Project);
     }
 
     /**

@@ -2658,6 +2658,14 @@
         <source>⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings</source>
         <target>⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings</target>
       </trans-unit>
+      <trans-unit id="677">
+        <source>Save changes to</source>
+        <target>Save changes to</target>
+      </trans-unit>
+      <trans-unit id="678">
+        <source>for this session</source>
+        <target>for this session</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

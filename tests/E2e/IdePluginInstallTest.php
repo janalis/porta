@@ -110,7 +110,7 @@ final class IdePluginInstallTest extends TestCase
                     $this->openPluginsSection($tui, $ide);
                     $tui->tick();
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertMatchesRegularExpression('/Install into\s+< This project >/', $screen);
+                    $this->assertMatchesRegularExpression('/Save changes to\s+< \.porta\.json >/', $screen);
                     $this->assertStringContainsString('git URL, local path, or vendor/name package', $screen, 'the empty install field shows its hint');
 
                     $tui->handleInput("\x1b[B"); // → the install row
@@ -305,8 +305,8 @@ final class IdePluginInstallTest extends TestCase
                     // A substring that does not spell the gap: the value column is aligned
                     // per page, and a stale literal here is a ten-second timeout
                     // rather than a failure.
-                    $this->awaitPainted($tui, $terminal, '< Global (all projects) >');
-                    $this->assertMatchesRegularExpression('/Install into\s+< Global \(all projects\) >/', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->awaitPainted($tui, $terminal, '< ~/.porta/config.json >');
+                    $this->assertMatchesRegularExpression('/Save changes to\s+< ~\/\.porta\/config\.json >/', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
 
                     $tui->handleInput("\x1b[B"); // install row
                     $tui->handleInput("\r");

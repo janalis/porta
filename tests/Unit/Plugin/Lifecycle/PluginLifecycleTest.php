@@ -6,9 +6,11 @@ namespace Porta\Tests\Unit\Plugin\Lifecycle;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Config\ConfigScope;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
+use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -46,7 +48,13 @@ final class PluginLifecycleTest extends TestCase
         $this->project = new TempProject($files);
         new OnboardingState($this->project->dir)->markWelcomeSeen();
 
-        return $this->ide = new Ide($this->project->dir, null, new VirtualTerminal(columns: 100, rows: 30));
+        $this->ide = new Ide($this->project->dir, null, new VirtualTerminal(columns: 100, rows: 30));
+        // The lifecycle persists through the session's SettingsScope, which
+        // defaults to Global — the suite's shared fixture home. These tests
+        // read the project's own .porta.json back, so pin it to Project.
+        Services::resolve($this->ide, SettingsScope::class)->set(ConfigScope::Project);
+
+        return $this->ide;
     }
 
     /** These tests build an Ide but never run() it — arm the same cleanup its own finally would. */

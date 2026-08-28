@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Plugin\Api;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\AbstractSubprocessHighlighter;
@@ -12,6 +14,7 @@ use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Settings\SettingsScope;
 use Porta\Support\Clipboard;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\Probe;
@@ -40,6 +43,20 @@ use Tempest\Highlight\Tokens\TokenTypeEnum;
  */
 final class AbstractSubprocessHighlighterTest extends TestCase
 {
+    /**
+     * A scope pinned to Project. SettingsScope defaults to Global for a
+     * project with no `settings` block, and Global is the suite's SHARED
+     * fixture home — a plugin setting persisted there leaks into every later
+     * test in the run.
+     */
+    private static function projectScope(string $rootDir): SettingsScope
+    {
+        $scope = new SettingsScope(ConfigFiles::for($rootDir));
+        $scope->set(ConfigScope::Project);
+
+        return $scope;
+    }
+
     use PumpsLoop;
 
     private TempProject $project;
@@ -90,7 +107,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
         $this->project = new TempProject(['vendor/bin/demo' => '#!'.\PHP_BINARY." -n\n<?php\n".$body]);
         chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
 
-        $settings = new PluginSettings($this->project->dir, []);
+        $settings = new PluginSettings($this->project->dir, [], null, self::projectScope($this->project->dir));
         $this->manager = new PluginManager(new EventDispatcher(), $settings);
         $tui = TestTui::create(100, 24);
         $this->manager->wireRuntime(new PluginRuntime(

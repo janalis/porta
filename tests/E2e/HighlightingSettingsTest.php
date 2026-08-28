@@ -9,9 +9,11 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Config\RecommendedPlugins;
 use Porta\Tests\Support\NavigatesSettings;
+use Porta\Tests\Support\ReadsSettingsForm;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Widget\Settings\SettingsFormWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -26,6 +28,7 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 final class HighlightingSettingsTest extends TestCase
 {
     use NavigatesSettings;
+    use ReadsSettingsForm;
     use RunsIde;
 
     private ?string $savedHome = null;
@@ -79,9 +82,14 @@ final class HighlightingSettingsTest extends TestCase
             },
             200 => function ($tui, $terminal) use ($project): void {
                 // Swapping the content pane detaches the focused widget, which
-                // hands focus elsewhere — put it back on the form, sitting on
-                // the offer row.
-                $tui->setFocus($tui->getById('settings-form'));
+                // hands focus elsewhere — put it back on the form, then onto
+                // the offer row BY NAME. It is no longer the row the selection
+                // starts on: every page that writes a file leads with the
+                // scope chooser now.
+                $form = $tui->getById('settings-form');
+                \assert($form instanceof SettingsFormWidget, description: 'the settings form is the content pane on the Highlighting page');
+                $tui->setFocus($form);
+                $this->selectSettingRow($form, 'Enable '.RecommendedPlugins::HIGHLIGHTER);
                 $tui->handleInput("\r"); // actuate the button
                 $this->frame($tui); // a bare tick inside the 60fps cap window is not a frame
 

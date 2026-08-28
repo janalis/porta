@@ -6,7 +6,9 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Config\ConfigScope;
 use Porta\Settings\SettingsController;
+use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
@@ -45,6 +47,12 @@ final class IdeRtlLocaleTest extends TestCase
                     $this->assertStringContainsString('File', AnsiUtils::stripAnsiCodes(implode('', $tui->getById('menu')->render(new RenderContext(120, 1)))));
                 },
                 400 => static function ($tui, $terminal, $ide): void {
+                    // The session scope defaults to Global for a project with
+                    // no settings block, and Global here is the suite's SHARED
+                    // fixture home — persisting 'he' there leaks Hebrew into
+                    // every later test in the run. Pin the write to this
+                    // project, which is removed with its temp dir.
+                    Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Project);
                     Services::resolve($ide, SettingsController::class)->changeSetting('language', 'he');
                     $tui->tick();
                 },

@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\ActionRegistry;
 use Porta\Config\CommandRegistry;
 use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
 use Porta\Config\KeyDispatch;
@@ -19,6 +20,7 @@ use Porta\Plugin\Runtime\PluginHost;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\SettingsKeymapController;
+use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
@@ -65,6 +67,11 @@ final class SettingsKeymapControllerTest extends TestCase
             new MenuContributions(),
         );
 
+        // Every assertion below reads the project's .porta.json back, so the
+        // session scope is pinned to Project; SettingsScope defaults to Global.
+        $scope = new SettingsScope(ConfigFiles::for($rootDir));
+        $scope->set(ConfigScope::Project);
+
         return new SettingsKeymapController(
             $this->actions,
             $this->commands,
@@ -75,6 +82,7 @@ final class SettingsKeymapControllerTest extends TestCase
             new Notifier($status, $tui),
             new Translator('en'),
             new PortaJsonWriter(ConfigFiles::for($rootDir)),
+            $scope,
         );
     }
 

@@ -6,10 +6,12 @@ namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
 use Porta\Config\PortaJsonWriter;
 use Porta\Debug\DebugAdapters;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsDebugController;
+use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
@@ -31,7 +33,18 @@ final class SettingsDebugControllerTest extends TestCase
         $this->statusBar = new StatusBarWidget();
         $notifier = new Notifier($this->statusBar, new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20)));
 
-        return new SettingsDebugController($this->adapters, $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($this->project->dir)));
+        // Every assertion below reads the project's .porta.json back, so the
+        // session scope is pinned to Project; SettingsScope defaults to Global.
+        $scope = new SettingsScope(ConfigFiles::for($this->project->dir));
+        $scope->set(ConfigScope::Project);
+
+        return new SettingsDebugController(
+            $this->adapters,
+            $notifier,
+            new Translator('en'),
+            new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
+            $scope,
+        );
     }
 
     private function flashed(): string
@@ -67,7 +80,13 @@ final class SettingsDebugControllerTest extends TestCase
         $this->adapters = new DebugAdapters(['php' => ['debug' => ['adapter' => 'node a.js', 'launch' => ['bad' => "\xB1\x31"]]]]);
         $this->statusBar = new StatusBarWidget();
         $notifier = new Notifier($this->statusBar, new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20)));
-        $controller = new SettingsDebugController($this->adapters, $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($this->project->dir)));
+        $controller = new SettingsDebugController(
+            $this->adapters,
+            $notifier,
+            new Translator('en'),
+            new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
+            new SettingsScope(ConfigFiles::for($this->project->dir)),
+        );
 
         $rows = $controller->rows('php');
 

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Plugin\Api;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
@@ -25,6 +27,7 @@ use Porta\Plugin\Api\PluginException;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Settings\SettingsScope;
 use Porta\Support\Clipboard;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\EditorState;
@@ -59,6 +62,20 @@ use Symfony\Component\Tui\Widget\FocusableInterface;
 
 final class PluginApiTest extends TestCase
 {
+    /**
+     * A scope pinned to Project. SettingsScope defaults to Global for a
+     * project with no `settings` block, and Global is the suite's SHARED
+     * fixture home — a plugin setting persisted there leaks into every later
+     * test in the run.
+     */
+    private static function projectScope(string $rootDir): SettingsScope
+    {
+        $scope = new SettingsScope(ConfigFiles::for($rootDir));
+        $scope->set(ConfigScope::Project);
+
+        return $scope;
+    }
+
     use StatusReads;
 
     private RecordingChangeMarkSink $changeMarks;
@@ -71,7 +88,7 @@ final class PluginApiTest extends TestCase
 
     private function api(Presence $wired = Presence::With): PluginApi
     {
-        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', [], null, self::projectScope('/p')));
         $this->editor = new CodeEditorWidget();
         $this->status = new StatusBarWidget();
         $this->files = new RecordingFileOpener();
@@ -103,7 +120,7 @@ final class PluginApiTest extends TestCase
             );
         }
 
-        return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
+        return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
     }
 
     public function testRegistrationBuffersNamespacedCommandsAndValidatesIds(): void
@@ -305,8 +322,8 @@ final class PluginApiTest extends TestCase
 
     public function testRegisterSettingValidatesAndSettingReadsSeededConfig(): void
     {
-        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
-        $seeded = new PluginSettings('/p', ['demo' => ['binary' => '/opt/x', 'strict' => 'yes', 'level' => 'nope', 'jobs' => '7']]);
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', [], null, self::projectScope('/p')));
+        $seeded = new PluginSettings('/p', ['demo' => ['binary' => '/opt/x', 'strict' => 'yes', 'level' => 'nope', 'jobs' => '7']], null, self::projectScope('/p'));
         $api = new PluginApi('demo', $manager, '/p', $seeded);
 
         // Reads work immediately after registration — i.e. during activate().
@@ -385,7 +402,7 @@ final class PluginApiTest extends TestCase
     public function testChangeSettingValidatesPersistsAndCoerces(): void
     {
         $project = new TempProject();
-        $manager = new PluginManager(new EventDispatcher(), $settings = new PluginSettings($project->dir, []));
+        $manager = new PluginManager(new EventDispatcher(), $settings = new PluginSettings($project->dir, [], null, self::projectScope($project->dir)));
         $tui = TestTui::create(100, 24);
         $manager->wireRuntime(
             new PluginRuntime(
@@ -572,7 +589,7 @@ final class PluginApiTest extends TestCase
     {
         // The whole path a plugin's tool takes: register, commit, publish by
         // bare id, and land in the dock under the namespaced one.
-        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', [], null, self::projectScope('/p')));
         $tui = TestTui::create(100, 24);
         $dock = TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget());
         $manager->wireRuntime(new PluginRuntime(
@@ -595,7 +612,7 @@ final class PluginApiTest extends TestCase
             new CodeEditorWidget(),
             new FakePluginLifecycle(),
         ));
-        $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
+        $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
         $api->registerListTool('todo', 'TODO');
         $manager->commit($api);
 
@@ -722,17 +739,17 @@ final class PluginApiTest extends TestCase
             new FakePluginLifecycle(),
         ));
 
-        return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
+        return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
     }
 
     public function testSyntaxThemeReturnsTheGivenThemeOrDefaultsToDark(): void
     {
-        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
-        $noTheme = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', [], null, self::projectScope('/p')));
+        $noTheme = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
         $this->assertInstanceOf(DarkTerminalTheme::class, $noTheme->syntaxTheme(), 'no theme given: falls back to the default');
 
         $theme = new DarkTerminalTheme();
-        $withTheme = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []), $theme);
+        $withTheme = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')), $theme);
         $this->assertSame($theme, $withTheme->syntaxTheme(), 'a given theme is returned as-is, not wrapped');
     }
 
@@ -905,7 +922,7 @@ final class PluginApiTest extends TestCase
     {
         $tui = TestTui::create(100, 24);
         $statusBar = new StatusBarWidget();
-        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', [], null, self::projectScope('/p')));
         $api = $this->wiredApi(new Notifier(new StatusBarWidget(), $tui), new MenuFileContext(), new BufferManager(), new CodeEditorWidget(), $manager, $statusBar);
         $before = $statusBar->getRenderRevision();
 
@@ -961,7 +978,7 @@ final class PluginApiTest extends TestCase
 
     public function testContextFilePrefersTheRightClickedPathOverTheActiveFile(): void
     {
-        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', [], null, self::projectScope('/p')));
         $editor = new CodeEditorWidget();
         $buffers = new BufferManager();
         $menuFile = new MenuFileContext();
@@ -986,7 +1003,7 @@ final class PluginApiTest extends TestCase
         $tui = TestTui::create(100, 24);
         $toasts = new ToastCenter(new FakeScheduler(), $tui);
         $notifier = new Notifier(new StatusBarWidget(), $tui, toasts: $toasts);
-        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', [], null, self::projectScope('/p')));
         $api = $this->wiredApi($notifier, new MenuFileContext(), new BufferManager(), new CodeEditorWidget(), $manager);
 
         $api->notify('careful', ToastSeverity::Warn);
@@ -1055,7 +1072,7 @@ final class PluginApiTest extends TestCase
     public function testEmitDispatchesOnTheLiveBusOnceWired(): void
     {
         $dispatcher = new EventDispatcher();
-        $manager = new PluginManager($dispatcher, new PluginSettings('/p', []));
+        $manager = new PluginManager($dispatcher, new PluginSettings('/p', [], null, self::projectScope('/p')));
         $tui = TestTui::create(100, 24);
         $api = $this->wiredApi(new Notifier(new StatusBarWidget(), $tui), new MenuFileContext(), new BufferManager(), new CodeEditorWidget(), $manager);
 

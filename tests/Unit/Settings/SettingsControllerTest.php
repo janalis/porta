@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Editor\BufferManager;
@@ -28,6 +29,7 @@ use Porta\Search\FileIndex;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsRowKind;
+use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
@@ -127,12 +129,18 @@ final class SettingsControllerTest extends TestCase
             true,
         );
 
+        // Every assertion below reads the project's .porta.json back, so the
+        // session scope is pinned to Project; SettingsScope defaults to Global.
+        $scope = new SettingsScope(ConfigFiles::for($rootDir));
+        $scope->set(ConfigScope::Project);
+
         return new SettingsController(
             $settings + IdeConfig::DEFAULT_SETTINGS,
             $editor,
             new Notifier($status, $tui),
             $translator,
             new PortaJsonWriter(ConfigFiles::for($rootDir)),
+            $scope,
             $applier,
             $breadcrumbs,
             $this->files = new FileIndex($rootDir),
@@ -352,6 +360,11 @@ final class SettingsControllerTest extends TestCase
         Probe::set($controller, 'translator', new Translator('en'));
         $tempProject = new TempProject();
         Probe::set($controller, 'writer', new PortaJsonWriter(ConfigFiles::for($tempProject->dir)));
+        // Pinned to Project so the write lands in the temp project rather than
+        // the suite's shared fixture home, which the Global default names.
+        $scope = new SettingsScope(ConfigFiles::for($tempProject->dir));
+        $scope->set(ConfigScope::Project);
+        Probe::set($controller, 'scope', $scope);
         Probe::set($controller, 'settings', ['restartOnly' => false]);
         Probe::set($controller, 'descriptors', [
             'restartOnly' => ['label' => 'Restart only', 'kind' => SettingsRowKind::Bool, 'group' => 'general', 'restart' => true, 'apply' => null],
@@ -489,6 +502,11 @@ final class SettingsControllerTest extends TestCase
         Probe::set($controller, 'translator', new Translator('en'));
         $tempProject = new TempProject();
         Probe::set($controller, 'writer', new PortaJsonWriter(ConfigFiles::for($tempProject->dir)));
+        // Pinned to Project so the write lands in the temp project rather than
+        // the suite's shared fixture home, which the Global default names.
+        $scope = new SettingsScope(ConfigFiles::for($tempProject->dir));
+        $scope->set(ConfigScope::Project);
+        Probe::set($controller, 'scope', $scope);
         Probe::set($controller, 'descriptors', [
             'missing' => ['label' => 'Missing', 'kind' => SettingsRowKind::Bool, 'group' => 'general', 'restart' => false, 'apply' => null],
         ]);

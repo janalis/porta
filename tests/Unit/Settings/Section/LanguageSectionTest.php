@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Settings\Section;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
 use Porta\Config\PortaJsonWriter;
 use Porta\Debug\DebugAdapters;
 use Porta\I18n\Translator;
@@ -17,6 +18,8 @@ use Porta\Settings\Section\LanguageSection;
 use Porta\Settings\SettingsDebugController;
 use Porta\Settings\SettingsLanguageController;
 use Porta\Settings\SettingsLspController;
+use Porta\Settings\SettingsScope;
+use Porta\Settings\SettingsScopeRow;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
@@ -34,7 +37,12 @@ final class LanguageSectionTest extends TestCase
     {
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
         $notifier = new Notifier($status, $tui);
-        $languages = new SettingsLanguageController(new CodeEditorWidget(), $notifier, new Translator('en'), [], new PortaJsonWriter(ConfigFiles::for($rootDir)));
+        $files = ConfigFiles::for($rootDir);
+        // Pinned to Project so the persists below land in the temp project;
+        // the scope defaults to Global, i.e. the suite's fixture home.
+        $scope = new SettingsScope($files);
+        $scope->set(ConfigScope::Project);
+        $languages = new SettingsLanguageController(new CodeEditorWidget(), $notifier, new Translator('en'), [], new PortaJsonWriter(ConfigFiles::for($rootDir)), $scope);
         $pool = new LspSessionPool($rootDir, new FixedActiveFile(), new Translator('en'));
         $reconfigurer = new LspReconfigurer(
             $pool,
@@ -50,10 +58,28 @@ final class LanguageSectionTest extends TestCase
             $rootDir,
             null,
         );
-        $lsp = new SettingsLspController($rootDir, [], $reconfigurer, $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($rootDir)));
-        $debug = new SettingsDebugController(new DebugAdapters([]), $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($rootDir)));
+        $lsp = new SettingsLspController($rootDir, [], $reconfigurer, $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($rootDir)), $scope);
+        $debug = new SettingsDebugController(new DebugAdapters([]), $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($rootDir)), $scope);
 
-        return new LanguageSection($languages, $lsp, $debug);
+        return new LanguageSection($languages, $lsp, $debug, new SettingsScopeRow($scope, $files, new Translator('en')));
+    }
+
+    /**
+     * The scope chooser leads the page and is routed by the section, not by
+     * any of the three controllers behind it — none of which has heard of it.
+     */
+    public function testTheScopeRowLeadsThePageAndIsRoutedBySection(): void
+    {
+        $project = new TempProject();
+        $section = $this->section($project->dir, new StatusBarWidget());
+
+        $rows = $section->rows('lang:php');
+        $this->assertSame(SettingsScopeRow::KEY, $rows[0]->key, 'the chooser leads');
+        $this->assertSame('project', $rows[0]->value, 'showing the pinned scope');
+
+        $this->assertTrue($section->change('lang:php', SettingsScopeRow::KEY, 'global'));
+
+        $this->assertSame('global', $section->rows('lang:php')[0]->value, 'and the choice took');
     }
 
     public function testRowsConcatenateAllThreeControllersInFull(): void
@@ -64,7 +90,11 @@ final class LanguageSectionTest extends TestCase
         $tempProject = new TempProject();
         $rows = $this->section($tempProject->dir, new StatusBarWidget())->rows('lang:php');
 
-        $keys = array_column($rows, 'key');
+        // SettingsScopeRow::lead() prepends the shared "Save changes to" row to
+        // every page that writes a file, so index past it: what this test is
+        // about is the three controllers' own rows, not the page's lead.
+        $this->assertSame(SettingsScopeRow::KEY, $rows[0]->key);
+        $keys = array_column(\array_slice($rows, offset: 1), 'key');
         $this->assertSame(['indentStyle', 'indentSize', 'runCommand', 'lspServer', 'debugAdapter', 'debugLaunch'], $keys);
     }
 

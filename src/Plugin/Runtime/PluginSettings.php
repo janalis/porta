@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Porta\Plugin\Runtime;
 
 use Porta\Config\ConfigFiles;
-use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
+use Porta\Settings\SettingsScope;
 
 /**
  * Committed plugin setting descriptors and their live values. Values persist
@@ -34,6 +34,8 @@ final class PluginSettings
 
     private readonly PortaJsonWriter $writer;
 
+    private readonly SettingsScope $scope;
+
     /** @param array<string, array<string, bool|int|string>> $values IdeConfig's plugins block */
     public function __construct(
         string $rootDir,
@@ -41,9 +43,15 @@ final class PluginSettings
         // Optional trailing (the widget-Translator idiom): PluginHost hands in
         // the container's shared writer; direct constructions default to a real one.
         ?PortaJsonWriter $writer = null,
+        // Trailing and optional for the same reason the writer is: PluginHost
+        // hands in the container's shared holder, while a direct construction
+        // gets one built on the same ConfigFiles.
+        ?SettingsScope $scope = null,
     ) {
         $this->values = $values;
-        $this->writer = $writer ?? new PortaJsonWriter(ConfigFiles::for($rootDir));
+        $files = ConfigFiles::for($rootDir);
+        $this->writer = $writer ?? new PortaJsonWriter($files);
+        $this->scope = $scope ?? new SettingsScope($files);
     }
 
     /** @param list<Descriptor> $descriptors a committed plugin's buffered setting descriptors */
@@ -103,7 +111,7 @@ final class PluginSettings
     public function reset(string $plugin, string $key): void
     {
         unset($this->values[$plugin][$key]);
-        $this->writer->resetPluginSetting(ConfigScope::Project, $plugin, $key);
+        $this->writer->resetPluginSetting($this->scope->current(), $plugin, $key);
     }
 
     /** The current value coerced to the descriptor's kind (its default when unset/unknown). */
@@ -126,7 +134,7 @@ final class PluginSettings
         }
         $coerced = $this->coerce($descriptor, $value);
         $this->values[$plugin][$key] = $coerced;
-        $this->writer->persistPluginSetting(ConfigScope::Project, $plugin, $key, $coerced);
+        $this->writer->persistPluginSetting($this->scope->current(), $plugin, $key, $coerced);
     }
 
     /** @param Descriptor $descriptor */
