@@ -38,6 +38,7 @@ final class PerfCollector
     private const int MAX_SAMPLES = 1024;
 
     private readonly DiagnosticLog $log;
+    /** @var \Closure(): float */
     private readonly \Closure $loadAvg;
     private ?string $timer = null;
     private ?float $lastPassAt = null;
@@ -87,7 +88,13 @@ final class PerfCollector
         private readonly ?BootTrace $bootTrace = null,
     ) {
         $this->log = DiagnosticLog::forRoot($rootDir, 'perf');
-        // @mago-expect lint:no-shorthand-ternary -- spelling it out needs a narrowing branch no test can reach: mago's sys_getloadavg() stub returns an untyped array, so every rewrite trades this warning for two analyzer ERRORS
+        // Two suppressions for one root cause: mago's sys_getloadavg() stub
+        // returns an untyped array, so its element is `mixed` and the cast that
+        // makes this closure honestly return float is itself unprovable.
+        // Rewriting it to narrow explicitly needs a branch no test can reach —
+        // measured, and it traded these warnings for two analyzer ERRORS.
+        // @mago-expect lint:no-shorthand-ternary -- see above
+        // @mago-expect analysis:invalid-type-cast -- see above
         $this->loadAvg = $loadAvg ?? static fn (): float => (float) (sys_getloadavg() ?: [0.0])[0];
         $frameHooks?->onBeforeFrame($this->passMark(...));
     }
@@ -170,7 +177,7 @@ final class PerfCollector
                 1000 * $renderSeconds,
                 1000 * $writeSeconds,
                 null !== $this->pendingBytes ? (int) ($this->pendingBytes)() : 0,
-                (float) ($this->loadAvg)(),
+                ($this->loadAvg)(),
             ));
         }
     }
@@ -250,7 +257,7 @@ final class PerfCollector
             $this->hlFull,
             $this->hlSplices,
             null !== $this->pendingBytes ? (int) ($this->pendingBytes)() : 0,
-            (float) ($this->loadAvg)(),
+            ($this->loadAvg)(),
         ));
         $this->reset();
     }
