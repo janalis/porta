@@ -71,6 +71,7 @@ final class SettingsViewController implements ContributedView
             ->onExit($exit);
         $this->form
             ->onChange($this->changeSetting(...))
+            ->onReset($this->resetSetting(...))
             ->onFocusNext($this->focusNav(...))
             ->onExit($exit);
         $this->keymapList
@@ -200,6 +201,13 @@ final class SettingsViewController implements ContributedView
     private function rowsForSection(): array
     {
         return $this->activeSection()->rows($this->section);
+    }
+
+    /** Put the selected row back to its default, then repaint the page. */
+    private function resetSetting(string $key): void
+    {
+        $this->activeSection()->reset($this->section, $key);
+        $this->form->setRows($this->rowsForSection(), $this->nav->activeLabel());
     }
 
     private function changeSetting(string $key, bool|int|string $value): void

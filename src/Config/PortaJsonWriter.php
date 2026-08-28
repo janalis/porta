@@ -101,6 +101,47 @@ final readonly class PortaJsonWriter
         return $this->persistPluginMembership($rootDir, 'enabledPlugins', $plugin, member: false, default: IdeConfig::DEFAULT_ENABLED_PLUGINS);
     }
 
+    /**
+     * Remove a setting from .porta.json so it follows the product's default
+     * again.
+     *
+     * Deliberately not "write the default": today the two are the same VALUE,
+     * but a default that later moves would leave anyone who reset pinned to
+     * the old one forever, silently. `lineNumbers` and DEFAULT_ENABLED_PLUGINS
+     * have both moved. An absent key tracks the product; a written one freezes
+     * it — which is the whole reason {@see \Porta\Plugin\Api\LegacyCoreSettings}
+     * exists to repair.
+     */
+    public function resetSetting(string $rootDir, string $key): bool
+    {
+        return $this->edit($rootDir, static function (array &$config) use ($key): void {
+            $settings = self::section($config, 'settings');
+            unset($settings[$key]);
+            $config['settings'] = $settings;
+            if ([] === $settings) {
+                unset($config['settings']);
+            }
+        });
+    }
+
+    /** The same, for a plugin's own `plugins.<name>.<key>`. */
+    public function resetPluginSetting(string $rootDir, string $plugin, string $key): bool
+    {
+        return $this->edit($rootDir, static function (array &$config) use ($plugin, $key): void {
+            $plugins = self::section($config, 'plugins');
+            $entry = \is_array($plugins[$plugin] ?? null) ? $plugins[$plugin] : [];
+            unset($entry[$key]);
+            $plugins[$plugin] = $entry;
+            if ([] === $entry) {
+                unset($plugins[$plugin]);
+            }
+            $config['plugins'] = $plugins;
+            if ([] === $plugins) {
+                unset($config['plugins']);
+            }
+        });
+    }
+
     /** Persist one plugin-defined setting value under the top-level `plugins.<name>.<key>`. */
     public function persistPluginSetting(string $rootDir, string $plugin, string $key, bool|int|string $value): bool
     {

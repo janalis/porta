@@ -90,10 +90,21 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     /** @var (callable(string, bool|int|string): void)|null a row's value changed */
     private $onChange = null;
 
+    /** @var (callable(string): void)|null a row was put back to its default */
+    private $onReset = null;
+
     /** @param callable(string, bool|int|string): void $callback */
     public function onChange(callable $callback): self
     {
         $this->onChange = $callback;
+
+        return $this;
+    }
+
+    /** @param callable(string): void $callback a row was reset to its default */
+    public function onReset(callable $callback): self
+    {
+        $this->onReset = $callback;
 
         return $this;
     }
@@ -138,6 +149,11 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         }
         if ($kb->matches($data, 'show_keybindings')) {
             $this->events?->dispatch(new SettingsSectionRequested('keybindings'));
+
+            return;
+        }
+        if ($kb->matches($data, 'reset_row')) {
+            $this->resetSelected();
 
             return;
         }
@@ -359,6 +375,23 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     }
 
     /**
+     * Put the selected row back to its default.
+     *
+     * Inert on a row that has none — a button, or a toggle with no stock value
+     * — so the key never appears to do something it did not.
+     */
+    private function resetSelected(): void
+    {
+        $row = $this->rows[$this->list->selected()] ?? null;
+        if (null === $row || null === $row->default) {
+            return;
+        }
+        if (null !== $this->onReset) {
+            ($this->onReset)($row->key);
+        }
+    }
+
+    /**
      * The leading marker column: a dot on a row that differs from its default.
      *
      * Leading, so one vertical scan of the page answers "what have I changed
@@ -420,7 +453,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     {
         $hint = null !== $this->editing
             ? $this->translator->trans('⏎ save · Esc cancel')
-            : $this->translator->trans('⏎ edit · ←/→ change · Tab panes · 2 keybindings');
+            : $this->translator->trans('⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings');
 
         return $this->styles->merge(Role::Toolbar, Role::Dim)->apply(AnsiText::truncate(' '.$hint, $width, pad: true));
     }
@@ -456,6 +489,9 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             'confirm' => [Key::ENTER],
             'delete_char_backward' => [Key::BACKSPACE],
             'show_keybindings' => ['2'],
+            // A bare letter, the dialect this pane already speaks ('1', '2',
+            // '[', ']'), and inert while the inline editor owns the keys.
+            'reset_row' => ['r'],
             // Shift+Tab is the same destination, not a second one: the view has
             // exactly two panes, so back and forward coincide. That is also why
             // SettingsViewController::cycleFocus() ignores its direction.

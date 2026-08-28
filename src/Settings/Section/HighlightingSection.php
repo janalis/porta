@@ -35,4 +35,11 @@ final readonly class HighlightingSection implements SettingsSection
     {
         $this->highlighting->change($key, (string) $value);
     }
+
+    /** A blank id already means "no preference", which IS this page's default. */
+    #[\Override]
+    public function reset(string $section, string $key): void
+    {
+        $this->highlighting->change($key, '');
+    }
 }

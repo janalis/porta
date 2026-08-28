@@ -49,6 +49,18 @@ final readonly class PluginsSection implements SettingsSection
         $this->plugins->changePlugin($this->name($section), $key, $value);
     }
 
+    /**
+     * Only a per-plugin page has resettable rows; the Plugins index is a mode
+     * switch, an install field and a list of buttons.
+     */
+    #[\Override]
+    public function reset(string $section, string $key): void
+    {
+        if ('plugins' !== $section) {
+            $this->plugins->resetPlugin($this->name($section), $key);
+        }
+    }
+
     private function name(string $section): string
     {
         return substr($section, offset: \strlen(self::PREFIX));

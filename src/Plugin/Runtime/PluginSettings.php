@@ -90,6 +90,17 @@ final class PluginSettings
         return $rows;
     }
 
+    /**
+     * Put one of a plugin's settings back to its descriptor default: drop the
+     * live value and remove the persisted one, so {@see value()} falls back
+     * through the same path an unset key always took.
+     */
+    public function reset(string $plugin, string $key): void
+    {
+        unset($this->values[$plugin][$key]);
+        $this->writer->resetPluginSetting($this->rootDir, $plugin, $key);
+    }
+
     /** The current value coerced to the descriptor's kind (its default when unset/unknown). */
     public function value(string $plugin, string $key): bool|int|string
     {

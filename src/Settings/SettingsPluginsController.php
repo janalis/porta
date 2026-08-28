@@ -27,6 +27,9 @@ use Porta\Workbench\Notifier;
  */
 final class SettingsPluginsController
 {
+    /** Prefix marking a row that belongs to the plugin's own descriptors. */
+    private const string SETTING_PREFIX = 'pluginSetting:';
+
     /** Session-only install target; not persisted. */
     private string $scope = 'project';
     /** The removal row key awaiting its confirming second press. */
@@ -141,6 +144,24 @@ final class SettingsPluginsController
     }
 
     /** Route a plugin settings-page edit: the Enabled toggle or a plugin setting. */
+    /**
+     * Put one of a plugin's own settings back to its descriptor default.
+     *
+     * Only `pluginSetting:` rows: Enabled is a lifecycle toggle with no stock
+     * value, and the two action rows are buttons.
+     */
+    public function resetPlugin(string $name, string $key): void
+    {
+        if (!str_starts_with($key, self::SETTING_PREFIX)) {
+            return;
+        }
+        $setting = substr($key, offset: \strlen(self::SETTING_PREFIX));
+        $this->pluginSettings->reset($name, $setting);
+        // The plugin hears about it like any other write, so a holder it keeps
+        // is put back too rather than staying on the value just removed.
+        $this->lifecycle->onPluginSettingChanged($name, $setting, $this->pluginSettings->value($name, $setting));
+    }
+
     public function changePlugin(string $name, string $key, bool|int|string $value): void
     {
         if ('pluginEnabled' === $key) {
@@ -155,8 +176,8 @@ final class SettingsPluginsController
 
             return;
         }
-        if (str_starts_with($key, 'pluginSetting:')) {
-            $setting = substr($key, offset: 14);
+        if (str_starts_with($key, self::SETTING_PREFIX)) {
+            $setting = substr($key, offset: \strlen(self::SETTING_PREFIX));
             $this->pluginSettings->change($name, $setting, $value);
             $this->lifecycle->onPluginSettingChanged($name, $setting, $value);
         }

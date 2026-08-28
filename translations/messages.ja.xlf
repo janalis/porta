@@ -2631,8 +2631,8 @@
         <target>%count% 件の設定|%count% 件の設定</target>
       </trans-unit>
       <trans-unit id="669">
-        <source>⏎ edit · ←/→ change · Tab panes · 2 keybindings</source>
-        <target>⏎ 編集 · ←/→ 変更 · Tab ペイン · 2 キー割り当て</target>
+        <source>⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings</source>
+        <target>⏎ 編集 · ←/→ 変更 · r 既定に戻す · Tab ペイン · 2 キー割り当て</target>
       </trans-unit>
       <trans-unit id="670">
         <source>⏎ save · Esc cancel</source>
@@ -2641,6 +2641,10 @@
       <trans-unit id="671">
         <source>Install</source>
         <target>インストール</target>
+      </trans-unit>
+      <trans-unit id="672">
+        <source>%label% reset to default%saved%</source>
+        <target>%label% を既定値に戻しました%saved%</target>
       </trans-unit>
     </body>
   </file>

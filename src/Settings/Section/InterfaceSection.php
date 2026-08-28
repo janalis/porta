@@ -35,4 +35,10 @@ final readonly class InterfaceSection implements SettingsSection
     {
         $this->settings->changeSetting($key, $value);
     }
+
+    #[\Override]
+    public function reset(string $section, string $key): void
+    {
+        $this->settings->resetSetting($key);
+    }
 }

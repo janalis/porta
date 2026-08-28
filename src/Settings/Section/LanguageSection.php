@@ -63,6 +63,22 @@ final readonly class LanguageSection implements SettingsSection
         $this->languages->changeLanguageSetting($language, $key, $value);
     }
 
+    /**
+     * Every row on a language page already spells its own default as a blank
+     * or as `auto` — an unset LSP command auto-detects, an unset adapter is
+     * "not configured", an unset indent follows the file. So reset is the
+     * ordinary change to that value, and the three writers behind it already
+     * remove the key rather than storing the blank.
+     */
+    #[\Override]
+    public function reset(string $section, string $key): void
+    {
+        $this->change($section, $key, \in_array($key, self::AUTO_KEYS, strict: true) ? 'auto' : '');
+    }
+
+    /** The two rows whose default is spelled `auto` rather than blank. */
+    private const array AUTO_KEYS = ['indentStyle', 'indentSize'];
+
     private function language(string $section): string
     {
         return substr($section, offset: \strlen(self::PREFIX));

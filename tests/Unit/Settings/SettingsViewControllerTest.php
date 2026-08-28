@@ -428,6 +428,44 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame('node dbg.js', IdeConfig::load($this->project->dir)->languages['php']['debug']['adapter'] ?? null);
     }
 
+    /**
+     * Reset routes through the same section seam a change does, so every page
+     * answers the key — including the three whose default is spelled as a
+     * blank (or `auto`) rather than removed.
+     */
+    public function testResetReachesEveryPagesOwnNotionOfDefault(): void
+    {
+        $controller = $this->controller();
+
+        // General: a core setting, removed from the file.
+        $this->sectionEvents->dispatch(new SettingsSectionRequested('general'));
+        $this->form->handleInput("\r"); // toggle the first row off its default
+        $this->assertFalse(IdeConfig::load($this->project->dir)->settings['inlineDiagnostics'], 'set first');
+        $this->form->handleInput('r');
+        $written = json_decode((string) file_get_contents($this->project->path('.porta.json')), associative: true);
+        $this->assertArrayNotHasKey('inlineDiagnostics', $written['settings'] ?? [], 'reset removed the key rather than writing the default');
+
+        // A language page: the indent rows spell their default `auto`.
+        $this->sectionEvents->dispatch(new SettingsSectionRequested('lang:php'));
+        $this->form->handleInput("\r"); // auto → spaces
+        $this->assertSame('spaces', IdeConfig::load($this->project->dir)->languages['php']['indentStyle']);
+        $this->form->handleInput('r');
+        $this->assertSame('auto', IdeConfig::load($this->project->dir)->languages['php']['indentStyle'], 'back to auto');
+
+        // Interface: the same core path, a different page.
+        $this->sectionEvents->dispatch(new SettingsSectionRequested('interface'));
+        $this->form->handleInput("\r");
+        $this->form->handleInput('r');
+
+        // Highlighting: a blank id IS this page's default.
+        $this->sectionEvents->dispatch(new SettingsSectionRequested('highlighting'));
+        $this->form->handleInput("\r"); // step the default highlighter off ''
+        $this->form->handleInput('r');
+        $this->assertSame('', IdeConfig::load($this->project->dir)->highlight['default'], 'back to no preference');
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testChangingAGeneralSettingPersistsToTheSettingsBlock(): void
     {
         $controller = $this->controller();

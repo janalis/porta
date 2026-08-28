@@ -2631,8 +2631,8 @@
         <target>%count% réglage|%count% réglages</target>
       </trans-unit>
       <trans-unit id="669">
-        <source>⏎ edit · ←/→ change · Tab panes · 2 keybindings</source>
-        <target>⏎ modifier · ←/→ changer · Tab volets · 2 raccourcis</target>
+        <source>⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings</source>
+        <target>⏎ modifier · ←/→ changer · r réinitialiser · Tab volets · 2 raccourcis</target>
       </trans-unit>
       <trans-unit id="670">
         <source>⏎ save · Esc cancel</source>
@@ -2641,6 +2641,10 @@
       <trans-unit id="671">
         <source>Install</source>
         <target>Installer</target>
+      </trans-unit>
+      <trans-unit id="672">
+        <source>%label% reset to default%saved%</source>
+        <target>%label% réinitialisé par défaut%saved%</target>
       </trans-unit>
     </body>
   </file>

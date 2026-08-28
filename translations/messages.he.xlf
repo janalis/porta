@@ -2631,8 +2631,8 @@
         <target>הגדרה %count%|%count% הגדרות</target>
       </trans-unit>
       <trans-unit id="669">
-        <source>⏎ edit · ←/→ change · Tab panes · 2 keybindings</source>
-        <target>⏎ עריכה · ←/→ שינוי · Tab חלוניות · 2 קיצורי מקשים</target>
+        <source>⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings</source>
+        <target>⏎ עריכה · ←/→ שינוי · r איפוס · Tab חלוניות · 2 קיצורי מקשים</target>
       </trans-unit>
       <trans-unit id="670">
         <source>⏎ save · Esc cancel</source>
@@ -2641,6 +2641,10 @@
       <trans-unit id="671">
         <source>Install</source>
         <target>התקן</target>
+      </trans-unit>
+      <trans-unit id="672">
+        <source>%label% reset to default%saved%</source>
+        <target>%label% אופס לברירת המחדל%saved%</target>
       </trans-unit>
     </body>
   </file>

@@ -29,4 +29,15 @@ interface SettingsSection
     public function rows(string $section): array;
 
     public function change(string $section, string $key, bool|int|string $value): void;
+
+    /**
+     * Put one row back to its default.
+     *
+     * Separate from `change()` because "back to default" is not a value the
+     * user can always type: for a core or plugin setting it REMOVES the key,
+     * so the row follows the product's default if that ever moves. Where a
+     * blank already means "unset" — an LSP command, a debug adapter, a
+     * highlighter choice — this is `change($section, $key, '')`.
+     */
+    public function reset(string $section, string $key): void;
 }

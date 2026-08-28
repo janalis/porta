@@ -580,4 +580,71 @@ final class SettingsControllerTest extends TestCase
 
         self::fail(\sprintf('No row keyed "%s"', $key));
     }
+
+    /**
+     * Reset REMOVES the key rather than writing the default.
+     *
+     * Today the two produce the same value, so the shortcut is tempting. But a
+     * default that later moves — `lineNumbers` and DEFAULT_ENABLED_PLUGINS have
+     * both moved — would leave anyone who "reset" pinned to the old one
+     * forever, silently. An absent key tracks the product.
+     */
+    public function testResetRemovesTheKeyRatherThanWritingTheDefault(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), IdeConfig::DEFAULT_SETTINGS);
+        $controller->changeSetting('inlineDiagnostics', false);
+        $this->assertFalse($this->written($project)['settings']['inlineDiagnostics'], 'set first, so the reset has something to undo');
+
+        $controller->resetSetting('inlineDiagnostics');
+
+        $this->assertArrayNotHasKey('inlineDiagnostics', $this->written($project)['settings'] ?? [], 'the key is gone, not set to its default');
+        $this->assertFalse($this->rowFor($controller->formRows(), 'inlineDiagnostics')->isModified(), 'and the row is back at stock');
+        $this->assertTrue($this->rowFor($controller->formRows(), 'inlineDiagnostics')->value, 'showing the default value in memory');
+    }
+
+    /** Removing the last setting takes the block with it rather than leaving `{}`. */
+    public function testResettingTheLastSettingDropsTheSettingsBlock(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), IdeConfig::DEFAULT_SETTINGS);
+        $controller->changeSetting('inlineDiagnostics', false);
+
+        $controller->resetSetting('inlineDiagnostics');
+
+        $this->assertArrayNotHasKey('settings', $this->written($project));
+    }
+
+    /** A reset applies live, exactly as a change does. */
+    public function testResetAppliesTheDefaultLive(): void
+    {
+        $project = new TempProject();
+        $editor = new CodeEditorWidget();
+        $controller = $this->controller($project->dir, $editor, new StatusBarWidget(), IdeConfig::DEFAULT_SETTINGS);
+        $controller->changeSetting('theme', 'light');
+        $this->assertSame(['light'], $this->themeChanges, 'the change applied');
+
+        $controller->resetSetting('theme');
+
+        $this->assertSame(['light', 'dark'], $this->themeChanges, 'and so did the reset, back to the default');
+    }
+
+    public function testResettingAnUnknownSettingFlashesAndTouchesNothing(): void
+    {
+        $project = new TempProject();
+        $status = new StatusBarWidget();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), $status, IdeConfig::DEFAULT_SETTINGS);
+
+        $controller->resetSetting('ghost');
+
+        $this->assertStringContainsString('Unknown setting', $this->statusRow($status));
+        $this->assertFalse(is_file($project->path('.porta.json')), 'nothing was written');
+    }
+
+    /** @return array<string, mixed> */
+    private function written(TempProject $project): array
+    {
+        /** @var array<string, mixed> */
+        return json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+    }
 }

@@ -64,4 +64,32 @@ final class PluginSettingsTest extends TestCase
         $this->assertSame([], $settings->rows('demo'), 'descriptors gone');
         $this->assertSame('/opt/tool', $settings->raw('demo', 'binary'), 'persisted values survive a removal');
     }
+
+    public function testResetDropsTheLiveValueAndThePersistedOne(): void
+    {
+        $project = new TempProject(['.porta.json' => (string) json_encode(['plugins' => ['demo' => ['binary' => '/usr/bin/x', 'strict' => true]]])]);
+        $settings = new PluginSettings($project->dir, ['demo' => ['binary' => '/usr/bin/x', 'strict' => true]]);
+        $settings->registerFor('demo', [$this->descriptor('binary', 'text', '/default/bin'), $this->descriptor('strict', 'bool', false)]);
+        $this->assertSame('/usr/bin/x', $settings->value('demo', 'binary'));
+
+        $settings->reset('demo', 'binary');
+
+        $this->assertSame('/default/bin', $settings->value('demo', 'binary'), 'the live value falls back to the descriptor default');
+        $file = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+        $this->assertArrayNotHasKey('binary', $file['plugins']['demo'], 'and the key is gone from disk, not set to the default');
+        $this->assertArrayHasKey('strict', $file['plugins']['demo'], 'the plugin\'s other settings are untouched');
+    }
+
+    /** An emptied plugin entry — and then an emptied block — is removed rather than left as `{}`. */
+    public function testResettingAPluginsLastSettingDropsItsEntryAndTheBlock(): void
+    {
+        $project = new TempProject(['.porta.json' => (string) json_encode(['plugins' => ['demo' => ['binary' => '/usr/bin/x']]])]);
+        $settings = new PluginSettings($project->dir, ['demo' => ['binary' => '/usr/bin/x']]);
+        $settings->registerFor('demo', [$this->descriptor('binary', 'text', '')]);
+
+        $settings->reset('demo', 'binary');
+
+        $file = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+        $this->assertArrayNotHasKey('plugins', $file);
+    }
 }

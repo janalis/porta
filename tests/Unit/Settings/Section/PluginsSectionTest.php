@@ -44,4 +44,34 @@ final class PluginsSectionTest extends TestCase
 
         $this->assertSame([], $lifecycle->toggled, 'the top-level section never reaches changePlugin()');
     }
+
+    /**
+     * The Plugins index has nothing resettable: a mode switch, an install
+     * field and a list of buttons. Only a per-plugin page reaches the
+     * controller.
+     */
+    public function testResetOnTheTopLevelPluginsSectionIsInert(): void
+    {
+        $project = new TempProject();
+        $lifecycle = new FakePluginLifecycle();
+        $pluginSettings = new PluginSettings($project->dir, ['demo' => ['binary' => '/custom']]);
+        $pluginSettings->registerFor('demo', [
+            ['key' => 'binary', 'label' => 'Binary', 'kind' => 'text', 'default' => '/stock', 'options' => null, 'hint' => null, 'min' => null, 'max' => null, 'step' => null],
+        ]);
+        $section = new PluginsSection(new SettingsPluginsController(
+            new PluginInstaller($project->dir, $project->dir, new Translator('en'), null, null, null),
+            $pluginSettings,
+            new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
+            new Translator('en'),
+            $lifecycle,
+            new PluginManager(new EventDispatcher(), $pluginSettings),
+            new ToolInstaller($project->dir, []),
+        ));
+
+        $section->reset('plugins', 'pluginSetting:binary');
+        $this->assertSame('/custom', $pluginSettings->value('demo', 'binary'), 'the index page resets nothing');
+
+        $section->reset('plugin:demo', 'pluginSetting:binary');
+        $this->assertSame('/stock', $pluginSettings->value('demo', 'binary'), 'a plugin page does');
+    }
 }

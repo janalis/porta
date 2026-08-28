@@ -360,4 +360,39 @@ final class SettingsPluginsControllerTest extends TestCase
 
         return $path;
     }
+
+    public function testResettingAPluginSettingDropsItAndTellsThePlugin(): void
+    {
+        $controller = $this->controller();
+        $api = new PluginApi('demo', $this->plugins, $this->project->dir, $this->pluginSettings);
+        $api->registerSetting('binary', 'Binary path', 'text', '/stock');
+        $this->plugins->commit($api);
+        $this->pluginSettings->change('demo', 'binary', '/custom');
+        $this->assertSame('/custom', $this->pluginSettings->value('demo', 'binary'));
+
+        $controller->resetPlugin('demo', 'pluginSetting:binary');
+
+        $this->assertSame('/stock', $this->pluginSettings->value('demo', 'binary'), 'back to the descriptor default');
+        $this->assertContains(
+            ['demo', 'binary', '/stock'],
+            $this->lifecycle->pluginSettingChanged,
+            'the plugin was told, so a holder it keeps is put back rather than staying on the removed value',
+        );
+    }
+
+    /** Enabled is a lifecycle toggle and the action rows are buttons: neither resets. */
+    public function testResetIgnoresRowsThatAreNotThePluginsOwnSettings(): void
+    {
+        $controller = $this->controller();
+        $api = new PluginApi('demo', $this->plugins, $this->project->dir, $this->pluginSettings);
+        $api->registerSetting('binary', 'Binary path', 'text', '/stock');
+        $this->plugins->commit($api);
+        $this->pluginSettings->change('demo', 'binary', '/custom');
+
+        $controller->resetPlugin('demo', 'pluginEnabled');
+        $controller->resetPlugin('demo', 'pluginInstallBinary');
+
+        $this->assertSame('/custom', $this->pluginSettings->value('demo', 'binary'), 'nothing else was disturbed');
+        $this->assertSame([], $this->lifecycle->pluginSettingChanged);
+    }
 }

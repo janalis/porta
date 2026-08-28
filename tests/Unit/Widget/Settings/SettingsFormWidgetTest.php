@@ -728,6 +728,42 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertMatchesRegularExpression('/^  Remove\s+\[Go\]/', AnsiUtils::stripAnsiCodes($this->body($rendered)[0]));
     }
 
+    public function testRResetsTheSelectedRowButIsInertOnARowWithNoDefault(): void
+    {
+        $reset = [];
+        $widget = new SettingsFormWidget(new Translator('en'));
+        $widget->onReset(static function (string $key) use (&$reset): void {
+            $reset[] = $key;
+        });
+        $widget->setRows([
+            new SettingsRow(key: 'theme', label: 'Theme', kind: SettingsRowKind::Choice, value: 'light', restart: false, options: ['dark', 'light'], default: 'dark'),
+            new SettingsRow(key: 'go', label: 'Go', kind: SettingsRowKind::Action, value: 'Run', restart: false),
+        ]);
+
+        $widget->handleInput('r');
+        $this->assertSame(['theme'], $reset);
+
+        $widget->handleInput("\x1b[B"); // the Action row
+        $widget->handleInput('r');
+        $this->assertSame(['theme'], $reset, 'a row with no default has nothing to reset to');
+    }
+
+    public function testRIsInertWhileTheInlineEditorHasTheKeys(): void
+    {
+        // Otherwise typing an `r` into an LSP command would wipe the row.
+        $reset = [];
+        $widget = $this->textWidget($changes);
+        $widget->onReset(static function (string $key) use (&$reset): void {
+            $reset[] = $key;
+        });
+        $widget->handleInput("\r"); // open the editor
+        $widget->handleInput('r');
+
+        $this->assertSame([], $reset, 'the letter went into the field');
+        $widget->handleInput("\r"); // commit
+        $this->assertSame([['lspServer', 'phpactorr']], $changes, 'and it really was typed');
+    }
+
     /**
      * The marker answers "what have I changed on this page?" — a question the
      * screen could not answer at all before.

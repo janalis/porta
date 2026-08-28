@@ -247,6 +247,35 @@ final class SettingsController
     }
 
     /**
+     * Put a setting back to the product's default.
+     *
+     * The asymmetry is the point: IN MEMORY the default is restored and applied
+     * live, because {@see $settings} is indexed unconditionally and a missing
+     * key would be a different bug; ON DISK the key is REMOVED, so a default
+     * that later moves moves with it.
+     */
+    public function resetSetting(string $key): void
+    {
+        $descriptor = $this->descriptors[$key] ?? null;
+        if (null === $descriptor) {
+            $this->notifier->flash($this->translator->trans('Unknown setting "%key%"', ['%key%' => $key]));
+
+            return;
+        }
+
+        $default = IdeConfig::DEFAULT_SETTINGS[$key] ?? '';
+        $this->settings[$key] = $default;
+        if (null !== $descriptor['apply']) {
+            $descriptor['apply']($default);
+        }
+        $persisted = $this->writer->resetSetting($this->rootDir, $key);
+        $this->notifier->flash($this->translator->trans('%label% reset to default%saved%', [
+            '%label%' => $this->translator->trans($descriptor['label']),
+            '%saved%' => SettingsFlash::savedSuffix($this->translator, $persisted),
+        ]));
+    }
+
+    /**
      * Set a setting to a specific value from the settings form: live ones apply
      * to the editor immediately; the rest persist and take effect next launch.
      */
