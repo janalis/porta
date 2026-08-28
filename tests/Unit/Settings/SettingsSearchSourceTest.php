@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Event\SettingsSectionRequested;
 use Porta\I18n\Translator;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchHit;
@@ -15,6 +16,13 @@ use Porta\Settings\SettingsRowKind;
 use Porta\Settings\SettingsSearchIndex;
 use Porta\Settings\SettingsSearchSource;
 use Porta\Settings\SettingsSection;
+use Porta\Workbench\Menu\ViewMenuSource;
+use Porta\Workbench\View\ContributedView;
+use Porta\Workbench\View\ViewPointer;
+use Porta\Workbench\View\ViewRegistry;
+use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Tui\Widget\AbstractWidget;
+use Symfony\Component\Tui\Widget\FocusableInterface;
 
 final class SettingsSearchSourceTest extends TestCase
 {
@@ -30,9 +38,16 @@ final class SettingsSearchSourceTest extends TestCase
         return $hits;
     }
 
-    private function source(?array &$revealed = null): SettingsSearchSource
+    /** Records `['open']` then `['event', section, key]`, so the ORDER is readable. */
+    private function source(?array &$log = null): SettingsSearchSource
     {
-        $revealed = [];
+        $log = [];
+        $views = new ViewRegistry();
+        $views->register($this->view($log));
+        $events = new EventDispatcher();
+        $events->addListener(SettingsSectionRequested::class, static function (SettingsSectionRequested $e) use (&$log): void {
+            $log[] = ['event', $e->section, $e->row];
+        });
 
         return new SettingsSearchSource(
             new SettingsSearchIndex(new SettingsPages([
@@ -40,9 +55,8 @@ final class SettingsSearchSourceTest extends TestCase
                 $this->section('lang:php', 'PHP', ['indentStyle' => 'Indent style']),
                 $this->section('lang:css', 'CSS', ['indentStyle' => 'Indent style']),
             ]), new Translator()),
-            static function (string $section, string $key) use (&$revealed): void {
-                $revealed[] = [$section, $key];
-            },
+            $views,
+            $events,
         );
     }
 
@@ -67,14 +81,19 @@ final class SettingsSearchSourceTest extends TestCase
         $this->assertSame(['PHP', 'CSS'], array_map(static fn (SearchHit $h): string => $h->detail, $hits));
     }
 
-    public function testActivatingAHitRevealsItsOwnSectionAndKey(): void
+    /**
+     * Activation opens the view and then names the row — in that order,
+     * because `SettingsViewController::open()` resets to General and would
+     * discard the section an earlier event had carried.
+     */
+    public function testActivatingAHitOpensTheViewThenNamesItsOwnSectionAndRow(): void
     {
-        $source = $this->source($revealed);
+        $source = $this->source($log);
         $hits = $this->collect($source, 'css indent');
 
         ($hits[0]->activate)();
 
-        $this->assertSame([['lang:css', 'indentStyle']], $revealed);
+        $this->assertSame([['open'], ['event', 'lang:css', 'indentStyle']], $log);
     }
 
     /** The picker seeds itself with an empty query, so it must answer one. */
@@ -86,6 +105,70 @@ final class SettingsSearchSourceTest extends TestCase
         $source->cancel(); // no-op for a synchronous source
 
         $this->assertNotEmpty($this->collect($source, ''), 'and it still answers afterwards');
+    }
+
+    /** A settings view that only records having been opened. */
+    private function view(?array &$log): ContributedView
+    {
+        return new class($log) implements ContributedView {
+            public function __construct(
+                private ?array &$log,
+            ) {}
+
+            #[\Override]
+            public function viewId(): string
+            {
+                return 'settings';
+            }
+
+            #[\Override]
+            public function ownsMainArea(): bool
+            {
+                return true;
+            }
+
+            #[\Override]
+            public function isOpen(): bool
+            {
+                return [] !== $this->log;
+            }
+
+            #[\Override]
+            public function open(): void
+            {
+                $this->log[] = ['open'];
+            }
+
+            #[\Override]
+            public function close(): void {}
+
+            #[\Override]
+            public function toggle(): void {}
+
+            #[\Override]
+            public function pointer(): ?ViewPointer
+            {
+                return null;
+            }
+
+            #[\Override]
+            public function contextMenus(): ?ViewMenuSource
+            {
+                return null;
+            }
+
+            #[\Override]
+            public function focusTarget(): AbstractWidget&FocusableInterface
+            {
+                throw new \LogicException('the reveal path never focuses this stub');
+            }
+
+            #[\Override]
+            public function cycleFocus(int $direction): bool
+            {
+                return false;
+            }
+        };
     }
 
     /** @param array<string, string> $rows key => label */

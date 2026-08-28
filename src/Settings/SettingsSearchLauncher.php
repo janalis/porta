@@ -6,11 +6,8 @@ namespace Porta\Settings;
 
 use Porta\Container\AsIdeService;
 use Porta\Event\SettingsSearchRequested;
-use Porta\Event\SettingsSectionRequested;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
-use Porta\Workbench\View\ViewRegistry;
-use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
@@ -34,9 +31,7 @@ final class SettingsSearchLauncher
 
     public function __construct(
         private readonly SearchEverywhereFactory $pickers,
-        private readonly SettingsSearchIndex $index,
-        private readonly ViewRegistry $views,
-        private readonly EventDispatcherInterface $events,
+        private readonly SettingsSearchSource $source,
     ) {}
 
     #[AsEventListener]
@@ -47,25 +42,7 @@ final class SettingsSearchLauncher
 
     public function open(): void
     {
-        $this->picker ??= $this->pickers->createScoped(
-            new SettingsSearchSource($this->index, $this->reveal(...)),
-            'Find Setting',
-        );
+        $this->picker ??= $this->pickers->createScoped($this->source, 'Find Setting');
         $this->picker->open();
-    }
-
-    /**
-     * Show the picked setting.
-     *
-     * The view is opened BEFORE the event goes out, and the order is not
-     * cosmetic: `SettingsViewController::open()` resets to the General page, so
-     * opening afterwards would throw away the very section the event carried.
-     * Opening an already-open view is a no-op, which is what makes this safe
-     * for the common case — the picker was reached from inside the view.
-     */
-    private function reveal(string $section, string $key): void
-    {
-        $this->views->open('settings');
-        $this->events->dispatch(new SettingsSectionRequested($section, $key));
     }
 }

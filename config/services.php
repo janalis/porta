@@ -15,6 +15,7 @@ use Porta\Plugin\Runtime\PluginHost;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Settings\SettingsSearchSource;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
 use Porta\Support\BootTrace;
@@ -283,6 +284,12 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     $services->set('porta.go_to_file', SearchEverywhereController::class)->factory([service(SearchEverywhereFactory::class), 'createGoToFile']);
     $services->set('porta.command_palette', SearchEverywhereController::class)->factory([service(SearchEverywhereFactory::class), 'createCommandPalette']);
     $services->set('porta.go_to_symbol', SearchEverywhereController::class)->factory([service(SearchEverywhereFactory::class), 'createGoToSymbol']);
+    // The settings source, under a name the factory can ask for by id. It is
+    // the composition root's job to know that the SearchSource the aggregate
+    // wants is a Settings class: `Settings` imports `Search`, and the factory
+    // importing back would make the pair mutually dependent. The factory's
+    // param is typed by the interface, which is the dependency it actually has.
+    $services->alias('porta.settings_search_source', SettingsSearchSource::class);
 
     // Synthetic infrastructure: external (Renderer/Tui), closure-wired objects
     // the container can't build, or values that exist before the container does

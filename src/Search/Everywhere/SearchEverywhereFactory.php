@@ -16,6 +16,7 @@ use Porta\Search\FileIndex;
 use Porta\Search\ProjectSearch;
 use Porta\Support\ProjectPaths;
 use Porta\Support\Scheduler;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -43,6 +44,12 @@ final class SearchEverywhereFactory
         // The one shared index: both pickers and the container's TestNavigator
         // consumer used to build their own, tripling the walk and the memory.
         private readonly FileIndex $files,
+        // Typed by the interface and named by id in config/services.php, not
+        // by its class: the settings source lives in `Settings`, which already
+        // imports this namespace. Importing it back would make the pair
+        // mutually dependent for the sake of one constructor line.
+        #[Autowire(service: 'porta.settings_search_source')]
+        private readonly SearchSource $settings,
     ) {}
 
     /**
@@ -157,6 +164,11 @@ final class SearchEverywhereFactory
             [
                 new FilesSource($this->files, $this->paths, $openFile),
                 new ActionsSource($this->commands),
+                // Last of the categories (SearchCategory::Settings orders 5th):
+                // a setting is never what you meant when you typed a filename,
+                // and this is the one source that answers a query about the IDE
+                // rather than about the project.
+                $this->settings,
             ],
             [
                 new WorkspaceSymbolSource($searchSymbols, SearchCategory::Classes, [5, 10, 11, 23], $this->paths, $openFile, $jumpTo),

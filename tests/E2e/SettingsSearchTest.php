@@ -132,4 +132,50 @@ final class SettingsSearchTest extends TestCase
             ],
         );
     }
+
+    /**
+     * The same source inside Search Everywhere, which is where you look when
+     * you do not already know that the thing you want is a setting.
+     *
+     * Ordered last of the six categories, so a settings hit can never displace
+     * a file — the query here is one no file in the project answers.
+     */
+    public function testSearchEverywhereFindsSettingsToo(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => static function ($tui, $terminal, $ide): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_search_everywhere');
+                },
+                500 => function ($tui, $terminal): void {
+                    $this->assertNotNull(
+                        $this->rowOf($this->screenGrid($tui, $terminal), 'Search Everywhere'),
+                        'the aggregate picker opened',
+                    );
+                    foreach (str_split('sticky scroll') as $char) {
+                        $tui->handleInput($char);
+                    }
+                },
+                800 => function ($tui, $terminal): void {
+                    $grid = $this->screenGrid($tui, $terminal);
+                    $this->assertNotNull($this->rowOf($grid, 'Settings'), 'under a Settings group header');
+                    $this->assertNotNull($this->rowOf($grid, 'Sticky scroll'), 'the setting is a hit');
+                    $tui->handleInput("\r");
+                },
+                1000 => function ($tui, $terminal): void {
+                    $grid = $this->screenGrid($tui, $terminal);
+                    $this->assertNotNull($this->rowOf($grid, 'Sticky scroll'), 'picking it opened the settings view on Interface');
+
+                    $form = $tui->getById('settings-form');
+                    \assert($form instanceof SettingsFormWidget);
+                    $this->assertStringContainsString('Sticky scroll', $this->selectedSettingRow($form), 'landed on the row');
+                },
+            ],
+        );
+    }
 }
