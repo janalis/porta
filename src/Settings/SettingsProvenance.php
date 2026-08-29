@@ -72,14 +72,27 @@ final class SettingsProvenance
     }
 
     /**
-     * The row set moved, and with it whatever the files now say. Dropped
-     * rather than re-read: the next row build asks, and a toggle nobody is
-     * looking at should not pay for two decodes.
+     * Forget what the files said, so the next question re-reads them.
+     *
+     * Called after a WRITE. Nothing else notices one: `SettingsRowsStale` is
+     * dispatched when the row SET moves — a plugin installed, enabled or
+     * removed — and a value changing is not that. Without this the tags are
+     * computed at the first row build and never move again, so saving to the
+     * global file leaves the row still claiming the value is unset.
+     *
+     * Dropped rather than re-read: the next row build asks, and a write nobody
+     * is looking at should not pay for two decodes.
      */
+    public function invalidate(): void
+    {
+        $this->files = null;
+    }
+
+    /** A plugin came or went, so the row set — and its files — moved. */
     #[AsEventListener]
     public function onSettingsRowsStale(SettingsRowsStale $event): void
     {
-        $this->files = null;
+        $this->invalidate();
     }
 
     /**

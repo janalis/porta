@@ -49,6 +49,7 @@ final class SettingsViewController implements ContributedView
         private readonly SettingsPages $pages,
         private readonly SettingsKeymapController $keymap,
         private readonly SettingsPluginsController $plugins,
+        private readonly SettingsProvenance $provenance,
         ViewRegistry $views,
     ) {
         // Minted, like git's. The nav is this view's fixed half, so it goes
@@ -201,6 +202,7 @@ final class SettingsViewController implements ContributedView
     private function resetSetting(string $key): void
     {
         $this->activeSection()->reset($this->section, $key);
+        $this->provenance->invalidate(); // a file changed under the tags
         $this->form->setRows($this->rowsForSection(), $this->nav->activeLabel());
     }
 
@@ -215,6 +217,10 @@ final class SettingsViewController implements ContributedView
         if (!$this->activeSection()->change($this->section, $key, $value)) {
             return false;
         }
+        // This view is the single funnel for every form edit, so it is the one
+        // place that knows a config file may just have moved under the
+        // provenance tags. Refusals do not reach here, and nothing was written.
+        $this->provenance->invalidate();
         $this->form->setRows($this->rowsForSection(), $this->nav->activeLabel());
 
         return true;

@@ -341,6 +341,7 @@ final class SettingsViewControllerTest extends TestCase
             ),
             $keymap,
             $plugins,
+            new SettingsProvenance(ConfigFiles::for($this->project->dir)),
             views: $views ?? new ViewRegistry(),
         );
         // Compiled from #[AsEventListener] in the container; wired by hand here.
