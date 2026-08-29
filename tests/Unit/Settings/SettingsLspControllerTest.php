@@ -16,6 +16,7 @@ use Porta\Lsp\LanguageServerProvider;
 use Porta\Lsp\LspReconfigurer;
 use Porta\Lsp\LspSessionPool;
 use Porta\Settings\SettingsLspController;
+use Porta\Settings\SettingsProvenance;
 use Porta\Settings\SettingsRowKind;
 use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\FixedActiveFile;
@@ -80,6 +81,7 @@ final class SettingsLspControllerTest extends TestCase
             new Translator('en'),
             new PortaJsonWriter(ConfigFiles::for($rootDir)),
             $scope,
+            new SettingsProvenance(ConfigFiles::for($rootDir)),
         );
     }
 

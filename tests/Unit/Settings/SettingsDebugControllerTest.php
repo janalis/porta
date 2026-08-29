@@ -11,6 +11,7 @@ use Porta\Config\PortaJsonWriter;
 use Porta\Debug\DebugAdapters;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsDebugController;
+use Porta\Settings\SettingsProvenance;
 use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\StatusBarWidget;
@@ -44,6 +45,7 @@ final class SettingsDebugControllerTest extends TestCase
             new Translator('en'),
             new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
             $scope,
+            new SettingsProvenance(ConfigFiles::for($this->project->dir)),
         );
     }
 
@@ -86,6 +88,7 @@ final class SettingsDebugControllerTest extends TestCase
             new Translator('en'),
             new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
             new SettingsScope(ConfigFiles::for($this->project->dir)),
+            new SettingsProvenance(ConfigFiles::for($this->project->dir)),
         );
 
         $rows = $controller->rows('php');

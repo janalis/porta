@@ -265,8 +265,24 @@ final class SettingsViewControllerTest extends TestCase
             $this->project->dir,
             null,
         );
-        $lsp = new SettingsLspController($this->project->dir, [], $reconfigurer, $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($this->project->dir)), $scope);
-        $debug = new SettingsDebugController(new DebugAdapters([]), $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($this->project->dir)), $scope);
+        $lsp = new SettingsLspController(
+            $this->project->dir,
+            [],
+            $reconfigurer,
+            $notifier,
+            new Translator('en'),
+            new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
+            $scope,
+            new SettingsProvenance(ConfigFiles::for($this->project->dir)),
+        );
+        $debug = new SettingsDebugController(
+            new DebugAdapters([]),
+            $notifier,
+            new Translator('en'),
+            new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
+            $scope,
+            new SettingsProvenance(ConfigFiles::for($this->project->dir)),
+        );
         $this->pluginSettings = new PluginSettings($this->project->dir, [], null, $scope);
         $this->lifecycle = new FakePluginLifecycle();
         $plugins = new SettingsPluginsController(

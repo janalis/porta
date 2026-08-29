@@ -390,4 +390,53 @@ final class SettingsGlobalScopeTest extends TestCase
             ],
         );
     }
+
+    /**
+     * The language page's LSP and debug rows carry provenance too.
+     *
+     * They were the three rows on that page without it — the indent rows had
+     * tags and these did not, so the page answered "where did this come from"
+     * for some of its own rows and stayed silent for the rest. A user cannot
+     * tell "nothing set this" from "this row does not do tags".
+     */
+    public function testTheLspAndDebugRowsSayWhereTheirValuesCameFrom(): void
+    {
+        putenv('PATH=/nonexistent');
+        $this->home = new TempProject(['.porta/config.json' => json_encode(
+            [
+                'lsp' => ['php' => 'global-ls --stdio'],
+                'languages' => ['php' => ['debug' => ['adapter' => 'global-dap']]],
+            ],
+            \JSON_THROW_ON_ERROR,
+        )]);
+        $this->project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
+        putenv('PORTA_HOME='.$this->home->dir);
+
+        $this->runIde(
+            $this->project,
+            $this->project->path('A.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                    $nav = $tui->getById('settings-nav');
+                    \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav sidebar');
+                    $this->selectSettingsSection($nav, 'lang:php');
+                    $this->frame($tui);
+                },
+                500 => function ($tui, $terminal): void {
+                    $form = $tui->getById('settings-form');
+                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
+                    $rows = $form->render(new \Symfony\Component\Tui\Render\RenderContext(120, 22));
+
+                    $this->assertStringContainsString('from global', $this->settingRow($rows, 'LSP server'));
+                    $this->assertStringContainsString('from global', $this->settingRow($rows, 'Debug adapter'));
+                    $this->assertStringNotContainsString(
+                        'from global',
+                        $this->settingRow($rows, 'Launch config'),
+                        'and a row nothing set stays untagged',
+                    );
+                },
+            ],
+        );
+    }
 }

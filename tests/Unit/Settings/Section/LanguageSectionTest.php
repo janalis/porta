@@ -67,8 +67,24 @@ final class LanguageSectionTest extends TestCase
             $rootDir,
             null,
         );
-        $lsp = new SettingsLspController($rootDir, [], $reconfigurer, $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($rootDir)), $scope);
-        $debug = new SettingsDebugController(new DebugAdapters([]), $notifier, new Translator('en'), new PortaJsonWriter(ConfigFiles::for($rootDir)), $scope);
+        $lsp = new SettingsLspController(
+            $rootDir,
+            [],
+            $reconfigurer,
+            $notifier,
+            new Translator('en'),
+            new PortaJsonWriter(ConfigFiles::for($rootDir)),
+            $scope,
+            new SettingsProvenance(ConfigFiles::for($rootDir)),
+        );
+        $debug = new SettingsDebugController(
+            new DebugAdapters([]),
+            $notifier,
+            new Translator('en'),
+            new PortaJsonWriter(ConfigFiles::for($rootDir)),
+            $scope,
+            new SettingsProvenance(ConfigFiles::for($rootDir)),
+        );
 
         return new LanguageSection($languages, $lsp, $debug, new SettingsScopeRow($scope, $files, new Translator('en')));
     }

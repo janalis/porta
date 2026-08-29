@@ -49,6 +49,7 @@ final class SettingsLspController
         private readonly Translator $translator,
         private readonly PortaJsonWriter $writer,
         private readonly SettingsScope $scope,
+        private readonly SettingsProvenance $provenance,
     ) {}
 
     /**
@@ -70,6 +71,8 @@ final class SettingsLspController
             restart: false,
             default: '', // unset means auto-detect
             hint: null !== $auto ? $this->translator->trans('auto: %server%', ['%server%' => $auto]) : $this->translator->trans('auto-detect'),
+            origin: $this->provenance->originOf(['lsp', $language]),
+            shadowed: $this->provenance->shadowsGlobal(['lsp', $language]),
         )];
     }
 

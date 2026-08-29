@@ -24,6 +24,7 @@ final class SettingsDebugController
         private readonly Translator $translator,
         private readonly PortaJsonWriter $writer,
         private readonly SettingsScope $scope,
+        private readonly SettingsProvenance $provenance,
     ) {}
 
     /** @return list<SettingsRow> */
@@ -40,6 +41,8 @@ final class SettingsDebugController
                 restart: false,
                 default: '', // unset means no adapter configured
                 hint: $this->translator->trans('not configured'),
+                origin: $this->provenance->originOf(['languages', $language, 'debug', 'adapter']),
+                shadowed: $this->provenance->shadowsGlobal(['languages', $language, 'debug', 'adapter']),
             ),
             new SettingsRow(
                 key: 'debugLaunch',
@@ -49,6 +52,8 @@ final class SettingsDebugController
                 restart: false,
                 default: '',
                 hint: $this->translator->trans('JSON merged into the DAP launch request'),
+                origin: $this->provenance->originOf(['languages', $language, 'debug', 'launch']),
+                shadowed: $this->provenance->shadowsGlobal(['languages', $language, 'debug', 'launch']),
             ),
         ];
     }
