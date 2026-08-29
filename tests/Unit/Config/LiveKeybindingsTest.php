@@ -11,6 +11,7 @@ use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
 use Porta\Config\LiveKeybindings;
 use Porta\Plugin\Runtime\PluginHost;
+use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
@@ -22,6 +23,8 @@ use Symfony\Component\EventDispatcher\EventDispatcher;
  */
 final class LiveKeybindingsTest extends TestCase
 {
+    use PreservesPortaHome;
+
     private const string PLUGIN = <<<'PHP'
         <?php
         return new class implements Porta\Plugin\Api\PortaPlugin {
@@ -41,6 +44,34 @@ final class LiveKeybindingsTest extends TestCase
         $factory = new KeybindingsFactory($host, $config, new ActionRegistry($host->manager()));
 
         return [new LiveKeybindings($factory, $factory->create(), $project->dir), $host];
+    }
+
+    /**
+     * A rebuild re-reads through `IdeConfig::load()`, so the user's own keymap
+     * survives it.
+     *
+     * The global config layer was landed on the claim that this comes "for
+     * free" because rebuild() re-reads the file — true, and asserted nowhere,
+     * which is the same shape as a rule recorded in decisions.md and left
+     * unimplemented for eleven commits. A claim in a commit message is not a
+     * guard.
+     */
+    public function testARebuildKeepsTheUsersOwnKeymapNotJustTheProjects(): void
+    {
+        $home = new TempProject(['.porta/config.json' => json_encode(
+            ['keymap' => ['save_all' => ['ctrl+alt+g']]],
+            \JSON_THROW_ON_ERROR,
+        )]);
+        $project = new TempProject([]);
+        putenv('PORTA_HOME='.$home->dir);
+        [$live] = $this->live($project);
+
+        $this->assertTrue($live->matches("\x1b\x07", 'save_all'), 'the user file bound it at boot');
+
+        $live->rebuild();
+
+        $this->assertTrue($live->matches("\x1b\x07", 'save_all'), 'and the rebuild did not drop the global layer');
+        $this->assertFalse($live->matches("\x1b\x07", 'save'), 'and bound the action the file named, not a neighbour');
     }
 
     public function testRebuildPicksUpALiveActivatedPluginsDefaultKeys(): void
