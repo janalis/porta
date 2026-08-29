@@ -90,16 +90,45 @@ final readonly class PortaJsonWriter
         return $this->persistPluginMembership($scope, 'disabledPlugins', $plugin, member: true);
     }
 
-    /** Persist a bundled plugin as enabled by adding it to the `enabledPlugins` list (the absent-key default materialized first). */
+    /** Persist a bundled plugin as enabled by adding it to the `enabledPlugins` list (the effective list materialized first). */
     public function persistBundledEnabled(ConfigScope $scope, string $plugin): bool
     {
-        return $this->persistPluginMembership($scope, 'enabledPlugins', $plugin, member: true, default: IdeConfig::DEFAULT_ENABLED_PLUGINS);
+        return $this->persistPluginMembership($scope, 'enabledPlugins', $plugin, member: true, default: $this->bundledBelow());
     }
 
-    /** Persist a bundled plugin as disabled by dropping it from the `enabledPlugins` list (the absent-key default materialized first). */
+    /** Persist a bundled plugin as disabled by dropping it from the `enabledPlugins` list (the effective list materialized first). */
     public function persistBundledDisabled(ConfigScope $scope, string $plugin): bool
     {
-        return $this->persistPluginMembership($scope, 'enabledPlugins', $plugin, member: false, default: IdeConfig::DEFAULT_ENABLED_PLUGINS);
+        return $this->persistPluginMembership($scope, 'enabledPlugins', $plugin, member: false, default: $this->bundledBelow());
+    }
+
+    /**
+     * The `enabledPlugins` list already in effect BELOW the file being
+     * written, which is what a FIRST write to that file has to start from.
+     *
+     * `enabledPlugins` is the one block where an explicit list REPLACES rather
+     * than merges, so materialising the wrong starting point does not merely
+     * lose a preference — it silently reverses one. Starting from the constant
+     * default while a user's global file says `["git", "todo"]` turns "disable
+     * git in this project" into "enable the three bundled plugins they had
+     * turned off, everywhere in this project".
+     *
+     * One path serves both scopes, and a `Global === $scope` special case was
+     * measured as an equivalent mutant rather than a guard: this is consulted
+     * only when the TARGET file has no list of its own, and for a global write
+     * that means the global file has none — so reading it back yields exactly
+     * the constant that sits below it.
+     *
+     * @return list<string>
+     */
+    private function bundledBelow(): array
+    {
+        $global = $this->files->path(ConfigScope::Global);
+        $config = (null === $global ? null : JsonFile::read($global)) ?? [];
+
+        return \array_key_exists('enabledPlugins', $config)
+            ? IdeConfig::stringList($config['enabledPlugins'])
+            : IdeConfig::DEFAULT_ENABLED_PLUGINS;
     }
 
     /**

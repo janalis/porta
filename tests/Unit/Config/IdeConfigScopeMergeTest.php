@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Config;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
 use Porta\Config\ConfigWarning;
 use Porta\Config\IdeConfig;
+use Porta\Config\PortaJsonWriter;
 use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\TempProject;
 
@@ -176,6 +179,71 @@ final class IdeConfigScopeMergeTest extends TestCase
 
         $this->assertSame('tempest', $config->highlight['default'], 'the global default survives a project block that omits it');
         $this->assertSame(['rust' => 'chroma', 'php' => 'chroma'], $config->highlight['languages']);
+    }
+
+    /**
+     * A first write to the project starts from what is ALREADY in effect, not
+     * from the shipped default.
+     *
+     * `enabledPlugins` is the one block where an explicit list REPLACES, so
+     * the starting point is not a nicety. A user whose global file says
+     * `["git", "todo"]` — everything else deliberately off — who then turns
+     * git off in one project must not have the three plugins they disabled
+     * globally quietly switched back on for that project.
+     */
+    public function testDisablingABundledPluginKeepsTheRestOfTheGlobalChoice(): void
+    {
+        $this->home = new TempProject(['.porta/config.json' => json_encode(
+            ['enabledPlugins' => ['git', 'todo']],
+            \JSON_THROW_ON_ERROR,
+        )]);
+        $this->project = new TempProject([]);
+        putenv('PORTA_HOME='.$this->home->dir);
+        $files = new ConfigFiles($this->project->dir, $this->home->dir);
+
+        new PortaJsonWriter($files)->persistBundledDisabled(ConfigScope::Project, 'git');
+
+        $this->assertSame(
+            ['todo'],
+            IdeConfig::load($this->project->dir)->enabledPlugins,
+            'the project list started from the global one, not from DEFAULT_ENABLED_PLUGINS',
+        );
+    }
+
+    /** And enabling one adds to that same effective list. */
+    public function testEnablingABundledPluginAddsToTheGlobalChoice(): void
+    {
+        $this->home = new TempProject(['.porta/config.json' => json_encode(
+            ['enabledPlugins' => ['git']],
+            \JSON_THROW_ON_ERROR,
+        )]);
+        $this->project = new TempProject([]);
+        putenv('PORTA_HOME='.$this->home->dir);
+        $files = new ConfigFiles($this->project->dir, $this->home->dir);
+
+        new PortaJsonWriter($files)->persistBundledEnabled(ConfigScope::Project, 'todo');
+
+        $this->assertSame(['git', 'todo'], IdeConfig::load($this->project->dir)->enabledPlugins);
+    }
+
+    /**
+     * Nothing sits below Global, so there the shipped default IS the layer
+     * below — and a global write must not read the global file as its own
+     * starting point twice.
+     */
+    public function testAGlobalWriteStartsFromTheShippedDefault(): void
+    {
+        $this->home = new TempProject([]);
+        $this->project = new TempProject([]);
+        putenv('PORTA_HOME='.$this->home->dir);
+        $files = new ConfigFiles($this->project->dir, $this->home->dir);
+
+        new PortaJsonWriter($files)->persistBundledDisabled(ConfigScope::Global, 'git');
+
+        $this->assertSame(
+            array_values(array_diff(IdeConfig::DEFAULT_ENABLED_PLUGINS, ['git'])),
+            IdeConfig::load($this->project->dir)->enabledPlugins,
+        );
     }
 
     /** A mistake in the global file must say so, not blame the project's. */
