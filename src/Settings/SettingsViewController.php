@@ -50,6 +50,7 @@ final class SettingsViewController implements ContributedView
         private readonly SettingsKeymapController $keymap,
         private readonly SettingsPluginsController $plugins,
         private readonly SettingsProvenance $provenance,
+        private readonly ShadowedWriteWarning $shadowed,
         ViewRegistry $views,
     ) {
         // Minted, like git's. The nav is this view's fixed half, so it goes
@@ -192,6 +193,22 @@ final class SettingsViewController implements ContributedView
         return $this->pages->sectionFor($this->section);
     }
 
+    /**
+     * The rebuilt row for $key, or null when the page no longer has one.
+     *
+     * @param list<SettingsRow> $rows
+     */
+    private function rowFor(array $rows, string $key): ?SettingsRow
+    {
+        foreach ($rows as $row) {
+            if ($row->key === $key) {
+                return $row;
+            }
+        }
+
+        return null;
+    }
+
     /** @return list<SettingsRow> */
     private function rowsForSection(): array
     {
@@ -221,7 +238,11 @@ final class SettingsViewController implements ContributedView
         // place that knows a config file may just have moved under the
         // provenance tags. Refusals do not reach here, and nothing was written.
         $this->provenance->invalidate();
-        $this->form->setRows($this->rowsForSection(), $this->nav->activeLabel());
+        $rows = $this->rowsForSection();
+        $this->form->setRows($rows, $this->nav->activeLabel());
+        // Rebuilt rows, so the row now knows whether the project shadows what
+        // was just written to the user's file.
+        $this->shadowed->afterWrite($this->rowFor($rows, $key));
 
         return true;
     }

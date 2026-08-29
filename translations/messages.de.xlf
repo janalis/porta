@@ -2678,6 +2678,10 @@
         <source>new plugins install here too</source>
         <target>neue Plugins werden ebenfalls hier installiert</target>
       </trans-unit>
+      <trans-unit id="682">
+        <source>Saved to %global% — %project% overrides it in this project</source>
+        <target>In %global% gespeichert — %project% überschreibt es in diesem Projekt</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

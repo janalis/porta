@@ -2678,6 +2678,10 @@
         <source>new plugins install here too</source>
         <target>新しいプラグインもここに入ります</target>
       </trans-unit>
+      <trans-unit id="682">
+        <source>Saved to %global% — %project% overrides it in this project</source>
+        <target>%global% に保存しました — このプロジェクトでは %project% が優先されます</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

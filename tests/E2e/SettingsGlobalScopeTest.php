@@ -18,6 +18,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Toasts;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -86,7 +87,7 @@ final class SettingsGlobalScopeTest extends TestCase
                     $tui->handleInput("\r"); // toggle it off its default
                     $this->frame($tui);
                 },
-                700 => function ($tui, $terminal): void {
+                700 => function ($tui, $terminal, $ide): void {
                     $global = $this->home->path('.porta/config.json');
                     $this->assertFileExists($global, 'the global file was created on first write');
 
@@ -106,6 +107,15 @@ final class SettingsGlobalScopeTest extends TestCase
                     $this->assertFalse(
                         IdeConfig::load($this->project->dir)->settings['stickyScroll'],
                         'and a fresh load picks it up through the global layer',
+                    );
+
+                    // Nothing shadows this one, so nothing to warn about — a
+                    // warning on every global save would be noise that trains
+                    // people past the case that matters.
+                    $this->assertStringNotContainsString(
+                        'overrides it in this project',
+                        Toasts::last($ide),
+                        'an unshadowed global save is not warned about',
                     );
                 },
             ],
@@ -150,7 +160,7 @@ final class SettingsGlobalScopeTest extends TestCase
                     $tui->handleInput("\r");
                     $this->frame($tui);
                 },
-                700 => function ($tui, $terminal): void {
+                700 => function ($tui, $terminal, $ide): void {
                     $global = $this->home->path('.porta/config.json');
                     $written = json_decode((string) file_get_contents($global), associative: true);
                     $this->assertIsArray($written);
@@ -176,6 +186,70 @@ final class SettingsGlobalScopeTest extends TestCase
                         'overrides global',
                         $this->settingRow($rows, 'Sticky scroll'),
                         'and the row says why the value did not move',
+                    );
+                    // The tag carries the fact; the toast carries the
+                    // consequence, at the moment the key was pressed.
+                    $this->assertStringContainsString(
+                        'overrides it in this project',
+                        Toasts::last($ide),
+                        'and the save said so out loud',
+                    );
+                },
+            ],
+        );
+    }
+
+    /**
+     * Editing the PROJECT file for a key the global file also sets is the
+     * ordinary two-layer case, and warning about it would be noise on a write
+     * that does exactly what was asked.
+     *
+     * `shadowed` is true here too — both files set the key — so the scope is
+     * what separates the two situations, and without this case a warning on
+     * every shadowed write looks correct.
+     */
+    public function testEditingTheProjectFileOverAGlobalValueIsNotWarnedAbout(): void
+    {
+        putenv('PATH=/nonexistent');
+        $this->home = new TempProject(['.porta/config.json' => json_encode(
+            ['settings' => ['stickyScroll' => false]],
+            \JSON_THROW_ON_ERROR,
+        )]);
+        $this->project = new TempProject([
+            'A.php' => "<?php\n\$x = 1;\n",
+            '.porta.json' => json_encode(['settings' => ['stickyScroll' => true]], \JSON_THROW_ON_ERROR),
+        ]);
+        putenv('PORTA_HOME='.$this->home->dir);
+
+        $this->runIde(
+            $this->project,
+            $this->project->path('A.php'),
+            [
+                // No scope change: RunsIde pins every scenario to the project.
+                300 => function ($tui, $terminal, $ide): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                    $nav = $tui->getById('settings-nav');
+                    \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav sidebar');
+                    $this->selectSettingsSection($nav, 'interface');
+                    $this->frame($tui);
+                },
+                500 => function ($tui, $terminal): void {
+                    $form = $tui->getById('settings-form');
+                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
+                    $tui->setFocus($form);
+                    $this->selectSettingRow($form, 'Sticky scroll');
+                    $tui->handleInput("\r");
+                    $this->frame($tui);
+                },
+                700 => function ($tui, $terminal, $ide): void {
+                    $this->assertFalse(
+                        IdeConfig::load($this->project->dir)->settings['stickyScroll'],
+                        'the project value moved, which is what was asked',
+                    );
+                    $this->assertStringNotContainsString(
+                        'overrides it in this project',
+                        Toasts::last($ide),
+                        'and the ordinary case is not warned about',
                     );
                 },
             ],

@@ -59,6 +59,7 @@ use Porta\Settings\SettingsScope;
 use Porta\Settings\SettingsScopeRow;
 use Porta\Settings\SettingsSection;
 use Porta\Settings\SettingsViewController;
+use Porta\Settings\ShadowedWriteWarning;
 use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\FakeScheduler;
@@ -342,6 +343,7 @@ final class SettingsViewControllerTest extends TestCase
             $keymap,
             $plugins,
             new SettingsProvenance(ConfigFiles::for($this->project->dir)),
+            new ShadowedWriteWarning($scope, ConfigFiles::for($this->project->dir), new Translator('en'), $notifier),
             views: $views ?? new ViewRegistry(),
         );
         // Compiled from #[AsEventListener] in the container; wired by hand here.
