@@ -104,10 +104,13 @@ trait RunsIde
 
     /**
      * @param array<int, callable> $steps ms => step($tui, $terminal, $ide)
+     * @param int                  $rows  terminal height; the default is roomy
+     *                                    enough that nothing scrolls, so a test
+     *                                    about scrolling has to ask for less
      */
-    private function runIde(TempProject $project, ?string $file, array $steps, ?float $duration = null, ?string $docsDir = null, int $columns = 160): VirtualTerminal
+    private function runIde(TempProject $project, ?string $file, array $steps, ?float $duration = null, ?string $docsDir = null, int $columns = 160, int $rows = 24): VirtualTerminal
     {
-        $terminal = new VirtualTerminal(columns: $columns, rows: 24);
+        $terminal = new VirtualTerminal(columns: $columns, rows: $rows);
         $this->suppressFirstRunWelcome($project);
         $ide = new Ide($project->dir, $file, $terminal, docsDir: $docsDir);
         $this->pinSettingsScope($ide);

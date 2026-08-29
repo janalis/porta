@@ -1,0 +1,231 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Tests\E2e;
+
+use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
+use Porta\Config\IdeConfig;
+use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\NavigatesSettings;
+use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\ReadsSettingsForm;
+use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\ScreenReads;
+use Porta\Tests\Support\Services;
+use Porta\Tests\Support\TempProject;
+use Porta\Widget\Settings\SettingsFormWidget;
+use Porta\Widget\Settings\SettingsNavWidget;
+use Symfony\Component\Tui\Render\RenderContext;
+
+/**
+ * The four settings-form behaviours that were only ever checked by hand.
+ *
+ * Each was fixed with a unit test on the widget or the controller, which is
+ * where the logic lives — but each is also the kind of thing that survives its
+ * unit test and breaks in the real layout, where the pane has the height the
+ * workbench gives it and the rows are the rows the real controllers produce.
+ * A checklist someone has to remember is not a gate; this is.
+ */
+final class SettingsFormBehaviourTest extends TestCase
+{
+    use ClearsPortaLsp;
+    use NavigatesSettings;
+    use PreservesPath;
+    use ReadsSettingsForm;
+    use RunsIde;
+    use ScreenReads;
+
+    /**
+     * A page taller than its pane can be walked to the end.
+     *
+     * The form used to render from index 0 with no scroll offset, so the rows
+     * past the fold were unreachable and the selection walked off-screen
+     * invisibly. Twelve terminal rows leaves the content pane shorter than the
+     * Interface page is long — at sixteen the whole page still fits, which is
+     * worth knowing before someone "tidies" this number upward.
+     */
+    public function testAPageTallerThanThePaneScrollsToItsLastRow(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                    $nav = $tui->getById('settings-nav');
+                    \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav sidebar');
+                    $this->selectSettingsSection($nav, 'interface');
+                    $this->frame($tui);
+                },
+                500 => function ($tui, $terminal): void {
+                    $form = $tui->getById('settings-form');
+                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
+                    $tui->setFocus($form);
+
+                    $grid = $this->screenGrid($tui, $terminal);
+                    $this->assertNotNull($this->rowOf($grid, 'Sticky scroll'), 'the page opens showing its early rows');
+                    $this->assertNull($this->rowOf($grid, 'Breadcrumbs'), 'and its last row is below the fold');
+
+                    // Walk to the end with real input, as a user would.
+                    for ($i = 0; $i < self::MAX_FORM_ROWS; ++$i) {
+                        $tui->handleInput("\x1b[B");
+                    }
+                    $this->frame($tui);
+
+                    $grid = $this->screenGrid($tui, $terminal);
+                    $this->assertNotNull($this->rowOf($grid, 'Breadcrumbs'), 'the last row scrolled into view');
+                    $this->assertStringContainsString(
+                        'Breadcrumbs',
+                        $this->selectedSettingRow($form),
+                        'and the selection is ON it, not off the bottom of the pane',
+                    );
+                },
+            ],
+            rows: 12,
+        );
+    }
+
+    /**
+     * A click on a row that is not selected selects it and nothing else.
+     *
+     * `handleClick()` used to be select-then-actuate, so one stray click
+     * toggled whatever it landed on — including arming a plugin removal.
+     */
+    public function testAStrayClickSelectsWithoutChangingAnything(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                    $this->frame($tui);
+                },
+                500 => function ($tui, $terminal) use ($project): void {
+                    $grid = $this->screenGrid($tui, $terminal);
+                    $row = $this->rowOf($grid, 'Inline diagnostics');
+                    $this->assertNotNull($row, 'the General page shows the row we are about to click');
+
+                    // One press+release on it. SGR coordinates are 1-based.
+                    $tui->handleInput(\sprintf("\x1b[<0;40;%dM", $row + 1));
+                    $tui->handleInput(\sprintf("\x1b[<0;40;%dm", $row + 1));
+                    $this->frame($tui);
+
+                    $form = $tui->getById('settings-form');
+                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
+                    $this->assertStringContainsString(
+                        'Inline diagnostics',
+                        $this->selectedSettingRow($form),
+                        'the click moved the selection',
+                    );
+                    $this->assertFileDoesNotExist(
+                        $project->path('.porta.json'),
+                        'and wrote nothing — a click that mutates is the defect this replaced',
+                    );
+                    $this->assertTrue(
+                        IdeConfig::load($project->dir)->settings['inlineDiagnostics'],
+                        'the setting still holds its default in memory too',
+                    );
+                },
+            ],
+        );
+    }
+
+    /**
+     * A value the section refuses keeps the editor open with the text as typed.
+     *
+     * Re-pushing the rows on refusal is what used to snap the row back to the
+     * persisted value and destroy the typing — which is the worst possible
+     * response to "you got this slightly wrong".
+     */
+    public function testARefusedLaunchConfigKeepsWhatYouTyped(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                    $nav = $tui->getById('settings-nav');
+                    \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav sidebar');
+                    $this->selectSettingsSection($nav, 'lang:php');
+                    $this->frame($tui);
+                },
+                500 => function ($tui, $terminal): void {
+                    $form = $tui->getById('settings-form');
+                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
+                    $tui->setFocus($form);
+                    $this->selectSettingRow($form, 'Launch config');
+
+                    $tui->handleInput("\r"); // open the inline editor
+                    foreach (str_split('{not json') as $char) {
+                        $tui->handleInput($char);
+                    }
+                    $tui->handleInput("\r"); // commit → the section refuses
+                    $this->frame($tui);
+
+                    $this->assertNotNull(
+                        $this->rowOf($this->screenGrid($tui, $terminal), '{not json'),
+                        'the text survived the refusal instead of snapping back',
+                    );
+                },
+            ],
+        );
+    }
+
+    /**
+     * The modified marker tracks the VALUE, not the presence of a key.
+     *
+     * A fresh project sets nothing, so nothing is marked; changing a setting
+     * marks that row and only that row.
+     */
+    public function testTheModifiedMarkerAppearsOnlyOnWhatYouChanged(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                    $nav = $tui->getById('settings-nav');
+                    \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav sidebar');
+                    $this->selectSettingsSection($nav, 'interface');
+                    $this->frame($tui);
+                },
+                500 => function ($tui, $terminal): void {
+                    $form = $tui->getById('settings-form');
+                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
+                    $tui->setFocus($form);
+
+                    // The FORM's own render, not the screen: a toast saying
+                    // "Sticky scroll off" also carries the label, and the
+                    // label-addressed helper would happily read that instead.
+                    $rows = $form->render(new RenderContext(100, 24));
+                    $this->assertStringNotContainsString('●', $this->settingRow($rows, 'Sticky scroll'), 'a fresh project has changed nothing');
+
+                    $this->selectSettingRow($form, 'Sticky scroll');
+                    $tui->handleInput("\r"); // toggle it off its default
+                    $this->frame($tui);
+
+                    $rows = $form->render(new RenderContext(100, 24));
+                    $this->assertStringContainsString('●', $this->settingRow($rows, 'Sticky scroll'), 'the changed row is marked');
+                    $this->assertStringNotContainsString('●', $this->settingRow($rows, 'Indent guides'), 'and its neighbour is not');
+                },
+            ],
+        );
+    }
+}
