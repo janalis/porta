@@ -455,6 +455,16 @@ Rejected, each with what would re-open it:
   materialise **the effective list of the layer below**, not the constant
   default. *Re-opens if* `enabledPlugins` ever stops being an explicit list —
   e.g. gains an `"inherit"` sentinel that can express "add to the layer below".
+
+  **That last sentence was written here and not implemented, and shipped
+  broken for eleven commits.** `persistBundled*` materialised the constant, so
+  disabling one plugin in a project rewrote its list from the shipped default
+  and silently re-enabled every bundled plugin the user had turned off
+  globally. No gate reads prose. If a rule is worth recording here it is worth
+  a test that fails without it — this one has three now, and the general
+  lesson is the twin of "a docblock's reason outlives the fact behind it": a
+  justification can also arrive *before* the code it justifies, and read as
+  settled either way.
 - **Provenance on the Keybindings page.** Its bindings come from three merged
   *widget* keymaps, not from config layers; answering "where did this binding
   come from" would mean re-deriving that merge outside the merge, for an
@@ -481,6 +491,15 @@ Rejected, each with what would re-open it:
 - **`<home>/.porta.json` as the global file.** People run `porta ~`, and that
   spelling collapses the two layers into one file where a project write and a
   global write are silently the same write.
+- **Refusing a write the other layer overrules.** Every path that can write
+  into a shadowed key — a setting, a reset, a plugin toggle, a rebind — warns
+  and proceeds instead. Refusing reads well until you want a personal default
+  for a key some open project happens to pin, at which point the global value
+  is unreachable from inside that project. The write is correct; only this
+  project ignores it, and that is what the warning says. *Re-opens if* the
+  settings screen gains a way to edit a scope other than the one in effect,
+  which would make "change it where it is set" an instruction the user can
+  actually follow.
 - **The one-time "there is a global file now" notice**, which this plan called
   for and which the shipped default made redundant. The notice existed to
   explain a surprise: an existing user's next edit landing in a file they had

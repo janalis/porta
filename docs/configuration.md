@@ -63,6 +63,35 @@ Rows carry a dim tag when the answer is not obvious:
 Nothing is tagged in the ordinary case: a value the project sets and nothing
 else, or a value nothing sets at all. A tag on every row is a tag on no row.
 
+## When a change will not take effect here
+
+Writing into a key the other file also sets is allowed — it is a correct write
+to the file you chose — but it may change nothing you can see, because the
+merge rules above decide which layer wins. Rather than refuse the edit or
+report a success that is not one, Porta says so:
+
+| You did | And | It says |
+| --- | --- | --- |
+| Saved to the global file | the project sets that key | *Saved to ~/.porta/config.json — .porta.json overrides it in this project* |
+| Pressed `r` on a global value | the project still sets that key | *Cleared from ~/.porta/config.json — .porta.json still overrides it here* |
+| Enabled a plugin | the other file lists it in `disabledPlugins` | *&lt;plugin&gt; stays off — &lt;file&gt; disables it* |
+| Rebound an action | the other file binds that action | *&lt;action&gt; keeps its binding — &lt;file&gt; sets it* |
+
+In the last two the operation reports nothing else — no "enabled", no
+"rebound" — because it did not happen.
+
+Refusing these edits was considered and rejected: setting a personal default
+for a key that some open project happens to pin is a reasonable thing to do,
+and refusing would make the global value unreachable from inside the project
+that shadows it.
+
+## Turning bundled plugins on and off
+
+`enabledPlugins` is an explicit list, so the first write to a file that has
+none has to invent one. It starts from **the list already in effect**, not from
+the shipped default — otherwise turning one plugin off in a project would
+silently turn back on every plugin you had turned off globally.
+
 ## `.porta.json`
 
 Per-project configuration, read from the project root. All keys are
