@@ -96,3 +96,9 @@ what would re-open it. Re-proposing one costs a round.
   it); clickable status segments (reopened — the branch cell is the consumer).
 - `registerWelcomeStep()`; unifying the five plain-array plugin buffers.
 - Escalating `[loop-leak]` to a failure — refused on evidence.
+- The config scope's merge rules. A **union for `enabledPlugins`** is the one that
+  looks obviously right and is not: an explicit list REPLACES, even an empty one, or a
+  project could never turn off what global turned on. Also settled there: deep-merging
+  `debug.launch`, provenance on the Keybindings page, a new `PORTA_*` channel for
+  provenance, auto-migrating anything, and `<home>/.porta.json` as the global file's
+  path.
