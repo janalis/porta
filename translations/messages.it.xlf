@@ -2690,6 +2690,10 @@
         <source>%plugin% stays off — %file% disables it</source>
         <target>%plugin% resta disattivato — %file% lo disattiva</target>
       </trans-unit>
+      <trans-unit id="685">
+        <source>%action% keeps its binding — %file% sets it</source>
+        <target>%action% mantiene la sua scorciatoia — %file% la definisce</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

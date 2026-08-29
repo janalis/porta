@@ -83,6 +83,7 @@ final class SettingsKeymapControllerTest extends TestCase
             new Translator('en'),
             new PortaJsonWriter(ConfigFiles::for($rootDir)),
             $scope,
+            ConfigFiles::for($rootDir),
         );
     }
 

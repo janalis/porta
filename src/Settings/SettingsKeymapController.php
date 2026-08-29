@@ -7,6 +7,9 @@ namespace Porta\Settings;
 use Porta\Config\ActionCatalog;
 use Porta\Config\ActionRegistry;
 use Porta\Config\CommandRegistry;
+use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
+use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingRow;
 use Porta\Config\LiveKeybindings;
 use Porta\Config\PortaJsonWriter;
@@ -41,6 +44,7 @@ final class SettingsKeymapController
         private readonly Translator $translator,
         private readonly PortaJsonWriter $writer,
         private readonly SettingsScope $scope,
+        private readonly ConfigFiles $files,
         private readonly KeyParser $parser = new KeyParser(),
     ) {}
 
@@ -115,11 +119,47 @@ final class SettingsKeymapController
         // beats a flash that claims a rebind the next keypress will not honour.
         $live = null !== (ActionCatalog::ACTIONS[$action]['keys'] ?? null) || \in_array($action, $this->commands->keyBoundIds(), strict: true);
         $note = $persisted && !$live ? ' · '.$this->translator->trans('applies on restart') : '';
+        $overruled = $persisted ? $this->layerOverruling($action, $token) : null;
+        if (null !== $overruled) {
+            // Notifier::notify() already requests a render.
+            $this->notifier->warn($this->translator->trans('%action% keeps its binding — %file% sets it', [
+                '%action%' => $this->translator->trans($this->actions->label($action)),
+                '%file%' => $this->files->label($overruled),
+            ]));
+
+            return;
+        }
         $this->notifier->flash($this->translator->trans('Rebound %action% to %key%', [
             '%action%' => $this->translator->trans($this->actions->label($action)),
             '%key%' => ShortcutFormatter::format($token),
         ])
         .$saved
         .$note);
+    }
+
+    /**
+     * The OTHER config file that overrules this rebind, or null when none does.
+     *
+     * `keymap` merges per ACTION: a file naming an action replaces its whole
+     * chord list, never adds to it, because merging two lists of keys for one
+     * action produces a binding nobody asked for. The consequence is that
+     * rebinding in one file while the other also binds that action writes
+     * correctly and changes nothing — and "Rebound X to Y" would then be the
+     * only thing on screen and false.
+     *
+     * Asked of the EFFECTIVE keymap rather than of the files, so it answers
+     * what the merge decided instead of re-deriving it. That is also what
+     * keeps this clear of the settled decision against provenance on this
+     * page: the question here is not where a binding came from — which would
+     * mean unpicking three merged WIDGET keymaps — but whether the write that
+     * just happened reached the top of the config stack.
+     */
+    private function layerOverruling(string $action, string $chord): ?ConfigScope
+    {
+        if ([$chord] === (IdeConfig::load($this->files->rootDir())->keymap[$action] ?? null)) {
+            return null;
+        }
+
+        return ConfigScope::Project === $this->scope->current() ? ConfigScope::Global : ConfigScope::Project;
     }
 }

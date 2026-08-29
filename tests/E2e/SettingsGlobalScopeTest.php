@@ -14,12 +14,14 @@ use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PreservesPortaHome;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\ReadsSettingsForm;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
+use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -434,6 +436,68 @@ final class SettingsGlobalScopeTest extends TestCase
                         'from global',
                         $this->settingRow($rows, 'Launch config'),
                         'and a row nothing set stays untagged',
+                    );
+                },
+            ],
+        );
+    }
+
+    /**
+     * A rebind the other config file overrules stops claiming it happened.
+     *
+     * `keymap` merges per ACTION — a file naming an action replaces its whole
+     * chord list, never adds to it — so rebinding globally while the project
+     * binds the same action writes correctly and changes nothing. "Rebound X
+     * to Y" would be the only thing on screen, and false.
+     */
+    public function testARebindTheProjectOverrulesSaysSoInsteadOfClaimingSuccess(): void
+    {
+        putenv('PATH=/nonexistent');
+        $this->home = new TempProject([]);
+        $this->project = new TempProject([
+            'A.php' => "<?php\n\$x = 1;\n",
+            '.porta.json' => json_encode(['keymap' => ['save_all' => ['ctrl+w']]], \JSON_THROW_ON_ERROR),
+        ]);
+        putenv('PORTA_HOME='.$this->home->dir);
+
+        $this->runIde(
+            $this->project,
+            $this->project->path('A.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Global);
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                    $nav = $tui->getById('settings-nav');
+                    \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav sidebar');
+                    $this->selectSettingsSection($nav, 'keybindings');
+                    $this->frame($tui);
+                },
+                500 => function ($tui, $terminal): void {
+                    // Through the real list: walk to the action, Enter to arm
+                    // the capture, then the key it should take.
+                    $list = $tui->getById('settings-keys');
+                    \assert($list instanceof KeybindingsListWidget, description: 'the keybindings page owns the list');
+                    $tui->setFocus($list);
+                    for ($i = 0; $i < 200; ++$i) {
+                        if ('save_all' === (Probe::get($list, 'rows')[Probe::object($list, 'list')->selected()] ?? null)?->action) {
+                            break;
+                        }
+                        $list->handleInput("\x1b[B");
+                    }
+                    $list->handleInput("\r"); // arm the capture
+                    $list->handleInput("\x1b[15~"); // F5
+                    $this->frame($tui);
+                },
+                700 => function ($tui, $terminal, $ide): void {
+                    $shown = implode(' | ', Toasts::all($ide));
+                    $this->assertStringContainsString('keeps its binding', $shown, 'the rebind said it did not take');
+                    $this->assertStringContainsString('.porta.json', $shown, 'and named the file that binds it');
+                    $this->assertStringNotContainsString('Rebound', $shown, 'and never claimed success');
+
+                    $this->assertSame(
+                        ['ctrl+w'],
+                        IdeConfig::load($this->project->dir)->keymap['save_all'] ?? null,
+                        'the project layer still decides the binding',
                     );
                 },
             ],

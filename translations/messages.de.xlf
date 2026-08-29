@@ -2690,6 +2690,10 @@
         <source>%plugin% stays off — %file% disables it</source>
         <target>%plugin% bleibt aus — %file% deaktiviert es</target>
       </trans-unit>
+      <trans-unit id="685">
+        <source>%action% keeps its binding — %file% sets it</source>
+        <target>%action% behält seine Tastenbelegung — %file% legt sie fest</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -240,6 +240,7 @@ final class SettingsViewControllerTest extends TestCase
             new Translator('en'),
             new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
             $scope,
+            ConfigFiles::for($this->project->dir),
         );
         $languages = new SettingsLanguageController(
             $editor,
