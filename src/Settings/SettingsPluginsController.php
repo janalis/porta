@@ -48,7 +48,7 @@ final class SettingsPluginsController
     /** @return list<SettingsRow> */
     public function rows(): array
     {
-        $rows = $this->scopeRow->lead([
+        $rows = $this->scopeRow->lead(also: $this->translator->trans('new plugins install here too'), rows: [
             new SettingsRow(
                 key: 'pluginInstall',
                 label: $this->translator->trans('Install plugin'),

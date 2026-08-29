@@ -54,6 +54,16 @@ covered by that plugin's OWN tests — see [testing.md](testing.md) for why the
 plugin half cannot ride the parallel run.
 
 **`composer analyze`** — mago reports zero issues, warnings or help messages.
+Suppressible in place with `// @mago-expect analysis:<rule> -- reason`, on the
+same terms as the linter below, and used where the cause is outside this
+codebase: `PerfCollector`'s load-average cast is unprovable because mago's
+`sys_getloadavg()` stub returns an untyped array, and every explicit narrowing
+adds a branch the coverage gate then refuses.
+
+**Both mago gates exit 0 while reporting issues.** The exit code is not the
+gate — read the tail of the output. That is not theoretical: the lint tail
+reached 93 findings and analyze 3 warnings before anyone noticed, because
+everything in this repo checks `$?`.
 
 **`composer lint`** — **zero findings** (the 2026-08 burn-down retired the
 standing tail, so the count IS the contract now — no comparing against a
@@ -66,6 +76,14 @@ disables nothing — every rule runs, calibrated to this codebase's maxima.
 `excludes` drops paths: the six mock LSP/DAP servers, which are procedural
 scripts by design. The threshold rationale, and which class pins each number,
 is in `mago.toml` itself.
+
+**`mago lint --fix` is not safe to run unattended here.** Its "safe" fixes
+include `no-empty-loop`, which deleted the socket drain in `BidiTuiTest` —
+a `while ('' !== fread(...)) {}` whose body is empty because the work is the
+CONDITION. `stop()`'s teardown escapes flush blocking, so a full buffer with no
+reader parks the worker: the suite hung at 99% with zero reported failures.
+Every file the fixer had touched passed in isolation, so only a full-suite run
+catches that class of damage. Review its diff, then run the whole suite.
 
 **`composer arch`** — the architecture ratchet
 (`src/Console/ArchitectureCheckCommand`): the exact namespace import graph,

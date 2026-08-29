@@ -2674,6 +2674,10 @@
         <source>overrides global</source>
         <target>דורס הגדרה גלובלית</target>
       </trans-unit>
+      <trans-unit id="681">
+        <source>new plugins install here too</source>
+        <target>גם תוספים חדשים מותקנים כאן</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

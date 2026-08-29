@@ -26,16 +26,10 @@ paging it: `composer analyze > /tmp/x.log 2>&1; echo "exit=$?"`.
 - `composer test` — green.
 - `composer coverage:check` — **100% line coverage**, over `src/` AND every plugin's own
   `src/`. Plugin code must be covered by that plugin's OWN tests.
-- `composer analyze` — zero issues, warnings or help messages. Suppress in place with
-  `// @mago-expect analysis:<rule> -- why` ONLY when the cause is outside this codebase
-  (a wrong stub) or narrowing would add a branch coverage cannot reach.
-- `composer lint` — **zero findings**. Fix a new finding, or suppress it in place with a
-  reasoned `// @mago-expect lint:<rule> -- why`. **Both gates exit 0 while reporting
-  issues**, so the exit code is not the gate — read the tail of the output. The tail
-  reached 93 findings once before anyone noticed, and the run that noticed is the one
-  that caught `mago lint --fix` deleting a pipe-drain loop and deadlocking the suite.
-  Never run `--fix` unattended; verify with the FULL suite, since every file it touched
-  passed on its own.
+- `composer analyze` and `composer lint` — **zero findings each**. Both exit 0 while
+  reporting issues, so read the output, not the exit code. Fix, or suppress in place with
+  a reasoned `// @mago-expect lint:<rule> -- why` / `analysis:<rule>`. Never run
+  `lint --fix` unattended (see `contributing.md`).
 - `composer arch` — fails on drift in EITHER direction. A new edge is added to the
   allowlist in the same commit; a vanished edge is removed from it.
 - `composer format:check` — clean.
@@ -96,9 +90,5 @@ what would re-open it. Re-proposing one costs a round.
   it); clickable status segments (reopened — the branch cell is the consumer).
 - `registerWelcomeStep()`; unifying the five plain-array plugin buffers.
 - Escalating `[loop-leak]` to a failure — refused on evidence.
-- The config scope's merge rules. A **union for `enabledPlugins`** is the one that
-  looks obviously right and is not: an explicit list REPLACES, even an empty one, or a
-  project could never turn off what global turned on. Also settled there: deep-merging
-  `debug.launch`, provenance on the Keybindings page, a new `PORTA_*` channel for
-  provenance, auto-migrating anything, and `<home>/.porta.json` as the global file's
-  path.
+- The config scope's merge rules — above all a **union for `enabledPlugins`**, which
+  looks obviously right and is not: an explicit list REPLACES, even an empty one.

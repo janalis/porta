@@ -55,6 +55,25 @@ final class SettingsScopeRowTest extends TestCase
     }
 
     /**
+     * A page where the scope decides more than the file has to say so. On the
+     * Plugins page the same choice routes an INSTALL, and a row naming only a
+     * config file under-describes what it does.
+     */
+    public function testAPageCanAddWhatElseTheScopeDecides(): void
+    {
+        $row = $this->row()->row(also: 'new plugins install here too');
+
+        $this->assertNotNull($row);
+        $this->assertSame('for this session · new plugins install here too', $row->hint);
+    }
+
+    /** And a page where it decides only the file says only that. */
+    public function testWithoutAnExtraMeaningTheHintStaysTheSessionNote(): void
+    {
+        $this->assertSame('for this session', $this->row()->row()?->hint);
+    }
+
+    /**
      * A chooser offering one option cannot be wrong and cannot be useful. With
      * no home there is exactly one writable file.
      */

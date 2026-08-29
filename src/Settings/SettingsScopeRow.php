@@ -38,8 +38,13 @@ final readonly class SettingsScopeRow
      * The row, or null when there is nothing to choose: an environment with no
      * home has one writable file, and a chooser offering one option is a
      * control that cannot be wrong and cannot be useful.
+     *
+     * $also is for a page where this choice governs more than the file — the
+     * Plugins page, where it also decides where an install lands. The row
+     * names a FILE, so a page whose scope means a directory too has to say so
+     * or the control under-describes itself.
      */
-    public function row(): ?SettingsRow
+    public function row(?string $also = null): ?SettingsRow
     {
         if (null === $this->files->path(ConfigScope::Global)) {
             return null;
@@ -56,9 +61,12 @@ final readonly class SettingsScopeRow
                 ConfigScope::Global->value => $this->files->label(ConfigScope::Global),
                 ConfigScope::Project->value => $this->files->label(ConfigScope::Project),
             ],
-            // The file names ARE the explanation, so the hint says the part a
-            // filename cannot: that this is a session choice, not a setting.
-            hint: $this->translator->trans('for this session'),
+            // The file names ARE the explanation, so the hint says the parts a
+            // filename cannot: that this is a session choice rather than a
+            // setting, and anything else this page's scope decides.
+            hint: null === $also
+                ? $this->translator->trans('for this session')
+                : $this->translator->trans('for this session').' · '.$also,
         );
     }
 
@@ -69,9 +77,9 @@ final readonly class SettingsScopeRow
      *
      * @return list<SettingsRow>
      */
-    public function lead(array $rows): array
+    public function lead(array $rows, ?string $also = null): array
     {
-        $row = $this->row();
+        $row = $this->row($also);
 
         return null === $row ? $rows : [$row, ...$rows];
     }

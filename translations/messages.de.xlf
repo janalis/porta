@@ -2674,6 +2674,10 @@
         <source>overrides global</source>
         <target>überschreibt global</target>
       </trans-unit>
+      <trans-unit id="681">
+        <source>new plugins install here too</source>
+        <target>neue Plugins werden ebenfalls hier installiert</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
