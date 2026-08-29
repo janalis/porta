@@ -2682,6 +2682,10 @@
         <source>Saved to %global% — %project% overrides it in this project</source>
         <target>Salvato in %global% — %project% lo sostituisce in questo progetto</target>
       </trans-unit>
+      <trans-unit id="683">
+        <source>Cleared from %global% — %project% still overrides it here</source>
+        <target>Rimosso da %global% — %project% continua a sostituirlo qui</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

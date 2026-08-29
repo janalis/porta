@@ -255,4 +255,63 @@ final class SettingsGlobalScopeTest extends TestCase
             ],
         );
     }
+
+    /**
+     * Reset is a write too, and the same project override swallows it.
+     *
+     * Pressing `r` on a shadowed row in the global scope removes the user's
+     * value and changes nothing anyone can see, because the project goes on
+     * deciding it. The two write paths skipped this warning for exactly one
+     * commit, which is what this pins.
+     */
+    public function testClearingAShadowedGlobalValueSaysThatToo(): void
+    {
+        putenv('PATH=/nonexistent');
+        $this->home = new TempProject(['.porta/config.json' => json_encode(
+            ['settings' => ['stickyScroll' => false]],
+            \JSON_THROW_ON_ERROR,
+        )]);
+        $this->project = new TempProject([
+            'A.php' => "<?php\n\$x = 1;\n",
+            '.porta.json' => json_encode(['settings' => ['stickyScroll' => true]], \JSON_THROW_ON_ERROR),
+        ]);
+        putenv('PORTA_HOME='.$this->home->dir);
+
+        $this->runIde(
+            $this->project,
+            $this->project->path('A.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Global);
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                    $nav = $tui->getById('settings-nav');
+                    \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav sidebar');
+                    $this->selectSettingsSection($nav, 'interface');
+                    $this->frame($tui);
+                },
+                500 => function ($tui, $terminal): void {
+                    $form = $tui->getById('settings-form');
+                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
+                    $tui->setFocus($form);
+                    $this->selectSettingRow($form, 'Sticky scroll');
+                    $tui->handleInput('r'); // put it back to its default
+                    $this->frame($tui);
+                },
+                700 => function ($tui, $terminal, $ide): void {
+                    $written = json_decode((string) file_get_contents($this->home->path('.porta/config.json')), associative: true);
+                    $this->assertIsArray($written);
+                    $this->assertArrayNotHasKey(
+                        'stickyScroll',
+                        $written['settings'] ?? [],
+                        'the key was removed from the user file rather than set to the default',
+                    );
+                    $this->assertStringContainsString(
+                        'still overrides it here',
+                        Toasts::last($ide),
+                        'and the reset said the project still decides this',
+                    );
+                },
+            ],
+        );
+    }
 }

@@ -219,8 +219,27 @@ final class SettingsViewController implements ContributedView
     private function resetSetting(string $key): void
     {
         $this->activeSection()->reset($this->section, $key);
-        $this->provenance->invalidate(); // a file changed under the tags
-        $this->form->setRows($this->rowsForSection(), $this->nav->activeLabel());
+        $this->afterWrite($key, $this->shadowed->afterReset(...));
+    }
+
+    /**
+     * Everything that follows a write to a config file: the provenance tags
+     * are stale, the rows are stale, and this project may be about to ignore
+     * what just landed.
+     *
+     * Spelled once because the two write paths drifted the moment they were
+     * written separately — reset invalidated the tags and skipped the warning,
+     * so pressing `r` on a shadowed row removed a global value and said
+     * nothing while the project went on deciding it.
+     *
+     * @param \Closure(?SettingsRow): void $warn which of the two things just happened
+     */
+    private function afterWrite(string $key, \Closure $warn): void
+    {
+        $this->provenance->invalidate();
+        $rows = $this->rowsForSection();
+        $this->form->setRows($rows, $this->nav->activeLabel());
+        $warn($this->rowFor($rows, $key));
     }
 
     /**
@@ -237,12 +256,7 @@ final class SettingsViewController implements ContributedView
         // This view is the single funnel for every form edit, so it is the one
         // place that knows a config file may just have moved under the
         // provenance tags. Refusals do not reach here, and nothing was written.
-        $this->provenance->invalidate();
-        $rows = $this->rowsForSection();
-        $this->form->setRows($rows, $this->nav->activeLabel());
-        // Rebuilt rows, so the row now knows whether the project shadows what
-        // was just written to the user's file.
-        $this->shadowed->afterWrite($this->rowFor($rows, $key));
+        $this->afterWrite($key, $this->shadowed->afterSave(...));
 
         return true;
     }

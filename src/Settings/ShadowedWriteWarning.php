@@ -36,23 +36,49 @@ final readonly class ShadowedWriteWarning
     ) {}
 
     /**
-     * Warn when $row — freshly rebuilt after the write — reports that the
-     * project shadows it, and the write went to the global file.
-     *
-     * `shadowed` alone is not the trigger: with the scope on the project, a
-     * project value covering a global one is the ordinary case and exactly
-     * what the user asked for.
+     * A value was written to the user's file while this project pins the same
+     * key: the row shows what was just written, the project decides what is in
+     * effect, and next start the write disappears from view.
      */
-    public function afterWrite(?SettingsRow $row): void
+    public function afterSave(?SettingsRow $row): void
     {
-        if (ConfigScope::Global !== $this->scope->current() || null === $row || !$row->shadowed) {
+        $this->warnIf($row, 'Saved to %global% — %project% overrides it in this project');
+    }
+
+    /**
+     * A value was REMOVED from the user's file while this project still pins
+     * it, so the reset changed nothing anyone can see.
+     *
+     * Its own message: "saved" after pressing `r` names the wrong action, and
+     * the action is half of what makes the sentence explain anything.
+     */
+    public function afterReset(?SettingsRow $row): void
+    {
+        $this->warnIf($row, 'Cleared from %global% — %project% still overrides it here');
+    }
+
+    /**
+     * One question for both paths: after this write, does the PROJECT decide
+     * the value on screen?
+     *
+     * It reads `origin` rather than `shadowed`, and that is not
+     * interchangeable even though it looks it. After a save the two agree —
+     * the global file necessarily sets the key it was just given, so "both
+     * files set it" and "the project wins" are the same fact, and a mutation
+     * swapping them is equivalent rather than caught. After a RESET they
+     * disagree: clearing the global value is exactly what makes `shadowed`
+     * false, so a shadow test can never fire on the path that needs it most.
+     */
+    private function warnIf(?SettingsRow $row, string $message): void
+    {
+        if (ConfigScope::Project !== $row?->origin || ConfigScope::Global !== $this->scope->current()) {
             return;
         }
 
         // warn(), not flash(): this is a consequence, not a confirmation, and
-        // it has to outlast the "saved" toast it follows. notify() already
-        // requests a render.
-        $this->notifier->warn($this->translator->trans('Saved to %global% — %project% overrides it in this project', [
+        // it has to outlast the toast it follows. notify() already requests a
+        // render.
+        $this->notifier->warn($this->translator->trans($message, [
             '%global%' => $this->files->label(ConfigScope::Global),
             '%project%' => $this->files->label(ConfigScope::Project),
         ]));
