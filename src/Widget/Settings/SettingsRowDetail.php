@@ -93,7 +93,7 @@ final class SettingsRowDetail
         if (SettingsRowKind::Int === $row->kind) {
             return self::range($row->min, $row->max);
         }
-        if (SettingsRowKind::Choice !== $row->kind || null === $row->options) {
+        if (SettingsRowKind::Choice !== $row->kind || null === $row->options || !$row->listOptions) {
             return '';
         }
         // What it can BECOME: the current value already sits in the control,

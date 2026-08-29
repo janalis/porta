@@ -52,6 +52,17 @@ final readonly class SettingsRow
          */
         public ?ConfigScope $origin = null,
         public bool $shadowed = false,
+        /**
+         * Whether the detail clause may list the options this row is NOT on.
+         *
+         * True for an ordinary choice, where `< dark > · light/high-contrast`
+         * tells you what the stepper can reach. False where the options are
+         * DESTINATIONS rather than modes: naming the file you are not saving
+         * to, after the one you are, reads as a second destination instead of
+         * an alternative — and it is the first thing a narrow row truncates,
+         * so it is noise even when it is understood.
+         */
+        public bool $listOptions = true,
     ) {}
 
     /**

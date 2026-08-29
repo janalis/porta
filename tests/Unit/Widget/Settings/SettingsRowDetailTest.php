@@ -15,6 +15,27 @@ use Porta\Widget\Settings\SettingsRowDetail;
 final class SettingsRowDetailTest extends TestCase
 {
     /**
+     * A row whose options are DESTINATIONS does not list the one it is not on.
+     * "Save changes to < .porta.json > · ~/.porta/config.json" reads as two
+     * places it saves to, and on a narrow row the second is what truncates.
+     */
+    public function testARowCanRefuseToListItsOtherOptions(): void
+    {
+        $row = new SettingsRow(
+            key: 'k',
+            label: 'L',
+            kind: SettingsRowKind::Choice,
+            value: 'a',
+            restart: false,
+            options: ['a', 'b'],
+            hint: 'for this session',
+            listOptions: false,
+        );
+
+        $this->assertSame('for this session', $this->detail($row), 'the option list is gone, the hint is not');
+    }
+
+    /**
      * Silent for the ordinary case — a value the project file sets and nothing
      * else. A tag on every row is a tag on no row.
      */
