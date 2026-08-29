@@ -2686,6 +2686,10 @@
         <source>Cleared from %global% — %project% still overrides it here</source>
         <target>נוקה מ-%global% — %project% עדיין דורס אותו כאן</target>
       </trans-unit>
+      <trans-unit id="684">
+        <source>%plugin% stays off — %file% disables it</source>
+        <target>%plugin% נשאר כבוי — %file% מכבה אותו</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

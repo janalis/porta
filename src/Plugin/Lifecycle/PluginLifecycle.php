@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Porta\Plugin\Lifecycle;
 
 use Porta\Config\CommandRegistry;
+use Porta\Config\ConfigFiles;
+use Porta\Config\ConfigScope;
+use Porta\Config\IdeConfig;
 use Porta\Config\LiveKeybindings;
 use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
@@ -60,6 +63,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         private readonly PluginPagesSync $pages,
         private readonly EventDispatcherInterface $events,
         private readonly SettingsScope $scope,
+        private readonly ConfigFiles $files,
         private readonly Tui $tui,
         private readonly LspReconfigurer $lspReconfigurer,
         private readonly PortaJsonWriter $writer,
@@ -337,13 +341,23 @@ final class PluginLifecycle implements PluginLifecycleOps
 
             return;
         }
+        // A write that another layer overrules must not report success:
+        // "enabled" would be the only thing on screen, and it would be false.
+        $blockedBy = $this->layerStillDisabling($name);
         $message = match (true) {
-            $progress->activated => 'Plugin "%name%" enabled',
+            $progress->activated && null === $blockedBy => 'Plugin "%name%" enabled',
             !$progress->reported => 'Plugin "%name%" is not installed',
-            default => null, // an error already named the reason
+            default => null, // an error, or the warning below, already named the reason
         };
         if (null !== $message) {
             $this->notifier->flash($this->translator->trans($message, ['%name%' => $name]));
+        }
+        if (null !== $blockedBy) {
+            // Notifier::notify() already requests a render.
+            $this->notifier->warn($this->translator->trans('%plugin% stays off — %file% disables it', [
+                '%plugin%' => $name,
+                '%file%' => $this->files->label($blockedBy),
+            ]));
         }
         $this->flashCompanions('Also enabled: %names%', $required);
         $this->afterToggle();
@@ -623,6 +637,29 @@ final class PluginLifecycle implements PluginLifecycleOps
         }
         unset($this->disabled[$name]);
         $this->writer->persistPluginEnabled($this->scope->current(), $name);
+    }
+
+    /**
+     * The OTHER config file that still disables $name, or null when nothing
+     * does.
+     *
+     * `disabledPlugins` unions across the two layers on purpose — both files
+     * saying "not this one" have to agree, so a project cannot quietly
+     * re-enable what the user turned off for every project. The consequence is
+     * that pressing Enable there writes correctly and changes nothing, and a
+     * toggle that does nothing while reporting success is worse than one that
+     * fails.
+     *
+     * Asked of the EFFECTIVE config rather than of a file, so it answers what
+     * the merge actually decided instead of re-deriving the merge.
+     */
+    private function layerStillDisabling(string $name): ?ConfigScope
+    {
+        if (!\in_array($name, IdeConfig::load($this->files->rootDir())->disabledPlugins, strict: true)) {
+            return null;
+        }
+
+        return ConfigScope::Project === $this->scope->current() ? ConfigScope::Global : ConfigScope::Project;
     }
 
     /** Re-resolve the LSP servers when a toggled plugin provides one (and no --lsp override wins). */

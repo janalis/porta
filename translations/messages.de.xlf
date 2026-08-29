@@ -2686,6 +2686,10 @@
         <source>Cleared from %global% — %project% still overrides it here</source>
         <target>Aus %global% entfernt — %project% überschreibt es hier weiterhin</target>
       </trans-unit>
+      <trans-unit id="684">
+        <source>%plugin% stays off — %file% disables it</source>
+        <target>%plugin% bleibt aus — %file% deaktiviert es</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

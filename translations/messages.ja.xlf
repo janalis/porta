@@ -2686,6 +2686,10 @@
         <source>Cleared from %global% — %project% still overrides it here</source>
         <target>%global% から削除しました — ここでは引き続き %project% が優先されます</target>
       </trans-unit>
+      <trans-unit id="684">
+        <source>%plugin% stays off — %file% disables it</source>
+        <target>%plugin% は無効のままです — %file% が無効にしています</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -246,6 +246,67 @@ final class IdeConfigScopeMergeTest extends TestCase
         );
     }
 
+    /**
+     * `disabledPlugins` unions, so a project cannot un-disable what the user
+     * turned off globally — and the write that tries must not leave a config
+     * file behind for a change that did not happen.
+     *
+     * An empty `.porta.json` in a repository is worse than no file: it is
+     * committed, reviewed, and explains nothing.
+     */
+    public function testEnablingAGloballyDisabledPluginWritesNoProjectFile(): void
+    {
+        $this->home = new TempProject(['.porta/config.json' => json_encode(
+            ['disabledPlugins' => ['noisy']],
+            \JSON_THROW_ON_ERROR,
+        )]);
+        $this->project = new TempProject([]);
+        putenv('PORTA_HOME='.$this->home->dir);
+        $files = new ConfigFiles($this->project->dir, $this->home->dir);
+
+        $this->assertTrue(
+            new PortaJsonWriter($files)->persistPluginEnabled(ConfigScope::Project, 'noisy'),
+            'nothing to persist is not a failure',
+        );
+
+        $this->assertFileDoesNotExist($this->project->path('.porta.json'), 'no file was conjured to hold nothing');
+        $this->assertSame(
+            ['noisy'],
+            IdeConfig::load($this->project->dir)->disabledPlugins,
+            'and the union still says the plugin is off',
+        );
+    }
+
+    /** The same guard on the reset path: it too can empty a config to nothing. */
+    public function testResettingTheOnlySettingAProjectHasWritesNoFile(): void
+    {
+        $this->home = new TempProject([]);
+        $this->project = new TempProject([]);
+        putenv('PORTA_HOME='.$this->home->dir);
+        $files = new ConfigFiles($this->project->dir, $this->home->dir);
+
+        new PortaJsonWriter($files)->resetSetting(ConfigScope::Project, 'theme');
+
+        $this->assertFileDoesNotExist($this->project->path('.porta.json'));
+    }
+
+    /** But an existing file keeps existing, even once its last key goes. */
+    public function testAnExistingFileIsStillWrittenWhenItsLastKeyIsCleared(): void
+    {
+        $this->home = new TempProject([]);
+        $this->project = new TempProject(['.porta.json' => json_encode(
+            ['settings' => ['theme' => 'light']],
+            \JSON_THROW_ON_ERROR,
+        )]);
+        putenv('PORTA_HOME='.$this->home->dir);
+        $files = new ConfigFiles($this->project->dir, $this->home->dir);
+
+        new PortaJsonWriter($files)->resetSetting(ConfigScope::Project, 'theme');
+
+        $this->assertFileExists($this->project->path('.porta.json'), 'a file the user made is not deleted from under them');
+        $this->assertSame('dark', IdeConfig::load($this->project->dir)->settings['theme'], 'back to the default');
+    }
+
     /** A mistake in the global file must say so, not blame the project's. */
     public function testAWarningNamesTheFileItCameFrom(): void
     {

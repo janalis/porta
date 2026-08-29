@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
+use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\NavigatesSettings;
@@ -309,6 +310,81 @@ final class SettingsGlobalScopeTest extends TestCase
                         'still overrides it here',
                         Toasts::last($ide),
                         'and the reset said the project still decides this',
+                    );
+                },
+            ],
+        );
+    }
+
+    /**
+     * A plugin the user turned off globally cannot be turned back on for one
+     * project, and the toggle has to say so rather than appear to do nothing.
+     *
+     * `disabledPlugins` unions across the layers on purpose — both files
+     * saying "not this one" have to agree — so pressing Enable here writes
+     * correctly and changes nothing. That is the design; the silence was not.
+     */
+    public function testEnablingAPluginTheGlobalFileDisablesSaysWhyItStaysOff(): void
+    {
+        putenv('PATH=/nonexistent');
+        $this->home = new TempProject(['.porta/config.json' => json_encode(
+            ['disabledPlugins' => ['noisy']],
+            \JSON_THROW_ON_ERROR,
+        )]);
+        // An INSTALLED plugin: `disabledPlugins` is the opt-OUT list, which is
+        // what project and global plugins use. Bundled ones are opt-in through
+        // `enabledPlugins` and never reach this path.
+        $this->project = new TempProject([
+            'A.php' => "<?php\n\$x = 1;\n",
+            '.porta/plugins/noisy/plugin.php' => <<<'PHP'
+                <?php
+                use Porta\Plugin\Api\PluginApi;
+                use Porta\Plugin\Api\PortaPlugin;
+
+                return new class implements PortaPlugin {
+                    public function name(): string { return 'noisy'; }
+                    public function activate(PluginApi $api): void {}
+                };
+                PHP,
+        ]);
+        putenv('PORTA_HOME='.$this->home->dir);
+
+        $this->runIde(
+            $this->project,
+            $this->project->path('A.php'),
+            [
+                // Project scope, which is where a user would be doing this.
+                300 => function ($tui, $terminal, $ide): void {
+                    Services::resolve($ide, PluginLifecycle::class)->enable('noisy');
+                    $this->frame($tui);
+                },
+                500 => function ($tui, $terminal, $ide): void {
+                    $this->assertContains(
+                        'noisy',
+                        IdeConfig::load($this->project->dir)->disabledPlugins,
+                        'the union keeps it off, which is the documented rule',
+                    );
+                    $shown = implode(' | ', Toasts::all($ide));
+                    $this->assertStringContainsString(
+                        'stays off',
+                        $shown,
+                        'the toggle said so instead of appearing to work',
+                    );
+                    $this->assertStringContainsString(
+                        '~/.porta/config.json',
+                        $shown,
+                        'and named the file that is keeping it off',
+                    );
+                    // The whole point: "enabled" must never be on screen for a
+                    // toggle that did not enable anything.
+                    $this->assertStringNotContainsString(
+                        'enabled',
+                        $shown,
+                        'and never claimed success',
+                    );
+                    $this->assertFileDoesNotExist(
+                        $this->project->path('.porta.json'),
+                        'and no empty config file was left behind for it',
                     );
                 },
             ],

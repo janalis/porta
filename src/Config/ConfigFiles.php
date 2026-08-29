@@ -18,6 +18,12 @@ final readonly class ConfigFiles
         private ?string $home = null,
     ) {}
 
+    /** The project root these paths are relative to. */
+    public function rootDir(): string
+    {
+        return $this->rootDir;
+    }
+
     /** Resolves the home base from the environment, as everything else does. */
     public static function for(string $rootDir): self
     {

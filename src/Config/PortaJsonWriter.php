@@ -371,6 +371,15 @@ final readonly class PortaJsonWriter
         }
         $config = JsonFile::read($file) ?? [];
         $mutate($config);
+        // An edit that leaves nothing behind should not CONJURE a config file
+        // to hold it. Resetting the only key a fresh project ever set, or
+        // enabling a plugin that some other layer disables, both end here with
+        // an empty array — and writing `[]` litters the repository with a file
+        // the user never asked for and would then commit. Nothing to persist
+        // is not a failure, so this reports success.
+        if ([] === $config && !is_file($file)) {
+            return true;
+        }
 
         return $this->write($file, $config);
     }
