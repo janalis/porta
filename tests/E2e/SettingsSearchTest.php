@@ -214,4 +214,65 @@ final class SettingsSearchTest extends TestCase
             ],
         );
     }
+
+    /**
+     * A search result on a PLUGIN's page lands there.
+     *
+     * Plugin pages are the only ones whose section id is minted at runtime
+     * (`plugin:<name>`), so the reveal has to carry an id nothing declared
+     * ahead of time and resolve it against a section that claims a prefix
+     * rather than a fixed string. Every other page in the index is a constant.
+     */
+    public function testASearchHitOnAPluginsOwnPageRevealsItThere(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            'A.php' => "<?php\n\$x = 1;\n",
+            '.porta/plugins/noisy/plugin.php' => <<<'PHP'
+                <?php
+                use Porta\Plugin\Api\PluginApi;
+                use Porta\Plugin\Api\PortaPlugin;
+
+                return new class implements PortaPlugin {
+                    public function name(): string { return 'noisy'; }
+                    public function activate(PluginApi $api): void
+                    {
+                        $api->registerSetting('volume', 'Klaxon volume', 'int', 3, min: 1, max: 9);
+                    }
+                };
+                PHP,
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    $hits = Services::resolve($ide, SettingsSearchIndex::class)->search('klaxon', 10);
+
+                    $this->assertNotEmpty($hits, 'a plugin setting is in the index');
+                    $this->assertSame('Klaxon volume', $hits[0]->label);
+                    $this->assertSame('plugin:noisy', $hits[0]->section, 'addressed by the runtime-minted page id');
+
+                    Services::resolve($ide, SettingsSearchLauncher::class)->open();
+                    $tui->handleInput('klaxon');
+                },
+                500 => static function ($tui): void {
+                    $tui->handleInput("\r"); // pick it
+                },
+                700 => function ($tui, $terminal): void {
+                    $grid = $this->screenGrid($tui, $terminal);
+                    $this->assertNotNull($this->rowOf($grid, 'Klaxon volume'), "the plugin's own page is showing");
+
+                    $form = $tui->getById('settings-form');
+                    \assert($form instanceof SettingsFormWidget, description: 'the settings form is the content pane');
+                    $this->assertStringContainsString(
+                        'Klaxon volume',
+                        $this->selectedSettingRow($form),
+                        'with the picked row selected',
+                    );
+                },
+            ],
+        );
+    }
 }
