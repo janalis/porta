@@ -116,6 +116,15 @@ final class SettingsSearchIndex
         $entries = [];
         foreach ($this->pages->all() as $page) {
             foreach ($this->pages->sectionFor($page->id)->rows($page->id) as $row) {
+                // The scope chooser leads EVERY page that writes a file, so
+                // indexing it puts one identical hit per page in front of
+                // whatever the user was looking for — "save" returned nineteen
+                // copies of it and buried "Format on save". It is also the one
+                // row search cannot usefully take you to: it is already on the
+                // page you are on, whichever that is.
+                if (SettingsScopeRow::KEY === $row->key) {
+                    continue;
+                }
                 $haystack = $page->label.' '.$row->label;
                 $entries[] = [
                     'entry' => new SettingsSearchEntry($page->id, $row->key, $row->label, $page->label),

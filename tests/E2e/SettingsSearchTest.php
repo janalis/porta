@@ -6,6 +6,8 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Settings\SettingsSearchEntry;
+use Porta\Settings\SettingsSearchIndex;
 use Porta\Settings\SettingsSearchLauncher;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
@@ -174,6 +176,40 @@ final class SettingsSearchTest extends TestCase
                     $form = $tui->getById('settings-form');
                     \assert($form instanceof SettingsFormWidget, description: 'the settings form is the content pane while the view is open');
                     $this->assertStringContainsString('Sticky scroll', $this->selectedSettingRow($form), 'landed on the row');
+                },
+            ],
+        );
+    }
+
+    /**
+     * The scope chooser is not a search result.
+     *
+     * It leads every page that writes a file, so indexing it put one identical
+     * hit per page — nineteen of them — in front of whatever the user was
+     * actually looking for. It is also the one row a search cannot usefully
+     * take you to: it is already on whichever page you are on.
+     *
+     * Its own words are the ones that expose this, which is why the query is
+     * "save" and not something neutral.
+     */
+    public function testTheScopeChooserDoesNotFloodResultsWithItself(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    $index = Services::resolve($ide, SettingsSearchIndex::class);
+                    $labels = array_map(
+                        static fn (SettingsSearchEntry $e): string => $e->label,
+                        $index->search('save', 60),
+                    );
+
+                    $this->assertNotContains('Save changes to', $labels, 'the chooser is not indexed');
+                    $this->assertContains('Format on save (LSP)', $labels, 'and a real setting named for the query is findable');
                 },
             ],
         );
