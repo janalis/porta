@@ -46,6 +46,16 @@ and were hardened against timing: the git plugin's
 and the async URL-open E2e in `IdeDocsTest`. If one fails under heavy machine
 load, re-run it with `--filter` before assuming a regression.
 
+The git one flaked again on 2026-08-30, at `--processes=8` with a runaway
+`fseventsd` at 99% CPU, and passed in isolation immediately after. Its own
+history sets the next step — *"a fourth flake means an isBusy-style barrier, not
+another bump"* (`264f5b75`) — and that step is now due. It has not been taken,
+deliberately: the barrier already awaits `stagedState() === 'none'`, which
+cannot be true until the status refresh has landed, so a lane check adds nothing
+to *that* condition, and no change here can be validated without a reproduction.
+`bin/porta-dev flake:scan` is the way to get one — establish this test's rate
+under load first, then escalate against a number.
+
 **`composer coverage:check`** — **100% line coverage**, over `src/` *and* over
 every plugin's own `src/`. A new branch with no covering test fails the gate. It
 runs two passes: the parallel one over `src`, then the serial
