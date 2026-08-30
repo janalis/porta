@@ -43,18 +43,38 @@ Every commit passes all six. CI (`.github/workflows/ci.yml`) runs them.
 **`composer test`** — green. Two tests drive real git and opener subprocesses
 and were hardened against timing: the git plugin's
 `GitViewControllerTest::testLineStagingAndUnstagingThroughTheDiffPane`
-and the async URL-open E2e in `IdeDocsTest`. If one fails under heavy machine
-load, re-run it with `--filter` before assuming a regression.
+and the async URL-open E2e in `IdeDocsTest`.
 
-The git one flaked again on 2026-08-30, at `--processes=8` with a runaway
-`fseventsd` at 99% CPU, and passed in isolation immediately after. Its own
-history sets the next step — *"a fourth flake means an isBusy-style barrier, not
-another bump"* (`264f5b75`) — and that step is now due. It has not been taken,
-deliberately: the barrier already awaits `stagedState() === 'none'`, which
-cannot be true until the status refresh has landed, so a lane check adds nothing
-to *that* condition, and no change here can be validated without a reproduction.
-`bin/porta-dev flake:scan` is the way to get one — establish this test's rate
-under load first, then escalate against a number.
+The git one was **not a timing problem at all**, and four rounds of treating it
+as one is why it took until 2026-08-30 to find out. Reproduced at 2 failures in
+70 runs under 20 CPU burners, it never failed *slowly*: it spent the full 20s
+budget waiting for an unstage that had never been requested. Dumping the pane at
+the moment of failure showed it empty — `No changes` — with `shownDocument`
+null, so the space that was supposed to unstage a hunk hit
+`stageSelection`'s null guard and returned in silence.
+
+The cause was a product race, not a test one. `git status` calls overlap in
+ordinary use (a staging completion refreshes while the quiet poll's status is
+still out) and their answers came back in **arrival** order, which under load is
+not issue order. Applying the older answer republished the pre-staging entry
+list; the reload it drove then picked its side from that stale entry, asked for
+the *worktree* diff of a now-fully-staged file, and got nothing.
+`GitViewController` carries a generation counter for status and for diff loads
+now, and a superseded answer is dropped. Rate after: **0 in 140** under the same
+load.
+
+Two things worth keeping from it. The escalation the history predicted — *"a
+fourth flake means an isBusy-style barrier"* (`264f5b75`) — would not have
+worked: a lane check says "something is running", and ordering two answers that
+are both already back needs "is this still the newest one", which is a different
+fact. And the settle loop that was supposed to make this safe waited for the
+diff to *hold still for 8 turns*, which an empty pane does perfectly. **Stability
+is not correctness**; a barrier that accepts any value that stops changing
+accepts the broken one, and a loaded machine is exactly what produces it.
+
+`bin/porta-dev flake:scan` gets you a rate for the suite; for one test, a loop of
+`--filter` runs under `yes` burners is faster and is what produced the numbers
+above. Grade every flake change against a before and an after at the same load.
 
 **`composer coverage:check`** — **100% line coverage**, over `src/` *and* over
 every plugin's own `src/`. A new branch with no covering test fails the gate. It
