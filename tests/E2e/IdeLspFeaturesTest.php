@@ -267,8 +267,14 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(91, 0);
                     $tui->handleInput("\x00"); // ctrl+space -> mock replies null
                 },
+                // This gap stays, and the reason is worth writing down: a
+                // null completion response produces NOTHING — no popup, no
+                // flash, no buffer change — so "the popup is closed" is equally
+                // true before the server has answered at all. There is no
+                // positive to await here, only the absence of one, and the
+                // gap is what makes the absence mean anything.
                 400 => function ($tui): void {
-                    $this->assertFalse($tui->getById('editor')->isCompletionOpen());
+                    $this->assertFalse($tui->getById('editor')->isCompletionOpen(), 'a null result opens no popup');
                 },
             ],
         );
@@ -384,17 +390,24 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(1, 0);
                     $tui->handleInput("\x00"); // ctrl+space
                 },
-                400 => function ($tui): void {
+                200 => function ($tui): void {
+                    // The popup opens on the completion RESPONSE, not the keypress.
                     $editor = $tui->getById('editor');
-                    $this->assertTrue($editor->isCompletionOpen());
+                    $this->await($editor->isCompletionOpen(...), what: 'the completion popup to open');
+
                     $tui->handleInput("\x1b[B"); // -> str_replace
                     $tui->handleInput("\x1b[B"); // -> trim
                     $tui->handleInput("\x1b[B"); // -> sprintf (snippet)
                     $tui->handleInput("\r"); // accept
                 },
-                700 => function ($tui): void {
+                300 => function ($tui): void {
+                    // Accepting resolves the item first; the expansion lands
+                    // when that answers.
                     $doc = $tui->getById('editor')->getDocument();
-                    $this->assertSame('sprintf(format, args)', $doc->getLine(1), 'snippet expanded');
+                    $this->await(
+                        static fn (): bool => 'sprintf(format, args)' === $doc->getLine(1),
+                        what: 'the snippet to expand into the buffer',
+                    );
                     $this->assertSame('format', $doc->getSelectedText(), 'first tab stop selected');
                 },
             ],
@@ -526,10 +539,15 @@ final class IdeLspFeaturesTest extends TestCase
                     $doc->setCursor(1, 8, selection: SelectionMode::Keep); // select "messy( )"
                     $tui->handleInput("\x1b\x0c"); // ctrl+alt+l reformat
                 },
-                400 => function ($tui): void {
+                200 => function ($tui): void {
+                    // rangeFormatting replaced only the selection with the
+                    // marker — await the edit, then the untouched line means
+                    // "outside the range", not "not there yet".
                     $doc = $tui->getById('editor')->getDocument();
-                    // rangeFormatting replaced only the selection with the marker.
-                    $this->assertStringContainsString('FORMATTED', $doc->getLine(1));
+                    $this->await(
+                        static fn (): bool => str_contains($doc->getLine(1), 'FORMATTED'),
+                        what: 'the range formatting to reach the buffer',
+                    );
                     $this->assertSame('keep();', $doc->getLine(2), 'code outside the selection untouched');
                 },
             ],
@@ -669,8 +687,13 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(0, 0);
                     $tui->handleInput("\x1b\r");
                 },
-                300 => function ($tui): void {
-                    $this->assertTrue(EditorState::pickerOpen($tui->getById('editor')));
+                200 => function ($tui): void {
+                    // The picker opens on the codeAction response.
+                    $editor = $tui->getById('editor');
+                    $this->await(
+                        static fn (): bool => EditorState::pickerOpen($editor),
+                        what: 'the quick-fix picker to open',
+                    );
                     $tui->tick();
                     $tui->handleInput("\x1b"); // close without applying
                 },
@@ -696,9 +719,13 @@ final class IdeLspFeaturesTest extends TestCase
 
                     $tui->handleInput("\x1b[24;5~"); // ctrl+f12
                 },
-                300 => function ($tui, $terminal): void {
+                200 => function ($tui, $terminal): void {
+                    // The peek popup opens on the definition response.
                     $editor = $tui->getById('editor');
-                    $this->assertTrue(EditorState::pickerOpen($editor));
+                    $this->await(
+                        static fn (): bool => EditorState::pickerOpen($editor),
+                        what: 'the peek popup to open',
+                    );
                     // The symbols are an LSP round trip: await them landing in
                     // the picker instead of a fixed gap.
                     $this->awaitPainted($tui, $terminal, 'greet');
@@ -709,9 +736,13 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->handleInput("\x1b[B"); // -> greet
                     $tui->handleInput("\r");
                 },
-                450 => function ($tui): void {
+                300 => function ($tui): void {
                     // greet's selectionRange starts at line 4
-                    $this->assertSame(4, $tui->getById('editor')->getDocument()->getCursorLine());
+                    $doc = $tui->getById('editor')->getDocument();
+                    $this->await(
+                        static fn (): bool => 4 === $doc->getCursorLine(),
+                        what: 'the structure pick to move the caret',
+                    );
                 },
             ],
         );
@@ -766,7 +797,7 @@ final class IdeLspFeaturesTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                450 => function ($tui, $terminal): void {
+                200 => function ($tui, $terminal): void {
                     $this->assertTrue($tui->getById('editor')->isSearchOverlayOpen(), 'go-to-symbol opens the centered picker');
                     // The workspace-symbol query is an LSP round trip: await it
                     // landing instead of a fixed gap.
@@ -776,9 +807,13 @@ final class IdeLspFeaturesTest extends TestCase
                     $this->assertStringContainsString('Greeter', $screen);
                     $tui->handleInput("\r"); // jump
                 },
-                600 => function ($tui): void {
-                    $this->assertStringEndsWith('Target.php', (string) $tui->getById('editor')->getFilePath());
-                    $this->assertSame(3, $tui->getById('editor')->getDocument()->getCursorLine());
+                300 => function ($tui): void {
+                    $editor = $tui->getById('editor');
+                    $this->await(
+                        static fn (): bool => str_ends_with((string) $editor->getFilePath(), 'Target.php'),
+                        what: 'the symbol pick to open its file',
+                    );
+                    $this->assertSame(3, $editor->getDocument()->getCursorLine());
                 },
             ],
         );
@@ -808,10 +843,10 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->handleInput("\x1b[B"); // B.php
                     $tui->handleInput("\r"); // open B.php
                 },
-                300 => static function ($tui): void {
+                200 => static function ($tui): void {
                     $tui->handleInput("\x1b6"); // alt+6 problems
                 },
-                450 => function ($tui, $terminal): void {
+                300 => function ($tui, $terminal): void {
                     $this->assertSame('results', $tui->getFocus()?->getId());
                     // Diagnostics for both buffers are async LSP notifications:
                     // await them landing instead of a fixed gap.
@@ -828,9 +863,13 @@ final class IdeLspFeaturesTest extends TestCase
                     $this->assertStringContainsString('B.php', $screen);
                     $tui->handleInput("\r"); // jump to first problem
                 },
-                600 => function ($tui): void {
+                400 => function ($tui): void {
                     // First row sorts to A.php; jumping opens it in the editor
-                    $this->assertStringEndsWith('A.php', (string) $tui->getById('editor')->getFilePath());
+                    $editor = $tui->getById('editor');
+                    $this->await(
+                        static fn (): bool => str_ends_with((string) $editor->getFilePath(), 'A.php'),
+                        what: 'the problems-row jump to open its file',
+                    );
                     $this->assertSame('editor', $tui->getFocus()?->getId());
                     $this->assertTrue($tui->getById('results')->isOpen(), 'the pane stays open after the jump');
                 },
@@ -891,7 +930,7 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(1, 4);
                     $tui->handleInput("\x1b[105;6u"); // ctrl+shift+i peek
                 },
-                300 => function ($tui, $terminal): void {
+                200 => function ($tui, $terminal): void {
                     $editor = $tui->getById('editor');
                     $this->assertTrue(EditorState::pickerOpen($editor));
                     $tui->tick();
@@ -901,9 +940,12 @@ final class IdeLspFeaturesTest extends TestCase
                     $this->assertStringEndsWith('Demo.php', (string) $editor->getFilePath(), 'peek did not switch buffers');
                     $tui->handleInput("\r"); // pick a context line -> jump for real
                 },
-                450 => function ($tui): void {
+                300 => function ($tui): void {
                     $editor = $tui->getById('editor');
-                    $this->assertStringEndsWith('Target.php', (string) $editor->getFilePath(), 'Enter jumps into the file');
+                    $this->await(
+                        static fn (): bool => str_ends_with((string) $editor->getFilePath(), 'Target.php'),
+                        what: 'Enter to jump into the file',
+                    );
                 },
             ],
         );
@@ -1228,9 +1270,13 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->handleInput("\x1b[<16;45;5M");
                     $tui->handleInput("\x1b[<16;45;5m");
                 },
-                600 => function ($tui): void {
+                200 => function ($tui): void {
+                    // The jump lands on the definition RESPONSE.
                     $editor = $tui->getById('editor');
-                    $this->assertStringEndsWith('Target.php', (string) $editor->getFilePath(), 'ctrl+click jumped to the declaration');
+                    $this->await(
+                        static fn (): bool => str_ends_with((string) $editor->getFilePath(), 'Target.php'),
+                        what: 'ctrl+click to jump to the declaration',
+                    );
                     $this->assertSame(3, $editor->getDocument()->getCursorLine());
                     $this->assertFalse($editor->getDocument()->hasSelection(), 'a ctrl+click is a navigation, not a selection start');
                     $this->assertSame('editor', $tui->getFocus()?->getId());
@@ -1264,12 +1310,16 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(86, 2);
                     $tui->handleInput("\x1b[24~"); // F12: declaration or usages
                 },
-                400 => function ($tui): void {
+                200 => function ($tui, $terminal): void {
+                    // "Still on Tall.php" is equally true before F12 has been
+                    // answered at all, so the usages panel — the thing that
+                    // proves the server replied — has to land first.
                     $editor = $tui->getById('editor');
+                    $this->awaitPainted($tui, $terminal, 'Usages');
                     $this->assertStringEndsWith('Tall.php', (string) $editor->getFilePath(), 'on the declaration: no jump');
                     $tui->handleInput("\x1b"); // close the usages panel
                 },
-                550 => static function ($tui): void {
+                300 => static function ($tui): void {
                     $tui->tick();
                     // Lines 88-89: on the declaration, but zero usages.
                     $tui->getById('editor')->getDocument()->setCursor(88, 2);
