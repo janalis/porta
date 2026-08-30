@@ -87,6 +87,15 @@ final class FlakeScanCommand extends Command
 
         $io->title(\sprintf('Flake scan: %d runs%s', $runs, null !== $processes ? \sprintf(' at %d workers', $processes) : ''));
 
+        // Leak reports accumulate in one file across every worker, and no
+        // worker can know whether it is the first — so the delta over a run is
+        // the only readable measure. See LeakLog.
+        $configuredLeakLog = getenv('PORTA_LEAK_LOG');
+        $leakLog = \is_string($configuredLeakLog) && '' !== $configuredLeakLog
+            ? $configuredLeakLog
+            : \dirname(__DIR__, levels: 2).'/.phpunit.cache/leaks.log';
+        $leaks = 0;
+
         /** @var array<string, int> $failures test id => how many runs it failed in */
         $failures = [];
         /** @var list<float> $durations */
@@ -95,11 +104,13 @@ final class FlakeScanCommand extends Command
 
         for ($run = 1; $run <= $runs; ++$run) {
             $log = (string) tempnam(sys_get_temp_dir(), prefix: 'porta-flake-').'.xml';
+            $leaksBefore = is_file($leakLog) ? (int) filesize($leakLog) : 0;
             $started = microtime(as_float: true);
             $exit = ($this->runner)($log, $processes, $testsuite);
             $durations[] = microtime(as_float: true) - $started;
 
             $failed = $this->failedTests($log);
+            $leaks += $this->leaksSince($leakLog, $leaksBefore);
             if (is_file($log)) {
                 unlink($log);
             }
@@ -120,7 +131,7 @@ final class FlakeScanCommand extends Command
             ));
         }
 
-        $this->report($io, $failures, $durations, $runs, $red);
+        $this->report($io, $failures, $durations, $runs, $red, $leaks, $leakLog);
 
         // Always 0: this is an instrument, not a gate. A rate is a measurement
         // to compare, and failing the command would make it unusable as the
@@ -146,6 +157,27 @@ final class FlakeScanCommand extends Command
         exec(implode(' ', array_map(escapeshellarg(...), $argv)).' >/dev/null 2>&1', $ignored, $exit);
 
         return $exit;
+    }
+
+    /**
+     * How many `[loop-leak]`/`[env-leak]` lines this run appended.
+     *
+     * A rising count is the leading indicator of the failure this instrument
+     * exists for: a test that walked out mid-flight leaves state behind, and
+     * the damage lands in whatever runs next. Reported beside the flake rate
+     * because the two move together.
+     */
+    private function leaksSince(string $path, int $offset): int
+    {
+        if (!is_file($path)) {
+            return 0;
+        }
+        // Read from the offset in one call rather than fopen/fseek: the same
+        // read without a failure branch no test can reach, since the file's
+        // existence is already established above.
+        $added = (string) file_get_contents($path, offset: $offset);
+
+        return substr_count($added, needle: "\n");
     }
 
     /**
@@ -186,7 +218,7 @@ final class FlakeScanCommand extends Command
      * @param array<string, int> $failures
      * @param list<float>        $durations
      */
-    private function report(SymfonyStyle $io, array $failures, array $durations, int $runs, int $red): void
+    private function report(SymfonyStyle $io, array $failures, array $durations, int $runs, int $red, int $leaks, string $leakLog): void
     {
         $io->newLine();
         if ([] === $failures) {
@@ -215,6 +247,11 @@ final class FlakeScanCommand extends Command
             $durations[0],
             $durations[intdiv(\count($durations), num2: 2)],
             $durations[\count($durations) - 1],
+        ));
+        $io->writeln(\sprintf(
+            '  leak reports across all runs: <info>%d</info>   (%s)',
+            $leaks,
+            0 === $leaks ? 'clean' : 'read them in '.$leakLog,
         ));
         $io->writeln('  <comment>Compare rates only against a scan at the same --processes.</comment>');
     }

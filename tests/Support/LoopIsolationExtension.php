@@ -40,9 +40,11 @@ use Revolt\EventLoop\Driver\StreamSelectDriver;
  * identifier by hand: same outcome for the next test, without the WeakMap
  * reset.
  *
- * **The report is invisible under `composer test`**: paratest swallows worker
- * STDERR (measured — an unconditional write from here never reaches the log).
- * Use `composer test:serial` to read it.
+ * **The STDERR report is invisible under `composer test`**: paratest swallows
+ * worker STDERR (measured — an unconditional write from here never reaches the
+ * log). It therefore goes through {@see LeakLog}, which also appends to a file
+ * that survives the parallel run; `composer test:serial` remains the way to
+ * read it inline, in a reproducible order.
  */
 final class LoopIsolationExtension implements Extension
 {
@@ -73,7 +75,7 @@ final class LoopIsolationExtension implements Extension
     {
         $leaked = EventLoop::getIdentifiers();
         if ([] !== $leaked) {
-            fwrite(STDERR, \sprintf("[loop-leak] %s: %d identifier(s) leaked\n", $testId, \count($leaked)));
+            LeakLog::append(\sprintf("[loop-leak] %s: %d identifier(s) leaked\n", $testId, \count($leaked)));
         }
         if (!EventLoop::getDriver()->isRunning()) {
             EventLoop::setDriver(new StreamSelectDriver());

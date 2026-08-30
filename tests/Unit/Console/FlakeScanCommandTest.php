@@ -6,6 +6,8 @@ namespace Porta\Tests\Unit\Console;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Console\FlakeScanCommand;
+use Porta\Tests\Support\LeakLog;
+use Porta\Tests\Support\TempProject;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 
@@ -142,6 +144,71 @@ final class FlakeScanCommandTest extends TestCase
 
         $this->assertSame(Command::SUCCESS, $status);
         $this->assertStringContainsString('a crash or wedge', $tester->getDisplay(), 'a run that produced no log is red, not green');
+    }
+
+    /**
+     * The leak count is read from the file the isolation extensions append to,
+     * and honours the same override they use — so a scan can be pointed at a
+     * scratch log instead of the shared one.
+     *
+     * A path that does not exist yet is the ordinary first-run case, and must
+     * read as zero leaks rather than failing the scan.
+     */
+    public function testItReportsLeaksFromTheOverriddenLogAndToleratesItsAbsence(): void
+    {
+        $project = new TempProject([]);
+        $log = $project->path('scratch-leaks.log');
+        $previous = getenv(LeakLog::PATH_ENV);
+        putenv(LeakLog::PATH_ENV.'='.$log);
+
+        try {
+            $tester = new CommandTester(new FlakeScanCommand(
+                static function (string $junit) use ($log): int {
+                    file_put_contents($junit, data: '<?xml version="1.0"?><testsuites/>');
+                    // What a leaking test would have appended during the run.
+                    LeakLog::append("[loop-leak] A\\Test::testOne: 1 identifier(s) leaked\n");
+                    LeakLog::append("[env-leak] A\\Test::testOne: PATH\n");
+
+                    return 0;
+                },
+            ));
+
+            $tester->execute(['--runs' => 1]);
+
+            $this->assertStringContainsString('leak reports across all runs: 2', $tester->getDisplay());
+            $this->assertStringContainsString($log, $tester->getDisplay(), 'and says where to read them');
+        } finally {
+            putenv(\is_string($previous) ? LeakLog::PATH_ENV.'='.$previous : LeakLog::PATH_ENV);
+        }
+    }
+
+    /**
+     * A run in which nothing leaked never creates the log at all, which is the
+     * ordinary case on a clean checkout and must read as zero rather than as a
+     * missing-file error.
+     */
+    public function testALogThatWasNeverWrittenReadsAsZeroLeaks(): void
+    {
+        $project = new TempProject([]);
+        $previous = getenv(LeakLog::PATH_ENV);
+        putenv(LeakLog::PATH_ENV.'='.$project->path('never-written.log'));
+
+        try {
+            $tester = new CommandTester(new FlakeScanCommand(
+                static function (string $junit): int {
+                    file_put_contents($junit, data: '<?xml version="1.0"?><testsuites/>');
+
+                    return 0;
+                },
+            ));
+
+            $tester->execute(['--runs' => 1]);
+
+            $this->assertStringContainsString('leak reports across all runs: 0', $tester->getDisplay());
+            $this->assertStringContainsString('clean', $tester->getDisplay());
+        } finally {
+            putenv(\is_string($previous) ? LeakLog::PATH_ENV.'='.$previous : LeakLog::PATH_ENV);
+        }
     }
 
     /** The worker count is echoed, because a rate is meaningless without it. */

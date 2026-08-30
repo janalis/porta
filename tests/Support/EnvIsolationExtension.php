@@ -104,7 +104,7 @@ final class EnvIsolationExtension implements Extension
         $_ENV = self::$pristineSuperglobal;
 
         if ([] !== $leaked) {
-            fwrite(STDERR, \sprintf("[env-leak] %s: %s\n", $testId, implode(', ', $leaked)));
+            LeakLog::append(\sprintf("[env-leak] %s: %s\n", $testId, implode(', ', $leaked)));
         }
     }
 
