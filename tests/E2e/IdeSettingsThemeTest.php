@@ -83,13 +83,16 @@ final class IdeSettingsThemeTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                300 => static function ($tui, $terminal, $ide): void {
+                100 => static function ($tui, $terminal, $ide): void {
                     // Open via the command registry (the ide_settings closure),
                     // then the mouse steps below exercise the routing.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                 },
-                500 => function ($tui, $terminal): void {
-                    $tui->tick();
+                200 => function ($tui, $terminal): void {
+                    // A bare tick() is not a frame, and every assertion below
+                    // reads the ACCUMULATED output — so without a real paint
+                    // they were reading whatever the boot happened to leave.
+                    $this->awaitPainted($tui, $terminal, 'Inline diagnostics');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertSame('settings-form', $tui->getFocus()?->getId(), 'settings opened focused on the General form');
                     $this->assertStringContainsString('General', $screen, 'the nav sidebar lists sections');
@@ -110,25 +113,26 @@ final class IdeSettingsThemeTest extends TestCase
                     // Hover the nav sidebar (a tint).
                     $tui->handleInput("\x1b[<35;5;3M");
                 },
-                700 => static function ($tui): void {
-                    $tui->tick();
+                300 => function ($tui): void {
+                    // frame(), not tick(): the click below is hit-tested against
+                    // the rects the LAST RENDER produced.
+                    $this->frame($tui);
                     // Click the 'Keybindings' entry in the nav (screen row 5, after
                     // General + Interface + Highlighting).
                     $tui->handleInput("\x1b[<0;5;5M");
                     $tui->handleInput("\x1b[<0;5;5m");
                 },
-                900 => function ($tui, $terminal): void {
-                    $tui->tick();
+                400 => function ($tui, $terminal): void {
+                    $this->awaitPainted($tui, $terminal, 'actions');
                     $this->assertSame('settings-nav', $tui->getFocus()?->getId(), 'clicking the nav focuses it');
-                    $this->assertStringContainsString('actions', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the keybindings list shows');
                     // Hover + wheel + click the keybindings list (content pane), a nav miss too.
                     $tui->handleInput("\x1b[<35;40;5M"); // hover a list row (nav clears)
                     $tui->handleInput("\x1b[<65;40;5M"); // wheel down over the list
                     $tui->handleInput("\x1b[<0;40;5M"); // click a list row
                     $tui->handleInput("\x1b[<0;40;5m");
                 },
-                1100 => static function ($tui): void {
-                    $tui->tick();
+                500 => function ($tui): void {
+                    $this->frame($tui);
                     // Select PHP in the nav (screen row 8, after Interface +
                     // Highlighting + Plugins and the Languages header) → the
                     // content shows its indent rows. Two rows higher than it
@@ -137,10 +141,9 @@ final class IdeSettingsThemeTest extends TestCase
                     $tui->handleInput("\x1b[<0;5;8M");
                     $tui->handleInput("\x1b[<0;5;8m");
                 },
-                1300 => function ($tui, $terminal): void {
-                    $tui->tick();
+                600 => function ($tui, $terminal): void {
+                    $this->awaitPainted($tui, $terminal, 'Indent style');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Indent style', $screen, 'the PHP section shows indent settings');
                     $this->assertStringContainsString('LSP server', $screen, 'and its LSP server row');
                     // Park the selection on a row we are not about to actuate.
                     // Switching pages CLAMPS the selection rather than resetting
@@ -172,12 +175,11 @@ final class IdeSettingsThemeTest extends TestCase
                     $tui->handleInput("\r"); // commit → persists + reconfigures the LSP pool live
                     $tui->handleInput("\x1b[21~"); // F10 opens the app menu OVER the settings view
                 },
-                1500 => function ($tui, $terminal): void {
-                    $tui->tick();
+                700 => function ($tui, $terminal): void {
+                    $this->awaitPainted($tui, $terminal, 'Settings…');
                     $tui->handleInput("\x1b[<35;5;3M"); // hover a dropdown row: the menu rides along
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertSame('menu', $tui->getFocus()?->getId(), 'F10 focused the menu bar');
-                    $this->assertStringContainsString('Settings…', $screen, 'the File dropdown composites over the settings panes');
                     $this->assertStringContainsString('Save File', $screen);
                 },
             ],

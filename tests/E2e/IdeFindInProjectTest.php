@@ -85,13 +85,13 @@ final class IdeFindInProjectTest extends TestCase
             $project,
             $project->path('src/A.php'), // the active file drives Directory/Current File scope
             [
-                200 => static function ($tui): void {
+                100 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
                     foreach (str_split('tok') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
-                600 => function ($tui) use ($panelText): void {
+                200 => function ($tui) use ($panelText): void {
                     // Each scope change re-runs the grep subprocess, and a
                     // stale result set isn't cleared until the new one lands —
                     // so await the COMBINED presence/absence the new scope
@@ -103,7 +103,7 @@ final class IdeFindInProjectTest extends TestCase
                     $this->assertStringContainsString('other/B.php', $panel);
                     $tui->handleInput("\x1bs"); // alt+s → Directory (src/)
                 },
-                800 => function ($tui) use ($panelText): void {
+                300 => function ($tui) use ($panelText): void {
                     $this->await(static fn (): bool => str_contains($panelText($tui), 'src/C.php') && !str_contains($panelText($tui), 'other/B.php'), what: 'the directory-scoped search to land');
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Directory', $panel);
@@ -112,7 +112,7 @@ final class IdeFindInProjectTest extends TestCase
                     $this->assertStringNotContainsString('other/B.php', $panel, 'directory scope drops the sibling folder');
                     $tui->handleInput("\x1bs"); // alt+s → Current File (src/A.php)
                 },
-                1000 => function ($tui) use ($panelText): void {
+                400 => function ($tui) use ($panelText): void {
                     $this->await(static fn (): bool => str_contains($panelText($tui), 'src/A.php') && !str_contains($panelText($tui), 'src/C.php'), what: 'the current-file-scoped search to land');
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Current File', $panel);
@@ -120,29 +120,36 @@ final class IdeFindInProjectTest extends TestCase
                     $this->assertStringNotContainsString('src/C.php', $panel, 'current-file scope keeps only the open file');
                     $tui->handleInput("\x1bs"); // alt+s → Open Files (only src/A.php is open)
                 },
-                1200 => function ($tui) use ($panelText): void {
-                    // Open Files and Current File show identical content here
-                    // (only src/A.php is open either way) — nothing new to await.
-                    $tui->tick();
+                500 => function ($tui) use ($panelText): void {
+                    // Open Files and Current File list identical FILES here
+                    // (only src/A.php is open either way), which is why this
+                    // step used to settle for a bare tick. The scope LABEL is
+                    // still a new observable, and it is the one thing the
+                    // keypress has to produce — so await that.
+                    $this->await(
+                        static fn (): bool => str_contains($panelText($tui), 'Scope: Open Files'),
+                        what: 'the open-files scope to take effect',
+                    );
                     $panel = $panelText($tui);
-                    $this->assertStringContainsString('Scope: Open Files', $panel);
                     $this->assertStringContainsString('src/A.php', $panel);
                     $this->assertStringNotContainsString('src/C.php', $panel, 'open-files scope keeps only the open buffers');
                     $tui->handleInput("\x1bs"); // alt+s → Module (no composer.json → whole project)
                 },
-                1400 => function ($tui) use ($panelText): void {
+                600 => function ($tui) use ($panelText): void {
                     $this->await(static fn (): bool => str_contains($panelText($tui), 'other/B.php'), what: 'the module-scoped (whole-project fallback) search to land');
                     $panel = $panelText($tui);
                     $this->assertStringContainsString('Scope: Module', $panel);
                     $this->assertStringContainsString('other/B.php', $panel, 'no package root → module falls back to the whole project');
                     $tui->handleInput("\x1bs"); // alt+s → Whole Project (wraps)
                 },
-                1600 => function ($tui) use ($panelText): void {
-                    // Module (fallback) and Whole Project show identical
-                    // content here — nothing new to await.
-                    $tui->tick();
+                700 => function ($tui) use ($panelText): void {
+                    // Same again: Module (fallback) and Whole Project list the
+                    // same files, and the label is what changes.
+                    $this->await(
+                        static fn (): bool => str_contains($panelText($tui), 'Scope: Whole Project'),
+                        what: 'the whole-project scope to wrap back round',
+                    );
                     $panel = $panelText($tui);
-                    $this->assertStringContainsString('Scope: Whole Project', $panel);
                     $this->assertStringContainsString('other/B.php', $panel, 'wrapping back to Whole Project widens again');
                 },
             ],
