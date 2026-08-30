@@ -503,4 +503,85 @@ final class SettingsGlobalScopeTest extends TestCase
             ],
         );
     }
+
+    /**
+     * The scope chosen on the settings screen also decides where a PLUGIN's
+     * settings are written.
+     *
+     * `PluginSettings` is hand-constructed by `PluginHost` and takes the scope
+     * as a TRAILING OPTIONAL argument, so if autowiring ever stopped filling it
+     * the object would quietly build a second `SettingsScope` of its own. There
+     * would be no error: the screen would say one file and plugin settings
+     * would go to another, which is the kind of divergence only a round trip
+     * catches.
+     *
+     * Asserted behaviourally rather than by instance identity — identity is how
+     * it happens to work today, the file it lands in is what was promised.
+     */
+    public function testAPluginSettingFollowsTheScopeTheScreenShows(): void
+    {
+        putenv('PATH=/nonexistent');
+        $this->home = new TempProject([]);
+        $this->project = new TempProject([
+            'A.php' => "<?php\n\$x = 1;\n",
+            // A settings block ON PURPOSE: SettingsScope defaults a project
+            // that has one to Project. Without it a scope built by mistake
+            // would default to Global too, both paths would write to the same
+            // file, and this test would pass whatever the wiring did.
+            '.porta.json' => json_encode(['settings' => ['theme' => 'dark']], \JSON_THROW_ON_ERROR),
+            '.porta/plugins/noisy/plugin.php' => <<<'PHP'
+                <?php
+                use Porta\Plugin\Api\PluginApi;
+                use Porta\Plugin\Api\PortaPlugin;
+
+                return new class implements PortaPlugin {
+                    public function name(): string { return 'noisy'; }
+                    public function activate(PluginApi $api): void
+                    {
+                        $api->registerSetting('volume', 'Klaxon volume', 'int', 3, min: 1, max: 9);
+                    }
+                };
+                PHP,
+        ]);
+        putenv('PORTA_HOME='.$this->home->dir);
+
+        $this->runIde(
+            $this->project,
+            $this->project->path('A.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Global);
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                    $nav = $tui->getById('settings-nav');
+                    \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav sidebar');
+                    $this->selectSettingsSection($nav, 'plugin:noisy');
+                    $this->frame($tui);
+                },
+                500 => function ($tui, $terminal): void {
+                    $form = $tui->getById('settings-form');
+                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
+                    $tui->setFocus($form);
+                    $this->selectSettingRow($form, 'Klaxon volume');
+                    $tui->handleInput("\x1b[C"); // step it up
+                    $this->frame($tui);
+                },
+                700 => function ($tui, $terminal): void {
+                    $global = $this->home->path('.porta/config.json');
+                    $this->assertFileExists($global, 'the plugin setting went to the user file');
+
+                    $written = json_decode((string) file_get_contents($global), associative: true);
+                    $this->assertIsArray($written);
+                    $this->assertSame(4, $written['plugins']['noisy']['volume'] ?? null, 'stepped and stored there');
+
+                    $project = json_decode((string) file_get_contents($this->project->path('.porta.json')), associative: true);
+                    $this->assertIsArray($project);
+                    $this->assertArrayNotHasKey(
+                        'plugins',
+                        $project,
+                        'and not into the project the screen said it would leave alone',
+                    );
+                },
+            ],
+        );
+    }
 }
