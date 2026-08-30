@@ -149,7 +149,15 @@ final class IdeDocsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
+                100 => function ($tui, $terminal, $ide): void {
+                    // The 300 ms here was a bet on the boot having opened the
+                    // file; the editor says so itself.
+                    $editor = $tui->getById('editor');
+                    $this->await(
+                        static fn (): bool => null !== $editor->getFilePath(),
+                        what: 'the editor to open its file',
+                    );
+
                     // F1 over the settings view closes it and shows the docs.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $this->frame($tui);
@@ -177,7 +185,9 @@ final class IdeDocsTest extends TestCase
                     $tui->handleInput("\x1b[<65;40;5M");
                     $this->frame($tui);
                 },
-                1400 => function ($tui, $terminal, $ide) use ($captureFile): void {
+                // 1100 ms of gap stood here for a rect read that the frame at
+                // the end of the step above already produced.
+                200 => function ($tui, $terminal, $ide) use ($captureFile): void {
                     // Click the ‹ arrow in the header (row 0, column 1 of the
                     // pane) to go back to the README, then Enter on the https link.
                     $rect = Services::resolve($ide, Renderer::class)
@@ -191,7 +201,9 @@ final class IdeDocsTest extends TestCase
                     $tui->handleInput("\r");
                     $this->frame($tui);
                 },
-                2600 => function ($tui, $terminal, $ide) use ($captureFile, $docs): void {
+                // And 1200 more in front of a step that opens by awaiting its
+                // own effect, so the gap was never what made it safe.
+                300 => function ($tui, $terminal, $ide) use ($captureFile, $docs): void {
                     $this->awaitPainted($tui, $terminal, 'Opened https://example.com/x');
                     $this->assertStringContainsString('Opened https://example.com/x', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // The shim runs as an independent OS process — poll for its

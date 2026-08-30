@@ -49,12 +49,23 @@ final class IdeTerminalTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui): void {
+                100 => function ($tui, $terminal, $ide): void {
+                    $editor = $tui->getById('editor');
+                    $this->await(
+                        static fn (): bool => null !== $editor->getFilePath(),
+                        what: 'the editor to open its file',
+                    );
+
                     $tui->handleInput("\x1b[96;5u"); // ctrl+` opens the first shell
                     $this->assertSame('terminal', $tui->getFocus()?->getId());
-                },
-                500 => function ($tui, $terminal, $ide): void {
-                    $this->assertCount(1, $this->sessions($ide));
+
+                    // The session is registered when the PTY spawns, not when
+                    // the key is handled — 200 ms used to stand in for that.
+                    $this->await(
+                        fn (): bool => 1 === \count($this->sessions($ide)),
+                        what: 'the first shell session to register',
+                    );
+
                     // Type a marker into shell 1.
                     foreach (str_split("echo AAA-marker\n") as $ch) {
                         $tui->handleInput($ch);
@@ -64,10 +75,12 @@ final class IdeTerminalTest extends TestCase
                     // Ctrl+Shift+` opens a second shell (Ide-scope key).
                     $tui->handleInput("\x1b[96;6u");
                 },
-                800 => function ($tui, $terminal, $ide): void {
-                    $tui->tick();
+                200 => function ($tui, $terminal, $ide): void {
+                    $this->await(
+                        fn (): bool => 2 === \count($this->sessions($ide)),
+                        what: 'the second shell session to register',
+                    );
                     $sessions = $this->sessions($ide);
-                    $this->assertCount(2, $sessions, 'a second shell session opened');
 
                     // Type into shell 2 — the marker must not appear in shell 1.
                     foreach (str_split("echo BBB-marker\n") as $ch) {
@@ -82,8 +95,7 @@ final class IdeTerminalTest extends TestCase
                     $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($stripRect->columns, 1))[0]);
                     $this->assertSame(2, substr_count($strip, needle: 'sh'), 'both shell tabs render on the dock strip');
                 },
-                1000 => function ($tui, $terminal, $ide): void {
-                    $tui->tick();
+                300 => function ($tui, $terminal, $ide): void {
                     // Ctrl+Page Up cycles back to shell 1 (widget-scope, terminal focused).
                     $tui->handleInput("\x1b[5^");
                     $run = Services::resolve($ide, RunController::class);
