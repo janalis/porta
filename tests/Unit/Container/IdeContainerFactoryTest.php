@@ -154,6 +154,53 @@ final class IdeContainerFactoryTest extends TestCase
         $this->assertSame($mtime, filemtime($file), 'a fresh boot does not rewrite the dump');
     }
 
+    /**
+     * Two different configurations share one dump, and both still apply.
+     *
+     * This is the property the whole global-config design rests on: config
+     * reaches services through $_ENV JSON channels and is NOT part of the
+     * cache key, which is why `IdeConfig::load()` could learn to merge a
+     * second file without the container, the channels or any #[Autowire]
+     * consumer changing.
+     *
+     * The sibling test above reconstructs the hash formula, so it catches an
+     * addition to the key — but it duplicates the formula, and a change made
+     * in both places passes it. This asserts the behaviour instead: rewrite
+     * the config, build again, and there had better still be exactly one dump.
+     */
+    public function testTwoConfigurationsShareOneDumpAndBothStillApply(): void
+    {
+        $cache = new TempProject();
+        putenv('PORTA_CACHE_DIR='.$cache->dir);
+        $root = new TempProject(['.porta.json' => json_encode(
+            ['settings' => ['theme' => 'light']],
+            \JSON_THROW_ON_ERROR,
+        )]);
+
+        $first = new IdeContainerFactory()->build($root->dir, IdeConfig::load($root->dir), Ansi::Enabled);
+        $files = glob($cache->path('container-*.php'));
+        [$file] = $files ? $files : [''];
+        $mtime = filemtime($file);
+        $this->assertStringContainsString('light', (string) ($_ENV['PORTA_SETTINGS'] ?? ''), 'the first config reached the env channel');
+
+        file_put_contents(
+            $root->path('.porta.json'),
+            json_encode(['settings' => ['theme' => 'high-contrast']], \JSON_THROW_ON_ERROR),
+        );
+
+        $second = new IdeContainerFactory()->build($root->dir, IdeConfig::load($root->dir), Ansi::Enabled);
+
+        $this->assertSame($first::class, $second::class, 'one dump serves both configurations');
+        $this->assertCount(1, (array) glob($cache->path('container-*.php')), 'and no second dump was written for the second one');
+        clearstatcache();
+        $this->assertSame($mtime, filemtime($file), 'nor was the first rewritten');
+        $this->assertStringContainsString(
+            'high-contrast',
+            (string) ($_ENV['PORTA_SETTINGS'] ?? ''),
+            'while the new config still travels, which is the half that makes sharing safe',
+        );
+    }
+
     public function testStaleCacheRebuildsTheDumpAndServesTheBuilderWhenTheClassIsLoaded(): void
     {
         $project = new TempProject();
