@@ -153,7 +153,13 @@ final class IdeTerminalRunTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui): void {
+                100 => function ($tui): void {
+                    $editor = $tui->getById('editor');
+                    $this->await(
+                        static fn (): bool => null !== $editor->getFilePath(),
+                        what: 'the editor to open its file',
+                    );
+
                     $tui->handleInput("\x1b[96;5u"); // ctrl+` toggle terminal
                     $this->assertSame('terminal', $tui->getFocus()?->getId());
                     $this->assertTrue($tui->getById('terminal')->isOpen());
@@ -162,7 +168,7 @@ final class IdeTerminalRunTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                700 => function ($tui, $terminal): void {
+                200 => function ($tui, $terminal): void {
                     // Await the shell's echo: spawning /bin/sh and round-tripping
                     // the command is real subprocess latency, and a fixed delay
                     // races it under pcov + machine load.
@@ -173,7 +179,7 @@ final class IdeTerminalRunTest extends TestCase
                     $this->assertTrue($tui->getById('terminal')->isOpen(), 'the terminal tab survives the hide');
                     $this->assertSame('editor', $tui->getFocus()?->getId());
                 },
-                750 => function ($tui): void {
+                250 => function ($tui): void {
                     // Re-open: the still-running shell's panel comes back (no respawn).
                     $tui->handleInput("\x1b[96;5u");
                     $this->assertTrue($tui->getById('terminal')->isVisible());
@@ -182,7 +188,7 @@ final class IdeTerminalRunTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                1000 => function ($tui, $terminal, $ide): void {
+                350 => function ($tui, $terminal, $ide): void {
                     // The shell's exit ripples through PTY EOF + reap; await
                     // the MODEL (the session's own running flag), then force a
                     // frame and assert the paint — one indirection fewer than
