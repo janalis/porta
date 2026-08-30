@@ -283,20 +283,38 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Plain.php'),
             [
-                400 => static function ($tui): void {
-                    $tui->getById('editor')->getDocument()->setCursor(1, 0); // blank line, empty prefix
+                100 => function ($tui): void {
+                    $editor = $tui->getById('editor');
+                    $this->await(
+                        static fn (): bool => null !== $editor->getFilePath(),
+                        what: 'the editor to open its file',
+                    );
+
+                    $editor->getDocument()->setCursor(1, 0); // blank line, empty prefix
                     $tui->handleInput("\x00"); // ctrl+space
-                },
-                700 => function ($tui): void {
-                    $this->assertTrue($tui->getById('editor')->isCompletionOpen());
+                    // The popup opens on the server's completion RESPONSE, not
+                    // on the keypress — a 300 ms gap here was a bet on that
+                    // round trip.
+                    // First-class callable, not an arrow fn: the method is
+                    // re-invoked on a stable object every turn, so it
+                    // re-evaluates — which is the property await() requires.
+                    $this->await($editor->isCompletionOpen(...), what: 'the completion popup to open');
+
                     $tui->handleInput("\x1b[B"); // -> str_replace
                     $tui->handleInput("\x1b[B"); // -> trim
                     $tui->handleInput("\r"); // accept trim (resolves to no imports)
-                },
-                1000 => function ($tui): void {
-                    $doc = $tui->getById('editor')->getDocument();
-                    $this->assertStringContainsString('trim(', $doc->getText());
-                    $this->assertStringNotContainsString('use ', $doc->getText(), 'no auto-import added');
+
+                    // Accepting sends completionItem/resolve; the edit lands
+                    // when that answers, so awaiting the text IS awaiting the
+                    // resolve — which is also what makes the negative below
+                    // safe, since any import it would have added has landed
+                    // by then too.
+                    $this->await(
+                        static fn (): bool => str_contains($editor->getDocument()->getText(), 'trim('),
+                        what: 'the accepted completion to reach the document',
+                    );
+
+                    $this->assertStringNotContainsString('use ', $editor->getDocument()->getText(), 'no auto-import added');
                 },
             ],
         );
@@ -1076,6 +1094,16 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
+                // The 400 ms gaps in this scenario are NOT waste, and were
+                // measured as such: converting them to awaits made the
+                // js-routed jump time out every time. `LspSession` debounces
+                // document sync by 0.3 s (`changeDebounce`), so a definition
+                // request fired the instant the buffer becomes current reaches
+                // a server that has not been told about the document yet. The
+                // barrier that would replace this has to be per-SESSION, and
+                // no test-visible signal for it exists today.
+                //
+                // The assertions are awaited; only the sync waits on the clock.
                 400 => static function ($tui): void {
                     $tui->getById('editor')->getDocument()->setCursor(1, 2); // on greet
                     $tui->handleInput("\x1b[24~"); // php server resolves Target.php
@@ -1094,7 +1122,8 @@ final class IdeLspFeaturesTest extends TestCase
                 1400 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->await(static fn (): bool => str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'), timeout: 8.0, what: 'the js-routed definition jump');
                     Services::resolve($ide, BufferService::class)->openFile($project->path('notes.md'), OpenFocus::Keep);
-                    $tui->tick();
+                    // The status bar readings after the run need this paint.
+                    $this->awaitPainted($tui, $terminal, 'LSP:no server');
                 },
             ],
         );
