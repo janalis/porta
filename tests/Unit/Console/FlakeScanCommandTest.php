@@ -32,7 +32,7 @@ final class FlakeScanCommandTest extends TestCase
         $run = 0;
 
         return new CommandTester(new FlakeScanCommand(
-            static function (string $log) use (&$run, $failuresPerRun, $exit): int {
+            static function (string $log, ?int $processes, ?string $testsuite, int $timeout) use (&$run, $failuresPerRun, $exit): int {
                 $cases = '';
                 foreach ($failuresPerRun[$run] ?? [] as $test) {
                     [$class, $method] = explode('::', $test);
@@ -113,7 +113,7 @@ final class FlakeScanCommandTest extends TestCase
     public function testAnUnusableJunitLogDoesNotCrashTheScan(): void
     {
         $tester = new CommandTester(new FlakeScanCommand(
-            static function (string $log): int {
+            static function (string $log, ?int $processes, ?string $testsuite, int $timeout): int {
                 file_put_contents($log, data: 'not xml at all');
 
                 return 1;
@@ -163,7 +163,7 @@ final class FlakeScanCommandTest extends TestCase
 
         try {
             $tester = new CommandTester(new FlakeScanCommand(
-                static function (string $junit) use ($log): int {
+                static function (string $junit, ?int $processes, ?string $testsuite, int $timeout) use ($log): int {
                     file_put_contents($junit, data: '<?xml version="1.0"?><testsuites/>');
                     // What a leaking test would have appended during the run.
                     LeakLog::append("[loop-leak] A\\Test::testOne: 1 identifier(s) leaked\n");
@@ -195,7 +195,7 @@ final class FlakeScanCommandTest extends TestCase
 
         try {
             $tester = new CommandTester(new FlakeScanCommand(
-                static function (string $junit): int {
+                static function (string $junit, ?int $processes, ?string $testsuite, int $timeout): int {
                     file_put_contents($junit, data: '<?xml version="1.0"?><testsuites/>');
 
                     return 0;
@@ -209,6 +209,77 @@ final class FlakeScanCommandTest extends TestCase
         } finally {
             putenv(\is_string($previous) ? LeakLog::PATH_ENV.'='.$previous : LeakLog::PATH_ENV);
         }
+    }
+
+    /**
+     * A run that outlives its budget is reported as wedged, and the scan goes
+     * on to the next one.
+     *
+     * An instrument that blocks on the first wedge cannot measure how often
+     * wedges happen — and that is not hypothetical: diagnosing the wedge
+     * documented in testing.md cost 36 minutes of a scan that could not move
+     * past it.
+     */
+    public function testAWedgedRunIsReportedAndDoesNotStopTheScan(): void
+    {
+        $seen = 0;
+        $tester = new CommandTester(new FlakeScanCommand(
+            static function (string $junit, ?int $processes, ?string $testsuite, int $timeout) use (&$seen): int {
+                ++$seen;
+
+                return 1 === $seen ? FlakeScanCommand::WEDGED : 0;
+            },
+        ));
+
+        $tester->execute(['--runs' => 2]);
+        $display = $tester->getDisplay();
+
+        $this->assertSame(2, $seen, 'the scan continued past the wedge');
+        $this->assertStringContainsString('WEDGED', $display);
+        $this->assertStringContainsString('killed at the budget', $display);
+        $this->assertStringContainsString('1/2 runs green', $display);
+        // A wedge names no failing test, so a banner keyed on named failures
+        // would call this run green — which is the lie the instrument exists
+        // to catch elsewhere.
+        $this->assertStringNotContainsString('[OK]', $display, 'a wedged run is not a green banner');
+    }
+
+    /** The budget reaches the runner, so --timeout is not decorative. */
+    public function testTheTimeoutBudgetIsHandedToTheRunner(): void
+    {
+        $received = null;
+        $tester = new CommandTester(new FlakeScanCommand(
+            static function (string $junit, ?int $processes, ?string $testsuite, int $timeout) use (&$received): int {
+                $received = $timeout;
+                file_put_contents($junit, data: '<?xml version="1.0"?><testsuites/>');
+
+                return 0;
+            },
+        ));
+
+        $tester->execute(['--runs' => 1, '--timeout' => 42]);
+
+        $this->assertSame(42, $received);
+    }
+
+    /**
+     * The real runner's kill path, exercised for real.
+     *
+     * A one-second budget cannot outlast paratest's own startup, so this drives
+     * the branch that matters — deadline passes, the process tree is killed,
+     * WEDGED is reported — without waiting for a genuine 36-minute hang. The
+     * scripted tests above cannot reach it: they never start a process.
+     */
+    public function testTheRealRunnerKillsARunThatOutlivesItsBudget(): void
+    {
+        $tester = new CommandTester(new FlakeScanCommand());
+
+        $tester->execute(['--runs' => 1, '--processes' => 2, '--testsuite' => 'Integration', '--timeout' => 1]);
+        $display = $tester->getDisplay();
+
+        $this->assertStringContainsString('WEDGED', $display);
+        $this->assertStringContainsString('killed at the budget', $display);
+        $this->assertStringNotContainsString('[OK]', $display);
     }
 
     /** The worker count is echoed, because a rate is meaningless without it. */

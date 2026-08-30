@@ -51,11 +51,17 @@ final class FlakeScanCommand extends Command
 {
     use CommandErrorStream;
 
-    /** @var \Closure(string, ?int, ?string): int */
+    /**
+     * The exit code a run gets when it outlives its budget, matching the
+     * `timeout` utility's convention.
+     */
+    public const int WEDGED = 124;
+
+    /** @var \Closure(string, ?int, ?string, int): int */
     private readonly \Closure $runner;
 
     /**
-     * @param (\Closure(string $junitLog, ?int $processes, ?string $testsuite): int)|null $runner
+     * @param (\Closure(string $junitLog, ?int $processes, ?string $testsuite, int $timeout): int)|null $runner
      *                                                                                             the suite runner; null uses the real paratest invocation
      *                                                                                             (the ArchitectureCheckCommand pin-injection pattern, so the
      *                                                                                             harness's own reporting can be graded without running the
@@ -76,6 +82,8 @@ final class FlakeScanCommand extends Command
         ?int $processes = null,
         #[Option('Limit to one suite (Unit, Integration, E2e, Plugins)')]
         ?string $testsuite = null,
+        #[Option('Seconds before a run is called wedged and killed')]
+        int $timeout = 600,
     ): int {
         $io = new SymfonyStyle($input, $output);
         $errors = self::errorOutput($output);
@@ -106,7 +114,7 @@ final class FlakeScanCommand extends Command
             $log = (string) tempnam(sys_get_temp_dir(), prefix: 'porta-flake-').'.xml';
             $leaksBefore = is_file($leakLog) ? (int) filesize($leakLog) : 0;
             $started = microtime(as_float: true);
-            $exit = ($this->runner)($log, $processes, $testsuite);
+            $exit = ($this->runner)($log, $processes, $testsuite, $timeout);
             $durations[] = microtime(as_float: true) - $started;
 
             $failed = $this->failedTests($log);
@@ -125,9 +133,17 @@ final class FlakeScanCommand extends Command
                 '  run %d/%d — %s in %.0fs%s',
                 $run,
                 $runs,
-                [] === $failed && 0 === $exit ? '<info>green</info>' : \sprintf('<comment>%d failed</comment>', \count($failed)),
+                match (true) {
+                    self::WEDGED === $exit => '<comment>WEDGED</comment>',
+                    [] === $failed && 0 === $exit => '<info>green</info>',
+                    default => \sprintf('<comment>%d failed</comment>', \count($failed)),
+                },
                 end($durations),
-                [] === $failed && 0 !== $exit ? ' <comment>(non-zero exit with no failing test — a crash or wedge)</comment>' : '',
+                match (true) {
+                    self::WEDGED === $exit => ' <comment>(killed at the budget — see the wedge section of testing.md)</comment>',
+                    [] === $failed && 0 !== $exit => ' <comment>(non-zero exit with no failing test — a crash or wedge)</comment>',
+                    default => '',
+                },
             ));
         }
 
@@ -139,8 +155,17 @@ final class FlakeScanCommand extends Command
         return Command::SUCCESS;
     }
 
-    /** Run the suite once, writing JUnit to $log; returns the process exit code. */
-    private function paratest(string $log, ?int $processes, ?string $testsuite): int
+    /**
+     * Run the suite once, writing JUnit to $log; returns the process exit code,
+     * or {@see WEDGED} when it outlived its budget.
+     *
+     * The budget is not a nicety: paratest can reach ~99% and hang forever when
+     * a worker exits without writing its result (testing.md documents the
+     * signature), and an instrument that blocks on the first wedge cannot
+     * measure how often wedges happen. A killed run is reported as one, not
+     * silently dropped.
+     */
+    private function paratest(string $log, ?int $processes, ?string $testsuite, int $timeout): int
     {
         $argv = [\PHP_BINARY, 'vendor/bin/paratest', '--functional', '--log-junit='.$log];
         if (null !== $processes) {
@@ -152,11 +177,51 @@ final class FlakeScanCommand extends Command
 
         // Output is discarded: the JUnit log is the record, and a suite's worth
         // of progress dots per run would bury the summary this command is for.
-        $exit = 0;
-        $ignored = [];
-        exec(implode(' ', array_map(escapeshellarg(...), $argv)).' >/dev/null 2>&1', $ignored, $exit);
+        $command = implode(' ', array_map(escapeshellarg(...), $argv)).' >/dev/null 2>&1';
+        $descriptors = [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']];
+        $pipes = [];
+        $process = proc_open($command, $descriptors, $pipes);
 
-        return $exit;
+        // A failed proc_open and an overrun share the wedged exit below rather
+        // than getting a return each: they mean the same thing to a scan (this
+        // run produced no result), and the alternative is a branch no test can
+        // reach short of exhausting the process table.
+        if (\is_resource($process)) {
+            foreach ($pipes as $pipe) {
+                fclose($pipe);
+            }
+            $exit = $this->awaitExit($process, $timeout);
+            if (null !== $exit) {
+                return $exit;
+            }
+            // Kill the tree: paratest's workers do not die with it, and orphans
+            // would poison every later run in the scan.
+            proc_terminate($process, signal: 9);
+            proc_close($process);
+        }
+
+        return self::WEDGED;
+    }
+
+    /**
+     * The exit code once the run finishes, or null when it outlives $timeout.
+     *
+     * @param resource $process
+     */
+    private function awaitExit($process, int $timeout): ?int
+    {
+        $deadline = microtime(as_float: true) + $timeout;
+        while (microtime(as_float: true) < $deadline) {
+            $status = proc_get_status($process);
+            if (!$status['running']) {
+                proc_close($process);
+
+                return (int) $status['exitcode'];
+            }
+            usleep(microseconds: 200_000);
+        }
+
+        return null;
     }
 
     /**
@@ -221,7 +286,10 @@ final class FlakeScanCommand extends Command
     private function report(SymfonyStyle $io, array $failures, array $durations, int $runs, int $red, int $leaks, string $leakLog): void
     {
         $io->newLine();
-        if ([] === $failures) {
+        // Keyed on RED RUNS, not on named failures. A wedged or crashed run
+        // names nobody, and banner-ing that as green is the same defect this
+        // instrument exists to catch in the suite.
+        if (0 === $red) {
             $io->success(\sprintf('%d/%d runs green.', $runs, $runs));
         }
         if ([] !== $failures) {
