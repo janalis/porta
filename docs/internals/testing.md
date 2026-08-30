@@ -183,19 +183,63 @@ that leaked has already finished. Never leave a watcher armed on a stream a
 local `proc_open` handle will close; wrap the span in try/finally, which is why
 `PumpsLoop` cancels its own delay timers in a finally.
 
-**Both reports are invisible under `composer test`**: paratest swallows worker
-STDERR, so an unconditional write from an extension never reaches the log.
-`composer test:serial` is the only way to read them — raise
-`COMPOSER_PROCESS_TIMEOUT`, because the serial suite outruns the 300s default.
-Any claim that the suite is leak-clean has to come from a serial run.
+**The STDERR reports are invisible under `composer test`**: paratest swallows
+worker STDERR, so an unconditional write from an extension never reaches the
+log. Both therefore go through `tests/Support/LeakLog`, which also appends to
+`.phpunit.cache/leaks.log` (override with `PORTA_LEAK_LOG`) — that file survives
+the parallel run, and `bin/porta-dev flake:scan` reports each run's count as the
+delta over it. `composer test:serial` remains the way to read them inline, in a
+reproducible order; raise `COMPOSER_PROCESS_TIMEOUT`, because the serial suite
+outruns the 300s default.
 
-**What remains is expected pending state.** A full serial run reports about
-seven lines, and each is a timer that is correct at the moment the test stops
+**What remains is expected pending state — but the count has drifted and nobody
+noticed, which is what the STDERR-only reporting cost.** Three numbers are on
+record and no two agree: the fallback commit says it went "from 2448 to 53",
+the paragraph below says "about seven", and a green serial run on 2026-08-30
+appended **87**. Treat the shape below as the explanation and the number as
+unmeasured until someone re-derives it from the log.
+
+A full serial run reports lines that are each a timer correct at the moment the test stops
 the loop: `Support/DebouncedRequest`'s 0.15s coalescing timer (a viewer pane
 that has just asked for a re-render) and `Highlight/CodeHighlighter`'s 2s answer
 deadline (the backend died without delivering, and that timer is precisely how
 it gets dropped to plain). To diagnose one, reflect the driver's `callbacks` map
 for the leaked identifier's Revolt callback class and its closure's file:line.
+
+## The paratest wedge
+
+Distinct from the fail-fast flakes above: paratest reaches ~99% and then **hangs
+indefinitely**, with no failure and no output. Diagnosed on 2026-08-30 at
+`--processes=16`, and the shape is precise enough to recognise again.
+
+The signature, in the order it is cheapest to check:
+
+- `ps -o etime=,pcpu= <paratest-pid>` — **minutes elapsed at 0.0% CPU**, and
+  `pgrep -P <pid>` reports **zero children**. Every worker is gone; the runner
+  is not.
+- `sample <paratest-pid>` parks in **`zif_usleep`**. It is the poll loop, not a
+  blocked read — paratest is spinning a sleep waiting for a completion that can
+  no longer arrive, and there is no timeout on that wait.
+- `lsof -p <paratest-pid>` names the worker it is still holding open. Compare
+  `$TMPDIR/worker_NN_*_junit` sizes across the run: the healthy ones were
+  146–216 KB each, and **the held worker's was 0 bytes**, with an mtime ~57 s
+  *older* than the rest — it stopped first and the others finished without it.
+- That worker's `_status` file was **all zeros** and its `_progress` all dots:
+  it ran its ~300 tests, passed every one, and then vanished without writing its
+  result.
+
+**This is NOT the poisoned-worker signature.** That one shows a streak of `1`s in
+`_status` before the stall — a test failed, the loop corrupted, and the cascade
+followed. Here the worker was clean to the last test. A clean worker that exits
+without writing its JUnit fragment leaves the runner waiting forever, so the two
+have different causes and only the second is about test code at all.
+
+Not reproducible synthetically: a prior attempt found pure CPU starvation
+insufficient (the full suite passed at load 137 from 24 `yes` burners). This
+occurrence was at 16 workers on 16 cores with `--log-junit` in play; whether
+either is necessary is untested.
+
+Diagnose before killing — the evidence above is gone the moment the process is.
 
 ## Mutation, not coverage
 
