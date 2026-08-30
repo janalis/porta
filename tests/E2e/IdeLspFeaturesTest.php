@@ -95,19 +95,27 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Foo.php'),
             [
-                200 => static function ($tui): void {
+                100 => function ($tui): void {
+                    $path = static fn (): string => (string) $tui->getById('editor')->getFilePath();
+                    $this->await(static fn (): bool => '' !== $path(), what: 'the subject file to open at boot');
+
                     $tui->handleInput("\x1b[116;6u"); // ctrl+shift+t → the single test
-                },
-                340 => function ($tui): void {
-                    $this->assertStringEndsWith('tests/Unit/FooTest.php', (string) $tui->getById('editor')->getFilePath());
+                    $this->await(
+                        static fn (): bool => str_ends_with($path(), 'tests/Unit/FooTest.php'),
+                        what: 'the test file to open',
+                    );
+
                     $tui->handleInput("\x1b[116;6u"); // ctrl+shift+t again → back to the subject
-                },
-                480 => function ($tui): void {
-                    $this->assertStringEndsWith('src/Foo.php', (string) $tui->getById('editor')->getFilePath());
+                    $this->await(
+                        static fn (): bool => str_ends_with($path(), 'src/Foo.php'),
+                        what: 'the subject file to reopen',
+                    );
                 },
             ],
         );
 
+        // Each hop is awaited above, so reaching here IS the assertion: an
+        // await that never becomes true throws rather than falling through.
         $this->addToAssertionCount(1);
     }
 
@@ -309,19 +317,30 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Inc.php'),
             [
-                400 => static function ($tui): void {
+                100 => function ($tui): void {
                     $editor = $tui->getById('editor');
+                    $this->await(
+                        static fn (): bool => null !== $editor->getFilePath(),
+                        what: 'the editor to open its file',
+                    );
+
                     $editor->getDocument()->setCursor(2, 3); // end of "foo"
                     $tui->handleInput('Z'); // insert one character
-                },
-                1000 => function ($tui): void {
-                    // The mock reflects the change kind + text into a diagnostic.
-                    $editor = $tui->getById('editor');
+
+                    // The mock reflects the change kind + text into a
+                    // diagnostic, so awaiting it IS awaiting the didChange
+                    // round trip to the server PROCESS — which is what the
+                    // 600ms gap here used to bet on.
                     $editor->getDocument()->setCursor(0, 0);
-                    $this->assertSame('sync:incremental:Z', $editor->getCursorDiagnostic());
+                    $this->await(
+                        static fn (): bool => 'sync:incremental:Z' === $editor->getCursorDiagnostic(),
+                        what: 'the incremental didChange to come back as a diagnostic',
+                    );
                 },
             ],
         );
+
+        $this->addToAssertionCount(1);
     }
 
     public function testSnippetCompletionExpandsWithTabStops(): void
@@ -427,19 +446,30 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Big.php'),
             [
-                400 => static function ($tui): void {
-                    $tui->getById('editor')->getDocument()->setCursor(95, 0); // >= 90 -> null
+                100 => function ($tui, $terminal): void {
+                    $editor = $tui->getById('editor');
+                    $this->await(
+                        static fn (): bool => null !== $editor->getFilePath(),
+                        what: 'the editor to open its file',
+                    );
+
+                    $editor->getDocument()->setCursor(95, 0); // >= 90 -> null
                     $tui->handleInput("\x1b\x02"); // ctrl+alt+b
-                },
-                700 => function ($tui, $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'No implementation found');
                     $this->assertStringContainsString('No implementation found', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    // >= 80 returns several candidates, all outside the filesystem.
-                    $tui->getById('editor')->getDocument()->setCursor(85, 0);
+
+                    // >= 80 returns several candidates, all outside the
+                    // filesystem, so every one is dropped and the controller
+                    // flashes the SAME not-found message instead of opening a
+                    // chooser. That flash is the terminal state the negative
+                    // below hangs off: asserting "no chooser" after a bare gap
+                    // cannot tell "it decided not to" from "it has not answered
+                    // yet", which is the trap the doctrine names for negatives.
+                    $terminal->clearOutput();
+                    $editor->getDocument()->setCursor(85, 0);
                     $tui->handleInput("\x1b\x02");
-                },
-                1000 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->awaitPainted($tui, $terminal, 'No implementation found');
+
                     $this->assertStringNotContainsString('Choose target', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'no chooser when every candidate is unresolvable');
                 },
             ],
