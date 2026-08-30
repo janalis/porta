@@ -235,7 +235,9 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                400 => static function ($tui): void {
+                400 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
                     $tui->handleInput('x'); // schedules a didChange debounce
                     $tui->handleInput("\x1a"); // undo... still dirty; save instead
                     $tui->handleInput("\x13"); // ctrl+s -> clean
@@ -259,7 +261,9 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Tall.php'),
             [
-                400 => static function ($tui): void {
+                400 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
                     $tui->getById('editor')->getDocument()->setCursor(91, 0);
                     $tui->handleInput("\x00"); // ctrl+space -> mock replies null
                 },
@@ -283,7 +287,9 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Plain.php'),
             [
-                100 => function ($tui): void {
+                100 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
                     $editor = $tui->getById('editor');
                     $this->await(
                         static fn (): bool => null !== $editor->getFilePath(),
@@ -372,7 +378,9 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Snip.php'),
             [
-                400 => static function ($tui): void {
+                400 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
                     $tui->getById('editor')->getDocument()->setCursor(1, 0);
                     $tui->handleInput("\x00"); // ctrl+space
                 },
@@ -426,7 +434,9 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Demo.php'),
             [
-                300 => static function ($tui): void {
+                300 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
                     $tui->getById('editor')->getDocument()->setCursor(4, 20);
                     $tui->handleInput("\x1b\x02"); // ctrl+alt+b -> implementation (2 results)
                 },
@@ -465,6 +475,8 @@ final class IdeLspFeaturesTest extends TestCase
             $project->path('src/Big.php'),
             [
                 100 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
                     $editor = $tui->getById('editor');
                     $this->await(
                         static fn (): bool => null !== $editor->getFilePath(),
@@ -505,7 +517,9 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Fmt.php'),
             [
-                400 => static function ($tui): void {
+                400 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
                     $doc = $tui->getById('editor')->getDocument();
                     $doc->setCursor(1, 0);
                     $doc->beginSelect();
@@ -533,7 +547,9 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Big.php'),
             [
-                400 => static function ($tui): void {
+                400 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
                     $tui->getById('editor')->getDocument()->setCursor(96, 0); // >= 95 -> prepareRename null
                     $tui->handleInput("\x1b[17;2~"); // shift+f6
                 },
@@ -647,7 +663,9 @@ final class IdeLspFeaturesTest extends TestCase
                 // Wait for the mock's published diagnostic on line 0, then request
                 // quick fixes from that line: the request range comes from the
                 // diagnostic (covered branch), and the actions apply normally.
-                500 => static function ($tui): void {
+                500 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
                     $tui->getById('editor')->getDocument()->setCursor(0, 0);
                     $tui->handleInput("\x1b\r");
                 },
@@ -673,7 +691,11 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Demo.php'),
             [
-                400 => static fn ($tui) => $tui->handleInput("\x1b[24;5~"), // ctrl+f12
+                400 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
+                    $tui->handleInput("\x1b[24;5~"); // ctrl+f12
+                },
                 600 => function ($tui, $terminal): void {
                     $editor = $tui->getById('editor');
                     $this->assertTrue(EditorState::pickerOpen($editor));
@@ -708,7 +730,11 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Empty.php'),
             [
-                400 => static fn ($tui) => $tui->handleInput("\x1b7"), // alt+7
+                400 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
+                    $tui->handleInput("\x1b7"); // alt+7
+                },
                 600 => function ($tui, $terminal): void {
                     $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')));
                     $this->awaitPainted($tui, $terminal, 'No symbols in this file');
@@ -732,7 +758,9 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Demo.php'),
             [
-                400 => static function ($tui): void {
+                400 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
                     $tui->handleInput("\x1b\x0f"); // ctrl+alt+o
                     foreach (str_split('greet') as $ch) {
                         $tui->handleInput($ch);
@@ -771,7 +799,9 @@ final class IdeLspFeaturesTest extends TestCase
             $project->path('src/A.php'),
             [
                 // Open B too so both buffers carry the mock's line-0 diagnostic
-                400 => static function ($tui): void {
+                400 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
                     $tui->handleInput("\x14"); // tree (selection on src/)
                     $tui->handleInput("\r"); // expand src/
                     $tui->handleInput("\x1b[B"); // A.php
@@ -821,10 +851,19 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Messy.php'),
             [
-                400 => static fn ($tui) => $tui->handleInput("\x1b\x0c"), // ctrl+alt+l
+                400 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
+                    $tui->handleInput("\x1b\x0c"); // ctrl+alt+l
+                },
                 600 => function ($tui, $terminal): void {
+                    // The formatted text lands on the server's response, so
+                    // await it rather than reading it before the flash barrier.
                     $editor = $tui->getById('editor');
-                    $this->assertSame('formatted();', $editor->getDocument()->getLine(2));
+                    $this->await(
+                        static fn (): bool => 'formatted();' === $editor->getDocument()->getLine(2),
+                        what: 'the reformat edit to reach the buffer',
+                    );
                     $this->awaitPainted($tui, $terminal, 'Reformatted src/Messy.php');
                     $this->assertStringContainsString('Reformatted src/Messy.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
@@ -846,7 +885,9 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Demo.php'),
             [
-                400 => static function ($tui): void {
+                400 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
                     $tui->getById('editor')->getDocument()->setCursor(1, 4);
                     $tui->handleInput("\x1b[105;6u"); // ctrl+shift+i peek
                 },
@@ -882,7 +923,9 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/T.php'),
             [
-                400 => static function ($tui): void {
+                400 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
                     $tui->getById('editor')->getDocument()->setCursor(91, 0); // mock: 90-94 -> no definition
                     $tui->handleInput("\x1b[105;6u");
                 },
@@ -984,6 +1027,8 @@ final class IdeLspFeaturesTest extends TestCase
             $project->path('src/Tall.php'),
             [
                 400 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
                     // Every negative path is a mock-server round trip; await
                     // each flash instead of racing fixed gaps and asserting
                     // the accumulated output after the loop stopped.
@@ -1174,7 +1219,9 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Demo.php'),
             [
-                400 => static function ($tui): void {
+                400 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
                     $tui->tick(); // ensure a frame rendered so widget rects exist
                     // Ctrl (SGR bit 16) + left click at screen row 5 → editor
                     // content row 2 (menu row 0, tab bar row 1) → document line 2.
@@ -1208,7 +1255,9 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Tall.php'),
             [
-                400 => static function ($tui): void {
+                400 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
                     // Mock convention: definition at lines 85-89 contains the
                     // requested position itself (a decoy Target.php location
                     // comes first, so any-match must beat the chooser).
@@ -1269,7 +1318,9 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Demo.php'),
             [
-                400 => static function ($tui): void {
+                400 => function ($tui, $terminal): void {
+                    $this->awaitLspReady($tui, $terminal);
+
                     // Overfill the jump stack (cap is 50)
                     $ideRef = null; // reach the private stack through reflection on the Ide via closure binding
                     $tui->handleInput('a');
@@ -1465,6 +1516,27 @@ final class IdeLspFeaturesTest extends TestCase
                 },
             ],
         );
+    }
+
+    /**
+     * Wait until the mock language server is actually UP, not merely configured.
+     *
+     * An LSP request fired at a session that has not initialised is dropped in
+     * silence: no request goes out, so no response and no flash ever arrive,
+     * and whatever barrier follows burns its entire budget. The editor having
+     * a file path does NOT imply this — the file opens first and the session
+     * starts behind it, which is what the old 300-400 ms boot gaps were really
+     * covering. The status bar naming the server is the signal that it is up.
+     *
+     * Measured, not assumed: with the boot gap at 100 ms and no barrier,
+     * testCompletionResolveWithoutImportsLeavesFileUntouched and
+     * testGoToImplementationWithNoResultFlashes each failed 6 runs in 30 under
+     * 16 CPU burners, both timing out on the effect of a request that had
+     * never been sent.
+     */
+    private function awaitLspReady(Tui $tui, VirtualTerminal $terminal): void
+    {
+        $this->awaitPainted($tui, $terminal, 'LSP:mock-lsp-server');
     }
 
     private function mockLspConfig(): string
