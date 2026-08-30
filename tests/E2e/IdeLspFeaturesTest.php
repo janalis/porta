@@ -559,43 +559,72 @@ final class IdeLspFeaturesTest extends TestCase
             $project->path('src/Q.php'),
             [
                 // Edit-based action: "Import class" inserts a use statement
-                400 => static function ($tui): void {
+                100 => function ($tui, $terminal): void {
+                    // alt+enter against a session that has not initialised is
+                    // dropped in silence, and every barrier after this one then
+                    // waits for a request that was never sent. The status bar
+                    // naming the server is the signal that it is up.
+                    $this->awaitPainted($tui, $terminal, 'LSP:mock-lsp-server');
+
                     $tui->getById('editor')->getDocument()->setCursor(2, 6);
                     $tui->handleInput("\x1b\r"); // alt+enter
                 },
-                600 => function ($tui, $terminal): void {
+                200 => function ($tui, $terminal): void {
+                    // The picker opens on the server's codeAction RESPONSE, so
+                    // this was a 200 ms bet standing in front of the paint
+                    // barrier that follows it.
                     $editor = $tui->getById('editor');
-                    $this->assertTrue(EditorState::pickerOpen($editor));
+                    $this->await(
+                        static fn (): bool => EditorState::pickerOpen($editor),
+                        what: 'the quick-fix picker to open',
+                    );
                     $this->awaitPainted($tui, $terminal, 'Quick Fixes');
-                    $this->assertStringContainsString('Quick Fixes', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertStringContainsString('Import class', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\r"); // pick "Import class"
                 },
-                750 => function ($tui, $terminal): void {
+                300 => function ($tui, $terminal): void {
+                    // Accepting sends the edit; it lands when the server
+                    // answers, which is what this used to bet 150 ms on.
                     $editor = $tui->getById('editor');
-                    $this->assertSame('use Acme\Imported;', $editor->getDocument()->getLine(1));
+                    $this->await(
+                        static fn (): bool => 'use Acme\Imported;' === $editor->getDocument()->getLine(1),
+                        what: 'the Import class edit to reach the buffer',
+                    );
                     $this->awaitPainted($tui, $terminal, 'Applied "Import class" to 1 file');
                     $this->assertStringContainsString('Applied "Import class" to 1 file', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // Command-based action next
                     $tui->handleInput("\x1b\r");
                 },
-                900 => static function ($tui): void {
+                400 => function ($tui): void {
+                    // These keys only mean anything once the picker is up, and
+                    // it is up on another codeAction response.
+                    $editor = $tui->getById('editor');
+                    $this->await(
+                        static fn (): bool => EditorState::pickerOpen($editor),
+                        what: 'the second quick-fix picker to open',
+                    );
+
                     $tui->handleInput("\x1b[B"); // -> Generate method
                     $tui->handleInput("\r");
                 },
-                1100 => function ($tui, $terminal): void {
+                500 => function ($tui, $terminal): void {
                     $editor = $tui->getById('editor');
-                    $tui->tick();
                     // executeCommand reply and the server-initiated applyEdit both
-                    // flash and race; assert on the deterministic buffer effect.
-                    $this->assertSame('// generated', $editor->getDocument()->getLine(0), 'server applyEdit landed');
+                    // flash and race; await the deterministic buffer effect.
+                    $this->await(
+                        static fn (): bool => '// generated' === $editor->getDocument()->getLine(0),
+                        what: 'the server applyEdit to land',
+                    );
                     // Empty path: mock convention line >= 90
                     $editor->getDocument()->setCursor(95, 0);
                     $tui->handleInput("\x1b\r");
                 },
-                1300 => function ($tui, $terminal): void {
-                    $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')));
+                600 => function ($tui, $terminal): void {
+                    // The POSITIVE first. "No picker is open" is also true
+                    // before the server has answered at all, so asserting it
+                    // ahead of the flash proved nothing.
                     $this->awaitPainted($tui, $terminal, 'No quick fixes here');
+                    $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')), 'an empty action list opens no picker');
                     $this->assertStringContainsString('No quick fixes here', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -1372,8 +1401,16 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/H.php'),
             [
-                300 => function ($tui, $terminal): void {
+                100 => function ($tui, $terminal): void {
+                    // The file being OPEN is not the server being ready, and
+                    // ctrl+shift+h against a session that has not initialised
+                    // is dropped in silence — no flash, so the await below then
+                    // burns its whole budget. That is what the old 300 ms boot
+                    // gap was really covering: it failed 3 runs in 30 under load
+                    // once compressed to 100 ms. The status bar naming the
+                    // server is the signal that it is up.
                     $this->await(static fn (): bool => null !== $tui->getById('editor')->getFilePath());
+                    $this->awaitPainted($tui, $terminal, 'LSP:mock-lsp-server');
 
                     // No symbol at the caret → flash, no panel.
                     $tui->getById('editor')->getDocument()->setCursor(70, 0);
@@ -1391,14 +1428,16 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->handleInput("\x1b[104;6u");
                     $this->await(static fn (): bool => 'results' === $tui->getFocus()?->getId());
                 },
-                700 => function ($tui, $terminal): void {
-                    $tui->tick();
+                200 => function ($tui, $terminal): void {
+                    // The step above awaits FOCUS reaching the results panel;
+                    // the panel painting its title is a separate moment, and a
+                    // bare tick() is not a frame.
+                    $this->awaitPainted($tui, $terminal, 'Callers of greet');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Callers of greet', $screen, 'the callers list opened');
                     $this->assertStringContainsString('caller', $screen);
                     $tui->handleInput("\x1b"); // close the panel
                 },
-                1100 => function ($tui, $terminal) use ($palette): void {
+                300 => function ($tui, $terminal) use ($palette): void {
                     // Fold All: the LSP foldingRange says 2-4 → the body line hides.
                     $editorScreen = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))));
                     $this->assertStringContainsString("return 'hi '", $editorScreen());
@@ -1406,10 +1445,15 @@ final class IdeLspFeaturesTest extends TestCase
                     $this->await(static fn (): bool => !str_contains($editorScreen(), "return 'hi '"));
 
                     $palette($tui, label: 'Unfold All');
-                    $this->assertStringContainsString("return 'hi '", $editorScreen(), 'unfold restored the line');
+                    // Unfold is local where Fold All needed the server's
+                    // foldingRange, so this resolves at once today — awaited
+                    // anyway, because the asymmetry is not worth relying on.
+                    $this->await(
+                        static fn (): bool => str_contains($editorScreen(), "return 'hi '"),
+                        what: 'unfold to restore the body line',
+                    );
                 },
-                1500 => function ($tui): void {
-                    $tui->tick();
+                400 => function ($tui): void {
                     // Matching bracket: from the opening brace of greet() to its closer.
                     $tui->setFocus($tui->getById('editor'));
                     $doc = $tui->getById('editor')->getDocument();
