@@ -170,19 +170,22 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Multi.php'),
             [
-                200 => static function ($tui): void {
+                100 => static function ($tui): void {
                     $tui->handleInput("\x1b[116;6u");
                 },
-                340 => function ($tui, $terminal): void {
-                    $tui->tick();
+                200 => function ($tui, $terminal): void {
+                    $this->awaitPainted($tui, $terminal, 'Choose target');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Choose target', $screen, 'two candidate tests show a chooser');
                     $this->assertStringContainsString('tests/E2e/MultiTest.php', $screen);
                     $this->assertStringContainsString('tests/Unit/MultiTest.php', $screen);
                     $tui->handleInput("\r"); // open the selected candidate
                 },
-                480 => function ($tui): void {
-                    $this->assertStringEndsWith('MultiTest.php', (string) $tui->getById('editor')->getFilePath());
+                300 => function ($tui): void {
+                    $editor = $tui->getById('editor');
+                    $this->await(
+                        static fn (): bool => str_ends_with((string) $editor->getFilePath(), 'MultiTest.php'),
+                        what: 'the chosen candidate to open',
+                    );
                 },
             ],
         );
@@ -453,18 +456,17 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(4, 20);
                     $tui->handleInput("\x1b\x02"); // ctrl+alt+b -> implementation (2 results)
                 },
-                400 => function ($tui, $terminal): void {
-                    $tui->tick();
+                200 => function ($tui, $terminal): void {
+                    $this->awaitPainted($tui, $terminal, 'Choose target');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Choose target', $screen, 'multiple implementations show a chooser');
                     $this->assertStringContainsString('Target.php', $screen);
                     $tui->handleInput("\x1b"); // close the chooser
                 },
-                550 => static function ($tui): void {
+                300 => static function ($tui): void {
                     $tui->getById('editor')->getDocument()->setCursor(4, 20);
                     $tui->handleInput("\x1b[98;6u"); // ctrl+shift+b -> type definition (single -> jump)
                 },
-                850 => function ($tui): void {
+                400 => function ($tui): void {
                     // The type-definition jump is an LSP round trip: await it
                     // landing instead of a fixed gap.
                     $this->await(static fn (): bool => str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'), what: 'the type-definition jump to land');
@@ -720,14 +722,15 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->handleInput("\x1b[24;5~"); // ctrl+f12
                 },
                 200 => function ($tui, $terminal): void {
-                    // The peek popup opens on the definition response.
+                    // The popup opens on the documentSymbol response. This is
+                    // the specific barrier: awaiting 'greet' alone is weak here,
+                    // because the fixture's own source contains `greet` and the
+                    // EDITOR has already painted it.
                     $editor = $tui->getById('editor');
                     $this->await(
                         static fn (): bool => EditorState::pickerOpen($editor),
-                        what: 'the peek popup to open',
+                        what: 'the file-structure popup to open',
                     );
-                    // The symbols are an LSP round trip: await them landing in
-                    // the picker instead of a fixed gap.
                     $this->awaitPainted($tui, $terminal, 'greet');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('File Structure', $screen);
@@ -931,12 +934,17 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->handleInput("\x1b[105;6u"); // ctrl+shift+i peek
                 },
                 200 => function ($tui, $terminal): void {
+                    // The peek popup opens on the definition response.
                     $editor = $tui->getById('editor');
-                    $this->assertTrue(EditorState::pickerOpen($editor));
-                    $tui->tick();
+                    $this->await(
+                        static fn (): bool => EditorState::pickerOpen($editor),
+                        what: 'the peek popup to open',
+                    );
+                    $this->awaitPainted($tui, $terminal, 'Peek: src/Target.php:4');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Peek: src/Target.php:4', $screen);
                     $this->assertStringContainsString('class Target', $screen, 'definition line shown');
+                    // Only now does "still Demo.php" mean the peek DECLINED to
+                    // switch buffers, rather than not having happened yet.
                     $this->assertStringEndsWith('Demo.php', (string) $editor->getFilePath(), 'peek did not switch buffers');
                     $tui->handleInput("\r"); // pick a context line -> jump for real
                 },
