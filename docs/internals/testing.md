@@ -154,6 +154,45 @@ with its own message instead of a bare timeout.
 answer that has not arrived yet is indistinguishable from one that was never
 requested. Prefer setting a sentinel and asserting nothing replaced it.
 
+**Grade a barrier under LOAD, never on an idle run.** An idle machine cannot
+tell a real barrier from one that merely happens to be satisfied. The instrument
+is a serial `--filter` loop under CPU burners — harsher than `flake:scan`, which
+shares the machine between paratest workers and so gives each test *more*
+headroom, not less:
+
+```bash
+cleanup() { pkill -x yes >/dev/null 2>&1; }; trap cleanup EXIT INT TERM
+for i in $(seq 1 16); do yes > /dev/null & done
+r=0; for i in $(seq 1 30); do vendor/bin/phpunit --filter theTest >/dev/null 2>&1 || r=$((r+1)); done
+cleanup; echo "$r/30"     # verify with: pgrep -x yes
+```
+
+Kill the burners in the same command (`trap EXIT`) or they outlive the shell and
+poison every later measurement. This found what idle runs had missed: two LSP
+scenarios failing 6 in 30 that `composer test` had been passing, one of them
+introduced by a compression whose commit message said "verified to gate" — idle.
+
+As of 2026-08-31 every E2e and plugin-E2e file has been graded this way (35
+files, 4–10 serial passes each, 16 burners): **0 red runs**. Re-measure before
+and after any change that claims to reduce flakiness, at the same load.
+
+**The shape to hunt is DROPPED input, not a missing barrier.** An audit of first
+steps found 164 scenarios driving input behind nothing but a boot gap, and
+sampling the subprocess-heavy ones under load found nothing wrong with any of
+them. The LSP ones were different in kind: a request fired at a session that has
+not initialised is dropped in silence, so no response and no flash ever arrive
+and the next barrier burns its whole budget. `awaitLspReady()` in
+`IdeLspFeaturesTest` is the fix for that class. A gap in front of synchronous UI
+is not the same hazard, and barriering it wholesale buys nothing measurable.
+
+**A reproduction plus a plausible story is not a diagnosis.** A 12-of-12 failure
+here was written up as index-lock contention between a polling
+`git status --porcelain` and an in-flight `git add`. It fit, and it was wrong —
+both git paths already pass `--no-optional-locks` (below), which this page had
+said all along. Re-tested, both barriers were 0/30 and the failure never
+reproduced. Verify a mechanism, or write down that the cause is unknown; a wrong
+one in the record gets cited and stops the next person looking.
+
 **Both git argv paths pass `--no-optional-locks`** (`GitProcessRunner` and
 `TempProject::git()`). Porcelain readers must never take the opportunistic index
 lock, which collides with a concurrent add or commit's mandatory one. Keep the
