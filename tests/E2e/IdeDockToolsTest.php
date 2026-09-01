@@ -140,10 +140,11 @@ final class IdeDockToolsTest extends TestCase
             [
                 200 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b6"); // alt+6 → Show Problems
-                    $tui->tick();
+                    // Await the strip COUNT, which is the last of the two things
+                    // asserted; 'Problems' alone can be on screen before it.
+                    $this->awaitPainted($tui, $terminal, '0 results');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Problems', $screen, 'the Problems tab opened on the dock strip');
-                    $this->assertStringContainsString('0 results', $screen, 'no diagnostics yet');
                 },
                 350 => function ($tui, $terminal, $ide) use ($project): void {
                     $tui->setFocus($tui->getById('editor'));
@@ -152,11 +153,11 @@ final class IdeDockToolsTest extends TestCase
                             Uri::fromPath($project->path('a.php')),
                             [1 => [['severity' => 1, 'message' => 'live boom', 'col' => 0, 'endCol' => 3]]],
                         );
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '✗ live boom'));
-                    $tui->tick();
+                    // The row and the strip count are two paints; the count
+                    // follows, so it is the one to await.
+                    $this->awaitPainted($tui, $terminal, '✗ live boom');
+                    $this->awaitPainted($tui, $terminal, '1 results');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('✗ live boom', $screen, 'the open Problems tab refreshed in place');
-                    $this->assertStringContainsString('1 results', $screen, 'the strip count followed');
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'the live refresh did not steal the focus');
 
                     // A further refresh that adds an EARLIER row must not move
@@ -191,10 +192,9 @@ final class IdeDockToolsTest extends TestCase
                     $tui->tick();
                     $this->assertFalse($tui->getById('results')->isVisible(), 'the dock is hidden');
                     $tui->handleInput("\x1b6"); // alt+6 → reveal Problems again
-                    $tui->tick();
+                    $this->awaitPainted($tui, $terminal, '2 results');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('▲ warn one', $screen, 'the concealed tab picked up the second diagnostic');
-                    $this->assertStringContainsString('2 results', $screen);
                 },
             ],
         );

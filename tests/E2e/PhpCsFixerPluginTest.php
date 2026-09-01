@@ -169,7 +169,6 @@ final class PhpCsFixerPluginTest extends TestCase
                 },
                 300 => function ($tui, $terminal): void {
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'php-cs-fixer: exited with code 3'));
-                    $tui->tick();
                     $this->assertStringContainsString('php-cs-fixer: exited with code 3', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],

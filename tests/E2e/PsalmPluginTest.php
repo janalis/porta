@@ -84,11 +84,12 @@ final class PsalmPluginTest extends TestCase
                     $tui->handleInput("\x1b\x10"); // ctrl+alt+p → psalm:analyse
                 },
                 300 => function ($tui, $terminal) use ($project): void {
-                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: 1 issue in a.php'), what: 'psalm to report the issue');
-                    $tui->tick();
+                    // TWO paints, not one: the status line reports the run, and
+                    // the inline diagnostic lands in the editor separately. Await
+                    // the LAST thing asserted, not the first.
+                    $this->awaitPainted($tui, $terminal, 'psalm: 1 issue in a.php');
+                    $this->awaitPainted($tui, $terminal, 'UndefinedVariable: Boom detected');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('psalm: 1 issue in a.php', $screen);
-                    $this->assertStringContainsString('UndefinedVariable: Boom detected', $screen, 'the diagnostic renders inline in the editor');
 
                     // The Problems panel aggregates it like any LSP diagnostic.
                     $tui->handleInput("\x1b6"); // alt+6
@@ -102,7 +103,6 @@ final class PsalmPluginTest extends TestCase
                 },
                 450 => function ($tui, $terminal): void {
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: no issues in a.php'), what: 'psalm to report the clean run');
-                    $tui->tick();
                     $this->assertStringContainsString('psalm: no issues in a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $editorScreen = implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
                     $this->assertStringNotContainsString('Boom detected', AnsiUtils::stripAnsiCodes($editorScreen), 'the clean run cleared the diagnostic');
@@ -140,7 +140,6 @@ final class PsalmPluginTest extends TestCase
                 },
                 300 => function ($tui, $terminal): void {
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: 1 issue in a.php'), what: 'psalm to report the issue');
-                    $tui->tick();
                     $this->assertStringContainsString('psalm: 1 issue in a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'saving analysed the file');
                 },
             ],
@@ -165,7 +164,6 @@ final class PsalmPluginTest extends TestCase
                 },
                 300 => function ($tui, $terminal): void {
                     $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: 1 issue in a.php'), what: 'psalm to report the issue');
-                    $tui->tick();
                     $this->assertStringContainsString('psalm: 1 issue in a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the persisted setting survived the restart');
                 },
             ],

@@ -122,7 +122,9 @@ final class IdePluginInstallTest extends TestCase
                     $this->type($tui, $project->path('plugin-src/installee'));
                     $tui->handleInput("\r"); // commit → async composer require + live activation
                     $this->await(static fn (): bool => str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed'));
-                    $tui->tick();
+                    // The toast is the MODEL saying so; the re-listed section is
+                    // a later paint, and a bare tick() is not a frame.
+                    $this->awaitPainted($tui, $terminal, 'installee (project)');
 
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin installed', \Porta\Tests\Support\Toasts::last($ide));
@@ -217,7 +219,9 @@ final class IdePluginInstallTest extends TestCase
                     $this->assertNotContains('demo:hi', $commands->keyBoundIds(), 'key dispatch died');
                     $terminal->clearOutput();
                     $commands->run('demo:hi'); // unknown id → safe no-op
-                    $tui->tick();
+                    // frame(), not tick(): this asserts an ABSENCE, so it has to
+                    // force the paint that would have proved it wrong.
+                    $this->frame($tui);
                     $this->assertStringNotContainsString('demo says hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
 
                     // The same name reinstalls live from a fresh source dir.
@@ -272,7 +276,7 @@ final class IdePluginInstallTest extends TestCase
                 },
                 300 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->await(static fn (): bool => str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed'));
-                    $tui->tick();
+                    $this->awaitPainted($tui, $terminal, 'cloned (project)');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin installed', \Porta\Tests\Support\Toasts::last($ide));
                     $this->assertFileExists($project->path('.porta/plugins/cloned/plugin.php'));
@@ -317,7 +321,7 @@ final class IdePluginInstallTest extends TestCase
                     $this->type($tui, $project->path('plugin-src/worldwide'));
                     $tui->handleInput("\r");
                     $this->await(static fn (): bool => str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed'));
-                    $tui->tick();
+                    $this->awaitPainted($tui, $terminal, 'worldwide (global)');
 
                     $this->assertFileExists($home->dir.'/.porta/plugins/worldwide/plugin.php');
                     $this->assertDirectoryDoesNotExist($project->path('.porta/plugins/worldwide'));
