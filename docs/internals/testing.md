@@ -173,8 +173,26 @@ scenarios failing 6 in 30 that `composer test` had been passing, one of them
 introduced by a compression whose commit message said "verified to gate" — idle.
 
 As of 2026-08-31 every E2e and plugin-E2e file has been graded this way (35
-files, 4–10 serial passes each, 16 burners): **0 red runs**. Re-measure before
-and after any change that claims to reduce flakiness, at the same load.
+files, 4–10 serial passes each, 16 burners): **0 red runs**. The Unit and
+Integration suites were graded the same way (6 passes each), and the six async
+unit classes most exposed to timing — `AsyncProcessTest`, `TerminalSessionsTest`,
+`LspSessionTest`, `LspSessionPoolTest`, `DapSessionTest`, `AsyncHighlightTest` —
+at 15 passes each. All 0 red. Re-measure before and after any change that claims
+to reduce flakiness, at the same load.
+
+**Order coupling is a separate axis, and it is measured separately.** Load runs
+say nothing about it, and paratest hides it: 16 workers see ~21 E2e tests each,
+so leaked state never accumulates far. A SERIAL suite run puts all 338 in one
+process, which is the harsh case:
+
+```bash
+vendor/bin/phpunit --testsuite E2e --order-by=random --random-order-seed=101
+```
+
+(`--random-order-seed` is ignored without `--order-by=random`; PHPUnit says so
+rather than failing.) Sampled 2026-09-01 at three seeds for E2e and two for
+Plugins: 0 red. A failure that reproduces only in-suite is order coupling, not
+load — replay it with the seed PHPUnit printed.
 
 **The shape to hunt is DROPPED input, not a missing barrier.** An audit of first
 steps found 164 scenarios driving input behind nothing but a boot gap, and
