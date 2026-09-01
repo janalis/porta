@@ -163,7 +163,10 @@ final readonly class EditorRowAssembler
     private function renderStickyRow(int $docLine, EditorGeometry $geo, array $highlighted, int $hScroll): string
     {
         $stickyLabel = LineNumberMode::Off === $this->lineNumbers ? '' : (string) ($docLine + 1);
-        $gutter = $this->vcsCell($docLine).$this->styles->of(Role::Gutter)->apply(str_pad($stickyLabel, $geo->numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT).' ').' ';
+        // Same columns as an ordinary row, including the fold marker: a pinned
+        // header is a fold start by construction, and a blank there would leave
+        // the gutter a column narrower than every line below it.
+        $gutter = $this->vcsCell($docLine).$this->styles->of(Role::Gutter)->apply(str_pad($stickyLabel, $geo->numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT).' ').$this->foldCell($docLine).' ';
         $raw = $highlighted[$docLine] ?? '';
         $hl = $this->indentGuides ? EditorRenderer::applyIndentGuides($this->document, $raw, $docLine, $this->styles) : $raw;
         $content = EditorRenderer::renderContentLine($hScroll, $hl, $geo->contentWidth, CursorVisibility::Hidden, 0, $this->cursorStyle->marker());
@@ -203,7 +206,22 @@ final readonly class EditorRowAssembler
             $numberLabel = (string) abs($lineIndex - $this->document->getCursorLine());
         }
 
-        return $this->vcsCell($lineIndex).$numStyle->apply(str_pad($numberLabel, $numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT)).$marker.' ';
+        return $this->vcsCell($lineIndex).$numStyle->apply(str_pad($numberLabel, $numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT)).$marker.$this->foldCell($lineIndex).' ';
+    }
+
+    /**
+     * The one-column fold marker: a triangle on a line a region starts at,
+     * pointing down when it is open and right when it is collapsed, and a blank
+     * everywhere else. Dimmed like the line numbers — it is an affordance, not
+     * a finding, and the SHAPE is what says open or closed.
+     */
+    private function foldCell(int $line): string
+    {
+        $collapsed = $this->foldModel->foldMarkAt($line);
+
+        return null === $collapsed
+            ? ' '
+            : $this->styles->of(Role::Gutter)->apply($collapsed ? Glyphs::COLLAPSED : Glyphs::EXPANDED);
     }
 
     /** The one-column git change strip, or '' when the gutter marks are disabled. */

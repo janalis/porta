@@ -124,12 +124,14 @@ excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server
 # code; the round-5 test split retired the E2e monolith that pinned two rules;
 # all nine re-bisected again under mago 1.45, where exactly one moved):
 #
-#   cyclomatic-complexity   143  Input/MouseRouter — still on top, two lower
-#                                than before git left `src/`: the router's
-#                                git-shaped branches became ViewPointers
-#                                lookups (was 145; 220 two rounds before that,
-#                                133 before the graph viewer's click/drag-pan
-#                                routing landed)
+#   cyclomatic-complexity   144  Input/MouseRouter — still on top. 143 until the
+#                                editor gutter grew a fold column, which the
+#                                router has to tell apart from the breakpoint
+#                                columns beside it; extracting the branch into
+#                                its own method does NOT move this, the rule
+#                                sums the class. (Was 145 before git left
+#                                `src/`; 220 two rounds before that, 133 before
+#                                the graph viewer's click/drag-pan routing.)
 #   too-many-methods         97  Widget/CodeEditorWidget (was 208, a test file;
 #                                106 until mago 1.45, which counts the same
 #                                unchanged class as 97 — a counting change, not
@@ -139,7 +141,9 @@ excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server
 #                                StylesDefault trait absorbed its $styles
 #                                field; FindInFilesModal sits at 32 too after
 #                                reabsorbing the round-5 VOs as plain fields)
-#   too-many-enum-cases      58  Ui/Role (the theme role vocabulary)
+#   too-many-enum-cases      59  Ui/Role (the theme role vocabulary; 58 until
+#                                OccurrenceWriteBg joined it — a read and a write
+#                                occurrence cannot share one role)
 #   excessive-parameter-list 22  Bootstrap/WidgetHooks' constructor — near-
 #                                unmoved since round 2 (splitting it was
 #                                measured: it INCREASES coupling edges). Round
@@ -203,10 +207,10 @@ excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server
 # real maximum is not a gate. Verified failing: injecting 60 dummy
 # properties into Ui/Notifier trips too-many-properties and lint exits 1.
 [linter.rules]
-cyclomatic-complexity = { threshold = 143 }
+cyclomatic-complexity = { threshold = 144 }
 too-many-methods = { threshold = 97 }
 too-many-properties = { threshold = 32 }
-too-many-enum-cases = { threshold = 58 }
+too-many-enum-cases = { threshold = 59 }
 excessive-parameter-list = { threshold = 22 }
 kan-defect = { threshold = 8 }
 halstead = { effort-threshold = 21435, difficulty-threshold = 30, volume-threshold = 3236 }

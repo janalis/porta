@@ -113,8 +113,11 @@ final class MenuModel
         ],
         'View' => [
             'i:ide_problems',
+            'i:ide_structure',
             'i:ide_todo',
+            'i:ide_project_tree',
             'i:ide_toggle_focus',
+            'i:tree_select_opened_file',
             self::SEP,
             'i:toggle_inline_diagnostics',
             'i:cycle_line_numbers',

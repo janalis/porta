@@ -29,7 +29,6 @@ final class DockLiveRefreshListener
 {
     public function __construct(
         private readonly BottomDock $dock,
-        private readonly DockToolTabs $tools,
         private readonly ProblemRows $problemRows,
         private readonly LspLog $lspLog,
         private readonly NotificationLog $notificationLog,
@@ -38,29 +37,18 @@ final class DockLiveRefreshListener
     #[AsEventListener]
     public function onDiagnosticsChanged(DiagnosticsChanged $event): void
     {
-        $this->refresh(ResultsPanelMode::Problems, $this->problemRows->build(...));
+        $this->dock->refreshList(ResultsPanelMode::Problems, $this->problemRows->build(...));
     }
 
     #[AsEventListener]
     public function onLspLogAppended(LspLogAppended $event): void
     {
-        $this->refresh(ResultsPanelMode::LspLog, fn (): array => LogRows::build($this->lspLog->entries()));
+        $this->dock->refreshList(ResultsPanelMode::LspLog, fn (): array => LogRows::build($this->lspLog->entries()));
     }
 
     #[AsEventListener]
     public function onNotificationLogged(NotificationLogged $event): void
     {
-        $this->refresh(ResultsPanelMode::Notifications, fn (): array => LogRows::build($this->notificationLog->entries()));
-    }
-
-    /** @param callable(): list<array{path: string, line: int, text: string}> $rows */
-    private function refresh(ResultsPanelMode $when, callable $rows): void
-    {
-        $tab = $this->tools->findByMode($when); // constant-title tools: at most one tab
-        if (null === $tab) {
-            return;
-        }
-        $tab->rows = $rows();
-        $this->dock->refreshIfBound($tab);
+        $this->dock->refreshList(ResultsPanelMode::Notifications, fn (): array => LogRows::build($this->notificationLog->entries()));
     }
 }

@@ -29,6 +29,7 @@ use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestTui;
+use Porta\Tree\FileStatuses;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Menu\MenuFileContext;
@@ -132,6 +133,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
             $this->sink,
             new CodeEditorWidget(),
             new RecordingChangeMarkSink(),
+            new FileStatuses(),
             $this->buffers,
             TestDockTools::controller(),
             TestDockTools::replacer(),

@@ -273,10 +273,10 @@ final class IdeContextMenusTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;38;3M"); // press line 0 col 0
-                    $tui->handleInput("\x1b[<32;43;3M"); // drag to col 5
-                    $tui->handleInput("\x1b[<0;43;3m"); // release → "hello" selected
-                    $tui->handleInput("\x1b[<2;45;3M"); // right-click in the editor
+                    $tui->handleInput("\x1b[<0;39;3M"); // press line 0 col 0
+                    $tui->handleInput("\x1b[<32;44;3M"); // drag to col 5
+                    $tui->handleInput("\x1b[<0;44;3m"); // release → "hello" selected
+                    $tui->handleInput("\x1b[<2;46;3M"); // right-click in the editor
                 },
                 300 => function ($tui): void {
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'right-click opened the editor menu');

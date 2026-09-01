@@ -37,6 +37,8 @@ use Porta\Editor\LineAnnotationSink;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\ModalHost;
 use Porta\Editor\MultiCaret;
+use Porta\Editor\OccurrenceHighlights;
+use Porta\Editor\TemplateCatalog;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Highlight\DarkTerminalTheme;
 use Porta\Highlight\TempestHighlightProvider;
@@ -64,6 +66,7 @@ use Porta\Widget\Render\ErrorStripe;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
 use Porta\Widget\Render\PaneFocus;
+use Porta\Widget\Render\StripeMarks;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\StylesDefault;
@@ -151,7 +154,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     private ?array $bracketsMemo = null;
     private string $bracketsKey = '';
 
-    /** @var array{key: string, spans: list<array{0: int, 1: int, 2: int}>} memoized identifier occurrences, keyed by version + caret + focus + selection + viewport */
+    /** @var array{key: string, spans: list<array{0: int, 1: int, 2: int, 3: bool}>} memoized identifier occurrences, keyed by version + caret + focus + selection + viewport */
     private array $occurrencesMemo = ['key' => '', 'spans' => []];
 
     /** Mouse hit-testing + selection, rebuilt per document. */
@@ -204,6 +207,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         ?OverlayHost $overlayHost = null,
         private readonly ?PerfCollector $perf = null,
         private readonly ?Scheduler $scheduler = null,
+        private readonly OccurrenceHighlights $occurrences = new OccurrenceHighlights(),
     ) {
         $this->initStyles($styles);
         $this->callbacks = new EditorCallbacks();
@@ -770,7 +774,18 @@ final class CodeEditorWidget extends AbstractWidget implements
     /** The last-render viewport geometry: {@see EditorMouse} maps click cells through it, the LSP inlay-hint range is derived from it. */
     public function viewport(): EditorViewport
     {
-        return new EditorViewport($this->scroll->vScroll(), $this->scroll->hScroll(), $this->lastGutterWidth, $this->lastStripeCol, $this->lastRenderRows, $this->stickyLines);
+        // The fold marker is the gutter's second-to-last column (… marker, FOLD,
+        // trailing space); with no gutter at all this goes negative, which no
+        // click column can equal.
+        return new EditorViewport(
+            $this->scroll->vScroll(),
+            $this->scroll->hScroll(),
+            $this->lastGutterWidth,
+            $this->lastGutterWidth - 2,
+            $this->lastStripeCol,
+            $this->lastRenderRows,
+            $this->stickyLines,
+        );
     }
 
     /** Centre the viewport on a line (the stripe-jump target). */
@@ -905,6 +920,15 @@ final class CodeEditorWidget extends AbstractWidget implements
         }
 
         if ($this->completion->handleSnippetTabStop($data, $kb)) {
+            return;
+        }
+
+        // Live templates: Tab expands the abbreviation at the caret. After the
+        // snippet-tab-stop check, so Tab walks the stops of what it just
+        // expanded, and before the editing verbs, so Tab still indents when
+        // there is no template there.
+        $language = ProjectPaths::languageId($this->filePath ?? '');
+        if (null !== $this->filePath && $this->completion->expandTemplate($data, $kb, $this->callbacks->completion?->templatesFor($language) ?? TemplateCatalog::forLanguage($language))) {
             return;
         }
 
@@ -1218,10 +1242,12 @@ final class CodeEditorWidget extends AbstractWidget implements
             $lastVisibleDocLine = $this->foldModel->docLineAtRow($vScroll, $contentRows - 1) ?? ($lineCount - 1);
             $decorations = $this->collectDecorations($doc, $vScroll, $lastVisibleDocLine);
 
-            // Right-margin error stripe: one styled cell per screen row, a whole-file
-            // overview of diagnostics plus a faint viewport thumb. Appended to every
-            // produced row so each reaches the full terminal width.
-            $stripe = ErrorStripe::cells($this->decorations->diagnostics(), $rows, $lineCount, $vScroll, $lastVisibleDocLine, $this->styles);
+            // Right-margin marker stripe: one styled cell per screen row, a whole-file
+            // overview of diagnostics, breakpoints, change marks and search hits plus
+            // a faint viewport thumb. Appended to every produced row so each reaches
+            // the full terminal width.
+            $marks = StripeMarks::from($this->decorations, $this->display->vcsGutter());
+            $stripe = ErrorStripe::cells($marks, $rows, $lineCount, $vScroll, $lastVisibleDocLine, $this->styles);
 
             $assembler = new EditorRowAssembler(
                 $doc,
@@ -1261,14 +1287,18 @@ final class CodeEditorWidget extends AbstractWidget implements
 
     /**
      * The horizontal layout for a $lineCount-line document in $columns cells:
-     * gutter = git strip (1) + line number + change marker + trailing space, and
-     * the rightmost column always reserved for the error stripe so diagnostics
-     * arriving or leaving never reflow the content.
+     * gutter = git strip (1) + line number + change marker + fold column +
+     * trailing space, and the rightmost column always reserved for the error
+     * stripe so diagnostics arriving or leaving never reflow the content.
+     *
+     * The fold column is unconditional, like the marker beside it: a column that
+     * appeared only on files with foldable regions would shift the text sideways
+     * as you moved between buffers.
      */
     private function computeGeometry(int $columns, int $lineCount): EditorGeometry
     {
         $numberWidth = LineNumberMode::Off === $this->display->lineNumbers() ? 0 : max(3, \strlen((string) $lineCount));
-        $gutterWidth = ($this->display->vcsGutter() ? 1 : 0) + $numberWidth + 2;
+        $gutterWidth = ($this->display->vcsGutter() ? 1 : 0) + $numberWidth + 3;
         $contentWidth = max(1, $columns - $gutterWidth - 1);
 
         return new EditorGeometry($numberWidth, $gutterWidth, $contentWidth, $gutterWidth + $contentWidth);
@@ -1324,7 +1354,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             multiActive: $multiActive,
             selection: $doc->getSelectionRange(),
             carets: $multiActive ? $this->multiCaret->allCarets() : [],
-            occurrences: $this->occurrencesMemo['spans'],
+            occurrences: $this->occurrences->spansFor($this->filePath, $doc->getVersion(), $doc->getCursorLine(), $doc->getCursorColUtf16(), $this->occurrencesMemo['spans']),
             brackets: $this->focused ? $this->matchingBrackets($doc) : null,
         );
     }

@@ -60,6 +60,7 @@ final class LightTheme
                 Role::SearchBg->selector() => new Style(background: 229),
                 Role::SearchCurrentBg->selector() => new Style(background: 215),
                 Role::OccurrenceBg->selector() => new Style(background: 194),
+                Role::OccurrenceWriteBg->selector() => new Style(background: 224),
                 Role::Breakpoint->selector() => new Style(color: 160),
                 Role::DebugLineBg->selector() => new Style(background: 224),
                 Role::TabAccent->selector() => new Style(color: 25),

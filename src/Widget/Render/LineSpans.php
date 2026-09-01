@@ -53,12 +53,14 @@ final class LineSpans
             $open = $matchStyle->getAnsiRestore();
             $spans[] = [$doc->displayColAt($lineIndex, $match['start']), $doc->displayColAt($lineIndex, $match['end']), $open, Sgr::resetFor($matchStyle), $open];
         }
-        foreach ($occurrences as [$oLine, $oStart, $oEnd]) {
+        foreach ($occurrences as [$oLine, $oStart, $oEnd, $oWrite]) {
             if ($oLine !== $lineIndex) {
                 continue;
             }
 
-            $occurrenceStyle = $styles->of(Role::OccurrenceBg);
+            // A write access reads differently from a read one, PhpStorm-style;
+            // in monochrome the two separate by weight rather than by colour.
+            $occurrenceStyle = $styles->of($oWrite ? Role::OccurrenceWriteBg : Role::OccurrenceBg);
             $occurrenceBg = $occurrenceStyle->getAnsiRestore();
             $spans[] = [$oStart, $oEnd, $occurrenceBg, Sgr::resetFor($occurrenceStyle), $occurrenceBg];
         }

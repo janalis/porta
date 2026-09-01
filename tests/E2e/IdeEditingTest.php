@@ -15,6 +15,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
+use Porta\Ui\Glyphs;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
@@ -29,6 +30,43 @@ final class IdeEditingTest extends TestCase
     use ClearsPortaLsp;
     use PreservesPath;
     use RunsIde;
+
+    /**
+     * The fold column is part of the gutter, so a click there must fold rather
+     * than set a breakpoint — the two live one cell apart.
+     */
+    public function testClickingTheFoldColumnCollapsesTheRegionRatherThanSettingABreakpoint(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\nfunction a()\n{\n    return 1;\n}\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    $tui->tick();
+                    $editor = $tui->getById('editor');
+                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
+                    $screen = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))));
+
+                    $this->assertStringContainsString(Glyphs::EXPANDED, $screen(), 'the brace line starts an open region');
+
+                    // The fold column is the gutter's second-to-last cell; SGR
+                    // columns are 1-based. Editor row 2 is document line 2.
+                    $foldCol = $rect->col + $editor->gutterWidth() - 1;
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $foldCol, $rect->row + 3));
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $foldCol, $rect->row + 3));
+
+                    $after = $screen();
+                    $this->assertStringContainsString(Glyphs::COLLAPSED, $after, 'the click collapsed the region');
+                    $this->assertStringNotContainsString(Glyphs::BREAKPOINT, $after, 'and set no breakpoint');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
 
     public function testStickyScrollPinsHeaderAndClickJumps(): void
     {
@@ -51,8 +89,10 @@ final class IdeEditingTest extends TestCase
                     $rect = $renderer->getWidgetRect($editor);
                     $rendered = $editor->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, $rect->rows));
                     $this->assertStringContainsString('class Service', AnsiUtils::stripAnsiCodes($rendered[0]), 'class header pinned at the top');
-                    // Click the pinned class header (editor row 0).
-                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 7, $rect->row + 1));
+                    // Click the pinned class header's TEXT (editor row 0, first
+                    // content column — the gutter's own columns route to the
+                    // breakpoint and fold actions instead).
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 8, $rect->row + 1));
                 },
                 360 => function ($tui): void {
                     $this->assertSame(4, $tui->getById('editor')->getDocument()->getCursorLine(), 'clicking the pinned header jumped to the class declaration');

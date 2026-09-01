@@ -144,7 +144,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testAltClickRemovesAMiddleCaretSkippingTheEarlierOne(): void
     {
         $editor = $this->editor("aaa\nbbb\nccc\nddd\n");
-        $editor->render(new RenderContext(80, 10)); // establish the gutter width (6)
+        $editor->render(new RenderContext(80, 10)); // establish the gutter width (7)
         $editor->getDocument()->setCursor(0, 0);
         $editor->handleInput("\x1b[1;7B"); // extra caret on line 0, primary → line 1
         $editor->handleInput("\x1b[1;7B"); // extras: lines 0 and 1, primary → line 2
@@ -264,9 +264,9 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testMouseColumnSelectionBuildsRaggedBlock(): void
     {
         $editor = $this->editor("aaaa\nbb\ncccc\n");
-        $editor->render(new RenderContext(80, 10)); // gutter width = 6
-        $editor->beginColumnSelectionAt(0, 6 + 1); // anchor display col 1
-        $editor->extendColumnSelectionTo(2, 6 + 3); // caret display col 3
+        $editor->render(new RenderContext(80, 10)); // gutter width = 7
+        $editor->beginColumnSelectionAt(0, 7 + 1); // anchor display col 1
+        $editor->extendColumnSelectionTo(2, 7 + 3); // caret display col 3
 
         $this->assertTrue(EditorState::multiCaret($editor)->hasMultiple());
         $carets = EditorState::multiCaret($editor)->carets();
@@ -279,8 +279,8 @@ final class CodeEditorMultiCaretTest extends TestCase
     {
         $editor = $this->editor("aaaa\nbbbb\ncccc\n");
         $editor->render(new RenderContext(80, 10));
-        $editor->beginColumnSelectionAt(0, 6 + 2);
-        $editor->extendColumnSelectionTo(2, 6 + 2); // same column: a vertical caret stack, no selection
+        $editor->beginColumnSelectionAt(0, 7 + 2);
+        $editor->extendColumnSelectionTo(2, 7 + 2); // same column: a vertical caret stack, no selection
 
         $this->assertTrue(EditorState::multiCaret($editor)->hasMultiple());
         $this->assertFalse($editor->getDocument()->hasSelection(), 'the caret row has an empty selection');
@@ -294,8 +294,8 @@ final class CodeEditorMultiCaretTest extends TestCase
     {
         $editor = $this->editor("aaaa\nbb\ncccc\n");
         $editor->render(new RenderContext(80, 10));
-        $editor->beginColumnSelectionAt(0, 6 + 1);
-        $editor->extendColumnSelectionTo(2, 6 + 3);
+        $editor->beginColumnSelectionAt(0, 7 + 1);
+        $editor->extendColumnSelectionTo(2, 7 + 3);
 
         $editor->handleInput('X');
 
@@ -402,8 +402,8 @@ final class CodeEditorMultiCaretTest extends TestCase
                 },
             ),
         ));
-        $editor->beginColumnSelectionAt(0, 6 + 1);
-        $editor->extendColumnSelectionTo(2, 6 + 3);
+        $editor->beginColumnSelectionAt(0, 7 + 1);
+        $editor->extendColumnSelectionTo(2, 7 + 3);
 
         $editor->handleInput("\x03"); // ctrl+c: block copy joins rows with newlines
         $this->assertSame("aa\nb\ncc", $copied);

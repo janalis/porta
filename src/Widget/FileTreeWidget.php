@@ -6,9 +6,11 @@ namespace Porta\Widget;
 
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
+use Porta\Editor\DiagnosticStyle;
 use Porta\Event\TreeFileActivated;
 use Porta\Layout\ResizableSidebar;
 use Porta\Support\AnsiText;
+use Porta\Tree\FileDecorations;
 use Porta\Tree\FileTreeNode;
 use Porta\Ui\Glyphs;
 use Porta\Ui\ListNavigation;
@@ -28,6 +30,7 @@ use Porta\Widget\Support\WheelScrollable;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Clock\NativeClock;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -77,6 +80,19 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     /** The {@see refreshDirsSlice} scan position, persisted across poll ticks. */
     private int $dirCursor = 0;
 
+    /** The root in realpath (buffer) space; the raw root itself when it does not resolve. */
+    private readonly string $realRoot;
+
+    /**
+     * Last frame's per-file marks, absolute path => state. Held rather than
+     * pulled inside the row loop because the rendered lines are memoized on the
+     * render revision, which an edit in the EDITOR never bumps — so the marks
+     * are compared here and the memo dropped when they move.
+     *
+     * @var array<string, array{dirty: bool, severity: int, status: \Porta\Editor\ChangeMarkKind|null}>
+     */
+    private array $fileMarks = [];
+
     /**
      * The last rendered lines and their (revision, width, rows) key. A private
      * memo rather than the widget cache because the vendor's layout engine
@@ -106,10 +122,12 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         private readonly ClockInterface $clock = new NativeClock(),
         int $width = 30,
         ?Styles $styles = null,
+        private readonly ?FileDecorations $fileDecorations = null,
         private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->width = $width;
         $this->initStyles($styles);
+        $this->realRoot = ($resolved = realpath($rootDir)) ? $resolved : $rootDir;
         $this->list = new ListSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
         $this->rebuild();
@@ -308,6 +326,21 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         return $this->setHovered($this->list->rowIndexAt($relRow, \count($this->visible)));
     }
 
+    /**
+     * Pull the per-file marks once per frame and drop the memo when they moved.
+     * Dirtiness and diagnostics both change from the EDITOR, which never bumps
+     * this widget's render revision, so nothing else would notice them.
+     */
+    #[\Override]
+    public function beforeRender(): void
+    {
+        $marks = $this->fileDecorations?->snapshot() ?? [];
+        if ($marks !== $this->fileMarks) {
+            $this->fileMarks = $marks;
+            $this->invalidate();
+        }
+    }
+
     #[\Override]
     public function render(RenderContext $context): array
     {
@@ -343,8 +376,12 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
                 $this->expanded[$node->path] ?? false => Glyphs::EXPANDED.' ',
                 default => Glyphs::COLLAPSED.' ',
             };
+            // Marks ride INSIDE the row text so the row's one style covers them:
+            // painting them separately would mean slicing the styled line again,
+            // and their meaning is the shape, not the colour.
+            $marks = $this->marksFor($node);
             $text = AnsiText::blank($node->depth + 1).$icon.$node->name.($node->isDir ? '/' : '');
-            $text = AnsiText::truncate($text, $width, pad: true);
+            $text = AnsiText::truncate($text, max(1, $width - AnsiUtils::visibleWidth($marks)), pad: true).$marks;
 
             // Subtle hover background beneath the pointer keeps the dir/file foreground.
             $lines[] = match (true) {
@@ -362,6 +399,51 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $this->memoKey = $key;
 
         return $this->memoLines = $this->withMenuOverlay($lines, $width);
+    }
+
+    /**
+     * A file row's trailing marks, right-aligned and in a fixed order: its
+     * version-control status, the worst diagnostic it carries, then whether it
+     * has unsaved changes — file state, then problems, then yours. Each is one
+     * column and each is a SHAPE rather than a colour, because the whole row
+     * wears one style (a selected row's background has to cover the marks, and
+     * painting them separately would mean slicing the styled line again).
+     *
+     * A directory never gets any of them: an aggregated folder badge would have
+     * to walk the subtree every frame.
+     */
+    private function marksFor(FileTreeNode $node): string
+    {
+        // Both spaces, because both are legitimately in use: core keys buffers
+        // by realpath(), while a plugin publishing file statuses names them
+        // under the project root it was handed. Trying one and not the other is
+        // a decoration that silently never appears — which is how this was
+        // found.
+        $mark = $node->isDir ? null : $this->fileMarks[$this->bufferPath($node->path)] ?? $this->fileMarks[$node->path] ?? null;
+        if (null === $mark) {
+            return '';
+        }
+
+        // A file with nothing to say is absent from the snapshot entirely, so
+        // reaching here means at least one glyph follows the separating space.
+        return ' '.($mark['status']?->glyph() ?? '').(0 === $mark['severity'] ? '' : DiagnosticStyle::glyph($mark['severity'])).($mark['dirty'] ? Glyphs::DIRTY : '');
+    }
+
+    /**
+     * A node's path in BUFFER space. Buffers are keyed by realpath() while the
+     * nodes are built from the raw root, so a project opened through a symlink
+     * has the two disagree on every path — and a mark looked up in the wrong
+     * space simply never appears. Resolved by swapping the root prefix, never
+     * with a syscall: realpath() per node per frame would be one stat per
+     * rendered row.
+     *
+     * Every node path is built FROM the root by {@see walk}, so the prefix is
+     * always there to swap; when the root does not resolve, the two spaces are
+     * the same string and this is the identity.
+     */
+    private function bufferPath(string $path): string
+    {
+        return $this->realRoot.substr($path, \strlen($this->rootDir));
     }
 
     private function rebuild(): void

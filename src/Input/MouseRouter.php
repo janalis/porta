@@ -713,8 +713,7 @@ final class MouseRouter
             return;
         }
         if ($rel['col'] < $this->panes->editor()->gutterWidth() && null !== ($docLine = $this->panes->editor()->documentLineAt($rel['row']))) {
-            // A plain click in the gutter toggles a breakpoint on that line.
-            $this->debug->toggleBreakpointAtDocLine($docLine);
+            $this->gutterClick($rel['col'], $docLine);
 
             return;
         }
@@ -733,5 +732,22 @@ final class MouseRouter
             $this->panes->editor()->beginSelectionAt($rel['row'], $rel['col']);
         }
         $this->mouseSelecting = true;
+    }
+
+    /**
+     * A plain click in the gutter: the fold column folds that region, every
+     * other column toggles a breakpoint. `toggle_fold` works at the caret, so
+     * the caret lands on the line first — which is what a fold click should do
+     * anyway.
+     */
+    private function gutterClick(int $col, int $docLine): void
+    {
+        if ($col !== $this->panes->editor()->viewport()->foldCol) {
+            $this->debug->toggleBreakpointAtDocLine($docLine);
+
+            return;
+        }
+        $this->panes->editor()->jumpTo($docLine, 0);
+        $this->panes->editor()->runAction('toggle_fold');
     }
 }

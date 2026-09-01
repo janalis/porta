@@ -695,6 +695,7 @@ Actions (from handlers/hooks):
 | `openFile(string $path)` | Open a file in the editor |
 | `jumpTo(int $line, int $column = 0)` | Move the caret (0-based) |
 | `setDiagnostics(string $path, array $diagnostics)` | Publish editor diagnostics; each item is `['line' => int (0-based), 'message' => string, 'severity' => 1–4 (optional, 1 = error), 'column' => int (optional)]`. An empty list clears. |
+| `setFileStatuses(array $statuses)` | Publish the working tree's per-FILE version-control status for the file tree — `[absolute path => 'added'\|'modified'\|'deleted']`. The map REPLACES whole, so a file leaving it is how "back to unmodified" is said; an empty array clears every mark. |
 | `setLineAnnotations(array $byLine)` | Show a dim trailing note after lines of the ACTIVE document — `[0-based line => string]`. An empty array clears. Takes no path: the editor drops annotations on every document show, so re-publish from `onBufferSwitched` to keep them. |
 | `projectRoot(): string` | The project root (also safe during `activate()`) |
 | `setting(string $key): bool\|int\|string` | The current value of a setting this plugin registered — the user's value coerced to the declared kind, or the default. Safe during `activate()`, but `registerSetting()` must run first. |
@@ -704,6 +705,14 @@ Diagnostics published via `setDiagnostics` behave exactly like LSP
 diagnostics — inline end-of-line messages, the scroll-stripe, and the
 Problems panel — and the two sources replace each other per file (last
 writer wins).
+
+`setChangeMarks` and `setFileStatuses` are the same question at two scales, and
+they are deliberately on different cadences. The first is a diff of ONE file —
+the gutter stripe — and refreshes per buffer. The second is `git status` over
+the whole repository — the file tree's marks — so it should refresh only when
+the working tree can actually have moved (a save, a commit, a stage or discard),
+never per buffer switch: switching tabs changes nothing on disk. Both take
+core's three kinds, and in both cases core owns what they look like.
 
 `setLineAnnotations` writes the slot `git blame` uses — one dim note after each
 line, in the active document only. It is the one editor decoration a plugin may

@@ -48,7 +48,7 @@ final class DockLiveRefreshListenerTest extends TestCase
         $this->lspLog = new LspLog(new MockClock('2026-07-16 10:00:00'), new EventDispatcher());
         $this->notificationLog = new NotificationLog(new MockClock('2026-07-16 11:00:00'), new EventDispatcher());
 
-        return new DockLiveRefreshListener($this->dock, $this->tools, new ProblemRows($this->buffers, new ProjectPaths('/p')), $this->lspLog, $this->notificationLog);
+        return new DockLiveRefreshListener($this->dock, new ProblemRows($this->buffers, new ProjectPaths('/p')), $this->lspLog, $this->notificationLog);
     }
 
     private function plainPanel(): string
@@ -119,6 +119,30 @@ final class DockLiveRefreshListenerTest extends TestCase
         $listener->onDiagnosticsChanged(new DiagnosticsChanged()); // foreign mode: a no-op
         $this->assertStringContainsString('entry', $this->plainPanel(), 'the history rows were not clobbered');
         $this->assertStringNotContainsString('boom', $this->plainPanel());
+    }
+
+    /**
+     * The rows arrive as a CALLABLE so a refresh for a tab nobody has open
+     * costs nothing to build — the diagnostics of every open buffer, in the
+     * Problems case. Passing an already-built array would look identical from
+     * the outside, which is why this asserts the builder was never entered.
+     */
+    public function testRowsAreNotBuiltForAToolTheUserHasNotOpened(): void
+    {
+        $this->listener();
+        $built = 0;
+        $rows = static function () use (&$built): array {
+            ++$built;
+
+            return [];
+        };
+
+        $this->dock->refreshList(ResultsPanelMode::Problems, $rows);
+        $this->assertSame(0, $built, 'no Problems tab: the rows must not be built at all');
+
+        $this->dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+        $this->dock->refreshList(ResultsPanelMode::Problems, $rows);
+        $this->assertSame(1, $built, 'with the tab standing the builder runs exactly once');
     }
 
     public function testProblemsRefreshKeepsTheSelectedDiagnostic(): void

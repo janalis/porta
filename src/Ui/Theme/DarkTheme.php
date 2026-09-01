@@ -61,6 +61,7 @@ final class DarkTheme
                 Role::SearchBg->selector() => new Style(background: 58),
                 Role::SearchCurrentBg->selector() => new Style(background: 130),
                 Role::OccurrenceBg->selector() => new Style(background: 23),
+                Role::OccurrenceWriteBg->selector() => new Style(background: 52),
                 Role::Breakpoint->selector() => new Style(color: 203),
                 Role::DebugLineBg->selector() => new Style(background: 52),
                 Role::TabAccent->selector() => new Style(color: 110),

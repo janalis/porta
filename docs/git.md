@@ -6,6 +6,12 @@ Git support is silently disabled outside a git working tree.
 
 - **Change markers** in the gutter: added / modified / deleted vs `HEAD`,
   refreshed on open and save (not live-remapped during unsaved edits).
+- **File-tree marks**: `▎` for a file git does not track yet, `┆` for one that
+  differs from `HEAD`. Unlike the gutter these cover the whole working tree, so
+  a changed file you have never opened is still marked. They refresh when the
+  tree can actually have moved — a save, a commit, a stage or discard, a pull —
+  and never on a buffer switch, which changes nothing on disk. A deleted file
+  has no row to mark.
 - The **current branch** in the status bar.
 - **Merge-conflict navigation and resolution** — see
   [editor.md](editor.md#merge-conflicts).

@@ -5,11 +5,16 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\BufferManager;
+use Porta\Editor\ChangeMarkKind;
 use Porta\Event\TreeFileActivated;
 use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Tests\Support\TempProject;
+use Porta\Tree\FileDecorations;
+use Porta\Tree\FileStatuses;
+use Porta\Ui\Glyphs;
 use Porta\Widget\FileTreeWidget;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -19,6 +24,197 @@ use Symfony\Component\Tui\Render\RenderContext;
 final class FileTreeWidgetTest extends TestCase
 {
     use RendersWidget;
+
+    public function testAFileRowIsMarkedWithItsWorstDiagnosticAndItsUnsavedChanges(): void
+    {
+        $project = new TempProject(['clean.php' => "<?php\n", 'broken.php' => "<?php\n", 'edited.php' => "<?php\n"]);
+        $buffers = new BufferManager();
+        $buffers->open((string) realpath($project->dir.'/broken.php'), "<?php\n")->diagnostics = [0 => [['severity' => 1, 'message' => 'boom', 'col' => 0]]];
+        $buffers->open((string) realpath($project->dir.'/edited.php'), "<?php\n")->document->insert('x');
+        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
+
+        $tree->beforeRender();
+        $rows = $this->plain($tree->render(new RenderContext(30, 10)));
+
+        $this->assertMatchesRegularExpression('/broken\.php\s+'.Glyphs::SEVERITY_ERROR.'$/m', $rows, 'the error mark is right-aligned on its own row');
+        $this->assertMatchesRegularExpression('/edited\.php\s+'.Glyphs::DIRTY.'$/m', $rows);
+        $this->assertMatchesRegularExpression('/clean\.php\s+$/m', $rows, 'a clean file carries no mark at all');
+    }
+
+    /** Both marks on one row: the diagnostic first, then the dirty dot, so the columns stay stable. */
+    public function testAFileCanCarryBothMarksAtOnce(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $buffers = new BufferManager();
+        $buffer = $buffers->open((string) realpath($project->dir.'/a.php'), "<?php\n");
+        $buffer->diagnostics = [0 => [['severity' => 2, 'message' => 'hmm', 'col' => 0]]];
+        $buffer->document->insert('x');
+        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
+
+        $tree->beforeRender();
+        $rows = $this->plain($tree->render(new RenderContext(30, 10)));
+
+        $this->assertMatchesRegularExpression('/a\.php\s+'.Glyphs::SEVERITY_WARNING.Glyphs::DIRTY.'$/m', $rows);
+    }
+
+    /** A marked row is still exactly the tree's width — the marks eat into the name, they do not widen the pane. */
+    public function testMarksDoNotWidenTheRow(): void
+    {
+        $project = new TempProject(['a-really-quite-long-file-name.php' => "<?php\n"]);
+        $buffers = new BufferManager();
+        $buffers->open((string) realpath($project->dir.'/a-really-quite-long-file-name.php'), "<?php\n")->document->insert('x');
+        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
+
+        $tree->beforeRender();
+        $lines = $tree->render(new RenderContext(30, 10));
+
+        foreach ($lines as $i => $line) {
+            $this->assertSame(30, AnsiUtils::visibleWidth($line), "row {$i} is not the tree's width");
+        }
+        $this->assertStringEndsWith(Glyphs::DIRTY, AnsiUtils::stripAnsiCodes($lines[1]), 'the mark survived the truncation that clipped the name');
+    }
+
+    /**
+     * The rendered lines are memoized on the render revision, which an edit in
+     * the EDITOR never bumps — so a mark that appears mid-session only shows if
+     * beforeRender drops the memo itself.
+     */
+    public function testAMarkAppearingMidSessionDropsTheMemo(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $buffers = new BufferManager();
+        $buffer = $buffers->open((string) realpath($project->dir.'/a.php'), "<?php\n");
+        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
+
+        $tree->beforeRender();
+        $before = $this->plain($tree->render(new RenderContext(30, 10)));
+        $this->assertStringNotContainsString(Glyphs::DIRTY, $before);
+
+        $buffer->document->insert('x');
+        $tree->beforeRender();
+        $after = $this->plain($tree->render(new RenderContext(30, 10)));
+
+        $this->assertStringContainsString(Glyphs::DIRTY, $after, 'the memo served the pre-edit rows');
+    }
+
+    /**
+     * A directory row never wears a mark, whatever the buffer table says — the
+     * tree asks the question per FILE. An aggregated folder badge would have to
+     * walk the subtree on every frame, which is not what this is.
+     */
+    /**
+     * Buffers are keyed by realpath(); the tree's nodes are built from the raw
+     * root it was given. Open a project through a symlink and the two spaces
+     * diverge — the marks have to be looked up in buffer space or they silently
+     * never appear, which is exactly what a decoration bug looks like.
+     */
+    public function testMarksStillLandWhenTheProjectRootIsASymlink(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $link = $project->dir.'-link';
+        symlink($project->dir, $link);
+
+        try {
+            $buffers = new BufferManager();
+            // What BufferService does: realpath() before keying.
+            $buffers->open((string) realpath($link.'/a.php'), "<?php\n")->document->insert('x');
+            $tree = new FileTreeWidget($link, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
+
+            $tree->beforeRender();
+            $rows = $this->plain($tree->render(new RenderContext(30, 10)));
+
+            $this->assertMatchesRegularExpression('/a\.php\s+'.Glyphs::DIRTY.'$/m', $rows);
+        } finally {
+            unlink($link);
+        }
+    }
+
+    /**
+     * The version-control mark is the same shape the gutter draws, and it lands
+     * on a file no buffer has opened — the whole point of the status channel.
+     */
+    public function testAChangedFileIsMarkedEvenWithNoBufferOpen(): void
+    {
+        $project = new TempProject(['added.php' => "<?php\n", 'edited.php' => "<?php\n", 'clean.php' => "<?php\n"]);
+        $statuses = new FileStatuses();
+        $statuses->applyFileStatuses([
+            (string) realpath($project->dir.'/added.php') => ChangeMarkKind::Added,
+            (string) realpath($project->dir.'/edited.php') => ChangeMarkKind::Modified,
+        ]);
+        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations(new BufferManager(), $statuses));
+
+        $tree->beforeRender();
+        $rows = $this->plain($tree->render(new RenderContext(30, 10)));
+
+        $this->assertMatchesRegularExpression('/added\.php\s+'.Glyphs::VCS_ADDED.'$/m', $rows);
+        $this->assertMatchesRegularExpression('/edited\.php\s+'.Glyphs::VCS_MODIFIED.'$/m', $rows);
+        $this->assertMatchesRegularExpression('/clean\.php\s+$/m', $rows);
+    }
+
+    /**
+     * A publisher names files under the project root it was handed, which is
+     * NOT realpath space when the root is a symlink (or /var on macOS). Core
+     * keys buffers the other way, so the tree has to accept both — the marks
+     * simply never appear otherwise, and nothing else would say so.
+     */
+    public function testAStatusPublishedInRawRootSpaceStillMarksTheRow(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $link = $project->dir.'-link';
+        symlink($project->dir, $link);
+
+        try {
+            $statuses = new FileStatuses();
+            // Keyed under the raw root the plugin was given, not realpath's.
+            $statuses->applyFileStatuses([$link.'/a.php' => ChangeMarkKind::Modified]);
+            $tree = new FileTreeWidget($link, fileDecorations: new FileDecorations(new BufferManager(), $statuses));
+
+            $tree->beforeRender();
+            $rows = $this->plain($tree->render(new RenderContext(30, 10)));
+
+            $this->assertMatchesRegularExpression('/a\.php\s+'.Glyphs::VCS_MODIFIED.'$/m', $rows);
+        } finally {
+            unlink($link);
+        }
+    }
+
+    /** Status, then diagnostic, then dirty — a fixed order, so the columns stay stable. */
+    public function testTheThreeMarksShareARowInAFixedOrder(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\n"]);
+        $path = (string) realpath($project->dir.'/a.php');
+        $statuses = new FileStatuses();
+        $statuses->applyFileStatuses([$path => ChangeMarkKind::Modified]);
+        $buffers = new BufferManager();
+        $buffer = $buffers->open($path, "<?php\n");
+        $buffer->diagnostics = [0 => [['severity' => 1, 'message' => 'boom', 'col' => 0]]];
+        $buffer->document->insert('x');
+        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, $statuses));
+
+        $tree->beforeRender();
+        $rows = $this->plain($tree->render(new RenderContext(30, 10)));
+
+        $this->assertMatchesRegularExpression(
+            '/a\.php\s+'.Glyphs::VCS_MODIFIED.Glyphs::SEVERITY_ERROR.Glyphs::DIRTY.'$/m',
+            $rows,
+        );
+    }
+
+    public function testADirectoryRowIsNeverMarked(): void
+    {
+        $project = new TempProject(['sub/a.php' => "<?php\n"]);
+        $buffers = new BufferManager();
+        // A buffer keyed on the directory's own path: the widget must reject it
+        // by asking whether the NODE is a directory, not by trusting the lookup
+        // to miss.
+        $buffers->open((string) realpath($project->dir.'/sub'), "<?php\n")->document->insert('x');
+        $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
+
+        $tree->beforeRender();
+        $rows = $this->plain($tree->render(new RenderContext(30, 10)));
+
+        $this->assertMatchesRegularExpression('/sub\/\s+$/m', $rows, 'the directory row carries no mark');
+    }
 
     public function testListsDirsFirstThenFiles(): void
     {

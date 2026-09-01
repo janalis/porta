@@ -914,6 +914,18 @@
         <source>Surround With…</source>
         <target>Entourer de…</target>
       </trans-unit>
+      <trans-unit id="686">
+        <source>Select Opened File in Tree</source>
+        <target>Sélectionner le fichier ouvert dans l'arborescence</target>
+      </trans-unit>
+      <trans-unit id="687">
+        <source>Structure</source>
+        <target>Structure</target>
+      </trans-unit>
+      <trans-unit id="688">
+        <source>Focus Project Tree</source>
+        <target>Activer l'arborescence du projet</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>Basculer le focus arborescence / éditeur</target>

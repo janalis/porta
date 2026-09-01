@@ -131,6 +131,9 @@ final class ActionCatalog
         'ide_goto_symbol' => ['label' => 'Go to Symbol in Project', 'keys' => ['ctrl+alt+shift+n', 'ctrl+alt+o']],
         'ide_goto_test' => ['label' => 'Go to Test', 'keys' => ['ctrl+shift+t']],
         'ide_problems' => ['label' => 'Show Problems', 'keys' => ['alt+6']],
+        // PhpStorm's split, which Porta used to collapse onto the popup: Alt+7 is
+        // the persistent Structure TOOL WINDOW, Ctrl+F12 the transient popup.
+        'ide_structure' => ['label' => 'Structure', 'keys' => ['alt+7']],
         'ide_todo' => ['label' => 'Show TODOs', 'keys' => ['alt+8'], 'adoptable' => true], // implemented by the bundled todo plugin
         'ide_command_palette' => ['label' => 'Find Action', 'keys' => ['ctrl+shift+a']],
         'ide_search_everywhere' => ['label' => 'Search Everywhere', 'keys' => ['ctrl+shift+e']],
@@ -216,9 +219,15 @@ final class ActionCatalog
         'expand' => ['label' => 'Tree: Expand'],
         'open' => ['label' => 'Tree: Open / Toggle'],
         'reload' => ['label' => 'Tree: Reload'],
+        // Ide-scope, not tree-scope: it works from wherever the caret is, which
+        // is the whole point — Alt+F1 is PhpStorm's "Select In".
+        'tree_select_opened_file' => ['label' => 'Select Opened File in Tree', 'keys' => ['alt+f1']],
         // Application
         'ide_quit' => ['label' => 'Quit', 'keys' => ['ctrl+q']],
         'ide_toggle_focus' => ['label' => 'Switch Tree / Editor Focus', 'keys' => ['ctrl+t', 'f2']],
+        // Alt+1 is PhpStorm's Project tool window, completing the numbering the
+        // dock tools already use (Alt+6 Problems, Alt+7 Structure, Alt+8 TODO).
+        'ide_project_tree' => ['label' => 'Focus Project Tree', 'keys' => ['alt+1']],
         // Shift+F6 is rename (PhpStorm); cycle focus with F6 / Ctrl+F6.
         'focus_next' => ['label' => 'Focus Next Pane', 'keys' => ['f6']],
         'focus_previous' => ['label' => 'Focus Previous Pane', 'keys' => ['ctrl+f6']],

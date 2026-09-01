@@ -18,6 +18,7 @@ use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Lifecycle\PluginLifecycleOps;
 use Porta\Support\Clipboard;
+use Porta\Tree\FileStatusSink;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Dock\DockToolController;
 use Porta\Workbench\Menu\MenuFileContext;
@@ -43,6 +44,7 @@ final readonly class PluginRuntime
         public DiagnosticsSink $diagnostics,
         public LineAnnotationSink $annotations,
         public ChangeMarkSink $changeMarks,
+        public FileStatusSink $fileStatuses,
         public BufferManager $buffers,
         public DockToolController $dockTools,
         public DocumentReplacer $documents,

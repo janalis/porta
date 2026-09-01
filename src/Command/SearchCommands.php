@@ -7,6 +7,7 @@ namespace Porta\Command;
 use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
 use Porta\Editor\BufferService;
+use Porta\Lsp\NavigationController;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\SearchActions;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
@@ -21,6 +22,7 @@ final class SearchCommands implements CommandProvider
         #[Autowire(service: 'porta.go_to_symbol')]
         private readonly SearchEverywhereController $goToSymbol,
         private readonly BufferService $bufferService,
+        private readonly NavigationController $navigation,
     ) {}
 
     #[\Override]
@@ -28,6 +30,7 @@ final class SearchCommands implements CommandProvider
     {
         $commands
             ->add('ide_problems', fn () => $this->searchActions->showProblems(), keyBound: KeyDispatch::Bound)
+            ->add('ide_structure', fn () => $this->navigation->requestStructurePanel(), keyBound: KeyDispatch::Bound)
             ->add('ide_find_in_project', fn () => $this->searchActions->openProjectSearch(), keyBound: KeyDispatch::Bound)
             ->add(
                 'ide_goto_symbol',

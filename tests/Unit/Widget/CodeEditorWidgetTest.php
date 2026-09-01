@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\FindMode;
 use Porta\Editor\LineNumberMode;
+use Porta\Editor\OccurrenceHighlights;
 use Porta\Editor\SelectionMode;
 use Porta\Overlay\State\FindModalCallbacks;
 use Porta\Search\Everywhere\SearchCategory;
@@ -20,6 +21,7 @@ use Porta\Tests\Support\FakeEditorFileActions;
 use Porta\Tests\Support\FakeEditorNavigation;
 use Porta\Tests\Support\FakeEditorRefactor;
 use Porta\Tests\Support\Probe;
+use Porta\Ui\Glyphs;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorCallbacks;
 use Porta\Widget\Render\LineDecorator;
@@ -28,9 +30,9 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 final class CodeEditorWidgetTest extends TestCase
 {
-    private function editor(string $content = "<?php\n\necho 'hi';\n", string $path = 'demo.php'): CodeEditorWidget
+    private function editor(string $content = "<?php\n\necho 'hi';\n", string $path = 'demo.php', ?OccurrenceHighlights $occurrences = null): CodeEditorWidget
     {
-        $editor = new CodeEditorWidget();
+        $editor = new CodeEditorWidget(occurrences: $occurrences ?? new OccurrenceHighlights());
         $editor->openFile($path, $content);
         $editor->setFocused(true);
 
@@ -368,6 +370,212 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->setFocused(true);
         $rendered = $editor->render(new RenderContext(80, 10));
         $this->assertStringContainsString("\x1b[48;5;23m", $rendered[2], 'refocusing restores the occurrence shade');
+    }
+
+    /**
+     * The server's answer wins over the textual scan, and its WRITE spans paint
+     * with the write role — the visible half of the feature.
+     */
+    public function testAServerAnswerReplacesTheTextualScanAndColoursWritesApart(): void
+    {
+        $occurrences = new OccurrenceHighlights();
+        $editor = $this->editor("<?php\n\$total = 1;\necho \$total;\n", occurrences: $occurrences);
+        $doc = $editor->getDocument();
+        $doc->setCursor(1, 3);
+
+        $occurrences->publish('demo.php', $doc->getVersion(), 1, $doc->getCursorColUtf16(), [
+            [1, 0, 6, true], // the assignment: a write
+            [2, 5, 11, false], // the use: a read
+        ]);
+        $rendered = $editor->render(new RenderContext(80, 10));
+
+        $this->assertStringContainsString("\x1b[48;5;52m", $rendered[1], 'the assignment wears the write background');
+        $this->assertStringContainsString("\x1b[48;5;23m", $rendered[2], 'the use wears the read background');
+        $this->assertStringNotContainsString("\x1b[48;5;52m", $rendered[2], 'a read must not wear the write colour');
+    }
+
+    /**
+     * An answer that arrives after the caret has moved on describes a different
+     * symbol; painting it would light up the wrong identifier. The stamp makes
+     * that impossible, and the scan simply keeps showing.
+     */
+    public function testAnAnswerStampedForAnotherCaretIsNeverPainted(): void
+    {
+        $occurrences = new OccurrenceHighlights();
+        $editor = $this->editor("<?php\n\$total = 1;\necho \$total;\n", occurrences: $occurrences);
+        $doc = $editor->getDocument();
+        $doc->setCursor(1, 3);
+
+        // Stamped for a caret that is NOT where the caret is now.
+        $occurrences->publish('demo.php', $doc->getVersion(), 2, 6, [[1, 0, 6, true]]);
+        $rendered = $editor->render(new RenderContext(80, 10));
+
+        $this->assertStringNotContainsString("\x1b[48;5;52m", $rendered[1], 'a stale answer is dropped, not painted');
+        $this->assertStringContainsString("\x1b[48;5;23m", $rendered[1], 'and the textual scan keeps showing meanwhile');
+    }
+
+    /** Likewise an answer for the document as it was BEFORE an edit. */
+    public function testAnAnswerStampedForAnOlderDocumentVersionIsNeverPainted(): void
+    {
+        $occurrences = new OccurrenceHighlights();
+        $editor = $this->editor("<?php\n\$total = 1;\necho \$total;\n", occurrences: $occurrences);
+        $doc = $editor->getDocument();
+        $doc->setCursor(1, 3);
+
+        $occurrences->publish('demo.php', $doc->getVersion() - 1, 1, $doc->getCursorColUtf16(), [[1, 0, 6, true]]);
+        $rendered = $editor->render(new RenderContext(80, 10));
+
+        $this->assertStringNotContainsString("\x1b[48;5;52m", $rendered[1]);
+    }
+
+    /**
+     * An EMPTY server answer is still an answer: this symbol occurs once here.
+     * Falling back to the scan would re-light same-named symbols from other
+     * scopes, which is the wrongness the server is being asked to fix.
+     */
+    public function testAnEmptyServerAnswerSuppressesTheScanRatherThanFallingBackToIt(): void
+    {
+        $occurrences = new OccurrenceHighlights();
+        $editor = $this->editor("<?php\n\$total = 1;\necho \$total;\n", occurrences: $occurrences);
+        $doc = $editor->getDocument();
+        $doc->setCursor(1, 3);
+
+        $occurrences->publish('demo.php', $doc->getVersion(), 1, $doc->getCursorColUtf16(), []);
+        $rendered = $editor->render(new RenderContext(80, 10));
+
+        $this->assertStringNotContainsString("\x1b[48;5;23m", $rendered[2], 'the scan must not override the server saying "no other occurrences"');
+    }
+
+    /**
+     * A project's own templates reach the editor through the completion handler,
+     * which is the only thing here that can see the config — a bare widget falls
+     * back to the built-in set.
+     */
+    public function testAProjectTemplateFromTheHandlerExpandsInsteadOfTheBuiltIn(): void
+    {
+        $editor = $this->editor("<?php\n", path: 'demo.php');
+        $editor->setCallbacks(new EditorCallbacks(completion: new FakeEditorCompletion(
+            templatesFor: static fn (string $language): array => ['zz' => 'PROJECT_TEMPLATE(${1:x});$0'],
+        )));
+        $editor->getDocument()->setCursor(1, 0);
+        $editor->handleInput('zz');
+
+        $editor->handleInput("\t");
+
+        $this->assertStringContainsString('PROJECT_TEMPLATE(x);', $editor->getDocument()->getText());
+    }
+
+    public function testTabExpandsALiveTemplateIntoATabStopSession(): void
+    {
+        $editor = $this->editor("<?php\n", path: 'demo.php');
+        $editor->getDocument()->setCursor(1, 0);
+        $editor->handleInput('fore');
+
+        $editor->handleInput("\t");
+
+        $text = $editor->getDocument()->getText();
+        $this->assertStringContainsString('foreach ($items as $item) {', $text, 'PHP variables in a template stay literal — no escaping needed');
+        $this->assertStringNotContainsString('fore'."\n", $text, 'the abbreviation itself was consumed');
+        // The first stop is selected, so typing over it replaces the default.
+        $editor->handleInput('$rows');
+        $this->assertStringContainsString('foreach ($rows as $item) {', $editor->getDocument()->getText());
+        // And Tab now walks to the next stop rather than expanding again.
+        $editor->handleInput("\t");
+        $editor->handleInput('$row');
+        $this->assertStringContainsString('foreach ($rows as $row) {', $editor->getDocument()->getText());
+    }
+
+    public function testTabAfterAnExpressionExpandsAPostfixTemplateAroundIt(): void
+    {
+        $editor = $this->editor("<?php\n", path: 'demo.php');
+        $editor->getDocument()->setCursor(1, 0);
+        $editor->handleInput('$this->rows.fore');
+
+        $editor->handleInput("\t");
+
+        $this->assertStringContainsString('foreach ($this->rows as $item) {', $editor->getDocument()->getText());
+    }
+
+    /** Tab is still Tab: with no template at the caret it indents, as it always did. */
+    public function testTabWithNoTemplateAtTheCaretStillIndents(): void
+    {
+        $editor = $this->editor("<?php\n", path: 'demo.php');
+        $editor->getDocument()->setCursor(1, 0);
+        $editor->handleInput('notatemplate');
+
+        $editor->handleInput("\t");
+
+        $this->assertStringContainsString('notatemplate    ', $editor->getDocument()->getText());
+    }
+
+    /** A language with no templates of its own keeps Tab as pure indentation. */
+    public function testTabInAFileOfAnotherLanguageDoesNotExpandPhpTemplates(): void
+    {
+        $editor = $this->editor("# title\n", path: 'notes.md');
+        $editor->getDocument()->setCursor(1, 0);
+        $editor->handleInput('fore');
+
+        $editor->handleInput("\t");
+
+        $this->assertStringContainsString('fore    ', $editor->getDocument()->getText(), 'markdown has no `fore`, so Tab indented');
+    }
+
+    /**
+     * The expansion is ONE undo step — the abbreviation's removal and the
+     * snippet's insertion never come apart, so a single undo can never leave a
+     * half-expanded line behind. (It coalesces with the typing run that
+     * produced the abbreviation, exactly as accepting a completion does.)
+     */
+    public function testOneUndoLeavesNoHalfExpandedTemplateBehind(): void
+    {
+        $editor = $this->editor("<?php\n", path: 'demo.php');
+        $editor->getDocument()->setCursor(1, 0);
+        $editor->handleInput('fore');
+        $editor->handleInput("\t");
+        $this->assertStringContainsString('foreach', $editor->getDocument()->getText());
+
+        $editor->getDocument()->undo();
+
+        $this->assertSame("<?php\n", $editor->getDocument()->getText(), 'one undo, and nothing of the expansion is left');
+    }
+
+    public function testTheGutterMarksFoldableLinesAndFlipsTheTriangleWhenCollapsed(): void
+    {
+        $editor = $this->editor("<?php\nfunction a()\n{\n    return 1;\n}\n");
+
+        $rows = AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 10))));
+        $this->assertMatchesRegularExpression('/^\s+3\s*'.Glyphs::EXPANDED.' \{/m', $rows, 'the fold start wears an open triangle');
+        $this->assertStringNotContainsString(Glyphs::COLLAPSED, $rows, 'nothing is collapsed yet');
+
+        $editor->getDocument()->setCursor(2, 0);
+        $editor->runAction('toggle_fold');
+        $rows = AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 10))));
+
+        $this->assertStringContainsString(Glyphs::COLLAPSED, $rows, 'the collapsed fold flips the triangle');
+        $this->assertStringNotContainsString(Glyphs::EXPANDED, $rows);
+    }
+
+    /** A line no region starts at gets a blank there, not a triangle. */
+    public function testALineWithNoFoldRegionCarriesNoTriangle(): void
+    {
+        $editor = $this->editor("<?php\n\$a = 1;\n\$b = 2;\n");
+
+        $rows = AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 10))));
+
+        $this->assertStringNotContainsString(Glyphs::EXPANDED, $rows);
+        $this->assertStringNotContainsString(Glyphs::COLLAPSED, $rows);
+    }
+
+    /**
+     * The fold column is unconditional: a file with no foldable region at all
+     * still reserves it, or the text would shift sideways as you switch buffers.
+     */
+    public function testTheFoldColumnIsReservedEvenWithNothingToFold(): void
+    {
+        $foldable = $this->editor("<?php\nfunction a()\n{\n}\n");
+        $plainFile = $this->editor("<?php\n\$a = 1;\n");
+
+        $this->assertSame($foldable->gutterWidth(), $plainFile->gutterWidth());
     }
 
     public function testSingleOccurrenceNotHighlighted(): void

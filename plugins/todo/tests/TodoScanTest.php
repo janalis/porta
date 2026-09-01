@@ -25,6 +25,7 @@ use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestTui;
 use Porta\Todo\TodoScan;
+use Porta\Tree\FileStatuses;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -78,6 +79,7 @@ final class TodoScanTest extends TestCase
             new RecordingDiagnosticsSink(),
             new CodeEditorWidget(),
             new RecordingChangeMarkSink(),
+            new FileStatuses(),
             new \Porta\Editor\BufferManager(),
             new DockToolController($manager, $this->dock, new ProjectPaths($project->dir)),
             TestDockTools::replacer(),

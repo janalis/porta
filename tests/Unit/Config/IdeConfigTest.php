@@ -100,6 +100,29 @@ final class IdeConfigTest extends TestCase
         );
     }
 
+    public function testLanguageTemplatesParsingAndValidation(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode([
+            'languages' => [
+                'php' => [
+                    'templates' => [
+                        'dd' => 'dd($1);$0',
+                        // An empty body is KEPT — it is how a built-in is switched off.
+                        'fore' => '',
+                        'bad' => ['not', 'a', 'string'],
+                        'alsobad' => 42,
+                    ],
+                ],
+                'javascript' => ['templates' => 'not-an-object'],
+            ],
+        ])]);
+
+        $config = IdeConfig::load($project->dir);
+
+        $this->assertSame(['dd' => 'dd($1);$0', 'fore' => ''], $config->languages['php']['templates']);
+        $this->assertArrayNotHasKey('javascript', $config->languages, 'a non-object templates block leaves nothing behind');
+    }
+
     public function testLanguagesParsingAndValidation(): void
     {
         $project = new TempProject(['.porta.json' => json_encode([
@@ -147,6 +170,24 @@ final class IdeConfigTest extends TestCase
         $this->assertSame('phpactor', $written['lsp'], 'unrelated key preserved');
 
         $this->assertSame(4, IdeConfig::load($project->dir)->languages['php']['indentSize']);
+    }
+
+    /**
+     * Templates have no settings row — they are hand-written in `.porta.json` —
+     * so a settings-screen write that touched the same language must not carry
+     * them off with it.
+     */
+    public function testPersistLanguageSettingLeavesAHandWrittenTemplatesBlockAlone(): void
+    {
+        $project = new TempProject(['.porta.json' => json_encode([
+            'languages' => ['php' => ['templates' => ['dd' => 'dd($1);$0']]],
+        ])]);
+
+        $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistLanguageSetting(ConfigScope::Project, 'php', 'indentSize', 2));
+
+        $written = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+        $this->assertSame(['dd' => 'dd($1);$0'], $written['languages']['php']['templates'] ?? null);
+        $this->assertSame(['dd' => 'dd($1);$0'], IdeConfig::load($project->dir)->languages['php']['templates'] ?? null);
     }
 
     public function testPersistLanguageSettingReturnsFalseWhenWriteFails(): void

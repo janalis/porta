@@ -45,6 +45,7 @@ final class MonochromeTheme
                 Role::SearchBg->selector() => new Style(underline: true),
                 Role::SearchCurrentBg->selector() => new Style(underline: true),
                 Role::OccurrenceBg->selector() => new Style(underline: true),
+                Role::OccurrenceWriteBg->selector() => new Style(underline: true, bold: true),
                 // The :focus variant merges over the base rule, so it must
                 // cancel the unfocused dim explicitly.
                 '.list::selected' => new Style(dim: true, reverse: true),

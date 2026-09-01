@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Lsp;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
+use Porta\Event\ActiveBufferChanged;
+use Porta\Event\BufferSaved;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\NavigationController;
+use Porta\Lsp\StructurePanelRefresher;
 use Porta\Support\DocsUrlOpener;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\FakeLspClient;
@@ -328,5 +333,148 @@ final class NavigationControllerTest extends TestCase
             $this->urlAt('x.php', "<?php\nfunction foo() { strlen(\$x); }\n", 1, 20),
             'the earlier "function" keyword does not make "strlen" a declaration site',
         );
+    }
+
+    /** @return list<array<array-key, mixed>> a class with one method, as DocumentSymbol */
+    private function symbolTree(): array
+    {
+        return [[
+            'name' => 'Greeter',
+            'kind' => 5,
+            'selectionRange' => ['start' => ['line' => 2, 'character' => 6]],
+            'children' => [[
+                'name' => 'greet',
+                'kind' => 6,
+                'selectionRange' => ['start' => ['line' => 4, 'character' => 20]],
+            ]],
+        ]];
+    }
+
+    private function plainPanel(): string
+    {
+        return AnsiUtils::stripAnsiCodes(implode("\n", $this->results->render(new RenderContext(100, 12))));
+    }
+
+    public function testStructurePanelListsTheSymbolTreeIndentedByNesting(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\n\n\n\n\n");
+
+        $controller->requestStructurePanel();
+        $this->client->requests[0]['respond']($this->symbolTree(), error: null);
+
+        $panel = $this->plainPanel();
+        $this->assertStringContainsString('Greeter', $panel);
+        $this->assertStringContainsString('  greet', $panel, 'a child symbol is indented under its parent');
+        $this->assertStringContainsString('class', $panel, 'the symbol kind rides the row');
+    }
+
+    public function testStructurePanelFlashesWhenTheServerHasNoSymbols(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\n");
+
+        $controller->requestStructurePanel();
+        $this->client->requests[0]['respond']([], error: null);
+
+        $this->assertStringContainsString('No symbols in this file', $this->flashed());
+    }
+
+    /**
+     * The refresh path must not COST anything while the tab is closed: no
+     * request is even sent, so switching buffers with no Structure tab open is
+     * free.
+     */
+    public function testARefreshWithNoStructureTabOpenSendsNoRequest(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\n");
+
+        $controller->refreshStructurePanel();
+
+        $this->assertSame([], $this->client->requests, 'a closed Structure tab must not cost a documentSymbol round trip');
+    }
+
+    public function testARefreshReplacesTheRowsOfAStandingTab(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\n\n\n\n\n");
+
+        $controller->requestStructurePanel();
+        $this->client->requests[0]['respond']($this->symbolTree(), error: null);
+        $this->assertStringContainsString('Greeter', $this->plainPanel());
+
+        $controller->refreshStructurePanel();
+        $this->client->requests[1]['respond']([[
+            'name' => 'Farewell',
+            'kind' => 5,
+            'selectionRange' => ['start' => ['line' => 1, 'character' => 6]],
+        ]], error: null);
+
+        $panel = $this->plainPanel();
+        $this->assertStringContainsString('Farewell', $panel);
+        $this->assertStringNotContainsString('Greeter', $panel, 'the standing tab now shows the new file, not both');
+    }
+
+    /** A file the server has no symbols for still has to CLEAR the panel, not leave the last file's tree standing. */
+    public function testARefreshOntoASymbolLessFileEmptiesTheStandingTab(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\n\n\n\n\n");
+
+        $controller->requestStructurePanel();
+        $this->client->requests[0]['respond']($this->symbolTree(), error: null);
+
+        $controller->refreshStructurePanel();
+        $this->client->requests[1]['respond']([], error: null);
+
+        $this->assertStringNotContainsString('Greeter', $this->plainPanel());
+        $this->assertStringNotContainsString('No symbols in this file', $this->flashed(), 'a background refresh never flashes');
+    }
+
+    /**
+     * Both facts the refresher listens to must go through the REFRESH verb.
+     * Calling the reveal one would send a request (and open the dock) on every
+     * buffer switch and every save, which is exactly what a background refresh
+     * must never do — so "no request was sent" is the assertion that catches it.
+     *
+     * @return \Generator<string, array{\Closure(StructurePanelRefresher): void}>
+     */
+    public static function refresherFacts(): \Generator
+    {
+        yield 'the active buffer changed' => [static fn (StructurePanelRefresher $r) => $r->onActiveBufferChanged(new ActiveBufferChanged('/p/a.php'))];
+        yield 'a buffer was saved' => [static fn (StructurePanelRefresher $r) => $r->onBufferSaved(new BufferSaved(new Buffer('/p/a.php', new Document("<?php\n"))))];
+    }
+
+    /** @param \Closure(StructurePanelRefresher): void $fire */
+    #[DataProvider('refresherFacts')]
+    public function testARefresherFactIsInertWhileNoStructureTabIsOpen(\Closure $fire): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\n");
+
+        $fire(new StructurePanelRefresher($controller));
+
+        $this->assertSame([], $this->client->requests, 'a background refresh must cost nothing while the tab is closed');
+    }
+
+    /** @param \Closure(StructurePanelRefresher): void $fire */
+    #[DataProvider('refresherFacts')]
+    public function testARefresherFactRepublishesIntoAStandingTab(\Closure $fire): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\n\n\n\n\n");
+        $controller->requestStructurePanel();
+        $this->client->requests[0]['respond']($this->symbolTree(), error: null);
+
+        $fire(new StructurePanelRefresher($controller));
+        $this->assertCount(2, $this->client->requests, 'the standing tab asked for fresh symbols');
+        $this->client->requests[1]['respond']([[
+            'name' => 'Farewell',
+            'kind' => 5,
+            'selectionRange' => ['start' => ['line' => 1, 'character' => 6]],
+        ]], error: null);
+
+        $this->assertStringContainsString('Farewell', $this->plainPanel());
     }
 }

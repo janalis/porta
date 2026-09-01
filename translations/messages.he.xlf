@@ -914,6 +914,18 @@
         <source>Surround With…</source>
         <target>עטוף ב…</target>
       </trans-unit>
+      <trans-unit id="686">
+        <source>Select Opened File in Tree</source>
+        <target>בחר את הקובץ הפתוח בעץ</target>
+      </trans-unit>
+      <trans-unit id="687">
+        <source>Structure</source>
+        <target>מבנה</target>
+      </trans-unit>
+      <trans-unit id="688">
+        <source>Focus Project Tree</source>
+        <target>מיקוד בעץ הפרויקט</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>החלף מיקוד עץ / עורך</target>

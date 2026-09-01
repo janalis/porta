@@ -914,6 +914,18 @@
         <source>Surround With…</source>
         <target>Rodear con…</target>
       </trans-unit>
+      <trans-unit id="686">
+        <source>Select Opened File in Tree</source>
+        <target>Seleccionar el archivo abierto en el árbol</target>
+      </trans-unit>
+      <trans-unit id="687">
+        <source>Structure</source>
+        <target>Estructura</target>
+      </trans-unit>
+      <trans-unit id="688">
+        <source>Focus Project Tree</source>
+        <target>Enfocar el árbol del proyecto</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>Cambiar foco árbol / editor</target>

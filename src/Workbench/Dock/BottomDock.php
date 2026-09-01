@@ -390,6 +390,30 @@ final class BottomDock
         return $this->tools->findByToolId($id);
     }
 
+    /** Whether one of core's own list tools is currently on the strip. */
+    public function hasList(ResultsPanelMode $mode): bool
+    {
+        return null !== $this->tools->findByMode($mode);
+    }
+
+    /**
+     * Replace a core list tool's rows in place — no open, no reveal, no focus
+     * move, so a background refresh can never yank the user around. A silent
+     * no-op when the tab is gone, which is also why $rows is a callable: rows
+     * nobody can see are not worth building.
+     *
+     * @param callable(): list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $rows
+     */
+    public function refreshList(ResultsPanelMode $mode, callable $rows): void
+    {
+        $tab = $this->tools->findByMode($mode); // constant-title tools: at most one tab
+        if (null === $tab) {
+            return;
+        }
+        $tab->rows = $rows();
+        $this->refreshIfBound($tab);
+    }
+
     /** Whether $tab is still in the strip — the async-completion staleness guard. */
     public function isToolAlive(DockToolTab $tab): bool
     {

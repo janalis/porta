@@ -12,11 +12,13 @@ use Porta\Lsp\FoldingController;
 use Porta\Run\RunController;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Settings\SettingsController;
+use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\View\ViewRegistry;
 use Porta\Workbench\WorkbenchActions;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Tui\Tui;
 
 /** View/window palette commands: tabs, overlays, panels and the full views. */
 #[AsTaggedItem(priority: 200)]
@@ -33,6 +35,8 @@ final class ViewCommands implements CommandProvider
         private readonly ViewRegistry $views,
         private readonly BufferService $bufferService,
         private readonly FoldingController $folding,
+        private readonly FileTreeWidget $tree,
+        private readonly Tui $tui,
         private readonly string $docsDir,
     ) {}
 
@@ -40,6 +44,28 @@ final class ViewCommands implements CommandProvider
     public function register(CommandRegistry $commands): void
     {
         $commands
+            ->add(
+                'ide_project_tree',
+                function (): void {
+                    $this->tui->setFocus($this->tree);
+                    $this->tui->requestRender();
+                },
+                keyBound: KeyDispatch::Bound,
+            )
+            ->add(
+                'tree_select_opened_file',
+                function (): void {
+                    // Reveal AND focus: the point of the chord is to carry on
+                    // navigating in the tree from where the caret already is.
+                    $active = $this->buffers->active();
+                    if (null !== $active) {
+                        $this->tree->revealPath($active->path);
+                    }
+                    $this->tui->setFocus($this->tree);
+                    $this->tui->requestRender();
+                },
+                keyBound: KeyDispatch::Bound,
+            )
             ->add('move_tab_left', fn () => $this->workbench->moveTab(-1), keyBound: KeyDispatch::Bound)
             ->add('move_tab_right', fn () => $this->workbench->moveTab(1), keyBound: KeyDispatch::Bound)
             ->add('goto_file', function (): void {

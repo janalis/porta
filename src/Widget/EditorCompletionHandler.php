@@ -27,6 +27,16 @@ interface EditorCompletionHandler
     public function scheduleDidChange(Document $doc): void;
 
     /**
+     * The live templates in effect for a language — the built-in set with the
+     * project's own `languages.<id>.templates` layered over it. A query rather
+     * than a push because the answer depends on the file the caret is in, which
+     * only the editor knows.
+     *
+     * @return array<string, string> abbreviation => LSP snippet body
+     */
+    public function templatesFor(string $languageId): array;
+
+    /**
      * The viewport scrolled without an edit (wheel detach). Viewport-scoped
      * features — inlay hints — re-fetch once the scrolling settles, if the
      * view left the last range they requested.

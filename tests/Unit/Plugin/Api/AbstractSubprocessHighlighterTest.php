@@ -25,6 +25,7 @@ use Porta\Tests\Support\RecordingFileOpener;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestTui;
+use Porta\Tree\FileStatuses;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Menu\MenuFileContext;
@@ -119,6 +120,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
             new RecordingDiagnosticsSink(),
             new CodeEditorWidget(),
             new RecordingChangeMarkSink(),
+            new FileStatuses(),
             new BufferManager(),
             TestDockTools::controller(),
             TestDockTools::replacer(),

@@ -23,6 +23,7 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `Ctrl+,` | Settings |
 | `Ctrl+Alt+D` | Git view (changes, staging, history) |
 | `Ctrl+\`` / `Alt+F12` | Toggle the integrated terminal |
+| `Alt+1` | Focus the project tree |
 | `Alt+6` | Problems panel |
 | `Ctrl+Alt+H` | Local history |
 
@@ -83,7 +84,9 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `Shift+F6` | Rename symbol (cross-file `WorkspaceEdit`) |
 | `Alt+Enter` | Quick fixes / code actions |
 | `Shift+F1` | Quick documentation |
-| `Ctrl+F12` / `Alt+7` | File structure popup |
+| `Ctrl+F12` | File structure popup |
+| `Alt+7` | Structure panel (persistent, on the dock) |
+| `Alt+F1` | Select the opened file in the tree |
 | `Ctrl+Alt+Shift+N` / `Ctrl+Alt+O` | Go to symbol in project |
 | `Ctrl+Alt+L` | Reformat file (or the selection when one exists) |
 

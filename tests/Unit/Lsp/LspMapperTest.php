@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Lsp;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
 use Porta\Lsp\LspMapper;
@@ -251,5 +252,76 @@ final class LspMapperTest extends TestCase
         $items = [];
         LspMapper::flattenSymbols([['name' => 'x', 'selectionRange' => ['start' => ['line' => 0, 'character' => 0]]]], -1, $items);
         $this->assertSame('x', $items[0]['label'], 'negative depth clamps to no indent, not a negative repeat');
+    }
+
+    /**
+     * @param array<string, mixed> $range
+     *
+     * @return array<string, mixed>
+     */
+    private function highlight(array $range, ?int $kind = null): array
+    {
+        return null === $kind ? ['range' => $range] : ['range' => $range, 'kind' => $kind];
+    }
+
+    /** @return array<string, mixed> */
+    private function range(int $line, int $from, int $to, ?int $endLine = null): array
+    {
+        return [
+            'start' => ['line' => $line, 'character' => $from],
+            'end' => ['line' => $endLine ?? $line, 'character' => $to],
+        ];
+    }
+
+    public function testDocumentHighlightsMapToOccurrenceSpansWithOnlyKindThreeAsAWrite(): void
+    {
+        $doc = new Document("<?php\n\$name = 1;\necho \$name;\n");
+
+        $spans = LspMapper::mapDocumentHighlights($doc, [
+            $this->highlight($this->range(1, 0, 5), kind: 3),
+            $this->highlight($this->range(2, 5, 10), kind: 2),
+            $this->highlight($this->range(2, 0, 4), kind: 1),
+            $this->highlight($this->range(1, 0, 5)), // no kind at all
+        ]);
+
+        $this->assertSame(
+            [
+                [1, 0, 5, true],
+                [2, 5, 10, false],
+                [2, 0, 4, false],
+                [1, 0, 5, false],
+            ],
+            $spans,
+            'only kind 3 (Write) is a write; Text, Read and an absent kind all paint as reads',
+        );
+    }
+
+    /** An occurrence is one identifier, so a range crossing lines is not one — dropped, never clipped. */
+    public function testAMultiLineHighlightRangeIsDropped(): void
+    {
+        $doc = new Document("<?php\n\$name = 1;\necho \$name;\n");
+
+        $spans = LspMapper::mapDocumentHighlights($doc, [$this->highlight($this->range(1, 0, 4, endLine: 2))]);
+
+        $this->assertSame([], $spans);
+    }
+
+    /** @return \Generator<string, array{list<array<string, mixed>>}> */
+    public static function unusableHighlights(): \Generator
+    {
+        yield 'no range at all' => [[['kind' => 2]]];
+        yield 'no start line' => [[['range' => ['start' => ['character' => 0], 'end' => ['line' => 1, 'character' => 4]]]]];
+        yield 'no end line' => [[['range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['character' => 4]]]]];
+        yield 'empty range' => [[['range' => ['start' => ['line' => 1, 'character' => 3], 'end' => ['line' => 1, 'character' => 3]]]]];
+        yield 'reversed range' => [[['range' => ['start' => ['line' => 1, 'character' => 4], 'end' => ['line' => 1, 'character' => 1]]]]];
+    }
+
+    /** @param list<array<string, mixed>> $highlights */
+    #[DataProvider('unusableHighlights')]
+    public function testAnUnusableHighlightIsSkippedRatherThanPaintedAtColumnZero(array $highlights): void
+    {
+        $doc = new Document("<?php\n\$name = 1;\n");
+
+        $this->assertSame([], LspMapper::mapDocumentHighlights($doc, $highlights));
     }
 }

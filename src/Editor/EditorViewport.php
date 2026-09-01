@@ -17,6 +17,8 @@ final readonly class EditorViewport
         public int $vScroll,
         public int $hScroll,
         public int $gutterWidth,
+        /** Display column of the gutter's fold marker; negative when no gutter is drawn. */
+        public int $foldCol,
         public int $stripeCol,
         public int $renderRows,
         public array $stickyLines,

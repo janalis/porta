@@ -59,6 +59,7 @@ final class AsEagerMembershipTest extends ContainerTestCase
         // side effect, and every one that does is written down here.
         $unordered = [
             \Porta\Support\PerfCollector::class, // registers its frame hook at construction
+            \Porta\Lsp\HighlightController::class, // watches the caret from the frame hook
         ];
 
         self::assertSame($ordered, \array_slice($actual, offset: 0, length: \count($ordered)), 'the contractual construction order');
@@ -68,5 +69,59 @@ final class AsEagerMembershipTest extends ContainerTestCase
         $expected = $unordered;
         sort($expected);
         self::assertSame($expected, $tail, 'every self-registering service must carry #[AsEager] or it is never built');
+    }
+
+    /**
+     * The membership list above only fails when a service is ADDED without the
+     * tag being written down. It cannot fail for the opposite mistake — writing
+     * a self-registering service and never tagging it at all — because nothing
+     * then names it anywhere.
+     *
+     * That mistake is real: `Lsp\HighlightController` shipped untagged, so its
+     * per-frame caret watch was never installed and the feature was silently
+     * dead with every gate green. This is the rule that catches the next one —
+     * taking {@see FrameHooks} means the constructor registers a hook, and a
+     * constructor nothing calls does not run.
+     */
+    public function testEveryServiceThatHooksTheFrameIsBuiltAtBoot(): void
+    {
+        $container = $this->buildContainer();
+        $eager = array_keys($container->findTaggedServiceIds('porta.eager'));
+
+        $missing = [];
+        foreach ($this->frameHookConsumers() as $class) {
+            if (\in_array($class, $eager, strict: true)) {
+                continue;
+            }
+            $missing[] = $class;
+        }
+
+        self::assertSame([], $missing, 'a frame-hook consumer with no #[AsEager] is never constructed, so its hook never installs');
+    }
+
+    /**
+     * Every class in src/ whose constructor takes a {@see FrameHooks}.
+     *
+     * @return list<class-string>
+     */
+    private function frameHookConsumers(): array
+    {
+        $found = [];
+        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(__DIR__.'/../../../src'));
+        foreach ($files as $file) {
+            if (!$file instanceof \SplFileInfo || 'php' !== $file->getExtension()) {
+                continue;
+            }
+            $code = (string) file_get_contents($file->getPathname());
+            if (1 !== preg_match('/FrameHooks\s+\$/', $code) || 1 !== preg_match('/^namespace\s+([^;]+);/m', $code, $ns)) {
+                continue;
+            }
+            /** @var class-string $class */
+            $class = $ns[1].'\\'.$file->getBasename('.php');
+            $found[] = $class;
+        }
+        sort($found);
+
+        return $found;
     }
 }

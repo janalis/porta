@@ -159,6 +159,24 @@ final class IdeConfigScopeMergeTest extends TestCase
         $this->assertSame(['port' => 9999], $php['debug']['launch'] ?? null, 'but launch replaces whole — no leftover host');
     }
 
+    /**
+     * Templates merge per ABBREVIATION, unlike `debug.launch` beside them:
+     * adding one project template must not silently drop the set you defined
+     * globally, and a project entry of the same name still wins.
+     */
+    public function testLanguageTemplatesMergePerAbbreviation(): void
+    {
+        $config = $this->load(
+            ['languages' => ['php' => ['templates' => ['glob' => 'G', 'fore' => 'GLOBAL_FORE']]]],
+            ['languages' => ['php' => ['templates' => ['proj' => 'P', 'fore' => 'PROJECT_FORE']]]],
+        );
+
+        $this->assertSame(
+            ['glob' => 'G', 'fore' => 'PROJECT_FORE', 'proj' => 'P'],
+            $config->languages['php']['templates'] ?? null,
+        );
+    }
+
     public function testPluginSettingsMergePerPluginThenPerKey(): void
     {
         $config = $this->load(

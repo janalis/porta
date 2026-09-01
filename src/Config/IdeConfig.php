@@ -125,7 +125,7 @@ final class IdeConfig
     /**
      * @param array<string, list<string>>                                                                                                    $keymap
      * @param array<string, int|bool|string>                                                                                                 $settings   resolved settings (defaults merged)
-     * @param array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}> $languages  per-language overrides
+     * @param array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string, templates?: array<string, string>}> $languages  per-language overrides
      * @param array<string, string>                                                                                                          $lspServers per-language LSP command overrides (map form)
      * @param array<string, array<string, bool|int|string>>                                                                                  $plugins    raw per-plugin setting values (coerced at read by PluginSettings)
      * @param list<string>                                                                                                                   $disabledPlugins plugin names skipped at boot (project/global plugins are on unless listed here)
@@ -187,7 +187,7 @@ final class IdeConfig
      *
      * @param list<ConfigWarning> $warnings
      *
-     * @return array{keymap: array<string, list<string>>, settings: array<string, bool|int|string>, languages: array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}>, lsp: array<string, string>, plugins: array<string, array<string, bool|int|string>>, disabledPlugins: list<string>, enabledPlugins: ?list<string>, highlight: ?array{default: string, languages: array<string, string>}}|null
+     * @return array{keymap: array<string, list<string>>, settings: array<string, bool|int|string>, languages: array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string, templates?: array<string, string>}>, lsp: array<string, string>, plugins: array<string, array<string, bool|int|string>>, disabledPlugins: list<string>, enabledPlugins: ?list<string>, highlight: ?array{default: string, languages: array<string, string>}}|null
      */
     private static function readLayer(?string $file, string $label, array &$warnings): ?array
     {
@@ -247,7 +247,7 @@ final class IdeConfig
      *   list counts as present. See the clause below; this is the one rule that
      *   cannot be a union.
      *
-     * @param list<array{keymap: array<string, list<string>>, settings: array<string, bool|int|string>, languages: array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}>, lsp: array<string, string>, plugins: array<string, array<string, bool|int|string>>, disabledPlugins: list<string>, enabledPlugins: ?list<string>, highlight: ?array{default: string, languages: array<string, string>}}> $layers
+     * @param list<array{keymap: array<string, list<string>>, settings: array<string, bool|int|string>, languages: array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string, templates?: array<string, string>}>, lsp: array<string, string>, plugins: array<string, array<string, bool|int|string>>, disabledPlugins: list<string>, enabledPlugins: ?list<string>, highlight: ?array{default: string, languages: array<string, string>}}> $layers
      * @param list<ConfigWarning> $warnings
      */
     private static function merge(array $layers, array $warnings): self
@@ -304,10 +304,10 @@ final class IdeConfig
      * one thing an adapter either understands or does not; half of a project's
      * and half of the global one is a config nobody wrote.
      *
-     * @param array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}> $base
-     * @param array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}> $over
+     * @param array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string, templates?: array<string, string>}> $base
+     * @param array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string, templates?: array<string, string>}> $over
      *
-     * @return array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}>
+     * @return array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string, templates?: array<string, string>}>
      */
     private static function mergeLanguages(array $base, array $over): array
     {
@@ -316,6 +316,11 @@ final class IdeConfig
             $merged = [...$under, ...$fields];
             if (\array_key_exists('debug', $under) && \array_key_exists('debug', $fields)) {
                 $merged['debug'] = [...$under['debug'], ...$fields['debug']];
+            }
+            // Templates merge per ABBREVIATION: adding one project template must
+            // not drop the set defined globally.
+            if (\array_key_exists('templates', $under) && \array_key_exists('templates', $fields)) {
+                $merged['templates'] = [...$under['templates'], ...$fields['templates']];
             }
             $base[$language] = $merged;
         }
@@ -543,6 +548,32 @@ final class IdeConfig
     }
 
     /**
+     * A language's `templates` block: abbreviation => LSP snippet body. Both
+     * halves must be strings; anything else is dropped like an invalid indent
+     * value is.
+     *
+     * An EMPTY body is kept, not dropped — it is how a user switches a built-in
+     * template off, and dropping it here would silently ignore that.
+     *
+     * @return array<string, string>
+     */
+    private static function templateMap(mixed $templates): array
+    {
+        if (!\is_array($templates)) {
+            return [];
+        }
+        $map = [];
+        foreach (array_keys($templates) as $abbreviation) {
+            if ('' === (string) $abbreviation || !\is_string($templates[$abbreviation])) {
+                continue;
+            }
+            $map[(string) $abbreviation] = $templates[$abbreviation];
+        }
+
+        return $map;
+    }
+
+    /**
      * Validate the `languages` block: known language ids, `indentStyle` in
      * {auto,spaces,tabs}, `indentSize` = 'auto' or a positive int. Invalid
      * entries are dropped with a warning.
@@ -550,7 +581,7 @@ final class IdeConfig
      * @param array<array-key, mixed> $config
      * @param list<ConfigWarning>     $warnings
      *
-     * @return array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}>
+     * @return array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string, templates?: array<string, string>}>
      */
     private static function parseLanguages(array $config, string $label, array &$warnings): array
     {
@@ -579,7 +610,7 @@ final class IdeConfig
      * it is not an object. Invalid sub-values are dropped like invalid indent
      * values are.
      *
-     * @return array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string}|null
+     * @return array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string, templates?: array<string, string>}|null
      */
     private static function languageEntry(mixed $props): ?array
     {
@@ -603,6 +634,10 @@ final class IdeConfig
         $runCommand = self::commandString($props['runCommand'] ?? null);
         if ('' !== $runCommand) {
             $entry['runCommand'] = $runCommand;
+        }
+        $templates = self::templateMap($props['templates'] ?? null);
+        if ([] !== $templates) {
+            $entry['templates'] = $templates;
         }
 
         return $entry;

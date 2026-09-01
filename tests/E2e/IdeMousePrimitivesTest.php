@@ -209,9 +209,10 @@ final class IdeMousePrimitivesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    // Editor pane starts at column 31 (tree 30 + gap 1), gutter is 6, and content
-    // begins at screen row 2 (menu row 0, tab row 1). So document (line L, col C)
-    // sits at SGR column 38+C, SGR row 3+L.
+    // Editor pane starts at column 31 (tree 30 + gap 1), gutter is 7 (git strip,
+    // line number, marker, fold, space), and content begins at screen row 2
+    // (menu row 0, tab row 1). So document (line L, col C) sits at SGR column
+    // 39+C, SGR row 3+L.
     public function testMouseDragSelectsText(): void
     {
         putenv('PATH=/nonexistent');
@@ -223,9 +224,9 @@ final class IdeMousePrimitivesTest extends TestCase
             [
                 300 => static function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;38;3M"); // press at line 0, col 0
-                    $tui->handleInput("\x1b[<32;43;3M"); // drag to col 5
-                    $tui->handleInput("\x1b[<0;43;3m"); // release
+                    $tui->handleInput("\x1b[<0;39;3M"); // press at line 0, col 0
+                    $tui->handleInput("\x1b[<32;44;3M"); // drag to col 5
+                    $tui->handleInput("\x1b[<0;44;3m"); // release
                 },
                 400 => function ($tui): void {
                     $this->assertSame('hello', $tui->getById('editor')->getDocument()->getSelectedText());
@@ -247,9 +248,9 @@ final class IdeMousePrimitivesTest extends TestCase
             [
                 300 => static function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;39;3M"); // line 0, col 1
-                    $tui->handleInput("\x1b[<32;39;5M"); // drag down to line 2, col 1
-                    $tui->handleInput("\x1b[<0;39;5m");
+                    $tui->handleInput("\x1b[<0;40;3M"); // line 0, col 1
+                    $tui->handleInput("\x1b[<32;40;5M"); // drag down to line 2, col 1
+                    $tui->handleInput("\x1b[<0;40;5m");
                 },
                 400 => function ($tui): void {
                     $this->assertSame("bc\ndef\ng", $tui->getById('editor')->getDocument()->getSelectedText());
@@ -271,8 +272,8 @@ final class IdeMousePrimitivesTest extends TestCase
             [
                 300 => static function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;40;3M"); // press inside "hello"
-                    $tui->handleInput("\x1b[<0;40;3M"); // second press same cell -> word
+                    $tui->handleInput("\x1b[<0;41;3M"); // press inside "hello"
+                    $tui->handleInput("\x1b[<0;41;3M"); // second press same cell -> word
                 },
                 400 => function ($tui): void {
                     $this->assertSame('hello', $tui->getById('editor')->getDocument()->getSelectedText());
@@ -294,9 +295,9 @@ final class IdeMousePrimitivesTest extends TestCase
             [
                 300 => static function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;42;3M");
-                    $tui->handleInput("\x1b[<0;42;3M");
-                    $tui->handleInput("\x1b[<0;42;3M"); // third press -> whole line
+                    $tui->handleInput("\x1b[<0;43;3M");
+                    $tui->handleInput("\x1b[<0;43;3M");
+                    $tui->handleInput("\x1b[<0;43;3M"); // third press -> whole line
                 },
                 400 => function ($tui): void {
                     $this->assertSame('hello world', $tui->getById('editor')->getDocument()->getSelectedText());
@@ -318,8 +319,8 @@ final class IdeMousePrimitivesTest extends TestCase
             [
                 300 => static function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<0;38;3M"); // plain click -> caret at col 0
-                    $tui->handleInput("\x1b[<4;43;3M"); // Shift+click at col 5 -> extend
+                    $tui->handleInput("\x1b[<0;39;3M"); // plain click -> caret at col 0
+                    $tui->handleInput("\x1b[<4;44;3M"); // Shift+click at col 5 -> extend
                 },
                 400 => function ($tui): void {
                     $this->assertSame('hello', $tui->getById('editor')->getDocument()->getSelectedText());
@@ -341,9 +342,9 @@ final class IdeMousePrimitivesTest extends TestCase
             [
                 300 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<8;39;4M"); // Alt+Click (code 8) on line 1 -> add caret
+                    $tui->handleInput("\x1b[<8;40;4M"); // Alt+Click (code 8) on line 1 -> add caret
                     $this->assertTrue(EditorState::multiCaret($tui->getById('editor'))->hasMultiple(), 'Alt+Click added a caret');
-                    $tui->handleInput("\x1b[<8;39;4M"); // Alt+Click same spot -> remove
+                    $tui->handleInput("\x1b[<8;40;4M"); // Alt+Click same spot -> remove
                     $this->assertFalse(EditorState::multiCaret($tui->getById('editor'))->hasMultiple(), 'Alt+Click again removed it');
                 },
             ],
@@ -363,9 +364,9 @@ final class IdeMousePrimitivesTest extends TestCase
             [
                 300 => function ($tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<8;39;4M"); // Alt+Click adds a caret
+                    $tui->handleInput("\x1b[<8;40;4M"); // Alt+Click adds a caret
                     $this->assertTrue(EditorState::multiCaret($tui->getById('editor'))->hasMultiple());
-                    $tui->handleInput("\x1b[<0;38;3M"); // plain click collapses to one caret
+                    $tui->handleInput("\x1b[<0;39;3M"); // plain click collapses to one caret
                     $this->assertFalse(EditorState::multiCaret($tui->getById('editor'))->hasMultiple());
                 },
             ],
@@ -387,9 +388,9 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->tick();
                     // Editor content starts at screen col 37 (SGR 38), row 2 (SGR 3);
                     // display col C is SGR 38+C. Alt+Shift (12) drag (44) release.
-                    $tui->handleInput("\x1b[<12;39;3M"); // press line 0, display col 1
-                    $tui->handleInput("\x1b[<44;41;5M"); // drag to line 2, display col 3
-                    $tui->handleInput("\x1b[<0;41;5m"); // release
+                    $tui->handleInput("\x1b[<12;40;3M"); // press line 0, display col 1
+                    $tui->handleInput("\x1b[<44;42;5M"); // drag to line 2, display col 3
+                    $tui->handleInput("\x1b[<0;42;5m"); // release
                     $this->assertTrue(EditorState::multiCaret($tui->getById('editor'))->hasMultiple(), 'rectangle spans 3 lines');
                     $tui->handleInput('X'); // type at every caret
                 },

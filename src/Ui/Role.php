@@ -93,6 +93,7 @@ enum Role
     case SearchBg;
     case SearchCurrentBg;
     case OccurrenceBg;
+    case OccurrenceWriteBg;
 
     // Debugger: the gutter breakpoint dot and the stopped-line band.
     case Breakpoint;

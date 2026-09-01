@@ -1290,6 +1290,35 @@ final class PluginApi
     }
 
     /**
+     * Publish the working tree's per-FILE version-control status — what the file
+     * tree marks its rows with. Keys are absolute paths, values one of `added`,
+     * `modified`, `deleted`.
+     *
+     * The map REPLACES whole, unlike {@see setChangeMarks}' per-file writes: a
+     * file dropping out of it is precisely the news that it went back to
+     * unmodified, and there is no other way to say that.
+     *
+     * Same boundary rule as change marks — the three kinds are core's
+     * vocabulary, so a plugin says which files changed and how, and core owns
+     * what that looks like. An unknown kind is dropped rather than rendered.
+     *
+     * @param array<string, string> $statuses absolute path => 'added'|'modified'|'deleted'
+     */
+    public function setFileStatuses(array $statuses): void
+    {
+        $runtime = $this->manager->runtime();
+        $known = [];
+        foreach ($statuses as $path => $kind) {
+            $parsed = ChangeMarkKind::tryFrom($kind);
+            if ('' === $path || null === $parsed) {
+                continue;
+            }
+            $known[$path] = $parsed;
+        }
+        $runtime->fileStatuses->applyFileStatuses($known);
+    }
+
+    /**
      * Show or hide the version-control gutter STRIP — the one-column stripe
      * {@see setChangeMarks()} paints into.
      *

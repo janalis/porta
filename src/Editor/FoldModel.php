@@ -24,9 +24,88 @@ final class FoldModel
     /** The document version the external regions were computed against. */
     private int $regionsVersion = -1;
 
+    /** @var array<int, true> the server regions' start lines, for the gutter's per-line question */
+    private array $regionStarts = [];
+
+    /** The {@see regionsVersion} {@see regionStarts} was built from. */
+    private int $regionStartsVersion = -2;
+
     public function __construct(
         private readonly Document $document,
     ) {}
+
+    /**
+     * The gutter's fold marker for one line: null when no region starts there,
+     * else whether that region is currently collapsed.
+     *
+     * Deliberately per-LINE and never a whole-document scan. The gutter asks on
+     * every rendered row of every frame, and running the brace scan there cost
+     * ~4 ms per keystroke on a 12,000-line file — a third of the frame — because
+     * an edit invalidates it every time. With no server regions the question
+     * "does a region start on this line" is answered from the line itself: it
+     * does when the line leaves a brace open, which is the same thing
+     * {@see braceFoldRegions} records, decided in one pass over one line.
+     */
+    public function foldMarkAt(int $line): ?bool
+    {
+        if (!$this->startsRegion($line)) {
+            return null;
+        }
+
+        return array_key_exists($line, $this->folds);
+    }
+
+    /** Whether a foldable region starts at $line. */
+    private function startsRegion(int $line): bool
+    {
+        if (null !== $this->regions && $this->regionsVersion === $this->document->getVersion()) {
+            return ($this->regionStarts()[$line] ?? null) !== null;
+        }
+
+        return self::leavesABraceOpen($this->document->getLine($line));
+    }
+
+    /**
+     * The server's regions as a start-line set, rebuilt only when the regions
+     * themselves change.
+     *
+     * @return array<int, true>
+     */
+    private function regionStarts(): array
+    {
+        if ($this->regionStartsVersion !== $this->regionsVersion) {
+            $this->regionStartsVersion = $this->regionsVersion;
+            $this->regionStarts = [];
+            foreach ($this->regions ?? [] as [$start, $end]) {
+                $this->regionStarts[$start] = true;
+            }
+        }
+
+        return $this->regionStarts;
+    }
+
+    /**
+     * Whether $text opens a brace it does not close again on the same line —
+     * counted so `} else {` reads as a start (it opens one after closing one)
+     * while `function f() { return 1; }` does not.
+     */
+    private static function leavesABraceOpen(string $text): bool
+    {
+        $open = 0;
+        $len = \strlen($text);
+        for ($i = 0; $i < $len; ++$i) {
+            if ('{' === $text[$i]) {
+                ++$open;
+
+                continue;
+            }
+            if ('}' === $text[$i]) {
+                $open = max(0, $open - 1);
+            }
+        }
+
+        return $open > 0;
+    }
 
     /** End line of the fold starting at $line, or null when $line is not a fold start. */
     public function foldEndAt(int $line): ?int

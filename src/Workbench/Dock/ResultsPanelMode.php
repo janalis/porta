@@ -25,4 +25,6 @@ enum ResultsPanelMode
     case LspLog;
     /** The status-bar flash history, newest first (inert rows). */
     case Notifications;
+    /** The active file's symbols, indented by nesting (language server). */
+    case Structure;
 }

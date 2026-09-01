@@ -6,7 +6,7 @@
 | --- | --- |
 | `Ctrl+Shift+N` / `Ctrl+P` | File (fuzzy, camel-hump aware) |
 | `Ctrl+Alt+Shift+N` / `Ctrl+Alt+O` | Symbol in project (`workspace/symbol`, live-filtered) |
-| `Ctrl+F12` / `Alt+7` | Symbol in the current file (file structure popup) |
+| `Ctrl+F12` | Symbol in the current file (file structure popup) |
 | `Ctrl+G` | Line |
 | `Ctrl+E` | Recent files (press again to cycle) |
 | `Ctrl+Shift+T` | The test for the current class — or back: from `FooTest.php` to `Foo.php`. Searches the project (skipping `vendor/`) and flashes when nothing matches |
@@ -56,6 +56,17 @@ folder's context menu scopes to that folder).
 
 The search runs as async `grep` streamed through the event loop; the UI
 never blocks.
+
+## Structure panel (`Alt+7`)
+
+The active file's symbols as a dock tab, indented by nesting with each one's
+kind beside it; `Enter` or a click jumps to the symbol. Unlike the `Ctrl+F12`
+popup it stays open — switching buffers or saving re-reads the file into it, and
+`F5` re-runs it on demand. While the tab is closed it costs nothing: no
+`documentSymbol` request is sent at all. Requires a language server.
+
+PhpStorm's split, which Porta used to collapse onto the popup: `Alt+7` is the
+persistent tool window, `Ctrl+F12` the transient popup.
 
 ## Problems panel (`Alt+6`)
 

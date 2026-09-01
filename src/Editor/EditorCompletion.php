@@ -82,6 +82,39 @@ final class EditorCompletion
         ($this->requestCompletion)($this->document->getCursorLine(), $this->document->getCursorColUtf16());
     }
 
+    /**
+     * Expand the live template at the caret on the `indent` key, PhpStorm's Tab.
+     * Consumed only when there IS one to expand, so Tab keeps indenting
+     * everywhere else. An active tab-stop session never reaches here — the
+     * widget routes Tab to {@see handleSnippetTabStop} first, which is what
+     * makes Tab walk the stops of the template it just expanded.
+     *
+     * @param array<string, string> $templates abbreviation => LSP snippet body
+     */
+    public function expandTemplate(string $keys, Keybindings $kb, array $templates): bool
+    {
+        if (!$kb->matches($keys, 'indent') || $this->open || $this->document->hasSelection()) {
+            return false;
+        }
+        $doc = $this->document;
+        $line = $doc->getCursorLine();
+        $found = TemplateExpander::at($doc->getLine($line), $doc->getCursorCol(), $templates);
+        if (null === $found) {
+            return false;
+        }
+
+        $doc->replaceBeforeCursor($found['consume'], '');
+        $startLine = $doc->getCursorLine();
+        $startCol = $doc->getCursorCol();
+        $parsed = SnippetParser::parse($found['snippet']);
+        $doc->insert($parsed['text']);
+        $doc->endCompound();
+        ($this->notifyChange)();
+        $this->snippet->begin($startLine, $startCol, $parsed['text'], $parsed['stops']);
+
+        return true;
+    }
+
     /** Route a keystroke to an active snippet tab-stop session; true when consumed. */
     public function handleSnippetTabStop(string $keys, Keybindings $kb): bool
     {

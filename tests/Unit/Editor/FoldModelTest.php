@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Editor;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
@@ -184,5 +185,63 @@ final class FoldModelTest extends TestCase
         $model->toggle();
 
         $this->assertSame(1, $model->foldEndAt(0));
+    }
+
+    public function testFoldMarkSaysWhetherARegionStartsThereAndIfItIsCollapsed(): void
+    {
+        $doc = new Document("<?php\nfunction a()\n{\n    return 1;\n}\n");
+        $model = new FoldModel($doc);
+
+        $this->assertNull($model->foldMarkAt(1), 'the declaration line closes no brace of its own');
+        $this->assertFalse($model->foldMarkAt(2), 'the brace line starts a region, and it is open');
+
+        $doc->setCursor(2, 0);
+        $model->toggle();
+        $this->assertTrue($model->foldMarkAt(2), 'the same line, now collapsed');
+
+        $model->toggle();
+        $this->assertFalse($model->foldMarkAt(2), 'and open again');
+    }
+
+    /** @return \Generator<string, array{string, bool|null}> the expected foldMarkAt answer */
+    public static function braceLines(): \Generator
+    {
+        yield 'an opening brace alone' => ['{', false];
+        yield 'a trailing opening brace' => ['function a() {', false];
+        // The naive scan records a region starting here too: the `}` ends the
+        // previous one and the `{` opens the next.
+        yield 'a closing and an opening brace' => ['} else {', false];
+        yield 'a whole block on one line' => ['function a() { return 1; }', null];
+        yield 'a closing brace alone' => ['}', null];
+        yield 'no braces at all' => ['$a = 1;', null];
+        yield 'an empty line' => ['', null];
+    }
+
+    #[DataProvider('braceLines')]
+    public function testALineStartsARegionWhenItLeavesABraceOpen(string $text, ?bool $expected): void
+    {
+        $model = new FoldModel(new Document("<?php\n".$text."\n"));
+
+        $this->assertSame($expected, $model->foldMarkAt(1));
+    }
+
+    /**
+     * A language server's regions replace the brace guess entirely — it folds
+     * from the DECLARATION, where the brace scan can only see the `{`.
+     */
+    public function testServerRegionsReplaceTheBraceGuessWhileTheyMatchTheDocument(): void
+    {
+        $doc = new Document("<?php\nfunction a()\n{\n    return 1;\n}\n");
+        $model = new FoldModel($doc);
+        $model->setRegions([[1, 4]], $doc->getVersion());
+
+        $this->assertFalse($model->foldMarkAt(1), 'the declaration is the start now');
+        $this->assertNull($model->foldMarkAt(2), 'and the brace line is not');
+
+        // An edit strands the server's regions, so the brace guess comes back.
+        $doc->setCursor(0, 5);
+        $doc->insert(' ');
+        $this->assertNull($model->foldMarkAt(1));
+        $this->assertFalse($model->foldMarkAt(2), 'the stale regions were dropped with their version');
     }
 }

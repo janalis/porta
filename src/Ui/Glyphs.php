@@ -15,7 +15,10 @@ namespace Porta\Ui;
  */
 final class Glyphs
 {
-    // Disclosure triangles (tree nodes, collapsible list/panel sections).
+    // Disclosure triangles (tree nodes, collapsible list/panel sections, and
+    // the editor's fold column — the same "open/closed" meaning each time).
+    // COLLAPSED is NOT the gutter's STOPPED_LINE ▶: they sit in adjacent
+    // columns, so the outline/filled distinction is the one that has to read.
     public const string EXPANDED = '▾';
     public const string COLLAPSED = '▸';
 
@@ -39,6 +42,13 @@ final class Glyphs
     public const string STRIPE_WARNING = '▓';
     public const string STRIPE_INFO = '▒';
     public const string STRIPE_HINT = '░';
+    // The stripe's non-diagnostic marks. Each is shape-distinct from the ramp
+    // above and from the others, because precedence gives a shared row to one
+    // of them and the loser leaves no trace. STRIPE_SEARCH's horizontal dashes
+    // are deliberately NOT VCS_MODIFIED's vertical ones, which the change marks
+    // bring onto this same column. The breakpoint mark reuses BREAKPOINT itself:
+    // the same meaning on a disjoint surface (the stripe, not the marker column).
+    public const string STRIPE_SEARCH = '┈';
 
     // Debug status-bar segment (the two states are temporally exclusive).
     public const string DEBUG_RUNNING = '▶';

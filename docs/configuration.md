@@ -162,6 +162,30 @@ Per-language overrides for: `php`, `javascript`, `typescript`, `python`,
 - `debug` — the DAP adapter for this language; see [debugger.md](debugger.md):
   - `adapter` — the adapter command (string or argv list),
   - `launch` — a JSON object merged into the DAP launch request.
+- `templates` — your own **live templates**: abbreviation => LSP snippet body,
+  layered over the built-in set. See [editor.md](editor.md#live-templates).
+
+```json
+{
+    "languages": {
+        "php": {
+            "templates": {
+                "dd": "dd($1);$0",
+                "logi": "$this->logger->info(${1:'message'}, [$0]);",
+                ".dd": "dd({{expr}});$0",
+                "fore": ""
+            }
+        }
+    }
+}
+```
+
+An abbreviation starting with a dot is a **postfix** template: `{{expr}}` is
+replaced by the expression to the left of the dot. An entry whose body is the
+**empty string removes** a built-in — the only way to stop a shipped
+abbreviation expanding over something you type as ordinary code, since a map has
+no settings row. Templates merge per abbreviation across config scopes, so a
+project adding one keeps the set you defined globally.
 
 ### `plugins` and `disabledPlugins`
 

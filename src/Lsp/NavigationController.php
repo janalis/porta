@@ -512,6 +512,86 @@ final class NavigationController extends AbstractLspController implements Editor
         );
     }
 
+    /**
+     * The PANEL counterpart of {@see requestFileStructure}: the same
+     * `documentSymbol` answer, published as a dock tool tab that stays open
+     * across buffer switches instead of a popup that closes on the first jump.
+     * PhpStorm ships both, and so does this.
+     */
+    public function requestStructurePanel(): void
+    {
+        $title = $this->trans('Structure');
+        $this->requestStructure(
+            fn (array $rows) => $this->panels->showList(ResultsPanelMode::Structure, $title, $rows),
+            fn () => $this->flash($this->trans('No symbols in this file')),
+        );
+    }
+
+    /**
+     * Republish into a Structure tab that is already open: rows replaced in
+     * place, no reveal and no focus move, so a buffer switch can never yank the
+     * dock open. With no tab standing it costs no round trip at all.
+     */
+    public function refreshStructurePanel(): void
+    {
+        if (!$this->panels->hasList(ResultsPanelMode::Structure)) {
+            return;
+        }
+        $this->requestStructure(
+            fn (array $rows) => $this->panels->refreshList(ResultsPanelMode::Structure, static fn (): array => $rows),
+            // A file the server has no symbols for still has to CLEAR the
+            // panel, or it keeps showing the previous file's tree.
+            fn () => $this->panels->refreshList(ResultsPanelMode::Structure, static fn (): array => []),
+        );
+    }
+
+    /**
+     * @param \Closure(list<array{path: string, line: int, text: string}>): mixed $publish
+     * @param \Closure(): void                                                    $empty
+     */
+    private function requestStructure(\Closure $publish, \Closure $empty): void
+    {
+        $path = $this->editor->getFilePath();
+        $this->requestForDocument(
+            'textDocument/documentSymbol',
+            function (mixed $result) use ($publish, $path): bool {
+                if (!\is_array($result) || [] === $result) {
+                    return false;
+                }
+                /** @var list<array<array-key, mixed>> $result */
+                $publish($this->structureRows($result, $path));
+                $this->tui->requestRender();
+
+                return true;
+            },
+            $empty,
+        );
+    }
+
+    /**
+     * Flatten the symbol tree into dock rows: the indented label plus its kind,
+     * every row carrying the active file's own path so Enter jumps within it.
+     *
+     * @param list<array<array-key, mixed>> $symbols
+     *
+     * @return list<array{path: string, line: int, text: string}>
+     */
+    private function structureRows(array $symbols, ?string $path): array
+    {
+        $items = [];
+        LspMapper::flattenSymbols($symbols, 0, $items);
+
+        $relative = null === $path ? '' : $this->paths->relative($path);
+        $rows = [];
+        foreach ($items as $item) {
+            [$line] = array_map('intval', explode(':', $item['value']));
+            $hint = '' === $item['hint'] ? '' : '  '.$item['hint'];
+            $rows[] = ['path' => $relative, 'line' => $line, 'text' => $item['label'].$hint];
+        }
+
+        return $rows;
+    }
+
     private function lineAt(string $path, int $line): string
     {
         $buffer = $this->buffers->get($path) ?? $this->buffers->get(($resolved = realpath($path)) ? $resolved : $path);

@@ -26,6 +26,10 @@ rendered: `Tab` cycles the links, `Enter` or a click follows them, and
 - **Auto-closing brackets & quotes**: typing an opener inserts its pair,
   selections get wrapped, closers type over, and backspacing an empty pair
   removes both — toggleable via the command palette / `autoPairs` setting
+- **Live templates**: type `fore` and press `Tab` for a `foreach` with tab stops,
+  or write the expression first and use a **postfix** template — `$rows.fore`,
+  `$user.inn`, `$x.var`, `$ok.not`. Bodies are LSP snippets, so `Tab`/`Shift+Tab`
+  walk the placeholders exactly as they do for a server's own snippet completions
 - **Multiple cursors**: add carets above/below (`Ctrl+Alt+↑/↓`), at the next
   occurrence (`Alt+J`) or all occurrences (`Ctrl+Alt+Shift+J`); typing, deleting
   and pasting apply at every caret as a single atomic undo step
@@ -46,8 +50,18 @@ rendered: `Tab` cycles the links, `Enter` or a click follows them, and
   script, or a Makefile target in the terminal panel; `Shift+F10` repeats the
   last run
 - **Git integration**: change markers in the gutter (added / modified /
-  deleted vs `HEAD`, refreshed on open and save) and the current branch in
+  deleted vs `HEAD`, refreshed on open and save), marks in the **file tree** for
+  every changed or untracked file in the working tree, and the current branch in
   the status bar — silently disabled outside a git working tree
+- **Identifier highlight**: the caret's symbol lights up its other occurrences —
+  **semantically** when the language server supports `documentHighlight`, with
+  **write** accesses shaded apart from reads, falling back to a whole-word scan
+  without one
+- **Marker stripe**: the rightmost column maps the whole file onto the pane's
+  height — diagnostics (`█▓▒░` by severity), breakpoints (`●`), git changes
+  (`▎┆▁`) and search hits (`┈`) over a faint viewport thumb, so a glance down
+  the margin says what is off screen. Click a cell to jump there; every mark
+  is a distinct shape, so the stripe still reads under `--no-ansi`
 - **Git view** (`Ctrl+Alt+D`): a full-screen changes/staging/history view —
   stage files or individual lines, commit and amend, browse the last 200
   commits, with a unified or side-by-side diff pane
@@ -179,6 +193,7 @@ The keymap follows PhpStorm wherever the terminal allows.
 
 | Key | Action |
 | --- | --- |
+| `Alt+1` | Focus the project tree |
 | `Alt+6` | Problems panel (diagnostics across all open buffers) |
 | `Alt+Backspace` | Delete word backwards |
 | `Alt+Enter` | Quick fixes / code actions (via LSP) |
@@ -188,11 +203,12 @@ The keymap follows PhpStorm wherever the terminal allows.
 | `Alt+Shift+↑/↓` | Move line or selection up / down |
 | `Alt+W` / `Ctrl+F4` | Close the active buffer (unsaved changes prompt Save / Discard / Cancel) |
 | `Ctrl+←` / `Ctrl+→` | Previous / next editor tab |
-| `Ctrl+.` | Collapse / expand the code fold at the caret |
+| `Ctrl+.` | Collapse / expand the code fold at the caret (or click the gutter's `▾`/`▸`) |
 | `Ctrl+/` | Toggle line comment |
 | `Ctrl+A` | Select all |
 | `Ctrl+Alt+B` | Go to implementation (chooser when several) |
 | `Ctrl+Alt+D` | Git view: changes, staging, commit, history (`Esc` closes it) |
+| `Alt+F1` | Select the opened file in the tree (expands to it and focuses it) |
 | `Ctrl+Alt+H` | Show local history (restore an earlier snapshot) |
 | `Ctrl+Alt+L` | Reformat file (via LSP formatting) |
 | `Ctrl+Alt+Left` | Navigate back after a definition jump |
@@ -205,7 +221,8 @@ The keymap follows PhpStorm wherever the terminal allows.
 | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / cut / paste (also copies to the system clipboard via OSC 52) |
 | `Ctrl+D` | Duplicate line or selection |
 | `Ctrl+E` | Recent files popup (`Ctrl+E` again cycles, `Enter` opens) |
-| `Ctrl+F12` / `Alt+7` | File structure popup (symbols in current file) |
+| `Ctrl+F12` | File structure popup (symbols in current file) |
+| `Alt+7` | Structure panel — the same symbols as a dock tab that stays open |
 | `Ctrl+F` / `Ctrl+R` | Find / find-and-replace in file (`F3`/`Shift+F3` cycle, `Tab` switch field, `Alt+R` replace, `Alt+A` replace all) |
 | `Ctrl+G` | Go to line |
 | `Ctrl+Home` / `Ctrl+End` | Start / end of file |

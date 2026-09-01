@@ -19,7 +19,7 @@ final readonly class EditorDecorations
     /**
      * @param array{startLine: int, startCol: int, endLine: int, endCol: int}|null $selection    null while multiple carets are active
      * @param list<Caret>    $carets
-     * @param list<array{0: int, 1: int, 2: int}>                                  $occurrences
+     * @param list<array{0: int, 1: int, 2: int, 3: bool}>                            $occurrences [line, startDisplayCol, endDisplayCol, isWrite]
      * @param array{0: array{0: int, 1: int}, 1: array{0: int, 1: int}}|null       $brackets
      */
     public function __construct(

@@ -102,7 +102,7 @@ final class EditorKeymap
 
             'quick_doc' => ['shift+f1'], // plain F1 is the IDE-level docs browser
             'code_action' => ['alt+enter'],
-            'file_structure' => ['ctrl+f12', 'alt+7'],
+            'file_structure' => ['ctrl+f12'],
             'peek_definition' => ['ctrl+shift+i'],
             'reformat' => ['ctrl+alt+l'],
             'goto_line' => ['ctrl+g'],

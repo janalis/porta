@@ -177,6 +177,18 @@ final class EditorRenderGoldenTest extends TestCase
                 10,
             ],
 
+            'breakpoints' => [
+                static function (CodeEditorWidget $e) use ($php): void {
+                    $e->openFile('demo.php', $php);
+                    $e->setFocused(true);
+                    // A conditional breakpoint changes the GUTTER glyph but not the
+                    // stripe's — on the stripe a breakpoint is a breakpoint.
+                    $e->setBreakpointLines([1, 4], [4]);
+                },
+                80,
+                10,
+            ],
+
             'relative-numbers' => [
                 static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);

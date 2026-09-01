@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Lsp;
 
 use Porta\Editor\Document;
+use Porta\Editor\Templates;
 use Porta\I18n\Translator;
 use Porta\Support\Scheduler;
 use Porta\Widget\CodeEditorWidget;
@@ -42,8 +43,18 @@ final class CompletionController extends AbstractLspController implements Editor
         Notifier $notifier,
         Translator $translator,
         private readonly ?Scheduler $scheduler = null,
+        private readonly Templates $templates = new Templates(),
     ) {
         parent::__construct($lsp, $editor, $tui, $notifier, $translator);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    #[\Override]
+    public function templatesFor(string $languageId): array
+    {
+        return $this->templates->forLanguage($languageId);
     }
 
     /** Debounce a didChange for $doc, then refresh inlay hints. */

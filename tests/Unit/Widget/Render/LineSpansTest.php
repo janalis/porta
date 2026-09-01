@@ -27,7 +27,7 @@ final class LineSpansTest extends TestCase
                 multiActive: false,
                 selection: ['startLine' => 0, 'startCol' => 0, 'endLine' => 0, 'endCol' => 5],
                 carets: [new Caret(0, 3, 0, 3)],
-                occurrences: [[0, 0, 5]],
+                occurrences: [[0, 0, 5, false]],
                 brackets: [[0, 4]],
             ),
             [['start' => 6, 'end' => 11, 'current' => true]],
@@ -180,7 +180,7 @@ final class LineSpansTest extends TestCase
                 multiActive: false,
                 selection: ['startLine' => 0, 'startCol' => 0, 'endLine' => 0, 'endCol' => 2],
                 carets: [new Caret(0, 1, 0, 1)],
-                occurrences: [[0, 0, 3]],
+                occurrences: [[0, 0, 3, false]],
                 brackets: [[0, 1]],
             ),
             [],
@@ -218,5 +218,32 @@ final class LineSpansTest extends TestCase
             ],
             $clipped,
         );
+    }
+
+    /**
+     * A write access paints with its own role. Both spans go through the SAME
+     * loop, so a case with only a write would pass even if the flag were
+     * ignored and both used one role — this asserts the two differ.
+     */
+    public function testAWriteOccurrencePaintsDistinctlyFromAReadOne(): void
+    {
+        $doc = new Document("aaa bbb\n");
+        $styles = Styles::dark();
+
+        /** @param list<array{0: int, 1: int, 2: int, 3: bool}> $occurrences */
+        $spansFor = static fn (array $occurrences): array => LineSpans::forLine(
+            $doc,
+            0,
+            new EditorDecorations(multiActive: false, selection: null, carets: [], occurrences: $occurrences, brackets: null),
+            [],
+            [],
+            $styles,
+        );
+        $read = $spansFor([[0, 0, 3, false]]);
+        $write = $spansFor([[0, 0, 3, true]]);
+
+        $this->assertSame($styles->of(Role::OccurrenceBg)->getAnsiRestore(), $read['spans'][0][2]);
+        $this->assertSame($styles->of(Role::OccurrenceWriteBg)->getAnsiRestore(), $write['spans'][0][2]);
+        $this->assertNotSame($read['spans'][0][2], $write['spans'][0][2], 'a write must not paint identically to a read');
     }
 }

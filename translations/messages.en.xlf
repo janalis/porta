@@ -914,6 +914,18 @@
         <source>Surround With…</source>
         <target>Surround With…</target>
       </trans-unit>
+      <trans-unit id="686">
+        <source>Select Opened File in Tree</source>
+        <target>Select Opened File in Tree</target>
+      </trans-unit>
+      <trans-unit id="687">
+        <source>Structure</source>
+        <target>Structure</target>
+      </trans-unit>
+      <trans-unit id="688">
+        <source>Focus Project Tree</source>
+        <target>Focus Project Tree</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>Switch Tree / Editor Focus</target>

@@ -131,7 +131,12 @@ final class EditorRenderer
      * visible line range — PhpStorm-style identifier highlight. Returns nothing
      * unless there are at least two matches (so a lone symbol is not lit up).
      *
-     * @return list<array{0: int, 1: int, 2: int}> [line, startDisplayCol, endDisplayCol]
+     * Every match is reported as a READ: a textual scan cannot tell an
+     * assignment from a use. The write distinction comes from the language
+     * server ({@see \Porta\Lsp\HighlightController}), which is why this stays
+     * the fallback rather than the source of truth.
+     *
+     * @return list<array{0: int, 1: int, 2: int, 3: bool}> [line, startDisplayCol, endDisplayCol, isWrite]
      */
     public static function identifierOccurrences(Document $doc, PaneFocus $focused, int $fromLine, int $toLine): array
     {
@@ -168,6 +173,7 @@ final class EditorRenderer
                     $line,
                     $doc->displayColAt($line, $offset),
                     $doc->displayColAt($line, $offset + \strlen($match)),
+                    false,
                 ];
             }
         }

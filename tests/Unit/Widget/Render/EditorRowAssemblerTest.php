@@ -117,9 +117,10 @@ final class EditorRowAssemblerTest extends TestCase
         );
 
         $plain = AnsiUtils::stripAnsiCodes($rows[0]);
-        // vcs marker, then the right-padded "1" label, then two literal spaces (one
-        // from inside the styled span, one appended after it), then the content.
-        $this->assertStringStartsWith(Glyphs::VCS_MODIFIED.'  1  hello', $plain);
+        // vcs marker, then the right-padded "1" label, then the marker column's
+        // space, the fold column (blank — a sticky header of a document with no
+        // regions), and the trailing space, then the content.
+        $this->assertStringStartsWith(Glyphs::VCS_MODIFIED.'  1   hello', $plain);
         $this->assertSame(25, AnsiUtils::visibleWidth($rows[0]), 'the full row pads out to gutterWidth + contentWidth');
     }
 
@@ -232,7 +233,7 @@ final class EditorRowAssemblerTest extends TestCase
         [$assembler] = $this->assembler($doc);
         $occurrences = [];
         for ($i = 0; $i < 12; ++$i) {
-            $occurrences[] = [0, $i * 10, ($i * 10) + 3];
+            $occurrences[] = [0, $i * 10, ($i * 10) + 3, false];
         }
         $decorations = new EditorDecorations(false, null, [], $occurrences, null);
         $geo = new EditorGeometry(numberWidth: 0, gutterWidth: 3, contentWidth: 130, stripeCol: 0);
@@ -265,7 +266,7 @@ final class EditorRowAssemblerTest extends TestCase
         $doc = new Document(str_repeat('x', times: 40)."\n");
         [$assembler] = $this->assembler($doc);
         // Occurrence entirely inside [0,3) — invisible at hScroll 10.
-        $decorations = new EditorDecorations(false, null, [], [[0, 0, 3]], null);
+        $decorations = new EditorDecorations(false, null, [], [[0, 0, 3, false]], null);
         $geo = new EditorGeometry(numberWidth: 0, gutterWidth: 3, contentWidth: 10, stripeCol: 0);
         $line = str_repeat('x', times: 40);
 
@@ -275,7 +276,7 @@ final class EditorRowAssemblerTest extends TestCase
         $this->assertSame($plainRows[0], $clippedRows[0], 'an off-window span leaves the visible slice untouched');
 
         // The same occurrence straddling the window edge still opens.
-        $straddling = new EditorDecorations(false, null, [], [[0, 8, 12]], null);
+        $straddling = new EditorDecorations(false, null, [], [[0, 8, 12, false]], null);
         $straddledRows = $assembler->assemble($geo, $straddling, sticky: [], highlighted: [$line], stripe: [''], contentRows: 1, vScroll: 0, cursorLine: -1, cursorDisplayCol: 0, hScroll: 10);
         $this->assertNotSame($plainRows[0], $straddledRows[0], 'a window-straddling span still decorates the visible part');
     }

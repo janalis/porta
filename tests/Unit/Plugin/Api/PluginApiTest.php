@@ -43,6 +43,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestTui;
+use Porta\Tree\FileStatuses;
 use Porta\Ui\Theme\Theme;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
@@ -79,6 +80,7 @@ final class PluginApiTest extends TestCase
     use StatusReads;
 
     private RecordingChangeMarkSink $changeMarks;
+    private FileStatuses $fileStatuses;
     private CodeEditorWidget $editor;
     private StatusBarWidget $status;
     private RecordingFileOpener $files;
@@ -106,6 +108,7 @@ final class PluginApiTest extends TestCase
                     $this->diagnostics,
                     $this->editor,
                     $this->changeMarks = new RecordingChangeMarkSink(),
+                    $this->fileStatuses = new FileStatuses(),
                     $this->buffers,
                     TestDockTools::controller(),
                     TestDockTools::replacer($this->buffers),
@@ -414,6 +417,7 @@ final class PluginApiTest extends TestCase
                 new RecordingDiagnosticsSink(),
                 new CodeEditorWidget(),
                 $this->changeMarks = new RecordingChangeMarkSink(),
+                new FileStatuses(),
                 new BufferManager(),
                 TestDockTools::controller(),
                 TestDockTools::replacer(),
@@ -499,6 +503,40 @@ final class PluginApiTest extends TestCase
             $published[0]['marks'],
             'an unknown kind is dropped at the boundary rather than reaching the renderer',
         );
+    }
+
+    public function testSetFileStatusesNormalisesAndReachesTheSink(): void
+    {
+        $api = $this->api();
+
+        $api->setFileStatuses([
+            '/p/a.php' => 'added',
+            '/p/b.php' => 'modified',
+            '/p/c.php' => 'deleted',
+            '/p/d.php' => 'exploded', // not a kind core has a Role for
+            '' => 'added', // no file to mark
+        ]);
+
+        $this->assertSame(
+            [
+                '/p/a.php' => ChangeMarkKind::Added,
+                '/p/b.php' => ChangeMarkKind::Modified,
+                '/p/c.php' => ChangeMarkKind::Deleted,
+            ],
+            $this->fileStatuses->all(),
+            'an unknown kind and a pathless entry are both dropped at the boundary',
+        );
+    }
+
+    /** The map replaces whole: a file leaving it is how "back to unmodified" is said. */
+    public function testSetFileStatusesReplacesTheWholeMap(): void
+    {
+        $api = $this->api();
+
+        $api->setFileStatuses(['/p/a.php' => 'modified']);
+        $api->setFileStatuses(['/p/b.php' => 'added']);
+
+        $this->assertSame(['/p/b.php' => ChangeMarkKind::Added], $this->fileStatuses->all());
     }
 
     public function testHidingTheChangeMarkGutterDropsWhatWasShowingInIt(): void
@@ -601,6 +639,7 @@ final class PluginApiTest extends TestCase
             new RecordingDiagnosticsSink(),
             new CodeEditorWidget(),
             $this->changeMarks = new RecordingChangeMarkSink(),
+            new FileStatuses(),
             new BufferManager(),
             new DockToolController($manager, $dock, new ProjectPaths('/p')), // the manager IS the source
             TestDockTools::replacer(),
@@ -727,6 +766,7 @@ final class PluginApiTest extends TestCase
             new RecordingDiagnosticsSink(),
             $editor,
             new RecordingChangeMarkSink(),
+            new FileStatuses(),
             $buffers,
             TestDockTools::controller(),
             TestDockTools::replacer($buffers),

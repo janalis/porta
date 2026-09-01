@@ -914,6 +914,18 @@
         <source>Surround With…</source>
         <target>囲む…</target>
       </trans-unit>
+      <trans-unit id="686">
+        <source>Select Opened File in Tree</source>
+        <target>開いているファイルをツリーで選択</target>
+      </trans-unit>
+      <trans-unit id="687">
+        <source>Structure</source>
+        <target>構造</target>
+      </trans-unit>
+      <trans-unit id="688">
+        <source>Focus Project Tree</source>
+        <target>プロジェクトツリーにフォーカス</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>ツリー / エディターのフォーカスを切替</target>

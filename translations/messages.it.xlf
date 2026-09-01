@@ -914,6 +914,18 @@
         <source>Surround With…</source>
         <target>Circonda con…</target>
       </trans-unit>
+      <trans-unit id="686">
+        <source>Select Opened File in Tree</source>
+        <target>Seleziona il file aperto nell'albero</target>
+      </trans-unit>
+      <trans-unit id="687">
+        <source>Structure</source>
+        <target>Struttura</target>
+      </trans-unit>
+      <trans-unit id="688">
+        <source>Focus Project Tree</source>
+        <target>Attiva l'albero del progetto</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>Cambia fuoco albero / editor</target>

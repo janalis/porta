@@ -43,11 +43,45 @@ a second.
   an `if`/`foreach`/`try` snippet (`Ctrl+Alt+T`).
 - **Code folding** (`Ctrl+.`): collapse/expand the `{ … }` block at the
   caret; a `⋯ N lines` marker shows on the folded line, and clicks and
-  scrolling map through hidden lines.
+  scrolling map through hidden lines. The gutter's **fold column** marks every
+  line a region starts at — `▾` open, `▸` collapsed — and clicking it folds or
+  unfolds that region. With a language server the regions come from
+  `foldingRange`, so a fold starts at the declaration; without one they come
+  from a brace scan, which starts it at the `{`.
 - **Line operations**: duplicate (`Ctrl+D`), delete (`Ctrl+Y`), move line
   (`Alt+Shift+↑/↓`), toggle comment (`Ctrl+/`).
 - **Clipboard** (`Ctrl+C/X/V`) also copies to the system clipboard via
   OSC 52.
+
+## Live templates
+
+Type an abbreviation and press `Tab` to expand it into a snippet with tab
+stops — `Tab` / `Shift+Tab` walk the placeholders, `Esc` ends the session. PHP
+ships `fore`, `forek`, `fori`, `ifn`, `inn`, `thr`, `tryc`, `pubf`, `prif`,
+`ctor`, `sout` and `vdd`; JavaScript and TypeScript share a smaller set.
+
+**Postfix templates** start with a dot and wrap what is already to their left,
+so you write the expression first and decide what to do with it after:
+
+| Type | Get |
+| --- | --- |
+| `$rows.fore` + `Tab` | `foreach ($rows as $item) { … }` |
+| `$user.inn` + `Tab` | `if (null !== $user) { … }` |
+| `$this->count().var` + `Tab` | `$value = $this->count();` |
+| `$ok.not` + `Tab` | `!$ok` |
+
+The receiver can be a variable, a property or static chain, a call or an index
+(`$this->rows`, `Foo::bar`, `count($x)`, `$rows[0]`).
+
+Define your own under `languages.<id>.templates` in `.porta.json` — see
+[configuration.md](configuration.md#languageslangid). Yours replace a built-in of
+the same name, and an empty body switches one off.
+
+`Tab` is still `Tab`: with no template at the caret it indents as it always did,
+and a language with no templates of its own is unaffected. Template bodies are
+**LSP snippets** — the same syntax the language server's own completions arrive
+in — so `$1` is a tab stop, `${1:default}` a placeholder, `$0` the final caret,
+and a plain `$name` stays literal.
 
 ## Multiple carets
 
@@ -69,9 +103,65 @@ precedence when enabled — see [configuration.md](configuration.md).
 
 Line numbers (absolute or relative), git change markers (added / modified /
 deleted vs `HEAD`, refreshed on open and save), diagnostic markers,
-breakpoint dots, indent guides, identifier-occurrence and matching-bracket
+breakpoint dots, fold triangles, indent guides, identifier-occurrence and matching-bracket
 highlighting, and dimmed inline parameter-name/type **inlay hints** from
 the language server.
+
+## Identifier highlight
+
+Park the caret on a symbol and its other occurrences light up. With a language
+server that supports `documentHighlight` (phpantom and phpactor both do) the
+occurrences are the **semantic** ones — a local `$x` no longer lights up a
+same-named variable from another scope — and a **write** access is shaded
+differently from a read, PhpStorm-style. In the monochrome theme the two
+separate by weight instead of colour.
+
+Without a server, on a file it has no answer for, or in the moment before the
+caret settles, the editor's own whole-word scan shows instead; it reports every
+match as a read, because matching text cannot tell an assignment from a use.
+
+The lookup waits for the caret to hold still, is skipped entirely while the
+answer already on hand covers the caret's symbol, and is never sent to a server
+that did not advertise the capability.
+
+## The marker stripe
+
+The editor's rightmost column maps the **whole file** onto the pane's height,
+so a glance down the margin says where the interesting lines are without
+scrolling. Each cell shows the most important thing landing on its slice of
+the file, and the kinds resolve by strict precedence:
+
+| Mark | Means |
+| --- | --- |
+| `█` `▓` `▒` `░` | a diagnostic — the block gets heavier with the severity |
+| `●` | a breakpoint |
+| `▎` `┆` `▁` | a git change — added / modified / deleted, the same marks the gutter draws |
+| `┈` | a search hit from the find bar |
+
+A faint band behind the marks is the **viewport thumb** — the part of the file
+you are currently looking at, shown only when the file is taller than the pane.
+Clicking a cell jumps there.
+
+Every mark is a distinct shape rather than a colour, so the stripe still reads
+under `--no-ansi` and in the monochrome theme. Change marks follow the git
+plugin's own *gutter marks* setting: turn that off and they leave the stripe
+too.
+
+## The file tree
+
+File rows carry what is worth knowing about the file, right-aligned and in a
+fixed order: its version-control status (`▎` added / `┆` modified, the same
+marks the gutter draws), `✗` or `▲` for the worst diagnostic in it, then `●` for
+unsaved changes.
+The version-control mark comes from the git plugin and covers the whole working
+tree, so a changed file you have never opened is still marked; the other two
+come from open buffers, because nothing walks the project on a frame. Info and
+hint diagnostics are left unmarked, so the marks mean "something here needs
+you", and directories are never marked.
+
+**Select Opened File in Tree** (`Alt+F1`, or View ▸ Select Opened File in Tree)
+expands the tree down to the file you are editing, selects it and moves focus
+there, so you can carry on navigating from where the caret already was.
 
 ## Merge conflicts
 

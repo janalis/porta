@@ -1460,9 +1460,9 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor->render(new RenderContext(80, 5));
 
         // With line numbers off and vcs gutter off, gutterWidth is exactly
-        // numberWidth(0) + 2 = 2. An IncrementInteger mutant (numberWidth=1)
-        // would make it 3.
-        $this->assertSame(2, $editor->gutterWidth());
+        // numberWidth(0) + marker + fold + space = 3. An IncrementInteger mutant
+        // (numberWidth=1) would make it 4.
+        $this->assertSame(3, $editor->gutterWidth());
     }
 
     public function testComputeGeometryGutterWidthIncludesTheVcsColumnWhenEnabled(): void

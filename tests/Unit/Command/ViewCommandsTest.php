@@ -13,9 +13,11 @@ use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * ViewCommands wires the view/window palette commands onto a real
@@ -37,6 +39,51 @@ final class ViewCommandsTest extends TestCase
     private function closeIde(Ide $ide): void
     {
         Services::resolve($ide, ViewRegistry::class)->closeAll();
+    }
+
+    public function testSelectOpenedFileRevealsTheActiveBufferInTheTreeAndFocusesIt(): void
+    {
+        // Held for the whole test: TempProject's destructor removes the dir.
+        $project = new TempProject(['top.php' => "<?php\n", 'sub/deep/nested.php' => "<?php\n"]);
+        new OnboardingState($project->dir)->markWelcomeSeen();
+        $ide = new Ide($project->dir, null, new VirtualTerminal(columns: 100, rows: 30));
+
+        try {
+            $buffers = Services::resolve($ide, BufferManager::class);
+            $commands = Services::resolve($ide, CommandRegistry::class);
+            $tree = Services::resolve($ide, FileTreeWidget::class);
+            $tui = Services::resolve($ide, Tui::class);
+
+            $buffers->open($project->dir.'/sub/deep/nested.php', "<?php\n");
+            $this->assertNotSame('nested.php', $tree->selectedNode()?->name, 'the collapsed tree cannot already be on it');
+
+            $commands->run('tree_select_opened_file');
+
+            $this->assertSame('nested.php', $tree->selectedNode()?->name, 'the ancestors were expanded and the file selected');
+            $this->assertSame($tree, $tui->getFocus(), 'focus moved to the tree so navigation can continue there');
+        } finally {
+            $this->closeIde($ide);
+        }
+    }
+
+    /** With nothing open there is nothing to reveal, but the chord must still land you in the tree. */
+    public function testSelectOpenedFileWithNoActiveBufferStillFocusesTheTree(): void
+    {
+        $project = new TempProject(['top.php' => "<?php\n"]);
+        new OnboardingState($project->dir)->markWelcomeSeen();
+        $ide = new Ide($project->dir, null, new VirtualTerminal(columns: 100, rows: 30));
+
+        try {
+            $commands = Services::resolve($ide, CommandRegistry::class);
+            $tree = Services::resolve($ide, FileTreeWidget::class);
+            $tui = Services::resolve($ide, Tui::class);
+
+            $commands->run('tree_select_opened_file');
+
+            $this->assertSame($tree, $tui->getFocus());
+        } finally {
+            $this->closeIde($ide);
+        }
     }
 
     public function testMoveTabLeftAndRightShiftTheActiveBufferByExactlyOnePosition(): void
@@ -114,6 +161,27 @@ final class ViewCommandsTest extends TestCase
             $sessions = Probe::get($dock, 'sessions');
             \assert($sessions instanceof TerminalSessions, description: 'BottomDock holds its TerminalSessions collaborator under that property');
             $sessions->stopAll();
+            $this->closeIde($ide);
+        }
+    }
+
+    /** Alt+1 lands focus in the tree from wherever it was, PhpStorm's Project tool window. */
+    public function testFocusProjectTreeMovesFocusToTheTree(): void
+    {
+        $project = new TempProject(['top.php' => "<?php\n"]);
+        new OnboardingState($project->dir)->markWelcomeSeen();
+        $ide = new Ide($project->dir, null, new VirtualTerminal(columns: 100, rows: 30));
+
+        try {
+            $commands = Services::resolve($ide, CommandRegistry::class);
+            $tree = Services::resolve($ide, FileTreeWidget::class);
+            $tui = Services::resolve($ide, Tui::class);
+            $this->assertNotSame($tree, $tui->getFocus(), 'focus starts in the editor area');
+
+            $commands->run('ide_project_tree');
+
+            $this->assertSame($tree, $tui->getFocus());
+        } finally {
             $this->closeIde($ide);
         }
     }

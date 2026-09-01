@@ -123,6 +123,42 @@ final class LspMapper
     }
 
     /**
+     * Map `textDocument/documentHighlight` onto the editor's occurrence spans.
+     * DocumentHighlightKind: 1 = Text, 2 = Read, 3 = Write; anything but Write
+     * paints as a read, because a server that cannot tell them apart sends
+     * Text and guessing "write" there would colour reads wrongly.
+     *
+     * Multi-line ranges are dropped rather than clipped: an occurrence is one
+     * identifier, so a range spanning lines is not one and highlighting its
+     * first line would be a lie.
+     *
+     * @param list<array<string, mixed>> $highlights
+     *
+     * @return list<array{0: int, 1: int, 2: int, 3: bool}> [line, startDisplayCol, endDisplayCol, isWrite]
+     */
+    public static function mapDocumentHighlights(Document $doc, array $highlights): array
+    {
+        $spans = [];
+        foreach ($highlights as $highlight) {
+            if (null === ($highlight['range']['start']['line'] ?? null) || null === ($highlight['range']['end']['line'] ?? null)) {
+                continue;
+            }
+            $line = (int) $highlight['range']['start']['line'];
+            if ((int) $highlight['range']['end']['line'] !== $line) {
+                continue;
+            }
+            $start = $doc->utf16ColToByteCol($line, (int) ($highlight['range']['start']['character'] ?? 0));
+            $end = $doc->utf16ColToByteCol($line, (int) ($highlight['range']['end']['character'] ?? 0));
+            if ($end <= $start) {
+                continue;
+            }
+            $spans[] = [$line, $doc->displayColAt($line, $start), $doc->displayColAt($line, $end), 3 === ($highlight['kind'] ?? 1)];
+        }
+
+        return $spans;
+    }
+
+    /**
      * Group inlay hints by (0-based) line, converting UTF-16 columns to byte
      * columns against the given document.
      *

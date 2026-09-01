@@ -66,6 +66,7 @@ final class ThemeLockTest extends TestCase
         yield 'search-bg' => [Role::SearchBg, new Style(background: 58)];
         yield 'search-current-bg' => [Role::SearchCurrentBg, new Style(background: 130)];
         yield 'occurrence-bg' => [Role::OccurrenceBg, new Style(background: 23)];
+        yield 'occurrence-write-bg' => [Role::OccurrenceWriteBg, new Style(background: 52)];
         yield 'breakpoint' => [Role::Breakpoint, new Style(color: 203)];
         yield 'debug-line-bg' => [Role::DebugLineBg, new Style(background: 52)];
         yield 'tab-accent' => [Role::TabAccent, new Style(color: 110)];
@@ -131,6 +132,7 @@ final class ThemeLockTest extends TestCase
         yield 'search-bg' => [Role::SearchBg, new Style(background: 229)];
         yield 'search-current-bg' => [Role::SearchCurrentBg, new Style(background: 215)];
         yield 'occurrence-bg' => [Role::OccurrenceBg, new Style(background: 194)];
+        yield 'occurrence-write-bg' => [Role::OccurrenceWriteBg, new Style(background: 224)];
         yield 'breakpoint' => [Role::Breakpoint, new Style(color: 160)];
         yield 'debug-line-bg' => [Role::DebugLineBg, new Style(background: 224)];
         yield 'tab-accent' => [Role::TabAccent, new Style(color: 25)];
@@ -245,6 +247,7 @@ final class ThemeLockTest extends TestCase
             Role::SearchBg,
             Role::SearchCurrentBg,
             Role::OccurrenceBg,
+            Role::OccurrenceWriteBg,
         ];
         foreach (Role::cases() as $role) {
             if (\in_array($role, $mapped, strict: true)) {
@@ -272,6 +275,7 @@ final class ThemeLockTest extends TestCase
         $this->assertEquals(new Style(underline: true), $mono->of(Role::SearchBg), 'search matches are visible');
         $this->assertEquals(new Style(underline: true), $mono->of(Role::SearchCurrentBg));
         $this->assertEquals(new Style(underline: true), $mono->of(Role::OccurrenceBg));
+        $this->assertEquals(new Style(underline: true, bold: true), $mono->of(Role::OccurrenceWriteBg), 'a WRITE occurrence stays distinct from a read one without color');
     }
 
     public function testMonochromeHoverUsesUnderlineDistinctFromTheSelection(): void

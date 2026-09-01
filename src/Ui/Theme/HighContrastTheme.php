@@ -61,6 +61,7 @@ final class HighContrastTheme
                 Role::SearchBg->selector() => new Style(background: 22),
                 Role::SearchCurrentBg->selector() => new Style(background: 88),
                 Role::OccurrenceBg->selector() => new Style(background: 23),
+                Role::OccurrenceWriteBg->selector() => new Style(background: 52),
                 Role::Breakpoint->selector() => new Style(color: 203),
                 Role::DebugLineBg->selector() => new Style(background: 17),
                 Role::TabAccent->selector() => new Style(color: 51),
