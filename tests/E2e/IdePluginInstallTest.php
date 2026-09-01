@@ -108,7 +108,11 @@ final class IdePluginInstallTest extends TestCase
             [
                 100 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->openPluginsSection($tui, $ide);
-                    $tui->tick();
+                    // A bare tick() is not a frame, and these read ACCUMULATED
+                    // output — so without a real paint they asserted against
+                    // whatever the boot happened to leave. It held until the
+                    // pcov run, which is 2-3x slower, and failed there.
+                    $this->awaitPainted($tui, $terminal, 'Save changes to');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertMatchesRegularExpression('/Save changes to\s+< \.porta\.json >/', $screen);
                     $this->assertStringContainsString('git URL, local path, or vendor/name package', $screen, 'the empty install field shows its hint');

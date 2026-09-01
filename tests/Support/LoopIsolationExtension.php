@@ -16,6 +16,9 @@ use PHPUnit\Runner\Extension\ParameterCollection;
 use PHPUnit\TextUI\Configuration\Configuration;
 use Revolt\EventLoop;
 use Revolt\EventLoop\Driver\StreamSelectDriver;
+use Revolt\EventLoop\Internal\AbstractDriver;
+use Revolt\EventLoop\Internal\DriverCallback;
+use Revolt\EventLoop\Internal\TimerCallback;
 
 /**
  * Per-test event-loop isolation. Revolt's driver is process-global per
@@ -75,7 +78,7 @@ final class LoopIsolationExtension implements Extension
     {
         $leaked = EventLoop::getIdentifiers();
         if ([] !== $leaked) {
-            LeakLog::append(\sprintf("[loop-leak] %s: %d identifier(s) leaked\n", $testId, \count($leaked)));
+            LeakLog::append(\sprintf("[loop-leak] %s: %d identifier(s) leaked%s\n", $testId, \count($leaked), self::describe($leaked)));
         }
         if (!EventLoop::getDriver()->isRunning()) {
             EventLoop::setDriver(new StreamSelectDriver());
@@ -92,5 +95,51 @@ final class LoopIsolationExtension implements Extension
         foreach ($leaked as $identifier) {
             EventLoop::cancel($identifier);
         }
+    }
+
+    /**
+     * Name what leaked: the kind of watcher and the line that armed it.
+     *
+     * A bare count says a test walked out early and nothing else — every leak
+     * in the log looked alike, so nobody could tell the benign ones from the
+     * dangerous one. They are not alike. A full serial E2e run leaks 55
+     * identifiers from seven sites, and 37 are {@see \Porta\Support\ProcessReaper}'s
+     * 50 ms poll, which cancels itself the moment the child is gone and is
+     * unreferenced besides. The one that matters is an `onReadable` on a
+     * subprocess pipe, which is the exact shape this class exists to contain.
+     *
+     * Best-effort, and deliberately so: it reflects into Revolt's `@internal`
+     * driver callbacks (v1.0.9), so any upgrade that moves them degrades this
+     * to the bare count rather than failing a suite. Diagnostics must never be
+     * the reason a run goes red.
+     *
+     * @param array<array-key, string> $leaked
+     */
+    private static function describe(array $leaked): string
+    {
+        $seen = [];
+        try {
+            /** @var mixed $callbacks */
+            $callbacks = new \ReflectionProperty(AbstractDriver::class, 'callbacks')->getValue(EventLoop::getDriver());
+            if (!\is_array($callbacks)) {
+                return '';
+            }
+            foreach ($leaked as $id) {
+                /** @var mixed $callback */
+                $callback = $callbacks[$id] ?? null;
+                if (!$callback instanceof DriverCallback) {
+                    continue;
+                }
+                $where = new \ReflectionFunction($callback->closure);
+                $kind = $callback instanceof TimerCallback
+                    ? \sprintf('%s %.3fs', $callback->repeat ? 'repeat' : 'delay', $callback->interval)
+                    : new \ReflectionClass($callback)->getShortName();
+                $seen[\sprintf('%s %s:%d', $kind, basename((string) $where->getFileName()), $where->getStartLine())] = true;
+            }
+        } catch (\Throwable) {
+            return '';
+        }
+
+        return [] === $seen ? '' : ' ('.implode('; ', array_keys($seen)).')';
     }
 }
