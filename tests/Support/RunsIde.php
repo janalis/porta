@@ -79,7 +79,7 @@ trait RunsIde
                 return str_contains($terminal->getOutput(), $needle);
             },
             timeout: $timeout,
-            what: 'raw '.addcslashes($needle, "\0..\37").' to paint',
+            what: 'raw '.addcslashes($needle, characters: "\0..\37").' to paint',
         );
     }
 
