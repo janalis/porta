@@ -39,7 +39,9 @@ final class IdeToastsTest extends TestCase
                 200 => function ($tui, $terminal, $ide): void {
                     $tui->handleInput('X'); // dirty
                     $tui->handleInput("\x13"); // ctrl+s → "Saved a.php"
-                    $tui->tick();
+                    // The toast is set synchronously; the CARD painting is the
+                    // later moment, and it is what the screen assertion needs.
+                    $this->awaitPainted($tui, $terminal, 'Saved a.php');
 
                     $this->assertStringContainsString('Saved a.php', Toasts::last($ide));
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());

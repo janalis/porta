@@ -200,9 +200,8 @@ final class IdeSettingsThemeTest extends TestCase
             $project->path('a.php'),
             [
                 300 => function ($tui, $terminal): void {
-                    $tui->tick();
                     // Dark theme baseline: the `return` keyword is the dark KEYWORD color.
-                    $this->assertStringContainsString("\x1b[38;5;176m", $terminal->getOutput(), 'dark syntax at boot');
+                    $this->awaitPaintedRaw($tui, $terminal, "\x1b[38;5;176m");
                     $terminal->clearOutput(); // capture only the frames rendered after the switch
                 },
                 500 => static function ($tui, $terminal, $ide): void {
@@ -212,10 +211,11 @@ final class IdeSettingsThemeTest extends TestCase
                     $tui->tick();
                 },
                 700 => function ($tui, $terminal, $ide): void {
-                    $tui->tick();
-                    $out = $terminal->getOutput(); // only post-switch frames (cleared at step 300)
                     // The buffer re-highlighted: light KEYWORD color in, dark gone.
-                    $this->assertStringContainsString("\x1b[38;5;91m", $out, 'light syntax after the switch');
+                    // The POSITIVE is the barrier — without a frame the cleared
+                    // buffer is empty and "dark gone" passes for the wrong reason.
+                    $this->awaitPaintedRaw($tui, $terminal, "\x1b[38;5;91m");
+                    $out = $terminal->getOutput(); // only post-switch frames (cleared at step 300)
                     $this->assertStringNotContainsString("\x1b[38;5;176m", $out, 'no dark syntax remains');
                     // Chrome recolored: light header bar in, dark gone.
                     $this->assertStringContainsString("\x1b[48;5;253m", $out, 'light header bar present');
@@ -228,9 +228,8 @@ final class IdeSettingsThemeTest extends TestCase
                     $tui->tick();
                 },
                 900 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->awaitPaintedRaw($tui, $terminal, "\x1b[38;5;213m");
                     $out = $terminal->getOutput(); // only post-high-contrast frames
-                    $this->assertStringContainsString("\x1b[38;5;213m", $out, 'high-contrast syntax after the switch');
                     $this->assertStringNotContainsString("\x1b[38;5;91m", $out, 'no light syntax remains');
                     $this->assertStringContainsString("\x1b[48;5;236m", $out, 'high-contrast header bar present');
                     $this->assertStringNotContainsString("\x1b[48;5;253m", $out, 'no light header bar remains');
@@ -285,10 +284,9 @@ final class IdeSettingsThemeTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function ($tui, $terminal, $ide): void {
-                    $tui->tick();
                     // ScreenWriter converts the zero-width marker into a hardware
                     // cursor position plus a DECSCUSR shape: 5 = bar (default).
-                    $this->assertStringContainsString("\x1b[5 q", $terminal->getOutput(), 'the default bar shape is emitted');
+                    $this->awaitPaintedRaw($tui, $terminal, "\x1b[5 q");
 
                     Services::resolve($ide, SettingsController::class)
                         ->changeSetting('cursorShape', 'block');
@@ -296,9 +294,8 @@ final class IdeSettingsThemeTest extends TestCase
                     $tui->tick();
                 },
                 400 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->awaitPaintedRaw($tui, $terminal, "\x1b[1 q");
                     $out = $terminal->getOutput();
-                    $this->assertStringContainsString("\x1b[1 q", $out, 'the block shape (DECSCUSR 1) after the live switch');
                     $this->assertStringNotContainsString("\x1b[5 q", $out, 'no stale bar shape survives the cache flush');
                 },
                 600 => function ($tui, $terminal, $ide): void {

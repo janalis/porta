@@ -92,7 +92,8 @@ final class IdeFilesystemSessionTest extends TestCase
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\r"); // secret.php
-                    $tui->tick();
+                    // Last of the three refusals the post-run assertions read.
+                    $this->awaitPainted($tui, $terminal, 'Cannot read secret.php');
                 },
             ],
         );

@@ -202,12 +202,14 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui): void {
+                200 => function ($tui, $terminal): void {
                     $tui->getById('editor')->setDiagnostics([
                         1 => [['severity' => 2, 'message' => 'unused variable', 'col' => 0, 'endCol' => 2]],
                     ]);
                     $tui->requestRender(); // what Ide::handleDiagnostics does after mutating
-                    $tui->tick();
+                    // requestRender only ASKS; the post-run assertion below needs
+                    // the frame to have happened, and a tick is not one.
+                    $this->awaitPainted($tui, $terminal, '▲ 1');
                 },
             ],
         );
@@ -430,7 +432,9 @@ final class IdeLspFeaturesTest extends TestCase
             $project->path('src/Inlay.php'),
             [
                 600 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    // Inlay hints are an LSP round trip, so this was a bet on the
+                    // response AND on the frame that draws it.
+                    $this->awaitPainted($tui, $terminal, ': int');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString(': int', $screen, 'inlay type hint rendered inline');
                 },
@@ -1459,10 +1463,9 @@ final class IdeLspFeaturesTest extends TestCase
                     // No server ran (PATH is empty): the tool opens empty and
                     // will live-tail — the exact "why is my server silent" flow.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_lsp_log');
-                    $tui->tick();
+                    $this->awaitPainted($tui, $terminal, '0 results');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('LSP Server Log', $screen, 'the dock tab opened');
-                    $this->assertStringContainsString('0 results', $screen, 'empty so far');
 
                     // Output arrives while the tab is open: it appears without re-running the command.
                     Services::resolve($ide, \Porta\Lsp\LspLog::class)->append("[php-ls] fatal: cannot index\n");

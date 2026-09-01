@@ -364,18 +364,18 @@ final class IdeAppMenuTest extends TestCase
                     }
                 },
                 450 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    // 'Save All' is a filtered ROW inside the palette, so it
+                    // paints after the palette chrome that carries 'Find Action'.
+                    $this->awaitPainted($tui, $terminal, 'Save All');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Find Action', $screen);
-                    $this->assertStringContainsString('Save All', $screen);
                     // Dirty the buffer, then run "Save All" by name.
                     $tui->getById('editor')->getDocument()->insert('X');
                     $tui->handleInput("\r");
                 },
                 600 => function ($tui, $terminal) use ($project): void {
-                    $tui->tick();
+                    $this->awaitPainted($tui, $terminal, 'Saved');
                     $this->assertStringContainsString('X', (string) file_get_contents($project->path('A.php')));
-                    $this->assertStringContainsString('Saved', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
         );
@@ -406,9 +406,8 @@ final class IdeAppMenuTest extends TestCase
                     $tui->handleInput("\r"); // run the cycle: absolute → relative
                 },
                 600 => function ($tui, $terminal) use ($project): void {
-                    $tui->tick();
+                    $this->awaitPainted($tui, $terminal, 'Line numbers relative');
                     $this->assertSame(LineNumberMode::Relative, EditorState::display($tui->getById('editor'))->lineNumbers());
-                    $this->assertStringContainsString('Line numbers relative', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // Persisted into .porta.json.
                     $config = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
                     $this->assertSame('relative', $config['settings']['lineNumbers']);

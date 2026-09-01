@@ -946,11 +946,10 @@ final class IdeContextMenusTest extends TestCase
                 200 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 in the editor
-                    $tui->tick();
+                    $this->awaitPainted($tui, $terminal, 'Go to Declaration or Usages');
                     $context = Services::resolve($ide, ContextMenu::class);
                     $this->assertTrue($context->isOpen(), 'the editor context menu opened at the caret');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Go to Declaration or Usages', $screen);
                     $tui->handleInput("\x1b"); // Esc closes it
                     $this->assertFalse($context->isOpen());
                 },

@@ -236,9 +236,10 @@ final class IdeFindUiTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $rect->columns - 2, $rect->row + 1));
                 },
                 300 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    // The re-run count is what the toggle produces; awaiting it
+                    // is awaiting the effect, not a gap after the click.
+                    $this->awaitPainted($tui, $terminal, '[1/2]');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('[1/2]', $screen, 'the click toggled whole-word and re-ran the search: foobar no longer matches');
                     $this->assertStringContainsString('[\\b]', $screen, 'and the tag reads as enabled without relying on colour');
                 },
             ],

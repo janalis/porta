@@ -287,9 +287,8 @@ final class IdeTabsBuffersTest extends TestCase
                     $rect = $tabsRect($tui, $ide);
                     // Right-click row 0 (C) → the tab context menu.
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 1));
-                    $tui->tick();
+                    $this->awaitPainted($tui, $terminal, 'Close Others');
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'right-clicking a list row opened the tab menu');
-                    $this->assertStringContainsString('Close Others', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\x1b"); // Esc closes it
                 },
                 900 => function ($tui, $terminal, $ide): void {
@@ -474,6 +473,9 @@ final class IdeTabsBuffersTest extends TestCase
                     $terminal->clearOutput(); // capture only the frames after the reorder
                     $tui->handleInput("\x1b[<32;45;2M"); // drag A over tab B
                     $tui->handleInput("\x1b[<0;45;2m"); // release
+                    // tick(), NOT awaitPainted: the claim under test is that the
+                    // strip repaints WITHOUT further input, and forcing a frame
+                    // would produce the very repaint being asserted.
                     $tui->tick();
                     $this->assertSame(['B.php', 'A.php'], $this->tabNames($tui));
                     // A pure reorder mutates no widget, so the strip must be

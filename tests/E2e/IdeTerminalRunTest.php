@@ -364,9 +364,10 @@ final class IdeTerminalRunTest extends TestCase
             [
                 300 => function ($tui, $terminal): void {
                     $tui->handleInput("\x1b[114;6u"); // ctrl+shift+r
-                    $tui->tick();
+                    // The POSITIVE first: "no picker" is equally true before the
+                    // command has decided there is nothing to run.
+                    $this->awaitPainted($tui, $terminal, 'Nothing to run');
                     $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')));
-                    $this->assertStringContainsString('Nothing to run', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
         );

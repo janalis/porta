@@ -49,16 +49,16 @@ final class IdeViewerPluginsTest extends TestCase
             $project->path('g.dot'),
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
-                    $tui->tick();
+                    $this->awaitPainted($tui, $terminal, 'digraph G');
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'a .dot file opens in the TEXT editor when the graph viewer is off');
-                    $this->assertStringContainsString('digraph G', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the DOT source is editable text');
 
                     $buffers = Services::resolve($ide, BufferManager::class);
                     $this->assertCount(1, $buffers->all());
                     Services::resolve($ide, BufferService::class)->openFile((string) realpath($project->path('img.png')));
-                    $tui->tick();
+                    // The refusal FLASH is the positive; "still one buffer" is
+                    // also true before the open has been refused at all.
+                    $this->awaitPainted($tui, $terminal, 'Not a UTF-8 text file');
                     $this->assertCount(1, $buffers->all(), 'the image was refused');
-                    $this->assertStringContainsString('Not a UTF-8 text file', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the ordinary text-path refusal');
 
                     $this->assertNull(Services::resolve($ide, CommandRegistry::class)->label('graph-viewer:architecture'), 'a disabled plugin registers no commands');
                 },

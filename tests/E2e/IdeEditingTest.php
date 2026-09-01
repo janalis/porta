@@ -243,8 +243,11 @@ final class IdeEditingTest extends TestCase
                     $tui->handleInput("\x1b[B"); // down to "[ ] Brackets"
                     $tui->handleInput("\r"); // accept -> wrap "bar" in [ ]
                 },
-                600 => static function ($tui): void {
-                    $tui->tick();
+                // The assertion below the run reads ACCUMULATED output, so the
+                // last step has to leave the effect painted — the loop stops
+                // 80 ms later and a tick is not a frame.
+                600 => function ($tui, $terminal): void {
+                    $this->awaitPainted($tui, $terminal, 'foo([bar])');
                 },
             ],
         );
@@ -268,12 +271,12 @@ final class IdeEditingTest extends TestCase
                         ->flash('the answer is 42', 0.1);
                 },
                 400 => function ($tui, $terminal, $ide): void {
-                    $tui->tick();
                     Services::resolve($ide, CommandRegistry::class)->run('ide_notifications');
-                    $tui->tick();
+                    // The log ROW is the last of the two things asserted: the
+                    // tab title can be on screen before the entries render.
+                    $this->awaitPainted($tui, $terminal, 'the answer is 42');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Notifications', $screen, 'the dock tab opened');
-                    $this->assertStringContainsString('the answer is 42', $screen, 'the expired flash is reviewable');
 
                     // A flash landing while the tab is open appears live, newest first.
                     Services::resolve($ide, Notifier::class)

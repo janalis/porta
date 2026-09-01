@@ -152,7 +152,7 @@ final class IdeRtlLocaleTest extends TestCase
             $project->path('demo.php'),
             [
                 300 => function ($tui, $terminal): void {
-                    $tui->tick();
+                    $this->awaitPainted($tui, $terminal, '<?php');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     // The code pane stays LTR: the open tag is intact, its
                     // punctuation is not bidi-mirrored, and the line is whole.

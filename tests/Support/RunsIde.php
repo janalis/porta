@@ -56,6 +56,33 @@ trait RunsIde
         );
     }
 
+    /**
+     * {@see awaitPainted()} against the RAW byte stream.
+     *
+     * Colour and cursor-shape assertions look for escape sequences —
+     * `\x1b[38;5;91m` for a theme's keyword colour, `\x1b[1 q` for a DECSCUSR
+     * shape — and `awaitPainted()` strips precisely those before it looks, so
+     * it can never match one.
+     *
+     * The pairing is what makes this matter rather than merely fail: these
+     * tests `clearOutput()`, change a setting, and then assert the new
+     * sequence is present AND the old one is gone. Without a real frame the
+     * buffer is still empty, so the negative half passes by having nothing to
+     * look at — a green assertion that proves the opposite of what it claims.
+     */
+    private function awaitPaintedRaw(Tui $tui, VirtualTerminal $terminal, string $needle, float $timeout = 10.0): void
+    {
+        $this->await(
+            function () use ($tui, $terminal, $needle): bool {
+                $this->frame($tui);
+
+                return str_contains($terminal->getOutput(), $needle);
+            },
+            timeout: $timeout,
+            what: 'raw '.addcslashes($needle, "\0..\37").' to paint',
+        );
+    }
+
     /** Set by {@see allowFirstRunWelcome()} for the tests that want the real first boot. */
     private bool $allowFirstRunWelcome = false;
 

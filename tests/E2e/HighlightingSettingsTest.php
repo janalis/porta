@@ -57,8 +57,12 @@ final class HighlightingSettingsTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
 
         $terminal = $this->runIde($project, $project->path('a.php'), [
-            100 => static function ($tui): void {
-                $tui->tick();
+            100 => function ($tui, $terminal): void {
+                // The assertion below is a pure negative, and an unpainted
+                // buffer satisfies it for the wrong reason. Await the SOURCE on
+                // screen first: after that, "no keyword colour" means the engine
+                // is off rather than that nothing has rendered.
+                $this->awaitPainted($tui, $terminal, 'return 1;');
             },
         ]);
 
