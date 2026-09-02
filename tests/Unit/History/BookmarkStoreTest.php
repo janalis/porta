@@ -87,4 +87,56 @@ final class BookmarkStoreTest extends TestCase
 
         $this->assertSame([$project->path('src/A.php') => [5, 8]], $store->load(), 'the session boundary wrote what the session held');
     }
+
+    /**
+     * Line 0 is a real bookmark — the first line of a file. Rejecting it here
+     * would silently lose a mark that {@see \Porta\Editor\Bookmarks} was happy
+     * to set, and only for that one line.
+     */
+    public function testLineZeroSurvivesTheRoundTrip(): void
+    {
+        $project = new TempProject();
+        $project->write('src/A.php', "<?php\n");
+        $store = new BookmarkStore($project->dir);
+        $store->save([$project->path('src/A.php') => [0, 4]]);
+
+        $this->assertSame([$project->path('src/A.php') => [0, 4]], $store->load());
+    }
+
+    /**
+     * A vanished file is SKIPPED, not the end of the load: with the files in
+     * this order, stopping at the first one would drop every mark behind it.
+     */
+    public function testAVanishedFileDoesNotTakeTheFilesAfterItWithIt(): void
+    {
+        $project = new TempProject();
+        $project->write('a-gone.php', "<?php\n");
+        $project->write('b-kept.php', "<?php\n");
+        $project->write('c-kept.php', "<?php\n");
+        $store = new BookmarkStore($project->dir);
+        $store->save([
+            $project->path('a-gone.php') => [1],
+            $project->path('b-kept.php') => [2],
+            $project->path('c-kept.php') => [3],
+        ]);
+        unlink($project->path('a-gone.php'));
+
+        $this->assertSame(
+            [$project->path('b-kept.php') => [2], $project->path('c-kept.php') => [3]],
+            $store->load(),
+            'both survivors, not just the first',
+        );
+    }
+
+    /** A file entry keyed like an object still reads as a list of lines. */
+    public function testAnObjectShapedLineListIsStillRead(): void
+    {
+        $project = new TempProject();
+        $project->write('src/A.php', "<?php\n");
+        $file = $project->path('.porta/bookmarks.json');
+        mkdir(\dirname($file), permissions: 0o777, recursive: true);
+        file_put_contents($file, (string) json_encode(['bookmarks' => [$project->path('src/A.php') => ['1' => 7, '0' => 2]]]));
+
+        $this->assertSame([$project->path('src/A.php') => [7, 2]], new BookmarkStore($project->dir)->load());
+    }
 }

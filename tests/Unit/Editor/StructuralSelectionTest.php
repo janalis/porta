@@ -266,4 +266,32 @@ final class StructuralSelectionTest extends TestCase
 
         $this->assertSame('a', $this->ladder($text, 2)[0], 'the first argument is still reachable');
     }
+
+    /**
+     * A pair is "already swallowed" only when the range matches it on BOTH
+     * ends. Matching one end is an ordinary non-enclosing pair that must
+     * contribute nothing — with `||` there, `ab(cd)` is offered as a call rung
+     * for a range that starts inside the parens, jumping the ladder past the
+     * line it is standing on.
+     */
+    public function testAPairIsSwallowedOnlyWhenTheRangeMatchesBothOfItsEnds(): void
+    {
+        //                     zz ab(cd)
+        // offsets             0123456789   range [6,9] = "cd)" — ends with the
+        //                                  pair but does not start with it.
+        $this->assertSame([0, 9], StructuralSelection::expand('zz ab(cd)', 6, 9), 'the line, not the call around the pair');
+    }
+
+    /**
+     * A swallowed pair skips to the NEXT pair, it does not end the scan. The
+     * inner pair here names nothing, so it contributes no call rung — and if
+     * that `continue` were a `break`, the enclosing pair would never be looked
+     * at and the ladder would jump straight to the whole line.
+     */
+    public function testASwallowedPairSkipsToTheNextOneRatherThanEndingTheScan(): void
+    {
+        //                     f((x)y)
+        // offsets             0123456    range [2,5] = "(x)", swallowing the inner pair
+        $this->assertSame([2, 6], StructuralSelection::expand('f((x)y)', 2, 5), 'the enclosing pair still contributes its interior');
+    }
 }

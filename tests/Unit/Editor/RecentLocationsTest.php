@@ -45,8 +45,9 @@ final class RecentLocationsTest extends TestCase
     public function testRowsShowEachPlacesTextNewestFirstAndAreNotReSorted(): void
     {
         $buffers = new BufferManager();
-        $buffers->open('/p/src/A.php', "<?php\nfirst place;\n");
-        $buffers->open('/p/src/B.php', "<?php\nsecond place;\n");
+        // Indented on purpose: the row text is trimmed, like every other list tool's.
+        $buffers->open('/p/src/A.php', "<?php\n        first place;\n");
+        $buffers->open('/p/src/B.php', "<?php\n    second place;\n");
         $history = new JumpHistory();
         $history->push('/p/src/B.php', 1, 0);
         $history->push('/p/src/A.php', 1, 0);
@@ -68,13 +69,20 @@ final class RecentLocationsTest extends TestCase
         // Go-to-definition twice on one line records it twice; a second row
         // saying the same thing tells you nothing the first did not.
         $history = new JumpHistory();
+        // The tail entry is what proves the duplicate is SKIPPED rather than
+        // ending the list: with a break there, line 5 would never be reached.
+        $history->push('/p/a.php', 5, 0);
         $history->push('/p/a.php', 3, 0);
         $history->push('/p/a.php', 3, 9); // same line, different column
         $history->push('/p/a.php', 7, 0);
 
         $rows = new RecentLocationRows($history, new LineTextReader(new BufferManager()), new ProjectPaths('/p'))->build();
 
-        $this->assertSame([['line' => 7], ['line' => 3]], array_map(static fn (array $r): array => ['line' => $r['line']], $rows));
+        $this->assertSame(
+            [['line' => 7], ['line' => 3], ['line' => 5]],
+            array_map(static fn (array $r): array => ['line' => $r['line']], $rows),
+            'the repeat collapses, and everything older than it still shows',
+        );
     }
 
     public function testAClosedFilesLineIsStillReadFromDisk(): void

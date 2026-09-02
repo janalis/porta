@@ -51,7 +51,9 @@ final readonly class BookmarkStore
                 continue; // the file vanished since the last session
             }
             $clean = [];
-            $lines = array_values($entries[$path]);
+            // Not array_values(): the walk below is keyed, so an object-shaped
+            // entry (`{"1": 7}`) reads the same as a list without re-indexing.
+            $lines = $entries[$path];
             foreach (array_keys($lines) as $index) {
                 if (!\is_int($lines[$index]) || $lines[$index] < 0) {
                     continue; // not a line number we could ever jump to

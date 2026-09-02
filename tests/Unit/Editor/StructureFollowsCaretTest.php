@@ -137,4 +137,27 @@ final class StructureFollowsCaretTest extends TestCase
 
         $this->assertSame(9, $this->selectedLine(), 'farewell(), without having to move the caret first');
     }
+
+    /**
+     * A caret that has not moved must not re-force the selection. Without the
+     * memo this runs on every frame, so a reader who clicked another row in the
+     * Structure tab would have it yanked back sixty times a second.
+     */
+    public function testAStationaryCaretLeavesAManuallyChosenRowAlone(): void
+    {
+        $follower = $this->follower();
+        $this->dock->showList(ResultsPanelMode::Structure, 'Structure', self::symbols());
+        $this->editor->getDocument()->setCursor(6, 0);
+        $follower->caretMoved();
+        $this->assertSame(4, $this->selectedLine(), 'greet(), to begin with');
+
+        // The reader picks a different row by hand, then nothing moves the caret.
+        $this->results->handleInput("\x1b[B"); // down one row
+        $this->assertSame(9, $this->selectedLine(), 'they are on farewell() now');
+
+        $follower->caretMoved();
+        $follower->caretMoved();
+
+        $this->assertSame(9, $this->selectedLine(), 'and the follower left it there');
+    }
 }
