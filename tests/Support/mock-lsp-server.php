@@ -37,6 +37,24 @@ foreach (readFrames($in) as $message) {
                     // provides call hierarchy, and an ungated request flashes
                     // "no callers" where the truth is "never asked".
                     'callHierarchyProvider' => true,
+                    // Everything else this file answers. A capability the
+                    // handlers do not back, or a handler no capability
+                    // announces, is a fixture describing a server we do not
+                    // ship into — MockServerContractTest pins the two lists
+                    // against each other.
+                    'definitionProvider' => true,
+                    'typeDefinitionProvider' => true,
+                    'implementationProvider' => true,
+                    'referencesProvider' => true,
+                    'hoverProvider' => true,
+                    'signatureHelpProvider' => ['triggerCharacters' => ['(', ',']],
+                    'documentSymbolProvider' => true,
+                    'foldingRangeProvider' => true,
+                    'documentFormattingProvider' => true,
+                    'documentRangeFormattingProvider' => true,
+                    'renameProvider' => ['prepareProvider' => true],
+                    'workspaceSymbolProvider' => true,
+                    'executeCommandProvider' => ['commands' => ['mock.generate']],
                 ],
                 'serverInfo' => ['name' => 'mock-lsp'],
             ],

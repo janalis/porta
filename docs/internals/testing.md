@@ -377,6 +377,32 @@ server for its capabilities before writing against them. `Probe::get($bidiTui,
 afterwards — a test that needs a real `phpantom` installed does not belong in a
 deterministic suite — but run it before believing the gates.
 
+### A fixture that grants what the code needs cannot test that it asked
+
+Three defects in one round, one shape. The mock LSP server **answered**
+`callHierarchy/incomingCalls` while advertising no `callHierarchyProvider`, so
+a feature shipped ungated and flashed *"No callers found"* at every real user —
+neither bundled PHP server provides call hierarchy. The same mock **ignored**
+`context.only`, so a client's kind filter was proven by nothing. And a
+`WorkspaceEditor` test built its URI with `Uri::fromPath()`, which realpaths as
+it encodes — so the canonicalisation under test never ran and its mutation
+survived.
+
+A fixture is written to make the feature REACHABLE, so it grants whatever the
+feature needs — and capability negotiation, request filtering and awkward input
+are exactly what a generous fixture erases.
+
+**`MockServerContractTest` now pins it both ways**: every gated method the mock
+answers must be advertised, and every gated capability it advertises must have
+a handler. Adding a branch without advertising it fails there. It caught 14
+unadvertised handlers the day it was written — all latent, because Porta only
+gated on four capabilities at the time.
+
+**For your own fixtures:** hand-build the awkward input rather than letting a
+helper normalise it on the way in, and mutation-check ACROSS the fixture — if
+deleting the production line leaves the test green, the fixture is probably
+doing that line's work.
+
 ## No test-only code in `src`
 
 Private-state reflection lives only in the blessed `tests/Support` seams. Zero
