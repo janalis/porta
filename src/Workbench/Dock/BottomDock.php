@@ -414,6 +414,33 @@ final class BottomDock
         $this->refreshIfBound($tab);
     }
 
+    /**
+     * A core list tool's rows, but only while that tool is the one ON DISPLAY —
+     * [] otherwise. The display condition is the point: it is what makes a
+     * per-frame reader cost nothing for a tool nobody is looking at.
+     *
+     * @return list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}>
+     */
+    public function displayedRows(ResultsPanelMode $mode): array
+    {
+        $tab = $this->tools->findByMode($mode);
+
+        return null === $tab || $tab !== $this->activeTool() ? [] : $tab->rows;
+    }
+
+    /**
+     * Select the row at (path, line) in the list tool on display. A parked
+     * tab's selection lives in its frozen {@see ResultsViewState}, not in the
+     * widget, so writing it there would be writing to a snapshot the next
+     * switch overwrites — and a selection nobody can see is not worth keeping.
+     */
+    public function selectInList(ResultsPanelMode $mode, string $path, int $line): void
+    {
+        if ([] !== $this->displayedRows($mode)) {
+            $this->resultsPanel->selectAt($path, $line);
+        }
+    }
+
     /** Whether $tab is still in the strip — the async-completion staleness guard. */
     public function isToolAlive(DockToolTab $tab): bool
     {

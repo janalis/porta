@@ -713,3 +713,27 @@ The jump-stack E2e reflected into the private `jumpStack` field through `Probe`.
 It resolves the service and uses its own API now; the reflection seam was
 covering for a missing one.
 
+## Structure-follows-caret (2026-09-02)
+
+Deferred in round 1 as needing a caret-settle channel it did not have. It needed
+neither: `documentSymbol` rows already carry each symbol's line and arrive in
+document order, so the enclosing symbol is a walk over rows already in memory.
+That is why this runs per frame where the semantic highlight needs a settle
+timer — there is no request to debounce.
+
+**It only follows the tab ON DISPLAY.** A parked tool's selection lives in its
+frozen `ResultsViewState`, not in the shared widget, so a "follow" of a parked
+Structure tab would have written into whichever tool was visible instead. The
+first version of the test could not tell the two apart — its parked-tab case
+used rows whose lines did not overlap, so a leaked select missed and looked
+guarded. Mutation-checking the guard is what exposed that; the case uses
+overlapping lines now.
+
+**A caret above every symbol selects nothing** rather than the first one. The
+file header is inside no symbol, and selecting `class Demo` there would claim
+otherwise.
+
+*Not done:* the reverse direction (moving the selection scrolls the editor).
+PhpStorm has both as separate toggles, and the reverse one fights with the
+existing Enter-to-jump — the row is already how you get to the code.
+

@@ -187,6 +187,25 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     }
 
     /**
+     * Move the selection to the row at (path, line) — the Structure tool
+     * following the caret. Identity-based like every other selection move, so
+     * a refresh that rewrote the rows cannot land it on the wrong one, and a
+     * miss leaves the selection where it was rather than jumping to row 0.
+     *
+     * Selection here is not focus: the panel tints its selected row whether or
+     * not it holds focus, and the list scrolls to follow, which is the whole
+     * visible effect.
+     */
+    public function selectAt(string $path, int $line): void
+    {
+        $before = $this->list->selected();
+        $this->relocateSelection($path, $line, null, $before);
+        if ($this->list->selected() !== $before) {
+            $this->invalidate();
+        }
+    }
+
+    /**
      * Freeze this tab's view state before the dock rebinds the shared widget
      * to another tab. Selection and context are keyed by (path, line) identity
      * — a parked tab's rows may be rewritten by a live refresh, so positions

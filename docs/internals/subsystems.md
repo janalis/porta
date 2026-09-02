@@ -295,6 +295,15 @@ not, which is the point. Both it and Bookmarks read their row text through
 `Editor\LineTextReader`, which answers from the open buffer (in either path
 spelling) and falls back to disk.
 
+**The Structure tab follows the caret** (`Editor\StructureFollowsCaret`, a frame
+hook, so `#[AsEager]`): its selection moves to the symbol enclosing the caret as
+you type. No language-server round trip — the tab's rows already carry each
+symbol's line and arrive in document order, so the enclosing symbol is the last
+row at or above the caret. It runs only while that tab is the one ON DISPLAY,
+which is what `BottomDock::displayedRows()` is for: a parked tab's selection
+lives in a frozen `ResultsViewState`, not in the shared widget, so following it
+would write into whichever tool is actually visible.
+
 Instance identity is (mode, title). A plugin's contributed tab carries a **null**
 mode rather than a new enum case, because `findByMode()` returns the *first* tab
 in a mode, so a shared case would let a core caller clobber a contributed tab

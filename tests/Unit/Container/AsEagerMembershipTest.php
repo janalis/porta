@@ -60,6 +60,7 @@ final class AsEagerMembershipTest extends ContainerTestCase
         $unordered = [
             \Porta\Support\PerfCollector::class, // registers its frame hook at construction
             \Porta\Lsp\HighlightController::class, // watches the caret from the frame hook
+            \Porta\Editor\StructureFollowsCaret::class, // ditto: moves the Structure tab's selection
         ];
 
         self::assertSame($ordered, \array_slice($actual, offset: 0, length: \count($ordered)), 'the contractual construction order');
