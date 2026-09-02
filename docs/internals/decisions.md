@@ -929,10 +929,28 @@ PhpStorm's own meaning for the key — which is the standard the whole parity
 round is judged by. `ActionCatalogTest` pinned the old pair and had to be
 updated deliberately, which is the gate working.
 
-*Still open:* **organize-imports**. `source.organizeImports` has been declared
-in `LspClient`'s capabilities since round 2 but no action ever asks for it, so
-the declaration is currently a promise to nobody. It is a `context.only`
-variant of the code-action request the way `refactor_this` already is, and
-Ctrl+Alt+O is a second binding on `ide_goto_symbol` (primary
-`ctrl+alt+shift+n`) — the same reclaim as F2.
+**Organize imports landed too** (`Ctrl+Alt+O`). `source.organizeImports` had
+been declared in `LspClient`'s capabilities since round 2 with no action ever
+asking for it — a promise to nobody. It applies straight away when the server
+offers exactly one, like inline, because organising imports is a whole-file
+operation rather than a choice between alternatives; several answers still get
+a picker. The empty case says *"Nothing to organize"*, which is why
+`requestActions()` gained an `$empty` message: *"No quick fixes here"* would
+answer a question nobody asked.
+
+**The mock server now filters by `context.only`.** It answered every
+code-action request with the same three actions whatever was asked for, so a
+client's `only` proved nothing — the same fixture-fidelity problem as the
+capability it never advertised. Kinds are a dotted hierarchy, so `refactor`
+still selects `refactor.extract`.
+
+**`Ctrl+Alt+O` was a bigger reclaim than F2 and worth stating plainly.** It was
+a second binding on `ide_goto_symbol` — but an *exercised* one, with an E2e
+driving go-to-symbol through it. That test moves to `ctrl+alt+shift+n`, which is
+the action's primary AND PhpStorm's own binding for it, so both actions match
+PhpStorm now where before neither did.
+
+*Worth knowing:* the E2e input path takes the legacy `ESC`+`^O` encoding for
+this chord, not the CSI-u form. `KeyParser` reads both, so the first version of
+the test failed silently against a correctly-wired feature.
 

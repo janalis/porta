@@ -103,6 +103,7 @@ final class EditorKeymapTest extends TestCase
                 'code_action' => ['alt+enter'],
                 'refactor_this' => ['ctrl+alt+shift+t'],
                 'inline_refactoring' => ['ctrl+alt+n'],
+                'organize_imports' => ['ctrl+alt+o'],
                 'file_structure' => ['ctrl+f12'],
                 'peek_definition' => ['ctrl+shift+i'],
                 'reformat' => ['ctrl+alt+l'],

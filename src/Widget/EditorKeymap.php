@@ -108,6 +108,7 @@ final class EditorKeymap
             // taking a binding that is already someone's.
             'refactor_this' => ['ctrl+alt+shift+t'],
             'inline_refactoring' => ['ctrl+alt+n'],
+            'organize_imports' => ['ctrl+alt+o'],
             'file_structure' => ['ctrl+f12'],
             'peek_definition' => ['ctrl+shift+i'],
             'reformat' => ['ctrl+alt+l'],

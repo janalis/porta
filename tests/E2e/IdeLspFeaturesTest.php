@@ -801,7 +801,10 @@ final class IdeLspFeaturesTest extends TestCase
                 100 => function ($tui, $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
-                    $tui->handleInput("\x1b\x0f"); // ctrl+alt+o
+                    // Ctrl+Alt+Shift+N, this action's primary and PhpStorm's own
+                    // binding for it. Ctrl+Alt+O was a second binding here and is
+                    // Optimize Imports now, which is what PhpStorm means by it.
+                    $tui->handleInput("\x1b[110;8u");
                     foreach (str_split('greet') as $ch) {
                         $tui->handleInput($ch);
                     }
@@ -1623,5 +1626,36 @@ final class IdeLspFeaturesTest extends TestCase
             chmod($shim, permissions: 0o755);
         }
         putenv('PATH='.$project->path('shim-bin'));
+    }
+
+    /**
+     * Ctrl+Alt+O end to end. The mock filters by `context.only` the way a real
+     * server does, so what comes back here is the organizeImports action ALONE
+     * — which is what makes the key's `only` worth sending.
+     */
+    public function testCtrlAltOOrganizesImportsThroughTheServer(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => $this->mockLspConfig(),
+            'a.php' => "<?php\n\necho 'x';\n",
+        ]);
+
+        $text = null;
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                400 => function ($tui, $terminal) use (&$text): void {
+                    $this->awaitLspReady($tui, $terminal);
+                    $tui->getById('editor')->getDocument()->setCursor(2, 0);
+                    $tui->handleInput("\x1b\x0f"); // ctrl+alt+o
+                    $this->await(static fn (): bool => str_contains($tui->getById('editor')->getDocument()->getText(), 'Organized'));
+                    $text = $tui->getById('editor')->getDocument()->getText();
+                },
+            ],
+            2.0,
+        );
+
+        $this->assertStringContainsString('use Acme\\Organized;', (string) $text, 'the organizeImports edit was applied without a picker');
     }
 }

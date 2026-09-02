@@ -133,14 +133,44 @@ final class RefactorController extends AbstractLspController implements EditorRe
     }
 
     /**
+     * PhpStorm's Ctrl+Alt+O. `source.organizeImports` has been in the client
+     * capabilities since the refactoring round, which is a promise a server
+     * reads and answers — this is the verb that finally asks.
+     *
+     * Applied straight away when the server offers exactly one, like inline:
+     * organising imports is a whole-file operation, not a choice between
+     * alternatives, so a picker with one row would be a question with one
+     * answer. The empty case gets its own words, because "no quick fixes here"
+     * would be answering a question nobody asked.
+     */
+    public function requestOrganizeImports(int $line, int $col): void
+    {
+        $this->requestActions(
+            $line,
+            $col,
+            only: ['source.organizeImports'],
+            present: function (array $actions): void {
+                if (1 === \count($actions)) {
+                    $this->applyOrResolve($actions[0]);
+
+                    return;
+                }
+                $this->pick($this->trans('Organize Imports'), $actions);
+            },
+            empty: 'Nothing to organize',
+        );
+    }
+
+    /**
      * One code-action request. `$only` narrows it to a kind hierarchy; `$present`
      * decides what to do with what comes back, which is the difference between
      * the three entry points above.
      *
      * @param list<string>|null                  $only
      * @param \Closure(list<array<string, mixed>>): void $present
+     * @param string                             $empty what to flash when the answer is nothing
      */
-    private function requestActions(int $line, int $col, ?array $only, \Closure $present): void
+    private function requestActions(int $line, int $col, ?array $only, \Closure $present, string $empty = 'No quick fixes here'): void
     {
         if (null === ($path = $this->ready())) {
             return;
@@ -159,16 +189,16 @@ final class RefactorController extends AbstractLspController implements EditorRe
                 'range' => $this->actionRange($line, $col, $diagnostics),
                 'context' => $context,
             ],
-            function (mixed $result, ?array $error) use ($present): void {
+            function (mixed $result, ?array $error) use ($present, $empty): void {
                 if (null !== $error || !\is_array($result) || [] === $result) {
-                    $this->flash($this->trans('No quick fixes here'));
+                    $this->flash($this->trans($empty));
 
                     return;
                 }
                 /** @var list<array<string, mixed>> $actions */
                 $actions = array_values(array_filter($result, static fn ($a) => \is_array($a) && '' !== (string) ($a['title'] ?? '')));
                 if ([] === $actions) {
-                    $this->flash($this->trans('No quick fixes here'));
+                    $this->flash($this->trans($empty));
 
                     return;
                 }

@@ -350,36 +350,66 @@ foreach (readFrames($in) as $message) {
         sendMessage($out, ['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => []]);
     } elseif ('textDocument/codeAction' === $method) {
         $uri = $message['params']['textDocument']['uri'];
+        // A real server FILTERS by context.only, and a fixture that ignores it
+        // answers requests no server would — the client's `only` then proves
+        // nothing. Kinds are a dotted hierarchy, so 'refactor' selects
+        // 'refactor.extract' too.
+        $only = $message['params']['context']['only'] ?? null;
+        $wanted = static function (array $action) use ($only): bool {
+            if (!is_array($only) || $only === []) {
+                return true;
+            }
+            foreach ($only as $kind) {
+                if ($action['kind'] === $kind || str_starts_with($action['kind'], $kind.'.')) {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+        $actions = [
+            [
+                'title' => 'Import class',
+                'kind' => 'quickfix',
+                'edit' => [
+                    'changes' => [
+                        $uri => [[
+                            'range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 0]],
+                            'newText' => "use Acme\\Imported;\n",
+                        ]],
+                    ],
+                ],
+            ],
+            [
+                'title' => 'Generate method',
+                'kind' => 'refactor',
+                'command' => ['title' => 'Generate method', 'command' => 'mock.generate', 'arguments' => [$uri]],
+            ],
+            // Deferred: the title now, the edit only on codeAction/resolve.
+            // This is what phpantom does for extract and inline, and what
+            // made an unresolving client silently apply nothing.
+            [
+                'title' => 'Extract variable',
+                'kind' => 'refactor.extract',
+                'data' => ['handle' => 'extract-1'],
+            ],
+            [
+                'title' => 'Organize imports',
+                'kind' => 'source.organizeImports',
+                'edit' => [
+                    'changes' => [
+                        $uri => [[
+                            'range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 0]],
+                            'newText' => "use Acme\\Organized;\n",
+                        ]],
+                    ],
+                ],
+            ],
+        ];
         sendMessage($out, [
             'jsonrpc' => '2.0',
             'id' => $message['id'],
-            'result' => [
-                [
-                    'title' => 'Import class',
-                    'kind' => 'quickfix',
-                    'edit' => [
-                        'changes' => [
-                            $uri => [[
-                                'range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 0]],
-                                'newText' => "use Acme\\Imported;\n",
-                            ]],
-                        ],
-                    ],
-                ],
-                [
-                    'title' => 'Generate method',
-                    'kind' => 'refactor',
-                    'command' => ['title' => 'Generate method', 'command' => 'mock.generate', 'arguments' => [$uri]],
-                ],
-                // Deferred: the title now, the edit only on codeAction/resolve.
-                // This is what phpantom does for extract and inline, and what
-                // made an unresolving client silently apply nothing.
-                [
-                    'title' => 'Extract variable',
-                    'kind' => 'refactor.extract',
-                    'data' => ['handle' => 'extract-1'],
-                ],
-            ],
+            'result' => array_values(array_filter($actions, $wanted)),
         ]);
     } elseif ('codeAction/resolve' === $method) {
         $action = $message['params'];

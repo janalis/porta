@@ -803,4 +803,64 @@ final class RefactorControllerTest extends TestCase
     {
         return ['changes' => [Uri::fromPath('/tmp/proj/a.php') => [self::edit(1, 0, 1, 7, $text)]]];
     }
+
+    /** The request asks for the one kind, so a server that filters sends back only that. */
+    public function testOrganizeImportsAsksForItsOwnKindAlone(): void
+    {
+        [$controller] = $this->ready();
+
+        $controller->requestOrganizeImports(1, 0);
+
+        $params = end($this->client->requests)['params'];
+        $this->assertSame(['source.organizeImports'], $params['context']['only']);
+    }
+
+    /**
+     * Organising imports is a whole-file operation, not a choice between
+     * alternatives, so one answer applies without a picker — the same rule
+     * inline follows.
+     */
+    public function testASingleOrganizeAnswerAppliesWithoutAsking(): void
+    {
+        [$controller] = $this->ready();
+        $controller->requestOrganizeImports(1, 0);
+
+        end($this->client->requests)['respond']([
+            ['title' => 'Organize imports', 'kind' => 'source.organizeImports', 'edit' => $this->editOf('ORGANIZED')],
+        ], error: null);
+
+        $this->assertStringContainsString('ORGANIZED', $this->text(), 'applied straight away');
+    }
+
+    /** More than one, and it is a choice again. */
+    public function testSeveralOrganizeAnswersOfferAPicker(): void
+    {
+        [$controller] = $this->ready();
+        $controller->requestOrganizeImports(1, 0);
+
+        end($this->client->requests)['respond']([
+            ['title' => 'Organize imports', 'kind' => 'source.organizeImports', 'edit' => $this->editOf('FIRST')],
+            ['title' => 'Organize and sort', 'kind' => 'source.organizeImports', 'edit' => $this->editOf('SECOND')],
+        ], error: null);
+
+        $this->assertStringNotContainsString('FIRST', $this->text(), 'nothing happens until you choose');
+        $this->editor->handleInput("\r");
+        $this->assertStringContainsString('FIRST', $this->text());
+    }
+
+    /**
+     * Nothing to organise is a normal outcome and gets its own words —
+     * "no quick fixes here" would answer a question nobody asked.
+     */
+    public function testAnEmptyOrganizeAnswerSaysThereWasNothingToOrganize(): void
+    {
+        [$controller] = $this->ready();
+        $controller->requestOrganizeImports(1, 0);
+
+        end($this->client->requests)['respond']([], error: null);
+
+        $flashed = $this->flashed();
+        $this->assertStringContainsString('Nothing to organize', $flashed);
+        $this->assertStringNotContainsString('No quick fixes here', $flashed);
+    }
 }

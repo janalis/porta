@@ -990,6 +990,18 @@
         <source>Wrapped to %problem%</source>
         <target>Vuelta al inicio: %problem%</target>
       </trans-unit>
+      <trans-unit id="750">
+        <source>Optimize Imports</source>
+        <target>Optimizar importaciones</target>
+      </trans-unit>
+      <trans-unit id="751">
+        <source>Organize Imports</source>
+        <target>Organizar importaciones</target>
+      </trans-unit>
+      <trans-unit id="752">
+        <source>Nothing to organize</source>
+        <target>Nada que organizar</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>Cambiar foco árbol / editor</target>

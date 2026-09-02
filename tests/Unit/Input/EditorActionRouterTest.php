@@ -164,6 +164,11 @@ final class EditorActionRouterTest extends TestCase
                 $this->recording[] = "inline_refactoring:{$line}:{$col}";
             }
 
+            public function requestOrganizeImports(int $line, int $col): void
+            {
+                $this->recording[] = "organize_imports:{$line}:{$col}";
+            }
+
             public function requestReformat(): void
             {
                 $this->recording[] = 'reformat';

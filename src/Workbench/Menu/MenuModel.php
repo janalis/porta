@@ -86,6 +86,7 @@ final class MenuModel
             'e:code_action',
             'e:refactor_this',
             'e:inline_refactoring',
+            'e:organize_imports',
             self::SEP,
             'e:expand_selection',
             'e:shrink_selection',

@@ -14,6 +14,7 @@ final class FakeEditorRefactor implements EditorRefactorHandler
         private readonly ?\Closure $requestReformat = null,
         private readonly ?\Closure $requestRefactorings = null,
         private readonly ?\Closure $requestInline = null,
+        private readonly ?\Closure $requestOrganizeImports = null,
     ) {}
 
     public function requestPrepareRename(int $line, int $col, string $word): void
@@ -34,6 +35,13 @@ final class FakeEditorRefactor implements EditorRefactorHandler
     {
         if (null !== $this->requestRefactorings) {
             ($this->requestRefactorings)($line, $col);
+        }
+    }
+
+    public function requestOrganizeImports(int $line, int $col): void
+    {
+        if (null !== $this->requestOrganizeImports) {
+            ($this->requestOrganizeImports)($line, $col);
         }
     }
 

@@ -990,6 +990,18 @@
         <source>Wrapped to %problem%</source>
         <target>先頭に戻りました: %problem%</target>
       </trans-unit>
+      <trans-unit id="750">
+        <source>Optimize Imports</source>
+        <target>インポートを最適化</target>
+      </trans-unit>
+      <trans-unit id="751">
+        <source>Organize Imports</source>
+        <target>インポートを整理</target>
+      </trans-unit>
+      <trans-unit id="752">
+        <source>Nothing to organize</source>
+        <target>整理するものはありません</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>ツリー / エディターのフォーカスを切替</target>

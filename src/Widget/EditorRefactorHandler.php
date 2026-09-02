@@ -23,6 +23,9 @@ interface EditorRefactorHandler
     /** `refactor.inline`, applied straight away when the server offers exactly one. */
     public function requestInline(int $line, int $col): void;
 
+    /** `source.organizeImports`, applied straight away when the server offers exactly one. */
+    public function requestOrganizeImports(int $line, int $col): void;
+
     /** Reformat the whole file. */
     public function requestReformat(): void;
 }
