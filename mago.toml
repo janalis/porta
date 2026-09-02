@@ -132,28 +132,33 @@ excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server
 #                                sums the class. (Was 145 before git left
 #                                `src/`; 220 two rounds before that, 133 before
 #                                the graph viewer's click/drag-pan routing.)
-#   too-many-methods         95  tests/…/CodeEditorWidgetTest — a TEST class,
-#                                and production code is no longer the pin.
-#                                Bisected class by class: CodeEditorWidgetTest
-#                                95, CodeEditorWidgetEdgeTest 93, and
-#                                Widget/CodeEditorWidget itself 89 — down from
-#                                98, because the round that recorded "the class
-#                                is saturated" then did something about it. It
-#                                used to IMPLEMENT EditorDecorationSink and
-#                                forward all eight setters to its
-#                                DecorationStore, so every new decoration was a
-#                                method here and three features running moved
-#                                this pin. The store implements the interface
-#                                itself now and the widget exposes one
-#                                decorations() accessor, so a future decoration
-#                                costs this class NOTHING.
-#                                The 6 points between 89 and 95 are two test
-#                                monoliths, and until they are split this rule
-#                                does not bite production code at all. Splitting
-#                                BOTH drops it to 89; splitting one drops it to
-#                                93 and is not worth the churn. (Was 208 when a
-#                                test file last held the floor; 106 until mago
-#                                1.45 recounted the same unchanged class as 97.)
+#   too-many-methods         90  Widget/CodeEditorWidget — production code
+#                                again, which is the point. It was 98; the
+#                                round that recorded "the class is saturated"
+#                                then did something about it. The widget used
+#                                to IMPLEMENT EditorDecorationSink and forward
+#                                all eight setters to its DecorationStore, so
+#                                every new decoration was a method here and
+#                                three features running moved this pin. The
+#                                store implements the interface itself now and
+#                                the widget exposes one decorations() accessor,
+#                                so a future decoration costs this class
+#                                NOTHING.
+#                                Between those two states the floor was 95 and
+#                                held by TEST files (CodeEditorWidgetTest 95,
+#                                CodeEditorWidgetEdgeTest 93) — six points of
+#                                free headroom in which this rule could not
+#                                bite the code it exists for. Both were split
+#                                on seams they already had (the overlay tests
+#                                were the only users of overlayEditor() /
+#                                completionEditor(); the geometry tests assert
+#                                numbers rather than behaviour), giving
+#                                CodeEditorOverlaysTest and
+#                                CodeEditorGeometryTest. No test was lost: 89
+#                                and 90 before, 89 and 90 after.
+#                                (Was 208 when a test file last held the floor;
+#                                106 until mago 1.45 recounted the same
+#                                unchanged class as 97.)
 #   too-many-properties      32  Widget/CodeEditorWidget (round 8's
 #                                StylesDefault trait absorbed its $styles
 #                                field; FindInFilesModal sits at 32 too after
@@ -225,7 +230,7 @@ excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server
 # properties into Ui/Notifier trips too-many-properties and lint exits 1.
 [linter.rules]
 cyclomatic-complexity = { threshold = 144 }
-too-many-methods = { threshold = 95 }
+too-many-methods = { threshold = 90 }
 too-many-properties = { threshold = 32 }
 too-many-enum-cases = { threshold = 59 }
 excessive-parameter-list = { threshold = 22 }
