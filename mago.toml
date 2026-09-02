@@ -133,23 +133,27 @@ excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server
 #                                `src/`; 220 two rounds before that, 133 before
 #                                the graph viewer's click/drag-pan routing.)
 #   too-many-methods         95  tests/…/CodeEditorWidgetTest — a TEST class,
-#                                and the widget is no longer the pin. It sits
-#                                at 93 now, down from 98, because the round
-#                                that recorded "the class is saturated" then
-#                                did something about it: CodeEditorWidget used
-#                                to IMPLEMENT EditorDecorationSink and forward
-#                                all eight setters to its DecorationStore, so
-#                                every new decoration was a method here and
-#                                three features running moved this pin. The
-#                                store implements the interface itself now and
-#                                the widget exposes one decorations() accessor;
-#                                the container binds the interface through it,
-#                                so a future decoration costs this class
-#                                NOTHING. Lower again once the test class is
-#                                split — it is the floor, not the code. (Was
-#                                208 when a test file last held the floor; 106
-#                                until mago 1.45 recounted the same unchanged
-#                                class as 97.)
+#                                and production code is no longer the pin.
+#                                Bisected class by class: CodeEditorWidgetTest
+#                                95, CodeEditorWidgetEdgeTest 93, and
+#                                Widget/CodeEditorWidget itself 89 — down from
+#                                98, because the round that recorded "the class
+#                                is saturated" then did something about it. It
+#                                used to IMPLEMENT EditorDecorationSink and
+#                                forward all eight setters to its
+#                                DecorationStore, so every new decoration was a
+#                                method here and three features running moved
+#                                this pin. The store implements the interface
+#                                itself now and the widget exposes one
+#                                decorations() accessor, so a future decoration
+#                                costs this class NOTHING.
+#                                The 6 points between 89 and 95 are two test
+#                                monoliths, and until they are split this rule
+#                                does not bite production code at all. Splitting
+#                                BOTH drops it to 89; splitting one drops it to
+#                                93 and is not worth the churn. (Was 208 when a
+#                                test file last held the floor; 106 until mago
+#                                1.45 recounted the same unchanged class as 97.)
 #   too-many-properties      32  Widget/CodeEditorWidget (round 8's
 #                                StylesDefault trait absorbed its $styles
 #                                field; FindInFilesModal sits at 32 too after
