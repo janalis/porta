@@ -575,4 +575,110 @@ final class WorkspaceEditorTest extends TestCase
         $this->assertSame(0, $outcome->touched);
         $this->assertCount(1, $outcome->skipped, 'reported like any other unwritable file');
     }
+
+    /**
+     * A rename whose options ALLOW overwriting is permitted by the refusal
+     * pass, so the apply pass has to actually overwrite — a rename that fails
+     * on the existing target would leave the edit half-applied, which is the
+     * one outcome this class exists to prevent.
+     */
+    public function testARenameDeclaringOverwriteReplacesTheFileAlreadyThere(): void
+    {
+        $project = new TempProject(['from.php' => "<?php // the survivor\n", 'onto.php' => "<?php // replaced\n"]);
+
+        $outcome = $this->workspaceEditor()->applyWorkspaceEdit([
+            'documentChanges' => [[
+                'kind' => 'rename',
+                'oldUri' => Uri::fromPath($project->path('from.php')),
+                'newUri' => Uri::fromPath($project->path('onto.php')),
+                'options' => ['overwrite' => true],
+            ]],
+        ]);
+
+        $this->assertFalse($outcome->isRefused(), (string) $outcome->refused);
+        $this->assertFileDoesNotExist($project->path('from.php'));
+        $this->assertStringContainsString('the survivor', (string) file_get_contents($project->path('onto.php')));
+    }
+
+    /**
+     * The refusal pass walks a SIMULATED view of the tree, because the answer
+     * for a later operation depends on the earlier ones. These four sequences
+     * are the whole reason it is a simulation rather than four independent
+     * file_exists() calls — each is honourable (or not) only in order.
+     *
+     * @param list<array<string, mixed>> $changes
+     */
+    #[DataProvider('operationSequences')]
+    public function testTheRefusalPassSimulatesEarlierOperations(array $changes, bool $honourable, string $because): void
+    {
+        $project = new TempProject(['there.php' => "<?php\n"]);
+        $resolve = static fn (array $c): array => array_map(
+            static fn (mixed $v): mixed => \is_string($v) && str_starts_with($v, 'file://')
+                ? 'file://'.$project->path(substr($v, offset: 7))
+                : $v,
+            $c,
+        );
+
+        $outcome = $this->workspaceEditor()->applyWorkspaceEdit(['documentChanges' => array_map($resolve, $changes)]);
+
+        $this->assertSame($honourable, !$outcome->isRefused(), $because.' — refusal said: '.(string) $outcome->refused);
+    }
+
+    /** @return \Generator<string, array{list<array<string, mixed>>, bool, string}> */
+    public static function operationSequences(): \Generator
+    {
+        yield 'create then rename what was created' => [
+            [
+                ['kind' => 'create', 'uri' => 'file://made.php'],
+                ['kind' => 'rename', 'oldUri' => 'file://made.php', 'newUri' => 'file://moved.php'],
+            ],
+            true,
+            'the create makes the rename honourable',
+        ];
+
+        yield 'rename then create the vacated name' => [
+            [
+                ['kind' => 'rename', 'oldUri' => 'file://there.php', 'newUri' => 'file://gone-to.php'],
+                ['kind' => 'create', 'uri' => 'file://there.php'],
+            ],
+            true,
+            'the rename frees the old name for the create',
+        ];
+
+        yield 'delete then rename what was deleted' => [
+            [
+                ['kind' => 'delete', 'uri' => 'file://there.php'],
+                ['kind' => 'rename', 'oldUri' => 'file://there.php', 'newUri' => 'file://nowhere.php'],
+            ],
+            false,
+            'the delete leaves nothing to rename',
+        ];
+
+        yield 'create onto the name a rename just took' => [
+            [
+                ['kind' => 'rename', 'oldUri' => 'file://there.php', 'newUri' => 'file://taken.php'],
+                ['kind' => 'create', 'uri' => 'file://taken.php'],
+            ],
+            false,
+            'the rename occupied that name',
+        ];
+
+        yield 'delete the name a rename just took' => [
+            [
+                ['kind' => 'rename', 'oldUri' => 'file://there.php', 'newUri' => 'file://taken.php'],
+                ['kind' => 'delete', 'uri' => 'file://taken.php'],
+            ],
+            true,
+            'the rename put a file there to delete',
+        ];
+
+        yield 'rename the same file twice' => [
+            [
+                ['kind' => 'rename', 'oldUri' => 'file://there.php', 'newUri' => 'file://first.php'],
+                ['kind' => 'rename', 'oldUri' => 'file://there.php', 'newUri' => 'file://second.php'],
+            ],
+            false,
+            'the first rename moved it away',
+        ];
+    }
 }
