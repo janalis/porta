@@ -129,7 +129,9 @@ final class IdeContainerFactory
             require_once $file;
         }
 
-        // @mago-expect analysis:unsafe-instantiation — PhpDumper generates the class with a parameterless constructor.
+        // @mago-expect analysis:unsafe-instantiation -- PhpDumper generates the class with a
+        // parameterless constructor. Irreducible here: Symfony's Container is not final, so the
+        // warning is about a base class we do not own. Re-checked 2026-09-02.
         return new $class();
     }
 

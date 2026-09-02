@@ -28,7 +28,7 @@ final class Probe
     public static function object(object $object, string ...$path): object
     {
         foreach ($path as $property) {
-            // @mago-expect analysis:mixed-assignment — get() is untyped by nature; the guard below narrows.
+            /** @var mixed $value */
             $value = self::get($object, $property);
             if (!\is_object($value)) {
                 throw new \LogicException(\sprintf('$%s on %s is not an object', $property, $object::class));

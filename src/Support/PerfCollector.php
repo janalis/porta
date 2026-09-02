@@ -88,14 +88,14 @@ final class PerfCollector
         private readonly ?BootTrace $bootTrace = null,
     ) {
         $this->log = DiagnosticLog::forRoot($rootDir, 'perf');
-        // Two suppressions for one root cause: mago's sys_getloadavg() stub
-        // returns an untyped array, so its element is `mixed` and the cast that
-        // makes this closure honestly return float is itself unprovable.
-        // Rewriting it to narrow explicitly needs a branch no test can reach —
-        // measured, and it traded these warnings for two analyzer ERRORS.
-        // @mago-expect lint:no-shorthand-ternary -- see above
-        // @mago-expect analysis:invalid-type-cast -- see above
-        $this->loadAvg = $loadAvg ?? static fn (): float => (float) (sys_getloadavg() ?: [0.0])[0];
+        // mago's sys_getloadavg() stub returns an untyped array, so its element
+        // is `mixed`. Narrowed rather than cast: is_numeric() is a branch the
+        // analyzer can follow, where `(float) $mixed` is not.
+        $this->loadAvg = $loadAvg ?? static function (): float {
+            $load = sys_getloadavg();
+
+            return \is_array($load) && \is_numeric($load[0] ?? null) ? (float) $load[0] : 0.0;
+        };
         $frameHooks?->onBeforeFrame($this->passMark(...));
     }
 

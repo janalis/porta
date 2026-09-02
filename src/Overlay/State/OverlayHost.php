@@ -532,28 +532,38 @@ final class OverlayHost
      */
     public function pickerClickAt(int $row, int $col): bool
     {
-        // @mago-expect analysis:match-not-exhaustive -- PickerSurface (an implicitly-final
-        // enum) has exactly 3 cases; this covers all 3 plus the null arm, so ?PickerSurface
-        // is fully handled. Mago 1.46 misreports the subject as unresolved.
-        return match ($this->topmostSurface()) {
+        $surface = $this->topmostSurface();
+        if (null === $surface) {
+            return false;
+        }
+
+        // Exhaustive over a NON-nullable subject: the null is hoisted out
+        // above rather than answered by an arm, which is what lets this stay a
+        // total match. Adding a PickerSurface case still breaks it here, which
+        // is the whole point of matching on the enum.
+        return match ($surface) {
             PickerSurface::Prompt => $this->promptClickAt($row, $col),
             PickerSurface::Search => $this->searchClickAt($row, $col),
             PickerSurface::ListOverlay => $this->clickAt($row, $col),
-            null => false,
         };
     }
 
     /** Route a hover (screen coords) to the topmost open surface; returns whether the tint changed. */
     public function pickerHoverAt(int $row, int $col): bool
     {
-        // @mago-expect analysis:match-not-exhaustive -- PickerSurface (an implicitly-final
-        // enum) has exactly 3 cases; this covers all 3 plus the null arm, so ?PickerSurface
-        // is fully handled. Mago 1.46 misreports the subject as unresolved.
-        return match ($this->topmostSurface()) {
+        $surface = $this->topmostSurface();
+        if (null === $surface) {
+            return false;
+        }
+
+        // Exhaustive over a NON-nullable subject: the null is hoisted out
+        // above rather than answered by an arm, which is what lets this stay a
+        // total match. Adding a PickerSurface case still breaks it here, which
+        // is the whole point of matching on the enum.
+        return match ($surface) {
             PickerSurface::Prompt => $this->promptHoverAt($row, $col),
             PickerSurface::Search => $this->searchHoverAt($row, $col),
             PickerSurface::ListOverlay => $this->hoverAt($row, $col),
-            null => false,
         };
     }
 
