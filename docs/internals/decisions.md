@@ -811,3 +811,35 @@ not a review fix.
 *Re-opens on:* anyone adding a third path-keyed per-file store, at which point
 the rename fact is worth introducing once for all three.
 
+## Renames carry their marks (2026-09-02)
+
+The gap the review pass deferred, now closed. `Event\FileRenamed` is a FACT
+dispatched by both renaming paths — the tree's context menu and
+`WorkspaceEditor`'s `RenameFile` — and `Editor\Bookmarks` and
+`Debug\BreakpointStore` each follow it.
+
+**Both paths on the event are canonical, and the dispatcher resolves them.** A
+listener cannot: by the time it runs the old path no longer exists, so
+`realpath()` returns false. The tree already had the old key resolved (it needs
+it to re-point the buffer); `WorkspaceEditor` resolves the DIRECTORY and appends
+the basename, the same trick `BufferService::onBufferRepointRequested` uses for
+the same reason.
+
+**Two listeners, one per namespace**, rather than one that re-keys both stores:
+`Debug > Editor` is an allowed edge and `Editor > Debug` is not, so a shared
+listener would have been a namespace cycle. The stores stay pure maps with a
+`rename()` that touches no filesystem.
+
+**A test that built its own URI proved nothing.** The first version fed
+`Uri::fromPath($old)`, which realpaths as it encodes — so the canonicalisation
+was never exercised and its mutation survived. A real server spells paths from
+its own view of the workspace root, and on macOS a temp root is a symlink, so
+`/var/…` arrives where buffers are keyed `/private/var/…`. The test hand-builds
+an unresolved `file://` URI now. **A fixture that pre-satisfies the invariant
+cannot test it** — the same lesson as the mock advertising nothing while
+answering everything.
+
+*Still open:* a DELETE strands marks the same way, though far less visibly —
+`BookmarkStore::load()` drops vanished paths at startup, so it self-heals across
+a restart. Worth a `FileDeleted` fact the day anything else needs one.
+

@@ -8,6 +8,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\Document;
 use Porta\Editor\OpenFocus;
+use Porta\Event\FileRenamed;
 use Porta\I18n\Translator;
 use Porta\Search\ProjectSearchController;
 use Porta\Search\SearchActions;
@@ -17,6 +18,7 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Notifier;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Tui\Tui;
@@ -44,6 +46,7 @@ final class TreeOperations
         private readonly SearchActions $searchActions,
         private readonly ProjectSearchController $projectSearch,
         private readonly ProjectPaths $paths,
+        private readonly EventDispatcherInterface $events,
         private readonly Filesystem $fs = new Filesystem(),
     ) {}
 
@@ -148,6 +151,11 @@ final class TreeOperations
                     $this->buffers->close($oldKey);
                     $this->bufferService->openFile($new);
                 }
+                // Canonical both sides, per FileRenamed's contract: $oldKey was
+                // resolved BEFORE the rename (it cannot be, after), and the new
+                // path resolves now that it exists.
+                $newKey = ($resolvedNew = realpath($new)) ? $resolvedNew : $new;
+                $this->events->dispatch(new FileRenamed($oldKey, $newKey));
                 $this->tree->refresh();
                 $this->tui->setFocus($this->tree);
                 $this->notifier->success($this->translator->trans('Renamed to %name%', ['%name%' => $name]));

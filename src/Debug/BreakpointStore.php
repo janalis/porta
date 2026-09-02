@@ -101,6 +101,20 @@ final class BreakpointStore
         return $all;
     }
 
+    /**
+     * Follow a renamed file, keeping its breakpoints and their conditions.
+     * Pure: the caller hands over canonical paths, because by the time this
+     * runs `$from` is gone from disk and cannot be resolved.
+     */
+    public function rename(string $from, string $to): void
+    {
+        if (!\array_key_exists($from, $this->breakpoints)) {
+            return;
+        }
+        $this->breakpoints[$to] = $this->breakpoints[$from];
+        unset($this->breakpoints[$from]);
+    }
+
     public function clear(): void
     {
         $this->breakpoints = [];

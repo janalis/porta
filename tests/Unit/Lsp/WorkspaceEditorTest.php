@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\Event\BufferRepointRequested;
+use Porta\Event\FileRenamed;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\Uri;
@@ -324,6 +325,10 @@ final class WorkspaceEditorTest extends TestCase
         $events->addListener(BufferRepointRequested::class, static function (BufferRepointRequested $e) use (&$seen): void {
             $seen[] = [$e->from, $e->to];
         });
+        $renamed = [];
+        $events->addListener(FileRenamed::class, static function (FileRenamed $e) use (&$renamed): void {
+            $renamed[] = [$e->from, $e->to];
+        });
         $we = $this->workspaceEditor($events);
         $old = $project->path('old.php');
         $new = $project->path('new.php');
@@ -342,6 +347,48 @@ final class WorkspaceEditorTest extends TestCase
         // is that the pair points from the old file to the new one.
         $this->assertStringEndsWith('/old.php', $seen[0][0]);
         $this->assertStringEndsWith('/new.php', $seen[0][1]);
+
+        // And the FACT, so everything path-keyed follows too — bookmarks and
+        // breakpoints, which a refactoring's rename would otherwise strand.
+        // Its contract is CANONICAL paths, and by now the old file is gone, so
+        // the dispatcher must have resolved it through its directory.
+        $this->assertCount(1, $renamed);
+        $this->assertSame(realpath($project->dir).'/old.php', $renamed[0][0], 'the old path, canonical despite no longer existing');
+        $this->assertSame(realpath($new), $renamed[0][1]);
+    }
+
+    /**
+     * A SERVER's URI, not one this client built: `Uri::fromPath()` resolves as
+     * it encodes, so a locally-built URI hides this case entirely. A server
+     * spells paths from its own view of the workspace root, and on macOS a
+     * temp root is a symlink — so `/var/…` arrives where buffers are keyed
+     * `/private/var/…`. The old file is gone by the time the fact is built, so
+     * only its DIRECTORY can be resolved.
+     */
+    public function testARenameFactCanonicalisesAServerSpelledOldPath(): void
+    {
+        $project = new TempProject(['old.php' => "<?php\n"]);
+        $unresolved = $project->path('old.php');
+        self::assertNotSame(realpath($project->dir), $project->dir, 'the fixture root must be a symlink for this to test anything');
+
+        $events = new EventDispatcher();
+        $renamed = [];
+        $events->addListener(FileRenamed::class, static function (FileRenamed $e) use (&$renamed): void {
+            $renamed[] = [$e->from, $e->to];
+        });
+
+        $this->workspaceEditor($events)->applyWorkspaceEdit([
+            'documentChanges' => [[
+                'kind' => 'rename',
+                // Hand-built, deliberately UNRESOLVED — what a server sends.
+                'oldUri' => 'file://'.$unresolved,
+                'newUri' => 'file://'.$project->path('new.php'),
+            ]],
+        ]);
+
+        $this->assertCount(1, $renamed);
+        $this->assertSame(realpath($project->dir).'/old.php', $renamed[0][0], 'canonical despite the file already being gone');
+        $this->assertSame(realpath($project->path('new.php')), $renamed[0][1]);
     }
 
     public function testADeleteOperationRemovesTheFile(): void

@@ -87,4 +87,29 @@ final class BreakpointStoreTest extends TestCase
         $store->clear();
         $this->assertSame([], $store->all());
     }
+
+    public function testRenameCarriesBreakpointsAndTheirConditionsToTheNewPath(): void
+    {
+        $store = new BreakpointStore();
+        $store->toggle('/p/Old.php', 3);
+        $store->setDetails('/p/Old.php', 3, '$x > 1', null, null);
+        $store->toggle('/p/Other.php', 1);
+
+        $store->rename('/p/Old.php', '/p/New.php');
+
+        $this->assertSame([3], $store->linesFor('/p/New.php'));
+        $this->assertSame('$x > 1', $store->conditionAt('/p/New.php', 3)['condition'], 'the condition came with it');
+        $this->assertSame([], $store->linesFor('/p/Old.php'));
+        $this->assertSame([1], $store->linesFor('/p/Other.php'), 'its neighbour is untouched');
+    }
+
+    public function testRenamingAFileWithNoBreakpointsAddsNoEmptyEntry(): void
+    {
+        $store = new BreakpointStore();
+        $store->toggle('/p/Other.php', 1);
+
+        $store->rename('/p/Unmarked.php', '/p/Renamed.php');
+
+        $this->assertSame(['/p/Other.php'], array_keys($store->all()));
+    }
 }

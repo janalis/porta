@@ -56,4 +56,30 @@ final class BookmarksTest extends TestCase
         $this->assertSame(['/p/a.php' => [2, 7]], $marks->all(), 'the restored set replaces, and is sorted like any other');
         $this->assertSame([], $marks->linesFor('/p/stale.php'));
     }
+
+    public function testRenameCarriesAFilesMarksToItsNewPath(): void
+    {
+        $marks = new Bookmarks();
+        $marks->toggle('/p/Old.php', 3);
+        $marks->toggle('/p/Old.php', 8);
+        $marks->toggle('/p/Other.php', 1);
+
+        $marks->rename('/p/Old.php', '/p/New.php');
+
+        $this->assertSame([3, 8], $marks->linesFor('/p/New.php'), 'the marks came with it');
+        $this->assertSame([], $marks->linesFor('/p/Old.php'), 'and nothing is left on the dead path');
+        $this->assertSame([1], $marks->linesFor('/p/Other.php'), 'its neighbour is untouched');
+    }
+
+    public function testRenamingAnUnmarkedFileAddsNoEmptyEntry(): void
+    {
+        // Every rename in the project dispatches the fact; an unmarked file
+        // must not leave a husk behind to persist or list.
+        $marks = new Bookmarks();
+        $marks->toggle('/p/Other.php', 1);
+
+        $marks->rename('/p/Unmarked.php', '/p/Renamed.php');
+
+        $this->assertSame(['/p/Other.php' => [1]], $marks->all());
+    }
 }

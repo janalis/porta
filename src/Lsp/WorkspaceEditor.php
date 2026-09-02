@@ -10,6 +10,7 @@ use Porta\Editor\Document;
 use Porta\Editor\EditorInvalidator;
 use Porta\Editor\SelectionMode;
 use Porta\Event\BufferRepointRequested;
+use Porta\Event\FileRenamed;
 use Porta\Support\Files;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Filesystem\Exception\IOException;
@@ -250,6 +251,14 @@ final readonly class WorkspaceEditor
         $to = $this->pathOf($change['newUri'] ?? null);
         \assert(null !== $from && null !== $to, description: 'a rename with no usable path is refused before applying');
         $this->fs->rename($from, $to, overwrite: true);
+        // Canonical both sides, per FileRenamed's contract. $from is already
+        // gone, so its DIRECTORY is what resolves — the same trick
+        // BufferService::onBufferRepointRequested needs, for the same reason.
+        $directory = realpath(\dirname($from));
+        $this->events->dispatch(new FileRenamed(
+            false === $directory ? $from : $directory.\DIRECTORY_SEPARATOR.basename($from),
+            ($resolvedTo = realpath($to)) ? $resolvedTo : $to,
+        ));
         // Dispatched rather than done here: re-opening needs BufferService,
         // which reaches this class back through FormatOnSave. A command event
         // is the sanctioned way out of a real container cycle, and this one is.

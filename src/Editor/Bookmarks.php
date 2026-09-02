@@ -57,6 +57,20 @@ final class Bookmarks
         return $out;
     }
 
+    /**
+     * Follow a renamed file, keeping its marks. Pure: the caller hands over
+     * canonical paths, because by the time this runs `$from` is gone from
+     * disk and cannot be resolved.
+     */
+    public function rename(string $from, string $to): void
+    {
+        if (!\array_key_exists($from, $this->marks)) {
+            return;
+        }
+        $this->marks[$to] = $this->marks[$from];
+        unset($this->marks[$from]);
+    }
+
     /** @param array<string, list<int>> $marks */
     public function replaceAll(array $marks): void
     {

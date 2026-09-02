@@ -60,6 +60,18 @@ Two consequences worth knowing:
 - **A fact may have any number**, which is the whole reason for a bus.
   `BufferSwitched` has four.
 
+`FileRenamed` and `BufferRepointRequested` are the pair worth studying, because
+one rename dispatches both. The re-point is a **command**: exactly one listener
+closes the stale buffer and re-opens the new path, and it exists only to break a
+container cycle. The rename is a **fact**: every store keyed by path — bookmarks,
+breakpoints — has to follow, none of them owes the other anything, and a third
+such store just adds a listener.
+
+`FileRenamed` also shows why a fact's contract belongs in its docblock:
+**both its paths are canonical**, resolved by the dispatcher, because by the
+time a listener runs the old path is gone from disk and `realpath()` on it
+returns false. Only the dispatcher is still in a position to answer.
+
 ## Priority
 
 Listeners run in descending priority. The ladder is

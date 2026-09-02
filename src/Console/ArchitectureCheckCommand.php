@@ -273,6 +273,7 @@ final class ArchitectureCheckCommand extends Command
         'Todo>Workbench',
         'Tree>Container',
         'Tree>Editor',
+        'Tree>Event',
         'Tree>Search',
         'Tree>Support',
         'Tree>Widget',

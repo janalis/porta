@@ -6,6 +6,8 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Editor\BookmarkActions;
+use Porta\Editor\Bookmarks;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\FindModalReads;
 use Porta\Tests\Support\GitBinary;
@@ -15,6 +17,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\Glyphs;
 use Porta\Widget\ContextMenu;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
@@ -617,8 +620,16 @@ final class IdeContextMenusTest extends TestCase
                     // unchanged is a no-op.
                     $tui->handleInput("\r");
                 },
-                380 => function ($tui) use ($project): void {
+                380 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->assertFileExists($project->path('A.php'), 'renaming to the same name changed nothing');
+                    // Mark a line before the real rename, so the assertion below
+                    // is about the mark SURVIVING it.
+                    $tui->getById('editor')->getDocument()->setCursor(0, 0);
+                    Services::resolve($ide, BookmarkActions::class)->toggle();
+                    $this->assertSame(
+                        [(string) realpath($project->path('A.php')) => [0]],
+                        Services::resolve($ide, Bookmarks::class)->all(),
+                    );
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php again
                 },
                 460 => static function ($tui): void {
@@ -634,8 +645,20 @@ final class IdeContextMenusTest extends TestCase
                     $this->typeString($tui, 'renamed.php');
                     $tui->handleInput("\r");
                 },
-                640 => function ($tui): void {
+                640 => function ($tui, $terminal, $ide) use ($project): void {
                     $this->assertStringEndsWith('renamed.php', (string) $tui->getById('editor')->getFilePath(), 'the open buffer followed the rename');
+                    // The whole FileRenamed chain: the mark moved with the file
+                    // rather than being silently dropped on the dead path.
+                    $this->assertSame(
+                        [(string) realpath($project->path('renamed.php')) => [0]],
+                        Services::resolve($ide, Bookmarks::class)->all(),
+                        'the bookmark followed the rename',
+                    );
+                    $this->assertStringContainsString(
+                        Glyphs::BOOKMARK,
+                        implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))),
+                        'and is painted on the new buffer',
+                    );
                 },
             ],
         );
