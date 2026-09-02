@@ -555,3 +555,38 @@ tree's marks are looked up in BOTH path spaces because core keys buffers by
 `realpath()` while the tree builds nodes from the raw root — on a symlinked root
 they disagree on every path, and a decoration looked up in the wrong space
 silently never appears.
+
+## The refactoring surface (2026-09)
+
+**Dedicated `Ctrl+Alt+V` / `Ctrl+Alt+C` extract keys — rejected on what servers
+actually publish.** PhpStorm gives extract-variable and extract-constant their
+own chords, so the plan for this round did too. Both bundled PHP servers publish
+variable, constant and method behind a SINGLE `refactor.extract` kind (phpantom
+literally advertises `refactor.extract`; phpactor's list is narrower but not
+along that axis), so a kind-filtered request cannot tell them apart — three keys
+would open the same list. Extract is reached through Refactor This
+(`Ctrl+Alt+Shift+T`) instead. `Ctrl+Alt+N` for inline stays, because
+`refactor.inline` IS narrow enough that a single answer can be applied without
+asking.
+
+*Re-opens on:* a server publishing `refactor.extract.variable` /
+`refactor.extract.constant` (the spec allows the hierarchy), at which point the
+filter can distinguish them and a direct key stops being a lie.
+
+**`Ctrl+Alt+M` and `Ctrl+F6` were not taken for extract-method and
+change-signature**, though PhpStorm uses them: `Ctrl+Alt+M` is the phpantom
+plugin's `phpantom:fix` and `Ctrl+F6` is `focus_previous`. Neither was worth
+displacing for a refactoring reachable one keystroke away.
+
+**Deliberately still open, and NOT caused by this round** — both predate it and
+neither is a judgement call, just unfinished:
+
+- **Overlap detection between text edits.** LSP says overlapping edits make a
+  `WorkspaceEdit` invalid. Porta applies them bottom-up and both land, the later
+  one clamping into whatever the earlier produced: corruption rather than an
+  error.
+- **Cross-file undo.** A multi-file rename is one undo step *per buffer*, and
+  files rewritten on disk (those with no open buffer) cannot be undone at all.
+  The refusal pass added this round narrows the blast radius — an edit that
+  cannot be honoured now changes nothing — but it does nothing for an edit that
+  applies successfully and is then regretted.
