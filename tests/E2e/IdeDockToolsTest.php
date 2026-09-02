@@ -23,6 +23,7 @@ use Porta\Ui\Glyphs;
 use Porta\Widget\DockTabsWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockToolHandlers;
+use Porta\Workbench\Dock\ResultsPanelMode;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
 
@@ -746,6 +747,44 @@ final class IdeDockToolsTest extends TestCase
 
                     $this->assertStringEndsWith('/a.php', (string) $tui->getById('editor')->getFilePath(), 'the row returned to the file left behind');
                     $this->assertSame(1, $tui->getById('editor')->getDocument()->getCursorLine());
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    /**
+     * Structure-follows-caret through a real Ide, which is what proves the
+     * DockToolBound listener is actually registered: the tab is opened while
+     * the caret is already parked inside the second symbol, and nothing moves
+     * the caret afterwards.
+     */
+    public function testOpeningTheStructureTabSelectsTheSymbolTheCaretIsAlreadyIn(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n// 1\n// 2\n// 3\n// 4\n// 5\n// 6\n// 7\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    $tui->getById('editor')->getDocument()->setCursor(6, 0);
+                    $this->frame($tui); // the caret settles BEFORE the tab exists
+
+                    $dock = Services::resolve($ide, BottomDock::class);
+                    $dock->showList(ResultsPanelMode::Structure, 'Structure', [
+                        ['path' => 'a.php', 'line' => 1, 'text' => 'class Demo'],
+                        ['path' => 'a.php', 'line' => 5, 'text' => '  greet()'],
+                    ]);
+                    $this->frame($tui);
+
+                    $this->assertSame(
+                        5,
+                        $tui->getById('results')->captureViewState()->selectedLine,
+                        'greet() selected on open, with no caret move to trigger it',
+                    );
                 },
             ],
         );

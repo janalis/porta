@@ -117,7 +117,7 @@ final class SearchUiWiringTest extends TestCase
             new ResultContextProvider($buffers, $paths),
             $opener,
             new FakeScheduler(),
-            $rootDir,
+            $paths,
         );
     }
 

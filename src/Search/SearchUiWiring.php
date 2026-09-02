@@ -12,6 +12,7 @@ use Porta\Event\ResultRowActivated;
 use Porta\Event\ResultsExportRequested;
 use Porta\Event\ResultsRerunRequested;
 use Porta\Overlay\State\FindModalCallbacks;
+use Porta\Support\ProjectPaths;
 use Porta\Support\Scheduler;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FindBarWidget;
@@ -46,7 +47,7 @@ final class SearchUiWiring
         private readonly ResultContextProvider $resultContext,
         private readonly FileOpener $bufferService,
         private readonly Scheduler $scheduler,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
     ) {}
 
     public function wire(): void
@@ -164,7 +165,7 @@ final class SearchUiWiring
                 return; // log rows carry no file location
             }
         }
-        $this->bufferService->openFile($this->rootDir.'/'.$relativePath, focus: OpenFocus::Editor);
+        $this->bufferService->openFile($this->paths->absolute($relativePath), focus: OpenFocus::Editor);
         $this->editor->jumpTo($line, 0);
         $this->tui->requestRender();
     }
@@ -200,7 +201,7 @@ final class SearchUiWiring
                 },
                 onJump: function (string $relativePath, int $line): void {
                     $this->editor->findModal()->close();
-                    $this->bufferService->openFile($this->rootDir.'/'.$relativePath, focus: OpenFocus::Editor);
+                    $this->bufferService->openFile($this->paths->absolute($relativePath), focus: OpenFocus::Editor);
                     $this->editor->jumpTo($line, 0);
                     $this->tui->requestRender();
                 },

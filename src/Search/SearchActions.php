@@ -9,6 +9,7 @@ use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
+use Porta\Support\ProjectPaths;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\Notifier;
@@ -30,7 +31,7 @@ final class SearchActions
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly ActiveFileProvider $editor,
-        private readonly string $rootDir,
+        private readonly ProjectPaths $paths,
     ) {}
 
     public function openProjectSearch(): void
@@ -74,7 +75,7 @@ final class SearchActions
             return;
         }
         if (1 === \count($candidates)) {
-            $this->bufferService->openFile($this->rootDir.'/'.$candidates[0], focus: OpenFocus::Editor);
+            $this->bufferService->openFile($this->paths->absolute($candidates[0]), focus: OpenFocus::Editor);
 
             return;
         }

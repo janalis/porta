@@ -259,6 +259,27 @@ final class IdeHelpersTest extends TestCase
         $this->assertSame('/elsewhere/file.php', new ProjectPaths($this->project->dir)->relative('/elsewhere/file.php'));
     }
 
+    /**
+     * absolute() is relative()'s inverse, and has to survive the case above:
+     * a file outside the root comes back ABSOLUTE, and prefixing that gives
+     * `/root//elsewhere/file.php`, whose realpath() is false — so opening a
+     * results row for such a file made a phantom tab at a path that does not
+     * exist. Every core list tool round-trips a path this way (Problems,
+     * Usages, Bookmarks, Recent Locations).
+     */
+    public function testAbsoluteIsTheInverseOfRelativeEvenOutsideTheRoot(): void
+    {
+        $paths = new ProjectPaths($this->project->dir);
+        $this->project->write('in/root.php', '<?php');
+
+        $inside = $this->project->path('in/root.php');
+        $this->assertSame($inside, $paths->absolute($paths->relative($inside)), 'round trip inside the root');
+
+        $outside = '/elsewhere/file.php';
+        $this->assertSame($outside, $paths->absolute($paths->relative($outside)), 'and outside it, with no doubled root');
+        $this->assertStringNotContainsString('//', $paths->absolute($paths->relative($outside)));
+    }
+
     public function testRelativeMemoizesResolvedPathsButNeverUnresolvedOnes(): void
     {
         $paths = new ProjectPaths($this->project->dir);

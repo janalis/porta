@@ -67,10 +67,16 @@ final class ProjectPaths
         return $relative;
     }
 
-    /** The absolute path of a project-relative one. */
+    /**
+     * The absolute path of a project-relative one — the true inverse of
+     * {@see relative()}, which hands back an ABSOLUTE path for a file outside
+     * the root. Prefixing that blindly yields `/root//elsewhere/File.php`,
+     * whose realpath() is false, so opening it makes a phantom tab at a path
+     * that does not exist. Every list tool round-trips a path this way.
+     */
     public function absolute(string $relative): string
     {
-        return $this->rootDir.'/'.$relative;
+        return str_starts_with($relative, '/') ? $relative : $this->rootDir.'/'.$relative;
     }
 
     /** LSP languageId for a file, by extension. See {@see LanguageMap}. */

@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Porta\Editor;
 
 use Porta\Container\AsEager;
+use Porta\Event\DockToolBound;
 use Porta\Ui\FrameHooks;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\ResultsPanelMode;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
  * PhpStorm's "autoscroll from source": while a Structure tab is on display, its
@@ -32,6 +34,21 @@ final class StructureFollowsCaret
         ?FrameHooks $frames = null,
     ) {
         $frames?->onBeforeFrame($this->caretMoved(...));
+    }
+
+    /**
+     * The tab just became the one on display — re-apply on the next frame even
+     * though the caret has not moved. Without this, opening Structure while
+     * parked inside a method leaves it showing the first symbol until you type:
+     * the memo is keyed on the caret, and the caret is exactly what did not
+     * change.
+     */
+    #[AsEventListener]
+    public function onDockToolBound(DockToolBound $event): void
+    {
+        if (ResultsPanelMode::Structure === $event->tab->mode) {
+            $this->lastPath = null;
+        }
     }
 
     /** Cheap and idempotent, per the hook's contract. */

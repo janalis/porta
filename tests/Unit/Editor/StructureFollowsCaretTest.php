@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Editor;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
 use Porta\Editor\StructureFollowsCaret;
+use Porta\Event\DockToolBound;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
@@ -117,5 +118,23 @@ final class StructureFollowsCaretTest extends TestCase
         $follower->caretMoved();
 
         $this->assertSame(0, $this->selectedLine(), 'the displayed tool kept its own selection');
+    }
+
+    /**
+     * Opening the tab while the caret is already parked inside a method must
+     * select that method — the caret does not move, so a memo keyed only on
+     * caret position would leave the tab showing row 0 until you typed.
+     */
+    public function testOpeningTheTabSelectsWhereTheCaretAlreadyIs(): void
+    {
+        $follower = $this->follower();
+        $this->editor->getDocument()->setCursor(11, 0);
+        $follower->caretMoved(); // the caret settles BEFORE the tab exists
+
+        $tab = $this->dock->showList(ResultsPanelMode::Structure, 'Structure', self::symbols());
+        $follower->onDockToolBound(new DockToolBound($tab));
+        $follower->caretMoved();
+
+        $this->assertSame(9, $this->selectedLine(), 'farewell(), without having to move the caret first');
     }
 }

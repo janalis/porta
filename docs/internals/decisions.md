@@ -778,3 +778,36 @@ collapsed whitespace for display and so reported "duplicate rungs" that were
 the legitimate trimmed-content → whole-line-with-indentation pair. Print the
 offsets, or print whitespace visibly, before calling a rung useless.
 
+## Review pass on the sweep (2026-09-02)
+
+Three hypotheses about defects that would pass all six gates. Two were real.
+
+**Opening the Structure tab did not select the caret's symbol.**
+`StructureFollowsCaret` memoises on the caret, and opening a tab is precisely
+the case where the caret does NOT move — so the tab showed its first row until
+you typed. It listens to `DockToolBound` now and clears the memo, which keeps
+the per-frame path free of a dock query. Proved through a real `Ide`, since
+what was actually in doubt was whether the listener is registered at all.
+
+**`ProjectPaths::absolute()` was not the inverse of `relative()`.** `relative()`
+returns an ABSOLUTE path for a file outside the root — its own test says so —
+and `absolute()` prefixed the root blindly, yielding `/root//elsewhere/File.php`,
+whose `realpath()` is false. Activating such a row opened a phantom tab at a
+path that does not exist. Pre-existing and shared by every core list tool and
+nine `absolute()` callers; Bookmarks and Recent Locations just made it easy to
+reach, because you can mark or jump from any open file. Fixed in `ProjectPaths`,
+where the pairing is supposed to be unmismatchable, and `SearchUiWiring` /
+`SearchActions` now hold `ProjectPaths` instead of a bare `rootDir` they kept
+only to hand-roll that join.
+
+**Bookmarks do not survive a rename — and that one was left alone.** Marks are
+path-keyed, and neither the tree's rename nor `WorkspaceEditor`'s re-points
+them. `Debug\BreakpointStore` has exactly the same gap, so this is a consistent
+limitation rather than a regression. Closing it means a rename FACT event
+dispatched from both sites (`BufferRepointRequested` is a command with one
+listener and must stay that way) plus re-keying both stores — a piece of work,
+not a review fix.
+
+*Re-opens on:* anyone adding a third path-keyed per-file store, at which point
+the rename fact is worth introducing once for all three.
+
