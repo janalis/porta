@@ -338,6 +338,45 @@ nothing" passes just as well when the fixture is broken and there was nothing to
 publish. Assert in the same test that the *same* fixture does produce the effect
 with the flag on.
 
+## Green gates do not prove it runs
+
+**Every gate can pass on a feature that never executes in the app.** Two rounds
+of UI work shipped four such bugs, each caught only by asking "does this actually
+run?" — never by the suite:
+
+- `Lsp\HighlightController` had no `#[AsEager]`. Nothing injects it and its
+  constructor installs the per-frame caret watch, so it was never built and
+  semantic identifier highlighting had never run once. Every test constructed the
+  controller directly. See `AsEagerMembershipTest`, which now gates
+  the general rule.
+- The file tree looked its marks up in the wrong path space (buffers are keyed by
+  `realpath()`, nodes are built from the raw root), so on a symlinked project root
+  — `/var` on macOS included — no mark ever appeared. Nothing failed; the
+  decoration was simply absent.
+- `textDocument/codeAction` was sent with a zero-width caret range, so
+  `refactor.extract` could never be offered. The unit tests asserted the response
+  handling and never the params.
+- `WorkspaceEditor` dropped a server's `CreateFile`, half-applying a refactoring
+  and still reporting success. The mock server only ever answered with an inline
+  `edit`, so the path had no coverage to be missing.
+
+Three habits catch this class, and all three are cheap:
+
+**Ask what constructs it.** A service nothing injects is never built. If the
+answer is "nothing", it needs `#[AsEager]` or an `#[AsEventListener]`.
+
+**Assert the REQUEST, not just the response.** A parameter that is silently
+dropped looks exactly like success from the response side. When the bug would be
+"we asked the wrong question", the assertion belongs on the params.
+
+**Drive the real thing once.** Both rounds ended by booting the IDE on a
+`VirtualTerminal` and reading the screen, and by probing the actual language
+server for its capabilities before writing against them. `Probe::get($bidiTui,
+'onBeforeFrame')` names its hooks' owners; a throwaway E2e that dumps
+`$terminal->getOutput()` shows what a user would see. Delete the driver
+afterwards — a test that needs a real `phpantom` installed does not belong in a
+deterministic suite — but run it before believing the gates.
+
 ## No test-only code in `src`
 
 Private-state reflection lives only in the blessed `tests/Support` seams. Zero
