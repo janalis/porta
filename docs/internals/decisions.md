@@ -875,3 +875,34 @@ down from 98, and the new floor of 95 is `CodeEditorWidgetTest` — a TEST class
 `mago.toml` records that, because a threshold pinned by a test file is a
 different problem from one pinned by production code.
 
+## The suppression audit (2026-09-02)
+
+Both `@mago-expect` sets were tested by removing them and reading what actually
+fired, rather than trusting the reason written beside each.
+
+**Analyzer: 11 → 7.** Four were hiding something fixable — `OverlayHost`'s two
+non-exhaustive matches (the null hoisted into an early return makes the subject
+non-nullable, so the match is total on the enum and still breaks when a case is
+added), `PerfCollector`'s cast of a `mixed` load average (narrowed with
+`is_numeric()`, which also retired a `no-shorthand-ternary` LINT suppression
+beside it), and `Probe`'s mixed assignment. The seven that remain are each
+verified: mago's `proc_open` stub does not model the `['pty']` descriptor;
+Symfony's `Container` is not final, so PhpDumper's `new $class()` cannot be
+proven safe; and the git plugin's three are one design — a const wiring map
+dispatched dynamically, pinned by `GitListenerContractTest` — where a forwarding
+closure only trades one code for another.
+
+**Linter: 82, and all 82 are load-bearing.** Nothing to remove.
+
+Two traps worth keeping, both of which produced a wrong answer before the right
+one:
+
+- **Suppressing one code can unmask another at the same site.** The Tarjan
+  comparison carries `redundant-condition` AND `redundant-comparison`; with both
+  removed only the first fires, which reads as the second being stale. It is
+  not. Removing them ONE AT A TIME is what distinguishes stale from masked.
+- **Read every severity.** mago reports at `error`, `warning`, `help` and
+  `note`. An audit that greps for the first three declares the one `note`-level
+  suppression stale — which is exactly what happened here, and the individual
+  re-check is what caught it.
+
