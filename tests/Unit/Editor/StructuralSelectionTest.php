@@ -80,16 +80,21 @@ final class StructuralSelectionTest extends TestCase
         $steps = $this->ladder($text, 8);
         $this->assertSame('body', $steps[0]);
         $this->assertSame('    body', $steps[1], 'line before enclosing block');
-        $this->assertSame("\n    body\n", $steps[2], 'block contents');
-        $this->assertSame("{\n    body\n}", $steps[3], 'whole block');
+        // No "\n    body\n" rung between them: the block's contents differ
+        // from the line by a newline and some indentation only, and a rung
+        // that changes nothing you can see is a press that did nothing.
+        $this->assertSame("{\n    body\n}", $steps[2], 'whole block');
     }
 
     public function testNestedBrackets(): void
     {
         $text = 'a(b(c)d)e';
-        // caret on inner "c"
+        // caret on inner "c". `b(c)` and `a(b(c)d)` are the CALL rungs — a
+        // bracket's name belongs with its parens, and every language server
+        // offers them; without them the ladder jumps from `(c)` straight past
+        // the call that owns it.
         $this->assertSame(
-            ['c', '(c)', 'b(c)d', '(b(c)d)', 'a(b(c)d)e'],
+            ['c', '(c)', 'b(c)', 'b(c)d', '(b(c)d)', 'a(b(c)d)', 'a(b(c)d)e'],
             $this->ladder($text, 4),
         );
     }
@@ -187,5 +192,78 @@ final class StructuralSelectionTest extends TestCase
         // The bracket candidate is discovered first — it must win the tie, not
         // be silently replaced by the line span found afterward.
         $this->assertSame([1, 2], StructuralSelection::expand("(\n)", 1, 1));
+    }
+
+    /**
+     * The argument you are standing in, before the whole argument list.
+     * Measured against phpantom's own `selectionRange` ladder, which offers
+     * exactly this rung; without it, `trim($name)` is unreachable and Ctrl+W
+     * jumps from the word straight to every argument at once.
+     */
+    public function testASingleArgumentIsARungBeforeTheWholeArgumentList(): void
+    {
+        $text = 'sprintf(\'Hello, %s!\', trim($name))';
+
+        $steps = $this->ladder($text, 24); // caret on "trim"
+
+        $this->assertSame('trim', $steps[0]);
+        $this->assertSame('trim($name)', $steps[1], 'the one argument, with no leading space off the comma');
+        $this->assertSame('\'Hello, %s!\', trim($name)', $steps[2], 'then all of them');
+        $this->assertSame('sprintf(\'Hello, %s!\', trim($name))', $steps[4], 'and the call that owns them');
+    }
+
+    /** A comma inside a nested call or a literal does not split an argument. */
+    public function testCommasNestedInBracketsOrStringsDoNotSplit(): void
+    {
+        $text = 'f(a, g(b, c), d)';
+
+        $this->assertSame('b, c', $this->ladder($text, 11)[1], 'the inner brackets hold their own argument list');
+        $this->assertSame('g(b, c)', $this->ladder($text, 11)[3], 'and the whole inner call is ONE argument of the outer');
+        $this->assertSame('a, g(b, c), d', $this->ladder($text, 11)[4], 'its comma never split the outer list');
+        $this->assertSame("'x, y'", $this->ladder("f(a, 'x, y', b)", 7)[2], 'the comma inside the literal is not a separator either');
+    }
+
+    /**
+     * A brace interior and the line inside it used to be two rungs differing
+     * only by a newline and some indentation — a press of Ctrl+W that visibly
+     * did nothing. Two of the eleven rungs on a plain method were that.
+     */
+    public function testABraceInteriorIsNotARungOfItsOwnWhenItAddsOnlyWhitespace(): void
+    {
+        $text = "if (x) {\n    body();\n}";
+
+        $steps = $this->ladder($text, 13); // caret on "body"
+
+        $this->assertNotContains("\n    body();\n", $steps, 'the whitespace-only rung is gone');
+        $this->assertSame(['body', 'body();', '    body();', "{\n    body();\n}", "if (x) {\n    body();\n}"], $steps);
+    }
+
+    /** But a pair holding nothing but whitespace keeps its untrimmed interior. */
+    public function testAPairOfNothingButWhitespaceStillHasAnInteriorRung(): void
+    {
+        $this->assertSame([1, 2], StructuralSelection::expand("(\n)", 1, 1), 'trimmed to empty, so the untrimmed interior wins');
+    }
+
+    /**
+     * An escaped quote inside an argument's literal must not end it early: the
+     * separator walk would then see the rest of the string as code and split
+     * the argument list on a comma that is only text.
+     */
+    public function testAnEscapedQuoteInsideAnArgumentLiteralDoesNotEndIt(): void
+    {
+        $text = 'f(a, \'x\\\', y\', b)';
+
+        $steps = $this->ladder($text, 15); // caret on the trailing "b"
+
+        $this->assertSame('b', $steps[0]);
+        $this->assertSame("a, 'x\\', y', b", $steps[1], 'three arguments were never four');
+    }
+
+    /** A literal that never closes must not run the separator walk off the end. */
+    public function testAnUnterminatedLiteralInsideBracketsTerminatesTheWalk(): void
+    {
+        $text = "f(a, 'oops, b)";
+
+        $this->assertSame('a', $this->ladder($text, 2)[0], 'the first argument is still reachable');
     }
 }

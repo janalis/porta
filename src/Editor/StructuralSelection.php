@@ -55,12 +55,44 @@ final class StructuralSelection
         // Enclosing bracket pairs and string literals: both the inner contents
         // and the delimiter-inclusive span become candidates.
         foreach (self::scan($text) as [$open, $close]) {
+            // A pair the range has ALREADY swallowed whole is not enclosing.
+            if ($open === $start && ($close + 1) === $end) {
+                // Not enclosing — but the call AROUND it is the next rung, so
+                // that one candidate is offered before moving on.
+                $call = self::callSpan($text, $open, $close);
+                if (null !== $call) {
+                    $candidates[] = $call;
+                }
+
+                continue;
+            }
             if (!($open < $start && $close >= $end)) {
                 continue;
             }
 
-            $candidates[] = [$open + 1, $close];
+            // The interior WITHOUT its surrounding whitespace. Untrimmed, a
+            // brace interior is a rung of its own that differs from the line
+            // inside it only by a newline and some indentation — a press of
+            // Ctrl+W that visibly does nothing, and two of the eleven rungs on
+            // a plain method were exactly that. A pair holding nothing but
+            // whitespace trims to empty and keeps its untrimmed interior,
+            // which is all it has.
+            [$is, $ie] = self::trimmed($text, $open + 1, $close);
+            $candidates[] = $is < $ie ? [$is, $ie] : [$open + 1, $close];
             $candidates[] = [$open, $close + 1];
+            // The one comma-separated segment containing the range: the
+            // argument you are standing in, before the whole argument list.
+            $segment = self::segmentAround($text, $open, $close, $start, $end);
+            if (null !== $segment) {
+                $candidates[] = $segment;
+            }
+            // `sprintf(...)` as well as `(...)`: a call is the name plus its
+            // parens, and skipping to the enclosing statement loses a rung
+            // every language server offers.
+            $call = self::callSpan($text, $open, $close);
+            if (null !== $call) {
+                $candidates[] = $call;
+            }
         }
 
         // The line(s) the range sits on.
@@ -87,6 +119,105 @@ final class StructuralSelection
         }
 
         return $best;
+    }
+
+    /**
+     * `sprintf(...)` as well as `(...)`: a call is the name plus its parens,
+     * and going straight to the enclosing statement loses a rung every
+     * language server offers. Null when nothing names the bracket.
+     *
+     * @return array{0: int, 1: int}|null
+     */
+    private static function callSpan(string $text, int $open, int $close): ?array
+    {
+        $callStart = $open;
+        while ($callStart > 0 && self::isWordChar($text[$callStart - 1])) {
+            --$callStart;
+        }
+
+        return $callStart < $open ? [$callStart, $close + 1] : null;
+    }
+
+    /**
+     * The candidate with surrounding whitespace removed. A range that is all
+     * whitespace is left alone: there is nothing to trim it to.
+     *
+     * @return array{0: int, 1: int}
+     */
+    private static function trimmed(string $text, int $start, int $end): array
+    {
+        while ($start < $end && '' === trim($text[$start], characters: " \t\n\r")) {
+            ++$start;
+        }
+        while ($end > $start && '' === trim($text[$end - 1], characters: " \t\n\r")) {
+            --$end;
+        }
+
+        return [$start, $end];
+    }
+
+    /**
+     * The comma-separated segment of `(a, b, c)` that contains the range —
+     * one argument, in other words. Commas nested in inner brackets or in
+     * string literals do not split, which is why this re-walks rather than
+     * calling explode.
+     *
+     * Null when the pair holds no top-level comma (the interior IS the single
+     * argument, and {@see expand} already offers that).
+     *
+     * @return array{0: int, 1: int}|null
+     */
+    private static function segmentAround(string $text, int $open, int $close, int $start, int $end): ?array
+    {
+        $segmentStart = $open + 1;
+        $depth = 0;
+        $found = false;
+        for ($i = $open + 1; $i < $close; ++$i) {
+            $ch = $text[$i];
+            if ("'" === $ch || '"' === $ch) {
+                $i = self::endOfLiteral($text, $i, $close);
+
+                continue;
+            }
+            if (\array_key_exists($ch, self::OPENERS)) {
+                ++$depth;
+
+                continue;
+            }
+            if (\in_array($ch, self::OPENERS, strict: true)) {
+                --$depth;
+
+                continue;
+            }
+            if (',' !== $ch || 0 !== $depth) {
+                continue;
+            }
+            $found = true;
+            if ($segmentStart <= $start && $i >= $end) {
+                return self::trimmed($text, $segmentStart, $i);
+            }
+            $segmentStart = $i + 1;
+        }
+
+        return $found && $segmentStart <= $start && $close >= $end ? self::trimmed($text, $segmentStart, $close) : null;
+    }
+
+    /** The offset of a literal's closing quote, or $limit when it never closes. */
+    private static function endOfLiteral(string $text, int $at, int $limit): int
+    {
+        $quote = $text[$at];
+        for ($j = $at + 1; $j < $limit; ++$j) {
+            if ('\\' === $text[$j]) {
+                ++$j;
+
+                continue;
+            }
+            if ($text[$j] === $quote) {
+                return $j;
+            }
+        }
+
+        return $limit;
     }
 
     /**

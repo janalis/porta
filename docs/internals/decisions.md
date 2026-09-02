@@ -737,3 +737,44 @@ otherwise.
 PhpStorm has both as separate toggles, and the reverse one fights with the
 existing Enter-to-jump — the row is already how you get to the code.
 
+## Ctrl+W — `textDocument/selectionRange` measured, and NOT wired (2026-09-02)
+
+Both bundled servers advertise `selectionRangeProvider` (see the capability
+table above), so the sweep listed wiring it. Measured first, against a running
+phpantom and the local `Editor\StructuralSelection` on the same caret — inside
+`trim($name)` in `sprintf('Hello, %s!', trim($name))`:
+
+| | phpantom | local, before | local, after |
+| --- | --- | --- | --- |
+| `trim` | ✅ | ✅ | ✅ |
+| `trim($name)` | ✅ | ❌ **missing** | ✅ |
+| `'Hello, %s!', trim($name)` | — | ✅ | ✅ |
+| `sprintf(…)` | ✅ | ❌ **missing** | ✅ |
+| whitespace-only rungs | none | **2 of 11** | none |
+
+The local ladder was missing the two rungs a server gives and had two presses
+that changed the selection by a newline and some indentation only. Those are
+real defects and they are **fixed locally**: a comma-separated *segment*
+candidate (the argument you are standing in, with commas inside nested brackets
+and string literals not splitting), a *call span* candidate (a bracket's name
+belongs with its parens), and the bracket interior offered **trimmed** — with
+the untrimmed one kept as the fallback for a pair holding nothing but
+whitespace, which is all such a pair has.
+
+**The LSP request is not wired, and that is the decision.** Ctrl+W is a
+rapid-fire key held down and pressed repeatedly; a round trip per press is
+latency on a key that is instant today, and the alternative — local answer
+first, server ladder for later presses — makes the first press use a different
+algorithm from the rest, which can visibly jump. The local ladder now matches
+phpantom's rung for rung on the sample above, without a server, which also
+means it still works in a file no server serves.
+
+*Re-opens on:* a measured case where the ladders diverge in a way indentation
+and argument handling cannot explain — a language whose structure brackets do
+not track, most likely, rather than PHP.
+
+**A caution this round earned twice:** the first reading of both ladders
+collapsed whitespace for display and so reported "duplicate rungs" that were
+the legitimate trimmed-content → whole-line-with-indentation pair. Print the
+offsets, or print whitespace visibly, before calling a rung useless.
+
