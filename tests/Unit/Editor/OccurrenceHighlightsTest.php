@@ -90,4 +90,34 @@ final class OccurrenceHighlightsTest extends TestCase
         $this->assertTrue($highlights->caretMovedTo(2, 5, 1), 'an edit at the same spot moves it too — the answer is version-stamped');
         $this->assertFalse($highlights->caretMovedTo(2, 5, 1));
     }
+
+    /**
+     * Both keys here are built by joining numbers, so the separators are what
+     * keep them unambiguous: drop one and (version 1, line 23) collides with
+     * (version 12, line 3). A collision makes a stale answer read as fresh —
+     * the highlight then belongs to a caret position you have already left.
+     */
+    public function testTheCaretKeyCannotCollideAcrossFieldBoundaries(): void
+    {
+        $highlights = new OccurrenceHighlights();
+
+        $this->assertTrue($highlights->caretMovedTo(1, 23, 4), 'the first position is always a move');
+        $this->assertTrue($highlights->caretMovedTo(12, 3, 4), 'a different (version, line) with the same digits is a different caret');
+        $this->assertFalse($highlights->caretMovedTo(12, 3, 4), 'and only an identical one is not');
+
+        // The same ambiguity one field along: (line 1, col 23) vs (line 12, col 3).
+        $this->assertTrue($highlights->caretMovedTo(9, 1, 23));
+        $this->assertTrue($highlights->caretMovedTo(9, 12, 3));
+    }
+
+    /** The freshness stamp joins the same way, and must separate the same way. */
+    public function testTheFreshnessStampCannotCollideAcrossFieldBoundaries(): void
+    {
+        $highlights = new OccurrenceHighlights();
+        $highlights->publish('/p/a.php', 1, 23, 4, []);
+
+        $this->assertTrue($highlights->isFresh('/p/a.php', 1, 23, 4));
+        $this->assertFalse($highlights->isFresh('/p/a.php', 12, 3, 4), 'same digits, different position');
+        $this->assertFalse($highlights->isFresh('/p/a.php', 1, 2, 34), 'and one field along');
+    }
 }

@@ -6,6 +6,22 @@
     // budgets would burn minutes per mutant. Diff-scoped by default via
     // `composer mutate`; non-gating — read the survivors like a review, not
     // like a threshold.
+    //
+    // READING THE REPORT (2026-09-02, first full run over a session's diff:
+    // 1160 mutants, 190 escaped, MSI 83% — of which about a dozen were real):
+    //
+    //   * An escape in code covered ONLY by the Integration, E2e or Plugins
+    //     suite is a HARNESS ARTIFACT, not a gap. All 21 LspClient escapes were
+    //     the client-capability payload, which tests/Integration/LspClientTest
+    //     asserts in full — verified by mutating 'dataSupport' and watching Unit
+    //     stay green while Integration went red. Check for a covering test
+    //     outside Unit before writing anything.
+    //   * Comparator weights (1:0 mutated to 2:0, 1:-1, 0:0) are almost always
+    //     equivalent — any positive-vs-zero pair sorts a single preferred item
+    //     the same way. Assert the ORDER behaviourally instead and let them be.
+    //   * The escapes worth acting on cluster in two places: guards whose arms
+    //     are not each covered, and REQUEST PAYLOADS nothing asserts (a dropped
+    //     'textDocument' key is as silent as a dropped range).
     "$schema": "vendor/infection/infection/resources/schema.json",
     "source": {
         "directories": ["src"]
