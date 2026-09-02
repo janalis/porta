@@ -906,3 +906,33 @@ one:
   suppression stale — which is exactly what happened here, and the individual
   re-check is what caught it.
 
+## Next / Previous Problem (2026-09-02)
+
+A fresh survey of the action catalogue against PhpStorm, after the three
+parity rounds, turned up two classics still missing: **F2 / Shift+F2** to walk
+the current file's problems, and **Ctrl+Alt+O** for organize-imports. The first
+landed.
+
+**No language-server round trip.** The diagnostics are already on the buffer,
+whoever published them — the error stripe and the Problems tool both read the
+same field. This is the keyboard verb between them: you stay on the code and
+step through what is wrong with it.
+
+**It wraps, and says so.** A silent no-op at the last problem reads as a broken
+key, so the flash names the diagnostic and prefixes it when it came round the
+end. Standing ON a problem moves to the next one, which is the case the key is
+used in most.
+
+**F2 was reclaimed from a second binding on `ide_toggle_focus`,** which keeps
+its primary `ctrl+t`. Nothing lost a sole binding, and the alias contradicted
+PhpStorm's own meaning for the key — which is the standard the whole parity
+round is judged by. `ActionCatalogTest` pinned the old pair and had to be
+updated deliberately, which is the gate working.
+
+*Still open:* **organize-imports**. `source.organizeImports` has been declared
+in `LspClient`'s capabilities since round 2 but no action ever asks for it, so
+the declaration is currently a promise to nobody. It is a `context.only`
+variant of the code-action request the way `refactor_this` already is, and
+Ctrl+Alt+O is a second binding on `ide_goto_symbol` (primary
+`ctrl+alt+shift+n`) — the same reclaim as F2.
+

@@ -791,4 +791,45 @@ final class IdeDockToolsTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    /**
+     * F2 through a real Ide: the key, the command registration and the jump.
+     * Diagnostics are published through BufferService the way a language
+     * server's are, so nothing here is mocked past the server itself.
+     */
+    public function testF2WalksTheFilesProblemsAndWrapsAtTheEnd(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n// 1\n// 2\n// 3\n// 4\n// 5\n// 6\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    self::bufferService($ide)
+                        ->applyDiagnostics(
+                            Uri::fromPath($project->path('a.php')),
+                            [
+                                2 => [['severity' => 1, 'message' => 'first boom', 'col' => 0, 'endCol' => 3]],
+                                5 => [['severity' => 1, 'message' => 'second boom', 'col' => 0, 'endCol' => 3]],
+                            ],
+                        );
+                    $tui->getById('editor')->getDocument()->setCursor(0, 0);
+                    $this->frame($tui);
+
+                    $tui->handleInput("\x1bOQ"); // F2
+                    $this->assertSame(2, $tui->getById('editor')->getDocument()->getCursorLine(), 'jumped to the first problem');
+
+                    $tui->handleInput("\x1bOQ");
+                    $this->assertSame(5, $tui->getById('editor')->getDocument()->getCursorLine(), 'then the second');
+
+                    $tui->handleInput("\x1bOQ");
+                    $this->assertSame(2, $tui->getById('editor')->getDocument()->getCursorLine(), 'and wrapped back to the first');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
 }

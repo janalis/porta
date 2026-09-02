@@ -974,6 +974,22 @@
         <source>Recent Locations</source>
         <target>最近の場所</target>
       </trans-unit>
+      <trans-unit id="740">
+        <source>Next Problem</source>
+        <target>次の問題</target>
+      </trans-unit>
+      <trans-unit id="741">
+        <source>Previous Problem</source>
+        <target>前の問題</target>
+      </trans-unit>
+      <trans-unit id="742">
+        <source>No problems in this file</source>
+        <target>このファイルに問題はありません</target>
+      </trans-unit>
+      <trans-unit id="743">
+        <source>Wrapped to %problem%</source>
+        <target>先頭に戻りました: %problem%</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>ツリー / エディターのフォーカスを切替</target>

@@ -974,6 +974,22 @@
         <source>Recent Locations</source>
         <target>Zuletzt besuchte Orte</target>
       </trans-unit>
+      <trans-unit id="740">
+        <source>Next Problem</source>
+        <target>Nächstes Problem</target>
+      </trans-unit>
+      <trans-unit id="741">
+        <source>Previous Problem</source>
+        <target>Vorheriges Problem</target>
+      </trans-unit>
+      <trans-unit id="742">
+        <source>No problems in this file</source>
+        <target>Keine Probleme in dieser Datei</target>
+      </trans-unit>
+      <trans-unit id="743">
+        <source>Wrapped to %problem%</source>
+        <target>Umgebrochen zu %problem%</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>Fokus Baum / Editor wechseln</target>

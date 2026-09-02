@@ -147,7 +147,12 @@ final class ActionCatalogTest extends TestCase
     {
         $defaults = ActionCatalog::ideDefaults();
         $this->assertSame(['ctrl+q'], $defaults['ide_quit']);
-        $this->assertSame(['ctrl+t', 'f2'], $defaults['ide_toggle_focus']);
+        // F2 was a second binding here and is Next Problem now — PhpStorm's own
+        // meaning for that key. Toggle-focus keeps ctrl+t, which was always its
+        // primary; nothing lost a sole binding.
+        $this->assertSame(['ctrl+t'], $defaults['ide_toggle_focus']);
+        $this->assertSame(['f2'], $defaults['next_problem']);
+        $this->assertSame(['shift+f2'], $defaults['prev_problem']);
         $this->assertArrayNotHasKey('cursor_up', $defaults);
     }
 

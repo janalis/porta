@@ -7,6 +7,7 @@ namespace Porta\Command;
 use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
 use Porta\Editor\BufferService;
+use Porta\Editor\DiagnosticNavigation;
 use Porta\Lsp\NavigationController;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\SearchActions;
@@ -19,6 +20,7 @@ final class SearchCommands implements CommandProvider
 {
     public function __construct(
         private readonly SearchActions $searchActions,
+        private readonly DiagnosticNavigation $diagnostics,
         #[Autowire(service: 'porta.go_to_symbol')]
         private readonly SearchEverywhereController $goToSymbol,
         private readonly BufferService $bufferService,
@@ -30,6 +32,8 @@ final class SearchCommands implements CommandProvider
     {
         $commands
             ->add('ide_problems', fn () => $this->searchActions->showProblems(), keyBound: KeyDispatch::Bound)
+            ->add('next_problem', fn () => $this->diagnostics->next(), keyBound: KeyDispatch::Bound)
+            ->add('prev_problem', fn () => $this->diagnostics->previous(), keyBound: KeyDispatch::Bound)
             ->add('ide_structure', fn () => $this->navigation->requestStructurePanel(), keyBound: KeyDispatch::Bound)
             ->add('ide_find_in_project', fn () => $this->searchActions->openProjectSearch(), keyBound: KeyDispatch::Bound)
             ->add(

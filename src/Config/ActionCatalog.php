@@ -134,6 +134,8 @@ final class ActionCatalog
         'ide_goto_symbol' => ['label' => 'Go to Symbol in Project', 'keys' => ['ctrl+alt+shift+n', 'ctrl+alt+o']],
         'ide_goto_test' => ['label' => 'Go to Test', 'keys' => ['ctrl+shift+t']],
         'ide_problems' => ['label' => 'Show Problems', 'keys' => ['alt+6']],
+        'next_problem' => ['label' => 'Next Problem', 'keys' => ['f2']],
+        'prev_problem' => ['label' => 'Previous Problem', 'keys' => ['shift+f2']],
         // Alt+2 is PhpStorm's Bookmarks tool window, beside Alt+1's project tree.
         'toggle_bookmark' => ['label' => 'Toggle Bookmark', 'keys' => ['f11']],
         'ide_bookmarks' => ['label' => 'Show Bookmarks', 'keys' => ['alt+2']],
@@ -231,7 +233,7 @@ final class ActionCatalog
         'tree_select_opened_file' => ['label' => 'Select Opened File in Tree', 'keys' => ['alt+f1']],
         // Application
         'ide_quit' => ['label' => 'Quit', 'keys' => ['ctrl+q']],
-        'ide_toggle_focus' => ['label' => 'Switch Tree / Editor Focus', 'keys' => ['ctrl+t', 'f2']],
+        'ide_toggle_focus' => ['label' => 'Switch Tree / Editor Focus', 'keys' => ['ctrl+t']],
         // Alt+1 is PhpStorm's Project tool window, completing the numbering the
         // dock tools already use (Alt+6 Problems, Alt+7 Structure, Alt+8 TODO).
         'ide_project_tree' => ['label' => 'Focus Project Tree', 'keys' => ['alt+1']],
