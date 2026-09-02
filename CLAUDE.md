@@ -21,6 +21,11 @@ composer coverage:check              composer container
 Always invoke the gates through the composer scripts. Capture their output rather than
 paging it: `composer analyze > /tmp/x.log 2>&1; echo "exit=$?"`.
 
+On a shared machine throttle the parallel ones — they take every core, and the E2e
+suites fail for load rather than cause: `PORTA_TEST_PROCESSES=4 nice -n 10 composer
+test` (also `PORTA_MUTATE_THREADS`). Defaults are unchanged, so CI is unaffected;
+`contributing.md` has the numbers.
+
 ## Definition of done — every commit passes all six
 
 - `composer test` — green.

@@ -6,7 +6,7 @@ The commands, the gates every commit must pass, and the house conventions.
 
 ```bash
 composer dev            # run the IDE (bin/porta)
-composer test           # full suite, paratest, ~40s
+composer test           # full suite, paratest, ~40s (every core — see throttling below)
 composer test:serial    # plain phpunit — ordering, races, leak reports
 composer analyze        # mago static analysis
 composer coverage:check # the suite with coverage, 100% enforced
@@ -16,6 +16,29 @@ composer format         # mago format (apply)
 composer format:check   # mago format --check
 composer container      # kernel-less debug:container
 ```
+
+### Throttling on a shared machine
+
+`composer test` and `composer coverage:check` run paratest at `--processes=auto`
+— one worker per core — and `composer mutate` runs Infection at `--threads=max`.
+On a box that is also running CI runners, containers or another agent, that
+oversubscribes badly and the E2e suites start failing for load rather than for
+cause.
+
+Both read an env var, defaulting to the full-speed value so CI is unchanged:
+
+| var | default | used by |
+| --- | --- | --- |
+| `PORTA_TEST_PROCESSES` | `auto` | `composer test`, `composer coverage:check` |
+| `PORTA_MUTATE_THREADS` | `max` | `composer mutate` |
+
+```bash
+PORTA_TEST_PROCESSES=4 nice -n 10 composer test
+```
+
+Measured on a 16-core machine: ~20s at `auto`, ~2m45s at 4. `nice` costs nothing
+when the box is idle and yields the CPU when it is not, so it is worth adding
+even at full parallelism.
 
 `composer container` takes flags after `--`: `--loaded`, `--tag=<name>`,
 `--aliases`.
