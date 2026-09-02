@@ -196,6 +196,49 @@ final class RefactorControllerTest extends TestCase
         $this->assertSame(['line' => 1, 'character' => 3], $params['range']['end']);
     }
 
+    /**
+     * The range was round 2's bug and is asserted three ways above — but a
+     * request that names no DOCUMENT is just as silently useless, and nothing
+     * covered it. Infection found this by deleting the key with every test
+     * still green.
+     */
+    public function testTheRequestNamesTheDocumentItIsAbout(): void
+    {
+        [$controller] = $this->ready();
+
+        $controller->requestCodeActions(1, 0);
+
+        $params = end($this->client->requests)['params'];
+        $this->assertSame(['uri' => 'file:///tmp/proj/a.php'], $params['textDocument']);
+    }
+
+    /**
+     * The three ways a code-action answer can be nothing, each of which must
+     * flash rather than open an empty picker. They are separate arms of one
+     * guard, so a test for only one of them leaves the others free to invert.
+     *
+     * @param mixed $result
+     */
+    #[DataProvider('emptyAnswers')]
+    public function testEveryShapeOfEmptyAnswerFlashesInsteadOfOpeningAPicker(mixed $result, ?array $error): void
+    {
+        [$controller] = $this->ready();
+        $controller->requestCodeActions(1, 0);
+
+        end($this->client->requests)['respond']($result, error: $error);
+
+        $this->assertStringContainsString('No quick fixes here', $this->flashed());
+    }
+
+    /** @return \Generator<string, array{mixed, array<string, mixed>|null}> */
+    public static function emptyAnswers(): \Generator
+    {
+        yield 'a transport error' => [[['title' => 'Never shown']], ['code' => -32_603, 'message' => 'boom']];
+        yield 'a non-array result' => [null, null];
+        yield 'an empty list' => [[], null];
+        yield 'only untitled actions' => [[['kind' => 'quickfix']], null];
+    }
+
     /** @return \Generator<string, array{string, list<string>|null}> */
     public static function entryPoints(): \Generator
     {
