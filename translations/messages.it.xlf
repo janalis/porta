@@ -926,6 +926,22 @@
         <source>Focus Project Tree</source>
         <target>Attiva l'albero del progetto</target>
       </trans-unit>
+      <trans-unit id="700">
+        <source>Refused: %reason% — nothing was changed</source>
+        <target>Rifiutato: %reason% — nulla è stato modificato</target>
+      </trans-unit>
+      <trans-unit id="701">
+        <source>Applied to %count% file, %skipped% could not be written|Applied to %count% files, %skipped% could not be written</source>
+        <target>Applicato a %count% file, %skipped% non scrivibili|Applicato a %count% file, %skipped% non scrivibili</target>
+      </trans-unit>
+      <trans-unit id="710">
+        <source>Refactor This</source>
+        <target>Rifattorizza</target>
+      </trans-unit>
+      <trans-unit id="711">
+        <source>Inline</source>
+        <target>Incorpora</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>Cambia fuoco albero / editor</target>

@@ -83,6 +83,8 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `Alt+F7` | Find usages |
 | `Shift+F6` | Rename symbol (cross-file `WorkspaceEdit`) |
 | `Alt+Enter` | Quick fixes / code actions |
+| `Ctrl+Alt+Shift+T` | Refactor This |
+| `Ctrl+Alt+N` | Inline |
 | `Shift+F1` | Quick documentation |
 | `Ctrl+F12` | File structure popup |
 | `Alt+7` | Structure panel (persistent, on the dock) |

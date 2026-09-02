@@ -926,6 +926,22 @@
         <source>Focus Project Tree</source>
         <target>מיקוד בעץ הפרויקט</target>
       </trans-unit>
+      <trans-unit id="700">
+        <source>Refused: %reason% — nothing was changed</source>
+        <target>נדחה: %reason% — דבר לא שונה</target>
+      </trans-unit>
+      <trans-unit id="701">
+        <source>Applied to %count% file, %skipped% could not be written|Applied to %count% files, %skipped% could not be written</source>
+        <target>הוחל על קובץ %count%, לא ניתן היה לכתוב %skipped%|הוחל על %count% קבצים, לא ניתן היה לכתוב %skipped%</target>
+      </trans-unit>
+      <trans-unit id="710">
+        <source>Refactor This</source>
+        <target>שינוי מבנה</target>
+      </trans-unit>
+      <trans-unit id="711">
+        <source>Inline</source>
+        <target>הטמעה</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>החלף מיקוד עץ / עורך</target>

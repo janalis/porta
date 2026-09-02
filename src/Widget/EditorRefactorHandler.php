@@ -17,6 +17,12 @@ interface EditorRefactorHandler
     /** Quick fixes at (line, utf16 col). */
     public function requestCodeActions(int $line, int $col): void;
 
+    /** The `refactor` kinds alone — PhpStorm's "Refactor This". */
+    public function requestRefactorings(int $line, int $col): void;
+
+    /** `refactor.inline`, applied straight away when the server offers exactly one. */
+    public function requestInline(int $line, int $col): void;
+
     /** Reformat the whole file. */
     public function requestReformat(): void;
 }

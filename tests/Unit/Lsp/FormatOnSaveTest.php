@@ -19,6 +19,7 @@ use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -53,7 +54,7 @@ final class FormatOnSaveTest extends TestCase
         );
         $formatOnSave = new FormatOnSave(
             $this->pool,
-            new WorkspaceEditor(new BufferManager(), $editor, $this->pool),
+            new WorkspaceEditor(new BufferManager(), $editor, $this->pool, new EventDispatcher()),
             $editor,
             new Notifier(
                 $this->status = new StatusBarWidget(),

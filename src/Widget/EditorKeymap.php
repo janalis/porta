@@ -102,6 +102,12 @@ final class EditorKeymap
 
             'quick_doc' => ['shift+f1'], // plain F1 is the IDE-level docs browser
             'code_action' => ['alt+enter'],
+            // PhpStorm's Refactor This. Ctrl+Alt+M (extract method) is the
+            // phpantom plugin's fix command and Ctrl+F6 is focus_previous,
+            // so extraction is reached through this list rather than by
+            // taking a binding that is already someone's.
+            'refactor_this' => ['ctrl+alt+shift+t'],
+            'inline_refactoring' => ['ctrl+alt+n'],
             'file_structure' => ['ctrl+f12'],
             'peek_definition' => ['ctrl+shift+i'],
             'reformat' => ['ctrl+alt+l'],

@@ -93,7 +93,11 @@ rendered: `Tab` cycles the links, `Enter` or a click follows them, and
   `documentSymbol`, and go-to-symbol-in-project (`Ctrl+Alt+Shift+N`) via
   `workspace/symbol`, both fuzzy/live-filtered
 - **Refactoring & navigation via LSP**: quick fixes / code actions
-  (`Alt+Enter`, applying edits or running server commands), rename symbol
+  (`Alt+Enter`, applying edits, resolving deferred ones or running server
+  commands), **Refactor This** (`Ctrl+Alt+Shift+T`, the `refactor` kinds alone)
+  and **Inline** (`Ctrl+Alt+N`, applied straight away when the server offers
+  exactly one) — a selection is what the request asks about, so extract
+  refactorings are offered; rename symbol
   (`Shift+F6`, validated first via `prepareRename` — refuses positions the
   server won't rename), find usages (`Alt+F7`), quick documentation (`Shift+F1`),
   signature help while typing arguments, go to line (`Ctrl+G`),
@@ -197,6 +201,8 @@ The keymap follows PhpStorm wherever the terminal allows.
 | `Alt+6` | Problems panel (diagnostics across all open buffers) |
 | `Alt+Backspace` | Delete word backwards |
 | `Alt+Enter` | Quick fixes / code actions (via LSP) |
+| `Ctrl+Alt+Shift+T` | Refactor This — the refactorings the server offers here |
+| `Ctrl+Alt+N` | Inline (applied directly when there is only one) |
 | `Alt+F7` | Find usages (results panel) |
 | `Alt+J` | Add a caret at the next occurrence of the word |
 | `Alt+M` | Resolve the conflict under the caret (keep ours / theirs / both) |

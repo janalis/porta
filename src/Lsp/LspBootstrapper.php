@@ -48,14 +48,29 @@ final class LspBootstrapper
             },
             function (array $edit): bool {
                 /** @var array<string, mixed> $edit */
-                $count = $this->workspaceEditor->applyWorkspaceEdit($edit);
-                if ($count > 0) {
+                $outcome = $this->workspaceEditor->applyWorkspaceEdit($edit);
+                if ($outcome->isRefused()) {
                     $this->notifier->flash(
-                        $this->translator->trans('Applied server edit to %count% file|Applied server edit to %count% files', ['%count%' => $count]),
+                        $this->translator->trans('Refused: %reason% — nothing was changed', ['%reason%' => (string) $outcome->refused]),
+                    );
+
+                    return false;
+                }
+                if ([] !== $outcome->skipped) {
+                    $this->notifier->flash($this->translator->trans(
+                        'Applied to %count% file, %skipped% could not be written|Applied to %count% files, %skipped% could not be written',
+                        ['%count%' => $outcome->touched, '%skipped%' => \count($outcome->skipped)],
+                    ));
+
+                    return $outcome->touched > 0;
+                }
+                if ($outcome->touched > 0) {
+                    $this->notifier->flash(
+                        $this->translator->trans('Applied server edit to %count% file|Applied server edit to %count% files', ['%count%' => $outcome->touched]),
                     );
                 }
 
-                return $count > 0;
+                return $outcome->touched > 0;
             },
         );
     }

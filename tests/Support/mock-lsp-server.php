@@ -28,6 +28,10 @@ foreach (readFrames($in) as $message) {
                     // Advertised because the handler below answers it — and the
                     // client now skips hint requests for servers that stay silent.
                     'inlayHintProvider' => true,
+                    // resolveProvider, so the deferred code action below is
+                    // actually reachable: a client that does not resolve gets
+                    // an action with nothing in it.
+                    'codeActionProvider' => ['resolveProvider' => true],
                 ],
                 'serverInfo' => ['name' => 'mock-lsp'],
             ],
@@ -344,8 +348,27 @@ foreach (readFrames($in) as $message) {
                     'kind' => 'refactor',
                     'command' => ['title' => 'Generate method', 'command' => 'mock.generate', 'arguments' => [$uri]],
                 ],
+                // Deferred: the title now, the edit only on codeAction/resolve.
+                // This is what phpantom does for extract and inline, and what
+                // made an unresolving client silently apply nothing.
+                [
+                    'title' => 'Extract variable',
+                    'kind' => 'refactor.extract',
+                    'data' => ['handle' => 'extract-1'],
+                ],
             ],
         ]);
+    } elseif ('codeAction/resolve' === $method) {
+        $action = $message['params'];
+        $action['edit'] = [
+            'changes' => [
+                $lastUri ?? 'file:///tmp/x.php' => [[
+                    'range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 0]],
+                    'newText' => "\$extracted = 1;\n",
+                ]],
+            ],
+        ];
+        sendMessage($out, ['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => $action]);
     } elseif ('workspace/executeCommand' === $method) {
         sendMessage($out, ['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => null]);
         // Effect arrives as a server-initiated applyEdit, like phpactor

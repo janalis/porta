@@ -9,13 +9,31 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\Editor\EditorInvalidator;
 use Porta\Editor\SelectionMode;
+use Porta\Event\BufferRepointRequested;
 use Porta\Support\Files;
+use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Filesystem\Exception\IOException;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * Applies LSP WorkspaceEdit / TextEdit payloads to open buffers (and to files
  * on disk when not open). Shared by the rename/code-action feature controller
  * and by the server-initiated {@see workspace/applyEdit} handler.
+ *
+ * Two rules earn their keep here, and both are about not lying to the user.
+ *
+ * **Resource operations are all-or-nothing.** A server-side "extract to new
+ * class" sends a `CreateFile` beside the edits that point at it. Dropping the
+ * operation and applying the edits leaves references rewritten to a file that
+ * was never created — a half-applied refactoring, reported as a success. So the
+ * operations are validated FIRST against a simulated view of the tree, and one
+ * that cannot be honoured refuses the whole edit. That is the `failureHandling:
+ * "abort"` the client advertises.
+ *
+ * **Text edits stay tolerant, but are counted honestly.** Refusing a 20-file
+ * rename because one file is read-only would be worse than doing the other 19;
+ * those files are skipped and NAMED in the outcome instead of quietly vanishing
+ * from the count.
  */
 #[AsIdeService]
 final readonly class WorkspaceEditor
@@ -24,61 +42,276 @@ final readonly class WorkspaceEditor
         private BufferManager $buffers,
         private EditorInvalidator $editor,
         private LspSessionPool $lsp,
+        private EventDispatcherInterface $events,
         private Filesystem $fs = new Filesystem(),
     ) {}
 
     /**
-     * Apply a WorkspaceEdit (either the `changes` map or `documentChanges`),
-     * returning the number of files touched. Open buffers are edited in place
-     * and re-synced to the server; closed, writable files are edited on disk.
+     * Apply a WorkspaceEdit. `documentChanges` wins outright when present — the
+     * spec's rule, and merging both would double-apply anything a server sends
+     * in each for back-compat.
      *
      * @param array<string, mixed> $edit
      */
-    public function applyWorkspaceEdit(array $edit): int
+    public function applyWorkspaceEdit(array $edit): WorkspaceEditOutcome
     {
-        $byUri = [];
-        /** @var array<array-key, list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}>> $changes */
-        $changes = $edit['changes'] ?? [];
-        foreach ($changes as $uri => $edits) {
-            $byUri[$uri] = $edits;
+        /** @var list<array<string, mixed>> $documentChanges */
+        $documentChanges = \is_array($edit['documentChanges'] ?? null) ? $edit['documentChanges'] : [];
+        if ([] !== $documentChanges) {
+            return $this->applyDocumentChanges($documentChanges);
         }
-        /** @var list<array{textDocument?: array{uri?: string}, edits?: list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}>}> $documentChanges */
-        $documentChanges = $edit['documentChanges'] ?? [];
-        foreach ($documentChanges as $change) {
-            if (($change['textDocument']['uri'] ?? null) === null || ($change['edits'] ?? null) === null) {
-                continue;
-            }
 
-            $byUri[$change['textDocument']['uri']] = array_merge($byUri[$change['textDocument']['uri']] ?? [], $change['edits']);
+        /** @var array<array-key, list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}>> $changes */
+        $changes = \is_array($edit['changes'] ?? null) ? $edit['changes'] : [];
+        $touched = 0;
+        $skipped = [];
+        foreach ($changes as $uri => $edits) {
+            $this->editOne((string) $uri, $edits, $touched, $skipped);
+        }
+
+        return new WorkspaceEditOutcome($touched, $skipped);
+    }
+
+    /**
+     * The ordered form: resource operations and text edits interleave, and the
+     * order is the contract (a file is created before it is edited).
+     *
+     * @param list<array<string, mixed>> $changes
+     */
+    private function applyDocumentChanges(array $changes): WorkspaceEditOutcome
+    {
+        $refusal = $this->refuseUnhonourable($changes);
+        if (null !== $refusal) {
+            return new WorkspaceEditOutcome(0, [], $refusal);
         }
 
         $touched = 0;
-        foreach ($byUri as $uri => $edits) {
-            $target = Uri::toPath((string) $uri);
-            if (null === $target || [] === $edits) {
-                continue;
-            }
+        $skipped = [];
+        foreach ($changes as $change) {
+            $kind = \is_string($change['kind'] ?? null) ? $change['kind'] : '';
+            if ('' !== $kind) {
+                $this->applyResourceOperation($kind, $change);
 
-            $buffer = $this->buffers->get($target) ?? $this->buffers->get(($resolved = realpath($target)) ? $resolved : $target);
-            if (null !== $buffer) {
-                $this->applyTextEdits($buffer->document, $edits);
-                if ($buffer === $this->buffers->active()) {
-                    $this->editor->invalidate();
-                }
-                $this->lsp->notifyFullChange($buffer->path, $buffer->document);
-                ++$touched;
                 continue;
             }
-            $contents = Files::readWritable($target);
-            if (null !== $contents) {
-                $document = new Document($contents);
-                $this->applyTextEdits($document, $edits);
-                $this->fs->dumpFile($target, $document->getText());
-                ++$touched;
+            /** @var list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}> $edits */
+            $edits = \is_array($change['edits'] ?? null) ? $change['edits'] : [];
+            $uri = $this->stringOf($change['textDocument']['uri'] ?? null);
+            if (null !== $uri) {
+                $this->editOne($uri, $edits, $touched, $skipped);
             }
         }
 
-        return $touched;
+        return new WorkspaceEditOutcome($touched, $skipped);
+    }
+
+    /**
+     * Walk the operations against a simulated view of which paths exist, and
+     * return why the edit cannot be honoured — or null when it can. Simulated,
+     * because the answer for a later operation depends on the earlier ones: a
+     * file created by step 1 exists by step 3.
+     *
+     * @param list<array<string, mixed>> $changes
+     */
+    private function refuseUnhonourable(array $changes): ?string
+    {
+        /** @var array<string, bool> $exists path => is there, seeded lazily from disk */
+        $exists = [];
+        foreach ($changes as $change) {
+            $kind = \is_string($change['kind'] ?? null) ? $change['kind'] : '';
+            if ('' === $kind) {
+                continue;
+            }
+            /** @var array<string, mixed> $options */
+            $options = \is_array($change['options'] ?? null) ? $change['options'] : [];
+            $refusal = match ($kind) {
+                'create' => $this->refuseCreate($change, $options, $exists),
+                'rename' => $this->refuseRename($change, $options, $exists),
+                'delete' => $this->refuseDelete($change, $options, $exists),
+                default => \sprintf('unsupported operation "%s"', $kind),
+            };
+            if (null !== $refusal) {
+                return $refusal;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $change
+     * @param array<string, mixed> $options
+     * @param array<string, bool>  $exists
+     */
+    private function refuseCreate(array $change, array $options, array &$exists): ?string
+    {
+        $path = $this->pathOf($change['uri'] ?? null);
+        if (null === $path) {
+            return 'a file to create has no usable path';
+        }
+        if ($this->present($path, $exists) && true !== ($options['overwrite'] ?? null) && true !== ($options['ignoreIfExists'] ?? null)) {
+            return \sprintf('%s already exists', basename($path));
+        }
+        $exists[$path] = true;
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $change
+     * @param array<string, mixed> $options
+     * @param array<string, bool>  $exists
+     */
+    private function refuseRename(array $change, array $options, array &$exists): ?string
+    {
+        $from = $this->pathOf($change['oldUri'] ?? null);
+        $to = $this->pathOf($change['newUri'] ?? null);
+        if (null === $from || null === $to) {
+            return 'a file to rename has no usable path';
+        }
+        if (!$this->present($from, $exists)) {
+            return \sprintf('%s is not there to rename', basename($from));
+        }
+        if ($this->present($to, $exists) && true !== ($options['overwrite'] ?? null) && true !== ($options['ignoreIfExists'] ?? null)) {
+            return \sprintf('%s already exists', basename($to));
+        }
+        $exists[$from] = false;
+        $exists[$to] = true;
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $change
+     * @param array<string, mixed> $options
+     * @param array<string, bool>  $exists
+     */
+    private function refuseDelete(array $change, array $options, array &$exists): ?string
+    {
+        $path = $this->pathOf($change['uri'] ?? null);
+        if (null === $path) {
+            return 'a file to delete has no usable path';
+        }
+        if (!$this->present($path, $exists) && true !== ($options['ignoreIfNotExists'] ?? null)) {
+            return \sprintf('%s is not there to delete', basename($path));
+        }
+        $exists[$path] = false;
+
+        return null;
+    }
+
+    /** @param array<string, bool> $exists */
+    private function present(string $path, array $exists): bool
+    {
+        return $exists[$path] ?? file_exists($path);
+    }
+
+    private function pathOf(mixed $uri): ?string
+    {
+        $text = $this->stringOf($uri);
+
+        return null === $text ? null : Uri::toPath($text);
+    }
+
+    private function stringOf(mixed $value): ?string
+    {
+        return \is_string($value) ? $value : null;
+    }
+
+    /**
+     * Perform one operation. Validated already, so what remains is the doing —
+     * and the open buffer, which has to follow the file it is showing.
+     *
+     * @param array<string, mixed> $change
+     */
+    private function applyResourceOperation(string $kind, array $change): void
+    {
+        // Every path here was resolved and judged by refuseUnhonourable, which
+        // returned before any of this ran if one of them could not be — so the
+        // asserts are the contract, not a branch to test.
+        if ('create' === $kind) {
+            $path = $this->pathOf($change['uri'] ?? null);
+            \assert(null !== $path, description: 'a create with no usable path is refused before applying');
+            if (!file_exists($path)) {
+                $this->fs->dumpFile($path, '');
+            }
+
+            return;
+        }
+        if ('delete' === $kind) {
+            $path = $this->pathOf($change['uri'] ?? null);
+            \assert(null !== $path, description: 'a delete with no usable path is refused before applying');
+            $this->closeBufferAt($path);
+            $this->fs->remove($path);
+
+            return;
+        }
+        $from = $this->pathOf($change['oldUri'] ?? null);
+        $to = $this->pathOf($change['newUri'] ?? null);
+        \assert(null !== $from && null !== $to, description: 'a rename with no usable path is refused before applying');
+        $this->fs->rename($from, $to, overwrite: true);
+        // Dispatched rather than done here: re-opening needs BufferService,
+        // which reaches this class back through FormatOnSave. A command event
+        // is the sanctioned way out of a real container cycle, and this one is.
+        $this->events->dispatch(new BufferRepointRequested($from, $to));
+    }
+
+    private function bufferAt(string $path): ?\Porta\Editor\Buffer
+    {
+        return $this->buffers->get($path) ?? $this->buffers->get(($resolved = realpath($path)) ? $resolved : $path);
+    }
+
+    private function closeBufferAt(string $path): void
+    {
+        $buffer = $this->bufferAt($path);
+        if (null !== $buffer) {
+            $this->buffers->close($buffer->path);
+        }
+    }
+
+    /**
+     * Edit one file: the open buffer in place when there is one, else the file
+     * on disk. A file that cannot be written is NAMED, not dropped.
+     *
+     * @param list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}> $edits
+     * @param list<string>                                                                                                                  $skipped
+     */
+    private function editOne(string $uri, array $edits, int &$touched, array &$skipped): void
+    {
+        $target = Uri::toPath($uri);
+        if (null === $target || [] === $edits) {
+            return;
+        }
+
+        $buffer = $this->bufferAt($target);
+        if (null !== $buffer) {
+            $this->applyTextEdits($buffer->document, $edits);
+            if ($buffer === $this->buffers->active()) {
+                $this->editor->invalidate();
+            }
+            $this->lsp->notifyFullChange($buffer->path, $buffer->document);
+            ++$touched;
+
+            return;
+        }
+        $contents = Files::readWritable($target);
+        if (null === $contents) {
+            $skipped[] = $target;
+
+            return;
+        }
+        $document = new Document($contents);
+        $this->applyTextEdits($document, $edits);
+        try {
+            $this->fs->dumpFile($target, $document->getText());
+            ++$touched;
+        } catch (IOException) {
+            // The writability check passed and the write still failed (a full
+            // disk, a read-only mount, a race). Uncaught this escapes the LSP
+            // response callback into the event loop, with earlier files already
+            // written — so it is reported like any other unwritable file.
+            $skipped[] = $target;
+        }
     }
 
     /** @param list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText?: string}> $edits */

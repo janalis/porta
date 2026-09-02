@@ -124,6 +124,8 @@ final class EditorActionRouter
         return [
             'peek_definition' => static fn (EditorCallbacks $c, int $line, int $col) => $c->navigation?->requestPeek($line, $col),
             'code_action' => static fn (EditorCallbacks $c, int $line, int $col) => $c->refactor?->requestCodeActions($line, $col),
+            'refactor_this' => static fn (EditorCallbacks $c, int $line, int $col) => $c->refactor?->requestRefactorings($line, $col),
+            'inline_refactoring' => static fn (EditorCallbacks $c, int $line, int $col) => $c->refactor?->requestInline($line, $col),
             'quick_doc' => static fn (EditorCallbacks $c, int $line, int $col) => $c->navigation?->requestHover($line, $col),
             'find_usages' => static fn (EditorCallbacks $c, int $line, int $col) => $c->navigation?->requestReferences($line, $col),
             'call_hierarchy' => static fn (EditorCallbacks $c, int $line, int $col) => $c->navigation?->requestCallHierarchy($line, $col),

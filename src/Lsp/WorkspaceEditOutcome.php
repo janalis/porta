@@ -1,0 +1,34 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Lsp;
+
+/**
+ * What applying a {@see WorkspaceEditor} payload actually did.
+ *
+ * A bare count was not enough to tell the truth: a file that could not be
+ * written was dropped from it silently, so "Renamed in 3 files" could mean two
+ * files renamed and one left behind. The three callers each report differently,
+ * which is what earns this a type rather than an int.
+ */
+final readonly class WorkspaceEditOutcome
+{
+    /**
+     * @param int                 $touched files actually edited
+     * @param list<string>        $skipped files named by the edit that could not be written (missing, read-only)
+     * @param string|null         $refused when set, NOTHING was applied — a resource operation the edit
+     *                                     required could not be honoured, and half of it is worse than none
+     */
+    public function __construct(
+        public int $touched,
+        public array $skipped = [],
+        public ?string $refused = null,
+    ) {}
+
+    /** The whole edit was declined; the workspace is untouched. */
+    public function isRefused(): bool
+    {
+        return null !== $this->refused;
+    }
+}

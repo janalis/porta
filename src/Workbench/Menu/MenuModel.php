@@ -83,6 +83,8 @@ final class MenuModel
         'Code' => [
             'e:trigger_completion',
             'e:code_action',
+            'e:refactor_this',
+            'e:inline_refactoring',
             self::SEP,
             'e:expand_selection',
             'e:shrink_selection',

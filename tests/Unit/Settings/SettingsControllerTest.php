@@ -546,7 +546,7 @@ final class SettingsControllerTest extends TestCase
 
         return new FormatOnSave(
             $pool,
-            new WorkspaceEditor(new BufferManager(), $editor, $pool),
+            new WorkspaceEditor(new BufferManager(), $editor, $pool, new EventDispatcher()),
             $editor,
             new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
             new Translator('en'),

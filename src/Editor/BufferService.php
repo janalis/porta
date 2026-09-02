@@ -9,6 +9,7 @@ use Porta\Config\EditorConfig\EditorConfigResolver;
 use Porta\Container\AsIdeService;
 use Porta\Container\LayoutSlot;
 use Porta\Event\BufferOpened;
+use Porta\Event\BufferRepointRequested;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
 use Porta\Event\DiagnosticsChanged;
@@ -88,6 +89,28 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
     public function onTreeFileActivated(TreeFileActivated $event): void
     {
         $this->openFile($event->path, focus: OpenFocus::Editor);
+    }
+
+    /**
+     * A refactoring renamed a file that was open. Close the stale buffer and
+     * open the new path, keeping focus where it was — a rename buried inside a
+     * refactoring must not yank the user to another file. A buffer left on the
+     * old path would recreate the file on its next save, undoing half the
+     * refactoring.
+     */
+    #[AsEventListener]
+    public function onBufferRepointRequested(BufferRepointRequested $event): void
+    {
+        // realpath() the DIRECTORY, not the file: by the time this runs the
+        // rename has already happened, so the old path no longer resolves —
+        // and buffers were keyed by the canonical path when they opened.
+        $directory = realpath(\dirname($event->from));
+        $from = false === $directory ? $event->from : $directory.\DIRECTORY_SEPARATOR.basename($event->from);
+        if (!$this->buffers->has($from)) {
+            return;
+        }
+        $this->buffers->close($from);
+        $this->openFile($event->to);
     }
 
     #[\Override]

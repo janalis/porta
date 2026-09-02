@@ -44,6 +44,34 @@ foreach (readFrames($in) as $message) {
         $sentRequests = true;
         sendMessage($out, ['jsonrpc' => '2.0', 'id' => 1001, 'method' => 'workspace/configuration', 'params' => ['items' => [['section' => 'php']]]]);
         sendMessage($out, ['jsonrpc' => '2.0', 'id' => 1002, 'method' => 'workspace/applyEdit', 'params' => ['edit' => ['changes' => []]]]);
+        // A resource operation the client cannot honour: it must refuse the
+        // whole edit and answer `applied: false`, not half-apply it.
+        sendMessage($out, [
+            'jsonrpc' => '2.0',
+            'id' => 1007,
+            'method' => 'workspace/applyEdit',
+            'params' => [
+                'edit' => [
+                    'documentChanges' => [['kind' => 'delete', 'uri' => 'file:///definitely/not/here.php']],
+                ],
+            ],
+        ]);
+        // And an edit naming a file it cannot write: applied to nothing, and
+        // the skip reported rather than dropped from the count.
+        sendMessage($out, [
+            'jsonrpc' => '2.0',
+            'id' => 1008,
+            'method' => 'workspace/applyEdit',
+            'params' => [
+                'edit' => [
+                    'changes' => [
+                        'file:///definitely/not/here.php' => [
+                            ['range' => ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 0]], 'newText' => 'x'],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
         sendMessage($out, ['jsonrpc' => '2.0', 'id' => 1003, 'method' => 'mock/unknownRequest', 'params' => []]);
         sendMessage($out, ['jsonrpc' => '2.0', 'id' => 1005, 'method' => 'window/workDoneProgress/create', 'params' => ['token' => 't']]);
         sendMessage($out, ['jsonrpc' => '2.0', 'id' => 1006, 'method' => 'client/registerCapability', 'params' => ['registrations' => []]]);

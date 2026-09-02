@@ -149,6 +149,16 @@ final class EditorActionRouterTest extends TestCase
                 $this->recording[] = "code_action:{$line}:{$col}";
             }
 
+            public function requestRefactorings(int $line, int $col): void
+            {
+                $this->recording[] = "refactor_this:{$line}:{$col}";
+            }
+
+            public function requestInline(int $line, int $col): void
+            {
+                $this->recording[] = "inline_refactoring:{$line}:{$col}";
+            }
+
             public function requestReformat(): void
             {
                 $this->recording[] = 'reformat';

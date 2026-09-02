@@ -163,6 +163,32 @@ you", and directories are never marked.
 expands the tree down to the file you are editing, selects it and moves focus
 there, so you can carry on navigating from where the caret already was.
 
+## Refactoring
+
+Porta does not implement refactorings; it asks the language server for the ones
+it has and applies what comes back. What that needs, and now does:
+
+- **A selection is what the request asks about.** `refactor.extract` needs a real
+  range — a caret point can never be one — so select the expression or block
+  first, then `Alt+Enter` or `Ctrl+Alt+Shift+T`.
+- **Refactor This** (`Ctrl+Alt+Shift+T`) narrows the list to `refactor` kinds;
+  `Alt+Enter` keeps everything, quick fixes included. **Inline** (`Ctrl+Alt+N`)
+  applies straight away when the server offers exactly one, and asks when it
+  offers several. Extract stays a list, because servers publish variable,
+  constant and method behind one `refactor.extract` kind.
+- **Deferred edits are resolved.** A server may answer with a title and hold the
+  edit back until `codeAction/resolve` — phpantom does this for extract and
+  inline. Those actions used to appear and do nothing.
+- **File operations are all or nothing.** A refactoring that creates, renames or
+  deletes files (extract to a new class, move a class) is applied whole or
+  refused whole, and the refusal says why. Half of one — references rewritten to
+  a file that was never created — is worse than none. A rename takes the open
+  buffer with it.
+
+The two bundled PHP servers differ in what they offer: phpantom publishes
+`refactor.extract`, `refactor.inline` and `source.organizeImports`; phpactor
+publishes a longer list of narrower kinds. Both are reached the same way.
+
 ## Merge conflicts
 
 Jump between `<<<<<<<`/`=======`/`>>>>>>>` regions (`F7` / `Shift+F7`,

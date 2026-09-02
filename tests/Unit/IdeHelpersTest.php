@@ -12,6 +12,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\Document;
 use Porta\Editor\OpenFocus;
+use Porta\Event\BufferRepointRequested;
 use Porta\History\SessionRestorer;
 use Porta\Ide;
 use Porta\Lsp\LspMapper;
@@ -312,7 +313,8 @@ final class IdeHelpersTest extends TestCase
             ],
         ]);
 
-        $this->assertSame(1, $count);
+        $this->assertSame(1, $count->touched);
+        $this->assertSame(['/does/not/exist.php'], $count->skipped, 'a named file that could not be written is reported, not dropped from the count');
         $this->assertStringContainsString('class Renamed', (string) file_get_contents($onDisk));
     }
 
@@ -333,7 +335,7 @@ final class IdeHelpersTest extends TestCase
             ],
         ]);
 
-        $this->assertSame(1, $count);
+        $this->assertSame(1, $count->touched);
         $this->assertStringContainsString('xyz', (string) file_get_contents($onDisk));
     }
 
@@ -342,7 +344,7 @@ final class IdeHelpersTest extends TestCase
         $onDisk = $this->project->write('src/Empty.php', "abc\n");
         $uri = 'file://'.implode('/', array_map(rawurlencode(...), explode('/', $onDisk)));
 
-        $this->assertSame(0, $this->workspaceEditor()->applyWorkspaceEdit(['changes' => [$uri => []]]));
+        $this->assertSame(0, $this->workspaceEditor()->applyWorkspaceEdit(['changes' => [$uri => []]])->touched);
     }
 
     public function testApplyCodeActionWithNoEffect(): void
@@ -858,5 +860,43 @@ final class IdeHelpersTest extends TestCase
         // way; it is a PLUGIN pane now, and that its handler arrives at all is
         // pinned where the plugin is loaded (IdeImageViewerTest).
         $this->addToAssertionCount(1);
+    }
+
+    /**
+     * A refactoring that renames a file out from under an open buffer. Left
+     * alone, the buffer keeps the old path and its next save recreates the file
+     * the refactoring just moved — undoing half of it.
+     *
+     * The re-point travels as a command event because doing it inside
+     * WorkspaceEditor needs BufferService, which reaches WorkspaceEditor back
+     * through FormatOnSave.
+     */
+    public function testARenamedFileCarriesItsOpenBufferWithIt(): void
+    {
+        $service = Services::resolve($this->ide, BufferService::class);
+        $buffers = Services::resolve($this->ide, BufferManager::class);
+        $old = $this->project->write('Before.php', "<?php\n");
+        $new = $this->project->path('After.php');
+        $service->openFile($old);
+        $this->assertTrue($buffers->has((string) realpath($old)));
+
+        rename($old, $new);
+        $service->onBufferRepointRequested(new BufferRepointRequested($old, $new));
+
+        $paths = array_map(static fn ($buffer) => $buffer->path, $buffers->all());
+        $this->assertNotContains((string) realpath(\dirname($old)).'/Before.php', $paths, 'the stale buffer is gone');
+        $this->assertContains((string) realpath($new), $paths, 'and the new path is open in its place');
+    }
+
+    /** A rename of a file nobody had open has no buffer to move. */
+    public function testARepointForAFileWithNoBufferIsANoOp(): void
+    {
+        $service = Services::resolve($this->ide, BufferService::class);
+        $buffers = Services::resolve($this->ide, BufferManager::class);
+        $before = \count($buffers->all());
+
+        $service->onBufferRepointRequested(new BufferRepointRequested($this->project->path('never-open.php'), $this->project->path('elsewhere.php')));
+
+        $this->assertCount($before, $buffers->all());
     }
 }

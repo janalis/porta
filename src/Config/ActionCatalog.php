@@ -123,6 +123,8 @@ final class ActionCatalog
         'find_usages' => ['label' => 'Find Usages'],
         'call_hierarchy' => ['label' => 'Call Hierarchy'],
         'code_action' => ['label' => 'Show Quick Fixes'],
+        'refactor_this' => ['label' => 'Refactor This'],
+        'inline_refactoring' => ['label' => 'Inline'],
         'file_structure' => ['label' => 'File Structure'],
         'peek_definition' => ['label' => 'Peek Definition'],
         'reformat' => ['label' => 'Reformat File'],

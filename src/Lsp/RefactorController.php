@@ -21,6 +21,9 @@ use Symfony\Component\Tui\Tui;
 #[AsIdeService]
 final class RefactorController extends AbstractLspController implements EditorRefactorHandler
 {
+    /** CodeActionTriggerKind.Invoked — the user asked, rather than the editor polling as they type. */
+    private const int TRIGGER_INVOKED = 1;
+
     public function __construct(
         LspSessionPool $lsp,
         CodeEditorWidget $editor,
@@ -83,8 +86,8 @@ final class RefactorController extends AbstractLspController implements EditorRe
                     return;
                 }
                 /** @var array<string, mixed> $result */
-                $fileCount = $this->workspaceEditor->applyWorkspaceEdit($result);
-                $this->flash($this->trans('Renamed in %count% file|Renamed in %count% files', ['%count%' => $fileCount]));
+                $outcome = $this->workspaceEditor->applyWorkspaceEdit($result);
+                $this->flash($this->report($outcome, $this->trans('Renamed in %count% file|Renamed in %count% files', ['%count%' => $outcome->touched])));
             },
         );
     }
@@ -92,17 +95,130 @@ final class RefactorController extends AbstractLspController implements EditorRe
     #[\Override]
     public function requestCodeActions(int $line, int $col): void
     {
+        $this->requestActions($line, $col, only: null, present: function (array $actions): void {
+            $this->pick($this->trans('Quick Fixes'), $actions);
+        });
+    }
+
+    /**
+     * PhpStorm's "Refactor This": the same request narrowed to `refactor` kinds,
+     * so the list is what you can restructure rather than everything the server
+     * can say about this position.
+     */
+    #[\Override]
+    public function requestRefactorings(int $line, int $col): void
+    {
+        $this->requestActions($line, $col, only: ['refactor'], present: function (array $actions): void {
+            $this->pick($this->trans('Refactor This'), $actions);
+        });
+    }
+
+    /**
+     * Inline is the one refactoring servers name precisely enough to run without
+     * asking which one you meant, so a single answer applies straight away —
+     * `refactor.extract` stays a picker because it covers variable, constant and
+     * method behind one kind.
+     */
+    #[\Override]
+    public function requestInline(int $line, int $col): void
+    {
+        $this->requestActions($line, $col, only: ['refactor.inline'], present: function (array $actions): void {
+            if (1 === \count($actions)) {
+                $this->applyOrResolve($actions[0]);
+
+                return;
+            }
+            $this->pick($this->trans('Inline'), $actions);
+        });
+    }
+
+    /**
+     * One code-action request. `$only` narrows it to a kind hierarchy; `$present`
+     * decides what to do with what comes back, which is the difference between
+     * the three entry points above.
+     *
+     * @param list<string>|null                  $only
+     * @param \Closure(list<array<string, mixed>>): void $present
+     */
+    private function requestActions(int $line, int $col, ?array $only, \Closure $present): void
+    {
         if (null === ($path = $this->ready())) {
             return;
         }
 
-        // Use the diagnostic's range when the cursor line carries one, so
-        // servers offer their fix-this-problem actions.
-        $diagnostics = [];
-        $range = [
+        $diagnostics = $this->diagnosticsAt($line);
+        $context = ['diagnostics' => $diagnostics, 'triggerKind' => self::TRIGGER_INVOKED];
+        if (null !== $only) {
+            $context['only'] = $only;
+        }
+
+        $this->lsp->request(
+            'textDocument/codeAction',
+            [
+                'textDocument' => ['uri' => $this->uri($path)],
+                'range' => $this->actionRange($line, $col, $diagnostics),
+                'context' => $context,
+            ],
+            function (mixed $result, ?array $error) use ($present): void {
+                if (null !== $error || !\is_array($result) || [] === $result) {
+                    $this->flash($this->trans('No quick fixes here'));
+
+                    return;
+                }
+                /** @var list<array<string, mixed>> $actions */
+                $actions = array_values(array_filter($result, static fn ($a) => \is_array($a) && '' !== (string) ($a['title'] ?? '')));
+                if ([] === $actions) {
+                    $this->flash($this->trans('No quick fixes here'));
+
+                    return;
+                }
+                $present($this->preferredFirst($actions));
+                $this->tui->requestRender();
+            },
+        );
+    }
+
+    /**
+     * What the request is ABOUT. A selection wins outright — `refactor.extract`
+     * needs a real range and a caret point can never produce one, which is why
+     * extract could not be offered at all before. Otherwise a diagnostic on the
+     * line, so fix-this-problem actions still match, and otherwise the caret.
+     *
+     * @param list<array<string, mixed>> $diagnostics
+     *
+     * @return array{start: array{line: int, character: int}, end: array{line: int, character: int}}
+     */
+    private function actionRange(int $line, int $col, array $diagnostics): array
+    {
+        $doc = $this->editor->getDocument();
+        $selection = $doc->getSelectionRange();
+        if (null !== $selection) {
+            return [
+                'start' => ['line' => $selection['startLine'], 'character' => $doc->byteColToUtf16($selection['startLine'], $selection['startCol'])],
+                'end' => ['line' => $selection['endLine'], 'character' => $doc->byteColToUtf16($selection['endLine'], $selection['endCol'])],
+            ];
+        }
+        if ([] !== $diagnostics) {
+            /** @var array{start: array{line: int, character: int}, end: array{line: int, character: int}} */
+            return $diagnostics[\count($diagnostics) - 1]['range'];
+        }
+
+        return [
             'start' => ['line' => $line, 'character' => $col],
             'end' => ['line' => $line, 'character' => $col],
         ];
+    }
+
+    /**
+     * The caret line's diagnostics in LSP shape. `code` and `data` ride along
+     * when the server gave them: a server that matches its own fix by code sees
+     * nothing to match without them.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function diagnosticsAt(int $line): array
+    {
+        $diagnostics = [];
         foreach ($this->buffers->active()?->diagnostics[$line] ?? [] as $diag) {
             $endCol = $diag['endCol'] ?? \PHP_INT_MAX;
             $endCol = \PHP_INT_MAX === $endCol ? $diag['col'] + 1 : $endCol;
@@ -114,60 +230,131 @@ final class RefactorController extends AbstractLspController implements EditorRe
                 'severity' => $diag['severity'],
                 'message' => $diag['message'],
             ];
+            foreach (['code', 'source', 'data'] as $key) {
+                /** @var mixed $extra */
+                $extra = $diag[$key] ?? null;
+                if (null !== $extra) {
+                    $lspDiag[$key] = $extra;
+                }
+            }
             $diagnostics[] = $lspDiag;
-            $range = $lspDiag['range'];
         }
 
-        $this->lsp->request(
-            'textDocument/codeAction',
-            [
-                'textDocument' => ['uri' => $this->uri($path)],
-                'range' => $range,
-                'context' => ['diagnostics' => $diagnostics],
-            ],
-            function (mixed $result, ?array $error): void {
-                if (null !== $error || !\is_array($result) || [] === $result) {
-                    $this->flash($this->trans('No quick fixes here'));
-
-                    return;
-                }
-
-                /** @var list<array<string, mixed>> $actions */
-                $actions = array_values(array_filter($result, static fn ($a) => \is_array($a) && '' !== (string) ($a['title'] ?? '')));
-                $items = array_map(
-                    static fn (array $a, int $i) => [
-                        'label' => (string) $a['title'],
-                        'hint' => (string) ($a['kind'] ?? ''),
-                        'value' => (string) $i,
-                    ],
-                    $actions,
-                    array_keys($actions),
-                );
-
-                $this->editor->openListOverlay($this->trans('Quick Fixes'), $items, function (string $index) use ($actions): void {
-                    $this->applyCodeAction($actions[(int) $index] ?? []);
-                });
-                $this->tui->requestRender();
-            },
-        );
+        return $diagnostics;
     }
 
     /**
-     * Apply a CodeAction (edit and/or command) or a bare Command.
+     * The server's preferred action first, everything else in the order it sent.
+     * `usort` is stable, so this only lifts the preferred one.
+     *
+     * @param list<array<string, mixed>> $actions
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function preferredFirst(array $actions): array
+    {
+        usort($actions, static fn (array $a, array $b): int => (true === ($b['isPreferred'] ?? null) ? 1 : 0) <=> (true === ($a['isPreferred'] ?? null) ? 1 : 0));
+
+        return $actions;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $actions
+     */
+    private function pick(string $title, array $actions): void
+    {
+        $items = array_map(
+            static fn (array $a, int $i) => [
+                'label' => (string) $a['title'],
+                'hint' => self::kindLabel((string) ($a['kind'] ?? '')),
+                'value' => (string) $i,
+            ],
+            $actions,
+            array_keys($actions),
+        );
+
+        $this->editor->openListOverlay($title, $items, function (string $index) use ($actions): void {
+            $this->applyOrResolve($actions[(int) $index] ?? []);
+        });
+    }
+
+    /**
+     * The dim right-hand column. The raw LSP kind is a dotted identifier
+     * (`refactor.extract`, `quickfix.import_class`) — the family is the part
+     * worth reading, so only that is shown.
+     */
+    private static function kindLabel(string $kind): string
+    {
+        $family = strstr($kind, needle: '.', before_needle: true);
+
+        return false === $family ? $kind : $family;
+    }
+
+    /**
+     * A server may answer with the action's title and defer its edit
+     * ({@see resolveProvider}); phpantom does exactly that for extract and
+     * inline. Applying such an action without resolving it does nothing at all,
+     * which is what "has nothing to apply" used to mean.
      *
      * @param array<string, mixed> $action
      */
+    private function applyOrResolve(array $action): void
+    {
+        if (($action['edit'] ?? null) !== null || ($action['command'] ?? null) !== null || !$this->supportsResolve()) {
+            $this->applyCodeAction($action);
+
+            return;
+        }
+
+        $this->lsp->request('codeAction/resolve', $action, function (mixed $result, ?array $error) use ($action): void {
+            // Falling back to the unresolved action is deliberate: it flashes
+            // "nothing to apply", which is the truth when a resolve fails.
+            /** @var array<string, mixed> $resolved */
+            $resolved = null === $error && \is_array($result) ? $result : $action;
+            $this->applyCodeAction($resolved);
+        });
+    }
+
+    private function supportsResolve(): bool
+    {
+        /** @var array<string, mixed>|bool|null $capability LSP: boolean or a CodeActionOptions object */
+        $capability = $this->lsp->serverCapability($this->editor->getFilePath(), 'codeActionProvider');
+
+        return \is_array($capability) && true === ($capability['resolveProvider'] ?? null);
+    }
+
+    /**
+     * What to tell the user about an applied edit: the caller's own success
+     * wording when it all landed, and otherwise the truth. A refusal and a
+     * partial write are both things the count alone used to hide.
+     */
+    private function report(WorkspaceEditOutcome $outcome, string $success): string
+    {
+        if ($outcome->isRefused()) {
+            return $this->trans('Refused: %reason% — nothing was changed', ['%reason%' => (string) $outcome->refused]);
+        }
+        if ([] === $outcome->skipped) {
+            return $success;
+        }
+
+        return $this->trans(
+            'Applied to %count% file, %skipped% could not be written|Applied to %count% files, %skipped% could not be written',
+            ['%count%' => $outcome->touched, '%skipped%' => \count($outcome->skipped)],
+        );
+    }
+
     private function applyCodeAction(array $action): void
     {
         $applied = false;
         if (($action['edit'] ?? null) !== null) {
             /** @var array<string, mixed> $edit */
             $edit = $action['edit'];
-            $count = $this->workspaceEditor->applyWorkspaceEdit($edit);
+            $outcome = $this->workspaceEditor->applyWorkspaceEdit($edit);
             $title = (string) ($action['title'] ?? 'fix');
-            $this->flash(
-                $this->trans('Applied "%title%" to %count% file|Applied "%title%" to %count% files', ['%title%' => $title, '%count%' => $count]),
-            );
+            $this->flash($this->report(
+                $outcome,
+                $this->trans('Applied "%title%" to %count% file|Applied "%title%" to %count% files', ['%title%' => $title, '%count%' => $outcome->touched]),
+            ));
             $applied = true;
         }
 

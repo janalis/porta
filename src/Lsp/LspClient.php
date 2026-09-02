@@ -198,14 +198,51 @@ final class LspClient implements LspClientInterface
                 'rename' => ['prepareSupport' => true],
                 'signatureHelp' => ['signatureInformation' => ['documentationFormat' => ['plaintext']]],
                 'codeAction' => [
-                    'codeActionLiteralSupport' => ['codeActionKind' => ['valueSet' => ['quickfix', 'refactor', 'source']]],
+                    // The extract/inline families are named because a server
+                    // filters what it offers by what the client understands:
+                    // asking with only the three coarse kinds is asking not to
+                    // be told about them.
+                    'codeActionLiteralSupport' => [
+                        'codeActionKind' => ['valueSet' => [
+                            'quickfix',
+                            'refactor',
+                            'refactor.extract',
+                            'refactor.inline',
+                            'refactor.rewrite',
+                            'source',
+                            'source.organizeImports',
+                            'source.fixAll',
+                        ]],
+                    ],
+                    // phpantom answers extract and inline with the title alone
+                    // and the edit behind codeAction/resolve; without these an
+                    // action arrives with nothing in it and applying it is a
+                    // no-op.
+                    'resolveSupport' => ['properties' => ['edit']],
+                    'dataSupport' => true,
+                    'isPreferredSupport' => true,
                 ],
                 'documentSymbol' => ['hierarchicalDocumentSymbolSupport' => true],
                 'foldingRange' => ['lineFoldingOnly' => true],
                 'callHierarchy' => ['dynamicRegistration' => false],
                 'formatting' => ['dynamicRegistration' => false],
+                // Sent by requestReformat since before this was declared.
+                'rangeFormatting' => ['dynamicRegistration' => false],
             ],
-            'workspace' => ['configuration' => false, 'workspaceFolders' => true, 'symbol' => ['dynamicRegistration' => false]],
+            'workspace' => [
+                'configuration' => false,
+                'workspaceFolders' => true,
+                'symbol' => ['dynamicRegistration' => false],
+                'applyEdit' => true,
+                // Declared only because WorkspaceEditor honours them: a server
+                // told we handle resource operations will send them, and a
+                // client that then drops them half-applies the refactoring.
+                'workspaceEdit' => [
+                    'documentChanges' => true,
+                    'resourceOperations' => ['create', 'rename', 'delete'],
+                    'failureHandling' => 'abort',
+                ],
+            ],
         ];
     }
 

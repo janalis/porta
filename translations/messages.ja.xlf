@@ -926,6 +926,22 @@
         <source>Focus Project Tree</source>
         <target>プロジェクトツリーにフォーカス</target>
       </trans-unit>
+      <trans-unit id="700">
+        <source>Refused: %reason% — nothing was changed</source>
+        <target>拒否: %reason% — 変更はありません</target>
+      </trans-unit>
+      <trans-unit id="701">
+        <source>Applied to %count% file, %skipped% could not be written|Applied to %count% files, %skipped% could not be written</source>
+        <target>%count% 件のファイルに適用、%skipped% 件は書き込めません|%count% 件のファイルに適用、%skipped% 件は書き込めません</target>
+      </trans-unit>
+      <trans-unit id="710">
+        <source>Refactor This</source>
+        <target>リファクタリング</target>
+      </trans-unit>
+      <trans-unit id="711">
+        <source>Inline</source>
+        <target>インライン化</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>ツリー / エディターのフォーカスを切替</target>
