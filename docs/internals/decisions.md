@@ -513,3 +513,45 @@ Rejected, each with what would re-open it:
   suite a boot-time write into its shared fixture home. *Re-opens if* the
   default ever moves an existing user's writes without their asking — then the
   surprise is real again and has to be explained.
+
+## The PhpStorm-shaped UI round (2026-09)
+
+Seven features landed; two were measured and turned down.
+
+**Code vision (`textDocument/codeLens`) — rejected on where it has to live.**
+The assumption was that it is an inline decoration like an inlay hint. It is
+not: code vision is a virtual row ABOVE a declaration, and the row assembler
+maps screen row → document line with a walking cursor that sticky-header
+offsets, the marker stripe's per-row index, `FoldModel::docLineAtRow` /
+`screenRowFor`, click mapping and the scroll math all read. Every one of those
+would have to learn about rows that are not document lines — the deepest change
+available in the render path — to buy a "3 usages" line that costs a scarce
+terminal row and one LSP request per visible declaration. The gutter's fold
+triangles, the other half of the same idea, landed instead and cost one column.
+
+*Re-opens on:* the row assembler gaining a virtual-row concept for some other
+reason, at which point this is a small addition rather than the whole reason for
+the surgery.
+
+**Clickable `✗ N` / `▲ N` status-bar counts — rejected, and it is the same
+ground `statusCommands()` was rejected on.** `StatusCell` / `StatusMenuSpan`
+cover the LEFT prefix and RIGHT-click menus. The problem counts are in the right
+segment, which `StatusBarProvider` emits as a string and `StatusBarWidget`
+right-aligns at render — so their column spans cannot be computed where every
+other span is, and a left-click action is a second interaction kind beside the
+menu. A new span source plus a new semantic, for a third way to reach a panel
+that already has `Alt+6` and a View-menu entry. What reopened the original
+rejection was the branch cell, and that landed; nothing has asked for this.
+
+*Re-opens on:* a second right-segment cell wanting a click, which would make the
+span source pay for itself rather than existing for one consumer.
+
+**Two things that were NOT judgement calls and should not be re-litigated as
+if they were.** The fold gutter's first cut scanned the whole document on every
+rendered row, costing ~4 ms/frame per keystroke at 12k lines; it is a per-LINE
+question now (a line starts a region when it leaves a brace open), measured
+13.20 → 9.55 ms against a 9.22 baseline with no fold gutter at all. And the
+tree's marks are looked up in BOTH path spaces because core keys buffers by
+`realpath()` while the tree builds nodes from the raw root — on a symlinked root
+they disagree on every path, and a decoration looked up in the wrong space
+silently never appears.
