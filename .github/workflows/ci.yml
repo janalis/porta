@@ -109,6 +109,11 @@ jobs:
           restore-keys: phpunit-${{ matrix.name }}-
       - run: composer install --no-interaction --no-progress --classmap-authoritative
       - name: Tests
+        # A CI runner is ours alone, so take every core. The script defaults to
+        # HALF, which protects a developer machine sharing cores with runners,
+        # containers or another agent — see docs/internals/contributing.md.
+        env:
+          PORTA_TEST_PROCESSES: auto
         run: composer test
 
   coverage:
@@ -131,6 +136,8 @@ jobs:
       # Kept as its own run beside `tests`, not instead of it — testing.md's
       # flake doctrine reads their divergence as the machine-load tell.
       - name: Coverage gate (100% lines)
+        env:
+          PORTA_TEST_PROCESSES: auto
         run: composer coverage:check
       - name: Coverage report artifact
         if: always()

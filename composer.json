@@ -54,9 +54,9 @@
         "format:check": "mago format --check",
         "lint": "mago lint",
         "analyze": "mago analyze",
-        "test": "@php vendor/bin/paratest --processes=${PORTA_TEST_PROCESSES:-auto} --functional",
+        "test": "@php vendor/bin/paratest --processes=${PORTA_TEST_PROCESSES:-$(( ($(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) + 1) / 2 ))} --functional",
         "test:serial": "@php vendor/bin/phpunit --order-by=default",
-        "coverage": "@php -d pcov.enabled=1 -d pcov.directory=. -d pcov.exclude='#/(vendor|tests)/#' vendor/bin/paratest --processes=${PORTA_TEST_PROCESSES:-auto} --functional --passthru-php=\"'-d' 'pcov.enabled=1' '-d' 'pcov.directory=.' '-d' 'pcov.exclude=#/(vendor|tests)/#'\" --coverage-clover coverage/clover.xml",
+        "coverage": "@php -d pcov.enabled=1 -d pcov.directory=. -d pcov.exclude='#/(vendor|tests)/#' vendor/bin/paratest --processes=${PORTA_TEST_PROCESSES:-$(( ($(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) + 1) / 2 ))} --functional --passthru-php=\"'-d' 'pcov.enabled=1' '-d' 'pcov.directory=.' '-d' 'pcov.exclude=#/(vendor|tests)/#'\" --coverage-clover coverage/clover.xml",
         "coverage:plugins": "@php -d pcov.enabled=1 -d pcov.directory=. -d pcov.exclude='#/(vendor|tests)/#' vendor/bin/phpunit --testsuite Plugins --coverage-filter plugins --coverage-clover coverage/plugins-clover.xml",
         "coverage:check": [
             "@coverage",
@@ -68,7 +68,7 @@
         "container": "@php bin/porta-dev container",
         "mutate": [
             "@php -d pcov.enabled=1 vendor/bin/phpunit --testsuite=Unit --order-by=default --coverage-xml=coverage/infection/coverage-xml --log-junit=coverage/infection/junit.xml",
-            "@php vendor/bin/infection --coverage=coverage/infection --skip-initial-tests --git-diff-lines --git-diff-base=HEAD --threads=${PORTA_MUTATE_THREADS:-max} --test-framework-options='--testsuite=Unit --colors=never' --show-mutations"
+            "@php vendor/bin/infection --coverage=coverage/infection --skip-initial-tests --git-diff-lines --git-diff-base=HEAD --threads=${PORTA_MUTATE_THREADS:-$(( ($(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) + 1) / 2 ))} --test-framework-options='--testsuite=Unit --colors=never' --show-mutations"
         ]
     },
     "minimum-stability": "stable",

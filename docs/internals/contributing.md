@@ -19,21 +19,24 @@ composer container      # kernel-less debug:container
 
 ### Throttling on a shared machine
 
-`composer test` and `composer coverage:check` run paratest at `--processes=auto`
-— one worker per core — and `composer mutate` runs Infection at `--threads=max`.
-On a box that is also running CI runners, containers or another agent, that
-oversubscribes badly and the E2e suites start failing for load rather than for
-cause.
-
-Both read an env var, defaulting to the full-speed value so CI is unchanged:
+`composer test`, `composer coverage:check` and `composer mutate` **default to
+half the cores**, not all of them. A development box is usually also running CI
+runners, containers or another agent, and one worker per core oversubscribes it
+badly — the E2e suites then fail for load rather than for cause, which is the
+flake class `testing.md` describes.
 
 | var | default | used by |
 | --- | --- | --- |
-| `PORTA_TEST_PROCESSES` | `auto` | `composer test`, `composer coverage:check` |
-| `PORTA_MUTATE_THREADS` | `max` | `composer mutate` |
+| `PORTA_TEST_PROCESSES` | half the cores | `composer test`, `composer coverage:check` |
+| `PORTA_MUTATE_THREADS` | half the cores | `composer mutate` |
+
+**CI sets `PORTA_TEST_PROCESSES: auto` explicitly** (`.github/workflows/ci.yml`),
+because a runner is ours alone. Take every core on a machine nobody else is
+using, and say so where it is true rather than making it the default everywhere.
 
 ```bash
-PORTA_TEST_PROCESSES=4 nice -n 10 composer test
+PORTA_TEST_PROCESSES=4 nice -n 10 composer test   # busier than usual
+PORTA_TEST_PROCESSES=auto composer test           # the box is yours
 ```
 
 Measured on a 16-core machine: ~20s at `auto`, ~2m45s at 4. `nice` costs nothing
