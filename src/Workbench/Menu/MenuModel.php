@@ -116,6 +116,8 @@ final class MenuModel
         ],
         'View' => [
             'i:ide_problems',
+            'i:toggle_bookmark',
+            'i:ide_bookmarks',
             'i:ide_structure',
             'i:ide_todo',
             'i:ide_project_tree',

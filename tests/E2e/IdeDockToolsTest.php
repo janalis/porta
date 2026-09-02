@@ -9,6 +9,8 @@ use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferService;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\OpenFocus;
+use Porta\History\BookmarkPersistence;
+use Porta\History\BookmarkStore;
 use Porta\Ide;
 use Porta\Lsp\Uri;
 use Porta\Tests\Support\PreservesPath;
@@ -16,6 +18,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\Glyphs;
 use Porta\Widget\DockTabsWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockToolHandlers;
@@ -650,6 +653,60 @@ final class IdeDockToolsTest extends TestCase
 
                     $this->assertStringEndsWith('/a.php', (string) $tui->getById('editor')->getFilePath(), 'the default Enter opened the row');
                     $this->assertSame(1, $reruns, "the other tool's F5 did not fire");
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    /**
+     * The whole bookmark chain through a real Ide — the only thing that proves
+     * the gutter applier, the dock tool and the persistence file are wired to
+     * the keys at all. Every one of them passed its own unit test while
+     * nothing in the app constructed it.
+     */
+    public function testF11MarksALineInTheGutterAndTheBookmarksToolListsAndJumpsToIt(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n// remembered line\n// third\n", 'b.php' => "<?php\n// elsewhere\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal) use ($project): void {
+                    $editorScreen = static fn (): string => implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
+                    $tui->getById('editor')->getDocument()->setCursor(1, 0);
+                    $tui->handleInput("\x1b[23~"); // F11 → toggle bookmark
+                    $this->frame($tui);
+
+                    $this->assertStringContainsString(Glyphs::BOOKMARK, $editorScreen(), 'F11 painted the mark in the gutter');
+
+                    // Alt+2 opens the tool, showing the marked line's own text.
+                    $tui->handleInput("\x1b2");
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '// remembered line'));
+                },
+                320 => function ($tui, $terminal, $ide) use ($project): void {
+                    self::bufferService($ide)->openFile($project->path('b.php'), OpenFocus::Editor);
+                    $tui->tick();
+                    $tui->setFocus($tui->getById('results'));
+                    $tui->handleInput("\r");
+                    $tui->tick();
+
+                    $this->assertStringEndsWith('/a.php', (string) $tui->getById('editor')->getFilePath(), 'the row jumped back to the bookmarked file');
+                    $this->assertSame(1, $tui->getById('editor')->getDocument()->getCursorLine(), 'and to its line');
+                },
+                420 => function ($tui, $terminal, $ide) use ($project): void {
+                    // The mark outlives the session: teardown writes it, and a
+                    // fresh store reads back exactly what was marked.
+                    Services::resolve($ide, BookmarkPersistence::class)->save();
+                    $this->assertSame(
+                        // realpath, because that is the key a buffer carries —
+                        // the temp root is a symlink into /private on macOS.
+                        [realpath($project->path('a.php')) => [1]],
+                        new BookmarkStore($project->dir)->load(),
+                    );
                 },
             ],
         );

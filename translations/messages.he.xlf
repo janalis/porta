@@ -954,6 +954,18 @@
         <source>No outgoing calls found</source>
         <target>לא נמצאו קריאות יוצאות</target>
       </trans-unit>
+      <trans-unit id="730">
+        <source>Bookmarks</source>
+        <target>סימניות</target>
+      </trans-unit>
+      <trans-unit id="731">
+        <source>Show Bookmarks</source>
+        <target>הצג סימניות</target>
+      </trans-unit>
+      <trans-unit id="732">
+        <source>Toggle Bookmark</source>
+        <target>החלף סימנייה</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>החלף מיקוד עץ / עורך</target>

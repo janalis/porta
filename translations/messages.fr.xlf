@@ -954,6 +954,18 @@
         <source>No outgoing calls found</source>
         <target>Aucun appel sortant trouvé</target>
       </trans-unit>
+      <trans-unit id="730">
+        <source>Bookmarks</source>
+        <target>Signets</target>
+      </trans-unit>
+      <trans-unit id="731">
+        <source>Show Bookmarks</source>
+        <target>Afficher les signets</target>
+      </trans-unit>
+      <trans-unit id="732">
+        <source>Toggle Bookmark</source>
+        <target>Basculer le signet</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>Basculer le focus arborescence / éditeur</target>

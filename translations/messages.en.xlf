@@ -954,6 +954,18 @@
         <source>No outgoing calls found</source>
         <target>No outgoing calls found</target>
       </trans-unit>
+      <trans-unit id="730">
+        <source>Bookmarks</source>
+        <target>Bookmarks</target>
+      </trans-unit>
+      <trans-unit id="731">
+        <source>Show Bookmarks</source>
+        <target>Show Bookmarks</target>
+      </trans-unit>
+      <trans-unit id="732">
+        <source>Toggle Bookmark</source>
+        <target>Toggle Bookmark</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>Switch Tree / Editor Focus</target>

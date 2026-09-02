@@ -27,4 +27,6 @@ enum ResultsPanelMode
     case Notifications;
     /** The active file's symbols, indented by nesting (language server). */
     case Structure;
+    /** The lines you marked to come back to, across every file. */
+    case Bookmarks;
 }

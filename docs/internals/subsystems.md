@@ -277,6 +277,17 @@ exactly one tab, and tool tabs coexist: each Find-in-Project query, Problems,
 TODO, each Usages list, the logs, Local History — one strip tab apiece, closed
 only by its ×.
 
+**Bookmarks** (`F11` to toggle, `Alt+2` to list) is a tab like any other, and is
+the one core tool whose rows outlive their buffers. `Editor\Bookmarks` owns the
+marks — not the buffer, because closing a file must not silently discard them —
+`History\BookmarkStore` persists them to `.porta/bookmarks.json`, and
+`Editor\BookmarkRows` reads each row's text from the open buffer when there is
+one and **from disk otherwise**: a list of bare line numbers would be no help at
+all. Toggling refreshes a *standing* Bookmarks tab in place and never opens one,
+so marking a line cannot throw a panel over what you are reading. The gutter is
+painted only through `Editor\BookmarkDecorations::apply()`, the same applier the
+buffer switch uses, so it can be painted one way only.
+
 Instance identity is (mode, title). A plugin's contributed tab carries a **null**
 mode rather than a new enum case, because `findByMode()` returns the *first* tab
 in a mode, so a shared case would let a core caller clobber a contributed tab

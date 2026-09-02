@@ -134,6 +134,9 @@ final class ActionCatalog
         'ide_goto_symbol' => ['label' => 'Go to Symbol in Project', 'keys' => ['ctrl+alt+shift+n', 'ctrl+alt+o']],
         'ide_goto_test' => ['label' => 'Go to Test', 'keys' => ['ctrl+shift+t']],
         'ide_problems' => ['label' => 'Show Problems', 'keys' => ['alt+6']],
+        // Alt+2 is PhpStorm's Bookmarks tool window, beside Alt+1's project tree.
+        'toggle_bookmark' => ['label' => 'Toggle Bookmark', 'keys' => ['f11']],
+        'ide_bookmarks' => ['label' => 'Show Bookmarks', 'keys' => ['alt+2']],
         // PhpStorm's split, which Porta used to collapse onto the popup: Alt+7 is
         // the persistent Structure TOOL WINDOW, Ctrl+F12 the transient popup.
         'ide_structure' => ['label' => 'Structure', 'keys' => ['alt+7']],

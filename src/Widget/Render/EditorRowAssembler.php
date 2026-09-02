@@ -196,6 +196,7 @@ final readonly class EditorRowAssembler
             ($this->conditionalBreakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT_CONDITIONAL),
             ($this->breakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT),
             [] !== $lineDiags => $numStyle->apply(DiagnosticStyle::glyph(DiagnosticStyle::worst($lineDiags))),
+            $this->store->isBookmarked($lineIndex) => $this->styles->of(Role::TabAccent)->apply(Glyphs::BOOKMARK),
             default => ' ',
         };
         // The number label: empty when hidden (so str_pad to the 0-width column

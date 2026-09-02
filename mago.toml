@@ -132,11 +132,21 @@ excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server
 #                                sums the class. (Was 145 before git left
 #                                `src/`; 220 two rounds before that, 133 before
 #                                the graph viewer's click/drag-pan routing.)
-#   too-many-methods         97  Widget/CodeEditorWidget (was 208, a test file;
-#                                106 until mago 1.45, which counts the same
-#                                unchanged class as 97 — a counting change, not
-#                                a code change, and the only one of the nine
-#                                floors the 1.43 → 1.45 upgrade moved)
+#   too-many-methods         98  Widget/CodeEditorWidget. 97 until bookmarks
+#                                needed a setBookmarkLines() beside the
+#                                breakpoint one. THREE features in a row have
+#                                now hit this class's ceiling — semantic
+#                                highlights and live templates were both routed
+#                                around it (a container service read through an
+#                                object the widget already held; a query on an
+#                                existing handler interface) rather than move
+#                                the pin. A gutter decoration has no such route:
+#                                the widget IS the EditorDecorationSink. Read
+#                                that as the signal it is — the class is
+#                                saturated, and the next structural round should
+#                                look here first. (Was 208 when a test file held
+#                                the floor; 106 until mago 1.45 recounted the
+#                                same unchanged class as 97.)
 #   too-many-properties      32  Widget/CodeEditorWidget (round 8's
 #                                StylesDefault trait absorbed its $styles
 #                                field; FindInFilesModal sits at 32 too after
@@ -208,7 +218,7 @@ excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server
 # properties into Ui/Notifier trips too-many-properties and lint exits 1.
 [linter.rules]
 cyclomatic-complexity = { threshold = 144 }
-too-many-methods = { threshold = 97 }
+too-many-methods = { threshold = 98 }
 too-many-properties = { threshold = 32 }
 too-many-enum-cases = { threshold = 59 }
 excessive-parameter-list = { threshold = 22 }

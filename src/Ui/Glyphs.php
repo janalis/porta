@@ -29,6 +29,11 @@ final class Glyphs
     public const string LOGPOINT = '◇'; // a logpoint logs to the console instead of pausing
     public const string STOPPED_LINE = '▶';
 
+    // A bookmarked line. Lowest priority in the marker column — a breakpoint or
+    // a diagnostic on the same line is the more urgent thing to say — and
+    // shape-distinct from every glyph that can share that column.
+    public const string BOOKMARK = '◈';
+
     // Diagnostic severity (gutter, inline message prefix, status-bar counts).
     public const string SEVERITY_ERROR = '✗';
     public const string SEVERITY_WARNING = '▲'; // also SCROLL_UP — disjoint surfaces (message row vs strip edge)

@@ -40,6 +40,14 @@ interface EditorDecorationSink
      */
     public function setBreakpointLines(array $lines, array $conditionalLines = [], array $logpointLines = []): void;
 
+    /**
+     * The file's bookmarked lines (0-based) — the gutter's lowest-priority
+     * marker, since a breakpoint or a diagnostic on the same line matters more.
+     *
+     * @param list<int> $lines
+     */
+    public function setBookmarkLines(array $lines): void;
+
     /** Highlight (or clear) the debugger's stopped line. */
     public function setDebugLine(?int $line): void;
 

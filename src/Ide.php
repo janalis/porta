@@ -21,6 +21,7 @@ use Porta\Editor\OpenFocus;
 use Porta\Editor\PaneRegistrar;
 use Porta\Event\IdeReady;
 use Porta\Event\IdeShuttingDown;
+use Porta\History\BookmarkPersistence;
 use Porta\History\SessionRestorer;
 use Porta\I18n\Translator;
 use Porta\Input\InputDispatcher;
@@ -98,6 +99,7 @@ final class Ide
     private LspBootstrapper $lspBootstrapper;
     private SessionRestorer $sessionRestorer;
     private DebugStatePersistence $debugState;
+    private BookmarkPersistence $bookmarkState;
 
     private Renderer $renderer;
     private MenuRebuilder $menuRebuilder;
@@ -198,6 +200,7 @@ final class Ide
         $this->lspBootstrapper = $this->service(LspBootstrapper::class);
         $this->sessionRestorer = $this->service(SessionRestorer::class);
         $this->debugState = $this->service(DebugStatePersistence::class);
+        $this->bookmarkState = $this->service(BookmarkPersistence::class);
         // The debugger orchestrator, after the buffer service it opens files
         // through; the decoration/state pieces are the same container-shared
         // instances the buffer service applies on every buffer switch.
@@ -374,6 +377,7 @@ final class Ide
             // Before any buffer opens: the boot-time BufferSwitched pass then
             // paints restored breakpoints into the gutter for free.
             $this->debugState->restore();
+            $this->bookmarkState->restore();
 
             // Same reason, for observers: IdeReady lands before the first
             // BufferOpened instead of racing it.
@@ -422,6 +426,7 @@ final class Ide
             $restorer->disarm();
             $this->sessionRestorer->save();
             $this->debugState->save();
+            $this->bookmarkState->save();
             $this->notifier->dismissAll(); // cancel pending toast timers — nothing may outlive the loop
             $this->lsp->stop();
             $this->run->stop();

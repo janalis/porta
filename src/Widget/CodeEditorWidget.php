@@ -603,6 +603,12 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->decorations->setBreakpointLines($lines, $conditionalLines, $logpointLines);
     }
 
+    #[\Override]
+    public function setBookmarkLines(array $lines): void
+    {
+        $this->decorations->setBookmarkLines($lines);
+    }
+
     /** Highlight (or clear) the debugger's stopped line. */
     #[\Override]
     public function setDebugLine(?int $line): void

@@ -6,6 +6,7 @@ namespace Porta\Command;
 
 use Porta\Config\CommandRegistry;
 use Porta\Config\KeyDispatch;
+use Porta\Editor\BookmarkActions;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Lsp\FoldingController;
@@ -35,6 +36,7 @@ final class ViewCommands implements CommandProvider
         private readonly ViewRegistry $views,
         private readonly BufferService $bufferService,
         private readonly FoldingController $folding,
+        private readonly BookmarkActions $bookmarks,
         private readonly FileTreeWidget $tree,
         private readonly Tui $tui,
         private readonly string $docsDir,
@@ -44,6 +46,8 @@ final class ViewCommands implements CommandProvider
     public function register(CommandRegistry $commands): void
     {
         $commands
+            ->add('toggle_bookmark', fn () => $this->bookmarks->toggle(), keyBound: KeyDispatch::Bound)
+            ->add('ide_bookmarks', fn () => $this->bookmarks->show(), keyBound: KeyDispatch::Bound)
             ->add(
                 'ide_project_tree',
                 function (): void {

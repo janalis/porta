@@ -954,6 +954,18 @@
         <source>No outgoing calls found</source>
         <target>Keine ausgehenden Aufrufe gefunden</target>
       </trans-unit>
+      <trans-unit id="730">
+        <source>Bookmarks</source>
+        <target>Lesezeichen</target>
+      </trans-unit>
+      <trans-unit id="731">
+        <source>Show Bookmarks</source>
+        <target>Lesezeichen anzeigen</target>
+      </trans-unit>
+      <trans-unit id="732">
+        <source>Toggle Bookmark</source>
+        <target>Lesezeichen umschalten</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>Fokus Baum / Editor wechseln</target>

@@ -27,6 +27,9 @@ final class DecorationStore
     /** @var list<int> 0-based lines with a breakpoint (● in the gutter) */
     private array $breakpointLines = [];
 
+    /** @var array<int, true> 0-based bookmarked lines, keyed for the per-row lookup the gutter does */
+    private array $bookmarkLines = [];
+
     /** @var list<int> the subset of breakpoint lines carrying a condition (◆ in the gutter) */
     private array $conditionalBreakpointLines = [];
 
@@ -65,6 +68,7 @@ final class DecorationStore
         $this->inlayHints = [];
         $this->lineAnnotations = [];
         $this->breakpointLines = [];
+        $this->bookmarkLines = [];
         $this->conditionalBreakpointLines = [];
         $this->logpointLines = [];
         $this->debugLine = null;
@@ -120,6 +124,18 @@ final class DecorationStore
         $this->conditionalBreakpointLines = $conditionalLines;
         $this->logpointLines = $logpointLines;
         ($this->invalidate)();
+    }
+
+    /** @param list<int> $lines 0-based bookmarked lines; [] clears */
+    public function setBookmarkLines(array $lines): void
+    {
+        $this->bookmarkLines = array_fill_keys($lines, value: true);
+        ($this->invalidate)();
+    }
+
+    public function isBookmarked(int $line): bool
+    {
+        return ($this->bookmarkLines[$line] ?? null) !== null;
     }
 
     /** @return list<int> */
