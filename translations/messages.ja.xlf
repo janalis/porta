@@ -970,6 +970,10 @@
         <source>This language server has no call hierarchy</source>
         <target>この言語サーバーは呼び出し階層を提供しません</target>
       </trans-unit>
+      <trans-unit id="734">
+        <source>Recent Locations</source>
+        <target>最近の場所</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>ツリー / エディターのフォーカスを切替</target>

@@ -12,6 +12,7 @@ use Porta\Editor\OpenFocus;
 use Porta\History\BookmarkPersistence;
 use Porta\History\BookmarkStore;
 use Porta\Ide;
+use Porta\Lsp\NavigationController;
 use Porta\Lsp\Uri;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
@@ -707,6 +708,44 @@ final class IdeDockToolsTest extends TestCase
                         [realpath($project->path('a.php')) => [1]],
                         new BookmarkStore($project->dir)->load(),
                     );
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    /**
+     * Recent Locations through a real Ide: a go-to-definition records where it
+     * left, Alt+5 lists that place with its own text, and Enter returns to it.
+     * Navigate-back would have reached the same place — the point of the list
+     * is reaching the fifth one back without walking through four.
+     */
+    public function testAltFiveListsWhereYouJumpedFromAndGoesBackToIt(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n// departure point\n// third\n", 'b.php' => "<?php\n// somewhere else\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    // Record a departure the way every navigation verb does.
+                    $tui->getById('editor')->getDocument()->setCursor(1, 0);
+                    Services::resolve($ide, NavigationController::class)->pushCurrentLocation();
+                    self::bufferService($ide)->openFile($project->path('b.php'), OpenFocus::Editor);
+                    $tui->tick();
+
+                    $tui->handleInput("\x1b5"); // alt+5 → Recent Locations
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '// departure point'));
+
+                    $tui->setFocus($tui->getById('results'));
+                    $tui->handleInput("\r");
+                    $tui->tick();
+
+                    $this->assertStringEndsWith('/a.php', (string) $tui->getById('editor')->getFilePath(), 'the row returned to the file left behind');
+                    $this->assertSame(1, $tui->getById('editor')->getDocument()->getCursorLine());
                 },
             ],
         );

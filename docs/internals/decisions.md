@@ -655,3 +655,61 @@ gap survived: **the mock answered a request no real server would have.**
 *Re-opens on:* either server advertising the provider, at which point the flash
 becomes unreachable for that server rather than wrong.
 
+## Soft wrap — rejected, and it is the code-vision surgery made larger (2026-09-02)
+
+Listed as a "classic" worth a polish sweep. It is not a polish item, and the
+honest measurement is the reason: it is the *same* virtual-row change rejected
+for code vision above, in its harder direction. Code vision INSERTS a row
+between document lines; soft wrap EXPANDS one document line into N screen rows
+and needs the inverse map as well.
+
+What would have to change, counted rather than estimated:
+
+- A wrap-layout object mapping document line → screen-row segments for the
+  current content width, invalidated on every edit, width change, fold change,
+  and on inlay hints and inline diagnostics — which add trailing content and so
+  change where a line breaks.
+- `EditorScroll` changes UNIT. `vScroll`, `scrollBy`, `centerOnLine`,
+  `centerCursor`, `clampToCaret` and `followCursor` all count document lines
+  today; every caller of `centerOnLine` (jump-to, bookmarks, problems, search
+  results) passes one.
+- `EditorRowAssembler`'s walking cursor advances by `FoldModel::nextVisibleLine`.
+  Fold and wrap have to COMPOSE — skipped lines and expanded lines in one walk.
+- Caret up/down must move by screen row, not document line, or wrapped text
+  feels broken. That is document cursor motion, not a render concern.
+- `EditorMouse` needs the inverse map to turn a click cell into (line, col);
+  `EditorPopupGeometry` and the completion popup place at the caret's screen
+  row; the error stripe's thumb is computed from `vScroll` in the old unit.
+- `hScroll` must be disabled while wrapping, across its seven consumers.
+
+That is a round, not an item, and it lands in the most load-bearing code in the
+project. Nothing in the sweep pays for it.
+
+*Re-opens on:* someone actually wanting it — this is a cost finding, not a
+judgement that wrapped text is undesirable. If it is ever done, code vision
+comes nearly free with it, and both should be planned together as one round.
+
+## Recent Locations (2026-09-02)
+
+Landed, and it was mostly exposure: `NavigationController` already kept a
+50-deep `jumpStack` that navigate-back popped one entry at a time. It is
+`Editor\JumpHistory` now — a service, because it gained a second reader and
+BROWSING the list must not consume it.
+
+`Ctrl+Shift+E` is PhpStorm's key for this and Porta had already spent it on
+Search Everywhere. Not displaced, per the round-2 precedent: `Alt+5` instead,
+beside the other dock tools.
+
+**Three surfaces were reading a file's line the same way** — bookmarks, recent
+locations, and `NavigationController::lineAt` (location rows and the peek
+preview). They are one `Editor\LineTextReader` now, and the merge caught a real
+bug: `lineAt` looked the buffer up in BOTH path spellings and the two new
+readers did not, so a bookmark on the far side of a symlinked root would have
+read from disk instead of the live buffer. The reader returns the line RAW,
+because the callers disagree on purpose — location rows `trim()`, the peek
+preview only `rtrim()`s, since indentation is what makes a preview readable.
+
+The jump-stack E2e reflected into the private `jumpStack` field through `Probe`.
+It resolves the service and uses its own API now; the reflection seam was
+covering for a missing one.
+

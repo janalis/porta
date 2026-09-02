@@ -29,4 +29,6 @@ enum ResultsPanelMode
     case Structure;
     /** The lines you marked to come back to, across every file. */
     case Bookmarks;
+    /** The places you jumped away from, most recent first. */
+    case RecentLocations;
 }

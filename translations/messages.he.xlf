@@ -970,6 +970,10 @@
         <source>This language server has no call hierarchy</source>
         <target>שרת השפה הזה אינו מספק היררכיית קריאות</target>
       </trans-unit>
+      <trans-unit id="734">
+        <source>Recent Locations</source>
+        <target>מיקומים אחרונים</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>החלף מיקוד עץ / עורך</target>

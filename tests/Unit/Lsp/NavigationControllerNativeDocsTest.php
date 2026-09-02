@@ -7,6 +7,8 @@ namespace Porta\Tests\Unit\Lsp;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\FileOpener;
+use Porta\Editor\JumpHistory;
+use Porta\Editor\LineTextReader;
 use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
@@ -49,13 +51,14 @@ final class NavigationControllerNativeDocsTest extends TestCase
             $tui,
             $notifier,
             $translator,
-            new BufferManager(),
             TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
             new ProjectPaths('/p'),
             new class implements FileOpener {
                 public function openFile(string $path, OpenFocus $focus = OpenFocus::Keep): void {}
             },
             new DocsUrlOpener($notifier, $translator, '/p'),
+            new JumpHistory(),
+            new LineTextReader(new BufferManager()),
         );
 
         /** @var string|null $url */

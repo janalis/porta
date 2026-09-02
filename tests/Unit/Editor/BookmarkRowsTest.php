@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BookmarkRows;
 use Porta\Editor\Bookmarks;
 use Porta\Editor\BufferManager;
+use Porta\Editor\LineTextReader;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\TempProject;
 
@@ -23,7 +24,7 @@ final class BookmarkRowsTest extends TestCase
         $bookmarks->toggle('/p/src/A.php', 2);
         $bookmarks->toggle('/p/src/A.php', 1);
 
-        $rows = new BookmarkRows($bookmarks, $buffers, new ProjectPaths('/p'))->build();
+        $rows = new BookmarkRows($bookmarks, new LineTextReader($buffers), new ProjectPaths('/p'))->build();
 
         $this->assertSame(
             [
@@ -45,7 +46,7 @@ final class BookmarkRowsTest extends TestCase
         $bookmarks = new Bookmarks();
         $bookmarks->toggle($project->path('src/A.php'), 1);
 
-        $rows = new BookmarkRows($bookmarks, new BufferManager(), new ProjectPaths($project->dir))->build();
+        $rows = new BookmarkRows($bookmarks, new LineTextReader(new BufferManager()), new ProjectPaths($project->dir))->build();
 
         $this->assertSame([['path' => 'src/A.php', 'line' => 1, 'text' => 'remembered line;']], $rows);
     }
@@ -55,13 +56,13 @@ final class BookmarkRowsTest extends TestCase
         $bookmarks = new Bookmarks();
         $bookmarks->toggle('/p/src/Gone.php', 3);
 
-        $rows = new BookmarkRows($bookmarks, new BufferManager(), new ProjectPaths('/p'))->build();
+        $rows = new BookmarkRows($bookmarks, new LineTextReader(new BufferManager()), new ProjectPaths('/p'))->build();
 
         $this->assertSame([['path' => 'src/Gone.php', 'line' => 3, 'text' => '']], $rows, 'no text to show, but the row is not dropped');
     }
 
     public function testNoBookmarksYieldNoRows(): void
     {
-        $this->assertSame([], new BookmarkRows(new Bookmarks(), new BufferManager(), new ProjectPaths('/p'))->build());
+        $this->assertSame([], new BookmarkRows(new Bookmarks(), new LineTextReader(new BufferManager()), new ProjectPaths('/p'))->build());
     }
 }

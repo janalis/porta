@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Porta\Lsp;
 
 use Porta\Container\AsIdeService;
-use Porta\Editor\BufferManager;
 use Porta\Editor\FileOpener;
+use Porta\Editor\JumpHistory;
+use Porta\Editor\LineTextReader;
 use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
 use Porta\Support\DocsUrlOpener;
@@ -29,20 +30,18 @@ use Symfony\Component\Tui\Tui;
 #[AsIdeService]
 final class NavigationController extends AbstractLspController implements EditorNavigationHandler
 {
-    /** @var list<array{path: string, line: int, col: int}> positions to return to after jumps */
-    private array $jumpStack = [];
-
     public function __construct(
         LspSessionPool $lsp,
         CodeEditorWidget $editor,
         Tui $tui,
         Notifier $notifier,
         Translator $translator,
-        private readonly BufferManager $buffers,
         private readonly BottomDock $panels,
         private readonly ProjectPaths $paths,
         private readonly FileOpener $files,
         private readonly DocsUrlOpener $docsUrls,
+        private readonly JumpHistory $history,
+        private readonly LineTextReader $text,
     ) {
         parent::__construct($lsp, $editor, $tui, $notifier, $translator);
     }
@@ -264,16 +263,13 @@ final class NavigationController extends AbstractLspController implements Editor
             return;
         }
         $doc = $this->editor->getDocument();
-        $this->jumpStack[] = ['path' => $from, 'line' => $doc->getCursorLine(), 'col' => $doc->getCursorCol()];
-        if (\count($this->jumpStack) > 50) {
-            array_shift($this->jumpStack);
-        }
+        $this->history->push($from, $doc->getCursorLine(), $doc->getCursorCol());
     }
 
     #[\Override]
     public function navigateBack(): void
     {
-        $previous = array_pop($this->jumpStack);
+        $previous = $this->history->pop();
         if (null === $previous) {
             $this->flash($this->trans('Nowhere to go back to'));
 
@@ -488,8 +484,9 @@ final class NavigationController extends AbstractLspController implements Editor
                 $targetLine = (int) ($location['range']['start']['line'] ?? 0);
                 $items = [];
                 // A few lines of context around the definition.
+                $read = $this->text->forPath($target); // one read for the whole window
                 for ($i = max(0, $targetLine - 1); $i <= ($targetLine + 4); ++$i) {
-                    $text = rtrim($this->lineAt($target, $i));
+                    $text = rtrim($read($i));
                     if ('' === $text && $i > $targetLine) {
                         continue;
                     }
@@ -623,12 +620,6 @@ final class NavigationController extends AbstractLspController implements Editor
 
     private function lineAt(string $path, int $line): string
     {
-        $buffer = $this->buffers->get($path) ?? $this->buffers->get(($resolved = realpath($path)) ? $resolved : $path);
-        if (null !== $buffer) {
-            return $buffer->document->getLine($line);
-        }
-        $lines = is_file($path) ? file($path, \FILE_IGNORE_NEW_LINES) : false;
-
-        return \is_array($lines) ? $lines[$line] ?? '' : '';
+        return $this->text->forPath($path)($line);
     }
 }

@@ -970,6 +970,10 @@
         <source>This language server has no call hierarchy</source>
         <target>Ce serveur de langage ne fournit pas de hiérarchie d’appels</target>
       </trans-unit>
+      <trans-unit id="734">
+        <source>Recent Locations</source>
+        <target>Emplacements récents</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>Basculer le focus arborescence / éditeur</target>

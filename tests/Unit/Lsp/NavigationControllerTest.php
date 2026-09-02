@@ -10,6 +10,8 @@ use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\Editor\FileOpener;
+use Porta\Editor\JumpHistory;
+use Porta\Editor\LineTextReader;
 use Porta\Editor\OpenFocus;
 use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferSaved;
@@ -45,6 +47,7 @@ final class NavigationControllerTest extends TestCase
     private BufferManager $buffers;
     private FixedActiveFile $activeFile;
     private FakeLspClient $client;
+    private JumpHistory $history;
     /**
      * What the server advertises. Call hierarchy is gated on it, so a test
      * that wants an answer must say the server can give one — as neither
@@ -85,7 +88,6 @@ final class NavigationControllerTest extends TestCase
             $this->tui,
             $notifier,
             $translator,
-            $this->buffers,
             $dock,
             new ProjectPaths('/p'),
             new class($opened) implements FileOpener {
@@ -100,6 +102,8 @@ final class NavigationControllerTest extends TestCase
                 }
             },
             new DocsUrlOpener($notifier, $translator, '/p'),
+            $this->history = new JumpHistory(),
+            new LineTextReader($this->buffers),
         );
     }
 

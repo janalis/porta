@@ -137,6 +137,7 @@ final class ActionCatalog
         // Alt+2 is PhpStorm's Bookmarks tool window, beside Alt+1's project tree.
         'toggle_bookmark' => ['label' => 'Toggle Bookmark', 'keys' => ['f11']],
         'ide_bookmarks' => ['label' => 'Show Bookmarks', 'keys' => ['alt+2']],
+        'ide_recent_locations' => ['label' => 'Recent Locations', 'keys' => ['alt+5']],
         // PhpStorm's split, which Porta used to collapse onto the popup: Alt+7 is
         // the persistent Structure TOOL WINDOW, Ctrl+F12 the transient popup.
         'ide_structure' => ['label' => 'Structure', 'keys' => ['alt+7']],

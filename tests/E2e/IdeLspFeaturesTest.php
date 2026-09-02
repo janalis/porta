@@ -7,15 +7,14 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferService;
+use Porta\Editor\JumpHistory;
 use Porta\Editor\OpenFocus;
 use Porta\Editor\SelectionMode;
 use Porta\Ide;
-use Porta\Lsp\NavigationController;
 use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
-use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -1014,8 +1013,12 @@ final class IdeLspFeaturesTest extends TestCase
         $ide = new Ide($project->dir, $project->path('src/Demo.php'), $terminal);
         $tui = Services::resolve($ide, Tui::class);
 
-        $navigation = Services::resolve($ide, NavigationController::class);
-        Probe::set($navigation, 'jumpStack', array_fill(0, count: 50, value: ['path' => $project->path('src/Demo.php'), 'line' => 0, 'col' => 0]));
+        // The history is a real service now, so this primes it through its own
+        // API rather than reflecting into a private field.
+        $history = Services::resolve($ide, JumpHistory::class);
+        for ($i = 0; $i < 50; ++$i) {
+            $history->push($project->path('src/Demo.php'), 0, 0);
+        }
 
         EventLoop::delay(0.4, static fn () => $tui->handleInput("\x1b[24~")); // F12
         // The jump is an LSP round trip: poll for it landing instead of a
@@ -1033,7 +1036,7 @@ final class IdeLspFeaturesTest extends TestCase
         });
         $ide->run();
 
-        $this->assertCount(50, Probe::get($navigation, 'jumpStack'), 'oldest entry evicted at the cap');
+        $this->assertCount(50, $history->entries(), 'the jump the IDE actually made evicted the oldest at the cap');
         $this->assertStringEndsWith('Target.php', (string) $tui->getById('editor')->getFilePath());
     }
 

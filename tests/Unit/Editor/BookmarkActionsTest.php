@@ -10,6 +10,7 @@ use Porta\Editor\BookmarkDecorations;
 use Porta\Editor\BookmarkRows;
 use Porta\Editor\Bookmarks;
 use Porta\Editor\BufferManager;
+use Porta\Editor\LineTextReader;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\TestBottomDock;
@@ -42,7 +43,7 @@ final class BookmarkActionsTest extends TestCase
 
         return new BookmarkActions(
             $this->bookmarks,
-            new BookmarkRows($this->bookmarks, $this->buffers, new ProjectPaths('/p')),
+            new BookmarkRows($this->bookmarks, new LineTextReader($this->buffers), new ProjectPaths('/p')),
             $this->buffers,
             $this->dock,
             new Translator('en'),

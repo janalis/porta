@@ -288,6 +288,13 @@ so marking a line cannot throw a panel over what you are reading. The gutter is
 painted only through `Editor\BookmarkDecorations::apply()`, the same applier the
 buffer switch uses, so it can be painted one way only.
 
+**Recent Locations** (`Alt+5`) lists `Editor\JumpHistory` — the places every
+navigation verb pushed before moving the caret, most recent first, consecutive
+repeats collapsed. Navigate-back pops that same stack; showing the list does
+not, which is the point. Both it and Bookmarks read their row text through
+`Editor\LineTextReader`, which answers from the open buffer (in either path
+spelling) and falls back to disk.
+
 Instance identity is (mode, title). A plugin's contributed tab carries a **null**
 mode rather than a new enum case, because `findByMode()` returns the *first* tab
 in a mode, so a shared case would let a core caller clobber a contributed tab
