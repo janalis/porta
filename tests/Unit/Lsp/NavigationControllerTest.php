@@ -30,6 +30,8 @@ use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
+use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -48,6 +50,7 @@ final class NavigationControllerTest extends TestCase
     private FixedActiveFile $activeFile;
     private FakeLspClient $client;
     private JumpHistory $history;
+    private BottomDock $dock;
     /**
      * What the server advertises. Call hierarchy is gated on it, so a test
      * that wants an answer must say the server can give one — as neither
@@ -66,7 +69,8 @@ final class NavigationControllerTest extends TestCase
         $notifier = new Notifier($this->statusBar, $this->tui);
         $translator = new Translator('en');
         $this->results = new ResultsPanelWidget();
-        $dock = TestBottomDock::create($this->tui, new TerminalPanelWidget(), $this->results, new DebugPanelWidget());
+        $this->dock = TestBottomDock::create($this->tui, new TerminalPanelWidget(), $this->results, new DebugPanelWidget());
+        $dock = $this->dock;
         $this->buffers = new BufferManager();
         $opened = &$this->opened;
         $pool = new LspSessionPool(
@@ -563,5 +567,52 @@ final class NavigationControllerTest extends TestCase
     private function panel(): string
     {
         return AnsiUtils::stripAnsiCodes(implode("\n", $this->results->render(new RenderContext(100, 12))));
+    }
+
+    /**
+     * The panel assertions above read RENDERED text, which cannot see the row
+     * shape underneath: the path each row carries, the indent depth the flatten
+     * starts at, or which side of the label the kind hint sits on. All three
+     * could be changed with those assertions still green.
+     */
+    public function testStructureRowsCarryTheirPathDepthAndHintInOrder(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\n\n\n\n\n");
+
+        $controller->requestStructurePanel();
+        $this->client->requests[0]['respond']($this->symbolTree(), error: null);
+
+        $rows = $this->dock->displayedRows(ResultsPanelMode::Structure);
+        $this->assertSame(
+            [
+                ['path' => 'a.php', 'line' => 2, 'text' => 'Greeter  class'],
+                ['path' => 'a.php', 'line' => 4, 'text' => '  greet  method'],
+            ],
+            $rows,
+            'the file it is about, the top level at depth 0, and the hint after the label',
+        );
+    }
+
+    /**
+     * The call-hierarchy title names the symbol. Dropping the interpolation
+     * leaves the raw "Callers of %symbol%" on the tab, which the row
+     * assertions never look at.
+     */
+    #[DataProvider('callDirections')]
+    public function testTheCallHierarchyTitleNamesTheSymbol(string $method, string $request, string $side): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\nfunction greet() {}\n");
+
+        $controller->{$method}(1, 9);
+        $this->client->requests[0]['respond']([['name' => 'greet', 'kind' => 12, 'uri' => 'file:///p/a.php']], error: null);
+        $this->client->requests[1]['respond']([[
+            $side => ['name' => 'other', 'uri' => 'file:///p/a.php', 'selectionRange' => ['start' => ['line' => 1, 'character' => 9], 'end' => ['line' => 1, 'character' => 14]]],
+        ]], error: null);
+
+        $title = (string) $this->dock->activeTool()?->title;
+        $this->assertStringContainsString('greet', $title, $request.' names the symbol it is about');
+        $this->assertStringNotContainsString('%symbol%', $title);
     }
 }

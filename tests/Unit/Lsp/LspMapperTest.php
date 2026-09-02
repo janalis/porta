@@ -314,6 +314,8 @@ final class LspMapperTest extends TestCase
         yield 'no end line' => [[['range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['character' => 4]]]]];
         yield 'empty range' => [[['range' => ['start' => ['line' => 1, 'character' => 3], 'end' => ['line' => 1, 'character' => 3]]]]];
         yield 'reversed range' => [[['range' => ['start' => ['line' => 1, 'character' => 4], 'end' => ['line' => 1, 'character' => 1]]]]];
+        yield 'a range crossing lines' => [[['range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 2, 'character' => 4]]]]];
+        yield 'an end with no character, which defaults to column 0' => [[['range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1]]]]];
     }
 
     /** @param list<array<string, mixed>> $highlights */
@@ -323,5 +325,39 @@ final class LspMapperTest extends TestCase
         $doc = new Document("<?php\n\$name = 1;\n");
 
         $this->assertSame([], LspMapper::mapDocumentHighlights($doc, $highlights));
+    }
+
+    /**
+     * Skipped, and the rest of the answer still mapped. Each case above is one
+     * highlight on its own, which cannot tell "skip this entry" from "abandon
+     * the whole answer" — so a good highlight rides behind the bad one here and
+     * has to come out the other side.
+     *
+     * @param list<array<string, mixed>> $highlights
+     */
+    #[DataProvider('unusableHighlights')]
+    public function testAnUnusableHighlightDoesNotTakeTheGoodOnesAfterItWithIt(array $highlights): void
+    {
+        $doc = new Document("<?php\n\$name = 1;\n");
+
+        $spans = LspMapper::mapDocumentHighlights($doc, [...$highlights, $this->highlight($this->range(1, 0, 5), kind: 3)]);
+
+        $this->assertSame([[1, 0, 5, true]], $spans);
+    }
+
+    /**
+     * A range endpoint with a line but no `character` starts at column 0 — the
+     * default is load-bearing, and any other value silently shifts the
+     * highlight off the identifier it belongs to.
+     */
+    public function testAMissingCharacterDefaultsToColumnZero(): void
+    {
+        $doc = new Document("<?php\n\$name = 1;\n");
+
+        $spans = LspMapper::mapDocumentHighlights($doc, [
+            ['range' => ['start' => ['line' => 1], 'end' => ['line' => 1, 'character' => 5]]],
+        ]);
+
+        $this->assertSame([[1, 0, 5, false]], $spans, 'the start is column 0, not 1 and not -1');
     }
 }
