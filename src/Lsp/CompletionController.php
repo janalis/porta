@@ -123,7 +123,7 @@ final class CompletionController extends AbstractLspController implements Editor
                 // Ignore errors (result is null) and stale responses after a switch.
                 if (\is_array($result) && $path === $this->editor->getFilePath()) {
                     /** @var list<array<string, mixed>> $result */
-                    $this->editor->setInlayHints(LspMapper::mapInlayHints($this->editor->getDocument(), $result));
+                    $this->editor->decorations()->setInlayHints(LspMapper::mapInlayHints($this->editor->getDocument(), $result));
                     $this->tui->requestRender();
                 }
             },

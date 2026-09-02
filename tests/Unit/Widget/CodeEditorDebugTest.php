@@ -32,13 +32,13 @@ final class CodeEditorDebugTest extends TestCase
         $plain = implode("\n", $this->render($editor));
         $this->assertStringNotContainsString('●', $plain);
 
-        $editor->setBreakpointLines([1]);
+        $editor->decorations()->setBreakpointLines([1]);
         $lines = $this->render($editor);
         $this->assertStringContainsString('●', $lines[1], 'the dot sits on the breakpoint line');
         $this->assertStringNotContainsString('●', $lines[2]);
         $this->assertStringContainsString("\x1b[38;5;203m●", $lines[1], 'Breakpoint role color (dark palette)');
 
-        $editor->setBreakpointLines([]);
+        $editor->decorations()->setBreakpointLines([]);
         $this->assertStringNotContainsString('●', implode("\n", $this->render($editor)));
     }
 
@@ -48,40 +48,40 @@ final class CodeEditorDebugTest extends TestCase
         $editor->setFocused(true);
         $editor->getDocument()->setCursor(2, 0);
 
-        $editor->setDebugLine(2);
+        $editor->decorations()->setDebugLine(2);
         $lines = $this->render($editor);
         $this->assertStringContainsString("\x1b[48;5;52m", $lines[2], 'DebugLineBg painted on the stopped cursor line');
         $this->assertStringNotContainsString("\x1b[48;5;236m", $lines[2], 'RowHighlightBg suppressed there');
 
-        $editor->setDebugLine(1);
+        $editor->decorations()->setDebugLine(1);
         $lines = $this->render($editor);
         $this->assertStringContainsString("\x1b[48;5;52m", $lines[1], 'band follows the stopped line');
         $this->assertStringContainsString("\x1b[48;5;236m", $lines[2], 'cursor line highlight returns');
 
-        $editor->setDebugLine(null);
+        $editor->decorations()->setDebugLine(null);
         $this->assertStringNotContainsString("\x1b[48;5;52m", implode("\n", $this->render($editor)));
     }
 
     public function testStoppedLineArrowOutranksBreakpointDotAndDiagnosticGlyph(): void
     {
         $editor = $this->editor();
-        $editor->setBreakpointLines([1]);
-        $editor->setDiagnostics([1 => [['severity' => 1, 'message' => 'boom', 'col' => 0]]]);
+        $editor->decorations()->setBreakpointLines([1]);
+        $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => 'boom', 'col' => 0]]]);
 
-        $editor->setDebugLine(1);
+        $editor->decorations()->setDebugLine(1);
         $lines = $this->render($editor);
         $gutter = AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($lines[1], 0, $editor->gutterWidth()));
         $this->assertStringContainsString("\x1b[38;5;203m▶", $lines[1], 'the stopped-line arrow wins the marker column');
         $this->assertStringNotContainsString('●', $gutter, 'breakpoint dot yields to the arrow');
         $this->assertStringNotContainsString('✗', $gutter, 'diagnostic glyph yields to the arrow');
 
-        $editor->setDebugLine(null);
+        $editor->decorations()->setDebugLine(null);
         $lines = $this->render($editor);
         $gutter = AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($lines[1], 0, $editor->gutterWidth()));
         $this->assertStringContainsString('●', $gutter, 'breakpoint dot returns once the debugger moves on');
         $this->assertStringNotContainsString('✗', $gutter, 'diagnostic glyph yields to the dot');
 
-        $editor->setBreakpointLines([]);
+        $editor->decorations()->setBreakpointLines([]);
         $gutter = AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($this->render($editor)[1], 0, $editor->gutterWidth()));
         $this->assertStringContainsString('✗', $gutter, 'diagnostic glyph shows once dot and arrow are gone');
     }
@@ -103,8 +103,8 @@ final class CodeEditorDebugTest extends TestCase
     public function testShowDocumentClearsDebugDecorations(): void
     {
         $editor = $this->editor();
-        $editor->setBreakpointLines([1]);
-        $editor->setDebugLine(1);
+        $editor->decorations()->setBreakpointLines([1]);
+        $editor->decorations()->setDebugLine(1);
 
         $editor->showDocument('/p/b.php', new Document("<?php\n// other\n"));
         $screen = implode("\n", $this->render($editor));

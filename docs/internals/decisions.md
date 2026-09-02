@@ -843,3 +843,35 @@ answering everything.
 `BookmarkStore::load()` drops vanished paths at startup, so it self-heals across
 a restart. Worth a `FileDeleted` fact the day anything else needs one.
 
+## The decoration sink left the widget (2026-09-02)
+
+The debt this round's bookmarks entry said to pay: *"the next feature that needs
+a decoration channel should split the sink, not the threshold."* Paid.
+
+`CodeEditorWidget` used to IMPLEMENT `EditorDecorationSink` and forward all
+eight setters to the `DecorationStore` it owns, so every new decoration was a
+method on the largest class in the codebase — three features running moved its
+`too-many-methods` pin. The store implements the interface itself now, the
+widget exposes one `decorations()` accessor, and a future decoration costs the
+widget **nothing**.
+
+**`setFoldRegions` was never a decoration.** It was on the interface, but its
+only caller takes the concrete widget, and applying regions needs the fold model
+and the document version rather than the store. Dropping it from the interface
+is what made the remaining eight a clean set of store operations.
+
+**The container binds a factory, not the class.** `DecorationStore` lives in
+`src/`, so `->load()` registers it — but the widget builds its OWN with that
+widget's `invalidate()` closure. Autowiring the class would have handed every
+consumer a second store that takes every push while the editor renders the
+first: green everywhere, nothing on screen. The binding is
+`factory([service(CodeEditorWidget::class), 'decorations'])` for both
+`EditorDecorationSink` and its plugin-facing slice `LineAnnotationSink`, and the
+behavioural E2es (a bookmark that renders, blame that annotates) are what prove
+the instance is the right one.
+
+**The pin moved off the widget entirely.** Re-bisected: the widget is at 93,
+down from 98, and the new floor of 95 is `CodeEditorWidgetTest` — a TEST class.
+`mago.toml` records that, because a threshold pinned by a test file is a
+different problem from one pinned by production code.
+

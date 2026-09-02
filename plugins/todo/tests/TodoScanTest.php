@@ -77,7 +77,7 @@ final class TodoScanTest extends TestCase
             new RecordingFileOpener(),
             $tui,
             new RecordingDiagnosticsSink(),
-            new CodeEditorWidget(),
+            new CodeEditorWidget()->decorations(),
             new RecordingChangeMarkSink(),
             new FileStatuses(),
             new \Porta\Editor\BufferManager(),

@@ -620,13 +620,15 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor("<?php\n\$x = f();\n");
         $doc = $editor->getDocument();
         // Hints at the very start (col 0), mid-line (col 2) and end (append).
-        $editor->setInlayHints([
-            1 => [
-                ['col' => 0, 'text' => '»'],
-                ['col' => 2, 'text' => ': int'],
-                ['col' => 9, 'text' => '⟵end'],
-            ],
-        ]);
+        $editor
+            ->decorations()
+            ->setInlayHints([
+                1 => [
+                    ['col' => 0, 'text' => '»'],
+                    ['col' => 2, 'text' => ': int'],
+                    ['col' => 9, 'text' => '⟵end'],
+                ],
+            ]);
         $doc->setCursor(1, 9); // end of line, after the mid hint
 
         $plain = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(80, 6))[1]);
@@ -640,7 +642,7 @@ final class CodeEditorWidgetTest extends TestCase
     public function testDiagnostics(): void
     {
         $editor = $this->editor();
-        $editor->setDiagnostics([2 => [['severity' => 1, 'message' => 'Boom', 'col' => 0]]]);
+        $editor->decorations()->setDiagnostics([2 => [['severity' => 1, 'message' => 'Boom', 'col' => 0]]]);
 
         $counts = $editor->getDiagnosticCounts();
         $this->assertSame(1, $counts['errors']);
@@ -738,7 +740,7 @@ final class CodeEditorWidgetTest extends TestCase
     public function testDiagnosticRangeUnderline(): void
     {
         $editor = $this->editor("<?php\nfunction f(array \$a): void\n{\n}\n", 'diag.php');
-        $editor->setDiagnostics([1 => [['severity' => 1, 'message' => 'Bad type', 'col' => 11, 'endCol' => 16]]]);
+        $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => 'Bad type', 'col' => 11, 'endCol' => 16]]]);
 
         $rendered = $editor->render(new RenderContext(80, 10));
         $this->assertStringContainsString("\x1b[4:3m", $rendered[1], 'curly underline');
@@ -751,14 +753,16 @@ final class CodeEditorWidgetTest extends TestCase
         // line 1: an error and a warning share the line → error (worst) wins the
         // gutter/inline; line 2: a lone info; line 3: a lone hint.
         $editor = $this->editor("<?php\n\$a = f();\n\$b = g();\n\$c = h();\n", 'sev.php');
-        $editor->setDiagnostics([
-            1 => [
-                ['severity' => 2, 'message' => 'maybe null', 'col' => 5, 'endCol' => 8],
-                ['severity' => 1, 'message' => 'undefined f', 'col' => 5, 'endCol' => 8],
-            ],
-            2 => [['severity' => 3, 'message' => 'unused', 'col' => 0, 'endCol' => 2]],
-            3 => [['severity' => 4, 'message' => 'style', 'col' => 0, 'endCol' => 2]],
-        ]);
+        $editor
+            ->decorations()
+            ->setDiagnostics([
+                1 => [
+                    ['severity' => 2, 'message' => 'maybe null', 'col' => 5, 'endCol' => 8],
+                    ['severity' => 1, 'message' => 'undefined f', 'col' => 5, 'endCol' => 8],
+                ],
+                2 => [['severity' => 3, 'message' => 'unused', 'col' => 0, 'endCol' => 2]],
+                3 => [['severity' => 4, 'message' => 'style', 'col' => 0, 'endCol' => 2]],
+            ]);
 
         $rendered = $editor->render(new RenderContext(80, 10));
         $this->assertExactWidth($rendered, 80);
@@ -794,11 +798,13 @@ final class CodeEditorWidgetTest extends TestCase
     {
         $src = "<?php\n".str_repeat("\$x = 1;\n", times: 60);
         $editor = $this->editor($src, 'stripe.php');
-        $editor->setDiagnostics([
-            5 => [['severity' => 1, 'message' => 'err', 'col' => 0, 'endCol' => 2]],
-            55 => [['severity' => 2, 'message' => 'warn', 'col' => 0, 'endCol' => 2]],
-            30 => [], // an empty list marks nothing (defensive)
-        ]);
+        $editor
+            ->decorations()
+            ->setDiagnostics([
+                5 => [['severity' => 1, 'message' => 'err', 'col' => 0, 'endCol' => 2]],
+                55 => [['severity' => 2, 'message' => 'warn', 'col' => 0, 'endCol' => 2]],
+                30 => [], // an empty list marks nothing (defensive)
+            ]);
 
         $rendered = $editor->render(new RenderContext(80, 20));
         $this->assertExactWidth($rendered, 80);
@@ -823,7 +829,7 @@ final class CodeEditorWidgetTest extends TestCase
     public function testSearchMatchHighlights(): void
     {
         $editor = $this->editor("<?php\necho 'needle';\n", 'search.php');
-        $editor->setSearchMatches([1 => [['start' => 6, 'end' => 12, 'current' => true]]]);
+        $editor->decorations()->setSearchMatches([1 => [['start' => 6, 'end' => 12, 'current' => true]]]);
 
         $rendered = $editor->render(new RenderContext(80, 10));
         $this->assertStringContainsString("\x1b[48;5;130m", $rendered[1], 'current match background');
@@ -1506,20 +1512,20 @@ final class CodeEditorWidgetTest extends TestCase
     public function testLineAnnotationsRenderAndYieldToDiagnostics(): void
     {
         $editor = $this->editor("alpha;\nbeta;\n", '/tmp/a.php');
-        $editor->setLineAnnotations([0 => 'abc12345 tester 2026-01-01', 1 => 'abc12345 tester 2026-01-01']);
+        $editor->decorations()->setLineAnnotations([0 => 'abc12345 tester 2026-01-01', 1 => 'abc12345 tester 2026-01-01']);
 
         $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
         $this->assertSame(2, substr_count($screen, needle: 'abc12345 tester'), 'both annotations render in the trailing space');
 
         // A diagnostic on line 0 wins the trailing slot; line 1 keeps its blame.
         $editor->enableInlineDiagnostics();
-        $editor->setDiagnostics([0 => [['severity' => 1, 'message' => 'Boom', 'col' => 0]]]);
+        $editor->decorations()->setDiagnostics([0 => [['severity' => 1, 'message' => 'Boom', 'col' => 0]]]);
         $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
         $this->assertStringContainsString('Boom', $screen);
         $this->assertSame(1, substr_count($screen, needle: 'abc12345 tester'), 'the diagnosed line dropped its annotation');
 
         // Too narrow: the annotation is dropped rather than truncated to noise.
-        $editor->setDiagnostics([]);
+        $editor->decorations()->setDiagnostics([]);
         $narrow = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(16, 6))));
         $this->assertStringNotContainsString('abc12345', $narrow);
 

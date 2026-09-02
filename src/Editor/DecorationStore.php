@@ -13,7 +13,7 @@ namespace Porta\Editor;
  * the other per-concern sub-objects its constructor builds; every mutation
  * requests a repaint.
  */
-final class DecorationStore
+final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
 {
     /** @var array<int, list<array{start: int, end: int, current: bool}>> search matches by line (byte cols) */
     private array $searchMatches = [];

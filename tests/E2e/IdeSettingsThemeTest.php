@@ -58,7 +58,7 @@ final class IdeSettingsThemeTest extends TestCase
                     $editor = $tui->getById('editor');
                     $this->assertSame(LineNumberMode::Relative, EditorState::display($editor)->lineNumbers(), 'setting applied from file');
                     // Inline diagnostics disabled: even with a diagnostic, no inline text.
-                    $editor->setDiagnostics([1 => [['severity' => 1, 'message' => 'boom', 'col' => 0]]]);
+                    $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => 'boom', 'col' => 0]]]);
                     $rendered = $editor->render(new \Symfony\Component\Tui\Render\RenderContext(80, 5));
                     $this->assertStringNotContainsString('boom', AnsiUtils::stripAnsiCodes($rendered[1]));
                 },

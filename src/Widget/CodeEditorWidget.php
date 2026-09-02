@@ -13,13 +13,11 @@ use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\AutoPairService;
 use Porta\Editor\BreadcrumbScanner;
 use Porta\Editor\CaretMotion;
-use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\DecorationStore;
 use Porta\Editor\Document;
 use Porta\Editor\EditorActions;
 use Porta\Editor\EditorCompletion;
-use Porta\Editor\EditorDecorationSink;
 use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\EditorHost;
 use Porta\Editor\EditorIndentTarget;
@@ -33,7 +31,6 @@ use Porta\Editor\EditorViewOptions;
 use Porta\Editor\EditorViewport;
 use Porta\Editor\FoldModel;
 use Porta\Editor\IndentKind;
-use Porta\Editor\LineAnnotationSink;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\ModalHost;
 use Porta\Editor\MultiCaret;
@@ -92,7 +89,6 @@ final class CodeEditorWidget extends AbstractWidget implements
     ActiveDocumentProvider,
     ActiveFileProvider,
     EditorCommandTarget,
-    EditorDecorationSink,
     EditorHost,
     EditorIndentTarget,
     EditorInvalidator,
@@ -100,7 +96,6 @@ final class CodeEditorWidget extends AbstractWidget implements
     EditorTextAccess,
     EditorViewOptions,
     FocusableInterface,
-    LineAnnotationSink,
     LtrPane,
     MenuOverlayHost,
     ModalHost,
@@ -458,7 +453,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     public function disableVcsGutter(): void
     {
         if ($this->display->setVcsGutter(false)) {
-            $this->setVcsMarks([]); // drop stale marks so nothing lingers when the strip hides
+            $this->decorations->setVcsMarks([]); // drop stale marks so nothing lingers when the strip hides
         }
     }
 
@@ -563,57 +558,6 @@ final class CodeEditorWidget extends AbstractWidget implements
     public function autoPairsEnabled(): bool
     {
         return $this->display->autoPairs();
-    }
-
-    /**
-     * @param array<int, list<array{start: int, end: int, current: bool}>> $byLine byte columns
-     */
-    #[\Override]
-    public function setSearchMatches(array $byLine): void
-    {
-        $this->decorations->setSearchMatches($byLine);
-    }
-
-    /**
-     * @param array<int, ChangeMarkKind> $byLine 0-based line => kind
-     */
-    #[\Override]
-    public function setVcsMarks(array $byLine): void
-    {
-        $this->decorations->setVcsMarks($byLine);
-    }
-
-    /**
-     * @param array<int, string> $byLine 0-based line => trailing annotation (blame); [] clears
-     */
-    #[\Override]
-    public function setLineAnnotations(array $byLine): void
-    {
-        $this->decorations->setLineAnnotations($byLine);
-    }
-
-    /**
-     * @param list<int> $lines            0-based lines carrying a breakpoint in this file
-     * @param list<int> $conditionalLines the subset carrying a condition/hit-count (◆ instead of ●)
-     * @param list<int> $logpointLines    the subset carrying a log message (◇ — logs instead of pausing)
-     */
-    #[\Override]
-    public function setBreakpointLines(array $lines, array $conditionalLines = [], array $logpointLines = []): void
-    {
-        $this->decorations->setBreakpointLines($lines, $conditionalLines, $logpointLines);
-    }
-
-    #[\Override]
-    public function setBookmarkLines(array $lines): void
-    {
-        $this->decorations->setBookmarkLines($lines);
-    }
-
-    /** Highlight (or clear) the debugger's stopped line. */
-    #[\Override]
-    public function setDebugLine(?int $line): void
-    {
-        $this->decorations->setDebugLine($line);
     }
 
     /** Install the coordinator's outbound hooks (see {@see EditorCallbacks}). */
@@ -857,13 +801,6 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->invalidate();
     }
 
-    /** @param array<int, list<array{severity: int, message: string, col: int, endCol?: int}>> $byLine */
-    #[\Override]
-    public function setDiagnostics(array $byLine): void
-    {
-        $this->decorations->setDiagnostics($byLine);
-    }
-
     /** @return array{errors: int, warnings: int} */
     public function getDiagnosticCounts(): array
     {
@@ -952,12 +889,27 @@ final class CodeEditorWidget extends AbstractWidget implements
     }
 
     /**
+     * The decoration layers for the buffer on display — git marks, breakpoints,
+     * bookmarks, diagnostics, search matches, inlay hints, blame.
+     *
+     * One accessor in place of eight forwarding setters: this widget used to
+     * IMPLEMENT {@see EditorDecorationSink}, so every new decoration was a
+     * method on the largest class in the codebase and moved its
+     * `too-many-methods` ceiling. The store implements the interface now, and
+     * the container binds it through here so that consumers get the instance
+     * this widget actually renders — not a second one built beside it.
+     */
+    public function decorations(): DecorationStore
+    {
+        return $this->decorations;
+    }
+
+    /**
      * Supply LSP fold regions for the current document version — {@see FoldModel}
      * falls back to its brace scan once the document changes.
      *
      * @param list<array{0: int, 1: int}> $regions [startLine, endLine]
      */
-    #[\Override]
     public function setFoldRegions(array $regions): void
     {
         $this->foldModel->setRegions($regions, $this->document->getVersion());
@@ -1390,17 +1342,6 @@ final class CodeEditorWidget extends AbstractWidget implements
     }
 
     // --- Inlay hints -------------------------------------------------------
-
-    /**
-     * Replace the inlay hints (parameter names / inferred types) shown inline.
-     *
-     * @param array<int, list<array{col: int, text: string}>> $hints line => byte-col hints
-     */
-    #[\Override]
-    public function setInlayHints(array $hints): void
-    {
-        $this->decorations->setInlayHints($hints);
-    }
 
     /** @return array<string, string[]> */
     protected static function getDefaultKeybindings(): array

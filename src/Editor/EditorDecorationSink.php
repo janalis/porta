@@ -7,8 +7,17 @@ namespace Porta\Editor;
 /**
  * The overlays a subsystem paints onto the active buffer without owning the
  * editor: git marks, blame annotations, breakpoints, the debugger's stopped
- * line, diagnostics, fold regions, search matches and inlay hints. Implemented
- * by the editor widget, which forwards each to its {@see DecorationStore}.
+ * line, diagnostics, search matches and inlay hints.
+ *
+ * Implemented by {@see DecorationStore} itself, which the editor widget owns
+ * and the container reaches through `CodeEditorWidget::decorations()`. The
+ * widget used to implement this and forward all of it, which made every new
+ * decoration a method on the codebase's largest class — three features running
+ * moved that ceiling before the forwarding went instead.
+ *
+ * Fold regions are NOT here: their only caller takes the concrete widget, and
+ * applying them needs the fold model and the document version rather than the
+ * store.
  *
  * One interface rather than eight single-verb ones: every method is the same
  * "replace this decoration layer for the current buffer" operation against the
@@ -53,14 +62,6 @@ interface EditorDecorationSink
 
     /** @param array<int, list<array{severity: int, message: string, col: int, endCol?: int}>> $byLine */
     public function setDiagnostics(array $byLine): void;
-
-    /**
-     * Supply LSP fold regions for the current document version — {@see \Porta\Editor\FoldModel}
-     * falls back to its brace scan once the document changes.
-     *
-     * @param list<array{0: int, 1: int}> $regions [startLine, endLine]
-     */
-    public function setFoldRegions(array $regions): void;
 
     /**
      * Replace the inlay hints (parameter names / inferred types) shown inline.

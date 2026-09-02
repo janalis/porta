@@ -116,7 +116,7 @@ final class DebugControllerTest extends TestCase
             },
             $dispatcher,
             $state,
-            new EditorDecorations($breakpoints, $state, $this->editor),
+            new EditorDecorations($breakpoints, $state, $this->editor->decorations()),
             new WatchStore(),
             $this->filters = new ExceptionFilterStore(),
             $this->sessions,

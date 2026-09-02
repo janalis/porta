@@ -346,7 +346,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         }
         $this->swapEditorPaneTo($this->editor);
         $this->editor->showDocument($buffer->path, $buffer->document, $buffer->diagnostics, $buffer->highlighter, $buffer->editorConfig);
-        $this->editor->setVcsMarks($buffer->vcsMarks);
+        $this->editor->decorations()->setVcsMarks($buffer->vcsMarks);
         $this->dispatcher->dispatch(new BufferSwitched($buffer));
         $this->tui->requestRender();
     }
@@ -672,7 +672,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             }
             $buffer->vcsMarks = $marks;
             if ($buffer === $this->buffers->active()) {
-                $this->editor->setVcsMarks($marks);
+                $this->editor->decorations()->setVcsMarks($marks);
             }
             $this->tui->requestRender();
 
@@ -698,7 +698,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
 
         $target->diagnostics = $byLine;
         if ($target === $this->buffers->active()) {
-            $this->editor->setDiagnostics($byLine);
+            $this->editor->decorations()->setDiagnostics($byLine);
         }
         // Announce the change so an open Problems tab refreshes live.
         $this->dispatcher->dispatch(new DiagnosticsChanged());

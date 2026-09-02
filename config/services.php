@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use Porta\Config\IdeConfig;
+use Porta\Editor\EditorDecorationSink;
+use Porta\Editor\LineAnnotationSink;
+use Porta\Widget\CodeEditorWidget;
 use Porta\Config\KeybindingsFactory;
 use Porta\Container\AsWidget;
 use Porta\Highlight\ColorMode;
@@ -192,6 +195,20 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->tag('porta.ide_service', ['key' => EventDispatcherInterface::class]);
     $services->alias(EventDispatcherInterface::class, 'event_dispatcher');
     $services->alias(PsrEventDispatcherInterface::class, 'event_dispatcher');
+
+    // The decoration layers a subsystem paints onto the active buffer. The
+    // implementor is a DecorationStore, but NOT one the container may build:
+    // CodeEditorWidget constructs its own with that widget's invalidate()
+    // closure, and a second instance would take every push while the editor
+    // rendered the first — green everywhere, and nothing on screen. So the
+    // binding is a factory that hands back the widget's own store.
+    $services
+        ->set(EditorDecorationSink::class)
+        ->factory([service(CodeEditorWidget::class), 'decorations']);
+    // The plugin-facing slice of the same store, and the same reason.
+    $services
+        ->set(LineAnnotationSink::class)
+        ->factory([service(CodeEditorWidget::class), 'decorations']);
 
     // The IDE color scheme: the active theme's tui Styles per Role, one
     // swappable holder (built from the PORTA_ANSI/PORTA_THEME env placeholders) so

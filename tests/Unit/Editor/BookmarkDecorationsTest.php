@@ -35,7 +35,7 @@ final class BookmarkDecorationsTest extends TestCase
         $bookmarks = new Bookmarks();
         $bookmarks->toggle('/p/a.php', 1);
 
-        new BookmarkDecorations($bookmarks, $editor)->apply('/p/a.php');
+        new BookmarkDecorations($bookmarks, $editor->decorations())->apply('/p/a.php');
 
         $lines = $editor->render(new RenderContext(40, 8));
         $this->assertStringContainsString(Glyphs::BOOKMARK, $lines[1], 'the marked line carries the diamond');
@@ -49,7 +49,7 @@ final class BookmarkDecorationsTest extends TestCase
         $editor = $this->editor();
         $bookmarks = new Bookmarks();
         $bookmarks->toggle('/p/a.php', 1);
-        $decorations = new BookmarkDecorations($bookmarks, $editor);
+        $decorations = new BookmarkDecorations($bookmarks, $editor->decorations());
 
         $decorations->onBufferSwitched(new BufferSwitched(new Buffer('/p/a.php', new Document(''))));
         $this->assertStringContainsString(Glyphs::BOOKMARK, $this->painted($editor));
@@ -63,7 +63,7 @@ final class BookmarkDecorationsTest extends TestCase
         $editor = $this->editor();
         $bookmarks = new Bookmarks();
         $bookmarks->toggle('/p/a.php', 1);
-        $decorations = new BookmarkDecorations($bookmarks, $editor);
+        $decorations = new BookmarkDecorations($bookmarks, $editor->decorations());
         $decorations->apply('/p/a.php');
 
         // A DIFFERENT path, so skipping and repainting are distinguishable:

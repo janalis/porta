@@ -104,7 +104,7 @@ final class EditorRenderGoldenTest extends TestCase
                 static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
-                    $e->setSearchMatches([
+                    $e->decorations()->setSearchMatches([
                         2 => [['start' => 9, 'end' => 14, 'current' => true]],
                         4 => [['start' => 4, 'end' => 10, 'current' => false]],
                     ]);
@@ -117,7 +117,7 @@ final class EditorRenderGoldenTest extends TestCase
                 static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
-                    $e->setDiagnostics([
+                    $e->decorations()->setDiagnostics([
                         2 => [
                             ['severity' => 1, 'message' => 'bad type', 'col' => 9, 'endCol' => 14],
                             ['severity' => 2, 'message' => 'weak warning', 'col' => 0, 'endCol' => 3],
@@ -159,7 +159,7 @@ final class EditorRenderGoldenTest extends TestCase
                 static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
-                    $e->setInlayHints([
+                    $e->decorations()->setInlayHints([
                         2 => [['col' => 0, 'text' => '»'], ['col' => 14, 'text' => ': string']],
                     ]);
                 },
@@ -171,7 +171,7 @@ final class EditorRenderGoldenTest extends TestCase
                 static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
-                    $e->setVcsMarks([0 => ChangeMarkKind::Modified, 2 => ChangeMarkKind::Added, 4 => ChangeMarkKind::Deleted]);
+                    $e->decorations()->setVcsMarks([0 => ChangeMarkKind::Modified, 2 => ChangeMarkKind::Added, 4 => ChangeMarkKind::Deleted]);
                 },
                 80,
                 10,
@@ -183,7 +183,7 @@ final class EditorRenderGoldenTest extends TestCase
                     $e->setFocused(true);
                     // A conditional breakpoint changes the GUTTER glyph but not the
                     // stripe's — on the stripe a breakpoint is a breakpoint.
-                    $e->setBreakpointLines([1, 4], [4]);
+                    $e->decorations()->setBreakpointLines([1, 4], [4]);
                 },
                 80,
                 10,

@@ -60,7 +60,7 @@ final class EditorFileActions implements EditorFileActionHandler
     {
         $initial = $this->editor->getDocument()->getSelectedText();
         $this->findBar->open(
-            new EditorFindTarget($this->editor->getDocument(), $this->editor),
+            new EditorFindTarget($this->editor->getDocument(), $this->editor->decorations()),
             $mode,
             str_contains($initial, "\n") ? '' : $initial,
         );

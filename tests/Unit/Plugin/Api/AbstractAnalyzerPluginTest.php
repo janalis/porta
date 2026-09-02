@@ -131,7 +131,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
             new RecordingFileOpener(),
             $tui,
             $this->sink,
-            new CodeEditorWidget(),
+            new CodeEditorWidget()->decorations(),
             new RecordingChangeMarkSink(),
             new FileStatuses(),
             $this->buffers,

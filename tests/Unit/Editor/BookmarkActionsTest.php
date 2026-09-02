@@ -47,7 +47,7 @@ final class BookmarkActionsTest extends TestCase
             $this->buffers,
             $this->dock,
             new Translator('en'),
-            new BookmarkDecorations($this->bookmarks, $this->editor),
+            new BookmarkDecorations($this->bookmarks, $this->editor->decorations()),
         );
     }
 
