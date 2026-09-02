@@ -409,6 +409,18 @@ final class NavigationController extends AbstractLspController implements Editor
      */
     private function requestCalls(int $line, int $col, string $method, string $side, string $title, string $empty): void
     {
+        // Gated, because the honest answer differs from the empty one and both
+        // bundled PHP servers give it: neither phpantom nor phpactor advertises
+        // callHierarchyProvider, and an ungated request flashes "No callers
+        // found" — which reads as "this symbol has none" when the truth is that
+        // nothing was asked. Measured against both servers, 2026-09-02.
+        /** @var array<string, mixed>|bool|null $capability LSP: boolean or a CallHierarchyOptions object */
+        $capability = $this->lsp->serverCapability($this->editor->getFilePath(), 'callHierarchyProvider');
+        if (null === $capability || false === $capability) {
+            $this->flash($this->trans('This language server has no call hierarchy'));
+
+            return;
+        }
         $this->requestAt(
             'textDocument/prepareCallHierarchy',
             $line,

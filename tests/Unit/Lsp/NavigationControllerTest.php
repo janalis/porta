@@ -45,6 +45,14 @@ final class NavigationControllerTest extends TestCase
     private BufferManager $buffers;
     private FixedActiveFile $activeFile;
     private FakeLspClient $client;
+    /**
+     * What the server advertises. Call hierarchy is gated on it, so a test
+     * that wants an answer must say the server can give one — as neither
+     * bundled PHP server does.
+     *
+     * @var array<string, mixed>
+     */
+    private array $capabilities = ['callHierarchyProvider' => true];
 
     private function controller(): NavigationController
     {
@@ -62,7 +70,7 @@ final class NavigationControllerTest extends TestCase
             '/p',
             $this->activeFile = new FixedActiveFile(),
             $translator,
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient(),
+            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient($this->capabilities),
         );
         $pool->configure(
             ['php' => ['command' => ['php-ls'], 'name' => 'php-ls']],
@@ -510,6 +518,27 @@ final class NavigationControllerTest extends TestCase
         ]], error: null);
 
         $this->assertStringContainsString('a.php:2', $this->panel(), 'the call landed as a jumpable row');
+    }
+
+    /**
+     * The case BOTH bundled PHP servers are in: probed 2026-09-02, neither
+     * phpantom nor phpactor advertises callHierarchyProvider. Ungated, the
+     * request went out and the empty answer flashed "No callers found" — which
+     * reads as "this symbol has none" rather than "nothing was asked".
+     */
+    #[DataProvider('callDirections')]
+    public function testAServerWithoutCallHierarchySaysSoInsteadOfClaimingNoCallers(string $method, string $request, string $side): void
+    {
+        $this->capabilities = []; // no callHierarchyProvider
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\nfunction greet() {}\n");
+
+        $controller->{$method}(1, 9);
+
+        $this->assertSame([], $this->client->requests, \sprintf('nothing was asked of a server that cannot answer %s (%s)', $request, $side));
+        $flashed = $this->flashed();
+        $this->assertStringContainsString('no call hierarchy', $flashed);
+        $this->assertStringNotContainsString('No callers found', $flashed, 'and it does not claim the symbol has none');
     }
 
     /** An answer whose calls carry the other end is no answer at all. */

@@ -620,3 +620,38 @@ threshold.
 `EditorDecorationSink` into its own object, held by the widget rather than
 implemented by it, is cheaper than the ratchet.
 
+## Call and type hierarchy — what the bundled servers actually provide (2026-09-02)
+
+Probed both PHP servers over raw stdio with the capabilities `LspClient`
+declares (an empty client-capability block gives the same answers, so nothing
+here is gated on what Porta asks for):
+
+| capability | phpantom_lsp | phpactor |
+| --- | --- | --- |
+| `selectionRangeProvider` | ✅ | ✅ |
+| `documentHighlightProvider` | ✅ | ✅ |
+| `foldingRangeProvider` | ✅ | — |
+| `inlayHintProvider` | ✅ | — |
+| `callHierarchyProvider` | — | — |
+| `typeHierarchyProvider` | — | — |
+
+**Type hierarchy is not implementable and was dropped from the sweep.** There is
+no server to ask. It re-opens the day one of them advertises the provider.
+
+**Call hierarchy is now gated on the capability.** It was shipped ungated
+(incoming before this session, outgoing in `56510144`), so `Ctrl+Alt+H` against
+either bundled server sent the request and flashed *"No callers found"* — which
+reads as "this symbol has none" when the truth is that nothing was asked. It
+says *"This language server has no call hierarchy"* now. Three sibling
+controllers (`RefactorController`, `HighlightController`,
+`CompletionController`) already gated this way; navigation was the one that did
+not.
+
+The feature itself stays: it is correct, tested against the mock, and works the
+moment a server provides it — which is also why the mock had to start
+advertising `callHierarchyProvider`. That it had never advertised it is how the
+gap survived: **the mock answered a request no real server would have.**
+
+*Re-opens on:* either server advertising the provider, at which point the flash
+becomes unreachable for that server rather than wrong.
+

@@ -32,6 +32,11 @@ foreach (readFrames($in) as $message) {
                     // actually reachable: a client that does not resolve gets
                     // an action with nothing in it.
                     'codeActionProvider' => ['resolveProvider' => true],
+                    // Both directions are answered below. Advertised because
+                    // the client now GATES on it — neither bundled PHP server
+                    // provides call hierarchy, and an ungated request flashes
+                    // "no callers" where the truth is "never asked".
+                    'callHierarchyProvider' => true,
                 ],
                 'serverInfo' => ['name' => 'mock-lsp'],
             ],

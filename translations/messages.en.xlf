@@ -966,6 +966,10 @@
         <source>Toggle Bookmark</source>
         <target>Toggle Bookmark</target>
       </trans-unit>
+      <trans-unit id="733">
+        <source>This language server has no call hierarchy</source>
+        <target>This language server has no call hierarchy</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>Switch Tree / Editor Focus</target>

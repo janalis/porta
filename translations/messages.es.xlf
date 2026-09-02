@@ -966,6 +966,10 @@
         <source>Toggle Bookmark</source>
         <target>Alternar marcador</target>
       </trans-unit>
+      <trans-unit id="733">
+        <source>This language server has no call hierarchy</source>
+        <target>Este servidor de lenguaje no ofrece jerarquía de llamadas</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>Cambiar foco árbol / editor</target>
