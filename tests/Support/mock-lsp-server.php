@@ -233,6 +233,24 @@ foreach (readFrames($in) as $message) {
                 'selectionRange' => ['start' => ['line' => 2, 'character' => 9], 'end' => ['line' => 2, 'character' => 14]],
             ]],
         ]);
+    } elseif ('callHierarchy/outgoingCalls' === $method) {
+        $uri = $message['params']['item']['uri'] ?? '';
+        sendMessage($out, [
+            'jsonrpc' => '2.0',
+            'id' => $message['id'],
+            'result' => [
+                [
+                    'to' => [
+                        'name' => 'callee',
+                        'kind' => 12,
+                        'uri' => $uri,
+                        'range' => ['start' => ['line' => 2, 'character' => 0], 'end' => ['line' => 3, 'character' => 1]],
+                        'selectionRange' => ['start' => ['line' => 2, 'character' => 4], 'end' => ['line' => 2, 'character' => 10]],
+                    ],
+                    'fromRanges' => [],
+                ],
+            ],
+        ]);
     } elseif ('callHierarchy/incomingCalls' === $method && 'orphan' === ($message['params']['item']['name'] ?? '')) {
         sendMessage($out, ['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => []]);
     } elseif ('callHierarchy/incomingCalls' === $method) {

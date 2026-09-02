@@ -81,6 +81,7 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `Ctrl+Alt+Left` | Navigate back after a definition jump |
 | `Ctrl+Shift+I` | Peek definition (inline; `Enter` jumps) |
 | `Alt+F7` | Find usages |
+| `Ctrl+Shift+H` / `Ctrl+Alt+Shift+H` | Callers of / calls from the symbol at the caret |
 | `Shift+F6` | Rename symbol (cross-file `WorkspaceEdit`) |
 | `Alt+Enter` | Quick fixes / code actions |
 | `Ctrl+Alt+Shift+T` | Refactor This |

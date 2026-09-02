@@ -110,6 +110,7 @@ final class EditorKeymapTest extends TestCase
                 'rename_symbol' => ['shift+f6'],
                 'find_usages' => ['alt+f7'],
                 'call_hierarchy' => ['ctrl+shift+h'],
+                'outgoing_calls' => ['ctrl+alt+shift+h'],
             ],
             EditorKeymap::defaults(),
         );

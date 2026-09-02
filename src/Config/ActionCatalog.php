@@ -122,6 +122,7 @@ final class ActionCatalog
         'rename_symbol' => ['label' => 'Rename Symbol'],
         'find_usages' => ['label' => 'Find Usages'],
         'call_hierarchy' => ['label' => 'Call Hierarchy'],
+        'outgoing_calls' => ['label' => 'Calls From Here'],
         'code_action' => ['label' => 'Show Quick Fixes'],
         'refactor_this' => ['label' => 'Refactor This'],
         'inline_refactoring' => ['label' => 'Inline'],

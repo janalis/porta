@@ -942,6 +942,18 @@
         <source>Inline</source>
         <target>Inline</target>
       </trans-unit>
+      <trans-unit id="720">
+        <source>Calls From Here</source>
+        <target>Calls From Here</target>
+      </trans-unit>
+      <trans-unit id="721">
+        <source>Calls from %symbol%</source>
+        <target>Calls from %symbol%</target>
+      </trans-unit>
+      <trans-unit id="722">
+        <source>No outgoing calls found</source>
+        <target>No outgoing calls found</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>Switch Tree / Editor Focus</target>

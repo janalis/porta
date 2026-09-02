@@ -129,6 +129,7 @@ final class EditorActionRouter
             'quick_doc' => static fn (EditorCallbacks $c, int $line, int $col) => $c->navigation?->requestHover($line, $col),
             'find_usages' => static fn (EditorCallbacks $c, int $line, int $col) => $c->navigation?->requestReferences($line, $col),
             'call_hierarchy' => static fn (EditorCallbacks $c, int $line, int $col) => $c->navigation?->requestCallHierarchy($line, $col),
+            'outgoing_calls' => static fn (EditorCallbacks $c, int $line, int $col) => $c->navigation?->requestOutgoingCalls($line, $col),
             'goto_definition' => static fn (EditorCallbacks $c, int $line, int $col) => $c->navigation?->requestDefinition($line, $col),
             'goto_implementation' => static fn (EditorCallbacks $c, int $line, int $col) => $c->navigation?->requestImplementation($line, $col),
             'goto_type_definition' => static fn (EditorCallbacks $c, int $line, int $col) => $c->navigation?->requestTypeDefinition($line, $col),

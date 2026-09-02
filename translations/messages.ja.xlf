@@ -942,6 +942,18 @@
         <source>Inline</source>
         <target>インライン化</target>
       </trans-unit>
+      <trans-unit id="720">
+        <source>Calls From Here</source>
+        <target>ここからの呼び出し</target>
+      </trans-unit>
+      <trans-unit id="721">
+        <source>Calls from %symbol%</source>
+        <target>%symbol% からの呼び出し</target>
+      </trans-unit>
+      <trans-unit id="722">
+        <source>No outgoing calls found</source>
+        <target>発信呼び出しが見つかりません</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>ツリー / エディターのフォーカスを切替</target>

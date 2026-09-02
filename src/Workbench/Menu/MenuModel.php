@@ -70,6 +70,7 @@ final class MenuModel
             'e:goto_type_definition',
             'e:find_usages',
             'e:call_hierarchy',
+            'e:outgoing_calls',
             'e:goto_matching_bracket',
             self::SEP,
             'e:goto_line',

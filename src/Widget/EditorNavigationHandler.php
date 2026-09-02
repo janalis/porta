@@ -31,5 +31,8 @@ interface EditorNavigationHandler
     /** Show the callers of the symbol at the caret (LSP call hierarchy, incoming calls). */
     public function requestCallHierarchy(int $line, int $col): void;
 
+    /** The other direction: what the symbol at the caret calls. */
+    public function requestOutgoingCalls(int $line, int $col): void;
+
     public function requestPeek(int $line, int $col): void;
 }

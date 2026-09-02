@@ -392,46 +392,63 @@ final class NavigationController extends AbstractLspController implements Editor
     #[\Override]
     public function requestCallHierarchy(int $line, int $col): void
     {
+        $this->requestCalls($line, $col, 'callHierarchy/incomingCalls', 'from', 'Callers of %symbol%', 'No callers found');
+    }
+
+    /** The other direction: what the symbol at the caret calls. */
+    #[\Override]
+    public function requestOutgoingCalls(int $line, int $col): void
+    {
+        $this->requestCalls($line, $col, 'callHierarchy/outgoingCalls', 'to', 'Calls from %symbol%', 'No outgoing calls found');
+    }
+
+    /**
+     * Both directions of the call hierarchy. They differ only in which request
+     * is sent and which end of each call carries the interesting symbol — `from`
+     * for a caller, `to` for a callee.
+     */
+    private function requestCalls(int $line, int $col, string $method, string $side, string $title, string $empty): void
+    {
         $this->requestAt(
             'textDocument/prepareCallHierarchy',
             $line,
             $col,
-            function (mixed $result): bool {
+            function (mixed $result) use ($method, $side, $title, $empty): bool {
                 if (!\is_array($result) || !\is_array($result[0] ?? null)) {
                     return false;
                 }
                 /** @var array{name?: string, uri?: string} $item */
                 $item = $result[0];
                 $this->send(
-                    'callHierarchy/incomingCalls',
+                    $method,
                     ['item' => $item],
-                    function (mixed $calls) use ($item): bool {
+                    function (mixed $calls) use ($item, $side, $title): bool {
                         $locations = [];
                         /** @var list<array<string, mixed>|scalar|null> $callList */
                         $callList = \is_array($calls) ? $calls : [];
                         foreach ($callList as $call) {
-                            if (!(\is_array($call) && \is_array($call['from'] ?? null))) {
+                            if (!(\is_array($call) && \is_array($call[$side] ?? null))) {
                                 continue;
                             }
 
-                            /** @var array{uri?: string, selectionRange?: array<array-key, mixed>} $from */
-                            $from = $call['from'];
-                            $locations[] = ['uri' => $from['uri'] ?? '', 'range' => $from['selectionRange'] ?? []];
+                            /** @var array{uri?: string, selectionRange?: array<array-key, mixed>} $endpoint */
+                            $endpoint = $call[$side];
+                            $locations[] = ['uri' => $endpoint['uri'] ?? '', 'range' => $endpoint['selectionRange'] ?? []];
                         }
                         if ([] === $locations) {
                             return false;
                         }
                         $name = \is_string($item['name'] ?? null) ? $item['name'] : '?';
-                        $this->panels->showList(ResultsPanelMode::Search, $this->trans('Callers of %symbol%', ['%symbol%' => $name]), $this->locationRows($locations));
+                        $this->panels->showList(ResultsPanelMode::Search, $this->trans($title, ['%symbol%' => $name]), $this->locationRows($locations));
 
                         return true;
                     },
-                    fn () => $this->panels->flash($this->trans('No callers found')),
+                    fn () => $this->panels->flash($this->trans($empty)),
                 );
 
                 return true;
             },
-            fn () => $this->flash($this->trans('No callers found')),
+            fn () => $this->flash($this->trans($empty)),
         );
     }
 

@@ -79,4 +79,5 @@ server and from plugins that publish them (phpstan, mago, psalm).
 
 `Ctrl+Shift+H` (or Navigate → Call Hierarchy) lists the callers of the
 function or method at the caret in the results panel — pick one to jump to
-the call site. Requires a language server with call-hierarchy support.
+the call site. `Ctrl+Alt+Shift+H` lists the other direction: what that symbol
+calls. Requires a language server with call-hierarchy support.

@@ -477,4 +477,58 @@ final class NavigationControllerTest extends TestCase
 
         $this->assertStringContainsString('Farewell', $this->plainPanel());
     }
+
+    /** @return \Generator<string, array{string, string, string}> */
+    public static function callDirections(): \Generator
+    {
+        yield 'incoming' => ['requestCallHierarchy', 'callHierarchy/incomingCalls', 'from'];
+        yield 'outgoing' => ['requestOutgoingCalls', 'callHierarchy/outgoingCalls', 'to'];
+    }
+
+    /**
+     * The two directions differ only in the request sent and which END of each
+     * call carries the symbol — `from` for a caller, `to` for a callee. Reading
+     * the wrong side yields an empty list and the not-found flash, so the row
+     * content is what discriminates.
+     */
+    #[DataProvider('callDirections')]
+    public function testBothCallDirectionsReadTheirOwnEndOfEachCall(string $method, string $request, string $side): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\nfunction greet() {}\n");
+
+        $controller->{$method}(1, 9);
+        $this->client->requests[0]['respond']([['name' => 'greet', 'kind' => 12, 'uri' => 'file:///p/a.php']], error: null);
+
+        $this->assertSame($request, $this->client->requests[1]['method']);
+        $this->client->requests[1]['respond']([[
+            $side => [
+                'name' => 'other',
+                'uri' => 'file:///p/a.php',
+                'selectionRange' => ['start' => ['line' => 1, 'character' => 9], 'end' => ['line' => 1, 'character' => 14]],
+            ],
+        ]], error: null);
+
+        $this->assertStringContainsString('a.php:2', $this->panel(), 'the call landed as a jumpable row');
+    }
+
+    /** An answer whose calls carry the other end is no answer at all. */
+    public function testOutgoingCallsReadingAnIncomingShapedAnswerFlashesNotFound(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\nfunction greet() {}\n");
+
+        $controller->requestOutgoingCalls(1, 9);
+        $this->client->requests[0]['respond']([['name' => 'greet', 'kind' => 12, 'uri' => 'file:///p/a.php']], error: null);
+        // `from`, not `to`: the incoming shape.
+        $this->client->requests[1]['respond']([['from' => ['name' => 'x', 'uri' => 'file:///p/a.php', 'selectionRange' => []]]], error: null);
+
+        $this->assertStringNotContainsString('a.php:', $this->panel(), 'nothing is listed from the end it was not asked about');
+    }
+
+    /** The results panel's rendered rows. */
+    private function panel(): string
+    {
+        return AnsiUtils::stripAnsiCodes(implode("\n", $this->results->render(new RenderContext(100, 12))));
+    }
 }

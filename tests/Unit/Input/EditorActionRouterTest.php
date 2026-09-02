@@ -131,6 +131,11 @@ final class EditorActionRouterTest extends TestCase
                 $this->recording[] = "call_hierarchy:{$line}:{$col}";
             }
 
+            public function requestOutgoingCalls(int $line, int $col): void
+            {
+                $this->recording[] = "outgoing_calls:{$line}:{$col}";
+            }
+
             public function requestPeek(int $line, int $col): void
             {
                 $this->recording[] = "peek_definition:{$line}:{$col}";
