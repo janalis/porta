@@ -684,7 +684,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $this->assertStringContainsString('undefined variable', AnsiUtils::stripAnsiCodes($rendered[1]));
         $this->assertSame(80, AnsiUtils::visibleWidth($rendered[1]));
 
-        $editor->disableInlineDiagnostics();
+        $editor->display()->setInlineDiagnostics(false);
         $rendered = $editor->render(new RenderContext(80, 5));
         $this->assertStringNotContainsString('undefined variable', AnsiUtils::stripAnsiCodes($rendered[1]));
     }
@@ -695,26 +695,34 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => 'undefined variable', 'col' => 0, 'endCol' => 2]]]);
 
         // inlineDiagnostics defaults on: disable (set), disable again (skip), enable (set), enable again (skip).
-        $editor->disableInlineDiagnostics();
+        $editor->display()->setInlineDiagnostics(false);
         $this->assertStringNotContainsString('undefined variable', AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 5)))));
-        $editor->disableInlineDiagnostics();
-        $editor->enableInlineDiagnostics();
+        $editor->display()->setInlineDiagnostics(false);
+        $editor->display()->setInlineDiagnostics(true);
         $this->assertStringContainsString('undefined variable', AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 5)))));
-        $editor->enableInlineDiagnostics();
+        $editor->display()->setInlineDiagnostics(true);
         $this->assertStringContainsString('undefined variable', AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 5)))));
 
         // lineNumbers defaults to absolute: change to relative, set relative again (no-op), then absolute, then off.
-        $editor->setLineNumberMode(LineNumberMode::Relative);
+        $editor->display()->setLineNumbers(LineNumberMode::Relative);
         $this->assertSame(LineNumberMode::Relative, EditorState::display($editor)->lineNumbers());
-        $editor->setLineNumberMode(LineNumberMode::Relative); // same → guard skips
+        $editor->display()->setLineNumbers(LineNumberMode::Relative); // same → guard skips
         $this->assertSame(LineNumberMode::Relative, EditorState::display($editor)->lineNumbers());
-        $editor->setLineNumberMode(LineNumberMode::Off);
+        $editor->display()->setLineNumbers(LineNumberMode::Off);
         $this->assertSame(LineNumberMode::Off, EditorState::display($editor)->lineNumbers());
 
         // Sticky scroll and indent guides default on: disable (set), disable again (skip), enable (set), enable again (skip).
         foreach ([
-            [$editor->disableStickyScroll(...), $editor->enableStickyScroll(...), static fn (): bool => EditorState::display($editor)->stickyScroll()],
-            [$editor->disableIndentGuides(...), $editor->enableIndentGuides(...), static fn (): bool => EditorState::display($editor)->indentGuides()],
+            [
+                static fn (): bool => $editor->display()->setStickyScroll(false),
+                static fn (): bool => $editor->display()->setStickyScroll(true),
+                static fn (): bool => EditorState::display($editor)->stickyScroll(),
+            ],
+            [
+                static fn (): bool => $editor->display()->setIndentGuides(false),
+                static fn (): bool => $editor->display()->setIndentGuides(true),
+                static fn (): bool => EditorState::display($editor)->indentGuides(),
+            ],
         ] as [$off, $on, $has]) {
             $off();
             $this->assertFalse($has());
@@ -928,10 +936,10 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     {
         $editor = $this->editor();
         $display = Probe::get($editor, 'display');
-        $editor->disableVcsGutter();
+        $editor->setVcsGutter(false);
         $this->assertFalse($display->vcsGutter(), 'sanity: off after disabling');
 
-        $editor->enableVcsGutter();
+        $editor->setVcsGutter(true);
 
         $this->assertTrue($display->vcsGutter());
     }

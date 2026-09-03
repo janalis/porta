@@ -402,59 +402,18 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->findModal->scrollPreview($delta);
     }
 
+    /**
+     * The one view option that is not a plain `display()` call, and the reason
+     * this pair stayed on the widget when the other nine delegations left:
+     * turning the strip off also drops the marks behind it, which needs the
+     * decoration store the options object has no business knowing about.
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- $on is the desired STATE, which is this setter's whole subject
     #[\Override]
-    public function enableInlineDiagnostics(): void
+    public function setVcsGutter(bool $on): void
     {
-        $this->display->setInlineDiagnostics(true);
-    }
-
-    #[\Override]
-    public function disableInlineDiagnostics(): void
-    {
-        $this->display->setInlineDiagnostics(false);
-    }
-
-    #[\Override]
-    public function setLineNumberMode(LineNumberMode $mode): void
-    {
-        $this->display->setLineNumbers($mode);
-    }
-
-    #[\Override]
-    public function enableStickyScroll(): void
-    {
-        $this->display->setStickyScroll(true);
-    }
-
-    #[\Override]
-    public function disableStickyScroll(): void
-    {
-        $this->display->setStickyScroll(false);
-    }
-
-    #[\Override]
-    public function enableIndentGuides(): void
-    {
-        $this->display->setIndentGuides(true);
-    }
-
-    #[\Override]
-    public function disableIndentGuides(): void
-    {
-        $this->display->setIndentGuides(false);
-    }
-
-    #[\Override]
-    public function enableVcsGutter(): void
-    {
-        $this->display->setVcsGutter(true);
-    }
-
-    #[\Override]
-    public function disableVcsGutter(): void
-    {
-        if ($this->display->setVcsGutter(false)) {
-            $this->decorations->setVcsMarks([]); // drop stale marks so nothing lingers when the strip hides
+        if ($this->display->setVcsGutter($on) && !$on) {
+            $this->decorations->setVcsMarks([]); // nothing lingers when the strip hides
         }
     }
 
@@ -497,18 +456,6 @@ final class CodeEditorWidget extends AbstractWidget implements
             : (int) $config->indentSize;
 
         $this->document->setIndent($usesTabs ? IndentKind::Tabs : IndentKind::Spaces, $size);
-    }
-
-    #[\Override]
-    public function enableAutoPairs(): void
-    {
-        $this->display->setAutoPairs(true);
-    }
-
-    #[\Override]
-    public function disableAutoPairs(): void
-    {
-        $this->display->setAutoPairs(false);
     }
 
     /**
@@ -903,6 +850,20 @@ final class CodeEditorWidget extends AbstractWidget implements
     public function decorations(): DecorationStore
     {
         return $this->decorations;
+    }
+
+    /**
+     * The view options for this editor — line numbers, sticky scroll, indent
+     * guides, the vcs gutter, inline diagnostics, auto-pairs, soft wrap.
+     *
+     * One accessor in place of eleven forwarding methods, for the reason
+     * {@see decorations()} gives: this widget used to implement the whole
+     * interface, so every new view option was a method on the largest class in
+     * the codebase — and soft wrap was the one that finally could not fit.
+     */
+    public function display(): EditorDisplayOptions
+    {
+        return $this->display;
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Porta\Config\IdeConfig;
 use Porta\Editor\EditorDecorationSink;
+use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\LineAnnotationSink;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Config\KeybindingsFactory;
@@ -209,6 +210,13 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     $services
         ->set(LineAnnotationSink::class)
         ->factory([service(CodeEditorWidget::class), 'decorations']);
+
+    // The editor's view options, for the same reason and the same shape: the
+    // widget builds its own with that widget's invalidate closure, so the
+    // container must hand back THAT one rather than build a second.
+    $services
+        ->set(EditorDisplayOptions::class)
+        ->factory([service(CodeEditorWidget::class), 'display']);
 
     // The IDE color scheme: the active theme's tui Styles per Role, one
     // swappable holder (built from the PORTA_ANSI/PORTA_THEME env placeholders) so

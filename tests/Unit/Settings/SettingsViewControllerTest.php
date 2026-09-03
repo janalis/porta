@@ -205,7 +205,7 @@ final class SettingsViewControllerTest extends TestCase
         );
         $settings = new SettingsController(
             IdeConfig::DEFAULT_SETTINGS,
-            $editor,
+            $editor->display(),
             $notifier,
             new Translator('en'),
             new PortaJsonWriter(ConfigFiles::for($this->project->dir)),

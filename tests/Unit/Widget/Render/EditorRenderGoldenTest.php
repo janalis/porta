@@ -193,7 +193,7 @@ final class EditorRenderGoldenTest extends TestCase
                 static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
-                    $e->setLineNumberMode(LineNumberMode::Relative);
+                    $e->display()->setLineNumbers(LineNumberMode::Relative);
                     $e->getDocument()->setCursor(3, 0);
                 },
                 80,

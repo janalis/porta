@@ -1331,11 +1331,10 @@ final class PluginApi
      * Hiding drops whatever marks were showing, so nothing lingers under a
      * strip that is no longer painted.
      */
-    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     public function showChangeMarkGutter(bool $on): void
     {
         $runtime = $this->manager->runtime();
-        $on ? $runtime->editorView->enableVcsGutter() : $runtime->editorView->disableVcsGutter();
+        $runtime->editorView->setVcsGutter($on);
         $runtime->tui->requestRender();
     }
 

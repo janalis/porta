@@ -150,7 +150,7 @@ final class CodeEditorAutoPairsTest extends TestCase
     public function testDisabledFallsBackToPlainInsert(): void
     {
         $editor = $this->editor();
-        $editor->disableAutoPairs();
+        $editor->display()->setAutoPairs(false);
         $editor->getDocument()->setCursor(0, 0);
         $editor->handleInput('(');
 

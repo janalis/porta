@@ -131,7 +131,7 @@ final class CodeEditorWidgetTest extends TestCase
     public function testDisablingStickyScrollRemovesThePinnedBand(): void
     {
         $editor = $this->stickyEditor();
-        $editor->disableStickyScroll();
+        $editor->display()->setStickyScroll(false);
         $editor->getDocument()->setCursor(24, 8); // deep inside handle()
         $rendered = $editor->render(new RenderContext(60, 12));
 
@@ -148,7 +148,7 @@ final class CodeEditorWidgetTest extends TestCase
         $absolute = $editor->render(new RenderContext(60, 12));
         $this->assertMatchesRegularExpression('/^\s*\d+/', AnsiUtils::stripAnsiCodes($absolute[2]), 'a line number by default');
 
-        $editor->setLineNumberMode(LineNumberMode::Off);
+        $editor->display()->setLineNumbers(LineNumberMode::Off);
         $rendered = $editor->render(new RenderContext(60, 12));
 
         $this->assertExactWidth($rendered, 60);
@@ -163,7 +163,7 @@ final class CodeEditorWidgetTest extends TestCase
     public function testDisablingIndentGuidesRemovesTheGuides(): void
     {
         $editor = $this->editor("<?php\nif (true) {\n        deep();\n");
-        $editor->disableIndentGuides();
+        $editor->display()->setIndentGuides(false);
         $line2 = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(80, 10))[2]);
 
         $this->assertStringNotContainsString('│', $line2, 'the Interface setting off → no indent guides');
@@ -1159,7 +1159,7 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertSame(2, substr_count($screen, needle: 'abc12345 tester'), 'both annotations render in the trailing space');
 
         // A diagnostic on line 0 wins the trailing slot; line 1 keeps its blame.
-        $editor->enableInlineDiagnostics();
+        $editor->display()->setInlineDiagnostics(true);
         $editor->decorations()->setDiagnostics([0 => [['severity' => 1, 'message' => 'Boom', 'col' => 0]]]);
         $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
         $this->assertStringContainsString('Boom', $screen);

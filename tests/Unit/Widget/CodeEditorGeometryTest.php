@@ -364,8 +364,8 @@ final class CodeEditorGeometryTest extends TestCase
     public function testComputeGeometryNumberWidthIsZeroWhenLineNumbersAreOff(): void
     {
         $editor = $this->editor("<?php\n");
-        $editor->setLineNumberMode(LineNumberMode::Off);
-        $editor->disableVcsGutter();
+        $editor->display()->setLineNumbers(LineNumberMode::Off);
+        $editor->setVcsGutter(false);
 
         $editor->render(new RenderContext(80, 5));
 
@@ -378,12 +378,12 @@ final class CodeEditorGeometryTest extends TestCase
     public function testComputeGeometryGutterWidthIncludesTheVcsColumnWhenEnabled(): void
     {
         $editor = $this->editor("<?php\n");
-        $editor->setLineNumberMode(LineNumberMode::Off);
-        $editor->disableVcsGutter();
+        $editor->display()->setLineNumbers(LineNumberMode::Off);
+        $editor->setVcsGutter(false);
         $editor->render(new RenderContext(80, 5));
         $without = $editor->gutterWidth();
 
-        $editor->enableVcsGutter();
+        $editor->setVcsGutter(true);
         $editor->render(new RenderContext(80, 5));
         $with = $editor->gutterWidth();
 

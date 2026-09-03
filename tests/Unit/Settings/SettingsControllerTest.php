@@ -137,7 +137,7 @@ final class SettingsControllerTest extends TestCase
 
         return new SettingsController(
             $settings + IdeConfig::DEFAULT_SETTINGS,
-            $editor,
+            $editor->display(),
             new Notifier($status, $tui),
             $translator,
             new PortaJsonWriter(ConfigFiles::for($rootDir)),

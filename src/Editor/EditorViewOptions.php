@@ -5,34 +5,24 @@ declare(strict_types=1);
 namespace Porta\Editor;
 
 /**
- * The editor's display toggles, as the settings form drives them. Implemented
- * by the editor widget; each verb flips one render flag and invalidates.
+ * The one editor display toggle that is a ROLE rather than a call on
+ * {@see EditorDisplayOptions}. Implemented by the editor widget, and reached by
+ * the plugin API.
  *
- * Write-only on purpose: nothing in the IDE reads the current flag back through
- * this seam — the settings rows are rendered from the persisted config, not from
- * the widget — so the matching `has*()` accessors stay off the interface.
+ * It used to carry all eleven toggles and the widget forwarded every one of
+ * them, which made each new view option a method on the largest class in the
+ * codebase. Soft wrap was the one that would not fit; the rest are
+ * `CodeEditorWidget::display()` now.
  */
 interface EditorViewOptions
 {
-    public function enableInlineDiagnostics(): void;
-
-    public function disableInlineDiagnostics(): void;
-
-    public function setLineNumberMode(LineNumberMode $mode): void;
-
-    public function enableStickyScroll(): void;
-
-    public function disableStickyScroll(): void;
-
-    public function enableIndentGuides(): void;
-
-    public function disableIndentGuides(): void;
-
-    public function enableVcsGutter(): void;
-
-    public function disableVcsGutter(): void;
-
-    public function enableAutoPairs(): void;
-
-    public function disableAutoPairs(): void;
+    /**
+     * Show or hide the vcs change strip. The ONLY view option that is a role
+     * rather than a `CodeEditorWidget::display()` call, because turning the
+     * strip off also drops the marks behind it — the other ten moved to
+     * {@see EditorDisplayOptions} when soft wrap made the widget's method
+     * ceiling bite.
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- $on is the desired STATE, as on the implementor
+    public function setVcsGutter(bool $on): void;
 }

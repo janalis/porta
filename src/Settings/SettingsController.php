@@ -7,7 +7,7 @@ namespace Porta\Settings;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
-use Porta\Editor\EditorViewOptions;
+use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
 use Porta\Search\FileIndex;
@@ -44,7 +44,7 @@ final class SettingsController
     public function __construct(
         #[Autowire('%env(json:PORTA_SETTINGS)%')]
         private array $settings,
-        EditorViewOptions $editor,
+        EditorDisplayOptions $editor,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly PortaJsonWriter $writer,
@@ -94,7 +94,7 @@ final class SettingsController
                 'kind' => SettingsRowKind::Choice,
                 'group' => 'interface',
                 'restart' => false,
-                'apply' => static fn (int|bool|string $v) => $editor->setLineNumberMode(LineNumberMode::tryFrom((string) $v) ?? LineNumberMode::Absolute),
+                'apply' => static fn (int|bool|string $v) => $editor->setLineNumbers(LineNumberMode::tryFrom((string) $v) ?? LineNumberMode::Absolute),
                 'options' => ['off', 'absolute', 'relative'],
             ],
             'stickyScroll' => [
@@ -102,14 +102,14 @@ final class SettingsController
                 'kind' => SettingsRowKind::Bool,
                 'group' => 'interface',
                 'restart' => false,
-                'apply' => static fn (int|bool|string $v) => (bool) $v ? $editor->enableStickyScroll() : $editor->disableStickyScroll(),
+                'apply' => static fn (int|bool|string $v) => $editor->setStickyScroll((bool) $v),
             ],
             'indentGuides' => [
                 'label' => 'Indent guides',
                 'kind' => SettingsRowKind::Bool,
                 'group' => 'interface',
                 'restart' => false,
-                'apply' => static fn (int|bool|string $v) => (bool) $v ? $editor->enableIndentGuides() : $editor->disableIndentGuides(),
+                'apply' => static fn (int|bool|string $v) => $editor->setIndentGuides((bool) $v),
             ],
             'breadcrumbs' => [
                 'label' => 'Breadcrumbs bar',
@@ -124,14 +124,14 @@ final class SettingsController
                 'kind' => SettingsRowKind::Bool,
                 'group' => 'general',
                 'restart' => false,
-                'apply' => static fn (int|bool|string $v) => (bool) $v ? $editor->enableInlineDiagnostics() : $editor->disableInlineDiagnostics(),
+                'apply' => static fn (int|bool|string $v) => $editor->setInlineDiagnostics((bool) $v),
             ],
             'autoPairs' => [
                 'label' => 'Auto-pairs',
                 'kind' => SettingsRowKind::Bool,
                 'group' => 'general',
                 'restart' => false,
-                'apply' => static fn (int|bool|string $v) => (bool) $v ? $editor->enableAutoPairs() : $editor->disableAutoPairs(),
+                'apply' => static fn (int|bool|string $v) => $editor->setAutoPairs((bool) $v),
             ],
             'formatOnSave' => [
                 'label' => 'Format on save (LSP)',
