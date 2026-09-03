@@ -245,6 +245,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         return new EditorMouse(
             $document,
             $this->foldModel,
+            $this->decorations,
             $this->multiCaret,
             $this->invalidate(...),
             $this->closeCompletion(...),

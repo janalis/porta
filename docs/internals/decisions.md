@@ -556,9 +556,33 @@ emitting a lens row before segment 0, and caret motion SKIPPING lens rows —
 that last one is the piece with no existing seam, since vertical motion is width
 arithmetic rather than a row count.
 
-**Not started.** The estimate above was written before any of this existed and
-was wrong about the cost even then; this note records that the door is open and
-what is behind it, not a decision to walk through it.
+**Built the same day** (`Alt+V`, off by default), and the prediction held: a
+lens row is one more thing a line occupies, so it went through the seam soft
+wrap had just built.
+
+`DecorationStore` holds lenses keyed by the line they sit ABOVE — the only
+decoration that ADDS a row rather than painting into one. The row walk emits
+them before the line's content, unnumbered and unmarked; `EditorMouse` counts
+them in the same walk, so a click below a lens still lands on the line it looks
+like it is on. A click ON a lens row resolves to its line at column 0, carried
+as a NEGATIVE segment from the walk, because a lens shows none of the line's
+own columns.
+
+**The caret needed nothing, and the earlier note claiming otherwise was wrong.**
+Vertical motion is in DOCUMENT coordinates, so the caret can never land on a
+lens row — there is nothing to skip. The render places it correctly because the
+walk knows which row of a line is content.
+
+**The toggle asks and clears.** Turning lenses on requests them immediately —
+waiting for the next save reads as a dead key — and turning them off clears the
+store, so the rows go with the setting. `CodeLensRefresher` checks the toggle
+rather than the controller, so off means no REQUESTS, not just no painting: a
+lens count is a real round trip per save.
+
+*Still out:* running a lens's command on click (the lens carries one; nothing
+invokes it), and `clampToCaret()` still counts document lines, so the caret can
+scroll a row or two imprecisely when many lenses are on screen — the same
+relationship folding already has with it.
 
 **Clickable `✗ N` / `▲ N` status-bar counts — rejected, and it is the same
 ground `statusCommands()` was rejected on.** `StatusCell` / `StatusMenuSpan`

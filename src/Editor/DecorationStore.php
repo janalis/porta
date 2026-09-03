@@ -237,6 +237,12 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         ($this->invalidate)();
     }
 
+    /** Whether any line has a lens — the cheap check that keeps the unwrapped hit-test on its fast path. */
+    public function hasCodeLenses(): bool
+    {
+        return [] !== $this->codeLenses;
+    }
+
     /** @return list<string> the lens titles above one line */
     public function codeLensesAt(int $line): array
     {

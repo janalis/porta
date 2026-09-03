@@ -1006,6 +1006,10 @@
         <source>Soft-Wrap</source>
         <target>Zeilenumbruch</target>
       </trans-unit>
+      <trans-unit id="770">
+        <source>Code Vision</source>
+        <target>Code-Vision</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>Fokus Baum / Editor wechseln</target>

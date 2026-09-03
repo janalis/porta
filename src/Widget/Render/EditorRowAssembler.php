@@ -92,15 +92,18 @@ final readonly class EditorRowAssembler
         // Same sequence — the row-th visible line at or after $vScroll.
         $lineCount = $this->document->getLineCount();
         $walk = $vScroll;
-        // Which segment of $walk this row shows. Zero unless soft wrap is on,
-        // in which case a line holds the walk for as many rows as it needs.
-        $segment = 0;
+        // Which row OF $walk this screen row shows. A line occupies one row per
+        // code lens above it, then one per wrapped segment — so this is 0 for
+        // most lines and the walk moves on as soon as it runs out.
+        $rowInLine = 0;
         for ($row = 0; $row < $contentRows; ++$row) {
             $lineIndex = $walk < $lineCount ? $walk : null;
-            $rowSegment = $segment;
+            $atRow = $rowInLine;
+            $lenses = null === $lineIndex ? [] : $this->store->codeLensesAt($lineIndex);
             if (null !== $lineIndex) {
-                $more = ($segment + 1) < ($this->wrap?->rowsFor($lineIndex, $geo->contentWidth) ?? 1);
-                $segment = $more ? $segment + 1 : 0;
+                $total = \count($lenses) + ($this->wrap?->rowsFor($lineIndex, $geo->contentWidth) ?? 1);
+                $more = ($rowInLine + 1) < $total;
+                $rowInLine = $more ? $rowInLine + 1 : 0;
                 if (!$more) {
                     $walk = $this->foldModel->nextVisibleLine($walk);
                 }
@@ -110,6 +113,16 @@ final readonly class EditorRowAssembler
                 $result[] = $this->styles->of(Role::Placeholder)->apply(str_pad('~', max(0, $geo->gutterWidth))).AnsiText::blank($geo->contentWidth).$stripe[$stickyCount + $row];
                 continue;
             }
+
+            // A lens row belongs to the line below it and shows none of its
+            // text, so it takes no number, no marks and no caret.
+            $lensTitle = $lenses[$atRow] ?? null;
+            if (null !== $lensTitle) {
+                $result[] = $this->lensRow($lensTitle, $geo).$stripe[$stickyCount + $row];
+
+                continue;
+            }
+            $rowSegment = $atRow - \count($lenses);
 
             $isCursorLine = $lineIndex === $cursorLine && (null === $this->wrap || $rowSegment === WrapLayout::segmentOf($cursorDisplayCol, $geo->contentWidth));
             $lineDiags = $this->store->diagnostics()[$lineIndex] ?? [];
@@ -187,6 +200,18 @@ final readonly class EditorRowAssembler
         $content = EditorRenderer::renderContentLine($hScroll, $hl, $geo->contentWidth, CursorVisibility::Hidden, 0, $this->cursorStyle->marker());
 
         return LineDecorator::applyFullWidth($gutter.$content, $geo->gutterWidth + $geo->contentWidth, $this->styles->of(Role::HeaderBar));
+    }
+
+    /**
+     * One code-lens row: the server's own words, dim, where a line number
+     * would be. PhpStorm indents these to the code they describe; the gutter
+     * already provides that indent, so the text starts at the content column.
+     */
+    private function lensRow(string $title, EditorGeometry $geo): string
+    {
+        $text = AnsiUtils::sliceWithWidth($this->styles->of(Role::Dim)->apply($title), 0, $geo->contentWidth)['text'];
+
+        return AnsiText::blank(max(0, $geo->gutterWidth)).AnsiText::padRight($text, $geo->contentWidth);
     }
 
     /**

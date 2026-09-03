@@ -1006,6 +1006,10 @@
         <source>Soft-Wrap</source>
         <target>גלישת שורות</target>
       </trans-unit>
+      <trans-unit id="770">
+        <source>Code Vision</source>
+        <target>חיווי קוד</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>החלף מיקוד עץ / עורך</target>

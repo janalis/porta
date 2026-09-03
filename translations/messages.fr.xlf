@@ -1006,6 +1006,10 @@
         <source>Soft-Wrap</source>
         <target>Retour à la ligne</target>
       </trans-unit>
+      <trans-unit id="770">
+        <source>Code Vision</source>
+        <target>Code Vision</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>Basculer le focus arborescence / éditeur</target>

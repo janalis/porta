@@ -30,6 +30,9 @@ final class EditorDisplayOptions
 
     /** Off by default: horizontal scroll is the long-line behaviour this editor has always had. */
     private bool $softWrap = false;
+
+    /** Off by default: a lens costs a round trip per save and a row per declaration. */
+    private bool $codeLenses = false;
     private bool $autoPairs = true;
 
     /** @param \Closure(): void $invalidate drops the widget's memoised render lines */
@@ -91,6 +94,16 @@ final class EditorDisplayOptions
     public function setIndentGuides(bool $on): bool
     {
         return $this->apply($this->indentGuides, $on);
+    }
+
+    public function codeLenses(): bool
+    {
+        return $this->codeLenses;
+    }
+
+    public function setCodeLenses(bool $on): bool
+    {
+        return $this->apply($this->codeLenses, $on);
     }
 
     public function softWrap(): bool

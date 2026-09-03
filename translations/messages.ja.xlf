@@ -1006,6 +1006,10 @@
         <source>Soft-Wrap</source>
         <target>折り返し</target>
       </trans-unit>
+      <trans-unit id="770">
+        <source>Code Vision</source>
+        <target>コードビジョン</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>ツリー / エディターのフォーカスを切替</target>

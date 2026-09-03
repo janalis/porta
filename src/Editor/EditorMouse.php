@@ -28,6 +28,8 @@ final class EditorMouse
     public function __construct(
         private readonly Document $document,
         private readonly FoldModel $foldModel,
+        /** Lens rows shift everything below them, so hit-testing counts them too. */
+        private readonly DecorationStore $lenses,
         private readonly MultiCaret $multiCaret,
         private readonly \Closure $invalidate,
         private readonly \Closure $closeCompletion,
@@ -147,7 +149,9 @@ final class EditorMouse
             ? [$vp->stickyLines[$relRow], 0]
             : $this->lineAtRow(max(0, $relRow - $stickyCount), $vp);
         // Wrapping forces hScroll to 0, so exactly one of these is ever non-zero.
-        $displayCol = max(0, $relCol - $vp->gutterWidth) + $vp->hScroll + WrapLayout::offsetOf($segment, $vp->wrapWidth ?? 0);
+        $displayCol = $segment < 0
+            ? 0 // a lens row: the line it describes, at its start
+            : max(0, $relCol - $vp->gutterWidth) + $vp->hScroll + WrapLayout::offsetOf($segment, $vp->wrapWidth ?? 0);
 
         return ['line' => $line, 'col' => $doc->byteColForDisplayCol($line, $displayCol), 'displayCol' => $displayCol];
     }
@@ -161,12 +165,14 @@ final class EditorMouse
      * wrapped line lands on the wrong one otherwise, and by more lines the
      * further down the pane it is.
      *
-     * @return array{0: int, 1: int} line, segment
+     * @return array{0: int, 1: int} line, and its segment — NEGATIVE when the row is a lens
      */
     private function lineAtRow(int $contentRow, EditorViewport $vp): array
     {
         $lastLine = $this->document->getLineCount() - 1;
-        if (null === $vp->wrapWidth) {
+        // No wrapping and no lenses: rows and lines run one to one, which is
+        // the fold model's own arithmetic.
+        if (null === $vp->wrapWidth && !$this->lenses->hasCodeLenses()) {
             return [$this->foldModel->docLineAtRow($vp->vScroll, $contentRow) ?? $lastLine, 0];
         }
 
@@ -177,9 +183,13 @@ final class EditorMouse
         // to advance: a walk that cannot terminate structurally would need a
         // guard branch nothing can reach to test.
         for ($step = 0; $line <= $lastLine && $step <= $lastLine; ++$step) {
-            $rows = $layout->rowsFor($line, $vp->wrapWidth);
+            $lensRows = \count($this->lenses->codeLensesAt($line));
+            $rows = $lensRows + (null === $vp->wrapWidth ? 1 : $layout->rowsFor($line, $vp->wrapWidth));
             if ($contentRow < ($row + $rows)) {
-                return [$line, $contentRow - $row];
+                // A NEGATIVE segment says "this row is a lens", which the
+                // caller turns into column 0: a lens shows none of the line's
+                // own columns, so the column clicked means nothing there.
+                return [$line, $contentRow - $row - $lensRows];
             }
             $row += $rows;
             $line = $this->foldModel->nextVisibleLine($line);

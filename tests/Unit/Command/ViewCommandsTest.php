@@ -13,6 +13,7 @@ use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\View\ViewRegistry;
@@ -181,6 +182,45 @@ final class ViewCommandsTest extends TestCase
             $commands->run('ide_project_tree');
 
             $this->assertSame($tree, $tui->getFocus());
+        } finally {
+            $this->closeIde($ide);
+        }
+    }
+
+    /**
+     * The two view toggles, driven the way the palette drives them. Code
+     * vision asks for its lenses the moment it is turned ON — otherwise
+     * nothing appears until the next save, which reads as a dead key — and
+     * clears the rows when turned off, so they go with the setting.
+     */
+    public function testTheSoftWrapAndCodeVisionTogglesFlipTheirOptions(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\nclass A {}\n"]);
+        new OnboardingState($project->dir)->markWelcomeSeen();
+        $ide = new Ide($project->dir, $project->path('a.php'), new VirtualTerminal(columns: 100, rows: 30));
+
+        try {
+            $commands = Services::resolve($ide, CommandRegistry::class);
+            $editor = Services::resolve($ide, CodeEditorWidget::class);
+            $display = $editor->display();
+
+            $this->assertFalse($display->softWrap(), 'both are off by default');
+            $this->assertFalse($display->codeLenses());
+
+            $commands->run('toggle_soft_wrap');
+            $this->assertTrue($display->softWrap());
+            $commands->run('toggle_soft_wrap');
+            $this->assertFalse($display->softWrap(), 'and the same key turns it back off');
+
+            // Lenses on with no language server: the option flips, the request
+            // is simply never sent, and nothing is painted.
+            $editor->decorations()->setCodeLenses([1 => ['3 usages']]);
+            $commands->run('toggle_code_lenses');
+            $this->assertTrue($display->codeLenses());
+
+            $commands->run('toggle_code_lenses');
+            $this->assertFalse($display->codeLenses());
+            $this->assertSame([], $editor->decorations()->codeLensesAt(1), 'turning it off took the rows with it');
         } finally {
             $this->closeIde($ide);
         }

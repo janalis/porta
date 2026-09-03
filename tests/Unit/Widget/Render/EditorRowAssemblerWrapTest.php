@@ -123,4 +123,27 @@ final class EditorRowAssemblerWrapTest extends TestCase
 
         $this->assertGreaterThan(1, $rowsOfAs(), 'wrapped, it occupies several');
     }
+
+    /**
+     * Code lenses are the other kind of virtual row: one per lens, above the
+     * line it describes, showing none of that line's text. They compose with
+     * wrapping because both are just rows a line occupies.
+     */
+    public function testCodeLensesRenderAboveTheirLineAndCountAsRows(): void
+    {
+        $editor = new \Porta\Widget\CodeEditorWidget();
+        $editor->showDocument('/p/a.php', new Document("<?php\nclass A {}\nfunction b() {}\n"));
+        $editor->decorations()->setCodeLenses([1 => ['3 usages'], 2 => ['1 usage', '2 implementations']]);
+
+        $rows = array_map(
+            static fn (string $r): string => trim(AnsiUtils::stripAnsiCodes($r)),
+            $editor->render(new \Symfony\Component\Tui\Render\RenderContext(52, 8)),
+        );
+
+        $this->assertSame(
+            ['1   <?php', '3 usages', '2   class A {}', '1 usage', '2 implementations', '3   function b() {}', '4', '~'],
+            $rows,
+            'each lens takes a row of its own, unnumbered, above its line',
+        );
+    }
 }

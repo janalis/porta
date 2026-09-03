@@ -9,8 +9,10 @@ use Porta\Config\KeyDispatch;
 use Porta\Editor\BookmarkActions;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
+use Porta\Editor\EditorDecorationSink;
 use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\RecentLocationActions;
+use Porta\Lsp\CodeLensController;
 use Porta\Lsp\FoldingController;
 use Porta\Run\RunController;
 use Porta\Search\Everywhere\SearchEverywhereController;
@@ -40,6 +42,8 @@ final class ViewCommands implements CommandProvider
         private readonly FoldingController $folding,
         private readonly BookmarkActions $bookmarks,
         private readonly EditorDisplayOptions $display,
+        private readonly CodeLensController $lenses,
+        private readonly EditorDecorationSink $decorations,
         private readonly RecentLocationActions $recentLocations,
         private readonly FileTreeWidget $tree,
         private readonly Tui $tui,
@@ -54,6 +58,7 @@ final class ViewCommands implements CommandProvider
             ->add('ide_bookmarks', fn () => $this->bookmarks->show(), keyBound: KeyDispatch::Bound)
             ->add('ide_recent_locations', fn () => $this->recentLocations->show(), keyBound: KeyDispatch::Bound)
             ->add('toggle_soft_wrap', fn () => $this->display->setSoftWrap(!$this->display->softWrap()), keyBound: KeyDispatch::Bound)
+            ->add('toggle_code_lenses', $this->toggleCodeLenses(...), keyBound: KeyDispatch::Bound)
             ->add(
                 'ide_project_tree',
                 function (): void {
@@ -127,5 +132,17 @@ final class ViewCommands implements CommandProvider
                 },
                 keyBound: KeyDispatch::Bound,
             );
+    }
+
+    /**
+     * Turning lenses ON asks for them straight away — otherwise nothing shows
+     * until the next save, which reads as the toggle not working. Turning them
+     * OFF clears what is on screen, so the rows go with the setting.
+     */
+    private function toggleCodeLenses(): void
+    {
+        $on = !$this->display->codeLenses();
+        $this->display->setCodeLenses($on);
+        $on ? $this->lenses->requestCodeLenses() : $this->decorations->setCodeLenses([]);
     }
 }

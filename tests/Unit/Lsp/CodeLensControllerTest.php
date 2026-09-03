@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Lsp;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\Buffer;
 use Porta\Editor\Document;
+use Porta\Event\ActiveBufferChanged;
+use Porta\Event\BufferSaved;
 use Porta\I18n\Translator;
 use Porta\Lsp\CodeLensController;
+use Porta\Lsp\CodeLensRefresher;
 use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FixedActiveFile;
@@ -135,5 +139,42 @@ final class CodeLensControllerTest extends TestCase
         end($this->client->requests)['respond'](null);
 
         $this->assertSame(['first'], $this->editor->decorations()->codeLensesAt(1));
+    }
+
+    /**
+     * The refresher checks the toggle, not the controller — so turning code
+     * vision off stops the REQUESTS rather than only the painting. A lens count
+     * is a real round trip per save; paying for it invisibly would be worse
+     * than not having the feature.
+     */
+    public function testTheRefresherAsksNothingWhileTheToggleIsOff(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller);
+        $display = $this->editor->display();
+
+        $refresher = new CodeLensRefresher($controller, $display);
+        $refresher->onBufferSaved(new BufferSaved(new Buffer('/p/a.php', new Document("<?php\n"))));
+
+        $this->assertSame([], $this->client->requests, 'off by default, so nothing was asked');
+
+        $display->setCodeLenses(true);
+        $refresher->onBufferSaved(new BufferSaved(new Buffer('/p/a.php', new Document("<?php\n"))));
+
+        $this->assertCount(1, $this->client->requests, 'and on, the save is the settle point');
+        $this->assertSame('textDocument/codeLens', $this->client->requests[0]['method']);
+    }
+
+    /** A buffer switch is the other settle point, for the same reason. */
+    public function testABufferSwitchAlsoRefreshesWhenOn(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller);
+        $this->editor->display()->setCodeLenses(true);
+
+        new CodeLensRefresher($controller, $this->editor->display())
+            ->onActiveBufferChanged(new ActiveBufferChanged($this->editor->getFilePath() ?? ''));
+
+        $this->assertCount(1, $this->client->requests);
     }
 }
