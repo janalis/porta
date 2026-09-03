@@ -36,6 +36,7 @@ use Porta\Editor\ModalHost;
 use Porta\Editor\MultiCaret;
 use Porta\Editor\OccurrenceHighlights;
 use Porta\Editor\TemplateCatalog;
+use Porta\Editor\WrapLayout;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Highlight\DarkTerminalTheme;
 use Porta\Highlight\TempestHighlightProvider;
@@ -1219,8 +1220,14 @@ final class CodeEditorWidget extends AbstractWidget implements
                 $this->focused && !$this->findModal->isOpen() && !$this->overlayHost->anyOpen(), // an open modal owns the caret
                 $this->styles,
                 $this->cursorStyle,
+                // Wrap and horizontal scroll are one knob read two ways — the
+                // same slice offset — so only one of them can be driving.
+                // Built per frame on purpose: its memo is keyed on width and
+                // document version, so the only lifetime that buys anything is
+                // the walk over this frame's visible rows.
+                $this->display->softWrap() ? new WrapLayout($doc) : null,
             );
-            $result = $assembler->assemble($geo, $decorations, $sticky, $highlighted, $stripe, $contentRows, $vScroll, $cursorLine, $cursorDisplayCol, $hScroll);
+            $result = $assembler->assemble($geo, $decorations, $sticky, $highlighted, $stripe, $contentRows, $vScroll, $cursorLine, $cursorDisplayCol, $this->display->softWrap() ? 0 : $hScroll);
 
             $result = $this->composePopups($result, new EditorPopupGeometry(
                 columns: $columns,

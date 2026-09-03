@@ -9,6 +9,7 @@ use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
 use Porta\Editor\LineNumberMode;
+use Porta\Editor\WrapLayout;
 use Porta\Support\AnsiText;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Glyphs;
@@ -50,6 +51,8 @@ final readonly class EditorRowAssembler
         private bool $showCaret,
         ?Styles $styles = null,
         private CursorStyle $cursorStyle = new CursorStyle(),
+        /** Non-null only while soft wrap is on; null renders one row per line as before. */
+        private ?WrapLayout $wrap = null,
     ) {
         $this->styles = $styles ?? Styles::dark();
         $this->breakpointSet = array_fill_keys($store->breakpointLines(), value: true);
@@ -89,10 +92,18 @@ final readonly class EditorRowAssembler
         // Same sequence — the row-th visible line at or after $vScroll.
         $lineCount = $this->document->getLineCount();
         $walk = $vScroll;
+        // Which segment of $walk this row shows. Zero unless soft wrap is on,
+        // in which case a line holds the walk for as many rows as it needs.
+        $segment = 0;
         for ($row = 0; $row < $contentRows; ++$row) {
             $lineIndex = $walk < $lineCount ? $walk : null;
+            $rowSegment = $segment;
             if (null !== $lineIndex) {
-                $walk = $this->foldModel->nextVisibleLine($walk);
+                $more = ($segment + 1) < ($this->wrap?->rowsFor($lineIndex, $geo->contentWidth) ?? 1);
+                $segment = $more ? $segment + 1 : 0;
+                if (!$more) {
+                    $walk = $this->foldModel->nextVisibleLine($walk);
+                }
             }
 
             if (null === $lineIndex) {
@@ -100,10 +111,14 @@ final readonly class EditorRowAssembler
                 continue;
             }
 
-            $isCursorLine = $lineIndex === $cursorLine;
+            $isCursorLine = $lineIndex === $cursorLine && (null === $this->wrap || $rowSegment === WrapLayout::segmentOf($cursorDisplayCol, $geo->contentWidth));
             $lineDiags = $this->store->diagnostics()[$lineIndex] ?? [];
 
-            $gutter = $this->gutterCell($lineIndex, $isCursorLine ? CaretLine::Current : CaretLine::Other, $lineDiags, $geo->numberWidth);
+            // A continuation row is the same line, so it carries no number and
+            // no gutter marks — repeating them would read as another line.
+            $gutter = $rowSegment > 0
+                ? AnsiText::blank(max(0, $geo->gutterWidth))
+                : $this->gutterCell($lineIndex, $isCursorLine ? CaretLine::Current : CaretLine::Other, $lineDiags, $geo->numberWidth);
             $hlLine = $this->decoratedLine(
                 $lineIndex,
                 $highlighted[$lineIndex] ?? '',
@@ -114,7 +129,7 @@ final readonly class EditorRowAssembler
             );
 
             $content = EditorRenderer::renderContentLine(
-                $hScroll,
+                null === $this->wrap ? $hScroll : WrapLayout::offsetOf($rowSegment, $geo->contentWidth),
                 $hlLine,
                 $geo->contentWidth,
                 $isCursorLine && $this->showCaret && !$decorations->multiActive ? CursorVisibility::Shown : CursorVisibility::Hidden,

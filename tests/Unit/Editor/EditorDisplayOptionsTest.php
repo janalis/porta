@@ -54,6 +54,7 @@ final class EditorDisplayOptionsTest extends TestCase
             'stickyScroll' => [$options->setStickyScroll(...), $options->stickyScroll(...)],
             'indentGuides' => [$options->setIndentGuides(...), $options->indentGuides(...)],
             'autoPairs' => [$options->setAutoPairs(...), $options->autoPairs(...)],
+            'softWrap' => [$options->setSoftWrap(...), $options->softWrap(...)],
         ];
 
         $expected = 0;

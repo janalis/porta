@@ -27,6 +27,9 @@ final class EditorDisplayOptions
     private bool $vcsGutter = true;
     private bool $stickyScroll = true;
     private bool $indentGuides = true;
+
+    /** Off by default: horizontal scroll is the long-line behaviour this editor has always had. */
+    private bool $softWrap = false;
     private bool $autoPairs = true;
 
     /** @param \Closure(): void $invalidate drops the widget's memoised render lines */
@@ -88,6 +91,16 @@ final class EditorDisplayOptions
     public function setIndentGuides(bool $on): bool
     {
         return $this->apply($this->indentGuides, $on);
+    }
+
+    public function softWrap(): bool
+    {
+        return $this->softWrap;
+    }
+
+    public function setSoftWrap(bool $on): bool
+    {
+        return $this->apply($this->softWrap, $on);
     }
 
     public function autoPairs(): bool
