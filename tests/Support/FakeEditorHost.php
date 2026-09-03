@@ -62,6 +62,14 @@ final class FakeEditorHost implements EditorHost
         ($this->recorder)('requestRename', [$line, $utf16Col, $word]);
     }
 
+    /** Soft wrap off unless a test says otherwise — the editor's own default. */
+    public ?int $wrapWidth = null;
+
+    public function wrapWidth(): ?int
+    {
+        return $this->wrapWidth;
+    }
+
     public function contentRows(): int
     {
         return $this->rows;

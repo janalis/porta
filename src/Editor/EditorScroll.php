@@ -55,6 +55,23 @@ final class EditorScroll
     }
 
     /** Record the content rows of the last render (viewport minus sticky band). */
+    /**
+     * The last rendered content width, kept for the same reason
+     * {@see $contentRows} is: soft-wrap caret motion has to know how wide a
+     * visual row is, and that is a render-time value nothing else retains.
+     */
+    private int $contentWidth = 0;
+
+    public function contentWidth(): int
+    {
+        return $this->contentWidth;
+    }
+
+    public function setContentWidth(int $width): void
+    {
+        $this->contentWidth = max(0, $width);
+    }
+
     public function setContentRows(int $rows): void
     {
         $this->contentRows = $rows;

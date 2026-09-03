@@ -35,6 +35,13 @@ interface EditorHost
     /** Viewport rows, for page up/down. */
     public function contentRows(): int;
 
+    /**
+     * The width of one visual row while soft wrap is on; null when it is off.
+     * Vertical caret motion asks, because a "line" is a segment then — and the
+     * width is a render-time value the document has no business holding.
+     */
+    public function wrapWidth(): ?int;
+
     public function commentPrefix(): ?string;
 
     public function autoPairsEnabled(): bool;

@@ -861,6 +861,20 @@ final class CodeEditorWidget extends AbstractWidget implements
      * interface, so every new view option was a method on the largest class in
      * the codebase — and soft wrap was the one that finally could not fit.
      */
+    /**
+     * The width of one visual row while soft wrap is on, or null when it is
+     * off — the one thing caret motion needs that only the render knows.
+     * Answered from the last rendered geometry, which is where a content width
+     * comes from at all.
+     */
+    #[\Override]
+    public function wrapWidth(): ?int
+    {
+        $width = $this->scroll->contentWidth();
+
+        return $this->display->softWrap() && $width > 0 ? $width : null;
+    }
+
     public function display(): EditorDisplayOptions
     {
         return $this->display;
@@ -1153,6 +1167,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             $contentRows = $rows - \count($sticky);
             $this->scroll->setContentRows($contentRows);
 
+            $this->scroll->setContentWidth($geo->contentWidth);
             $cursorDisplayCol = $this->followCaret($doc, $cursorLine, $geo->contentWidth);
             $hScroll = $this->scroll->hScroll();
 

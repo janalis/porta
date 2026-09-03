@@ -176,6 +176,73 @@ final class EditorActions
     }
 
     /** Caret movement (with shift-select variants), select-all, document ends and paging. */
+    /**
+     * One caret move, by VISUAL row when soft wrap is on.
+     *
+     * Wrapped, `cursor_down` should step to the next segment of the same line
+     * before leaving it — otherwise Down jumps over everything the wrap put on
+     * screen. Every other movement is unaffected, so they fall straight
+     * through to the document.
+     */
+    private function moveVertically(string $action, string $method): void
+    {
+        $doc = $this->document;
+        $width = $this->host->wrapWidth();
+        if (null === $width || 'cursor_up' !== $action && 'cursor_down' !== $action) {
+            // @mago-expect analysis:string-member-selector -- $method comes from
+            // MultiCaret::MOVE_METHODS, a const map of real Document methods.
+            $doc->{$method}();
+
+            return;
+        }
+
+        $line = $doc->getCursorLine();
+        $column = $doc->getCursorDisplayCol();
+        if ('cursor_down' === $action) {
+            // Another segment below on this same line?
+            if (($column + $width) <= $doc->lineDisplayWidth($line)) {
+                $doc->setCursor($line, $doc->byteColForDisplayCol($line, $column + $width));
+
+                return;
+            }
+            $doc->moveDown();
+            $this->snapIntoFirstSegment($width);
+
+            return;
+        }
+
+        if ($column >= $width) {
+            $doc->setCursor($line, $doc->byteColForDisplayCol($line, $column - $width));
+
+            return;
+        }
+        $doc->moveUp();
+        $this->snapIntoLastSegment($width);
+    }
+
+    /** Arriving from above: the caret belongs in the new line's FIRST segment. */
+    private function snapIntoFirstSegment(int $width): void
+    {
+        $doc = $this->document;
+        $line = $doc->getCursorLine();
+        $column = $doc->getCursorDisplayCol();
+        if ($column >= $width) {
+            $doc->setCursor($line, $doc->byteColForDisplayCol($line, $column % $width));
+        }
+    }
+
+    /** Arriving from below: the caret belongs in the new line's LAST segment. */
+    private function snapIntoLastSegment(int $width): void
+    {
+        $doc = $this->document;
+        $line = $doc->getCursorLine();
+        $column = $doc->getCursorDisplayCol();
+        $lastStart = intdiv(max(0, $doc->lineDisplayWidth($line) - 1), $width) * $width;
+        if ($lastStart > 0) {
+            $doc->setCursor($line, $doc->byteColForDisplayCol($line, $lastStart + ($column % $width)));
+        }
+    }
+
     private function tryMovement(string $keys, Keybindings $kb): bool
     {
         $doc = $this->document;
@@ -189,14 +256,14 @@ final class EditorActions
                     $this->host->setSignatureHint(null);
                 }
                 $doc->clearSelection();
-                $doc->{$method}();
+                $this->moveVertically($action, $method);
                 $this->host->invalidate();
 
                 return true;
             }
             if ($kb->matches($keys, substr_replace($action, replace: 'select', offset: 0, length: 6))) {
                 $doc->beginSelect();
-                $doc->{$method}();
+                $this->moveVertically($action, $method);
                 $this->host->invalidate();
 
                 return true;

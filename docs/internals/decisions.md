@@ -1009,7 +1009,16 @@ Inlay hints and inline diagnostics ride in the same row; measuring them would
 make text reflow because a hint arrived, which is the opposite of what a reader
 wants. They clip at the row edge as they already do.
 
-**The gap, and it is a real one: caret up/down still moves by DOCUMENT line.**
+**The caret gap below was closed the same day** — `EditorHost::wrapWidth()`
+answers the one render-time value motion needs (null when wrap is off), the
+width is retained on `EditorScroll` beside `contentRows` for the same reason,
+and `EditorActions` steps by segment for `cursor_up` / `cursor_down` and their
+select variants. Arriving from above lands in the new line's FIRST segment and
+from below in its LAST, which is the part a naive `moveDown()` gets wrong. The
+original text is kept below because it is what the phasing decision was made
+on.
+
+~~**The gap, and it is a real one: caret up/down still moves by DOCUMENT line.**~~
 With wrap on, Down from a wrapped line jumps past its continuation rows rather
 than stepping through them. PhpStorm moves by visual line. The fix needs the
 content width outside render — `EditorScroll` is the right home, since it
@@ -1022,6 +1031,9 @@ Soft wrap is **off by default and opt-in via `Alt+Z`**, so the gap is reachable
 only by someone who asked for wrapping — which is the reason it was acceptable
 to ship the rest without it, not a reason to leave it.
 
-*Next:* segment-wise caret motion, then mouse click mapping (a click on a
-continuation row currently resolves to the line's first column).
+*Next:* mouse click mapping — a click on a continuation row still resolves
+through `FoldModel::docLineAtRow()`, which counts document lines, so it lands on
+the wrong line once anything above it wraps. That is the last piece of the v1,
+and unlike the caret it has no partial-credit version: the mapping is either
+wrap-aware or it is wrong.
 
