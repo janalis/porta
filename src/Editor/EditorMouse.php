@@ -142,13 +142,50 @@ final class EditorMouse
         $doc = $this->document;
         $stickyCount = \count($vp->stickyLines);
         // A click on a pinned sticky-scroll header row jumps to that header line.
-        $line =
-            $relRow >= 0 && $relRow < $stickyCount
-                ? $vp->stickyLines[$relRow]
-                : $this->foldModel->docLineAtRow($vp->vScroll, max(0, $relRow - $stickyCount)) ?? ($doc->getLineCount() - 1);
-        $displayCol = max(0, $relCol - $vp->gutterWidth) + $vp->hScroll;
+        $onSticky = $relRow >= 0 && $relRow < $stickyCount;
+        [$line, $segment] = $onSticky
+            ? [$vp->stickyLines[$relRow], 0]
+            : $this->lineAtRow(max(0, $relRow - $stickyCount), $vp);
+        // Wrapping forces hScroll to 0, so exactly one of these is ever non-zero.
+        $displayCol = max(0, $relCol - $vp->gutterWidth) + $vp->hScroll + WrapLayout::offsetOf($segment, $vp->wrapWidth ?? 0);
 
         return ['line' => $line, 'col' => $doc->byteColForDisplayCol($line, $displayCol), 'displayCol' => $displayCol];
+    }
+
+    /**
+     * The document line a content row shows, and which SEGMENT of it.
+     *
+     * Unwrapped this is `FoldModel::docLineAtRow()` and the segment is always
+     * zero. Wrapped, a line holds the walk for as many rows as it needs, so the
+     * walk here has to be the one the row assembler does — a click below a
+     * wrapped line lands on the wrong one otherwise, and by more lines the
+     * further down the pane it is.
+     *
+     * @return array{0: int, 1: int} line, segment
+     */
+    private function lineAtRow(int $contentRow, EditorViewport $vp): array
+    {
+        $lastLine = $this->document->getLineCount() - 1;
+        if (null === $vp->wrapWidth) {
+            return [$this->foldModel->docLineAtRow($vp->vScroll, $contentRow) ?? $lastLine, 0];
+        }
+
+        $layout = new WrapLayout($this->document);
+        $line = $vp->vScroll;
+        $row = 0;
+        // Bounded by the line count rather than by trusting nextVisibleLine()
+        // to advance: a walk that cannot terminate structurally would need a
+        // guard branch nothing can reach to test.
+        for ($step = 0; $line <= $lastLine && $step <= $lastLine; ++$step) {
+            $rows = $layout->rowsFor($line, $vp->wrapWidth);
+            if ($contentRow < ($row + $rows)) {
+                return [$line, $contentRow - $row];
+            }
+            $row += $rows;
+            $line = $this->foldModel->nextVisibleLine($line);
+        }
+
+        return [$lastLine, 0];
     }
 
     /** Jump the caret to the file position a click at screen row $relRow in the error stripe maps to. */

@@ -683,6 +683,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             $this->lastStripeCol,
             $this->lastRenderRows,
             $this->stickyLines,
+            $this->wrapWidth(),
         );
     }
 

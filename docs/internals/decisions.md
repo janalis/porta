@@ -1031,9 +1031,19 @@ Soft wrap is **off by default and opt-in via `Alt+Z`**, so the gap is reachable
 only by someone who asked for wrapping — which is the reason it was acceptable
 to ship the rest without it, not a reason to leave it.
 
-*Next:* mouse click mapping — a click on a continuation row still resolves
-through `FoldModel::docLineAtRow()`, which counts document lines, so it lands on
-the wrong line once anything above it wraps. That is the last piece of the v1,
-and unlike the caret it has no partial-credit version: the mapping is either
-wrap-aware or it is wrong.
+**Click mapping closed it** (same day). `EditorViewport` carries the wrap width
+— it is the VO whose whole job is "render-produced geometry hit-testing needs" —
+and `EditorMouse` walks segments the way the row assembler does, resolving both
+the line AND the column within its segment. The walk is bounded by the line
+count rather than trusting `nextVisibleLine()` to advance, because a walk that
+cannot terminate structurally needs a guard branch nothing can reach to test.
+
+**The v1 is therefore complete**: render, toggle, caret motion, hit-testing.
+What is NOT done and was never in the v1: `vScroll` is still a document line, so
+a line taller than the viewport cannot be scrolled into; and code vision, which
+this was supposed to make nearly free, remains unbuilt.
+
+*Re-opens on:* someone hitting the tall-line scroll limit in practice. It is a
+one-line-at-a-time behaviour, not a correctness bug, and pricing the (line,
+segment) scroll position was the saving that made this affordable at all.
 

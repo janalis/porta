@@ -22,5 +22,11 @@ final readonly class EditorViewport
         public int $stripeCol,
         public int $renderRows,
         public array $stickyLines,
+        /**
+         * The width of one visual row while soft wrap is on; null when it is
+         * off. Hit-testing needs it for the same reason caret motion does — a
+         * screen row is a SEGMENT then, not a line.
+         */
+        public ?int $wrapWidth = null,
     ) {}
 }
