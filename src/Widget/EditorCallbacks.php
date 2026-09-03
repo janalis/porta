@@ -17,5 +17,6 @@ final readonly class EditorCallbacks
         public ?EditorCompletionHandler $completion = null,
         public ?EditorRefactorHandler $refactor = null,
         public ?BufferNavigationHandler $buffer = null,
+        public ?EditorCodeLensHandler $codeLens = null,
     ) {}
 }

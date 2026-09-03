@@ -591,9 +591,22 @@ exactly). Both setters had to move BEFORE the clamp in the render: set
 afterwards, the clamp used the previous frame's numbers and the caret sat off
 screen for one paint after every Down.
 
-*Still out:* running a lens's command on click. The lens carries one and
-`workspace/executeCommand` already exists for code actions, but the store keeps
-only the title — invoking would mean carrying the command through it.
+**Clicking a lens runs it** (the last piece). The store carries the command
+beside the title, and `EditorMouse` encodes a lens row as `-(index + 1)` so the
+caller recovers WHICH lens without knowing how many are above the line. The
+caret still moves to the line the lens describes — clicking a lens is also a way
+of going there.
+
+**It is a role on `EditorCallbacks`, not an event.** The widget holds no
+dispatcher and its `too-many-properties` ceiling is the reason it should not
+gain one; the callbacks object is the single property that carries every
+outbound verb, which is exactly what it is for. `CodeLensController` implements
+`EditorCodeLensHandler` and the container autowires it as the only implementor.
+
+**A lens with no command is kept, not dropped.** "3 usages" reads the same
+whether or not it can be clicked, so an informational lens still renders and
+clicking it says it has nothing to run — silence there would read as a broken
+click.
 
 **Clickable `✗ N` / `▲ N` status-bar counts — rejected, and it is the same
 ground `statusCommands()` was rejected on.** `StatusCell` / `StatusMenuSpan`

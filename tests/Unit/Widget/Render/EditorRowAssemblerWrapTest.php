@@ -133,7 +133,8 @@ final class EditorRowAssemblerWrapTest extends TestCase
     {
         $editor = new \Porta\Widget\CodeEditorWidget();
         $editor->showDocument('/p/a.php', new Document("<?php\nclass A {}\nfunction b() {}\n"));
-        $editor->decorations()->setCodeLenses([1 => ['3 usages'], 2 => ['1 usage', '2 implementations']]);
+        $lens = static fn (string $title): array => ['title' => $title, 'command' => 'x', 'arguments' => []];
+        $editor->decorations()->setCodeLenses([1 => [$lens('3 usages')], 2 => [$lens('1 usage'), $lens('2 implementations')]]);
 
         $rows = array_map(
             static fn (string $r): string => trim(AnsiUtils::stripAnsiCodes($r)),

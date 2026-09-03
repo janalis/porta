@@ -1010,6 +1010,10 @@
         <source>Code Vision</source>
         <target>Code Vision</target>
       </trans-unit>
+      <trans-unit id="780">
+        <source>This lens has nothing to run</source>
+        <target>Cette indication n’a rien à exécuter</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>Basculer le focus arborescence / éditeur</target>

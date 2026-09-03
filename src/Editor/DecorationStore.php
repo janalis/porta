@@ -27,7 +27,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     /** @var list<int> 0-based lines with a breakpoint (● in the gutter) */
     private array $breakpointLines = [];
 
-    /** @var array<int, list<string>> 0-based line => the lens titles shown ABOVE it */
+    /** @var array<int, list<array{title: string, command: string, arguments: list<mixed>}>> 0-based line => the lenses shown ABOVE it */
     private array $codeLenses = [];
 
     /** @var array<int, true> 0-based bookmarked lines, keyed for the per-row lookup the gutter does */
@@ -229,7 +229,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
      * flows through {@see codeLensesAt()} to the walk rather than being painted
      * into an existing row.
      *
-     * @param array<int, list<string>> $byLine 0-based line => titles; [] clears
+     * @param array<int, list<array{title: string, command: string, arguments: list<mixed>}>> $byLine 0-based line => lenses; [] clears
      */
     public function setCodeLenses(array $byLine): void
     {
@@ -243,7 +243,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         return [] !== $this->codeLenses;
     }
 
-    /** @return list<string> the lens titles above one line */
+    /** @return list<array{title: string, command: string, arguments: list<mixed>}> the lenses above one line */
     public function codeLensesAt(int $line): array
     {
         return $this->codeLenses[$line] ?? [];

@@ -118,7 +118,7 @@ final readonly class EditorRowAssembler
             // text, so it takes no number, no marks and no caret.
             $lensTitle = $lenses[$atRow] ?? null;
             if (null !== $lensTitle) {
-                $result[] = $this->lensRow($lensTitle, $geo).$stripe[$stickyCount + $row];
+                $result[] = $this->lensRow($lensTitle['title'], $geo).$stripe[$stickyCount + $row];
 
                 continue;
             }

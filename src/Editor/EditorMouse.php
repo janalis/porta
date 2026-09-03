@@ -34,6 +34,8 @@ final class EditorMouse
         private readonly \Closure $invalidate,
         private readonly \Closure $closeCompletion,
         private readonly \Closure $centerOnLine,
+        /** @var \Closure(int, int): void runs the lens at (line, index) a click landed on */
+        private readonly \Closure $runCodeLens,
     ) {}
 
     /** Place the cursor from a click relative to the editor's top-left (0-based cells). */
@@ -44,10 +46,15 @@ final class EditorMouse
 
             return;
         }
-        ['line' => $line, 'col' => $col] = $this->positionAt($relRow, $relCol, $vp);
+        ['line' => $line, 'col' => $col, 'lens' => $lens] = $this->positionAt($relRow, $relCol, $vp);
         $this->document->setCursor($line, $col);
         ($this->closeCompletion)();
         ($this->invalidate)();
+        if (null !== $lens) {
+            // The caret still moves to the line the lens describes — clicking
+            // it is also a way of going there — and then the lens runs.
+            ($this->runCodeLens)($line, $lens);
+        }
     }
 
     /** Begin a mouse selection: place the caret at the press and drop the anchor there. */
@@ -137,7 +144,7 @@ final class EditorMouse
      * honouring the gutter width, vertical scroll (with folds) and horizontal
      * scroll. Shared by the click and mouse-selection entry points.
      *
-     * @return array{line: int, col: int, displayCol: int}
+     * @return array{line: int, col: int, displayCol: int, lens: int|null}
      */
     private function positionAt(int $relRow, int $relCol, EditorViewport $vp): array
     {
@@ -153,7 +160,7 @@ final class EditorMouse
             ? 0 // a lens row: the line it describes, at its start
             : max(0, $relCol - $vp->gutterWidth) + $vp->hScroll + WrapLayout::offsetOf($segment, $vp->wrapWidth ?? 0);
 
-        return ['line' => $line, 'col' => $doc->byteColForDisplayCol($line, $displayCol), 'displayCol' => $displayCol];
+        return ['line' => $line, 'col' => $doc->byteColForDisplayCol($line, $displayCol), 'displayCol' => $displayCol, 'lens' => $segment < 0 ? -$segment - 1 : null];
     }
 
     /**
@@ -186,10 +193,16 @@ final class EditorMouse
             $lensRows = \count($this->lenses->codeLensesAt($line));
             $rows = $lensRows + (null === $vp->wrapWidth ? 1 : $layout->rowsFor($line, $vp->wrapWidth));
             if ($contentRow < ($row + $rows)) {
-                // A NEGATIVE segment says "this row is a lens", which the
-                // caller turns into column 0: a lens shows none of the line's
-                // own columns, so the column clicked means nothing there.
-                return [$line, $contentRow - $row - $lensRows];
+                // A NEGATIVE segment says "this row is a lens", and WHICH one:
+                // -1 is the first lens above the line, -2 the second. The
+                // caller turns that into column 0, because a lens shows none
+                // of the line's own columns, and into the index to run.
+                $inLine = $contentRow - $row;
+
+                // Content rows are their segment; a LENS row is encoded as
+                // -(index + 1), so -1 is the first lens above the line and the
+                // caller recovers the index without knowing how many there are.
+                return [$line, $inLine < $lensRows ? -($inLine + 1) : $inLine - $lensRows];
             }
             $row += $rows;
             $line = $this->foldModel->nextVisibleLine($line);

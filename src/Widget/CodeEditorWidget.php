@@ -250,6 +250,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             $this->invalidate(...),
             $this->closeCompletion(...),
             $this->centerOnLine(...),
+            fn (int $line, int $index) => $this->callbacks->codeLens?->runCodeLens($line, $index),
         );
     }
 

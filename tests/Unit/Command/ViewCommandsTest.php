@@ -214,7 +214,7 @@ final class ViewCommandsTest extends TestCase
 
             // Lenses on with no language server: the option flips, the request
             // is simply never sent, and nothing is painted.
-            $editor->decorations()->setCodeLenses([1 => ['3 usages']]);
+            $editor->decorations()->setCodeLenses([1 => [['title' => '3 usages', 'command' => 'x', 'arguments' => []]]]);
             $commands->run('toggle_code_lenses');
             $this->assertTrue($display->codeLenses());
 

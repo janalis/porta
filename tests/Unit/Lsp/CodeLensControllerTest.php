@@ -17,6 +17,10 @@ use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Notifier;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -25,6 +29,7 @@ final class CodeLensControllerTest extends TestCase
     private CodeEditorWidget $editor;
     private FakeLspClient $client;
     private FixedActiveFile $activeFile;
+    private StatusBarWidget $status;
 
     /** @param array<string, mixed> $capabilities */
     private function controller(array $capabilities = ['codeLensProvider' => ['resolveProvider' => false]]): CodeLensController
@@ -44,7 +49,7 @@ final class CodeLensControllerTest extends TestCase
             static fn (array $edit): bool => false,
         );
 
-        return new CodeLensController($pool, $this->editor, $this->editor->decorations(), $tui);
+        return new CodeLensController($pool, $this->editor, $this->editor->decorations(), $tui, new Notifier($this->status = new StatusBarWidget(), $tui), new Translator('en'));
     }
 
     private function readyOn(CodeLensController $controller, string $path = '/p/a.php'): void
@@ -62,7 +67,7 @@ final class CodeLensControllerTest extends TestCase
 
     private static function lens(int $line, string $title): array
     {
-        return ['range' => ['start' => ['line' => $line, 'character' => 0]], 'command' => ['title' => $title, 'command' => 'x']];
+        return ['range' => ['start' => ['line' => $line, 'character' => 0]], 'command' => ['title' => $title, 'command' => 'lens.run', 'arguments' => [$line]]];
     }
 
     /** phpactor advertises no codeLensProvider; asking it earns an error per edit burst. */
@@ -85,8 +90,8 @@ final class CodeLensControllerTest extends TestCase
         $this->answer([self::lens(1, '3 usages'), self::lens(2, '1 usage'), self::lens(1, '2 implementations')]);
 
         $store = $this->editor->decorations();
-        $this->assertSame(['3 usages', '2 implementations'], $store->codeLensesAt(1), 'server order is kept within a line');
-        $this->assertSame(['1 usage'], $store->codeLensesAt(2));
+        $this->assertSame(['3 usages', '2 implementations'], array_column($store->codeLensesAt(1), 'title'), 'server order is kept within a line');
+        $this->assertSame(['1 usage'], array_column($store->codeLensesAt(2), 'title'));
         $this->assertSame([], $store->codeLensesAt(0), 'a line with no lens has none');
     }
 
@@ -108,7 +113,7 @@ final class CodeLensControllerTest extends TestCase
             self::lens(1, 'the real one'),
         ]);
 
-        $this->assertSame(['the real one'], $this->editor->decorations()->codeLensesAt(1));
+        $this->assertSame(['the real one'], array_column($this->editor->decorations()->codeLensesAt(1), 'title'));
     }
 
     /**
@@ -138,7 +143,7 @@ final class CodeLensControllerTest extends TestCase
         $controller->requestCodeLenses();
         end($this->client->requests)['respond'](null);
 
-        $this->assertSame(['first'], $this->editor->decorations()->codeLensesAt(1));
+        $this->assertSame(['first'], array_column($this->editor->decorations()->codeLensesAt(1), 'title'));
     }
 
     /**
@@ -176,5 +181,73 @@ final class CodeLensControllerTest extends TestCase
             ->onActiveBufferChanged(new ActiveBufferChanged($this->editor->getFilePath() ?? ''));
 
         $this->assertCount(1, $this->client->requests);
+    }
+
+    /** Clicking a lens runs its command, and says which one when it comes back. */
+    public function testRunningALensExecutesItsCommandAndReportsTheOutcome(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller);
+        $controller->requestCodeLenses();
+        $this->answer([self::lens(1, '3 usages')]);
+
+        $controller->runCodeLens(1, 0);
+
+        $request = end($this->client->requests);
+        $this->assertSame('workspace/executeCommand', $request['method']);
+        $this->assertSame('lens.run', $request['params']['command']);
+        $this->assertSame([1], $request['params']['arguments'], 'the arguments the server sent with it');
+
+        $request['respond'](null, error: null);
+        $this->assertStringContainsString('Ran "3 usages"', $this->flashed());
+    }
+
+    /** A failure names the lens and the reason rather than going quiet. */
+    public function testAFailedLensSaysWhichAndWhy(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller);
+        $controller->requestCodeLenses();
+        $this->answer([self::lens(1, '3 usages')]);
+
+        $controller->runCodeLens(1, 0);
+        end($this->client->requests)['respond'](null, error: ['code' => -32_603, 'message' => 'no handler']);
+
+        $flashed = $this->flashed();
+        $this->assertStringContainsString('3 usages', $flashed);
+        $this->assertStringContainsString('no handler', $flashed);
+    }
+
+    /**
+     * An informational lens carries no verb — "3 usages" reads the same either
+     * way — so clicking it says so rather than failing silently.
+     */
+    public function testALensWithNoCommandSaysItHasNothingToRun(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller);
+        $controller->requestCodeLenses();
+        $this->answer([['range' => ['start' => ['line' => 1]], 'command' => ['title' => 'just a count']]]);
+
+        $controller->runCodeLens(1, 0);
+
+        $this->assertStringContainsString('nothing to run', $this->flashed());
+        $this->assertCount(1, $this->client->requests, 'and nothing was sent');
+    }
+
+    /** A stale index (the lenses changed under the click) runs nothing. */
+    public function testAnIndexWithNoLensBehindItRunsNothing(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller);
+
+        $controller->runCodeLens(1, 3);
+
+        $this->assertSame([], $this->client->requests);
+    }
+
+    private function flashed(): string
+    {
+        return AnsiUtils::stripAnsiCodes(implode('', $this->status->render(new RenderContext(120, 1))));
     }
 }

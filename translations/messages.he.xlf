@@ -1010,6 +1010,10 @@
         <source>Code Vision</source>
         <target>חיווי קוד</target>
       </trans-unit>
+      <trans-unit id="780">
+        <source>This lens has nothing to run</source>
+        <target>לחיווי הזה אין מה להריץ</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>החלף מיקוד עץ / עורך</target>

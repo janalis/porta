@@ -1010,6 +1010,10 @@
         <source>Code Vision</source>
         <target>コードビジョン</target>
       </trans-unit>
+      <trans-unit id="780">
+        <source>This lens has nothing to run</source>
+        <target>このヒントには実行するものがありません</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>ツリー / エディターのフォーカスを切替</target>

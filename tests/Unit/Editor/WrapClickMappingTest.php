@@ -25,6 +25,8 @@ final class WrapClickMappingTest extends TestCase
 
     private Document $document;
     private DecorationStore $store;
+    /** @var list<string> lenses run by a click, as "line:index" */
+    private array $ran = [];
 
     private function mouse(): EditorMouse
     {
@@ -40,7 +42,16 @@ final class WrapClickMappingTest extends TestCase
             $noop,
             $noop,
             static function (int $line): void {},
+            function (int $line, int $index): void {
+                $this->ran[] = "{$line}:{$index}";
+            },
         );
+    }
+
+    /** @return array{title: string, command: string, arguments: list<mixed>} */
+    private static function lens(string $title): array
+    {
+        return ['title' => $title, 'command' => 'lens.run', 'arguments' => []];
     }
 
     private function viewport(?int $wrapWidth): EditorViewport
@@ -114,7 +125,7 @@ final class WrapClickMappingTest extends TestCase
     public function testLensRowsShiftTheLinesBelowThemForClicksToo(): void
     {
         $mouse = $this->mouse();
-        $this->store->setCodeLenses([0 => ['3 usages'], 1 => ['1 usage', '2 implementations']]);
+        $this->store->setCodeLenses([0 => [self::lens('3 usages')], 1 => [self::lens('1 usage'), self::lens('2 implementations')]]);
 
         $this->assertSame(0, $this->clickAt($mouse, 0, 3, null)[0], 'the lens above line 0');
         $this->assertSame(0, $this->clickAt($mouse, 1, 3, null)[0], 'then line 0 itself');
@@ -128,7 +139,7 @@ final class WrapClickMappingTest extends TestCase
     public function testAClickOnALensRowResolvesToTheLineStart(): void
     {
         $mouse = $this->mouse();
-        $this->store->setCodeLenses([1 => ['3 usages']]);
+        $this->store->setCodeLenses([1 => [self::lens('3 usages')]]);
 
         $this->assertSame([1, 0], $this->clickAt($mouse, 1, 7, null), 'the lens row carries none of the line\'s columns');
     }
@@ -137,12 +148,44 @@ final class WrapClickMappingTest extends TestCase
     public function testLensesAndWrappingBothCount(): void
     {
         $mouse = $this->mouse();
-        $this->store->setCodeLenses([0 => ['3 usages']]);
+        $this->store->setCodeLenses([0 => [self::lens('3 usages')]]);
 
         // Row 0 is the lens, rows 1..3 the three wrapped segments, row 4 'second'.
         $this->assertSame(0, $this->clickAt($mouse, 0, 3, self::WIDTH)[0]);
         $this->assertSame([0, 3], $this->clickAt($mouse, 1, 3, self::WIDTH), 'first segment, not offset by the lens');
         $this->assertSame([0, self::WIDTH + 3], $this->clickAt($mouse, 2, 3, self::WIDTH), 'second segment');
         $this->assertSame(1, $this->clickAt($mouse, 4, 3, self::WIDTH)[0], 'second');
+    }
+
+    /**
+     * Clicking a lens runs THAT lens — the second one above a line is index 1,
+     * not index 0 — and still moves the caret to the line it describes, since
+     * clicking it is also a way of going there.
+     */
+    public function testClickingALensRunsTheOneClicked(): void
+    {
+        $mouse = $this->mouse();
+        $this->store->setCodeLenses([1 => [self::lens('3 usages'), self::lens('2 implementations')]]);
+
+        // Row 0 is line 0; rows 1 and 2 are line 1's two lenses.
+        $this->clickAt($mouse, 1, 4, null);
+        $this->assertSame(['1:0'], $this->ran, 'the first lens above line 1');
+
+        $this->clickAt($mouse, 2, 4, null);
+        $this->assertSame(['1:0', '1:1'], $this->ran, 'and the second');
+
+        $this->assertSame(1, $this->document->getCursorLine(), 'the caret went to the line the lens describes');
+    }
+
+    /** A click on ordinary code runs nothing. */
+    public function testClickingCodeRunsNoLens(): void
+    {
+        $mouse = $this->mouse();
+        $this->store->setCodeLenses([1 => [self::lens('3 usages')]]);
+
+        $this->clickAt($mouse, 2, 4, null); // line 1 itself, below its lens
+
+        $this->assertSame([], $this->ran);
+        $this->assertSame(1, $this->document->getCursorLine());
     }
 }

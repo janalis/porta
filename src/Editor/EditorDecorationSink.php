@@ -64,7 +64,7 @@ interface EditorDecorationSink
      * Code lenses, keyed by the 0-based line they sit ABOVE. The only
      * decoration that adds rows rather than painting into one.
      *
-     * @param array<int, list<string>> $byLine
+     * @param array<int, list<array{title: string, command: string, arguments: list<mixed>}>> $byLine
      */
     public function setCodeLenses(array $byLine): void;
 
