@@ -5,10 +5,11 @@
 | Key | Target |
 | --- | --- |
 | `Ctrl+Shift+N` / `Ctrl+P` | File (fuzzy, camel-hump aware) |
-| `Ctrl+Alt+Shift+N` / `Ctrl+Alt+O` | Symbol in project (`workspace/symbol`, live-filtered) |
+| `Ctrl+Alt+Shift+N` | Symbol in project (`workspace/symbol`, live-filtered) |
 | `Ctrl+F12` | Symbol in the current file (file structure popup) |
 | `Ctrl+G` | Line |
 | `Ctrl+E` | Recent files (press again to cycle) |
+| `Alt+5` | Recent Locations — the places you jumped away FROM, newest first, with each line's text |
 | `Ctrl+Shift+T` | The test for the current class — or back: from `FooTest.php` to `Foo.php`. Searches the project (skipping `vendor/`) and flashes when nothing matches |
 | `Ctrl+Shift+E` | Search Everywhere |
 | `Ctrl+Shift+A` | Find Action (command palette — every command by name) |
@@ -74,6 +75,11 @@ Aggregated diagnostics across all open buffers — `✗` errors, `▲` warnings,
 sorted by file and line; `Enter` jumps to the diagnostic. The status bar
 carries live error/warning counts. Diagnostics come from the language
 server and from plugins that publish them (phpstan, mago, psalm).
+
+`F2` / `Shift+F2` walk this file's problems without leaving the editor — the
+keyboard verb between the marker stripe, which shows where they are, and this
+panel, which lists them. They wrap at either end and say so, and the flash
+carries the diagnostic's own text rather than only the line it landed on.
 
 ## Call hierarchy
 

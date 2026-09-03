@@ -107,6 +107,52 @@ breakpoint dots, fold triangles, indent guides, identifier-occurrence and matchi
 highlighting, and dimmed inline parameter-name/type **inlay hints** from
 the language server.
 
+## Soft wrap
+
+`Alt+Z`, off by default. A line longer than the pane continues on the next row
+or rows instead of running off the right edge. Continuation rows carry no line
+number and no gutter marks, so the numbers still count lines rather than rows.
+
+**Horizontal scroll is disabled while it is on**, because the two are the same
+mechanism read two ways: a wrapped segment is the same slice of a decorated
+line that `Ctrl+←`-style scrolling produces, taken at a fixed offset instead of
+a moving one.
+
+Everything follows the visual rows, not the document lines. `↑`/`↓` step
+through a wrapped line's segments before leaving it, arriving in the first
+segment from above and the last from below; clicking lands on the row you
+clicked; and the viewport scrolls INTO a line taller than the pane, which is
+the only way to reach a caret near the end of one.
+
+Wrapping is measured on the line's own text, not on its decorations. Inlay
+hints and inline diagnostics ride in the same row and would otherwise make the
+text reflow as they arrived — they clip at the row edge as they already do.
+
+## Code vision
+
+`Alt+V`, off by default. The dim "3 usages" line a language server offers above
+a declaration, from `textDocument/codeLens`. Each lens takes a row of its own
+above the line it describes — the only decoration that ADDS a row rather than
+painting into one — and clicking it runs the command the server attached, or
+says so when the lens is informational and carries none.
+
+Requested on a buffer switch and on save, which is the same settle point the
+git change marks use: a lens count is a real round trip, not something to spend
+per keystroke. Turning it off stops the requests, not just the painting.
+
+phpantom advertises `codeLensProvider`; phpactor does not, and is never asked.
+
+## Bookmarks
+
+`F11` toggles one on the caret's line, `Alt+2` lists every mark in the project
+with the line's own text beside it. Marks show as `◈` on the gutter's marker
+column, below breakpoints and diagnostics in priority, and survive closing the
+file — they live in `.porta/bookmarks.json`, not on the buffer.
+
+A rename carries them with the file, whether it came from the tree or from a
+language server's refactoring. A delete does not; the mark is dropped the next
+time the file fails to open.
+
 ## Identifier highlight
 
 Park the caret on a symbol and its other occurrences light up. With a language
@@ -188,6 +234,11 @@ it has and applies what comes back. What that needs, and now does:
 The two bundled PHP servers differ in what they offer: phpantom publishes
 `refactor.extract`, `refactor.inline` and `source.organizeImports`; phpactor
 publishes a longer list of narrower kinds. Both are reached the same way.
+
+**Optimize imports** (`Ctrl+Alt+O`) asks the server for `source.organizeImports`
+alone. One answer is applied straight away — organising imports is a whole-file
+operation rather than a choice between alternatives — and several offer a
+picker. Nothing to organise says so rather than reporting no quick fixes.
 
 ## Merge conflicts
 
