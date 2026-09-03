@@ -42,6 +42,7 @@ final class MockServerContractTest extends TestCase
         'textDocument/prepareRename' => 'renameProvider',
         'textDocument/foldingRange' => 'foldingRangeProvider',
         'textDocument/inlayHint' => 'inlayHintProvider',
+        'textDocument/semanticTokens/full' => 'semanticTokensProvider',
         'textDocument/documentHighlight' => 'documentHighlightProvider',
         'textDocument/selectionRange' => 'selectionRangeProvider',
         'textDocument/prepareCallHierarchy' => 'callHierarchyProvider',

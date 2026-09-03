@@ -1218,6 +1218,10 @@ final class CodeEditorWidget extends AbstractWidget implements
                 // walk over this frame's rows — and the caret clamp above
                 // shares it.
                 $wrapLayout,
+                // The live theme, so a semantic token resolves to the colour
+                // the lexer would have used for that kind of symbol — and
+                // follows a theme switch without waiting for the next answer.
+                $this->syntaxTheme,
             );
             $result = $assembler->assemble(
                 $geo,

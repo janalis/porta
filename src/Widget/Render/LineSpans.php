@@ -21,8 +21,9 @@ use Porta\Ui\Theme\Styles;
 final class LineSpans
 {
     /**
-     * @param list<array{start: int, end: int, current: bool}>                     $matches search matches on this line (byte cols)
-     * @param list<array{severity: int, message: string, col: int, endCol?: int}>  $diags   diagnostics on this line (utf16 cols)
+     * @param list<array{start: int, end: int, current: bool}>                     $matches  search matches on this line (byte cols)
+     * @param list<array{severity: int, message: string, col: int, endCol?: int}>  $diags    diagnostics on this line (utf16 cols)
+     * @param list<array{col: int, endCol: int, open: string, close: string}>      $semantic server semantic tokens on this line (utf16 cols), already styled
      *
      * @return array{spans: list<array{0: int, 1: int, 2: string, 3: string, 4: ?string}>, padTo: int}
      */
@@ -33,6 +34,7 @@ final class LineSpans
         array $matches,
         array $diags,
         Styles $styles,
+        array $semantic = [],
     ): array {
         $selection = $decorations->multiActive ? null : $decorations->selection;
         $occurrences = $decorations->occurrences;
@@ -40,6 +42,20 @@ final class LineSpans
         $carets = $decorations->carets;
         $spans = [];
         $padTo = 0;
+
+        // First, so every other decoration layers over it: the semantic
+        // recolour is the base coat, not an overlay. It carries a foreground
+        // only, and closes the way the highlighter's own token brackets close
+        // (see SemanticTokenStyle), so it cannot leak past its own range.
+        foreach ($semantic as $token) {
+            $startDisp = EditorRenderer::utf16ToDisplayCol($doc, $lineIndex, $token['col']);
+            $endDisp = EditorRenderer::utf16ToDisplayCol($doc, $lineIndex, $token['endCol']);
+            if ($endDisp <= $startDisp) {
+                continue;
+            }
+
+            $spans[] = [$startDisp, $endDisp, $token['open'], $token['close'], null];
+        }
 
         if (null !== $selection && $lineIndex >= $selection['startLine'] && $lineIndex <= $selection['endLine']) {
             $spans[] = self::selectionSpan($doc, $lineIndex, $selection['startLine'], $selection['startCol'], $selection['endLine'], $selection['endCol'], $styles);

@@ -10,12 +10,14 @@ use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\WrapLayout;
+use Porta\Highlight\SemanticTokenStyle;
 use Porta\Support\AnsiText;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Tempest\Highlight\TerminalTheme;
 
 /**
  * Builds the editor viewport's rows for one frame: the pinned sticky-scroll
@@ -53,6 +55,13 @@ final readonly class EditorRowAssembler
         private CursorStyle $cursorStyle = new CursorStyle(),
         /** Non-null only while soft wrap is on; null renders one row per line as before. */
         private ?WrapLayout $wrap = null,
+        /**
+         * The live syntax theme, needed to resolve a semantic token's colour at
+         * render time so a theme switch recolours immediately. Null leaves the
+         * lexer's colours untouched — which is also every path without a server
+         * that answers `textDocument/semanticTokens`.
+         */
+        private ?TerminalTheme $syntaxTheme = null,
     ) {
         $this->styles = $styles ?? Styles::dark();
         $this->breakpointSet = array_fill_keys($store->breakpointLines(), value: true);
@@ -219,6 +228,43 @@ final readonly class EditorRowAssembler
     }
 
     /**
+     * The semantic tokens on one line, resolved to SGR against the LIVE theme.
+     *
+     * Resolved here rather than when the tokens arrive because the theme is
+     * swapped in place: baking the colours at decode time would leave the last
+     * server answer painted in the previous theme until the next edit.
+     *
+     * @return list<array{col: int, endCol: int, open: string, close: string}>
+     */
+    private function semanticSpansFor(int $lineIndex): array
+    {
+        $theme = $this->syntaxTheme;
+        if (null === $theme) {
+            return [];
+        }
+
+        $spans = [];
+        foreach ($this->store->semanticTokensAt($lineIndex) as $token) {
+            $open = SemanticTokenStyle::open($token['type'], $token['modifiers'], $theme);
+            // A type the palette does not map, carrying no modifier, has
+            // nothing to say — leave the lexer's colour rather than emit an
+            // empty pair around every identifier on the line.
+            if ('' === $open) {
+                continue;
+            }
+
+            $spans[] = [
+                'col' => $token['col'],
+                'endCol' => $token['endCol'],
+                'open' => $open,
+                'close' => SemanticTokenStyle::close($token['type'], $token['modifiers'], $theme),
+            ];
+        }
+
+        return $spans;
+    }
+
+    /**
      * The gutter cell for one document line: git strip, line number colored by
      * the line's worst diagnostic (or highlighted on the caret line), marker.
      *
@@ -302,6 +348,7 @@ final readonly class EditorRowAssembler
             $this->store->searchMatches()[$lineIndex] ?? [],
             $lineDiags,
             $this->styles,
+            $this->semanticSpansFor($lineIndex),
         );
         if ($padTo > 0) {
             // Pad so an end-of-line caret has a cell to invert (the window

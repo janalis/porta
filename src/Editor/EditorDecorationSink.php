@@ -68,6 +68,16 @@ interface EditorDecorationSink
      */
     public function setCodeLenses(array $byLine): void;
 
+    /**
+     * The server's semantic tokens, keyed by the 0-based line they sit on, in
+     * UTF-16 columns. Recolours identifiers by what the server knows them to
+     * be — a property, a parameter, a static member — where the lexer can only
+     * guess from shape.
+     *
+     * @param array<int, list<array{col: int, endCol: int, type: string, modifiers: list<string>}>> $byLine
+     */
+    public function setSemanticTokens(array $byLine): void;
+
     /** @param array<int, list<array{severity: int, message: string, col: int, endCol?: int}>> $byLine */
     public function setDiagnostics(array $byLine): void;
 

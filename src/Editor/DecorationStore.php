@@ -30,6 +30,9 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     /** @var array<int, list<array{title: string, command: string, arguments: list<mixed>}>> 0-based line => the lenses shown ABOVE it */
     private array $codeLenses = [];
 
+    /** @var array<int, list<array{col: int, endCol: int, type: string, modifiers: list<string>}>> 0-based line => semantic tokens (utf16 cols) */
+    private array $semanticTokens = [];
+
     /** @var array<int, true> 0-based bookmarked lines, keyed for the per-row lookup the gutter does */
     private array $bookmarkLines = [];
 
@@ -73,6 +76,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         $this->breakpointLines = [];
         $this->bookmarkLines = [];
         $this->codeLenses = [];
+        $this->semanticTokens = [];
         $this->conditionalBreakpointLines = [];
         $this->logpointLines = [];
         $this->debugLine = null;
@@ -220,7 +224,6 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         return $list[0]['message'];
     }
 
-    /** @param array<int, list<array{col: int, text: string}>> $hints line => byte-col hints */
     /**
      * The code lenses to show above each line — "3 usages", "2 implementations".
      *
@@ -247,6 +250,28 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     public function codeLensesAt(int $line): array
     {
         return $this->codeLenses[$line] ?? [];
+    }
+
+    /**
+     * The server's semantic tokens, keyed by 0-based line — what the language
+     * server knows each identifier actually IS, as opposed to what the lexer
+     * can infer from its shape.
+     *
+     * Columns are UTF-16, the unit LSP speaks; they are converted to display
+     * columns at render time by the same helper the diagnostics use.
+     *
+     * @param array<int, list<array{col: int, endCol: int, type: string, modifiers: list<string>}>> $byLine 0-based line => tokens; [] clears
+     */
+    public function setSemanticTokens(array $byLine): void
+    {
+        $this->semanticTokens = $byLine;
+        ($this->invalidate)();
+    }
+
+    /** @return list<array{col: int, endCol: int, type: string, modifiers: list<string>}> the semantic tokens on one line */
+    public function semanticTokensAt(int $line): array
+    {
+        return $this->semanticTokens[$line] ?? [];
     }
 
     public function setInlayHints(array $hints): void

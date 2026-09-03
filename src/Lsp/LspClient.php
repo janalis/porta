@@ -222,12 +222,52 @@ final class LspClient implements LspClientInterface
                     'dataSupport' => true,
                     'isPreferredSupport' => true,
                 ],
+                // The server colours by MEANING where the lexer colours by
+                // shape. `formats: ['relative']` is the only encoding the spec
+                // defines, and the type/modifier lists are what THIS client
+                // knows how to paint — a server is entitled to drop the rest.
+                'semanticTokens' => [
+                    'requests' => ['full' => true, 'range' => false],
+                    'tokenTypes' => [
+                        'namespace',
+                        'type',
+                        'class',
+                        'enum',
+                        'interface',
+                        'struct',
+                        'typeParameter',
+                        'parameter',
+                        'variable',
+                        'property',
+                        'enumMember',
+                        'event',
+                        'function',
+                        'method',
+                        'macro',
+                        'keyword',
+                        'modifier',
+                        'comment',
+                        'string',
+                        'number',
+                        'regexp',
+                        'operator',
+                        'decorator',
+                    ],
+                    'tokenModifiers' => ['declaration', 'definition', 'readonly', 'static', 'deprecated', 'abstract', 'async', 'modification', 'documentation', 'defaultLibrary'],
+                    'formats' => ['relative'],
+                ],
                 'documentSymbol' => ['hierarchicalDocumentSymbolSupport' => true],
                 'foldingRange' => ['lineFoldingOnly' => true],
                 'callHierarchy' => ['dynamicRegistration' => false],
                 'formatting' => ['dynamicRegistration' => false],
                 // Sent by requestReformat since before this was declared.
                 'rangeFormatting' => ['dynamicRegistration' => false],
+            ],
+            // Without this a spec-compliant server never sends `$/progress`
+            // at all, so declaring it is half of making progress visible — the
+            // ACK to `window/workDoneProgress/create` below is the other half.
+            'window' => [
+                'workDoneProgress' => true,
             ],
             'workspace' => [
                 'configuration' => false,

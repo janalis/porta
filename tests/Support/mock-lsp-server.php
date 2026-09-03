@@ -50,6 +50,19 @@ foreach (readFrames($in) as $message) {
                     'signatureHelpProvider' => ['triggerCharacters' => ['(', ',']],
                     'documentSymbolProvider' => true,
                     'foldingRangeProvider' => true,
+                    // The legend order here is DELIBERATELY not the spec's
+                    // running order: token types and modifiers are addressed by
+                    // their index INTO THIS LIST, so a client that hardcoded
+                    // the conventional order would paint a property as a method
+                    // and pass anyway. Scrambling it makes that a failure.
+                    'semanticTokensProvider' => [
+                        'legend' => [
+                            'tokenTypes' => ['method', 'property', 'variable'],
+                            'tokenModifiers' => ['static', 'deprecated'],
+                        ],
+                        'range' => false,
+                        'full' => true,
+                    ],
                     'documentFormattingProvider' => true,
                     'documentRangeFormattingProvider' => true,
                     'renameProvider' => ['prepareProvider' => true],
@@ -142,6 +155,41 @@ foreach (readFrames($in) as $message) {
                 'range' => ['start' => ['line' => 3, 'character' => 6], 'end' => ['line' => 3, 'character' => 12]],
             ]],
         ]);
+    } elseif ('textDocument/semanticTokens/full' === $method) {
+        // Only colour files named *Semantic*, so other E2e screens keep the
+        // lexer's colours and stay comparable.
+        //
+        // Encoded the way the wire does it: flat 5-tuples of
+        // (deltaLine, deltaStartChar, length, typeIndex, modifierBits), each
+        // relative to the previous token, with deltaStartChar restarting
+        // whenever deltaLine is non-zero. Indices point into the scrambled
+        // legend above: 1 = property, 0 = method; bit 0 = static, bit 1 =
+        // deprecated.
+        $uri = (string) ($message['params']['textDocument']['uri'] ?? '');
+        $data = [];
+        if (str_contains($uri, 'Semantic')) {
+            $data = [
+                // line 1, char 4, len 5, property, no modifiers
+                1,
+                4,
+                5,
+                1,
+                0,
+                // same line (delta 0), +7 chars on, len 3, method, static|deprecated
+                0,
+                7,
+                3,
+                0,
+                3,
+                // line 3, char 2, len 4, variable, no modifiers
+                2,
+                2,
+                4,
+                2,
+                0,
+            ];
+        }
+        sendMessage($out, ['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => ['data' => $data]]);
     } elseif ('textDocument/inlayHint' === $method) {
         // Only emit hints for files named *Inlay* so other E2e screens are
         // unaffected. Exercises string labels, label parts, and skips.
