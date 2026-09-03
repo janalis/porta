@@ -533,6 +533,33 @@ triangles, the other half of the same idea, landed instead and cost one column.
 reason, at which point this is a small addition rather than the whole reason for
 the surgery.
 
+### That condition is now met (2026-09-03) — code vision is re-opened
+
+Soft wrap gave the row assembler its virtual-row concept, which is exactly the
+trigger this entry named. Both halves of the rejection have since been checked
+rather than assumed:
+
+- **A bundled server provides it.** phpantom advertises
+  `codeLensProvider: {resolveProvider: false}`, so lenses arrive complete and
+  there is no resolve round trip to build. phpactor does not — the same split
+  as `foldingRange` and `inlayHint`, so the feature gates on the capability
+  like the rest.
+- **The row-count seam is two call sites.** `WrapLayout::rowsFor()` is consulted
+  by the row walk and by `EditorMouse`'s hit-test walk, and nowhere else. A
+  lens row folded into that count would be followed by BOTH automatically —
+  the render and the click mapping stay correct for free, which is precisely
+  what "the deepest change available in the render path" was pricing.
+
+**What would remain:** a `codeLens` request and controller (the
+`FoldingController` shape), a per-line store, a display toggle, the walk
+emitting a lens row before segment 0, and caret motion SKIPPING lens rows —
+that last one is the piece with no existing seam, since vertical motion is width
+arithmetic rather than a row count.
+
+**Not started.** The estimate above was written before any of this existed and
+was wrong about the cost even then; this note records that the door is open and
+what is behind it, not a decision to walk through it.
+
 **Clickable `✗ N` / `▲ N` status-bar counts — rejected, and it is the same
 ground `statusCommands()` was rejected on.** `StatusCell` / `StatusMenuSpan`
 cover the LEFT prefix and RIGHT-click menus. The problem counts are in the right
