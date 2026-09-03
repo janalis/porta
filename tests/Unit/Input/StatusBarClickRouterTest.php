@@ -6,9 +6,11 @@ namespace Porta\Tests\Unit\Input;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Editor\Document;
 use Porta\Input\HitTester;
 use Porta\Input\MouseEvent;
 use Porta\Input\StatusBarClickRouter;
+use Porta\Tests\Support\EditorState;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\StatusClickSpan;
@@ -31,6 +33,7 @@ final class StatusBarClickRouterTest extends TestCase
 {
     private StatusBarWidget $statusBar;
     private CommandRegistry $commands;
+    private CodeEditorWidget $editor;
 
     /** @var list<string> */
     private array $ran = [];
@@ -62,7 +65,10 @@ final class StatusBarClickRouterTest extends TestCase
             label: 'Show Problems',
         );
 
-        return new StatusBarClickRouter(new HitTester($renderer), $this->statusBar, $this->commands, new CodeEditorWidget());
+        $this->editor = new CodeEditorWidget();
+        $this->editor->showDocument('/p/a.php', new Document("aa\nbb\ncc\n"));
+
+        return new StatusBarClickRouter(new HitTester($renderer), $this->statusBar, $this->commands, $this->editor);
     }
 
     /** A left press at the 0-based screen column/row, as the terminal sends it. */
@@ -100,6 +106,29 @@ final class StatusBarClickRouterTest extends TestCase
 
         self::assertTrue($router->route($this->clickOn('CD')));
         self::assertSame([], $this->ran, 'the registry must not have claimed an editor verb');
+        // The EFFECT, not just the absence of the other branch: dropping the
+        // runAction call leaves both of those assertions true.
+        self::assertTrue(EditorState::promptOpen($this->editor), 'the Go to line prompt opened');
+    }
+
+    public function testACommandTheRegistryClaimsIsNotALSORunByTheEditor(): void
+    {
+        // `goto_line` is registered here as a command as well, which is the only
+        // way to see the difference: without the early return the registry runs
+        // it AND the editor runs it, and the second run opens a prompt nobody
+        // asked for.
+        $router = $this->router();
+        $this->commands->add(
+            'goto_line',
+            function (): void {
+                $this->ran[] = 'goto_line';
+            },
+            label: 'Go to Line',
+        );
+
+        self::assertTrue($router->route($this->clickOn('CD')));
+        self::assertSame(['goto_line'], $this->ran);
+        self::assertFalse(EditorState::promptOpen($this->editor), 'the registry claimed it; the editor must not run it too');
     }
 
     public function testAClickOutsideEveryCellIsNotConsumed(): void
@@ -115,5 +144,18 @@ final class StatusBarClickRouterTest extends TestCase
         $router = $this->router();
 
         self::assertFalse($router->route(self::pressAt(0, 5)));
+    }
+
+    public function testAClickOnANEARBYRowAtACELLSCOLUMNIsStillNotConsumed(): void
+    {
+        // The row guard, not the column one: this lands on the exact column a
+        // status cell occupies, but several rows above the status bar. Without
+        // the rect check it would run that cell's action from inside the
+        // editor.
+        $router = $this->router();
+        $cellColumn = $this->clickOn('AB')->col;
+
+        self::assertFalse($router->route(self::pressAt($cellColumn, 7)));
+        self::assertSame([], $this->ran, 'nothing may run from a click off the status row');
     }
 }

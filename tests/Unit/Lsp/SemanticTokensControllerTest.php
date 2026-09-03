@@ -35,6 +35,7 @@ final class SemanticTokensControllerTest extends TestCase
     ];
 
     private CodeEditorWidget $editor;
+    private Tui $tui;
     private FakeLspClient $client;
     private FixedActiveFile $activeFile;
 
@@ -43,6 +44,7 @@ final class SemanticTokensControllerTest extends TestCase
     {
         $this->editor = new CodeEditorWidget();
         $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20));
+        $this->tui = $tui;
         $pool = new LspSessionPool(
             '/p',
             $this->activeFile = new FixedActiveFile(),
@@ -130,6 +132,71 @@ final class SemanticTokensControllerTest extends TestCase
         end($this->client->requests)['respond'](['data' => 'not a list']);
 
         self::assertSame([], $this->editor->decorations()->semanticTokensAt(1));
+    }
+
+    public function testWithNoFileOpenNothingIsAsked(): void
+    {
+        // The other half of the gate: a capable server is still not asked about
+        // a buffer that is not there.
+        $controller = $this->controller();
+        $this->readyOn($controller);
+        $this->editor->showDocument('', new Document(''));
+        $before = \count($this->client->requests);
+
+        $controller->requestSemanticTokens();
+
+        self::assertCount($before, $this->client->requests);
+    }
+
+    public function testAServerThatDoesNotMentionFullAtAllIsNeverAsked(): void
+    {
+        // Absent is not the same as false in the wire format, but it means the
+        // same here: no whole-document pass on offer.
+        $controller = $this->controller([
+            'semanticTokensProvider' => [
+                'legend' => ['tokenTypes' => ['method'], 'tokenModifiers' => []],
+                'range' => true,
+            ],
+        ]);
+        $this->readyOn($controller);
+        $before = \count($this->client->requests);
+
+        $controller->requestSemanticTokens();
+
+        self::assertCount($before, $this->client->requests);
+    }
+
+    public function testAnAnswerAsksForAFrame(): void
+    {
+        // Tokens stored without a repaint are tokens nobody sees until the next
+        // keystroke happens to trigger one.
+        $controller = $this->controller();
+        $this->readyOn($controller);
+        $controller->requestSemanticTokens();
+        Probe::set($this->tui, 'renderRequested', false);
+
+        end($this->client->requests)['respond'](['data' => [1, 4, 5, 1, 0]]);
+
+        self::assertTrue((bool) Probe::get($this->tui, 'renderRequested'));
+    }
+
+    public function testALegendWithAStrayNonStringIsRefusedWholeRatherThanShifted(): void
+    {
+        // A legend is positional. Dropping the bad entry would shift every name
+        // after it, so a token naming index 2 would resolve to the wrong type —
+        // worse than no colour, because it looks like an answer.
+        $controller = $this->controller([
+            'semanticTokensProvider' => [
+                'legend' => ['tokenTypes' => ['method', 42, 'variable'], 'tokenModifiers' => []],
+                'full' => true,
+            ],
+        ]);
+        $this->readyOn($controller);
+        $before = \count($this->client->requests);
+
+        $controller->requestSemanticTokens();
+
+        self::assertCount($before, $this->client->requests);
     }
 
     public function testAnAnswerIsDecodedAgainstTheServersOwnLegendAndStored(): void

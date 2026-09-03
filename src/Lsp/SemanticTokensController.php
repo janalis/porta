@@ -145,6 +145,13 @@ final readonly class SemanticTokensController
     }
 
     /**
+     * A legend, or [] if ANY entry is not a string.
+     *
+     * All-or-nothing for the same reason as the token stream: a legend is
+     * POSITIONAL. Filtering one bad entry out shifts every name after it, so a
+     * token pointing at index 2 would quietly resolve to the wrong type — worse
+     * than not colouring at all, because it looks like an answer.
+     *
      * @return list<string>
      */
     private static function stringList(mixed $value): array
@@ -153,8 +160,10 @@ final readonly class SemanticTokensController
             return [];
         }
 
-        /** @var list<string> */
-        return array_values(array_filter($value, \is_string(...)));
+        /** @var list<string> $strings */
+        $strings = array_values(array_filter($value, \is_string(...)));
+
+        return \count($strings) === \count($value) ? $strings : [];
     }
 
     /**

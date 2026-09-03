@@ -82,6 +82,37 @@ final class SemanticTokensDecodeTest extends TestCase
         self::assertSame([['col' => 0, 'endCol' => 3, 'type' => 'property', 'modifiers' => []]], $decoded[0]);
     }
 
+    public function testALongPartialTailIsNotWalkedIntoAtAll(): void
+    {
+        // NINE entries: one whole tuple and a four-value tail. The tail is
+        // longer than the stride, which is what separates a correct
+        // round-down-to-a-multiple-of-five from one that merely looks right on
+        // a single stray value — the latter walks off the end of the array.
+        $decoded = SemanticTokensController::decode([0, 0, 3, 1, 0, 1, 1, 2, 0], self::TYPES, self::MODS);
+
+        self::assertSame([0], array_keys($decoded));
+        self::assertCount(1, $decoded[0]);
+    }
+
+    public function testANegativeDeltaThatWalksAboveTheFirstLineIsDropped(): void
+    {
+        // Servers should not send this; the guard exists because a negative
+        // line would key the map with a line that cannot be painted.
+        $decoded = SemanticTokensController::decode([-1, 0, 3, 1, 0], self::TYPES, self::MODS);
+
+        self::assertSame([], $decoded);
+    }
+
+    public function testANegativeColumnIsDroppedButLaterTokensSurvive(): void
+    {
+        // First token walks the column negative; the second is on a new line,
+        // so its column restarts and it must still be decoded.
+        $decoded = SemanticTokensController::decode([0, -4, 3, 1, 0, 1, 2, 4, 2, 0], self::TYPES, self::MODS);
+
+        self::assertSame([1], array_keys($decoded));
+        self::assertSame([['col' => 2, 'endCol' => 6, 'type' => 'variable', 'modifiers' => []]], $decoded[1]);
+    }
+
     public function testAnEmptyLegendYieldsNothingRatherThanUntypedTokens(): void
     {
         self::assertSame([], SemanticTokensController::decode([0, 0, 3, 0, 0], [], self::MODS));

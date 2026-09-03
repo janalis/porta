@@ -90,10 +90,14 @@ final class SemanticTokenStyleTest extends TestCase
     public function testDeprecatedStrikesThroughAndStaticLeans(): void
     {
         $theme = new DarkTerminalTheme();
-        $open = SemanticTokenStyle::open('method', ['deprecated', 'static'], $theme);
 
-        self::assertStringContainsString("\x1b[9m", $open);
-        self::assertStringContainsString("\x1b[3m", $open);
+        // Asserted WHOLE, not by containment: the modifiers are appended to the
+        // colour, so a `.=` that became a `=` would drop the colour entirely
+        // and still contain the strikethrough. A mutant did exactly that.
+        self::assertSame(
+            $theme->before(TokenTypeEnum::GENERIC)."\x1b[9m\x1b[3m",
+            SemanticTokenStyle::open('method', ['deprecated', 'static'], $theme),
+        );
         self::assertSame("\x1b[23m\x1b[29m".Sgr::DEFAULT_FG, SemanticTokenStyle::close('method', ['deprecated', 'static'], $theme));
     }
 
