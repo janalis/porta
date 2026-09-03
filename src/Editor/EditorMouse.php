@@ -185,7 +185,8 @@ final class EditorMouse
 
         $layout = new WrapLayout($this->document);
         $line = $vp->vScroll;
-        $row = 0;
+        // Negative: the top line's hidden rows are "above" the first row shown.
+        $row = -$vp->vScrollSegment;
         // Bounded by the line count rather than by trusting nextVisibleLine()
         // to advance: a walk that cannot terminate structurally would need a
         // guard branch nothing can reach to test.

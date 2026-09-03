@@ -686,6 +686,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             $this->lastRenderRows,
             $this->stickyLines,
             $this->wrapWidth(),
+            $this->scroll->vScrollSegment(),
         );
     }
 
@@ -1218,7 +1219,19 @@ final class CodeEditorWidget extends AbstractWidget implements
                 // shares it.
                 $wrapLayout,
             );
-            $result = $assembler->assemble($geo, $decorations, $sticky, $highlighted, $stripe, $contentRows, $vScroll, $cursorLine, $cursorDisplayCol, $this->display->softWrap() ? 0 : $hScroll);
+            $result = $assembler->assemble(
+                $geo,
+                $decorations,
+                $sticky,
+                $highlighted,
+                $stripe,
+                $contentRows,
+                $vScroll,
+                $cursorLine,
+                $cursorDisplayCol,
+                $this->display->softWrap() ? 0 : $hScroll,
+                $this->scroll->vScrollSegment(),
+            );
 
             $result = $this->composePopups($result, new EditorPopupGeometry(
                 columns: $columns,

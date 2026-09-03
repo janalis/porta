@@ -221,32 +221,48 @@ final class WrapCaretMotionTest extends TestCase
     }
 
     /**
-     * The v1's known boundary, pinned so it is visible rather than folklore:
-     * `vScroll` is a DOCUMENT line, so a line taller than the viewport cannot
-     * be scrolled INTO — put the caret far along such a line and it is off
-     * screen, because there is no line above it to scroll to.
-     *
-     * Reachable, not theoretical. Fixing it means a (line, segment) scroll
-     * position, which is the saving that made soft wrap affordable at all —
-     * see decisions.md.
+     * A caret far along a line taller than the whole viewport is reached by
+     * scrolling INTO that line — there is no line above it to scroll to, so a
+     * document-line scroll position could not get there at all. This was the
+     * v1's one known limitation and is a test of the opposite now.
      */
-    public function testACaretDeepInsideALineTallerThanTheViewportIsNotReached(): void
+    public function testACaretDeepInsideALineTallerThanTheViewportIsReached(): void
     {
         $editor = new CodeEditorWidget();
         $editor->showDocument('/p/a.php', new Document(str_repeat('X', times: 120)."\nafter\n"));
         $editor->setFocused(true);
         $editor->display()->setSoftWrap(true);
-        $screen = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(30, 4))));
-        $screen();
+        $editor->render(new RenderContext(30, 4));
 
-        // Far along the one wrapped line: its later segments are rows of their
-        // own, so "the caret is on the first visible LINE" says nothing about
-        // which ROW it is on.
         $editor->getDocument()->setCursor(0, 110);
-        $screen();
+        $editor->render(new RenderContext(30, 4));
 
-        $painted = $screen();
-        $this->assertStringNotContainsString('after', $painted, 'the viewport is still showing the first segments');
-        $this->assertSame(0, Probe::get($editor, 'scroll')->vScroll(), 'and cannot scroll: there is no line above the caret to scroll to');
+        $scroll = Probe::get($editor, 'scroll');
+        $this->assertSame(0, $scroll->vScroll(), 'still the same document line — there is no other');
+        $this->assertGreaterThan(0, $scroll->vScrollSegment(), 'but scrolled down inside it');
+
+        // The caret's own segment is the last one shown, not one below it.
+        $hidden = $scroll->vScrollSegment();
+        $caretSegment = intdiv(110, (int) $editor->wrapWidth());
+        $this->assertGreaterThanOrEqual($hidden, $caretSegment, 'the caret is at or below the first visible row');
+        $this->assertLessThan($hidden + 4, $caretSegment, 'and within the four rows on screen');
+    }
+
+    /** Scrolling back up out of a tall line returns to its first row. */
+    public function testMovingBackToTheTopOfATallLineUnscrollsIt(): void
+    {
+        $editor = new CodeEditorWidget();
+        $editor->showDocument('/p/a.php', new Document(str_repeat('X', times: 120)."\nafter\n"));
+        $editor->setFocused(true);
+        $editor->display()->setSoftWrap(true);
+        $editor->render(new RenderContext(30, 4));
+        $editor->getDocument()->setCursor(0, 110);
+        $editor->render(new RenderContext(30, 4));
+        $this->assertGreaterThan(0, Probe::get($editor, 'scroll')->vScrollSegment());
+
+        $editor->getDocument()->setCursor(0, 0);
+        $editor->render(new RenderContext(30, 4));
+
+        $this->assertSame(0, Probe::get($editor, 'scroll')->vScrollSegment(), 'back to the line\'s first row');
     }
 }

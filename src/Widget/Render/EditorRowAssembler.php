@@ -78,6 +78,8 @@ final readonly class EditorRowAssembler
         int $cursorLine,
         int $cursorDisplayCol,
         int $hScroll,
+        /** Rows of the TOP line hidden above the viewport; 0 unless soft wrap scrolled into a tall line. */
+        int $vScrollSegment = 0,
     ): array {
         $stickyCount = \count($sticky);
 
@@ -95,7 +97,9 @@ final readonly class EditorRowAssembler
         // Which row OF $walk this screen row shows. A line occupies one row per
         // code lens above it, then one per wrapped segment — so this is 0 for
         // most lines and the walk moves on as soon as it runs out.
-        $rowInLine = 0;
+        // Rows of the top line hidden above the viewport: scrolling INTO a
+        // wrapped line taller than the pane starts the walk partway down it.
+        $rowInLine = $vScrollSegment;
         for ($row = 0; $row < $contentRows; ++$row) {
             $lineIndex = $walk < $lineCount ? $walk : null;
             $atRow = $rowInLine;

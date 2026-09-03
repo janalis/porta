@@ -28,5 +28,7 @@ final readonly class EditorViewport
          * screen row is a SEGMENT then, not a line.
          */
         public ?int $wrapWidth = null,
+        /** Rows of the top line hidden above the viewport; 0 unless wrapping. */
+        public int $vScrollSegment = 0,
     ) {}
 }

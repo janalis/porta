@@ -1114,11 +1114,18 @@ count rather than trusting `nextVisibleLine()` to advance, because a walk that
 cannot terminate structurally needs a guard branch nothing can reach to test.
 
 **The v1 is therefore complete**: render, toggle, caret motion, hit-testing.
-What is NOT done and was never in the v1: `vScroll` is still a document line, so
-a line taller than the viewport cannot be scrolled into; and code vision, which
-this was supposed to make nearly free, remains unbuilt.
 
-*Re-opens on:* someone hitting the tall-line scroll limit in practice. It is a
-one-line-at-a-time behaviour, not a correctness bug, and pricing the (line,
-segment) scroll position was the saving that made this affordable at all.
+**And its one limitation is gone too (2026-09-03).** `EditorScroll` carries a
+`vScrollSegment` — rows of the TOP line hidden above the viewport — so a caret
+far along a line taller than the pane is reached by scrolling INTO that line.
+Every plain `vScroll` write resets it, because moving to another line means
+starting at that line's first row.
+
+It was priced as the saving that made soft wrap affordable, and deferring it
+was still right: it is a small change ONCE the row-counting clamp exists, and
+that clamp only exists because shipping without it exposed a real bug. Found
+the limit was reachable by writing an assertion that assumed it worked — the
+test that pinned it as a boundary is now a test of the opposite.
+
+Code vision, which this was supposed to make nearly free, is built too.
 

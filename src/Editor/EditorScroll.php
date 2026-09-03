@@ -19,6 +19,14 @@ final class EditorScroll
     public const int MAX_STICKY_ROWS = 5;
 
     private int $vScroll = 0;
+
+    /**
+     * How many rows of the TOP line are hidden above the viewport — always 0
+     * unless soft wrap is on, and the only way to scroll INTO a line taller
+     * than the pane. Every plain `$vScroll` write resets it, because moving to
+     * a different line means starting at that line's first row.
+     */
+    private int $vScrollSegment = 0;
     private int $hScroll = 0;
     private int $contentRows = 24; // rows available for scrolled content (viewport minus the sticky band)
 
@@ -38,6 +46,12 @@ final class EditorScroll
         private readonly FoldModel $foldModel,
         private readonly \Closure $invalidate,
     ) {}
+
+    /** Rows of the top line hidden above the viewport; 0 unless wrapping. */
+    public function vScrollSegment(): int
+    {
+        return $this->vScrollSegment;
+    }
 
     public function vScroll(): int
     {
@@ -97,6 +111,7 @@ final class EditorScroll
     {
         $this->detached = false;
         $this->vScroll = max(0, $line - intdiv($this->contentRows, num2: 2));
+        $this->vScrollSegment = 0;
     }
 
     /** Centre the viewport on the caret line (after a jump). */
@@ -115,6 +130,7 @@ final class EditorScroll
     {
         $max = max(0, $this->document->getLineCount() - 1);
         $this->vScroll = IntMath::clamp($this->vScroll + $delta, 0, $max);
+        $this->vScrollSegment = 0;
         $this->detached = true;
         ($this->invalidate)();
     }
@@ -154,11 +170,21 @@ final class EditorScroll
             $cursorRow = $this->caretRow($cursorLine);
             if ($cursorRow < 0) {
                 $this->vScroll = $this->foldModel->snapVisible($cursorLine);
+                $this->vScrollSegment = 0;
 
                 continue;
             }
             if ($cursorRow > ($rows - $stickyCount - 1)) {
-                $this->vScroll = $this->topLineFor($cursorLine, $rows - $stickyCount - 1);
+                $top = $this->topLineFor($cursorLine, $rows - $stickyCount - 1);
+                if ($top === $this->vScroll && 0 === $this->vScrollSegment) {
+                    // Nowhere above to scroll to: the caret is deep inside a
+                    // line taller than the pane, so scroll INTO that line.
+                    $this->vScrollSegment = max(0, $cursorRow - ($rows - $stickyCount - 1));
+
+                    break;
+                }
+                $this->vScroll = $top;
+                $this->vScrollSegment = 0;
 
                 continue;
             }
@@ -198,7 +224,7 @@ final class EditorScroll
 
         // Plus the caret's own row WITHIN its line: the lens rows above it and
         // the segment its column falls in.
-        return $row + $rowsFor($cursorLine) - $this->wrappedRows($cursorLine) + $this->caretSegment();
+        return $row + $rowsFor($cursorLine) - $this->wrappedRows($cursorLine) + $this->caretSegment() - $this->vScrollSegment;
     }
 
     /** The top line that leaves the caret $budget rows down, counting rows. */
