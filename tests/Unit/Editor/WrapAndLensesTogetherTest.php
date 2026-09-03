@@ -61,7 +61,7 @@ final class WrapAndLensesTogetherTest extends TestCase
         $this->assertStringContainsString('WWW', $painted[3], 'then the line itself');
         $this->assertStringContainsString('2', $painted[3], 'numbered on its first row only');
         $this->assertStringContainsString('WWW', $painted[4], 'and its continuation');
-        $this->assertSame('', trim($painted[4], "W \t"), 'which carries no number');
+        $this->assertSame('', trim($painted[4], characters: "W \t"), 'which carries no number');
     }
 
     /**
