@@ -141,6 +141,7 @@ final class ActionCatalog
         'toggle_bookmark' => ['label' => 'Toggle Bookmark', 'keys' => ['f11']],
         'ide_bookmarks' => ['label' => 'Show Bookmarks', 'keys' => ['alt+2']],
         'ide_recent_locations' => ['label' => 'Recent Locations', 'keys' => ['alt+5']],
+        'toggle_soft_wrap' => ['label' => 'Soft-Wrap', 'keys' => ['alt+z']],
         // PhpStorm's split, which Porta used to collapse onto the popup: Alt+7 is
         // the persistent Structure TOOL WINDOW, Ctrl+F12 the transient popup.
         'ide_structure' => ['label' => 'Structure', 'keys' => ['alt+7']],

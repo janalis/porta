@@ -1002,6 +1002,10 @@
         <source>Nothing to organize</source>
         <target>Nichts zu organisieren</target>
       </trans-unit>
+      <trans-unit id="760">
+        <source>Soft-Wrap</source>
+        <target>Zeilenumbruch</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>Fokus Baum / Editor wechseln</target>

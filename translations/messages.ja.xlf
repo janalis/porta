@@ -1002,6 +1002,10 @@
         <source>Nothing to organize</source>
         <target>整理するものはありません</target>
       </trans-unit>
+      <trans-unit id="760">
+        <source>Soft-Wrap</source>
+        <target>折り返し</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>ツリー / エディターのフォーカスを切替</target>

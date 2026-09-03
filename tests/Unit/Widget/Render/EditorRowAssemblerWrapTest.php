@@ -98,4 +98,29 @@ final class EditorRowAssemblerWrapTest extends TestCase
             $this->rows($exact = str_repeat('a', times: 10)."\nnext\n", wrap: new WrapLayout(new Document($exact))),
         );
     }
+
+    /**
+     * Through the widget, which is what the Alt+Z toggle drives: the option
+     * decides whether a layout reaches the assembler at all, and turning it on
+     * must also stop horizontal scroll — they are the same slice offset, so
+     * both driving at once would slice twice.
+     */
+    public function testTheDisplayToggleTurnsWrappingOnAndOffThroughTheWidget(): void
+    {
+        $editor = new \Porta\Widget\CodeEditorWidget();
+        $long = str_repeat('a', times: 60);
+        $editor->showDocument('/p/a.php', new Document("<?php\n{$long}\nafter\n"));
+
+        // Rows carrying the long line, which is what "occupies N rows" means.
+        $rowsOfAs = static fn (): int => \count(array_filter(
+            $editor->render(new \Symfony\Component\Tui\Render\RenderContext(30, 6)),
+            static fn (string $r): bool => str_contains(AnsiUtils::stripAnsiCodes($r), 'aaaaa'),
+        ));
+
+        $this->assertSame(1, $rowsOfAs(), 'unwrapped, the long line occupies one row');
+
+        $editor->display()->setSoftWrap(true);
+
+        $this->assertGreaterThan(1, $rowsOfAs(), 'wrapped, it occupies several');
+    }
 }

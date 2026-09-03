@@ -1002,6 +1002,10 @@
         <source>Nothing to organize</source>
         <target>אין מה לארגן</target>
       </trans-unit>
+      <trans-unit id="760">
+        <source>Soft-Wrap</source>
+        <target>גלישת שורות</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>החלף מיקוד עץ / עורך</target>

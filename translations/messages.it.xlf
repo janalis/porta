@@ -1002,6 +1002,10 @@
         <source>Nothing to organize</source>
         <target>Niente da organizzare</target>
       </trans-unit>
+      <trans-unit id="760">
+        <source>Soft-Wrap</source>
+        <target>A capo automatico</target>
+      </trans-unit>
       <trans-unit id="237">
         <source>Switch Tree / Editor Focus</source>
         <target>Cambia fuoco albero / editor</target>

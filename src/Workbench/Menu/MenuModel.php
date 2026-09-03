@@ -122,6 +122,7 @@ final class MenuModel
             'i:toggle_bookmark',
             'i:ide_bookmarks',
             'i:ide_recent_locations',
+            'i:toggle_soft_wrap',
             'i:ide_structure',
             'i:ide_todo',
             'i:ide_project_tree',

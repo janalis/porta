@@ -991,3 +991,37 @@ PhpStorm now where before neither did.
 this chord, not the CSI-u form. `KeyParser` reads both, so the first version of
 the test failed silently against a correctly-wired feature.
 
+## Soft wrap — shipped as Alt+Z, with one gap stated (2026-09-03)
+
+Built after the re-measurement above, in the phases it described, and the
+re-measurement held: the render half was small because the primitives were
+already there.
+
+`Editor\WrapLayout` is pure over a document and a content width, memoised on
+both. The row walk keeps its walking cursor and gains a segment counter.
+Rendering a segment reuses `renderContentLine()`'s existing display-column
+slice, which is why the widget forces `hScroll` to 0 while wrapping — they are
+one knob. A continuation row carries no line number and no gutter marks, and the
+caret lights only the segment its column falls in.
+
+**Wrapping is measured on the DOCUMENT line's width, not the decorated one.**
+Inlay hints and inline diagnostics ride in the same row; measuring them would
+make text reflow because a hint arrived, which is the opposite of what a reader
+wants. They clip at the row edge as they already do.
+
+**The gap, and it is a real one: caret up/down still moves by DOCUMENT line.**
+With wrap on, Down from a wrapped line jumps past its continuation rows rather
+than stepping through them. PhpStorm moves by visual line. The fix needs the
+content width outside render — `EditorScroll` is the right home, since it
+already holds `contentRows` for the same reason — plus wrap-awareness in
+`EditorActions`, which dispatches vertical motion generically through
+`MultiCaret::MOVE_METHODS` and would have to special-case it. That is a third
+deep change and was not made in the same sitting as the two above.
+
+Soft wrap is **off by default and opt-in via `Alt+Z`**, so the gap is reachable
+only by someone who asked for wrapping — which is the reason it was acceptable
+to ship the rest without it, not a reason to leave it.
+
+*Next:* segment-wise caret motion, then mouse click mapping (a click on a
+continuation row currently resolves to the line's first column).
+
