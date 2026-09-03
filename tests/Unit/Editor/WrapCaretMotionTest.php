@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
+use Porta\Tests\Support\Probe;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -192,5 +193,60 @@ final class WrapCaretMotionTest extends TestCase
         $this->assertStringContainsString('X', $painted, 'the caret line is on screen');
         $this->assertStringContainsString('bbb', $painted, 'and the short line just above it came along');
         $this->assertStringNotContainsString('aaa', $painted, 'but the one that would not fit did not');
+    }
+
+    /**
+     * Code lenses push their line DOWN the screen, so the caret clamp counts
+     * them — but only the ones ABOVE the caret within its own line, not the
+     * line's whole height. Count the height instead and the clamp scrolls when
+     * it should not, throwing away the lines above for no reason.
+     */
+    public function testLensRowsAboveTheCaretCountButItsOwnLineHeightDoesNot(): void
+    {
+        $editor = new CodeEditorWidget();
+        $editor->showDocument('/p/a.php', new Document("aaa\nBBB\n"));
+        $editor->setFocused(true);
+        $lens = static fn (string $t): array => ['title' => $t, 'command' => '', 'arguments' => []];
+        $editor->decorations()->setCodeLenses([1 => [$lens('lens one'), $lens('lens two')]]);
+        $screen = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(30, 5))));
+
+        // aaa, two lenses, BBB — four rows in five, so nothing needs to scroll.
+        $editor->getDocument()->setCursor(1, 0);
+        $painted = $screen();
+
+        $this->assertSame(0, Probe::get($editor, 'scroll')->vScroll(), 'everything fits, so the viewport stays at the top');
+        $this->assertStringContainsString('aaa', $painted, 'and the first line is still there');
+        $this->assertStringContainsString('BBB', $painted);
+        $this->assertStringContainsString('lens two', $painted);
+    }
+
+    /**
+     * The v1's known boundary, pinned so it is visible rather than folklore:
+     * `vScroll` is a DOCUMENT line, so a line taller than the viewport cannot
+     * be scrolled INTO — put the caret far along such a line and it is off
+     * screen, because there is no line above it to scroll to.
+     *
+     * Reachable, not theoretical. Fixing it means a (line, segment) scroll
+     * position, which is the saving that made soft wrap affordable at all —
+     * see decisions.md.
+     */
+    public function testACaretDeepInsideALineTallerThanTheViewportIsNotReached(): void
+    {
+        $editor = new CodeEditorWidget();
+        $editor->showDocument('/p/a.php', new Document(str_repeat('X', times: 120)."\nafter\n"));
+        $editor->setFocused(true);
+        $editor->display()->setSoftWrap(true);
+        $screen = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(30, 4))));
+        $screen();
+
+        // Far along the one wrapped line: its later segments are rows of their
+        // own, so "the caret is on the first visible LINE" says nothing about
+        // which ROW it is on.
+        $editor->getDocument()->setCursor(0, 110);
+        $screen();
+
+        $painted = $screen();
+        $this->assertStringNotContainsString('after', $painted, 'the viewport is still showing the first segments');
+        $this->assertSame(0, Probe::get($editor, 'scroll')->vScroll(), 'and cannot scroll: there is no line above the caret to scroll to');
     }
 }

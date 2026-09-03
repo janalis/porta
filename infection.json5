@@ -22,6 +22,12 @@
     //   * The escapes worth acting on cluster in two places: guards whose arms
     //     are not each covered, and REQUEST PAYLOADS nothing asserts (a dropped
     //     'textDocument' key is as silent as a dropped range).
+    //   * A term appearing on BOTH sides of a decision is usually equivalent.
+    //     EditorScroll's caret clamp uses the same lens-row count to ask "is
+    //     the caret visible" and to answer "where should the top be", so
+    //     flipping its sign moves both together and vScroll lands identically
+    //     at every viewport height. Measured before concluding — construct the
+    //     discriminating case and RUN it rather than reasoning about it.
     "$schema": "vendor/infection/infection/resources/schema.json",
     "source": {
         "directories": ["src"]
