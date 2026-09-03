@@ -9,6 +9,7 @@ use Porta\Editor\Buffer;
 use Porta\Editor\Document;
 use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferSaved;
+use Porta\Event\LspStatusChanged;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\SemanticTokensController;
@@ -192,6 +193,22 @@ final class SemanticTokensControllerTest extends TestCase
         end($this->client->requests)['respond'](null);
 
         self::assertSame([], $this->editor->decorations()->semanticTokensAt(1));
+    }
+
+    public function testAServerBecomingReadyRefreshesTheLaunchFile(): void
+    {
+        // The launch file is opened BEFORE any session exists, so its
+        // ActiveBufferChanged finds no capability and asks nothing. Without
+        // this the one buffer you actually start looking at is the one that
+        // never gets coloured.
+        $controller = $this->controller();
+        $this->readyOn($controller);
+        $refresher = new SemanticTokensRefresher($controller);
+        $before = \count($this->client->requests);
+
+        $refresher->onLspStatusChanged(new LspStatusChanged());
+
+        self::assertCount($before + 1, $this->client->requests);
     }
 
     public function testTheRefresherAsksOnBufferChangeAndOnSave(): void

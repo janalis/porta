@@ -7,6 +7,7 @@ namespace Porta\Lsp;
 use Porta\Editor\EditorDisplayOptions;
 use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferSaved;
+use Porta\Event\LspStatusChanged;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
@@ -34,6 +35,20 @@ final readonly class CodeLensRefresher
 
     #[AsEventListener]
     public function onBufferSaved(BufferSaved $event): void
+    {
+        $this->refresh();
+    }
+
+    /**
+     * A server coming up, which neither of the other two covers: the file you
+     * launch with is opened BEFORE any session exists, so its
+     * `ActiveBufferChanged` finds no capability and asks nothing. Found while
+     * fixing the same bug in {@see SemanticTokensRefresher} — the toggle path
+     * in ViewCommands re-requests on its own, so only the launch file was
+     * affected, and only with lenses already on.
+     */
+    #[AsEventListener]
+    public function onLspStatusChanged(LspStatusChanged $event): void
     {
         $this->refresh();
     }

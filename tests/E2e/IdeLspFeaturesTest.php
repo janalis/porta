@@ -588,6 +588,51 @@ final class IdeLspFeaturesTest extends TestCase
         );
     }
 
+    /**
+     * Semantic tokens reach the buffer's decorations in the RUNNING IDE.
+     *
+     * The unit tests all construct the controller themselves, which proves it
+     * works and not that anything builds it. A previous round shipped an LSP
+     * controller with every gate green and 100% coverage that had never run in
+     * the app once, because nothing injected it — here the refresher is an
+     * event listener and the buffer opening is what has to trigger it.
+     */
+    public function testSemanticTokensReachTheBufferInTheRunningIde(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => $this->mockLspConfig(),
+            // The mock only colours files named *Semantic*, so every other
+            // screen in this suite keeps the lexer's colours.
+            'src/Semantic.php' => "<?php\n\nclass Semantic\n{\n    public string \$field = 'x';\n}\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('src/Semantic.php'),
+            [
+                100 => function ($tui, $terminal): void {
+                    $this->awaitPainted($tui, $terminal, 'LSP:mock-lsp-server');
+
+                    $editor = $tui->getById('editor');
+                    $this->await(
+                        static fn (): bool => [] !== $editor->decorations()->semanticTokensAt(1),
+                        what: 'the server semantic tokens to land on the buffer',
+                    );
+
+                    // The mock's legend is deliberately scrambled, so these
+                    // names only come out right if the legend was READ.
+                    $this->assertSame(
+                        [
+                            ['col' => 4, 'endCol' => 9, 'type' => 'property', 'modifiers' => []],
+                            ['col' => 11, 'endCol' => 14, 'type' => 'method', 'modifiers' => ['static', 'deprecated']],
+                        ],
+                        $editor->decorations()->semanticTokensAt(1),
+                    );
+                },
+            ],
+        );
+    }
+
     public function testQuickFixesEditCommandAndEmptyPaths(): void
     {
         $tall = "<?php\n\nclass QuickFixMe {}\n".str_repeat("// filler\n", times: 110);

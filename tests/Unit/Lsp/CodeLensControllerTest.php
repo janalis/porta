@@ -9,6 +9,7 @@ use Porta\Editor\Buffer;
 use Porta\Editor\Document;
 use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferSaved;
+use Porta\Event\LspStatusChanged;
 use Porta\I18n\Translator;
 use Porta\Lsp\CodeLensController;
 use Porta\Lsp\CodeLensRefresher;
@@ -167,6 +168,25 @@ final class CodeLensControllerTest extends TestCase
         $refresher->onBufferSaved(new BufferSaved(new Buffer('/p/a.php', new Document("<?php\n"))));
 
         $this->assertCount(1, $this->client->requests, 'and on, the save is the settle point');
+        $this->assertSame('textDocument/codeLens', $this->client->requests[0]['method']);
+    }
+
+    /**
+     * A server becoming ready is the third settle point. Without it the file
+     * you launch with is opened before any session exists, so it asks for
+     * lenses that cannot be answered and never asks again.
+     */
+    public function testAServerBecomingReadyRefreshesTheLaunchFile(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller);
+        $display = $this->editor->display();
+        $display->setCodeLenses(true);
+
+        $refresher = new CodeLensRefresher($controller, $display);
+        $refresher->onLspStatusChanged(new LspStatusChanged());
+
+        $this->assertCount(1, $this->client->requests);
         $this->assertSame('textDocument/codeLens', $this->client->requests[0]['method']);
     }
 
