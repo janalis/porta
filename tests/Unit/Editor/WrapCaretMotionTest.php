@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Editor;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
 use Porta\Widget\CodeEditorWidget;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
 /**
@@ -132,5 +133,64 @@ final class WrapCaretMotionTest extends TestCase
         $this->assertSame(1, $line, 'onto the second long line');
         $this->assertLessThan($editor->getDocument()->lineDisplayWidth(1), $column);
         $this->assertLessThan(30, $column, 'in its first segment, not carrying the old column across');
+    }
+
+    /**
+     * The viewport has to follow the caret by ROWS, not by lines. Three lines
+     * that each wrap to four rows do not fit in six, but a clamp counting
+     * lines thinks three lines always do — so the caret walked off the bottom
+     * and the viewport stayed put. Distinct characters per line make "is the
+     * caret's line even on screen" answerable.
+     */
+    public function testTheViewportFollowsTheCaretThroughWrappedRows(): void
+    {
+        $editor = new CodeEditorWidget();
+        $editor->showDocument('/p/a.php', new Document(
+            str_repeat('A', times: 80)."\n".str_repeat('B', times: 80)."\n".str_repeat('C', times: 80)."\n",
+        ));
+        $editor->setFocused(true);
+        $editor->display()->setSoftWrap(true);
+        $screen = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(30, 6))));
+        $screen();
+
+        $this->assertStringNotContainsString('C', $screen(), 'the third line starts off screen');
+
+        // Down until the caret is on the third line, then it must be visible.
+        for ($i = 0; $i < 12 && 2 !== $editor->getDocument()->getCursorLine(); ++$i) {
+            $editor->handleInput(self::DOWN);
+            $screen();
+        }
+
+        $this->assertSame(2, $editor->getDocument()->getCursorLine(), 'the caret reached the third line');
+        $this->assertStringContainsString('C', $screen(), 'and the viewport followed it there');
+    }
+
+    /**
+     * Scrolling up stops when the next line WOULD overflow the budget, having
+     * taken the ones that fit — so short lines above a wrapped caret stay on
+     * screen instead of the viewport jumping straight to the caret's own line.
+     */
+    public function testScrollingUpTakesTheLinesThatFitAndStopsAtTheOneThatDoesNot(): void
+    {
+        $editor = new CodeEditorWidget();
+        $editor->showDocument('/p/a.php', new Document("aaa\nbbb\n".str_repeat('X', times: 80)."\n"));
+        $editor->setFocused(true);
+        $editor->display()->setSoftWrap(true);
+        $screen = static fn (): string => AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(30, 5))));
+        $screen();
+
+        // Down to the wrapped line's last segment.
+        for ($i = 0; $i < 8 && 2 !== $editor->getDocument()->getCursorLine(); ++$i) {
+            $editor->handleInput(self::DOWN);
+            $screen();
+        }
+        $editor->handleInput(self::DOWN);
+        $editor->handleInput(self::DOWN);
+        $editor->handleInput(self::DOWN);
+        $painted = $screen();
+
+        $this->assertStringContainsString('X', $painted, 'the caret line is on screen');
+        $this->assertStringContainsString('bbb', $painted, 'and the short line just above it came along');
+        $this->assertStringNotContainsString('aaa', $painted, 'but the one that would not fit did not');
     }
 }

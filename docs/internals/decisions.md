@@ -579,10 +579,21 @@ store, so the rows go with the setting. `CodeLensRefresher` checks the toggle
 rather than the controller, so off means no REQUESTS, not just no painting: a
 lens count is a real round trip per save.
 
-*Still out:* running a lens's command on click (the lens carries one; nothing
-invokes it), and `clampToCaret()` still counts document lines, so the caret can
-scroll a row or two imprecisely when many lenses are on screen — the same
-relationship folding already has with it.
+**`clampToCaret()` counted document lines, and that was a BUG, not
+imprecision.** Three lines each wrapping to four rows do not fit in six, but a
+clamp counting lines thinks three lines always do — so the caret walked off the
+bottom of the viewport and the viewport stayed at the top. Measured, not
+suspected: `vScroll` was still 0 with the caret on the third line.
+
+It counts rows now, through a `setRowsForLine()` closure the widget supplies
+(null when neither wrap nor lenses are on, which keeps the old arithmetic
+exactly). Both setters had to move BEFORE the clamp in the render: set
+afterwards, the clamp used the previous frame's numbers and the caret sat off
+screen for one paint after every Down.
+
+*Still out:* running a lens's command on click. The lens carries one and
+`workspace/executeCommand` already exists for code actions, but the store keeps
+only the title — invoking would mean carrying the command through it.
 
 **Clickable `✗ N` / `▲ N` status-bar counts — rejected, and it is the same
 ground `statusCommands()` was rejected on.** `StatusCell` / `StatusMenuSpan`

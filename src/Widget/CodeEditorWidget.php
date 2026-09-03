@@ -1157,6 +1157,18 @@ final class CodeEditorWidget extends AbstractWidget implements
             $this->lastRenderRows = $rows;
             $this->lastStripeCol = $geo->stripeCol;
 
+            // Both BEFORE the clamp, which reads them: the caret's screen row
+            // depends on how many rows the lines above it occupy, and setting
+            // them afterwards left the clamp a frame behind — the caret could
+            // sit off screen for one paint after every Down.
+            $this->scroll->setContentWidth($geo->contentWidth);
+            $wrapLayout = $this->display->softWrap() ? new WrapLayout($doc) : null;
+            $this->scroll->setRowsForLine(
+                null === $wrapLayout && !$this->decorations->hasCodeLenses()
+                    ? null // one row per line, and the old arithmetic exactly
+                    : fn (int $line): int => \count($this->decorations->codeLensesAt($line)) + ($wrapLayout?->rowsFor($line, $geo->contentWidth) ?? 1),
+            );
+
             // Clamp scroll to cursor: the caret must stay visible below whatever
             // sticky-scroll band the settled scroll position pins at the top.
             $cursorLine = $doc->getCursorLine();
@@ -1169,7 +1181,6 @@ final class CodeEditorWidget extends AbstractWidget implements
             $contentRows = $rows - \count($sticky);
             $this->scroll->setContentRows($contentRows);
 
-            $this->scroll->setContentWidth($geo->contentWidth);
             $cursorDisplayCol = $this->followCaret($doc, $cursorLine, $geo->contentWidth);
             $hScroll = $this->scroll->hScroll();
 
@@ -1200,10 +1211,11 @@ final class CodeEditorWidget extends AbstractWidget implements
                 $this->cursorStyle,
                 // Wrap and horizontal scroll are one knob read two ways — the
                 // same slice offset — so only one of them can be driving.
-                // Built per frame on purpose: its memo is keyed on width and
-                // document version, so the only lifetime that buys anything is
-                // the walk over this frame's visible rows.
-                $this->display->softWrap() ? new WrapLayout($doc) : null,
+                // Built once per frame: the memo is keyed on width and
+                // document version, so the only lifetime worth anything is the
+                // walk over this frame's rows — and the caret clamp above
+                // shares it.
+                $wrapLayout,
             );
             $result = $assembler->assemble($geo, $decorations, $sticky, $highlighted, $stripe, $contentRows, $vScroll, $cursorLine, $cursorDisplayCol, $this->display->softWrap() ? 0 : $hScroll);
 

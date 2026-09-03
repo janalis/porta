@@ -62,6 +62,21 @@ final class EditorScroll
      */
     private int $contentWidth = 0;
 
+    /**
+     * Rows one document line occupies — wrapped segments plus code-lens rows.
+     * Null means one row per line, which is what every caller wants until soft
+     * wrap or code vision is on, and keeps this arithmetic exactly as it was.
+     *
+     * @var (\Closure(int): int)|null
+     */
+    private ?\Closure $rowsForLine = null;
+
+    /** @param (\Closure(int): int)|null $rowsForLine */
+    public function setRowsForLine(?\Closure $rowsForLine): void
+    {
+        $this->rowsForLine = $rowsForLine;
+    }
+
     public function contentWidth(): int
     {
         return $this->contentWidth;
@@ -136,14 +151,14 @@ final class EditorScroll
         $this->vScroll = $this->foldModel->snapVisible(IntMath::clamp($this->vScroll, 0, $this->document->getLineCount() - 1));
         for ($iter = 0; $iter <= self::MAX_STICKY_ROWS; ++$iter) {
             $stickyCount = $stickyCountAt($this->vScroll);
-            $cursorRow = $this->foldModel->screenRowFor($this->vScroll, $cursorLine);
+            $cursorRow = $this->caretRow($cursorLine);
             if ($cursorRow < 0) {
                 $this->vScroll = $this->foldModel->snapVisible($cursorLine);
 
                 continue;
             }
             if ($cursorRow > ($rows - $stickyCount - 1)) {
-                $this->vScroll = $this->foldModel->visibleLineAbove($cursorLine, $rows - $stickyCount - 1);
+                $this->vScroll = $this->topLineFor($cursorLine, $rows - $stickyCount - 1);
 
                 continue;
             }
@@ -157,6 +172,76 @@ final class EditorScroll
      * A render with a parked caret ($cursorMoved false) leaves a manual
      * horizontal scroll alone — moving/typing snaps the view back to the caret.
      */
+    /**
+     * The caret's SCREEN row from the top of the viewport, which is only the
+     * same as its line offset while every line is one row tall. Wrapped, a
+     * line above the caret contributes a row per segment; with code vision, a
+     * row per lens — so counting lines put the caret off screen and left the
+     * viewport there, which is what this fixes.
+     */
+    private function caretRow(int $cursorLine): int
+    {
+        $lineOffset = $this->foldModel->screenRowFor($this->vScroll, $cursorLine);
+        if ($lineOffset < 0 || null === $this->rowsForLine) {
+            return $lineOffset;
+        }
+
+        // A local, because the analyzer cannot hold a PROPERTY's narrowing
+        // across the calls in this loop.
+        $rowsFor = $this->rowsForLine;
+        $row = 0;
+        $line = $this->vScroll;
+        for ($step = 0; $line < $cursorLine && $step <= $cursorLine; ++$step) {
+            $row += $rowsFor($line);
+            $line = $this->foldModel->nextVisibleLine($line);
+        }
+
+        // Plus the caret's own row WITHIN its line: the lens rows above it and
+        // the segment its column falls in.
+        return $row + $rowsFor($cursorLine) - $this->wrappedRows($cursorLine) + $this->caretSegment();
+    }
+
+    /** The top line that leaves the caret $budget rows down, counting rows. */
+    private function topLineFor(int $cursorLine, int $budget): int
+    {
+        if (null === $this->rowsForLine) {
+            return $this->foldModel->visibleLineAbove($cursorLine, $budget);
+        }
+
+        $rowsFor = $this->rowsForLine;
+        $spent = $this->caretSegment() + ($rowsFor($cursorLine) - $this->wrappedRows($cursorLine));
+        $line = $cursorLine;
+        // Bounded by $step, so no guard is needed for visibleLineAbove() not
+        // advancing — and a guard nothing can reach is not a guard.
+        for ($step = 0; $step <= $cursorLine; ++$step) {
+            $above = $this->foldModel->visibleLineAbove($line, 1);
+            $cost = $rowsFor($above);
+            if (($spent + $cost) > $budget) {
+                break;
+            }
+            $spent += $cost;
+            $line = $above;
+        }
+
+        return $this->foldModel->snapVisible($line);
+    }
+
+    /** Segments the caret's own line wraps into, excluding any lens rows. */
+    private function wrappedRows(int $line): int
+    {
+        $width = $this->contentWidth;
+
+        return $width <= 0 ? 1 : max(1, (int) ceil(max(1, $this->document->lineDisplayWidth($line)) / $width));
+    }
+
+    /** Which wrapped segment of its own line the caret sits in. */
+    private function caretSegment(): int
+    {
+        $width = $this->contentWidth;
+
+        return $width <= 0 ? 0 : intdiv($this->document->getCursorDisplayCol(), $width);
+    }
+
     public function followCursor(int $cursorDisplayCol, int $contentWidth, CaretMotion $motion = CaretMotion::Moved): void
     {
         if (CaretMotion::Parked === $motion) {
