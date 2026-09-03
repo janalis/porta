@@ -239,7 +239,10 @@ final class WrapCaretMotionTest extends TestCase
 
         $scroll = Probe::get($editor, 'scroll');
         $this->assertSame(0, $scroll->vScroll(), 'still the same document line — there is no other');
-        $this->assertGreaterThan(0, $scroll->vScrollSegment(), 'but scrolled down inside it');
+        // Exactly, not merely "some": a 120-column line at width 22 is six
+        // segments, the caret at column 110 is in the sixth (index 5), and four
+        // rows hold segments 2..5 — so two rows are hidden above.
+        $this->assertSame(2, $scroll->vScrollSegment(), 'scrolled exactly far enough to show the caret, not further');
 
         // The caret's own segment is the last one shown, not one below it.
         $hidden = $scroll->vScrollSegment();
@@ -264,5 +267,43 @@ final class WrapCaretMotionTest extends TestCase
         $editor->render(new RenderContext(30, 4));
 
         $this->assertSame(0, Probe::get($editor, 'scroll')->vScrollSegment(), 'back to the line\'s first row');
+    }
+
+    /** A viewport scrolled INTO a tall line, for the reset tests below. */
+    private function scrolledIntoATallLine(): CodeEditorWidget
+    {
+        $editor = new CodeEditorWidget();
+        $editor->showDocument('/p/a.php', new Document(str_repeat('X', times: 120)."\nafter\nlast\n"));
+        $editor->setFocused(true);
+        $editor->display()->setSoftWrap(true);
+        $editor->render(new RenderContext(30, 4));
+        $editor->getDocument()->setCursor(0, 110);
+        $editor->render(new RenderContext(30, 4));
+        $this->assertGreaterThan(0, Probe::get($editor, 'scroll')->vScrollSegment(), 'the fixture must actually be scrolled into the line');
+
+        return $editor;
+    }
+
+    /**
+     * A wheel scroll starts at the new top line's first row: a segment left
+     * over from the line you came from would hide the top of the new one.
+     */
+    public function testAWheelScrollClearsTheHiddenRows(): void
+    {
+        $scroll = Probe::get($this->scrolledIntoATallLine(), 'scroll');
+
+        $scroll->scrollBy(1);
+
+        $this->assertSame(0, $scroll->vScrollSegment());
+    }
+
+    /** And so does centring on a line, for the same reason. */
+    public function testCentringOnALineClearsTheHiddenRows(): void
+    {
+        $scroll = Probe::get($this->scrolledIntoATallLine(), 'scroll');
+
+        $scroll->centerOnLine(2);
+
+        $this->assertSame(0, $scroll->vScrollSegment());
     }
 }
