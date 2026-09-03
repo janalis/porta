@@ -27,6 +27,9 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     /** @var list<int> 0-based lines with a breakpoint (● in the gutter) */
     private array $breakpointLines = [];
 
+    /** @var array<int, list<string>> 0-based line => the lens titles shown ABOVE it */
+    private array $codeLenses = [];
+
     /** @var array<int, true> 0-based bookmarked lines, keyed for the per-row lookup the gutter does */
     private array $bookmarkLines = [];
 
@@ -69,6 +72,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         $this->lineAnnotations = [];
         $this->breakpointLines = [];
         $this->bookmarkLines = [];
+        $this->codeLenses = [];
         $this->conditionalBreakpointLines = [];
         $this->logpointLines = [];
         $this->debugLine = null;
@@ -217,6 +221,28 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     }
 
     /** @param array<int, list<array{col: int, text: string}>> $hints line => byte-col hints */
+    /**
+     * The code lenses to show above each line — "3 usages", "2 implementations".
+     *
+     * Unlike every other decoration these do not ride IN a row; each one adds a
+     * row of its own above the line it describes. That is why the row count
+     * flows through {@see codeLensesAt()} to the walk rather than being painted
+     * into an existing row.
+     *
+     * @param array<int, list<string>> $byLine 0-based line => titles; [] clears
+     */
+    public function setCodeLenses(array $byLine): void
+    {
+        $this->codeLenses = $byLine;
+        ($this->invalidate)();
+    }
+
+    /** @return list<string> the lens titles above one line */
+    public function codeLensesAt(int $line): array
+    {
+        return $this->codeLenses[$line] ?? [];
+    }
+
     public function setInlayHints(array $hints): void
     {
         $this->inlayHints = $hints;

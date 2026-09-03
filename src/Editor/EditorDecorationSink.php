@@ -60,6 +60,14 @@ interface EditorDecorationSink
     /** Highlight (or clear) the debugger's stopped line. */
     public function setDebugLine(?int $line): void;
 
+    /**
+     * Code lenses, keyed by the 0-based line they sit ABOVE. The only
+     * decoration that adds rows rather than painting into one.
+     *
+     * @param array<int, list<string>> $byLine
+     */
+    public function setCodeLenses(array $byLine): void;
+
     /** @param array<int, list<array{severity: int, message: string, col: int, endCol?: int}>> $byLine */
     public function setDiagnostics(array $byLine): void;
 
