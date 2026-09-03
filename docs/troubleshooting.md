@@ -52,7 +52,15 @@ being swallowed upstream — see the known vendor issues below.
 
 ## Language server misbehaving?
 
-Run `LSP: Show Server Log` from the command palette. Porta captures each
-server's stderr and `window/logMessage` notifications (newest first, prefixed
-with the server name) — startup crashes, missing binaries and indexing
-failures all show up there.
+Run `LSP: Show Server Log` from the command palette, or click the `LSP:<status>`
+cell in the status bar. Porta captures each server's stderr and
+`window/logMessage` notifications (newest first, prefixed with the server name)
+— startup crashes, missing binaries and indexing failures all show up there.
+
+Messages a server sends for the USER (`window/showMessage`) arrive as toasts,
+prefixed with the server's name and dressed by severity, and are kept in the
+notification log. Log-level ones go to the server log instead of interrupting.
+
+While a server reports long-running work (`$/progress`), the status bar shows
+what it is doing and how far along — "Indexing 40%". A server that reports no
+progress simply shows nothing.

@@ -1129,3 +1129,109 @@ test that pinned it as a boundary is now a test of the opposite.
 
 Code vision, which this was supposed to make nearly free, is built too.
 
+
+## Semantic highlighting is a LAYER, not a highlight backend (2026-09-04)
+
+phpantom advertises `semanticTokensProvider` with a 15-type legend; phpactor
+does not — the same split as `foldingRange`, `inlayHint` and `codeLens`. Porta
+had never asked: `grep -rn semanticTokens src/ plugins/ tests/` returned
+nothing.
+
+The obvious shape — a `SyntaxHighlightProvider` that colours from the server —
+is wrong, and two independent facts say so:
+
+- `HighlightRegistry::providerFor()` returns exactly ONE provider, chosen by a
+  user-facing id, and `available()` lists them as choices on the Settings page.
+  A semantic *backend* would therefore either lose lexical colouring or appear
+  as a bogus fourth option. This repo's own `.porta.json` selects **chroma**, so
+  the machine it ships on is not even using the built-in Tempest backend.
+- phpantom's legend has no `string` and no `number`. Semantic tokens cannot
+  carry a whole file's colouring even in principle.
+
+So the colours ride as render-time spans through `LineSpans::forLine`, in the
+pass that already composes selection, search, diagnostics and occurrences.
+
+**Why overlaying a FOREGROUND is safe**, which is the part that looked wrong at
+first: a span close cannot know which lexical colour to restore. It does not
+need to. Every colour theme's `after()` returns `Sgr::DEFAULT_FG`
+(`DarkTerminalTheme.php:41` and its Light/HighContrast twins; `PlainTerminalTheme`
+emits no colour at all), so lexical markup is ALREADY bracketed "open colour …
+restore default fg" per token. A semantic span closing the same way is
+structurally identical to what the highlighter itself emits.
+
+Consequences worth keeping:
+
+- `src/Highlight/` is untouched. The single-backend registry and the
+  byte-preservation guard stay exactly as they are, and no ANSI is re-sliced —
+  the recorded scroll-latency trap.
+- No new `Porta\Ui\Role`. LSP's types map onto the `TokenTypeEnum` palette the
+  four terminal themes already define, so the theme-lock contract does not move.
+- Colours resolve at RENDER time against the live switchable theme, so a theme
+  switch recolours immediately instead of at the next save.
+- With no capability, no tokens, or no server, the rendering is byte-for-byte
+  what it was — which is also the phpactor path, for free.
+
+**Two fixture rules this round pinned**, both because positional data is
+unforgiving: the mock server's legend order is deliberately SCRAMBLED, since
+type and modifier indices address the server's own legend and a client that
+hardcoded the conventional order would paint a property as a method and pass
+anyway; and both the token stream and the legend are refused WHOLE when
+malformed, because dropping one bad entry shifts everything after it and
+produces confident wrong colours rather than none.
+
+## The server was talking and nothing was listening (2026-09-04)
+
+The whole tree registered TWO LSP notification handlers, both in `LspSession`:
+`publishDiagnostics` and `window/logMessage`. `window/showMessage` — the channel
+a server uses to address the USER — had no handler at all, while a complete
+`Notifier` and a 100-entry `NotificationLog` sat unused. `$/progress` had no
+handler either, and `window.workDoneProgress` was never declared, so a
+spec-compliant server would not have sent progress even if something had been
+listening; both halves were needed before anything could be reported.
+
+`window/showMessageRequest` keeps its safe default answer. Sending a server a
+choice the user never made is worse than declining to choose.
+
+The progress store is bounded. Tokens are invented by the server and cleared by
+the server, so work that begins and never ends would grow it for the life of the
+process, on a single event loop. Past the cap the NEW task is refused rather
+than evicting a running one, whose end would then clear nothing.
+
+## The status bar answers a left click (2026-09-04)
+
+`StatusBarWidget` had exactly one hit-test — `menuAt`, for right-click menus —
+so the numbers people look at most were inert text. `decisions.md` already
+recorded clickable status segments as reopened; this is that decision continued,
+not a new one.
+
+Two differences from the right-click spans, both forced. They are reported
+relative to the RIGHT segment, because only the widget knows where that segment
+starts — after the leading space, the left text, and a gap it computes from the
+terminal width; a flash or a truncated right side therefore offers no hit region
+at all. And they carry an ACTION ID rather than a closure: the menus come from
+contributors who already hold what their menu needs, while these cells are
+core's own, and a status bar rebuilt every frame should not have to reach the
+editor and the command registry just to describe itself.
+
+Dispatch is its own small router because the two kinds of verb are reached
+differently and neither can stand in for the other: the tool windows are
+registry commands, while `goto_line` is an editor action — the editor's action
+router is built inside `CodeEditorWidget` rather than registered as a service.
+Bundling the four collaborators behind one class is what kept `MouseRouter` at
++1 constructor argument instead of +4; that +1 still moved two ratchet pins, and
+`mago.toml` records the bisection.
+
+## A capability gate needs a THIRD settle point (2026-09-04)
+
+Both `SemanticTokensRefresher` and `CodeLensRefresher` refreshed on
+`ActiveBufferChanged` and `BufferSaved`. Neither covers the file you launch
+with: it is opened BEFORE any session exists, so its `ActiveBufferChanged` finds
+no capability, asks nothing, and nothing asks again. The one buffer you actually
+start looking at was the one that never got coloured — until you happened to
+save it. Both listen for `LspStatusChanged` now.
+
+Found by an E2e that opens a file in the RUNNING IDE and waits for the tokens;
+every unit test constructed the controller itself, which proves the class works
+and never that anything builds it or reaches it in time. That is the same shape
+as the round that shipped a dead LSP controller with all six gates green and
+100% coverage — see `porta-self-registering-services`.

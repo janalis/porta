@@ -185,6 +185,10 @@ cursor, drag to select (double-click a word, triple-click a line,
 entries / tabs / menu items / panel rows, drag pane separators to resize,
 and right-click for a context menu.
 
+The status bar's right-hand cells are clickable too: the error/warning counts
+open **Problems**, the `line:col` position opens **Go to Line**, and the
+`LSP:<status>` cell opens the **LSP server log**.
+
 ## Custom keymap
 
 Override any action in `.porta.json` (project root):

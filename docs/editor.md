@@ -10,6 +10,22 @@ lines, with a periodic full repair parse to restore multi-line token colors.
 
 Two color themes ship (`dark`, `light`) and switch live from Settings.
 
+### Semantic highlighting
+
+Where the language server supports it, colouring is corrected by MEANING rather
+than by shape: a property is coloured differently from a local variable and from
+a parameter, a `static` member leans, and a `deprecated` symbol is struck
+through. The lexer can only guess these from an identifier's shape; the server
+knows.
+
+This layers ON TOP of the syntax colours above rather than replacing them — the
+server's own vocabulary has no entry for strings or numbers — so it works
+whichever highlight backend you have selected, and it needs no theme of its own.
+
+It is requested once per file and refreshed on save. Servers that do not offer
+`textDocument/semanticTokens` (phpactor, at the time of writing; phpantom does
+offer it) simply keep the lexer's colours, with nothing to configure either way.
+
 ## Buffers and tabs
 
 Multiple buffers with an editor tab bar: `Ctrl+←`/`Ctrl+→` switch,
