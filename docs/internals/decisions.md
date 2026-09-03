@@ -655,7 +655,7 @@ gap survived: **the mock answered a request no real server would have.**
 *Re-opens on:* either server advertising the provider, at which point the flash
 becomes unreachable for that server rather than wrong.
 
-## Soft wrap — rejected, and it is the code-vision surgery made larger (2026-09-02)
+## Soft wrap — rejected 2026-09-02, and the rejection RE-MEASURED 2026-09-03
 
 Listed as a "classic" worth a polish sweep. It is not a polish item, and the
 honest measurement is the reason: it is the *same* virtual-row change rejected
@@ -688,6 +688,43 @@ project. Nothing in the sweep pays for it.
 *Re-opens on:* someone actually wanting it — this is a cost finding, not a
 judgement that wrapped text is undesirable. If it is ever done, code vision
 comes nearly free with it, and both should be planned together as one round.
+
+### The re-measurement (2026-09-03) — the estimate above was too high
+
+Asked to scope it properly rather than estimate again, and the count came out
+smaller than the prose above claims. Correcting it, because a settled entry
+nobody re-checks is exactly how a wrong number becomes doctrine:
+
+- **The row↔line mapping already has a home.** `FoldModel` owns
+  `docLineAtRow()`, `screenRowFor()`, `nextVisibleLine()`, `visibleLineAbove()`
+  and `snapVisible()` — the virtual-row concept the code-vision entry says would
+  have to be introduced is already here, because folding needed it. Across
+  `src/` those methods have **nine call sites in four files**
+  (`CodeEditorWidget` 5, `EditorScroll` 2, `EditorMouse` 1,
+  `EditorRowAssembler` 1), not the diffuse spread the entry implies.
+- **Rendering a wrapped segment is an EXISTING primitive.**
+  `EditorRenderer::renderContentLine()` already slices a decorated line by
+  display column — `AnsiUtils::sliceWithWidth($line, $hScroll, $contentWidth)`
+  — to implement horizontal scroll. Segment *N* of a wrapped line is that same
+  slice at `N * contentWidth`. Wrap and hScroll are not two features to
+  reconcile; they are one knob read two ways, which is also why they are
+  mutually exclusive.
+- **`vScroll` need not change unit for a first version.** Keep it a document
+  line and a wrapped line renders whole or not at all at the top edge. The cost
+  is that a line taller than the viewport cannot be scrolled into; the saving is
+  the entire (line, segment) scroll-position rewrite the entry above prices in.
+
+**What genuinely remains new:** a `WrapLayout` (segments per line for a content
+width, invalidated on edit/width/fold/inlay-hint change), the row walk emitting
+`(line, segment)` instead of `line`, forcing `hScroll` to 0 while wrapping, and
+caret up/down moving by SEGMENT rather than document line — `Document::moveUp()`
+/ `moveDown()` are document-line moves and are the one piece with no existing
+seam.
+
+**Still not started, and still the user's call** — it is a feature, not an
+afternoon. But it is not the round-sized surgery this entry claimed, and the
+claim was made without reading `renderContentLine()` or counting the mapping's
+callers.
 
 ## Recent Locations (2026-09-02)
 
