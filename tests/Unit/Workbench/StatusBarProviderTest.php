@@ -9,6 +9,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
+use Porta\Lsp\ServerProgress;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\TempProject;
@@ -23,6 +24,8 @@ use Porta\Workbench\StatusSegment;
 use Porta\Workbench\StatusTone;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * {@see StatusBarProvider::segments()} beyond the prefix span arithmetic
@@ -67,6 +70,7 @@ final class StatusBarProviderTest extends TestCase
             $this->panes,
             $sources,
             new LspSessionPool($this->project->dir, new FixedActiveFile(), $this->translator),
+            new ServerProgress(new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20))),
             Styles::dark(),
             $this->translator,
             new ProjectPaths($this->project->dir),

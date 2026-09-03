@@ -12,9 +12,11 @@ use Porta\Workbench\Notifier;
 /**
  * Declares the configured/detected language servers on the session pool at
  * boot and owns the shared inbound hooks: published diagnostics ride
- * DiagnosticsSink::applyDiagnostics, and server-initiated workspace edits go
- * through WorkspaceEditor with a status-bar flash. Sessions still start
- * lazily — each on its language's first didOpen.
+ * DiagnosticsSink::applyDiagnostics, server-initiated workspace edits go
+ * through WorkspaceEditor with a status-bar flash, `window/showMessage`
+ * reaches the user through the Notifier, and `$/progress` becomes the status
+ * bar's activity cell. Sessions still start lazily — each on its language's
+ * first didOpen.
  */
 #[AsIdeService]
 final class LspBootstrapper
@@ -27,6 +29,8 @@ final class LspBootstrapper
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly LanguageServerProvider $pluginServers,
+        private readonly ServerMessageReporter $messages,
+        private readonly ServerProgress $progress,
         private readonly string $rootDir,
         private readonly ?string $lspCommand,
         private readonly bool $lspDisabled,
@@ -71,6 +75,14 @@ final class LspBootstrapper
                 }
 
                 return $outcome->touched > 0;
+            },
+            function (array $params): void {
+                /** @var array<string, mixed> $params */
+                $this->messages->report($params);
+            },
+            function (array $params): void {
+                /** @var array<string, mixed> $params */
+                $this->progress->handle($params);
             },
         );
     }

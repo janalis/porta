@@ -9,6 +9,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
+use Porta\Lsp\ServerProgress;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Ui\Theme\Styles;
@@ -19,6 +20,8 @@ use Porta\Workbench\StatusMenuSpan;
 use Porta\Workbench\StatusSegment;
 use Porta\Workbench\StatusTone;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The left prefix and the column ranges that make its cells right-clickable.
@@ -55,6 +58,7 @@ final class StatusBarPrefixTest extends TestCase
             new EditorPanes(),
             $sources,
             new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
+            new ServerProgress(new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20))),
             Styles::dark(),
             new Translator('en'),
             new ProjectPaths(sys_get_temp_dir()),

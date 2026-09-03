@@ -51,6 +51,10 @@ final class LspSessionPool
     /** @var (\Closure(array): bool)|null */
     private ?\Closure $onApplyEdit = null;
 
+    private ?\Closure $onShowMessage = null;
+
+    private ?\Closure $onProgress = null;
+
     /**
      * @param (\Closure(list<string>, string, \Closure(string): void, array<string, mixed>|null): LspClientInterface)|null $clientFactory
      *        forwarded to every session; inject a fake to test without processes
@@ -71,13 +75,17 @@ final class LspSessionPool
      * @param \Closure(string): void $onLog
      * @param \Closure(array): void  $onDiagnostics
      * @param \Closure(array): bool  $onApplyEdit
+     * @param \Closure(array): void|null $onShowMessage `window/showMessage` params, already server-prefixed
+     * @param \Closure(array): void|null $onProgress    `$/progress` params
      */
-    public function configure(array $servers, \Closure $onLog, \Closure $onDiagnostics, \Closure $onApplyEdit): void
+    public function configure(array $servers, \Closure $onLog, \Closure $onDiagnostics, \Closure $onApplyEdit, ?\Closure $onShowMessage = null, ?\Closure $onProgress = null): void
     {
         $this->servers = $servers;
         $this->onLog = $onLog;
         $this->onDiagnostics = $onDiagnostics;
         $this->onApplyEdit = $onApplyEdit;
+        $this->onShowMessage = $onShowMessage;
+        $this->onProgress = $onProgress;
         $this->configured = true;
     }
 
@@ -281,6 +289,7 @@ final class LspSessionPool
         $this->sessions[$signature] = $session;
         $this->statuses[$signature] = $this->translator->trans('starting…');
         $onLog = $this->onLog;
+        $onShowMessage = $this->onShowMessage;
         $session->start(
             $server['command'],
             null === $onLog ? static function (string $line): void {} : static fn (string $line) => $onLog('['.$server['name'].'] '.$line),
@@ -310,6 +319,22 @@ final class LspSessionPool
                 $this->dispatcher?->dispatch(new LspStatusChanged());
             },
             $server['initializationOptions'] ?? null,
+            // Prefixed with the server's name, exactly as its log lines are:
+            // several servers can run at once, and an unattributed toast leaves
+            // the user guessing which one is complaining.
+            null === $onShowMessage
+                ? null
+                : static function (array $params) use ($onShowMessage, $server): void {
+                    $message = \is_string($params['message'] ?? null) ? trim($params['message']) : '';
+                    // An empty body is left empty so the reporter still drops it —
+                    // prefixing it would turn silence into a toast saying only the
+                    // server's name.
+                    if ('' !== $message) {
+                        $params['message'] = '['.$server['name'].'] '.$message;
+                    }
+                    $onShowMessage($params);
+                },
+            $this->onProgress,
         );
     }
 

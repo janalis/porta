@@ -8,6 +8,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
+use Porta\Lsp\ServerProgress;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
@@ -19,7 +20,8 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 /**
  * The status bar's two segments, pulled at render time: the active file (with
  * branch/debug prefixes and the caret diagnostic) on the left; image
- * dimensions+zoom or problems+caret+LSP legend on the right.
+ * dimensions+zoom, or server activity + problems + caret + LSP legend, on the
+ * right.
  */
 final class StatusBarProvider
 {
@@ -31,6 +33,7 @@ final class StatusBarProvider
         #[AutowireIterator('porta.status_segment')]
         private readonly iterable $segmentSources,
         private readonly LspSessionPool $lsp,
+        private readonly ServerProgress $progress,
         private readonly Styles $styles,
         private readonly Translator $translator,
         private readonly ProjectPaths $paths,
@@ -107,7 +110,13 @@ final class StatusBarProvider
         $legend = $this->translator->trans('LSP:%status%  Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit', [
             '%status%' => $this->lsp->statusFor($this->editor->getFilePath()),
         ]);
-        $right = $problems.$location.'  '.$legend;
+        // What the server is busy doing, ahead of the counts: it is the most
+        // perishable thing on the bar, and until now the IDE never said it at
+        // all. Carries no glyph — every glyph here must be one display column
+        // wide, and the title says plainly enough what is happening.
+        $activity = $this->progress->label();
+        $busy = null === $activity ? '' : $this->styles->of(Role::StatusAccent)->apply($activity).'  ';
+        $right = $busy.$problems.$location.'  '.$legend;
 
         return ['left' => $left, 'right' => $right, 'menus' => $menus];
     }

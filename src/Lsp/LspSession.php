@@ -57,15 +57,33 @@ final class LspSession
      * @param \Closure(array): bool  $onApplyEdit   workspace/applyEdit handler (returns applied)
      * @param \Closure(Outcome): void   $onStarted     start result (true when initialized)
      * @param array<string, mixed>|null $initializationOptions forwarded into the `initialize` request
+     * @param \Closure(array): void|null $onShowMessage `window/showMessage` params — what the server tells the USER
+     * @param \Closure(array): void|null $onProgress    `$/progress` params — what the server is busy doing
      */
-    public function start(array $command, \Closure $onLog, \Closure $onDiagnostics, \Closure $onApplyEdit, \Closure $onStarted, ?array $initializationOptions = null): void
-    {
+    public function start(
+        array $command,
+        \Closure $onLog,
+        \Closure $onDiagnostics,
+        \Closure $onApplyEdit,
+        \Closure $onStarted,
+        ?array $initializationOptions = null,
+        ?\Closure $onShowMessage = null,
+        ?\Closure $onProgress = null,
+    ): void {
         $this->client = ($this->clientFactory)($command, $this->rootDir, $onLog, $initializationOptions);
         $this->client->onNotification('textDocument/publishDiagnostics', $onDiagnostics);
         // Many servers log through LSP rather than stderr — same sink.
         $this->client->onNotification('window/logMessage', static function (array $params) use ($onLog): void {
             $onLog(\is_string($params['message'] ?? null) ? $params['message'] : '');
         });
+        // Both are optional so a pool configured without them behaves exactly
+        // as before: the notification is simply never registered.
+        if (null !== $onShowMessage) {
+            $this->client->onNotification('window/showMessage', $onShowMessage);
+        }
+        if (null !== $onProgress) {
+            $this->client->onNotification('$/progress', $onProgress);
+        }
         $this->client->onApplyEdit($onApplyEdit);
         $this->client->start(function (Outcome $ok) use ($onStarted): void {
             if (!$ok->isOk()) {
