@@ -12,10 +12,14 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | Key | Action |
 | --- | --- |
 | `Ctrl+Q` | Quit (twice within 3 s to discard unsaved changes) |
-| `Ctrl+T` / `F2` | Switch focus between file tree and editor |
+| `Ctrl+T` | Switch focus between file tree and editor |
 | `F6` / `Ctrl+F6` | Cycle focus forward / backward across panes (in the git and settings views, cycles their panes) |
 | `Ctrl+F10` | Open the context menu for the focused pane (editor: at the caret; tree: at the selected node; image/help tab: the tab menu) |
 | `Shift+F11` / `Shift+F12` | Shrink / grow the focused pane (file tree, git and settings sidebars, and the bottom panels) |
+| `Ctrl+Shift+L` | Cycle the line-number mode (absolute → relative → off) |
+| `Alt+PageDown` / `Alt+PageUp` | Next / previous panel on the bottom dock |
+| `Alt+Z` | Toggle soft wrap (off by default; horizontal scroll is disabled while it is on) |
+| `Alt+V` | Toggle code vision — the server's "3 usages" lines above declarations (off by default) |
 | `F10` | Open the application menu |
 | `F1` | Open the documentation browser (these guides, fully rendered; see the Help viewer table below) |
 | `Ctrl+Shift+A` | Find Action (command palette) |
@@ -23,6 +27,7 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `Ctrl+,` | Settings |
 | `Ctrl+Alt+D` | Git view (changes, staging, history) |
 | `Ctrl+\`` / `Alt+F12` | Toggle the integrated terminal |
+| `Ctrl+Shift+\`` / `Alt+F11` | Open a new terminal session |
 | `Alt+1` | Focus the project tree |
 | `Alt+6` | Problems panel |
 | `Ctrl+Alt+H` | Local history |
@@ -38,6 +43,7 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `Ctrl+←` / `Ctrl+→` | Previous / next editor tab |
 | `Ctrl+Shift+←` / `Ctrl+Shift+→` | Move the active tab left / right |
 | `Ctrl+F4` / `Alt+W` | Close the active buffer (unsaved changes prompt) |
+| `Ctrl+Alt+X` | Reopen the active tab as text (for a file a viewer plugin claimed) |
 
 ## Editing
 
@@ -86,11 +92,17 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `Alt+Enter` | Quick fixes / code actions |
 | `Ctrl+Alt+Shift+T` | Refactor This |
 | `Ctrl+Alt+N` | Inline |
+| `Ctrl+Alt+O` | Optimize imports (`source.organizeImports`; applied straight away when the server offers one) |
 | `Shift+F1` | Quick documentation |
 | `Ctrl+F12` | File structure popup |
 | `Alt+7` | Structure panel (persistent, on the dock) |
+| `F2` / `Shift+F2` | Next / previous problem in this file (wraps, and says so) |
+| `F11` | Toggle a bookmark on the caret's line |
+| `Alt+2` | Bookmarks — every mark across the project |
+| `Alt+8` | TODOs — the bundled scan of TODO/FIXME comments |
+| `Alt+5` | Recent Locations — the places you jumped away from |
 | `Alt+F1` | Select the opened file in the tree |
-| `Ctrl+Alt+Shift+N` / `Ctrl+Alt+O` | Go to symbol in project |
+| `Ctrl+Alt+Shift+N` | Go to symbol in project |
 | `Ctrl+Alt+L` | Reformat file (or the selection when one exists) |
 
 ## Search
@@ -113,6 +125,10 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `F8` / `F7` / `Shift+F8` | Step over / into / out *(while paused)* |
 | `F9` | Resume *(while paused)* |
 | `Ctrl+F2` | Stop the debugger *(while a session runs)* |
+| `Ctrl+Shift+F5` | Restart the debugger *(while a session runs)* |
+| `Ctrl+Shift+F8` | Edit the breakpoint's condition, hit count or log message |
+| `Ctrl+Shift+F9` | Add a watch expression |
+| `Alt+F9` | Run to the caret's line *(while paused)* |
 | `F7` / `Shift+F7` | Next / previous merge conflict *(when not debugging)* |
 | `Alt+M` | Resolve the conflict under the caret (ours / theirs / both) |
 
