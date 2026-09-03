@@ -92,6 +92,7 @@ final class MouseRouter
         private readonly ContextMenuRouter $rightClick,
         private readonly ToastCenter $toasts,
         private readonly WheelRouter $wheel,
+        private readonly StatusBarClickRouter $statusClick,
     ) {
         $this->clicks = new ClickCounter();
     }
@@ -197,6 +198,13 @@ final class MouseRouter
         }
 
         if ($this->handleModalPopupClick($mouse, $editorRect, $this->views->isAnyOpen() ? FullView::Open : FullView::Closed)) {
+            return;
+        }
+
+        // The status bar's own cells: problem counts, caret position, LSP
+        // status. Below the modals — an open dropdown may cover the row — and
+        // above the pane hit-tests, which do not reach the chrome anyway.
+        if ($this->statusClick->route($mouse)) {
             return;
         }
 

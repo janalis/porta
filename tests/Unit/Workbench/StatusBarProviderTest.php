@@ -20,6 +20,7 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorPaneWidget;
 use Porta\Workbench\StatusBarProvider;
 use Porta\Workbench\StatusCell;
+use Porta\Workbench\StatusClickSpan;
 use Porta\Workbench\StatusSegment;
 use Porta\Workbench\StatusTone;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -281,6 +282,52 @@ final class StatusBarProviderTest extends TestCase
 
         $this->assertStringContainsString(Glyphs::SEVERITY_ERROR.' 1', $right);
         $this->assertStringContainsString(Glyphs::SEVERITY_WARNING.' 1', $right);
+    }
+
+    /**
+     * Each right-hand click span must cover the text it claims. Asserted by
+     * slicing the right segment at the span's own columns, so a span that
+     * drifts points at the wrong words rather than merely at a wrong number.
+     */
+    public function testEachRightHandSpanCoversTheCellItActsOn(): void
+    {
+        $provider = $this->provider();
+        $this->editor->openFile($this->project->path('t.php'), "<?php\n\n");
+        $this->editor
+            ->decorations()
+            ->setDiagnostics([0 => [['severity' => 1, 'message' => 'e', 'col' => 0]]]);
+
+        $segments = $provider->segments();
+        $plain = AnsiUtils::stripAnsiCodes($segments['right']);
+        $byAction = [];
+        foreach ($segments['rightClicks'] as $span) {
+            $byAction[$span->action] = trim(mb_substr($plain, $span->from, $span->to - $span->from));
+        }
+
+        $this->assertSame(Glyphs::SEVERITY_ERROR.' 1', $byAction['ide_problems']);
+        $this->assertSame('1:1', $byAction['goto_line']);
+        $this->assertStringStartsWith('LSP:', $byAction['ide_lsp_log']);
+    }
+
+    public function testWithNoProblemsThereIsNoProblemsCellToClick(): void
+    {
+        $provider = $this->provider();
+        $this->editor->openFile($this->project->path('t.php'), "<?php\n\n");
+
+        $segments = $provider->segments();
+        $actions = array_map(static fn (StatusClickSpan $span): string => $span->action, $segments['rightClicks']);
+
+        $this->assertSame(['goto_line', 'ide_lsp_log'], $actions);
+    }
+
+    public function testAPaneOwningTheRightSideOffersNothingClickable(): void
+    {
+        $provider = $this->provider();
+        $abs = $this->project->write('v.bin', 'x');
+        $this->buffers->openPane($abs, 'viewer', 'payload');
+        $this->panes->register($this->fakePane('viewer', 'PANE-RIGHT'), static fn (string $p): string => '');
+
+        $this->assertSame([], $provider->segments()['rightClicks']);
     }
 
     public function testLocationIsOneBasedFromTheZeroBasedCursor(): void

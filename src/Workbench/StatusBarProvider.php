@@ -45,7 +45,7 @@ final class StatusBarProvider
      * right-click without knowing which cell is which. Ranges shift right as
      * earlier segments appear and disappear.
      *
-     * @return array{left: string, right: string, menus: list<StatusMenuSpan>}
+     * @return array{left: string, right: string, menus: list<StatusMenuSpan>, rightClicks: list<StatusClickSpan>}
      */
     public function segments(): array
     {
@@ -90,7 +90,9 @@ final class StatusBarProvider
         // to the editor's diagnostics/LSP legend below.
         $paneSegment = $this->panes->paneFor((string) $active?->paneId)?->statusRight();
         if (null !== $paneSegment && '' !== $paneSegment) {
-            return ['left' => $left, 'right' => $paneSegment, 'menus' => $menus];
+            // A pane owns its whole right side, so core has nothing clickable
+            // to offer there.
+            return ['left' => $left, 'right' => $paneSegment, 'menus' => $menus, 'rightClicks' => []];
         }
 
         if (null !== ($diagnostic = $this->editor->getCursorDiagnostic())) {
@@ -118,7 +120,24 @@ final class StatusBarProvider
         $busy = null === $activity ? '' : $this->styles->of(Role::StatusAccent)->apply($activity).'  ';
         $right = $busy.$problems.$location.'  '.$legend;
 
-        return ['left' => $left, 'right' => $right, 'menus' => $menus];
+        // Where each right-hand cell sits WITHIN `right` — the widget shifts
+        // them onto the row, because only it knows where the right segment
+        // landed after the gap is computed. These used to be plain strings, so
+        // the most-looked-at numbers on the screen did nothing when clicked.
+        $clicks = [];
+        $at = AnsiUtils::visibleWidth($busy);
+        $problemsWidth = AnsiUtils::visibleWidth($problems);
+        if ($problemsWidth > 0) {
+            $clicks[] = new StatusClickSpan($at, $at + $problemsWidth, 'ide_problems');
+        }
+        $at += $problemsWidth;
+        $locationWidth = AnsiUtils::visibleWidth($location);
+        $clicks[] = new StatusClickSpan($at, $at + $locationWidth, 'goto_line');
+        // +2 for the gap between the caret position and the legend.
+        $at += $locationWidth + 2;
+        $clicks[] = new StatusClickSpan($at, $at + AnsiUtils::visibleWidth($legend), 'ide_lsp_log');
+
+        return ['left' => $left, 'right' => $right, 'menus' => $menus, 'rightClicks' => $clicks];
     }
 
     /** A contributor asks for prominence; core decides the colour, so the theme lock holds. */

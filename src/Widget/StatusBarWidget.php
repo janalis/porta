@@ -13,6 +13,7 @@ use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Workbench\Menu\MenuItem;
+use Porta\Workbench\StatusClickSpan;
 use Porta\Workbench\StatusMenuSpan;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\NativeClock;
@@ -31,7 +32,7 @@ final class StatusBarWidget extends AbstractWidget
 {
     use StylesDefault;
 
-    /** @var (callable(): array{left: string, right: string, menus?: list<StatusMenuSpan>})|null */
+    /** @var (callable(): array{left: string, right: string, menus?: list<StatusMenuSpan>, rightClicks?: list<StatusClickSpan>})|null */
     private $provider = null;
 
     private string $lastLeft = '';
@@ -50,6 +51,21 @@ final class StatusBarWidget extends AbstractWidget
      */
     private array $renderedMenus = [];
 
+    /**
+     * Left-clickable right-hand cells, relative to the RIGHT segment as the
+     * provider reports them.
+     *
+     * @var list<StatusClickSpan>
+     */
+    private array $cellClicks = [];
+
+    /**
+     * Their on-screen spans from the last render.
+     *
+     * @var list<StatusClickSpan>
+     */
+    private array $renderedClicks = [];
+
     /** @var array{text: string, until: float}|null */
     private ?array $flash = null;
 
@@ -62,7 +78,7 @@ final class StatusBarWidget extends AbstractWidget
     }
 
     /**
-     * @param callable(): array{left: string, right: string, menus?: list<StatusMenuSpan>} $provider
+     * @param callable(): array{left: string, right: string, menus?: list<StatusMenuSpan>, rightClicks?: list<StatusClickSpan>} $provider
      */
     public function setProvider(callable $provider): self
     {
@@ -71,13 +87,6 @@ final class StatusBarWidget extends AbstractWidget
         return $this;
     }
 
-    /**
-     * The git-branch cell's on-screen column span [start, end) from the last
-     * render, or null when there is no branch (or it was clipped / a flash hid
-     * it). The router uses this to route a right-click on the branch.
-     *
-     * @return array{int, int}|null
-     */
     /**
      * The menu a status cell at column $col offers, or null when nothing
      * clickable is there.
@@ -93,6 +102,25 @@ final class StatusBarWidget extends AbstractWidget
         foreach ($this->renderedMenus as $span) {
             if ($span->contains($col)) {
                 return $span->items;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The action a status cell at column $col runs on a LEFT click, or null
+     * when nothing there is actionable.
+     *
+     * The right-hand cells — problem counts, the caret position, the LSP
+     * status — were plain strings until now, so the numbers people look at
+     * most did nothing at all when clicked.
+     */
+    public function clickAt(int $col): ?string
+    {
+        foreach ($this->renderedClicks as $span) {
+            if ($span->contains($col)) {
+                return $span->action;
             }
         }
 
@@ -125,6 +153,7 @@ final class StatusBarWidget extends AbstractWidget
         $left = $segments['left'];
         $right = $segments['right'];
         $this->cellMenus = $segments['menus'] ?? [];
+        $this->cellClicks = $segments['rightClicks'] ?? [];
         if ($left !== $this->lastLeft || $right !== $this->lastRight) {
             $this->lastLeft = $left;
             $this->lastRight = $right;
@@ -163,6 +192,17 @@ final class StatusBarWidget extends AbstractWidget
             ));
 
         $gap = max(1, $columns - $leftWidth - $rightWidth - 2);
+        // The right segment starts after the leading space, the left, and the
+        // gap — so its cells only get screen columns once the gap is known.
+        // A flash steals the row, and a truncated right side would put the
+        // spans in the wrong place, so neither offers a hit region.
+        $rightStart = 1 + $leftWidth + $gap;
+        $this->renderedClicks = null !== $this->flash
+            ? []
+            : array_values(array_map(
+                static fn (StatusClickSpan $span): StatusClickSpan => $span->shifted($rightStart),
+                array_filter($this->cellClicks, static fn (StatusClickSpan $span): bool => $span->to <= $rightWidth),
+            ));
         $line = ' '.$left.str_repeat(' ', $gap).$right.' ';
         // '' ellipsis: chrome already gap-padded to the width — never mark it.
         $line = AnsiText::truncate($line, $columns, pad: true, ellipsis: '');
