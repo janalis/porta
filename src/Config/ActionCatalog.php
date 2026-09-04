@@ -264,6 +264,11 @@ final class ActionCatalog
         'show_context_menu' => ['label' => 'Show Context Menu', 'keys' => ['ctrl+f10']],
         // Every modifier+arrow chord is taken and punctuation chords need the
         // kitty protocol; Shift+F11/F12 deliver everywhere and read as −/+.
+        // PhpStorm's Maximize Tool Window, on PhpStorm's own chord. The
+        // punctuation parses: `\x1b[39;6u` resolves to shift+ctrl+' the way
+        // `ctrl+/` and `ctrl+,` already do (it is ALT+punctuation that does
+        // not — see the keymap).
+        'ide_maximise_panel' => ['label' => 'Maximize Panel', 'keys' => ["ctrl+shift+'"]],
         'resize_pane_shrink' => ['label' => 'Shrink Pane', 'keys' => ['shift+f11']],
         'resize_pane_grow' => ['label' => 'Grow Pane', 'keys' => ['shift+f12']],
     ];

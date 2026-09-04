@@ -13,6 +13,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Glyphs;
+use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
 
@@ -282,6 +283,112 @@ final class IdeLayoutFocusTest extends TestCase
                     $tui->handleInput("\x1b[17;5~"); // either direction bounces the two panes
                     $this->assertSame('settings-form', $tui->getFocus()?->getId());
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                },
+            ],
+        );
+    }
+
+    public function testMaximisingTheBottomPanelAndPuttingItBack(): void
+    {
+        // PhpStorm's Ctrl+Shift+' on a tool window. The restore is the half
+        // that needs the panel's own row count: it has to reproduce a height
+        // exactly, which is why this could not be built while the controller
+        // sized from the renderer's rect.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_recent_locations');
+                    $tui->requestRender();
+                    $tui->tick();
+
+                    $panel = Services::resolve($ide, BottomDock::class)->visiblePanel();
+                    $this->assertNotNull($panel);
+                    $before = $panel->visibleRows();
+
+                    $tui->handleInput("\x1b[39;6u"); // ctrl+shift+'
+                    $this->assertSame(24 - 6, $panel->visibleRows(), 'the panel takes the screen, less the frame');
+                    $this->assertGreaterThan($before, $panel->visibleRows());
+
+                    $tui->handleInput("\x1b[39;6u"); // and back
+                    $this->assertSame($before, $panel->visibleRows(), 'restored to the exact height it had');
+                },
+                350 => function ($tui, $terminal, $ide) use ($project): void {
+                    // A hand-chosen height ends maximised mode, so the next
+                    // toggle does not snap back to a size left behind.
+                    $panel = Services::resolve($ide, BottomDock::class)->visiblePanel();
+                    $this->assertNotNull($panel);
+                    $tui->setFocus($panel);
+                    $tui->handleInput("\x1b[39;6u"); // maximise
+                    $tui->handleInput("\x1b[23;2~"); // shift+F11
+                    $shrunk = $panel->visibleRows();
+                    // Not 17. A nudge is an ordinary resize and keeps the
+                    // ordinary ceiling (rows-8), which sits below the maximised
+                    // height — so the first press off a maximised panel lands
+                    // on that ceiling rather than one row down. Leaving
+                    // maximised mode puts you back in the normal range, which
+                    // is what the press was asking for.
+                    $this->assertSame(24 - 8, $shrunk);
+
+                    $tui->handleInput("\x1b[39;6u"); // maximise again, not "restore"
+                    $this->assertSame(24 - 6, $panel->visibleRows());
+                    $tui->handleInput("\x1b[39;6u");
+                    $this->assertSame($shrunk, $panel->visibleRows(), 'back to the hand-chosen height');
+
+                    $this->assertFileExists($project->dir.'/.porta/layout.json');
+                    $layout = json_decode((string) file_get_contents($project->dir.'/.porta/layout.json'), associative: true);
+                    // The hand-chosen 16 of 24 rows, not the maximised 18:
+                    // maximising is a thing you are doing now, not a layout you
+                    // chose, so it never reaches the file.
+                    $this->assertSame(67, $layout['bottomPanelHeightPercent']);
+                },
+            ],
+            rows: 24,
+        );
+    }
+
+    public function testRepeatedPanelResizesEachMoveARow(): void
+    {
+        // They did not. The nudge sized the panel from the renderer's rect,
+        // which only refreshes on a frame: two presses inside one input burst
+        // both read the SAME rect, so the second computed the same height as
+        // the first and the panel moved one row for two presses. A key held
+        // down is exactly that burst.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_recent_locations');
+                    $tui->requestRender();
+                    $tui->tick();
+
+                    $panel = Services::resolve($ide, BottomDock::class)->visiblePanel();
+                    $this->assertNotNull($panel, 'the results panel is showing');
+                    // The rect is not WRONG here — it reports the same 10 the
+                    // panel holds. It is just a frame behind, which is enough.
+                    $this->assertSame(
+                        $panel->visibleRows(),
+                        Services::resolve($ide, Renderer::class)->getWidgetRect($panel)?->rows,
+                        'the rect agrees with the panel until something resizes it',
+                    );
+
+                    $tui->setFocus($panel);
+                    $before = $panel->visibleRows();
+                    $tui->handleInput("\x1b[24;2~"); // shift+F12: grow
+                    $tui->handleInput("\x1b[24;2~");
+                    $this->assertSame($before + 2, $panel->visibleRows(), 'two presses, two rows');
+
+                    $tui->handleInput("\x1b[23;2~"); // shift+F11: shrink
+                    $tui->handleInput("\x1b[23;2~");
+                    $this->assertSame($before, $panel->visibleRows(), 'and exactly back');
                 },
             ],
         );

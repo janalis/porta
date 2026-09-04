@@ -2858,6 +2858,10 @@
         <source>Plain text</source>
         <target>Nur Text</target>
       </trans-unit>
+      <trans-unit id="801">
+        <source>Maximize Panel</source>
+        <target>Bereich maximieren</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

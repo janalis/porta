@@ -2858,6 +2858,10 @@
         <source>Plain text</source>
         <target>プレーンテキスト</target>
       </trans-unit>
+      <trans-unit id="801">
+        <source>Maximize Panel</source>
+        <target>パネルを最大化</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

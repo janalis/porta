@@ -493,6 +493,22 @@ final class IdeHelpersTest extends TestCase
         $this->assertNotContains('Git: Stage Current File', $labels, 'and git registers nothing outside a repository');
     }
 
+    public function testMaximizePanelsKEYIsLiveONLYWhileAPanelIsOpen(): void
+    {
+        // `when` gates key DISPATCH, not palette membership: with nothing to
+        // maximise the chord falls through to whatever else wants it, rather
+        // than being swallowed by a command that would do nothing. The same
+        // gate `open_as_text` uses for a viewer tab.
+        $registry = Services::resolve($this->ide, CommandRegistry::class);
+        \assert($registry instanceof \Porta\Config\CommandRegistry, description: 'the IDE exposes a CommandRegistry');
+
+        $this->assertFalse($registry->isEnabled('ide_maximise_panel'), 'no panel open, no maximise');
+
+        $registry->run('ide_recent_locations');
+
+        $this->assertTrue($registry->isEnabled('ide_maximise_panel'));
+    }
+
     public function testEveryPaletteCommandRuns(): void
     {
         $tui = Services::resolve($this->ide, Tui::class);

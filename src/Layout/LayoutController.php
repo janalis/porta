@@ -48,6 +48,14 @@ final class LayoutController
     private int $panelResizeGrabOffset = 0;
     private ?int $bottomPanelHeightPercent = null;
 
+    /**
+     * The height to give the bottom panel back when maximise is toggled off —
+     * and, being non-null, the fact that it IS maximised. Not persisted: a
+     * maximised panel is a thing you are doing right now, like a full-screen
+     * window, not a layout you chose.
+     */
+    private ?int $panelRestoreRows = null;
+
     public function __construct(
         private readonly LayoutStore $store,
         private readonly Tui $tui,
@@ -98,6 +106,14 @@ final class LayoutController
 
             $this->applyPercent($state->sidebar, $state->widthPercent, $cols);
         }
+        if (null !== $this->panelRestoreRows) {
+            // Maximised, and the terminal just changed size: re-take the new
+            // screen rather than snap back to a stored proportion. The height
+            // to restore is left alone — it is still where the panel was.
+            $this->resizeBottomPanels($this->maximisedRows());
+
+            return;
+        }
         if (null !== $this->bottomPanelHeightPercent) {
             $this->resizeBottomPanels($this->clampPanel((int) round(($this->bottomPanelHeightPercent * $rows) / 100), $rows));
         }
@@ -131,6 +147,7 @@ final class LayoutController
         if ($this->panelResizing && ($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
             $rows = $this->tui->getTerminal()->getRows();
             $height = $this->clampPanel($this->panelResizeBottom - $mouse->row + $this->panelResizeGrabOffset, $rows);
+            $this->forgetMaximised();
             $this->resizeBottomPanels($height);
             $this->tui->requestRender();
             if ($mouse->isLeftRelease()) {
@@ -260,16 +277,64 @@ final class LayoutController
     public function nudgeBottomPanel(int $delta): void
     {
         $panel = $this->dock->visiblePanel();
-        $rect = null !== $panel ? $this->renderer->getWidgetRect($panel) : null;
-        if (null === $rect) {
+        if (null === $panel) {
             return;
         }
 
+        // The panel's own count, not the renderer's rect. The rect is not a
+        // different unit — it reports the same number — but it only refreshes
+        // on a frame, so two presses inside one input burst both read the
+        // pre-press height and the panel moved one row for two presses.
         $rows = $this->tui->getTerminal()->getRows();
-        $height = $this->clampPanel($rect->rows + $delta, $rows);
+        $height = $this->clampPanel($panel->visibleRows() + $delta, $rows);
+        $this->forgetMaximised();
         $this->resizeBottomPanels($height);
         $this->commitPercent($height, $rows, $this->bottomPanelHeightPercent);
         $this->tui->requestRender();
+    }
+
+    /**
+     * Maximise the open bottom panel, or put it back where it was.
+     *
+     * The ceiling is deliberately past {@see clampPanel()}'s: that one keeps
+     * the editor comfortable, which is the wrong policy for a panel you have
+     * just asked to take over. Six rows is what the frame itself needs — the
+     * menu bar, the tab strip, the dock strip and the status bar — plus a
+     * couple of editor rows, so you can still see which file you are coming
+     * back to.
+     *
+     * A no-op when no panel is open: there is nothing to maximise, and
+     * inventing a panel to fill the screen is not what the key asked for.
+     */
+    public function toggleBottomPanelMaximised(): void
+    {
+        $panel = $this->dock->visiblePanel();
+        if (null === $panel) {
+            return;
+        }
+
+        if (null !== $this->panelRestoreRows) {
+            $this->resizeBottomPanels($this->panelRestoreRows);
+            $this->panelRestoreRows = null;
+            $this->tui->requestRender();
+
+            return;
+        }
+
+        $this->panelRestoreRows = $panel->visibleRows();
+        $this->resizeBottomPanels($this->maximisedRows());
+        $this->tui->requestRender();
+    }
+
+    /** Whether the bottom panel is currently maximised — the status bar's read. */
+    public function isBottomPanelMaximised(): bool
+    {
+        return null !== $this->panelRestoreRows;
+    }
+
+    private function maximisedRows(): int
+    {
+        return max(3, $this->tui->getTerminal()->getRows() - 6);
     }
 
     /** Shared keyboard-nudge path: clamp like the drags do, persist, repaint. */
@@ -309,6 +374,16 @@ final class LayoutController
     private function resizeBottomPanels(int $height): void
     {
         $this->dock->setPanelRows($height);
+    }
+
+    /**
+     * Any hand-chosen height ends maximised mode — a drag, a nudge, a restored
+     * proportion. Keeping the flag would make the next toggle snap the panel
+     * back to a size the user has since moved away from.
+     */
+    private function forgetMaximised(): void
+    {
+        $this->panelRestoreRows = null;
     }
 
     /**

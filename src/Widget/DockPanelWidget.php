@@ -25,6 +25,18 @@ abstract class DockPanelWidget extends OverlayWidget
     abstract public function setVisibleRows(int $rows): void;
 
     /**
+     * How many it has NOW — the same number {@see setVisibleRows()} takes.
+     *
+     * The pair exists because the renderer's rect cannot answer it reliably:
+     * the rect reports the same figure, but only as of the last FRAME, so a
+     * caller that resizes twice before one lands reads the pre-resize height
+     * twice, and a caller that resizes before anything has rendered reads
+     * nothing at all. Anything that has to reproduce a height exactly — a
+     * nudge, a maximise and its restore — reads it here.
+     */
+    abstract public function visibleRows(): int;
+
+    /**
      * A wheel notch over the panel body, in rows; negative scrolls up.
      *
      * Not `scrollBy()` from {@see Support\WheelScrollable}: the terminal's

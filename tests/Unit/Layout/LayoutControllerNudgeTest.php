@@ -25,6 +25,7 @@ use Porta\Widget\FileTreeWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\TerminalPanelWidget;
+use Porta\Workbench\Dock\ResultsPanelMode;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
@@ -159,6 +160,151 @@ final class LayoutControllerNudgeTest extends TestCase
 
         $this->assertSame($oldWidth, $oldSidebar->width(), 'the dead sidebar is not touched again');
         $this->assertNotSame($oldWidth, $fresh->width(), 'the nudge landed on the freshly minted sidebar');
+    }
+
+    public function testNudgingTheBottomPanelMovesItByEXACTLYTheDelta(): void
+    {
+        // The bug the panel's own row count fixes: the nudge used to size from
+        // the renderer's rect, which is a frame behind, so presses inside one
+        // burst all read the same height. Five presses have to be five rows.
+        // (Here the rect is absent entirely — nothing has rendered — which is
+        // the same fault at its extreme: the nudge was a no-op.)
+        $layout = $this->controller();
+        $results = new ResultsPanelWidget();
+        $dock = TestBottomDock::create($this->tui, new TerminalPanelWidget(), $results, new DebugPanelWidget());
+        $layout = new LayoutController(
+            new LayoutStore($this->project->dir),
+            $this->tui,
+            $this->renderer,
+            $this->tree,
+            $dock,
+            $this->regions,
+            new Translator('en'),
+        );
+        $dock->showList(ResultsPanelMode::RecentLocations, 'Recent Locations', []);
+
+        $before = $results->visibleRows();
+        for ($i = 0; $i < 5; ++$i) {
+            $layout->nudgeBottomPanel(1);
+        }
+
+        $this->assertSame($before + 5, $results->visibleRows(), 'five presses, five rows');
+
+        for ($i = 0; $i < 5; ++$i) {
+            $layout->nudgeBottomPanel(-1);
+        }
+
+        $this->assertSame($before, $results->visibleRows(), 'and back exactly where it started');
+    }
+
+    /** @return array{LayoutController, ResultsPanelWidget, \Porta\Workbench\Dock\BottomDock} */
+    private function withOpenPanel(int $rows = 30): array
+    {
+        $this->controller(); // builds the tui, tree and regions these rewire
+        $this->tui->getTerminal()->simulateResize(columns: 100, rows: $rows);
+        $results = new ResultsPanelWidget();
+        $dock = TestBottomDock::create($this->tui, new TerminalPanelWidget(), $results, new DebugPanelWidget());
+        $layout = new LayoutController(
+            new LayoutStore($this->project->dir),
+            $this->tui,
+            $this->renderer,
+            $this->tree,
+            $dock,
+            $this->regions,
+            new Translator('en'),
+        );
+        $dock->showList(ResultsPanelMode::RecentLocations, 'Recent Locations', []);
+
+        return [$layout, $results, $dock];
+    }
+
+    public function testAHandChosenHeightENDSMaximisedMode(): void
+    {
+        // Otherwise the next toggle "restores" a height the user has since
+        // moved away from, which reads as the panel jumping on its own.
+        [$layout, $results] = $this->withOpenPanel();
+        $layout->toggleBottomPanelMaximised();
+        $this->assertTrue($layout->isBottomPanelMaximised());
+
+        $layout->nudgeBottomPanel(-1);
+
+        $this->assertFalse($layout->isBottomPanelMaximised(), 'the nudge ended it');
+        $chosen = $results->visibleRows();
+
+        $layout->toggleBottomPanelMaximised();
+        $this->assertSame(30 - 6, $results->visibleRows(), 'so this maximises rather than restores');
+        $layout->toggleBottomPanelMaximised();
+        $this->assertSame($chosen, $results->visibleRows(), 'and comes back to the hand-chosen height');
+    }
+
+    public function testMaximiseAsksForAFrame(): void
+    {
+        // Both halves of the toggle change a widget's size without touching
+        // input, so nothing else would repaint them.
+        [$layout] = $this->withOpenPanel();
+
+        foreach ([true, false] as $expectedMaximised) {
+            $this->tui->tick(); // clears any pending request
+            $this->assertFalse(Probe::get($this->tui, 'renderRequested'), 'nothing pending');
+
+            $layout->toggleBottomPanelMaximised();
+
+            $this->assertSame($expectedMaximised, $layout->isBottomPanelMaximised());
+            $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'the toggle asked for a frame');
+        }
+    }
+
+    public function testOnATINYTerminalTheMaximisedPanelKeepsTheWidgetsFloor(): void
+    {
+        // 8 rows less the 6 the frame needs is 2, which is below what a panel
+        // can be. The floor is the controller's, so the arithmetic cannot hand
+        // the widget a height its own clamp would then silently change.
+        [$layout, $results] = $this->withOpenPanel(rows: 8);
+
+        $layout->toggleBottomPanelMaximised();
+
+        $this->assertSame(3, $results->visibleRows());
+    }
+
+    public function testMaximiseIsANoOpWithNoPanelOpen(): void
+    {
+        // Nothing to maximise. Opening one to fill the screen is not what the
+        // key asked for, and it must not arm the restore either — a later
+        // toggle would then resize a panel the user never maximised.
+        $layout = $this->controller();
+
+        $layout->toggleBottomPanelMaximised();
+
+        $this->assertFalse($layout->isBottomPanelMaximised());
+        $this->assertSame([], $this->layoutFile(), 'and nothing persisted');
+    }
+
+    public function testAMaximisedPanelRETAKESTheScreenWhenTheTerminalResizes(): void
+    {
+        // Otherwise a resize snaps the panel back to its stored proportion,
+        // silently un-maximising it while the flag still says otherwise.
+        $this->controller(); // builds the tui, tree and regions this one rewires
+        $results = new ResultsPanelWidget();
+        $dock = TestBottomDock::create($this->tui, new TerminalPanelWidget(), $results, new DebugPanelWidget());
+        $layout = new LayoutController(
+            new LayoutStore($this->project->dir),
+            $this->tui,
+            $this->renderer,
+            $this->tree,
+            $dock,
+            $this->regions,
+            new Translator('en'),
+        );
+        $dock->showList(ResultsPanelMode::RecentLocations, 'Recent Locations', []);
+        $layout->nudgeBottomPanel(1); // persist a proportion, so applyLayout has one to restore
+        $layout->toggleBottomPanelMaximised();
+        $this->assertSame(30 - 6, $results->visibleRows());
+
+        $this->tui->getTerminal()->simulateResize(columns: 100, rows: 40);
+        $layout->applyLayout();
+
+        $this->assertSame(40 - 6, $results->visibleRows(), 'it took the bigger screen');
+        $this->assertTrue($layout->isBottomPanelMaximised(), 'and is still maximised');
     }
 
     public function testNudgeBottomPanelIsANoOpWhenNoPanelIsOpen(): void

@@ -16,6 +16,7 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `F6` / `Ctrl+F6` | Cycle focus forward / backward across panes (in the git and settings views, cycles their panes) |
 | `Ctrl+F10` | Open the context menu for the focused pane (editor: at the caret; tree: at the selected node; image/help tab: the tab menu) |
 | `Shift+F11` / `Shift+F12` | Shrink / grow the focused pane (file tree, git and settings sidebars, and the bottom panels) |
+| `Ctrl+Shift+'` | Maximize the open bottom panel; press again to put it back at the height it had |
 | `Ctrl+Shift+L` | Cycle the line-number mode (absolute → relative → off) |
 | `Alt+PageDown` / `Alt+PageUp` | Next / previous panel on the bottom dock |
 | `Alt+Z` | Toggle soft wrap (off by default; horizontal scroll is disabled while it is on) |

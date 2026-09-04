@@ -28,6 +28,12 @@ trait PanelRows
      * WIDTH bounds were a different story: there the widget and the controller
      * genuinely contradicted, so those moved onto the pane.)
      */
+    /** The panel's current body rows — see {@see \Porta\Widget\DockPanelWidget::visibleRows()} for why this is not the rect. */
+    public function visibleRows(): int
+    {
+        return $this->visibleRows;
+    }
+
     public function setVisibleRows(int $rows): void
     {
         $rows = IntMath::clamp($rows, 2, 200);

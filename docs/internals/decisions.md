@@ -1277,7 +1277,7 @@ dependency, provided something it was already carrying is paid back. Hunting for
 a fold to buy a slot would be contrived; taking one that was already two halves
 of the same fact is not.
 
-## Dock maximise: the clamp is not the blocker — the units are (2026-09-04)
+## Dock maximise: neither the clamp nor the units — the rect was stale (2026-09-04)
 
 I had twice deferred a maximise toggle for the bottom panel on the belief that
 `clampPanel()`'s `rows - 8` ceiling protected the layout and could not safely be
@@ -1285,28 +1285,47 @@ exceeded. Measured: it does not. Rendering an Ide with the panel set to
 `rows - 8`, `- 6`, `- 4`, `- 3` and `- 2` degrades nothing — the ceiling is a UX
 choice about keeping the editor usable, not a safety bound.
 
-The real obstacle is a **units mismatch**, and it is worth knowing about before
-anything else touches panel sizing:
+The real obstacle is that `nudgeBottomPanel()` sized the panel from
+`$renderer->getWidgetRect($panel)->rows`, a value that only refreshes on a
+FRAME.
 
-- `LayoutController::resizeBottomPanels()` → `BottomDock::setPanelRows()` sets
-  each panel's CONTENT rows.
-- `$renderer->getWidgetRect($panel)->rows` reports the RENDERED height, chrome
-  included, and the two do not round-trip: a panel set to 9 measured 11, and
-  restoring 9 left it at 9 rather than back at 11.
+**Correction (2026-09-04, same day).** This entry first called that a *units
+mismatch* — the rect reporting rendered height with chrome, against the content
+rows `setPanelRows()` takes, "a panel set to 9 measured 11". Measured properly
+through a running Ide: they agree. The terminal panel holding 12 content rows
+reports a rect of 12, and the results panel holding 10 reports 10. There is no
+chrome in that number and nothing to convert. The claim was wrong, and it is
+left here rather than deleted because it is the second time a plausible
+mechanism went into this file without a measurement behind it.
 
-`nudgeBottomPanel()` already mixes them — it feeds `$rect->rows + $delta` back
-into `clampPanel()` — and gets away with it because a ±1 nudge hides the drift
-behind the thing the user is watching. A maximise/restore toggle cannot: it has
-to reproduce a height exactly, and every candidate for "the height to restore"
-was wrong. The rect over-reports; the last value we SET goes stale when
-something else sizes the panel; the persisted percent is null until something
-has persisted one.
+What is actually wrong is **staleness**, and it is easy to reproduce: two
+presses inside one input burst both read the pre-press rect, so the second
+computes the height the first already set and the panel moves one row for two
+presses. A held key is exactly that burst. Before the first render the rect is
+absent altogether and the nudge is a silent no-op.
 
-**What would close it:** one number in one unit. Either the rect learns to
-report content rows, or the controller stops reading rects for sizing and owns
-the panel height outright — which would also let `nudgeBottomPanel()` stop
-round-tripping through the renderer. That is a sizing-ownership change, small
-but not incidental, and it should be done deliberately rather than as the
-by-the-way of adding a keybinding.
+**Closed.** `DockPanelWidget` gained `visibleRows()` — the getter beside
+`setVisibleRows()`, the same number in the same unit — and the controller reads
+it instead of the rect. One number, owned by the panel, correct between frames.
+That unblocked the maximise toggle (`Ctrl+Shift+'`, PhpStorm's chord): restore
+needs to reproduce a height exactly, which is the thing a frame-behind rect
+could not do.
 
-The attempt is reverted, not shipped half-right.
+Two details the implementation settled:
+
+- Maximise deliberately exceeds `clampPanel()`'s `rows - 8`, which is a
+  keep-the-editor-comfortable policy and the wrong one for a panel you have
+  just asked to take over. It uses `rows - 6`: the menu bar, tab strip, dock
+  strip and status bar, plus a couple of editor rows.
+- A nudge off a maximised panel lands on the ordinary ceiling rather than one
+  row down, because a nudge is an ordinary resize and keeps the ordinary
+  clamp. Leaving maximised mode returns you to the normal range, which is what
+  the press was asking for.
+
+Maximised state is never persisted: it is a thing you are doing now, like a
+full-screen window, not a layout you chose. A hand-chosen height (drag or
+nudge) clears it, so a later toggle cannot snap back to a size you have moved
+away from, and a terminal resize re-takes the new screen instead of falling
+back to the stored proportion.
+
+The first attempt was reverted rather than shipped half-right; this is the second.

@@ -12,6 +12,7 @@ use Porta\Editor\BufferService;
 use Porta\Editor\EditorDecorationSink;
 use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\RecentLocationActions;
+use Porta\Layout\LayoutController;
 use Porta\Lsp\CodeLensController;
 use Porta\Lsp\FoldingController;
 use Porta\Run\RunController;
@@ -37,6 +38,7 @@ final class ViewCommands implements CommandProvider
         private readonly SettingsController $settings,
         private readonly RunController $run,
         private readonly BottomDock $dock,
+        private readonly LayoutController $layout,
         private readonly ViewRegistry $views,
         private readonly BufferService $bufferService,
         private readonly FoldingController $folding,
@@ -57,6 +59,14 @@ final class ViewCommands implements CommandProvider
             ->add('toggle_bookmark', fn () => $this->bookmarks->toggle(), keyBound: KeyDispatch::Bound)
             ->add('ide_bookmarks', fn () => $this->bookmarks->show(), keyBound: KeyDispatch::Bound)
             ->add('ide_recent_locations', fn () => $this->recentLocations->show(), keyBound: KeyDispatch::Bound)
+            ->add(
+                'ide_maximise_panel',
+                fn () => $this->layout->toggleBottomPanelMaximised(),
+                keyBound: KeyDispatch::Bound,
+                // Offered only when there is something to maximise, the way
+                // `open_as_text` is gated on the tab being a viewer.
+                when: fn (): bool => null !== $this->dock->visiblePanel(),
+            )
             ->add('toggle_soft_wrap', fn () => $this->display->setSoftWrap(!$this->display->softWrap()), keyBound: KeyDispatch::Bound)
             ->add('toggle_code_lenses', $this->toggleCodeLenses(...), keyBound: KeyDispatch::Bound)
             ->add(
