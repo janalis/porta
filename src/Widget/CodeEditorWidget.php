@@ -35,6 +35,7 @@ use Porta\Editor\LineNumberMode;
 use Porta\Editor\ModalHost;
 use Porta\Editor\MultiCaret;
 use Porta\Editor\OccurrenceHighlights;
+use Porta\Editor\SignatureHint;
 use Porta\Editor\TemplateCatalog;
 use Porta\Editor\WrapLayout;
 use Porta\Highlight\CodeHighlighter;
@@ -180,7 +181,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     private ?array $lastFollowedCursor = null;
 
     /** One-line signature hint shown above the cursor, cleared on movement. */
-    private ?string $signatureHint = null;
+    private ?SignatureHint $signatureHint = null;
 
     /** Editing-verb dispatcher (movement/clipboard/line ops), rebuilt per document. */
     private EditorActions $actions;
@@ -471,10 +472,11 @@ final class CodeEditorWidget extends AbstractWidget implements
     }
 
     #[\Override]
-    public function setSignatureHint(?string $hint): void
+    public function setSignatureHint(?string $hint, ?array $activeRange = null): void
     {
-        if ($this->signatureHint !== $hint) {
-            $this->signatureHint = $hint;
+        $next = null === $hint ? null : new SignatureHint($hint, $activeRange);
+        if ($this->signatureHint?->label !== $next?->label || $this->signatureHint?->activeRange !== $next?->activeRange) {
+            $this->signatureHint = $next;
             $this->invalidate();
         }
     }
@@ -1108,7 +1110,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         // Both overlays anchor to the caret's on-screen row (past the sticky headers).
         $cursorScreenRow = max(0, $this->foldModel->screenRowFor($geo->vScroll, $geo->cursorLine)) + $geo->stickyCount;
         if (null !== $this->signatureHint) {
-            EditorRenderer::signatureHint($result, $geo->columns, $geo->gutterWidth, $cursorScreenRow, $this->signatureHint, $this->styles);
+            EditorRenderer::signatureHint($result, $geo->columns, $geo->gutterWidth, $cursorScreenRow, $this->signatureHint->label, $this->styles, $this->signatureHint->activeRange);
         }
 
         $this->completion->setBox(null);

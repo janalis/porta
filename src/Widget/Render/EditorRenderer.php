@@ -400,9 +400,10 @@ final class EditorRenderer
      * no shadow: a one-liner casting a four-row footprint reads too heavy —
      * the one deliberate divergence from the other framed popups.
      *
-     * @param list<string> $lines
+     * @param list<string>               $lines
+     * @param array{0: int, 1: int}|null $activeRange byte range within $hint holding the argument being typed
      */
-    public static function signatureHint(array &$lines, int $columns, int $gutterWidth, int $cursorScreenRow, string $hint, Styles $styles): void
+    public static function signatureHint(array &$lines, int $columns, int $gutterWidth, int $cursorScreenRow, string $hint, Styles $styles, ?array $activeRange = null): void
     {
         $text = ' '.$hint.' ';
         $col = $gutterWidth;
@@ -411,7 +412,7 @@ final class EditorRenderer
         if ($width >= 4) {
             $top = $cursorScreenRow >= 3 ? $cursorScreenRow - 3 : $cursorScreenRow + 1;
             if ($top >= 0 && ($top + 3) <= \count($lines)) {
-                $content = $styles->merge(Role::InlayPopupBg, Role::InlayPopupFg)->apply(AnsiText::truncate($text, $width, pad: true));
+                $content = self::signatureContent($text, $width, $activeRange, $styles);
                 $framed = [PopupFrame::top($width, $styles), PopupFrame::rail($content, $width, $styles), PopupFrame::bottom($width, $styles)];
                 foreach ($framed as $i => $framedRow) {
                     $lines[$top + $i] = OverlayCompositor::into($lines[$top + $i], $col, $width + PopupFrame::CHROME_COLS, $columns, $framedRow);
@@ -426,9 +427,41 @@ final class EditorRenderer
         if ($row < 0 || $row >= \count($lines) || $width < 4) {
             return;
         }
-        $popup = $styles->merge(Role::InlayPopupBg, Role::InlayPopupFg)->apply(AnsiText::truncate($text, $width, pad: true));
+        $popup = self::signatureContent($text, $width, $activeRange, $styles);
 
         $lines[$row] = OverlayCompositor::into($lines[$row], $col, $width, $columns, $popup);
+    }
+
+    /**
+     * The signature popup's styled content, with the argument you are typing
+     * shown bold.
+     *
+     * Width math happens on the PLAIN text and the styling is applied
+     * afterwards, in three pieces: handing an ANSI-carrying string to
+     * `mb_strwidth()` is the classic over-wide row in this codebase. Each piece
+     * re-applies the popup style, so the background cannot drop out mid-line.
+     *
+     * @param array{0: int, 1: int}|null $activeRange byte range within the hint,
+     *                                                before the leading pad space
+     */
+    private static function signatureContent(string $text, int $width, ?array $activeRange, Styles $styles): string
+    {
+        $style = $styles->merge(Role::InlayPopupBg, Role::InlayPopupFg);
+        $plain = AnsiText::truncate($text, $width, pad: true);
+        // Offsets are into the UNTRUNCATED hint, and truncation both drops text
+        // and appends an ellipsis — a multi-byte character the offsets could
+        // land inside, which produces invalid UTF-8 and a garbled row. A hint
+        // that does not fit is already degraded; it degrades the rest of the
+        // way rather than being spliced.
+        if (null === $activeRange || mb_strwidth($text) > $width) {
+            return $style->apply($plain);
+        }
+
+        // +1 for the space `signatureHint()` pads the hint with.
+        $start = $activeRange[0] + 1;
+        $end = $activeRange[1] + 1;
+
+        return $style->apply(substr($plain, offset: 0, length: $start)).$style->withBold()->apply(substr($plain, $start, $end - $start)).$style->apply(substr($plain, $end));
     }
 
     /**

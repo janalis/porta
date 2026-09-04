@@ -101,6 +101,7 @@ final class ActionCatalog
         // available while a VIEWER holds the pane and the editor is detached.
         'open_as_text' => ['label' => 'Open as Text', 'keys' => ['ctrl+alt+x']],
         'trigger_completion' => ['label' => 'Code Completion'],
+        'parameter_info' => ['label' => 'Parameter Info'],
         'accept_completion' => ['label' => 'Accept Completion'],
         'select_cancel' => ['label' => 'Cancel'],
         'goto_definition' => ['label' => 'Go to Declaration or Usages'],

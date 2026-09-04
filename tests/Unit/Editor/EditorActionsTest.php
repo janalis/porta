@@ -263,6 +263,18 @@ final class EditorActionsTest extends TestCase
         $this->assertSame(1, $this->count_('requestCompletion'));
     }
 
+    public function testRunParameterInfoAsksForTheSignatureAtTheCaret(): void
+    {
+        // The invoke verb: signature help was auto-only, so once Escape closed
+        // the popup there was no way to bring it back mid-argument-list.
+        $actions = $this->actions();
+        $this->doc->setCursor(0, 3);
+
+        $actions->run('parameter_info');
+
+        $this->assertSame([[0, 3]], $this->calls['fireSignatureHelp']);
+    }
+
     public function testRunGotoLinePromptJumpsOnDigits(): void
     {
         $actions = $this->actions();
@@ -364,7 +376,7 @@ final class EditorActionsTest extends TestCase
         $kb = new Keybindings(['cursor_down' => ['down']]);
         $actions = $this->actions("a\nb\n");
         $actions->handleKey("\x1b[B", $kb);
-        $this->assertSame([[null]], $this->calls['setSignatureHint']);
+        $this->assertSame([[null, null]], $this->calls['setSignatureHint']);
     }
 
     public function testPageMovementUsesTheViewportRows(): void
@@ -438,7 +450,7 @@ final class EditorActionsTest extends TestCase
         $this->assertSame("()\n", $this->doc->getText(), 'the auto-pair branch ran, not a plain insert');
         $this->assertSame(1, $this->count_('notifyChange'));
         $actions->handleKey(')', $kb);
-        $this->assertSame([[null]], $this->calls['setSignatureHint']);
+        $this->assertSame([[null, null]], $this->calls['setSignatureHint']);
     }
 
     public function testNonInsertableUnboundInputFallsThrough(): void

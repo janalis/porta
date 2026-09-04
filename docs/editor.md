@@ -26,6 +26,14 @@ It is requested once per file and refreshed on save. Servers that do not offer
 `textDocument/semanticTokens` (phpactor, at the time of writing; phpantom does
 offer it) simply keep the lexer's colours, with nothing to configure either way.
 
+### Parameter info
+
+Typing `(` or `,` shows the signature of the call you are in, with **the
+argument you are typing in bold** — the server says which one it is, so a
+five-parameter signature no longer reads the same at every comma. `Ctrl+Shift+P`
+brings the popup back after `Escape`, or summons it anywhere inside an argument
+list. (PhpStorm binds this to `Ctrl+P`, which Go to File owns here.)
+
 ## Buffers and tabs
 
 Multiple buffers with an editor tab bar: `Ctrl+←`/`Ctrl+→` switch,

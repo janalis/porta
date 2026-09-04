@@ -2810,6 +2810,10 @@
         <source>Wrapped to %member%</source>
         <target>Umbruch zu %member%</target>
       </trans-unit>
+      <trans-unit id="785">
+        <source>Parameter Info</source>
+        <target>Parameterinfo</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

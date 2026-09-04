@@ -93,6 +93,7 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `Ctrl+Alt+Shift+T` | Refactor This |
 | `Ctrl+Alt+N` | Inline |
 | `Ctrl+Alt+O` | Optimize imports (`source.organizeImports`; applied straight away when the server offers one) |
+| `Ctrl+Shift+P` | Parameter info — re-summon the signature popup (PhpStorm's `Ctrl+P`, which Go to File owns here) |
 | `Shift+F1` | Quick documentation |
 | `Ctrl+F12` | File structure popup |
 | `Alt+7` | Structure panel (persistent, on the dock) |

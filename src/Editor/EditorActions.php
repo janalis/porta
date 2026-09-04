@@ -39,7 +39,7 @@ final class EditorActions
      * position of each list in handleKey) IS the historical match order —
      * see the class docblock before reordering anything.
      */
-    private const array PRE_CARET_ACTIONS = ['goto_line', 'rename_symbol', 'trigger_completion', 'add_caret_above', 'add_caret_below', 'add_next_occurrence'];
+    private const array PRE_CARET_ACTIONS = ['goto_line', 'rename_symbol', 'trigger_completion', 'parameter_info', 'add_caret_above', 'add_caret_below', 'add_next_occurrence'];
     private const array HISTORY_STRUCTURE_ACTIONS = ['undo', 'redo', 'expand_selection', 'shrink_selection', 'goto_matching_bracket'];
     private const array CLIPBOARD_LINE_ACTIONS = ['copy', 'cut', 'paste', 'duplicate_line', 'move_line_up', 'move_line_down', 'toggle_comment', 'toggle_fold'];
 
@@ -454,6 +454,7 @@ final class EditorActions
             'add_caret_below' => $this->multiCaret->addVertically(1),
             'add_next_occurrence' => $this->multiCaret->addNextOccurrence(),
             'trigger_completion' => $this->completion->requestCompletion(),
+            'parameter_info' => $this->host->fireSignatureHelp($this->document->getCursorLine(), $this->document->getCursorColUtf16()),
             'goto_line' => $this->promptGotoLine(),
             'rename_symbol' => $this->promptRename(),
             default => null,

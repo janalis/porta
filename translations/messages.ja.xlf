@@ -2810,6 +2810,10 @@
         <source>Wrapped to %member%</source>
         <target>%member% に折り返しました</target>
       </trans-unit>
+      <trans-unit id="785">
+        <source>Parameter Info</source>
+        <target>パラメーター情報</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -75,6 +75,9 @@ final class EditorKeymap
             'prev_tab_stop' => ['shift+tab'],
             'accept_completion' => [Key::ENTER],
             'trigger_completion' => ['ctrl+space'],
+            // PhpStorm's Ctrl+P, which Go to File already owns here; Ctrl+P
+            // stays where it is and the mnemonic moves rather than the verb.
+            'parameter_info' => ['ctrl+shift+p'],
             'select_cancel' => [Key::ESCAPE],
 
             'save' => ['ctrl+s'],

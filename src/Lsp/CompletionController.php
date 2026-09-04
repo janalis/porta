@@ -6,6 +6,7 @@ namespace Porta\Lsp;
 
 use Porta\Editor\Document;
 use Porta\Editor\Templates;
+use Porta\Editor\TextMetrics;
 use Porta\I18n\Translator;
 use Porta\Support\Scheduler;
 use Porta\Widget\CodeEditorWidget;
@@ -207,12 +208,78 @@ final class CompletionController extends AbstractLspController implements Editor
             'textDocument/signatureHelp',
             $this->positionParams($path, $line, $col),
             function (mixed $result, ?array $error): void {
-                /** @var array{signatures?: list<array<string, mixed>>, activeSignature?: int} $result */
+                /** @var array{signatures?: list<array<string, mixed>>, activeSignature?: int, activeParameter?: int} $result */
                 $signature = $result['signatures'][$result['activeSignature'] ?? 0] ?? $result['signatures'][0] ?? null;
                 $label = \is_array($signature) ? (string) ($signature['label'] ?? '') : '';
-                $this->editor->setSignatureHint('' !== $label ? $label : null);
+                if (!\is_array($signature) || '' === $label) {
+                    $this->editor->setSignatureHint(null);
+                    $this->tui->requestRender();
+
+                    return;
+                }
+
+                $this->editor->setSignatureHint($label, self::activeParameterRange($signature, $label, $result['activeParameter'] ?? null));
                 $this->tui->requestRender();
             },
         );
+    }
+
+    /**
+     * Which slice of the signature label is the argument you are typing.
+     *
+     * The server has always sent this and Porta took only the label, so a
+     * five-parameter signature said the same thing at every comma. LSP gives
+     * the parameter either as UTF-16 offsets into the label or as the substring
+     * itself; both forms are in the wild, so both are read.
+     *
+     * Returns BYTE offsets into $label, or null when the server named no
+     * parameter or named one that does not fit the label it sent.
+     *
+     * @param array<string, mixed> $signature
+     *
+     * @return array{0: int, 1: int}|null
+     */
+    private static function activeParameterRange(array $signature, string $label, mixed $fallbackIndex): ?array
+    {
+        /** @var list<array<string, mixed>> $parameters */
+        $parameters = \is_array($signature['parameters'] ?? null) ? array_values($signature['parameters']) : [];
+        $index = match (true) {
+            \is_int($signature['activeParameter'] ?? null) => $signature['activeParameter'],
+            \is_int($fallbackIndex) => $fallbackIndex,
+            default => 0,
+        };
+        $parameter = $parameters[$index] ?? null;
+        if (null === $parameter) {
+            return null;
+        }
+
+        /** @var mixed $name */
+        $name = $parameter['label'] ?? null;
+        $range = match (true) {
+            \is_string($name) => self::rangeOfSubstring($label, $name),
+            \is_array($name) && \is_int($name[0] ?? null) && \is_int($name[1] ?? null) => [
+                TextMetrics::utf16ColToByteCol($label, $name[0]),
+                TextMetrics::utf16ColToByteCol($label, $name[1]),
+            ],
+            default => null,
+        };
+
+        // A range the label cannot contain would emphasise the wrong text, or
+        // nothing; saying nothing is the honest answer.
+        return null !== $range && $range[0] >= 0 && $range[1] > $range[0] && $range[1] <= \strlen($label) ? $range : null;
+    }
+
+    /**
+     * No empty-needle guard: `strpos()` answers 0 for one, which yields a
+     * zero-width range that the caller's own validation already refuses. A
+     * guard no mutation can kill is not a guard.
+     *
+     * @return array{0: int, 1: int}|null
+     */
+    private static function rangeOfSubstring(string $label, string $name): ?array
+    {
+        $at = strpos($label, $name);
+
+        return false === $at ? null : [$at, $at + \strlen($name)];
     }
 }

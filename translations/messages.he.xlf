@@ -2810,6 +2810,10 @@
         <source>Wrapped to %member%</source>
         <target>חזרה אל %member%</target>
       </trans-unit>
+      <trans-unit id="785">
+        <source>Parameter Info</source>
+        <target>מידע על פרמטרים</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

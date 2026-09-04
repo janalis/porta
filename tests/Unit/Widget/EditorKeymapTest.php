@@ -74,6 +74,7 @@ final class EditorKeymapTest extends TestCase
                 'prev_tab_stop' => ['shift+tab'],
                 'accept_completion' => [Key::ENTER],
                 'trigger_completion' => ['ctrl+space'],
+                'parameter_info' => ['ctrl+shift+p'],
                 'select_cancel' => [Key::ESCAPE],
 
                 'save' => ['ctrl+s'],

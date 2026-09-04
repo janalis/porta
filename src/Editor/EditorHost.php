@@ -22,7 +22,14 @@ interface EditorHost
 
     public function jumpTo(int $line, int $utf16Col): void;
 
-    public function setSignatureHint(?string $hint): void;
+    /**
+     * Show (or clear) the signature popup. $activeRange is the BYTE slice of
+     * $hint holding the argument being typed, emphasised so a five-parameter
+     * signature does not read the same at every comma.
+     *
+     * @param array{0: int, 1: int}|null $activeRange
+     */
+    public function setSignatureHint(?string $hint, ?array $activeRange = null): void;
 
     /** Copied text → the OSC 52 clipboard hook. */
     public function fireCopy(string $text): void;
