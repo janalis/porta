@@ -353,6 +353,18 @@ Every save snapshots the file under `.porta/history/` (25 snapshots per
 file, oldest pruned) independently of git. `Ctrl+Alt+H` lists the active
 file's snapshots; `Enter` restores one as a single undoable edit.
 
+**Compare with Local History** (the command palette, or a right-click on the
+editor or on a file) shows what a snapshot would change before you restore it:
+pick one, and the diff opens in its own panel — oldest on the left, so a `-`
+line is what restoring would bring back and a `+` line is what it would take
+away. The newest snapshot is always the file as it stands, because saving is
+what takes one, and picking it says so rather than opening an empty panel.
+
+That comparison is the one part that needs `git` on your `PATH` — it runs
+`git diff --no-index`, which takes two arbitrary paths and so works in a
+project that is not a repository. Without git the snapshots still record and
+still restore; only the comparison is unavailable, and it says so.
+
 ## Image viewer
 
 Opening a `png`, `jpg`, `jpeg`, `gif`, `webp` or `bmp` file shows it as an

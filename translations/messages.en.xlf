@@ -2862,6 +2862,22 @@
         <source>Maximize Panel</source>
         <target>Maximize Panel</target>
       </trans-unit>
+      <trans-unit id="802">
+        <source>Compare with Snapshot</source>
+        <target>Compare with Snapshot</target>
+      </trans-unit>
+      <trans-unit id="804">
+        <source>Comparing %file% with a snapshot</source>
+        <target>Comparing %file% with a snapshot</target>
+      </trans-unit>
+      <trans-unit id="806">
+        <source>Comparing snapshots needs git on your PATH</source>
+        <target>Comparing snapshots needs git on your PATH</target>
+      </trans-unit>
+      <trans-unit id="808">
+        <source>That snapshot matches the file on disk</source>
+        <target>That snapshot matches the file on disk</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

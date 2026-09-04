@@ -2862,6 +2862,22 @@
         <source>Maximize Panel</source>
         <target>Maximizar panel</target>
       </trans-unit>
+      <trans-unit id="802">
+        <source>Compare with Snapshot</source>
+        <target>Comparar con instantánea</target>
+      </trans-unit>
+      <trans-unit id="804">
+        <source>Comparing %file% with a snapshot</source>
+        <target>Comparando %file% con una instantánea</target>
+      </trans-unit>
+      <trans-unit id="806">
+        <source>Comparing snapshots needs git on your PATH</source>
+        <target>Comparar instantáneas requiere git en tu PATH</target>
+      </trans-unit>
+      <trans-unit id="808">
+        <source>That snapshot matches the file on disk</source>
+        <target>Esa instantánea coincide con el archivo en disco</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

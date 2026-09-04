@@ -2862,6 +2862,22 @@
         <source>Maximize Panel</source>
         <target>パネルを最大化</target>
       </trans-unit>
+      <trans-unit id="802">
+        <source>Compare with Snapshot</source>
+        <target>スナップショットと比較</target>
+      </trans-unit>
+      <trans-unit id="804">
+        <source>Comparing %file% with a snapshot</source>
+        <target>%file% をスナップショットと比較しています</target>
+      </trans-unit>
+      <trans-unit id="806">
+        <source>Comparing snapshots needs git on your PATH</source>
+        <target>スナップショットの比較には PATH 上の git が必要です</target>
+      </trans-unit>
+      <trans-unit id="808">
+        <source>That snapshot matches the file on disk</source>
+        <target>このスナップショットはディスク上のファイルと一致します</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

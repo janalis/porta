@@ -191,6 +191,7 @@ final class ArchitectureCheckCommand extends Command
         'Layout>Widget',
         'Layout>Workbench',
         'LocalHistory>Plugin',
+        'LocalHistory>Support',
         'LocalHistory>Workbench',
         'Lsp>Container',
         'Lsp>Editor',
