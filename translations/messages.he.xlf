@@ -2846,6 +2846,18 @@
         <source>Method separators</source>
         <target>מפרידי מתודות</target>
       </trans-unit>
+      <trans-unit id="796">
+        <source>New Scratch File</source>
+        <target>קובץ טיוטה חדש</target>
+      </trans-unit>
+      <trans-unit id="798">
+        <source>No home directory for scratch files</source>
+        <target>אין תיקיית בית לקובצי טיוטה</target>
+      </trans-unit>
+      <trans-unit id="800">
+        <source>Plain text</source>
+        <target>טקסט רגיל</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

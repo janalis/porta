@@ -275,4 +275,4 @@ git; restore any snapshot with `Ctrl+Alt+H`.
 | Variable | Effect |
 | --- | --- |
 | `PORTA_LSP` | LSP server command (same format as the `lsp` config key) |
-| `PORTA_HOME` | Overrides the home directory used for global plugins (`~/.porta/plugins`) |
+| `PORTA_HOME` | Overrides the home directory used for global plugins (`~/.porta/plugins`) and scratch files (`~/.porta/scratches`) |

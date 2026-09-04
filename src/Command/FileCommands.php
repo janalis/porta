@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Porta\Command;
 
 use Porta\Config\CommandRegistry;
+use Porta\Config\KeyDispatch;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenAs;
 use Porta\Editor\OpenFocus;
+use Porta\Editor\ScratchFiles;
 use Porta\Lsp\RefactorController;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
@@ -20,6 +22,7 @@ final class FileCommands implements CommandProvider
         private readonly BufferService $bufferService,
         private readonly RefactorController $refactor,
         private readonly BufferManager $buffers,
+        private readonly ScratchFiles $scratches,
     ) {}
 
     #[\Override]
@@ -28,6 +31,7 @@ final class FileCommands implements CommandProvider
         $commands
             ->add('save', fn () => $this->bufferService->saveCurrentFile())
             ->add('save_all', fn () => $this->bufferService->saveAllBuffers())
+            ->add('ide_new_scratch', fn () => $this->scratches->open(), keyBound: KeyDispatch::Bound)
             ->add('reformat', fn () => $this->refactor->requestReformat())
             ->add('open_as_text', $this->openActiveAsText(...), when: fn (): bool => true === $this->buffers->active()?->isViewer());
     }

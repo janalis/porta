@@ -29,6 +29,34 @@ final class LanguageCatalog
         'dotenv' => 'Dotenv',
     ];
 
+    /**
+     * The extension a NEW file of each language gets — a scratch buffer has no
+     * path to take its language from, so something has to choose one.
+     *
+     * A second table rather than a reverse lookup through
+     * {@see \Porta\Support\LanguageMap}, whose map is one-way and answers for
+     * fifty grammars this list does not offer. {@see \Porta\Tests\Unit\Config\LanguageCatalogTest}
+     * is the gate: every id here must appear above, and every extension must
+     * resolve back through the map to the id it is filed under.
+     *
+     * @var array<string, string> language id => extension, without the dot
+     */
+    public const array EXTENSIONS = [
+        'php' => 'php',
+        'javascript' => 'js',
+        'typescript' => 'ts',
+        'python' => 'py',
+        'json' => 'json',
+        'css' => 'css',
+        'scss' => 'scss',
+        'html' => 'html',
+        'markdown' => 'md',
+        'yaml' => 'yaml',
+        'twig' => 'twig',
+        'xml' => 'xml',
+        'dotenv' => 'env',
+    ];
+
     /** @return list<string> the configurable language ids, in display order */
     public static function ids(): array
     {

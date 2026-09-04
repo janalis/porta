@@ -102,6 +102,12 @@ final class ActionCatalog
         // Editor: IDE features
         'save' => ['label' => 'Save File'],
         'save_all' => ['label' => 'Save All'],
+        // PhpStorm's is Ctrl+Alt+Shift+Insert, which this terminal cannot
+        // deliver: KeyParser returns null for every modified `Insert` sequence
+        // (`\x1b[2;8~` included), so a binding on it would be unreachable.
+        // Ctrl+Alt+Shift+S is free and parses; Ctrl+Alt+S beside it is Save
+        // All, which takes one fewer modifier rather than one more.
+        'ide_new_scratch' => ['label' => 'New Scratch File', 'keys' => ['ctrl+alt+shift+s']],
         // IDE scope, not the editor keymap: the point of this one is to be
         // available while a VIEWER holds the pane and the editor is detached.
         'open_as_text' => ['label' => 'Open as Text', 'keys' => ['ctrl+alt+x']],

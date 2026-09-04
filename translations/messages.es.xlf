@@ -2846,6 +2846,18 @@
         <source>Method separators</source>
         <target>Separadores de métodos</target>
       </trans-unit>
+      <trans-unit id="796">
+        <source>New Scratch File</source>
+        <target>Nuevo archivo temporal</target>
+      </trans-unit>
+      <trans-unit id="798">
+        <source>No home directory for scratch files</source>
+        <target>No hay directorio personal para archivos temporales</target>
+      </trans-unit>
+      <trans-unit id="800">
+        <source>Plain text</source>
+        <target>Texto sin formato</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -168,6 +168,28 @@ breakpoint dots, fold triangles, indent guides, identifier-occurrence and matchi
 highlighting, and dimmed inline parameter-name/type **inlay hints** from
 the language server.
 
+## Scratch files
+
+`Ctrl+Alt+Shift+S` asks which language and opens an empty buffer for it —
+somewhere to paste a snippet, draft a query or try a syntax without adding a
+file to the project or a line to `git status`.
+
+They live in `<home>/.porta/scratches/`, beside the global config and the global
+plugins rather than in the project, because that is what makes them scratch
+files: the snippet you are reformatting outlives whichever project happened to
+be open. Names are minted per language — `scratch_1.php`, `scratch_2.php`, and
+a separate `scratch_1.md` — so a tab strip full of them still reads.
+
+Picking a language rather than typing a name is the whole interaction: the
+extension is the only thing the editor needs in order to highlight, indent and
+hand the file to a language server. The list is the same thirteen languages the
+settings screen configures, plus plain text.
+
+PhpStorm's binding for this is `Ctrl+Alt+Shift+Insert`, which a terminal cannot
+deliver — every modified `Insert` sequence parses to nothing — so the `S` chord
+stands in. Rebind it like any other action; see
+[keybindings.md](keybindings.md).
+
 ## Method separators
 
 Off by default (Settings → Interface, or `methodSeparators` in `.porta.json`).

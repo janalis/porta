@@ -2846,6 +2846,18 @@
         <source>Method separators</source>
         <target>メソッド区切り線</target>
       </trans-unit>
+      <trans-unit id="796">
+        <source>New Scratch File</source>
+        <target>新規スクラッチファイル</target>
+      </trans-unit>
+      <trans-unit id="798">
+        <source>No home directory for scratch files</source>
+        <target>スクラッチファイル用のホームディレクトリがありません</target>
+      </trans-unit>
+      <trans-unit id="800">
+        <source>Plain text</source>
+        <target>プレーンテキスト</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

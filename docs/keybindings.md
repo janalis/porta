@@ -38,6 +38,7 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | --- | --- |
 | `Ctrl+S` | Save |
 | `Ctrl+Alt+S` | Save all |
+| `Ctrl+Alt+Shift+S` | New scratch file — pick a language, get an empty buffer in `<home>/.porta/scratches/` |
 | `Ctrl+Shift+N` / `Ctrl+P` | Go to file (fuzzy finder) |
 | `Ctrl+E` | Recent files popup (`Ctrl+E` again cycles, `Enter` opens) |
 | `Ctrl+←` / `Ctrl+→` | Previous / next editor tab |

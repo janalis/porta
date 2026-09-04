@@ -13,6 +13,7 @@ use Porta\Settings\SettingsController;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
@@ -31,6 +32,7 @@ final class IdeTabsBuffersTest extends TestCase
 {
     use ClearsPortaLsp;
     use PreservesPath;
+    use PreservesPortaHome;
     use RunsIde;
 
     public function testDoubleClickingATabRevealsTheFileInTheTree(): void
@@ -158,6 +160,42 @@ final class IdeTabsBuffersTest extends TestCase
                 },
                 600 => function ($tui): void {
                     $this->assertStringEndsWith('b.php', (string) $tui->getById('editor')->getFilePath(), 'picking it opened it again');
+                },
+            ],
+        );
+    }
+
+    public function testAScratchFileIsMintedOutsideTheProjectAndOpened(): void
+    {
+        // Through the running IDE: the action, its binding, the language
+        // picker and the file all have to meet, and a command nothing dispatches
+        // passes every other gate green.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php // a\n"]);
+        $home = new TempProject([], prefix: 'porta-test-home-');
+        putenv('PORTA_HOME='.$home->dir);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->handleInput("\x1b[115;8u"); // ctrl+alt+shift+s
+                },
+                300 => function ($tui, $terminal): void {
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringContainsString('New Scratch File', $screen);
+                    $this->assertStringContainsString('PHP', $screen);
+                    $tui->handleInput("\r"); // PHP is first and preselected
+                },
+                400 => function ($tui) use ($project, $home): void {
+                    $path = $home->path('.porta/scratches/scratch_1.php');
+                    $this->assertFileExists($path);
+                    // Ends-with, not same: opening realpath()s, and on macOS
+                    // the temp dir gains a `/private` prefix on the way.
+                    $active = (string) $tui->getById('editor')->getFilePath();
+                    $this->assertStringEndsWith('/.porta/scratches/scratch_1.php', $active, 'the scratch is the active buffer');
+                    $this->assertStringStartsNotWith($project->dir, $active, 'and it is not in the project');
                 },
             ],
         );

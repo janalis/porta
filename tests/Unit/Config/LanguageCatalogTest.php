@@ -49,6 +49,28 @@ final class LanguageCatalogTest extends TestCase
         $this->assertSame($resolvable, $catalog);
     }
 
+    /**
+     * The scratch-file extensions are a SECOND table naming the same languages,
+     * so nothing but a test stops the two drifting apart.
+     */
+    public function testEveryLanguageHasAnExtensionThatResolvesBackToIt(): void
+    {
+        $ids = LanguageCatalog::ids();
+        sort($ids);
+        $extensionIds = array_keys(LanguageCatalog::EXTENSIONS);
+        sort($extensionIds);
+
+        $this->assertSame($ids, $extensionIds, 'every catalogued language can be scratched, and nothing else is');
+
+        foreach (LanguageCatalog::EXTENSIONS as $id => $extension) {
+            $this->assertSame(
+                $id,
+                LanguageMap::highlightForPath("scratch_1.{$extension}"),
+                "a .{$extension} scratch highlights as {$id}",
+            );
+        }
+    }
+
     public function testUnknownDisplayNameFallsBackToTheId(): void
     {
         $this->assertSame('klingon', LanguageCatalog::displayName('klingon'));
