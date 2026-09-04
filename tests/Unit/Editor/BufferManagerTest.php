@@ -25,7 +25,9 @@ final class BufferManagerTest extends TestCase
             id: 'marker',
             languages: static fn (): array => ['*'],
             highlight: static function (string $text, string $language, \Closure $deliver): void {
-                $deliver('MARKED:'.$text);
+                // A COLOUR, not a text marker: markup must reduce to its
+                // source, so prepending text would be refused by the guard.
+                $deliver("\x1b[31m".$text."\x1b[39m");
             },
         );
         $source = new class($provider) implements SyntaxHighlightProviderSource {
@@ -43,7 +45,7 @@ final class BufferManagerTest extends TestCase
         $manager = new BufferManager($factory);
         $buffer = $manager->open('/p/a.php', 'hello');
 
-        $this->assertSame(['MARKED:hello'], $buffer->highlighter->highlight(['hello'], 0));
+        $this->assertSame(["\x1b[31mhello\x1b[39m"], $buffer->highlighter->highlight(['hello'], 0));
     }
 
     public function testOpenActivatesAndReusesBuffers(): void

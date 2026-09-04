@@ -167,8 +167,11 @@ final class CodeHighlighterTest extends TestCase
     /** The byte cap is exclusive: content at exactly the limit still gets highlighted. */
     public function testByteCapBoundaryIsExclusive(): void
     {
-        $marker = 'MARK:';
-        $provider = new ClosureHighlightProvider(static fn (string $content): string => $marker.$content);
+        // Observed through a COLOUR rather than by prepending text: markup that
+        // does not reduce to its source is refused now, so a text marker would
+        // measure the guard instead of the cap.
+        $marker = "\x1b[31m";
+        $provider = new ClosureHighlightProvider(static fn (string $content): string => $marker.$content."\x1b[39m");
         $highlighter = new CodeHighlighter($provider);
         $highlighter->setFile('a.php');
 

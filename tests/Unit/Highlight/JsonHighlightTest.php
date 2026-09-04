@@ -155,14 +155,21 @@ final class JsonHighlightTest extends TestCase
      * addition-start and addition-end tokens must be present for the pair to
      * be recognized and stripped at all; a lone marker is left as-is.
      */
-    public function testDiffAdditionMarkersAreStrippedFromJson(): void
+    /**
+     * Tempest's `Base` language treats `{+ … +}` as diff-addition markers and
+     * DELETES them, in every language it ships. Nothing in Porta ever wanted
+     * that — the git diff view has its own renderer — and in an editor a line
+     * that renders four characters shorter than the file is a bug however
+     * pretty it is. `CodeHighlighter` renders such a line from the file.
+     */
+    public function testDiffMarkersAreNotDeletedFromTheLineTheyAppearOn(): void
     {
-        $this->assertSame(' x ', AnsiUtils::stripAnsiCodes($this->highlight('{+ x +}')), 'a paired addition marker is invisible, not shown as raw braces');
+        $this->assertSame('{+ x +}', AnsiUtils::stripAnsiCodes($this->highlight('{+ x +}')));
     }
 
-    public function testDiffAdditionMarkersAreStrippedFromJsonc(): void
+    public function testTheSameHoldsForJsonc(): void
     {
-        $this->assertSame(' x ', AnsiUtils::stripAnsiCodes($this->highlight('{+ x +}', file: 'a.jsonc')), 'jsonc shares the same base() marker patterns as json');
+        $this->assertSame('{+ x +}', AnsiUtils::stripAnsiCodes($this->highlight('{+ x +}', file: 'a.jsonc')));
     }
 
     public function testJsoncBlockCommentSpansLines(): void

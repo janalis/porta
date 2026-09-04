@@ -96,15 +96,15 @@ final class CodeHighlighterFallbackTest extends TestCase
         $this->assertSame($bad, $rows[1], 'the broken one is plain, not garbled');
     }
 
-    public function testAMarkupTRANSFORMATIONIsNotTreatedAsAFault(): void
+    public function testMarkupThatCHANGESTheTextIsRefusedHoweverWellFormed(): void
     {
-        // The JSON backend strips diff markers on purpose, so markup is NOT
-        // required to reduce to its input byte-for-byte. Only a broken ESCAPE
-        // is a fault; changed text is the backend doing its job.
+        // Tempest's Base language deletes `{+ … +}` from every language it
+        // ships. The escapes are perfectly well formed; the TEXT is four
+        // characters short, which in an editor is the worse fault of the two.
         $highlighter = new CodeHighlighter(new ClosureHighlightProvider(static fn (): string => "\x1b[32mx\x1b[39m"));
         $highlighter->setFile('x.php');
 
-        $this->assertSame(["\x1b[32mx\x1b[39m"], $highlighter->highlight(['{+ x +}'], 1));
+        $this->assertSame(['{+ x +}'], $highlighter->highlight(['{+ x +}'], 1));
     }
 
     public function testABrokenLinesCodesAreNotCarriedIntoTheNextLine(): void

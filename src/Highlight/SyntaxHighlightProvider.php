@@ -20,18 +20,17 @@ namespace Porta\Highlight;
  *   many `"\n"`-separated lines as the input. {@see CodeHighlighter} guards
  *   that one and falls back to plain text for the whole buffer, because a line
  *   count it cannot trust makes every row the wrong row.
- * - **Emit only well-formed escapes.** A CSI that never terminates leaves its
- *   parameters as visible TEXT, which widens the row and drags every
- *   column-placed decoration with it. `tempest/highlight` does this on some
- *   attribute lines, which is why the check exists. Core repairs the one shape
- *   it can — a whole sequence INSERTED between `ESC [` and its parameters — and
- *   only when the result reduces to that line's source; anything else renders
- *   the line plain.
+ * - **Reduce to the input.** Each line's markup must strip back to that line's
+ *   own source. {@see CodeHighlighter} checks this per line and renders any
+ *   line that fails from the FILE instead — losing its colours, never its text.
+ *   Both faults seen in practice are `tempest/highlight`'s: a CSI that never
+ *   terminates (its parameters become visible text, widening the row), and its
+ *   `Base` language deleting `{+ … +}` diff markers from every language. Core
+ *   repairs the first where the shape allows and re-checks the result.
  *
- * Markup is NOT required to reduce to its input byte-for-byte, whatever an
- * earlier version of this docblock claimed — nothing ever enforced it and the
- * JSON backend deliberately strips diff markers. Changing the TEXT is a
- * transformation; breaking an ESCAPE is a fault. Only the second is guarded.
+ * This contract was stated here long before anything enforced it, which is how
+ * both faults reached the screen. A provider that trips it now costs that line
+ * its colours.
  *
  * This interface lives in `Porta\Highlight` — the consuming namespace — so the
  * highlighting subsystem never depends on `Porta\Plugin`, mirroring

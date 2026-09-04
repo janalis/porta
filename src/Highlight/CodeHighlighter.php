@@ -346,20 +346,26 @@ final class CodeHighlighter implements HighlightSink
     }
 
     /**
-     * Split markup into independently renderable lines, dropping the markup of
-     * any line carrying a MALFORMED escape, or null when the line COUNT is
-     * wrong — the one fault core cannot paper over at all.
+     * Split markup into independently renderable lines, rendering from the FILE
+     * any line whose markup does not reduce back to it, or null when the line
+     * COUNT is wrong — the one fault core cannot paper over at all.
      *
-     * `tempest/highlight` emits a SPLIT escape on some attribute lines: `ESC [`,
-     * then a whole other sequence, then the orphaned tail `39m`. The tail is not
-     * a colour, it is visible TEXT — the row renders as
-     * `#[Autowire(service39m: …`, measures five columns wider than its content,
-     * and drags every column-placed decoration out of position with it.
+     * `tempest/highlight` gets this wrong two ways, both silent:
      *
-     * The check is deliberately narrow. Markup is NOT required to reduce to its
-     * input byte-for-byte: the JSON backend strips diff markers on purpose, and
-     * that is a transformation, not a fault. A CSI whose parameters run into
-     * another ESC is a fault under any reading.
+     * - A SPLIT escape on some attribute lines — `ESC [`, then a whole other
+     *   sequence, then the orphaned tail `39m`. The tail is not a colour, it is
+     *   visible TEXT, so the row reads `#[Autowire(service39m: …` and measures
+     *   five columns wider than its content. That shape is repaired, then
+     *   re-checked like everything else.
+     * - Its `Base` language strips `{+ … +}` diff markers from EVERY language,
+     *   so a PHP line containing them renders four characters shorter than the
+     *   file. Nothing in Porta wants that: the git diff view has its own
+     *   renderer, and the only thing that ever asked for it was a test
+     *   characterising the upstream behaviour.
+     *
+     * Either way the row no longer says what the file says, and every
+     * column-placed decoration on it lands somewhere else. In an editor, being
+     * able to trust the text beats colouring it, so the file wins.
      *
      * One line, not the file: lines are independently renderable by
      * construction here, so a backend that breaks one costs its own colours and
@@ -379,16 +385,19 @@ final class CodeHighlighter implements HighlightSink
         $tracker = new AnsiCodeTracker();
         $result = [];
         foreach ($hlLines as $index => $line) {
+            $source = $sourceLines[$index] ?? '';
             if (1 === preg_match(self::MALFORMED_ESCAPE, $line)) {
-                $line = self::repair($line, $sourceLines[$index] ?? '');
-                if (null === $line) {
-                    // Beyond repair. Plain, and NOT fed to the tracker: this
-                    // line's codes are the thing being distrusted, so carrying
-                    // them into the next line would spread the fault rather
-                    // than contain it.
-                    $result[] = $sourceLines[$index] ?? '';
-                    continue;
-                }
+                $line = self::repair($line, $source) ?? $source;
+            }
+
+            // The contract, finally enforced: markup must reduce to its own
+            // source. A line that fails is rendered from the FILE, and is NOT
+            // fed to the tracker — its codes are the thing being distrusted, so
+            // carrying them onward would spread the fault rather than contain
+            // it.
+            if (AnsiUtils::stripAnsiCodes($line) !== $source) {
+                $result[] = $source;
+                continue;
             }
 
             $prefix = $tracker->getActiveCodes();
