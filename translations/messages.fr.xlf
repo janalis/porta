@@ -2814,6 +2814,14 @@
         <source>Parameter Info</source>
         <target>Info sur les paramètres</target>
       </trans-unit>
+      <trans-unit id="786">
+        <source>Close to the Left</source>
+        <target>Fermer à gauche</target>
+      </trans-unit>
+      <trans-unit id="787">
+        <source>Close to the Right</source>
+        <target>Fermer à droite</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

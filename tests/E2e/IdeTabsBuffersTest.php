@@ -375,7 +375,11 @@ final class IdeTabsBuffersTest extends TestCase
                     $tui->handleInput("\x1b[<2;34;2M"); // right-click a tab
                 },
                 560 => static function ($tui): void {
+                    // Close, Close Others, Close to the Left, Close to the
+                    // Right, Close All — four steps down to the last.
                     $tui->handleInput("\x1b[B"); // down → Close Others
+                    $tui->handleInput("\x1b[B"); // down → Close to the Left
+                    $tui->handleInput("\x1b[B"); // down → Close to the Right
                     $tui->handleInput("\x1b[B"); // down → Close All
                     $tui->handleInput("\r");
                 },
@@ -406,6 +410,8 @@ final class IdeTabsBuffersTest extends TestCase
                 },
                 400 => static function ($tui): void {
                     $tui->handleInput("\x1b[B"); // Close Others
+                    $tui->handleInput("\x1b[B"); // Close to the Left
+                    $tui->handleInput("\x1b[B"); // Close to the Right
                     $tui->handleInput("\x1b[B"); // Close All
                     $tui->handleInput("\r");
                 },

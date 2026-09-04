@@ -7,6 +7,7 @@ namespace Porta\Workbench\Menu;
 use Porta\Config\CommandRegistry;
 use Porta\Config\LiveKeybindings;
 use Porta\Editor\BufferService;
+use Porta\Editor\TabSide;
 use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Run\RunController;
@@ -94,6 +95,8 @@ final class ContextMenuBuilder
         return [
             new MenuItem($this->translator->trans('Close'), '', fn () => $this->bufferService->closeTab($path)),
             new MenuItem($this->translator->trans('Close Others'), '', fn () => $this->bufferService->closeTabsExcept($path)),
+            new MenuItem($this->translator->trans('Close to the Left'), '', fn () => $this->bufferService->closeTabsToTheSide($path, TabSide::Left)),
+            new MenuItem($this->translator->trans('Close to the Right'), '', fn () => $this->bufferService->closeTabsToTheSide($path, TabSide::Right)),
             new MenuItem($this->translator->trans('Close All'), '', fn () => $this->bufferService->closeTabsExcept(null)),
             ...$this->fileItems($path),
         ];

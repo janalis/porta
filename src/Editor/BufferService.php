@@ -416,9 +416,46 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
      */
     public function closeTabsExcept(?string $keep): void
     {
+        $this->closeTabs(static fn (Buffer $buffer): bool => $buffer->path !== $keep, $keep);
+    }
+
+    /**
+     * Close the tabs on one side of $path in TAB order, leaving $path itself
+     * open — PhpStorm's Close to the Left / Close to the Right.
+     *
+     * The side is the strip's order, not the order you visited them in, which
+     * is the whole point of the verb: it clears the run of tabs you can see
+     * beside this one.
+     */
+    public function closeTabsToTheSide(string $path, TabSide $side): void
+    {
+        $paths = array_map(static fn (Buffer $buffer): string => $buffer->path, $this->buffers->all());
+        $at = array_search($path, $paths, strict: true);
+        if (false === $at) {
+            return;
+        }
+
+        $doomed = array_flip(
+            TabSide::Right === $side
+                ? \array_slice($paths, $at + 1)
+                : \array_slice($paths, offset: 0, length: $at),
+        );
+
+        $this->closeTabs(static fn (Buffer $buffer): bool => ($doomed[$buffer->path] ?? null) !== null, $path);
+    }
+
+    /**
+     * The shared bulk close: every buffer $shouldClose picks, except that a
+     * buffer with unsaved changes is LEFT OPEN and counted, so no bulk verb
+     * ever silently discards edits.
+     *
+     * @param \Closure(Buffer): bool $shouldClose
+     */
+    private function closeTabs(\Closure $shouldClose, ?string $keep): void
+    {
         $dirtyKept = 0;
         foreach ($this->buffers->all() as $buffer) {
-            if ($buffer->path === $keep) {
+            if (!$shouldClose($buffer)) {
                 continue;
             }
             if ($buffer->isDirty()) {

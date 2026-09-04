@@ -2814,6 +2814,14 @@
         <source>Parameter Info</source>
         <target>מידע על פרמטרים</target>
       </trans-unit>
+      <trans-unit id="786">
+        <source>Close to the Left</source>
+        <target>סגור משמאל</target>
+      </trans-unit>
+      <trans-unit id="787">
+        <source>Close to the Right</source>
+        <target>סגור מימין</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

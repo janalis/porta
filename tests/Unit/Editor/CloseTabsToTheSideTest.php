@@ -1,0 +1,152 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Tests\Unit\Editor;
+
+use PHPUnit\Framework\TestCase;
+use Porta\Editor\BufferManager;
+use Porta\Editor\BufferService;
+use Porta\Editor\OpenFocus;
+use Porta\Editor\TabSide;
+use Porta\Ide;
+use Porta\Onboarding\OnboardingState;
+use Porta\Tests\Support\Services;
+use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Toasts;
+use Porta\Workbench\Notifier;
+use Porta\Workbench\View\ViewRegistry;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+
+/**
+ * PhpStorm's Close to the Left / Close to the Right.
+ *
+ * The side is the TAB STRIP's order, not the order the tabs were visited in,
+ * which is the whole point of the verb — it clears the run you can see beside
+ * this one. Every assertion names the surviving paths in order, since a verb
+ * that closes the right COUNT from the wrong end still closes the right count.
+ */
+final class CloseTabsToTheSideTest extends TestCase
+{
+    private TempProject $project;
+    private Ide $ide;
+
+    #[\Override]
+    protected function setUp(): void
+    {
+        $this->project = new TempProject([
+            'composer.json' => '{}',
+            'a.php' => "<?php\n// a\n",
+            'b.php' => "<?php\n// b\n",
+            'c.php' => "<?php\n// c\n",
+            'd.php' => "<?php\n// d\n",
+        ]);
+        new OnboardingState($this->project->dir)->markWelcomeSeen();
+        $this->ide = new Ide($this->project->dir, null, new VirtualTerminal(columns: 80, rows: 24));
+    }
+
+    #[\Override]
+    protected function tearDown(): void
+    {
+        Services::resolve($this->ide, ViewRegistry::class)->closeAll();
+        Services::resolve($this->ide, Notifier::class)->dismissAll();
+    }
+
+    /** Opens a.php … d.php in that order and returns the buffer service. */
+    private function withFourTabs(): BufferService
+    {
+        $buffers = Services::resolve($this->ide, BufferService::class);
+        foreach (['a.php', 'b.php', 'c.php', 'd.php'] as $name) {
+            $buffers->openFile($this->project->path($name), focus: OpenFocus::Editor);
+        }
+
+        return $buffers;
+    }
+
+    /**
+     * The path a tab was actually OPENED with, which is what the tab strip
+     * hands the menu — not the same string as the project's own path when the
+     * root is a symlink, as macOS temp dirs are.
+     */
+    private function openedPath(string $name): string
+    {
+        foreach (Services::resolve($this->ide, BufferManager::class)->all() as $buffer) {
+            if (basename($buffer->path) === $name) {
+                return $buffer->path;
+            }
+        }
+
+        return $this->project->path($name);
+    }
+
+    /** @return list<string> the open tabs, in strip order */
+    private function tabs(): array
+    {
+        return array_map(
+            static fn (object $buffer): string => basename($buffer->path),
+            Services::resolve($this->ide, BufferManager::class)->all(),
+        );
+    }
+
+    public function testCloseToTheRightClearsOnlyWhatFollowsInTheStrip(): void
+    {
+        $buffers = $this->withFourTabs();
+
+        $buffers->closeTabsToTheSide($this->openedPath('b.php'), TabSide::Right);
+
+        $this->assertSame(['a.php', 'b.php'], $this->tabs());
+    }
+
+    public function testCloseToTheLeftClearsOnlyWhatPrecedesIt(): void
+    {
+        $buffers = $this->withFourTabs();
+
+        $buffers->closeTabsToTheSide($this->openedPath('c.php'), TabSide::Left);
+
+        $this->assertSame(['c.php', 'd.php'], $this->tabs());
+    }
+
+    public function testTheClickedTabSurvivesAndBecomesTheActiveOne(): void
+    {
+        // Closing beside a tab you are not on must not leave you looking at a
+        // buffer that is no longer open.
+        $buffers = $this->withFourTabs();
+
+        $buffers->closeTabsToTheSide($this->openedPath('a.php'), TabSide::Right);
+
+        $this->assertSame(['a.php'], $this->tabs());
+        $this->assertSame('a.php', basename((string) Services::resolve($this->ide, BufferManager::class)->active()?->path));
+    }
+
+    public function testClosingLeftOfTheFIRSTTabClosesNothing(): void
+    {
+        $buffers = $this->withFourTabs();
+
+        $buffers->closeTabsToTheSide($this->openedPath('a.php'), TabSide::Left);
+
+        $this->assertSame(['a.php', 'b.php', 'c.php', 'd.php'], $this->tabs());
+    }
+
+    public function testAPathThatIsNotOpenClosesNothingAtAll(): void
+    {
+        // A stale menu closure naming a tab that has since gone must not be
+        // read as "no index, so close everything".
+        $buffers = $this->withFourTabs();
+
+        $buffers->closeTabsToTheSide($this->project->path('composer.json'), TabSide::Right);
+
+        $this->assertSame(['a.php', 'b.php', 'c.php', 'd.php'], $this->tabs());
+    }
+
+    public function testAnUnsavedTabOnThatSideIsKeptAndReported(): void
+    {
+        // The rule every bulk close here follows: never silently discard edits.
+        $buffers = $this->withFourTabs();
+        Services::resolve($this->ide, BufferManager::class)->get($this->openedPath('c.php'))?->document->insert('x');
+
+        $buffers->closeTabsToTheSide($this->openedPath('a.php'), TabSide::Right);
+
+        $this->assertSame(['a.php', 'c.php'], $this->tabs());
+        $this->assertStringContainsString('unsaved tab kept open', Toasts::last($this->ide));
+    }
+}

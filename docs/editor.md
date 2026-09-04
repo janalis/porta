@@ -53,7 +53,10 @@ a second.
   server's formatter before every `Ctrl+S`. The save never hangs: if the
   server takes more than 2 seconds the file is saved unformatted with a
   status-bar note. `Close Other Tabs` / `Close All Tabs` live in the
-  command palette alongside the tab context menu.
+  command palette alongside the tab context menu, which also offers
+  **Close to the Left** and **Close to the Right** — the run of tabs beside
+  this one in the strip. Every bulk close leaves unsaved tabs open and says
+  how many it kept.
 - **Auto-closing brackets & quotes**: typing an opener inserts its pair,
   selections get wrapped, closers type over, and backspacing an empty pair
   removes both — toggleable (`autoPairs`).

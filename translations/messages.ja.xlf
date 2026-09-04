@@ -2814,6 +2814,14 @@
         <source>Parameter Info</source>
         <target>パラメーター情報</target>
       </trans-unit>
+      <trans-unit id="786">
+        <source>Close to the Left</source>
+        <target>左側を閉じる</target>
+      </trans-unit>
+      <trans-unit id="787">
+        <source>Close to the Right</source>
+        <target>右側を閉じる</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
