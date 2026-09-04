@@ -25,6 +25,7 @@ use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestBottomDock;
+use Porta\Ui\Glyphs;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -180,6 +181,32 @@ final class NavigationControllerTest extends TestCase
         $this->assertSame([], $this->opened);
     }
 
+    /** The rendered picker rows, plain. */
+    private function pickerText(): string
+    {
+        return implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+    }
+
+    public function testDocumentationPastTheTWELFTHLineIsStillReachable(): void
+    {
+        // The overlay renders a window of twelve rows and moves it with the
+        // selection, so the doc was being sliced to twelve for no reason the
+        // surface required — and the rest was gone, not merely off screen.
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$x = 1;\n");
+        $doc = implode("\n", array_map(static fn (int $n): string => "line{$n}", range(start: 1, end: 30)));
+
+        $controller->requestHover(1, 0);
+        $this->client->requests[0]['respond'](['contents' => $doc], error: null);
+
+        $this->assertStringContainsString('line1', $this->pickerText());
+        $this->assertStringNotContainsString('line25', $this->pickerText(), 'row 25 starts off screen');
+
+        Probe::object($this->editor, 'overlayHost')->moveListSelection(24);
+
+        $this->assertStringContainsString('line25', $this->pickerText(), 'and scrolls into view');
+    }
+
     public function testRequestPeekOpensAContextOverlayAtTheDefinition(): void
     {
         $controller = $this->controller();
@@ -197,6 +224,138 @@ final class NavigationControllerTest extends TestCase
         $picker = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
         $this->assertStringContainsString('Peek: a.php:2', $picker);
         $this->assertStringContainsString('function f() {}', $picker);
+    }
+
+    public function testPeekShowsAWHOLESmallDeclarationNotSixLinesOfIt(): void
+    {
+        // Six lines cut most method bodies in half; the overlay pages through
+        // twelve at a time and can scroll the rest.
+        $body = "<?php\nfunction f(): void\n{\n".implode("\n", array_map(static fn (int $n): string => "    \$s{$n} = {$n};", range(start: 1, end: 12)))."\n}\n";
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', $body);
+
+        $controller->requestPeek(0, 0);
+        $this->client->requests[0]['respond']([
+            'uri' => 'file:///p/a.php',
+            'range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 8]],
+        ], error: null);
+
+        Probe::object($this->editor, 'overlayHost')->moveListSelection(15);
+
+        $this->assertStringContainsString('$s12 = 12;', $this->pickerText(), 'the end of the body is reachable');
+    }
+
+    /** @return list<array{label: string, hint: string, value: string}> */
+    private function overlayItems(): array
+    {
+        /** @var array{items: list<array{label: string, hint: string, value: string}>}|null $overlay */
+        $overlay = Probe::get(Probe::object($this->editor, 'overlayHost'), 'overlay');
+        self::assertNotNull($overlay);
+
+        return $overlay['items'];
+    }
+
+    private function peekAt(int $line, string $source): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', $source);
+        $controller->requestPeek($line, 0);
+        $this->client->requests[0]['respond']([
+            'uri' => 'file:///p/a.php',
+            'range' => ['start' => ['line' => $line, 'character' => 0], 'end' => ['line' => $line, 'character' => 1]],
+        ], error: null);
+    }
+
+    public function testPeekStopsAtAFIXEDWindowInAFileLongerThanIt(): void
+    {
+        // The window bound itself, which a short fixture cannot show: every
+        // line exists, so nothing is trimmed and the last row IS the bound.
+        $long = "<?php\n".implode("\n", array_map(static fn (int $n): string => "\$s{$n} = {$n};", range(start: 1, end: 80)))."\n";
+        $this->peekAt(1, $long);
+
+        $items = $this->overlayItems();
+        // One line before the target, then thirty after it.
+        $this->assertSame('1', $items[0]['hint']);
+        $this->assertSame((string) (1 + 30 + 1), $items[array_key_last($items)]['hint']);
+    }
+
+    public function testTheWindowOpensExACTLYOneLineBeforeTheTarget(): void
+    {
+        // Asserted away from line 1, where `max(0, …)` clamps and hides an
+        // off-by-one in the offset entirely.
+        $long = "<?php\n".implode("\n", array_map(static fn (int $n): string => "\$s{$n} = {$n};", range(start: 1, end: 40)))."\n";
+        $this->peekAt(5, $long);
+
+        // Target is line 5, so the window opens on line 4 — hint 5, one-based.
+        $this->assertSame('5', $this->overlayItems()[0]['hint']);
+    }
+
+    public function testATargetOnTheFIRSTLineDoesNotOpenAboveTheFile(): void
+    {
+        // `max(0, …)` is the guard; without it the window starts at -1 and the
+        // preview leads with a blank row for a line that does not exist.
+        $this->peekAt(0, "<?php\n\$x = 1;\n\$y = 2;\n");
+
+        $this->assertSame('1', $this->overlayItems()[0]['hint']);
+    }
+
+    public function testAWindowOfNothingButBlanksStopsAtTheMarkedRow(): void
+    {
+        // What stops the trailing-blank walk from emptying the list: the target
+        // row carries the marker, so it is never blank however empty the file
+        // around it is. An empty list would open no overlay at all.
+        $this->peekAt(2, "\n\n\n\n");
+
+        $items = $this->overlayItems();
+        $this->assertSame(Glyphs::NAV_CURRENT, trim($items[array_key_last($items)]['label']));
+        $this->assertStringContainsString('Peek: a.php:3', $this->pickerText());
+    }
+
+    public function testTheTargetLineIsTheOneMarked(): void
+    {
+        $this->peekAt(1, "<?php\n\$x = 1;\n\$y = 2;\n");
+
+        $items = $this->overlayItems();
+        $this->assertStringStartsWith(Glyphs::NAV_CURRENT, $items[1]['label'], 'the definition line carries the marker');
+        $this->assertStringStartsWith('  ', $items[0]['label'], 'and the context lines are indented past it');
+    }
+
+    public function testTrailingWhitespaceIsStrippedFromAPreviewRow(): void
+    {
+        // It would otherwise pad the popup out to the widest invisible line.
+        $this->peekAt(1, "<?php\n\$x = 1;      \n\$y = 2;\n");
+
+        $this->assertSame(Glyphs::NAV_CURRENT.' $x = 1;', $this->overlayItems()[1]['label']);
+    }
+
+    public function testPeekingAtABlankLineStillOpensTheOverlay(): void
+    {
+        // Every row in the window is blank, so the trim would empty the list
+        // entirely — and an empty list opens nothing at all.
+        $this->peekAt(1, "<?php\n\n\n");
+
+        $this->assertStringContainsString('Peek: a.php:2', $this->pickerText());
+    }
+
+    public function testPeekStopsAtTheEndOfTheFileRatherThanPaddingWithBlanks(): void
+    {
+        // The reader answers '' both for a blank line and for one past the end,
+        // so the trailing run is dropped — otherwise a two-line file would peek
+        // thirty rows of nothing.
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$x = 1;\n");
+
+        $controller->requestPeek(1, 0);
+        $this->client->requests[0]['respond']([
+            'uri' => 'file:///p/a.php',
+            'range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 2]],
+        ], error: null);
+
+        $rows = Probe::object($this->editor, 'overlayHost');
+        /** @var array{items: list<array{label: string, hint: string, value: string}>}|null $overlay */
+        $overlay = Probe::get($rows, 'overlay');
+        self::assertNotNull($overlay);
+        $this->assertSame(['<?php', '$x = 1;'], array_map(static fn (array $i): string => trim(mb_substr($i['label'], start: 2)), $overlay['items']));
     }
 
     public function testRequestPeekFlashesWhenNothingIsFound(): void

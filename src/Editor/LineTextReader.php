@@ -16,9 +16,13 @@ use Porta\Container\AsIdeService;
  * and a row of bare line numbers would be no help at all.
  *
  * `forPath()` binds the reader to one file, so a caller listing several of its
- * lines — the peek preview walks six — pays for at most one read. The line
- * comes back RAW: the location rows trim it, the peek preview only rtrims,
- * because indentation is what makes the preview readable.
+ * lines — the peek preview walks a declaration's worth — pays for at most one
+ * read. The line comes back RAW: the location rows trim it, the peek preview
+ * only rtrims, because indentation is what makes the preview readable.
+ *
+ * A missing line and a blank one both answer `''`. Callers reading past a
+ * file's end therefore cannot tell the two apart, and the peek preview drops
+ * its TRAILING run of blanks rather than trying to.
  */
 #[AsIdeService]
 final readonly class LineTextReader

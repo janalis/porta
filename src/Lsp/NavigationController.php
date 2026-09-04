@@ -30,6 +30,13 @@ use Symfony\Component\Tui\Tui;
 #[AsIdeService]
 final class NavigationController extends AbstractLspController implements EditorNavigationHandler
 {
+    /**
+     * Lines of the definition shown after its first, so Quick Definition shows
+     * a declaration rather than a teaser. The list overlay windows twelve rows
+     * at a time and scrolls the rest.
+     */
+    private const int PEEK_LINES_AFTER = 30;
+
     public function __construct(
         LspSessionPool $lsp,
         CodeEditorWidget $editor,
@@ -348,8 +355,12 @@ final class NavigationController extends AbstractLspController implements Editor
                 if (null === $text) {
                     return false;
                 }
-                $lines = \array_slice(explode("\n", $text), offset: 0, length: 12);
-                $items = array_map(static fn (string $l) => ['label' => $l, 'hint' => '', 'value' => ''], $lines);
+                // NOT truncated. The list overlay already scrolls — it renders
+                // a window of at most twelve rows and moves it with the
+                // selection — so slicing the text to twelve threw away
+                // documentation the surface was perfectly able to show, and
+                // did it silently.
+                $items = array_map(static fn (string $l) => ['label' => $l, 'hint' => '', 'value' => ''], explode("\n", $text));
                 $this->editor->openListOverlay($this->trans('Documentation'), $items, static function (): void {});
                 $this->tui->requestRender();
 
@@ -483,18 +494,29 @@ final class NavigationController extends AbstractLspController implements Editor
 
                 $targetLine = (int) ($location['range']['start']['line'] ?? 0);
                 $items = [];
-                // A few lines of context around the definition.
+                // Enough to hold a whole small declaration, not the six lines
+                // this used to show: the overlay renders twelve rows and
+                // scrolls, so a window that stopped at six was cutting off
+                // bodies the surface could have paged through.
                 $read = $this->text->forPath($target); // one read for the whole window
-                for ($i = max(0, $targetLine - 1); $i <= ($targetLine + 4); ++$i) {
-                    $text = rtrim($read($i));
-                    if ('' === $text && $i > $targetLine) {
-                        continue;
-                    }
+                for ($i = max(0, $targetLine - 1); $i <= ($targetLine + self::PEEK_LINES_AFTER); ++$i) {
                     $items[] = [
-                        'label' => ($i === $targetLine ? Glyphs::NAV_CURRENT.' ' : '  ').$text,
+                        'label' => ($i === $targetLine ? Glyphs::NAV_CURRENT.' ' : '  ').rtrim($read($i)),
                         'hint' => (string) ($i + 1),
                         'value' => $target.':'.$i,
                     ];
+                }
+                // Blank rows at the END are either the gap after the
+                // declaration or past the end of the file — the reader answers
+                // '' for both. Interior blanks stay: they are the code's shape.
+                //
+                // The null arm is unreachable rather than defensive: the target
+                // line is always inside the window and its row always carries
+                // the marker glyph, so the walk always stops on a non-blank row
+                // long before the list could empty. It is written this way
+                // because `array_key_last()` is nullable, not to guard.
+                while (null !== ($last = array_key_last($items)) && '' === trim($items[$last]['label'])) {
+                    array_pop($items);
                 }
                 // The target line is always in range, so $items is never empty.
 

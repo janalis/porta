@@ -20,7 +20,9 @@ Go to declaration (`Ctrl+B`/`F12`), implementation (`Ctrl+Alt+B`), type
 definition (`Ctrl+Shift+B`) — a chooser opens when the server returns
 several targets — with a back-navigation stack (`Ctrl+Alt+Left`). Peek
 definition (`Ctrl+Shift+I`) shows the target inline without leaving the
-file. Find usages (`Alt+F7`) fills the results panel.
+file — a whole small declaration, scrolled with the arrow keys, and `Enter`
+jumps to it. Quick documentation (`Shift+F1`) scrolls the same way, however
+long the server's answer is. Find usages (`Alt+F7`) fills the results panel.
 
 ## Find in file
 
