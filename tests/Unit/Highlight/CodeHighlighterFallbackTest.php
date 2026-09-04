@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Highlight;
 use PHPUnit\Framework\TestCase;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Tests\Support\ClosureHighlightProvider;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 final class CodeHighlighterFallbackTest extends TestCase
 {
@@ -36,11 +37,42 @@ final class CodeHighlighterFallbackTest extends TestCase
      * `#[Autowire(service39m: …`, over-runs its width and drags every
      * column-placed decoration out of position.
      */
-    public function testALineWithAMalformedEscapeIsRenderedPlain(): void
+    public function testASplitEscapeIsPutBackTogetherAndKeepsItsColours(): void
     {
+        // The inserted sequence is dropped, restoring the ESC [39m it split.
+        // Rendering plain would be safe but would cost the line its colours,
+        // which is what the reporter actually noticed.
         $source = "#[Autowire(service: 'x')]";
         $split = "#[Autowire(\x1b[38;5;117mservice\x1b[\x1b[38;5;117m39m\x1b[39m: 'x')]";
         $highlighter = new CodeHighlighter(new ClosureHighlightProvider(static fn (): string => $split));
+        $highlighter->setFile('x.php');
+
+        $row = $highlighter->highlight([$source], 1)[0];
+
+        $this->assertSame($source, AnsiUtils::stripAnsiCodes((string) $row), 'the visible text is exactly the source');
+        $this->assertStringContainsString("\x1b[38;5;117m", (string) $row, 'and it kept its colours');
+        $this->assertDoesNotMatchRegularExpression('/\x1b\[[0-9;]*\x1b/', (string) $row, 'with no split escape left');
+    }
+
+    public function testARepairThatWouldCHANGETheTextIsRefused(): void
+    {
+        // The repair is a guess about a third-party bug's shape. A guess that
+        // paints the wrong thing is worse than one that declines, so it is
+        // checked against the source and the line falls back to plain.
+        $source = 'abc';
+        $wrong = "a\x1b[\x1b[32m39mXYZ";
+        $highlighter = new CodeHighlighter(new ClosureHighlightProvider(static fn (): string => $wrong));
+        $highlighter->setFile('x.php');
+
+        $this->assertSame([$source], $highlighter->highlight([$source], 1));
+    }
+
+    public function testAMalformedEscapeWithNoREPAIRABLEShapeIsRenderedPlain(): void
+    {
+        // ESC [ running straight into another ESC with no trailing parameters
+        // is broken in a way nothing can put back together.
+        $source = 'abc';
+        $highlighter = new CodeHighlighter(new ClosureHighlightProvider(static fn (): string => "a\x1b[\x1b[32mbc"));
         $highlighter->setFile('x.php');
 
         $this->assertSame([$source], $highlighter->highlight([$source], 1));
@@ -52,7 +84,9 @@ final class CodeHighlighterFallbackTest extends TestCase
         // costs its own colours and nothing else's.
         $good = 'echo 1;';
         $bad = 'echo 2;';
-        $markup = "\x1b[32m{$good}\x1b[39m\n\x1b[\x1b[32m39m{$bad}";
+        // The bad line's damage is unrepairable: nothing follows the inserted
+        // sequence that could be the parameters it swallowed.
+        $markup = "\x1b[32m{$good}\x1b[39m\n\x1b[\x1b[32m{$bad}";
         $highlighter = new CodeHighlighter(new ClosureHighlightProvider(static fn (): string => $markup));
         $highlighter->setFile('x.php');
 
@@ -77,7 +111,7 @@ final class CodeHighlighterFallbackTest extends TestCase
     {
         // Its codes are the thing being distrusted; carrying them onward would
         // spread the fault instead of containing it.
-        $markup = "\x1b[\x1b[32m39mfirst\nsecond";
+        $markup = "\x1b[\x1b[32mfirst\nsecond";
         $highlighter = new CodeHighlighter(new ClosureHighlightProvider(static fn (): string => $markup));
         $highlighter->setFile('x.php');
 

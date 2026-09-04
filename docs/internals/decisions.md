@@ -1235,3 +1235,31 @@ every unit test constructed the controller itself, which proves the class works
 and never that anything builds it or reaches it in time. That is the same shape
 as the round that shipped a dead LSP controller with all six gates green and
 100% coverage — see `porta-self-registering-services`.
+
+## Breadcrumbs got the server's symbols; sticky scroll did not (2026-09-04)
+
+`LspMapper::symbolScopes()` turns a `documentSymbol` tree into the scope shape
+`BreadcrumbScanner::scan()` produces, so `select()` reads it unchanged and every
+language gets a breadcrumb trail.
+
+`stickyHeaders()` reads that same shape and would work identically — but its
+caller is `CodeEditorWidget::stickyHeadersAt()`, and the widget cannot reach
+`DocumentScopes` without a 33rd property on the class that already pins
+`too-many-properties`. The round that added parameter info met the same ceiling
+and answered it by folding two fields into one VO; there is no equivalent fold
+here, and hunting for one to buy a slot would be contrived.
+
+The honest options, none taken yet:
+
+- **Move the pin.** Rejected for now on the standing note that this class should
+  not move that ratchet again — three features running have already pushed its
+  method count.
+- **Extract `stickyHeadersAt()`** into a collaborator holding both the widget and
+  `DocumentScopes`. Architecturally right and continues the split-up of the
+  widget, but it sits in the render sequence, which is where this project's
+  worst bugs have come from — not worth doing as a by-the-way.
+
+So the asymmetry is deliberate and documented rather than hidden: breadcrumbs
+name your scope in TypeScript, the sticky header above it does not. Whichever
+option is taken, it should be taken for its own reasons and not to finish this
+sentence.

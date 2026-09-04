@@ -20,11 +20,13 @@ namespace Porta\Highlight;
  *   many `"\n"`-separated lines as the input. {@see CodeHighlighter} guards
  *   that one and falls back to plain text for the whole buffer, because a line
  *   count it cannot trust makes every row the wrong row.
- * - **Emit only well-formed escapes.** Core drops the markup of any single line
- *   carrying a CSI that never terminates, and renders that line plain: the
- *   orphaned tail is visible TEXT, so it widens the row and drags every
+ * - **Emit only well-formed escapes.** A CSI that never terminates leaves its
+ *   parameters as visible TEXT, which widens the row and drags every
  *   column-placed decoration with it. `tempest/highlight` does this on some
- *   attribute lines, which is why the check exists.
+ *   attribute lines, which is why the check exists. Core repairs the one shape
+ *   it can — a whole sequence INSERTED between `ESC [` and its parameters — and
+ *   only when the result reduces to that line's source; anything else renders
+ *   the line plain.
  *
  * Markup is NOT required to reduce to its input byte-for-byte, whatever an
  * earlier version of this docblock claimed — nothing ever enforced it and the

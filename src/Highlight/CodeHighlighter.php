@@ -8,6 +8,7 @@ use Porta\Support\LanguageMap;
 use Porta\Support\Scheduler;
 use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiCodeTracker;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Tempest\Highlight\TerminalTheme;
 
 /**
@@ -55,6 +56,12 @@ final class CodeHighlighter implements HighlightSink
      * never terminated. Everything after it renders as text.
      */
     private const string MALFORMED_ESCAPE = '/\x1b\[[0-9;]*\x1b/';
+
+    /**
+     * The repairable form of it: a whole sequence sitting between `ESC [` and
+     * the parameters that belong to it. The capture is those parameters.
+     */
+    private const string SPLIT_ESCAPE = '/\x1b\[\x1b\[[0-9;]*m([0-9;]*m)/';
 
     private readonly TerminalTheme $syntaxTheme;
 
@@ -373,11 +380,15 @@ final class CodeHighlighter implements HighlightSink
         $result = [];
         foreach ($hlLines as $index => $line) {
             if (1 === preg_match(self::MALFORMED_ESCAPE, $line)) {
-                // Plain, and NOT fed to the tracker: this line's codes are the
-                // thing being distrusted, so carrying them into the next line
-                // would spread the fault rather than contain it.
-                $result[] = $sourceLines[$index] ?? '';
-                continue;
+                $line = self::repair($line, $sourceLines[$index] ?? '');
+                if (null === $line) {
+                    // Beyond repair. Plain, and NOT fed to the tracker: this
+                    // line's codes are the thing being distrusted, so carrying
+                    // them into the next line would spread the fault rather
+                    // than contain it.
+                    $result[] = $sourceLines[$index] ?? '';
+                    continue;
+                }
             }
 
             $prefix = $tracker->getActiveCodes();
@@ -386,6 +397,31 @@ final class CodeHighlighter implements HighlightSink
         }
 
         return $result;
+    }
+
+    /**
+     * Put a split escape back together, or null when the result cannot be
+     * trusted.
+     *
+     * The fault has a recoverable shape: a complete sequence has been INSERTED
+     * between `ESC [` and the parameters it was meant to carry, so
+     * `ESC [ ESC [38;5;117m 39m` was `ESC [39m` before something got in the way.
+     * Dropping the inserted sequence restores it exactly.
+     *
+     * The repair is then CHECKED rather than assumed: it is only used when the
+     * result reduces to the line's own source. That is a guess about a
+     * third-party bug's shape, and a guess that paints the wrong thing is worse
+     * than one that declines — so when the check fails the caller renders the
+     * line plain, which is always safe.
+     */
+    private static function repair(string $line, string $source): ?string
+    {
+        $fixed = preg_replace(self::SPLIT_ESCAPE, replacement: "\x1b[$1", subject: $line);
+        if (null === $fixed || 1 === preg_match(self::MALFORMED_ESCAPE, $fixed)) {
+            return null;
+        }
+
+        return AnsiUtils::stripAnsiCodes($fixed) === $source ? $fixed : null;
     }
 
     /**
