@@ -17,10 +17,19 @@ namespace Porta\Highlight;
  *   I/O belongs in an asynchronous provider (see the delivery seam added for
  *   out-of-process backends), not in a synchronous one.
  * - **Preserve line structure.** The returned markup must contain exactly as
- *   many `"\n"`-separated lines as the input, and must reduce to the input
- *   byte-for-byte once ANSI codes are stripped. {@see CodeHighlighter} guards
- *   this and falls back to plain text rather than render a mangled buffer, but
- *   a provider that trips the guard is simply broken.
+ *   many `"\n"`-separated lines as the input. {@see CodeHighlighter} guards
+ *   that one and falls back to plain text for the whole buffer, because a line
+ *   count it cannot trust makes every row the wrong row.
+ * - **Emit only well-formed escapes.** Core drops the markup of any single line
+ *   carrying a CSI that never terminates, and renders that line plain: the
+ *   orphaned tail is visible TEXT, so it widens the row and drags every
+ *   column-placed decoration with it. `tempest/highlight` does this on some
+ *   attribute lines, which is why the check exists.
+ *
+ * Markup is NOT required to reduce to its input byte-for-byte, whatever an
+ * earlier version of this docblock claimed — nothing ever enforced it and the
+ * JSON backend deliberately strips diff markers. Changing the TEXT is a
+ * transformation; breaking an ESCAPE is a fault. Only the second is guarded.
  *
  * This interface lives in `Porta\Highlight` — the consuming namespace — so the
  * highlighting subsystem never depends on `Porta\Plugin`, mirroring

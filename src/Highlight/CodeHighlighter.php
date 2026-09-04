@@ -50,6 +50,12 @@ final class CodeHighlighter implements HighlightSink
      */
     private const float ANSWER_TIMEOUT_SECONDS = 2.0;
 
+    /**
+     * A CSI whose parameter bytes run into another ESC — i.e. an escape that
+     * never terminated. Everything after it renders as text.
+     */
+    private const string MALFORMED_ESCAPE = '/\x1b\[[0-9;]*\x1b/';
+
     private readonly TerminalTheme $syntaxTheme;
 
     /** @var string[] */
@@ -252,7 +258,7 @@ final class CodeHighlighter implements HighlightSink
         }
 
         $lines = $this->inFlightLines ?? [];
-        $result = $this->normalize($markup, \count($lines));
+        $result = $this->normalize($markup, $lines);
         if (null === $result) {
             // Mangled line structure is a backend fault, not a render error.
             $this->recordFailure(new \RuntimeException('highlighter changed the line count'));
@@ -333,21 +339,47 @@ final class CodeHighlighter implements HighlightSink
     }
 
     /**
-     * Split markup into independently renderable lines, or null when the
-     * backend broke the one contract core cannot paper over.
+     * Split markup into independently renderable lines, dropping the markup of
+     * any line carrying a MALFORMED escape, or null when the line COUNT is
+     * wrong — the one fault core cannot paper over at all.
+     *
+     * `tempest/highlight` emits a SPLIT escape on some attribute lines: `ESC [`,
+     * then a whole other sequence, then the orphaned tail `39m`. The tail is not
+     * a colour, it is visible TEXT — the row renders as
+     * `#[Autowire(service39m: …`, measures five columns wider than its content,
+     * and drags every column-placed decoration out of position with it.
+     *
+     * The check is deliberately narrow. Markup is NOT required to reduce to its
+     * input byte-for-byte: the JSON backend strips diff markers on purpose, and
+     * that is a transformation, not a fault. A CSI whose parameters run into
+     * another ESC is a fault under any reading.
+     *
+     * One line, not the file: lines are independently renderable by
+     * construction here, so a backend that breaks one costs its own colours and
+     * nothing else's.
+     *
+     * @param array<array-key, string> $sourceLines the lines the markup was made from
      *
      * @return string[]|null
      */
-    private function normalize(string $markup, int $expectedLines): ?array
+    private function normalize(string $markup, array $sourceLines): ?array
     {
         $hlLines = explode("\n", $markup);
-        if (\count($hlLines) !== $expectedLines) {
+        if (\count($hlLines) !== \count($sourceLines)) {
             return null;
         }
 
         $tracker = new AnsiCodeTracker();
         $result = [];
-        foreach ($hlLines as $line) {
+        foreach ($hlLines as $index => $line) {
+            if (1 === preg_match(self::MALFORMED_ESCAPE, $line)) {
+                // Plain, and NOT fed to the tracker: this line's codes are the
+                // thing being distrusted, so carrying them into the next line
+                // would spread the fault rather than contain it.
+                $result[] = $sourceLines[$index] ?? '';
+                continue;
+            }
+
             $prefix = $tracker->getActiveCodes();
             $tracker->processText($line);
             $result[] = $prefix.$line.($tracker->hasActiveCodes() ? Sgr::RESET : '');
