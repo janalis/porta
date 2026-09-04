@@ -2794,6 +2794,22 @@
         <source>%action% keeps its binding — %file% sets it</source>
         <target>%action% conserve son raccourci — %file% le définit</target>
       </trans-unit>
+      <trans-unit id="781">
+        <source>Next Declaration</source>
+        <target>Déclaration suivante</target>
+      </trans-unit>
+      <trans-unit id="782">
+        <source>Previous Declaration</source>
+        <target>Déclaration précédente</target>
+      </trans-unit>
+      <trans-unit id="783">
+        <source>No declarations in this file</source>
+        <target>Aucune déclaration dans ce fichier</target>
+      </trans-unit>
+      <trans-unit id="784">
+        <source>Wrapped to %member%</source>
+        <target>Retour à %member%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

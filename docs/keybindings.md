@@ -97,6 +97,7 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `Ctrl+F12` | File structure popup |
 | `Alt+7` | Structure panel (persistent, on the dock) |
 | `F2` / `Shift+F2` | Next / previous problem in this file (wraps, and says so) |
+| `Alt+↓` / `Alt+↑` | Next / previous declaration — class or method (wraps, and says so) |
 | `F11` | Toggle a bookmark on the caret's line |
 | `Alt+2` | Bookmarks — every mark across the project |
 | `Alt+8` | TODOs — the bundled scan of TODO/FIXME comments |

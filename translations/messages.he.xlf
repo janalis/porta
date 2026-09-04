@@ -2794,6 +2794,22 @@
         <source>%action% keeps its binding — %file% sets it</source>
         <target>%action% שומר על הקיצור שלו — %file% מגדיר אותו</target>
       </trans-unit>
+      <trans-unit id="781">
+        <source>Next Declaration</source>
+        <target>ההצהרה הבאה</target>
+      </trans-unit>
+      <trans-unit id="782">
+        <source>Previous Declaration</source>
+        <target>ההצהרה הקודמת</target>
+      </trans-unit>
+      <trans-unit id="783">
+        <source>No declarations in this file</source>
+        <target>אין הצהרות בקובץ זה</target>
+      </trans-unit>
+      <trans-unit id="784">
+        <source>Wrapped to %member%</source>
+        <target>חזרה אל %member%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

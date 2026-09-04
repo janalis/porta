@@ -2794,6 +2794,22 @@
         <source>%action% keeps its binding — %file% sets it</source>
         <target>%action% conserva su atajo — %file% lo define</target>
       </trans-unit>
+      <trans-unit id="781">
+        <source>Next Declaration</source>
+        <target>Siguiente declaración</target>
+      </trans-unit>
+      <trans-unit id="782">
+        <source>Previous Declaration</source>
+        <target>Declaración anterior</target>
+      </trans-unit>
+      <trans-unit id="783">
+        <source>No declarations in this file</source>
+        <target>No hay declaraciones en este archivo</target>
+      </trans-unit>
+      <trans-unit id="784">
+        <source>Wrapped to %member%</source>
+        <target>Vuelta a %member%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

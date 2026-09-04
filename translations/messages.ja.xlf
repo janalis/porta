@@ -2794,6 +2794,22 @@
         <source>%action% keeps its binding — %file% sets it</source>
         <target>%action% のキー割当はそのままです — %file% が設定しています</target>
       </trans-unit>
+      <trans-unit id="781">
+        <source>Next Declaration</source>
+        <target>次の宣言</target>
+      </trans-unit>
+      <trans-unit id="782">
+        <source>Previous Declaration</source>
+        <target>前の宣言</target>
+      </trans-unit>
+      <trans-unit id="783">
+        <source>No declarations in this file</source>
+        <target>このファイルに宣言はありません</target>
+      </trans-unit>
+      <trans-unit id="784">
+        <source>Wrapped to %member%</source>
+        <target>%member% に折り返しました</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

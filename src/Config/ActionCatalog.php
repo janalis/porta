@@ -137,6 +137,10 @@ final class ActionCatalog
         'ide_problems' => ['label' => 'Show Problems', 'keys' => ['alt+6']],
         'next_problem' => ['label' => 'Next Problem', 'keys' => ['f2']],
         'prev_problem' => ['label' => 'Previous Problem', 'keys' => ['shift+f2']],
+        // PhpStorm's Alt+Down / Alt+Up. Free in the editor: the only other
+        // binding is inside the find-in-files modal, which owns its own keymap.
+        'next_member' => ['label' => 'Next Declaration', 'keys' => ['alt+down']],
+        'prev_member' => ['label' => 'Previous Declaration', 'keys' => ['alt+up']],
         // Alt+2 is PhpStorm's Bookmarks tool window, beside Alt+1's project tree.
         'toggle_bookmark' => ['label' => 'Toggle Bookmark', 'keys' => ['f11']],
         'ide_bookmarks' => ['label' => 'Show Bookmarks', 'keys' => ['alt+2']],

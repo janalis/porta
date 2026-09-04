@@ -48,8 +48,11 @@ final class KeybindingsDocTest extends TestCase
     private static function normalise(string $text): string
     {
         return str_replace(
-            ['\\`', 'page_down', 'page_up', 'left', 'right', 'pagedown', 'pageup', '←', '→'],
-            ['`', 'pgdn', 'pgup', 'arrowl', 'arrowr', 'pgdn', 'pgup', 'arrowl', 'arrowr'],
+            // The vertical arrows map to the WORDS rather than to a marker of
+            // their own: 'pgup' contains 'up', so rewriting the word would
+            // corrupt the page keys handled just before it.
+            ['\\`', 'page_down', 'page_up', 'left', 'right', 'pagedown', 'pageup', '←', '→', '↑', '↓'],
+            ['`', 'pgdn', 'pgup', 'arrowl', 'arrowr', 'pgdn', 'pgup', 'arrowl', 'arrowr', 'up', 'down'],
             strtolower($text),
         );
     }

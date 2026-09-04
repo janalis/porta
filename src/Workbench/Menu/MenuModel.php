@@ -119,6 +119,8 @@ final class MenuModel
             'i:ide_problems',
             'i:next_problem',
             'i:prev_problem',
+            'i:next_member',
+            'i:prev_member',
             'i:toggle_bookmark',
             'i:ide_bookmarks',
             'i:ide_recent_locations',
