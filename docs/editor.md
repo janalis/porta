@@ -34,6 +34,16 @@ five-parameter signature no longer reads the same at every comma. `Ctrl+Shift+P`
 brings the popup back after `Escape`, or summons it anywhere inside an argument
 list. (PhpStorm binds this to `Ctrl+P`, which Go to File owns here.)
 
+### Breadcrumbs
+
+The bar under the tabs names the scopes containing the caret —
+`Namespace › Class › method` — and each crumb is clickable.
+
+PHP is scanned offline, so it is instant and correct with no language server
+running at all. Other languages use the server's own `textDocument/documentSymbol`
+answer, refreshed on save and on opening a buffer; without a server that provides
+it, the bar simply stays empty as before.
+
 ## Buffers and tabs
 
 Multiple buffers with an editor tab bar: `Ctrl+←`/`Ctrl+→` switch,

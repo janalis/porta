@@ -329,6 +329,94 @@ final class LspMapper
     }
 
     /**
+     * Which scope kind a `SymbolKind` counts as for the breadcrumbs trail, or
+     * null for a symbol that is not a scope you can be INSIDE.
+     *
+     * A property, a constant or a variable is a member, not a container: a
+     * caret is never "in" one in the sense the trail means, and listing them
+     * would make every line of a class body its own crumb.
+     */
+    private const array SCOPE_KINDS = [
+        2 => 'namespace', // module
+        3 => 'namespace',
+        4 => 'namespace', // package
+        5 => 'type', // class
+        10 => 'type', // enum
+        11 => 'type', // interface
+        23 => 'type', // struct
+        6 => 'function', // method
+        9 => 'function', // constructor
+        12 => 'function',
+    ];
+
+    /**
+     * A `textDocument/documentSymbol` tree as the breadcrumb scopes shape —
+     * the same one {@see \Porta\Editor\BreadcrumbScanner::scan()} produces, so
+     * `select()` and `stickyHeaders()` work over it unchanged and non-PHP files
+     * get both for the first time.
+     *
+     * Two differences from the flattening {@see flattenSymbols()} does, and both
+     * are the point: the symbol's FULL `range` is kept rather than the
+     * `selectionRange` that names it, because a trail asks which scopes CONTAIN
+     * the caret; and the tree walk is depth-first so a parent always precedes
+     * its children, which is the outermost-first order `select()` relies on.
+     *
+     * @param list<array<array-key, mixed>|scalar|null> $symbols
+     *
+     * @return list<array{label: string, startLine: int, endLine: int, kind: string}>
+     */
+    public static function symbolScopes(array $symbols): array
+    {
+        $scopes = [];
+        self::collectScopes($symbols, $scopes);
+
+        return $scopes;
+    }
+
+    /**
+     * @param list<array<array-key, mixed>|scalar|null>                              $symbols
+     * @param list<array{label: string, startLine: int, endLine: int, kind: string}> $scopes
+     */
+    private static function collectScopes(array $symbols, array &$scopes): void
+    {
+        foreach ($symbols as $symbol) {
+            if (!\is_array($symbol)) {
+                continue;
+            }
+
+            // Checked, not cast: a non-string name casts to "Array" (with a
+            // warning) and becomes a crumb labelled exactly that.
+            $name = \is_string($symbol['name'] ?? null) ? $symbol['name'] : '';
+            $kind = self::SCOPE_KINDS[$symbol['kind'] ?? 0] ?? null;
+            // DocumentSymbol carries `range`; the older SymbolInformation puts
+            // it under `location`. Both are in the wild, so both are read.
+            $range = match (true) {
+                \is_array($symbol['range'] ?? null) => $symbol['range'],
+                \is_array($symbol['location']['range'] ?? null) => $symbol['location']['range'],
+                default => [],
+            };
+            $start = \is_array($range['start'] ?? null) ? $range['start'] : [];
+            $end = \is_array($range['end'] ?? null) ? $range['end'] : [];
+            $from = (int) ($start['line'] ?? -1);
+            $to = (int) ($end['line'] ?? -1);
+
+            // A symbol with no usable range cannot say whether it contains the
+            // caret; one that is not a container is not a crumb. Either way its
+            // CHILDREN may still be both, so the walk continues.
+            if ('' !== $name && null !== $kind && $from >= 0 && $to >= $from) {
+                // LSP counts lines from zero; the scopes shape counts from one.
+                $scopes[] = ['label' => $name, 'startLine' => $from + 1, 'endLine' => $to + 1, 'kind' => $kind];
+            }
+
+            if (\is_array($symbol['children'] ?? null)) {
+                /** @var list<array<array-key, mixed>|scalar|null> $children */
+                $children = $symbol['children'];
+                self::collectScopes($children, $scopes);
+            }
+        }
+    }
+
+    /**
      * Group textDocument/publishDiagnostics params into the editor's per-line
      * diagnostic shape, sorted by line. Multi-line ranges keep PHP_INT_MAX as
      * the end column so the whole first line is underlined.
