@@ -1276,3 +1276,37 @@ The lesson is the ratchet's, not this feature's: a pinned class can still take a
 dependency, provided something it was already carrying is paid back. Hunting for
 a fold to buy a slot would be contrived; taking one that was already two halves
 of the same fact is not.
+
+## Dock maximise: the clamp is not the blocker — the units are (2026-09-04)
+
+I had twice deferred a maximise toggle for the bottom panel on the belief that
+`clampPanel()`'s `rows - 8` ceiling protected the layout and could not safely be
+exceeded. Measured: it does not. Rendering an Ide with the panel set to
+`rows - 8`, `- 6`, `- 4`, `- 3` and `- 2` degrades nothing — the ceiling is a UX
+choice about keeping the editor usable, not a safety bound.
+
+The real obstacle is a **units mismatch**, and it is worth knowing about before
+anything else touches panel sizing:
+
+- `LayoutController::resizeBottomPanels()` → `BottomDock::setPanelRows()` sets
+  each panel's CONTENT rows.
+- `$renderer->getWidgetRect($panel)->rows` reports the RENDERED height, chrome
+  included, and the two do not round-trip: a panel set to 9 measured 11, and
+  restoring 9 left it at 9 rather than back at 11.
+
+`nudgeBottomPanel()` already mixes them — it feeds `$rect->rows + $delta` back
+into `clampPanel()` — and gets away with it because a ±1 nudge hides the drift
+behind the thing the user is watching. A maximise/restore toggle cannot: it has
+to reproduce a height exactly, and every candidate for "the height to restore"
+was wrong. The rect over-reports; the last value we SET goes stale when
+something else sizes the panel; the persisted percent is null until something
+has persisted one.
+
+**What would close it:** one number in one unit. Either the rect learns to
+report content rows, or the controller stops reading rects for sizing and owns
+the panel height outright — which would also let `nudgeBottomPanel()` stop
+round-tripping through the renderer. That is a sizing-ownership change, small
+but not incidental, and it should be done deliberately rather than as the
+by-the-way of adding a keybinding.
+
+The attempt is reverted, not shipped half-right.
