@@ -54,6 +54,12 @@ final class ContextMenuBuilder
                 'e:copy',
                 'e:paste',
                 MenuModel::SEP,
+                // Their own group, below the clipboard verbs they belong with
+                // but above the navigation ones: they copy, but not the
+                // selection, and PhpStorm keeps them apart for the same reason.
+                'i:copy_path',
+                'i:copy_reference',
+                MenuModel::SEP,
                 'e:goto_definition',
                 'e:goto_implementation',
                 'e:find_usages',

@@ -2878,6 +2878,10 @@
         <source>That snapshot matches the file on disk</source>
         <target>תמונת מצב זו זהה לקובץ שבדיסק</target>
       </trans-unit>
+      <trans-unit id="809">
+        <source>Copy Reference</source>
+        <target>העתקת הפניה</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

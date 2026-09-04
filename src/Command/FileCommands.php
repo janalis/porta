@@ -10,6 +10,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenAs;
 use Porta\Editor\OpenFocus;
+use Porta\Editor\ReferenceCopier;
 use Porta\Editor\ScratchFiles;
 use Porta\Lsp\RefactorController;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
@@ -23,6 +24,7 @@ final class FileCommands implements CommandProvider
         private readonly RefactorController $refactor,
         private readonly BufferManager $buffers,
         private readonly ScratchFiles $scratches,
+        private readonly ReferenceCopier $references,
     ) {}
 
     #[\Override]
@@ -32,6 +34,8 @@ final class FileCommands implements CommandProvider
             ->add('save', fn () => $this->bufferService->saveCurrentFile())
             ->add('save_all', fn () => $this->bufferService->saveAllBuffers())
             ->add('ide_new_scratch', fn () => $this->scratches->open(), keyBound: KeyDispatch::Bound)
+            ->add('copy_path', fn () => $this->references->copyPath(), keyBound: KeyDispatch::Bound)
+            ->add('copy_reference', fn () => $this->references->copyReference(), keyBound: KeyDispatch::Bound)
             ->add('reformat', fn () => $this->refactor->requestReformat())
             ->add('open_as_text', $this->openActiveAsText(...), when: fn (): bool => true === $this->buffers->active()?->isViewer());
     }

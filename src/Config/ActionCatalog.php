@@ -102,6 +102,11 @@ final class ActionCatalog
         // Editor: IDE features
         'save' => ['label' => 'Save File'],
         'save_all' => ['label' => 'Save All'],
+        // PhpStorm's pair, on PhpStorm's chords. The tree has had both path
+        // forms on its context menu all along; what was missing is having them
+        // where you are — in the file itself.
+        'copy_path' => ['label' => 'Copy Path', 'keys' => ['ctrl+shift+c']],
+        'copy_reference' => ['label' => 'Copy Reference', 'keys' => ['ctrl+alt+shift+c']],
         // PhpStorm's is Ctrl+Alt+Shift+Insert, which this terminal cannot
         // deliver: KeyParser returns null for every modified `Insert` sequence
         // (`\x1b[2;8~` included), so a binding on it would be unreachable.

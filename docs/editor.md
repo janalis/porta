@@ -168,6 +168,21 @@ breakpoint dots, fold triangles, indent guides, identifier-occurrence and matchi
 highlighting, and dimmed inline parameter-name/type **inlay hints** from
 the language server.
 
+## Copy path and reference
+
+`Ctrl+Shift+C` copies the active file's path relative to the project.
+`Ctrl+Alt+Shift+C` copies a **reference** to where the caret is: the enclosing
+symbol when there is one (`App\Http\Svc::run`, or `App\helper` for a namespaced
+function), and `path/to/file.php:12` when there is not. Both are on the editor's
+right-click menu; the file tree has had the two path forms on its own menu all
+along.
+
+A symbol is the more useful half in a message or a test filter — it survives the
+file being edited underneath it, where a line number does not — which is why the
+line number is the fallback rather than the default. The scopes come from the
+same source the breadcrumb trail reads, so this works in every language that
+does.
+
 ## Scratch files
 
 `Ctrl+Alt+Shift+S` asks which language and opens an empty buffer for it —

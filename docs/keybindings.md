@@ -39,6 +39,8 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | --- | --- |
 | `Ctrl+S` | Save |
 | `Ctrl+Alt+S` | Save all |
+| `Ctrl+Shift+C` | Copy the active file's path, relative to the project |
+| `Ctrl+Alt+Shift+C` | Copy a reference to the caret — the enclosing symbol (`App\Svc::run`), or `path:line` when there is none |
 | `Ctrl+Alt+Shift+S` | New scratch file — pick a language, get an empty buffer in `<home>/.porta/scratches/` |
 | `Ctrl+Shift+N` / `Ctrl+P` | Go to file (fuzzy finder) |
 | `Ctrl+E` | Recent files popup (`Ctrl+E` again cycles, `Enter` opens) |

@@ -2878,6 +2878,10 @@
         <source>That snapshot matches the file on disk</source>
         <target>Cet instantané est identique au fichier sur le disque</target>
       </trans-unit>
+      <trans-unit id="809">
+        <source>Copy Reference</source>
+        <target>Copier la référence</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
