@@ -31,7 +31,24 @@ final class EditorActions
         private readonly AutoPairService $autoPair,
         private readonly EditorHost $host,
         private string $clipboard = '',
-    ) {}
+    ) {
+        $this->column = new ColumnSelection();
+    }
+
+    /**
+     * The keyboard column-selection anchor. Rebuilt with the rest of the
+     * per-document helpers, so switching buffers leaves the mode behind — a
+     * rectangle anchored in a file you are no longer looking at is nothing.
+     */
+    private ColumnSelection $column;
+
+    /** Which way each selection verb moves the rectangle's moving corner. */
+    private const array COLUMN_MOVES = [
+        'select_up' => [-1, 0],
+        'select_down' => [1, 0],
+        'select_left' => [0, -1],
+        'select_right' => [0, 1],
+    ];
 
     /**
      * The pure run() forwards of the key cascade, grouped by where they sit
@@ -39,7 +56,7 @@ final class EditorActions
      * position of each list in handleKey) IS the historical match order —
      * see the class docblock before reordering anything.
      */
-    private const array PRE_CARET_ACTIONS = ['goto_line', 'rename_symbol', 'trigger_completion', 'parameter_info', 'add_caret_above', 'add_caret_below', 'add_next_occurrence'];
+    private const array PRE_CARET_ACTIONS = ['goto_line', 'rename_symbol', 'trigger_completion', 'parameter_info', 'toggle_column_mode', 'add_caret_above', 'add_caret_below', 'add_next_occurrence'];
     private const array HISTORY_STRUCTURE_ACTIONS = ['undo', 'redo', 'expand_selection', 'shrink_selection', 'goto_matching_bracket'];
     private const array CLIPBOARD_LINE_ACTIONS = ['copy', 'cut', 'paste', 'duplicate_line', 'move_line_up', 'move_line_down', 'toggle_comment', 'toggle_fold'];
 
@@ -102,6 +119,14 @@ final class EditorActions
     /** Prompts/completion/caret management, block copy/cut, and the multi-caret path. */
     private function tryCaretAndBlockOps(string $keys, Keybindings $kb): bool
     {
+        // Column mode owns the selection verbs while it is on, and has to be
+        // asked BEFORE the multi-caret path below: that path extends each
+        // caret's own selection, which is the linear behaviour column mode
+        // exists to replace.
+        if ($this->tryColumnMode($keys, $kb)) {
+            return true;
+        }
+
         // Prompts, completion, caret management (the latter work whether or
         // not extra carets already exist).
         if ($this->runFirstMatch($keys, $kb, self::PRE_CARET_ACTIONS)) {
@@ -132,6 +157,67 @@ final class EditorActions
         // With multiple carets active, most editing/movement keys apply to
         // every caret; unhandled keys collapse back to a single caret.
         return $this->multiCaret->hasMultiple() && $this->multiCaret->handleInput($keys, $kb, $this->clipboard, fn (string $d) => $this->host->isInsertable($d));
+    }
+
+    /** Whether keyboard column selection is on — the status bar says so. */
+    public function columnMode(): bool
+    {
+        return $this->column->isActive();
+    }
+
+    /**
+     * Turn keyboard column selection on or off, anchoring at the caret.
+     *
+     * A table verb rather than a key match, so the menu and the palette reach
+     * it the way they reach everything else. The mode announces itself in the
+     * status bar rather than with a flash: a MODE whose state you cannot see is
+     * a trap, and a toast that expires says nothing two keystrokes later.
+     */
+    private function toggleColumnMode(): void
+    {
+        $doc = $this->document;
+        // @mago-expect lint:no-else-clause -- a genuine two-way toggle with a shared tail below; an early return would duplicate it
+        if ($this->column->isActive()) {
+            $this->column->cancel();
+        } else {
+            $this->column->begin($doc->getCursorLine(), $doc->displayColAt($doc->getCursorLine(), $doc->getCursorCol()));
+        }
+        $this->host->invalidate();
+    }
+
+    /**
+     * While column mode is on, turn the selection verbs into rectangle moves.
+     *
+     * The toggle itself is a table verb ({@see toggleColumnMode()}); this owns
+     * only the keys whose MEANING the mode changes. Escape leaves the mode as
+     * well as the selection, so the key that gets you out of everything else
+     * gets you out of this too.
+     */
+    private function tryColumnMode(string $keys, Keybindings $kb): bool
+    {
+        $doc = $this->document;
+        if (!$this->column->isActive()) {
+            return false;
+        }
+        if ($kb->matches($keys, 'select_cancel')) {
+            $this->column->cancel();
+
+            return false; // let the usual cancel clear the carets too
+        }
+
+        foreach (self::COLUMN_MOVES as $action => [$rowDelta, $colDelta]) {
+            if (!$kb->matches($keys, $action)) {
+                continue;
+            }
+
+            [$anchorRow, $anchorCol, $caretRow, $caretCol] = $this->column->extend($rowDelta, $colDelta, $doc);
+            $this->multiCaret->setColumnSelection($anchorRow, $anchorCol, $caretRow, $caretCol);
+            $this->host->invalidate();
+
+            return true;
+        }
+
+        return false;
     }
 
     /** Undo/redo + structural selection, statement moves, surround, and conflict nav. */
@@ -455,6 +541,7 @@ final class EditorActions
             'add_next_occurrence' => $this->multiCaret->addNextOccurrence(),
             'trigger_completion' => $this->completion->requestCompletion(),
             'parameter_info' => $this->host->fireSignatureHelp($this->document->getCursorLine(), $this->document->getCursorColUtf16()),
+            'toggle_column_mode' => $this->toggleColumnMode(),
             'goto_line' => $this->promptGotoLine(),
             'rename_symbol' => $this->promptRename(),
             default => null,

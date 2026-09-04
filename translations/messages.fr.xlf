@@ -2826,6 +2826,14 @@
         <source>%count% more result|%count% more results</source>
         <target>%count% résultat de plus|%count% résultats de plus</target>
       </trans-unit>
+      <trans-unit id="790">
+        <source>Column Selection Mode</source>
+        <target>Mode de sélection par colonnes</target>
+      </trans-unit>
+      <trans-unit id="791">
+        <source>COLUMN</source>
+        <target>COLONNE</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -90,6 +90,11 @@ final class ActionCatalog
         'add_caret_below' => ['label' => 'Add Caret Below'],
         'add_next_occurrence' => ['label' => 'Add Caret at Next Occurrence'],
         'select_all_occurrences' => ['label' => 'Select All Occurrences'],
+        // PhpStorm's Alt+Shift+Insert is not reachable here: KeyParser carries
+        // shift+insert and ctrl+insert as legacy sequences and branches on
+        // single modifiers, so the three-modifier form is unproven. Alt+C is
+        // free in the editor keymap and mnemonic.
+        'toggle_column_mode' => ['label' => 'Column Selection Mode'],
         // Editor: clipboard
         'copy' => ['label' => 'Copy'],
         'cut' => ['label' => 'Cut'],

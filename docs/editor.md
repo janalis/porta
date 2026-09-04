@@ -71,6 +71,11 @@ a second.
   **Close to the Left** and **Close to the Right** — the run of tabs beside
   this one in the strip. Every bulk close leaves unsaved tabs open and says
   how many it kept.
+- **Column selection** by mouse (`Alt+Shift+drag`) or keyboard: `Alt+C` toggles
+  column mode — the status bar shows `COLUMN` — and `Shift`+arrows then build a
+  rectangle instead of a linear selection. Passing over a short line does not
+  narrow it; the column is remembered. PhpStorm's `Alt+Shift+Insert` is not
+  available in a terminal, hence `Alt+C`.
 - **Block copy and paste round-trip**: a column selection copies as one line
   per row, and pasting a block whose line count matches the caret count gives
   each caret its own line, top to bottom. A clipboard that does not match is

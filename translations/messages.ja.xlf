@@ -2826,6 +2826,14 @@
         <source>%count% more result|%count% more results</source>
         <target>他 %count% 件|他 %count% 件</target>
       </trans-unit>
+      <trans-unit id="790">
+        <source>Column Selection Mode</source>
+        <target>矩形選択モード</target>
+      </trans-unit>
+      <trans-unit id="791">
+        <source>COLUMN</source>
+        <target>矩形</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

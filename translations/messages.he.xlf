@@ -2826,6 +2826,14 @@
         <source>%count% more result|%count% more results</source>
         <target>תוצאה %count% נוספת|%count% תוצאות נוספות</target>
       </trans-unit>
+      <trans-unit id="790">
+        <source>Column Selection Mode</source>
+        <target>מצב בחירת עמודות</target>
+      </trans-unit>
+      <trans-unit id="791">
+        <source>COLUMN</source>
+        <target>עמודה</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

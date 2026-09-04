@@ -93,6 +93,7 @@ final class EditorKeymap
             'add_caret_below' => ['ctrl+alt+down'],
             'add_next_occurrence' => ['alt+j'],
             'select_all_occurrences' => ['ctrl+alt+shift+j'],
+            'toggle_column_mode' => ['alt+c'],
 
             'next_buffer' => ['ctrl+right'],
             'prev_buffer' => ['ctrl+left'],

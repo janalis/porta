@@ -74,6 +74,7 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `Ctrl+Alt+Shift+J` | Add carets at all occurrences |
 | `Esc` | Collapse back to a single caret |
 | `Alt+Click` | Add / remove a caret (mouse) |
+| `Alt+C` | Column selection mode — then `Shift`+arrows build the rectangle (`COLUMN` shows in the status bar) |
 | `Alt+Shift+drag` | Column (rectangular) selection (mouse) |
 
 ## Code intelligence (LSP)

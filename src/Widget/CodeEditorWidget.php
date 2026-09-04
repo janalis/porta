@@ -897,6 +897,12 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->foldModel->setRegions($regions, $this->document->getVersion());
     }
 
+    /** Whether keyboard column selection is on; the status bar shows it. */
+    public function columnMode(): bool
+    {
+        return $this->actions->columnMode();
+    }
+
     /**
      * Invoke an editor action by its id — the entry point the application menu
      * uses so a menu item fires exactly the same logic as pressing its key.
