@@ -81,6 +81,9 @@ final class Document
     private ?string $textMemo = null;
     private int $textMemoVersion = -1;
 
+    /** @var (\Closure(int): void)|null called per mutation; see {@see setEditHook()} */
+    private ?\Closure $onEdit = null;
+
     public function __construct(string $text = '')
     {
         $text = str_replace(["\r\n", "\r"], replace: "\n", subject: $text);
@@ -105,6 +108,25 @@ final class Document
     {
         $this->captureCarets = $capture;
         $this->restoreCarets = $restore;
+    }
+
+    /**
+     * Register a hook called once per MUTATION, with the caret's line as the
+     * document has it at that moment.
+     *
+     * On the same optional footing as {@see setCaretHooks()}, and for the same
+     * reason: a Document works standalone in tests, and the thing that wants
+     * this ({@see EditHistory}) knows the file's path, which a Document does
+     * not. Hung on `touch()` because that is the one place every one of the
+     * twenty-odd mutating methods already funnels through — an edit that
+     * arrives from a command, a formatter or the language server counts the
+     * same as a keystroke.
+     *
+     * @param (\Closure(int): void)|null $onEdit receives the 0-based caret line
+     */
+    public function setEditHook(?\Closure $onEdit): void
+    {
+        $this->onEdit = $onEdit;
     }
 
     /**
@@ -1302,5 +1324,12 @@ final class Document
         ++$this->version;
         $this->dirty = true;
         $this->goalCol = null;
+        // Last, so an observer reading the document sees the edit rather than
+        // the state before it. A plain guard, not a null-coalesced no-op
+        // closure: this runs on every keystroke and a closure per press is a
+        // per-press allocation for nothing.
+        if (null !== $this->onEdit) {
+            ($this->onEdit)($this->cursorLine);
+        }
     }
 }

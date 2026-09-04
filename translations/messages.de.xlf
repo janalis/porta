@@ -2882,6 +2882,14 @@
         <source>Copy Reference</source>
         <target>Referenz kopieren</target>
       </trans-unit>
+      <trans-unit id="810">
+        <source>Last Edit Location</source>
+        <target>Letzte Bearbeitungsstelle</target>
+      </trans-unit>
+      <trans-unit id="812">
+        <source>No edits to go back to</source>
+        <target>Keine Bearbeitungen, zu denen zurückgekehrt werden kann</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -108,6 +108,7 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `Alt+2` | Bookmarks — every mark across the project |
 | `Alt+8` | TODOs — the bundled scan of TODO/FIXME comments |
 | `Alt+5` | Recent Locations — the places you jumped away from |
+| `Ctrl+Shift+Backspace` | Last edit location — back to what you were writing; press again to walk further back |
 | `Alt+F1` | Select the opened file in the tree |
 | `Ctrl+Alt+Shift+N` | Go to symbol in project |
 | `Ctrl+Alt+L` | Reformat file (or the selection when one exists) |

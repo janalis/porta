@@ -162,6 +162,10 @@ final class ActionCatalog
         'toggle_bookmark' => ['label' => 'Toggle Bookmark', 'keys' => ['f11']],
         'ide_bookmarks' => ['label' => 'Show Bookmarks', 'keys' => ['alt+2']],
         'ide_recent_locations' => ['label' => 'Recent Locations', 'keys' => ['alt+5']],
+        // PhpStorm's chord, and its own list: navigate-back knows only the
+        // places a navigation verb pushed, and scrolling away from your work
+        // pushes nothing.
+        'ide_last_edit' => ['label' => 'Last Edit Location', 'keys' => ['ctrl+shift+backspace']],
         'toggle_soft_wrap' => ['label' => 'Soft-Wrap', 'keys' => ['alt+z']],
         'toggle_code_lenses' => ['label' => 'Code Vision', 'keys' => ['alt+v']],
         // PhpStorm's split, which Porta used to collapse onto the popup: Alt+7 is

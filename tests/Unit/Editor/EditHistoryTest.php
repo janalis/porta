@@ -1,0 +1,101 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Tests\Unit\Editor;
+
+use PHPUnit\Framework\TestCase;
+use Porta\Editor\EditHistory;
+
+/**
+ * The list of places you were typing. Its whole job is collapsing — typing
+ * produces an entry per keystroke, and a list of those is not a shortcut.
+ */
+final class EditHistoryTest extends TestCase
+{
+    public function testARUNOfKeystrokesOnOneLineIsOnePlace(): void
+    {
+        $history = new EditHistory();
+        foreach (range(start: 0, end: 7) as $ignored) {
+            $history->record('/a.php', line: 12);
+        }
+
+        self::assertSame(['path' => '/a.php', 'line' => 12], $history->walkBack());
+        self::assertNull($history->walkBack(), 'and there is nothing behind it');
+    }
+
+    public function testPressingAgainWalksFurtherBack(): void
+    {
+        $history = new EditHistory();
+        $history->record('/a.php', line: 1);
+        $history->record('/a.php', line: 5);
+        $history->record('/b.php', line: 2);
+
+        self::assertSame(['path' => '/b.php', 'line' => 2], $history->walkBack());
+        self::assertSame(['path' => '/a.php', 'line' => 5], $history->walkBack());
+        self::assertSame(['path' => '/a.php', 'line' => 1], $history->walkBack());
+        self::assertNull($history->walkBack(), 'the list is finite and says so');
+    }
+
+    public function testAnEditRESTARTSTheWalk(): void
+    {
+        // You are somewhere new, so the next press means "the place before
+        // HERE" — not "one further back than the last press happened to reach".
+        $history = new EditHistory();
+        $history->record('/a.php', line: 1);
+        $history->record('/a.php', line: 5);
+        $history->walkBack();
+        $history->walkBack(); // walked all the way back
+
+        $history->record('/c.php', line: 9);
+
+        self::assertSame(['path' => '/c.php', 'line' => 9], $history->walkBack());
+        self::assertSame(['path' => '/a.php', 'line' => 5], $history->walkBack());
+    }
+
+    public function testTheSameLineREVISITEDIsANewPlace(): void
+    {
+        // Only CONSECUTIVE edits at one place collapse. Going away and coming
+        // back is two visits, and the list should be able to say so.
+        $history = new EditHistory();
+        $history->record('/a.php', line: 3);
+        $history->record('/a.php', line: 40);
+        $history->record('/a.php', line: 3);
+
+        self::assertSame(['path' => '/a.php', 'line' => 3], $history->walkBack());
+        self::assertSame(['path' => '/a.php', 'line' => 40], $history->walkBack());
+        self::assertSame(['path' => '/a.php', 'line' => 3], $history->walkBack());
+    }
+
+    public function testTheSameLineInAnotherFILEIsANewPlace(): void
+    {
+        $history = new EditHistory();
+        $history->record('/a.php', line: 7);
+        $history->record('/b.php', line: 7);
+
+        self::assertSame(['path' => '/b.php', 'line' => 7], $history->walkBack());
+        self::assertSame(['path' => '/a.php', 'line' => 7], $history->walkBack());
+    }
+
+    public function testItKeepsTenPlacesAndDropsTheOldest(): void
+    {
+        // Typing produces entries far faster than navigating does; a walk back
+        // through more than a handful has stopped being a shortcut.
+        $history = new EditHistory();
+        foreach (range(start: 1, end: 14) as $line) {
+            $history->record('/a.php', $line);
+        }
+
+        $walked = [];
+        while (null !== ($site = $history->walkBack())) {
+            $walked[] = $site['line'];
+        }
+
+        self::assertSame([14, 13, 12, 11, 10, 9, 8, 7, 6, 5], $walked);
+    }
+
+    public function testWithNoEditsAtAllThereIsNowhereToGo(): void
+    {
+        self::assertNull(new EditHistory()->walkBack());
+    }
+}

@@ -6,6 +6,8 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Editor\BufferService;
+use Porta\Editor\OpenFocus;
 use Porta\Support\RevoltScheduler;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
@@ -203,6 +205,48 @@ final class IdeEditingTest extends TestCase
                         },
                         what: 'the breadcrumb trail to settle after the edit',
                     );
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testLastEditLocationTakesYouBackToWhatYouWereWriting(): void
+    {
+        // Through the running IDE, because the point is the wiring: a
+        // Document's mutation has to reach a service that knows which FILE it
+        // was in, and the chord has to reach that service back.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            'A.php' => "<?php\n".str_repeat("// a\n", times: 40),
+            'B.php' => "<?php\n// b\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => static function ($tui): void {
+                    $tui->getById('editor')->getDocument()->setCursor(30, 0);
+                    $tui->handleInput('X'); // an edit, deep in A.php
+                },
+                400 => function ($tui, $terminal, $ide) use ($project): void {
+                    Services::resolve($ide, BufferService::class)
+                        ->openFile($project->path('B.php'), OpenFocus::Editor);
+                    $tui->requestRender();
+                    $tui->tick();
+                    $this->assertStringEndsWith('B.php', (string) $tui->getById('editor')->getFilePath());
+
+                    // Ctrl+Shift+Backspace: back to A.php, on the edited line.
+                    // Navigate-back could not do this — opening a file is not a
+                    // jump, so nothing was pushed onto that stack.
+                    $tui->handleInput("\x1b[127;6u");
+                },
+                550 => function ($tui): void {
+                    $editor = $tui->getById('editor');
+                    $this->assertStringEndsWith('A.php', (string) $editor->getFilePath());
+                    $this->assertSame(30, $editor->getDocument()->getCursorLine());
                 },
             ],
         );

@@ -22,14 +22,18 @@ final class BufferManager
     private int $focusCounter = 0;
     private readonly CodeHighlighterFactory $highlighters;
 
-    public function __construct(?CodeHighlighterFactory $highlighters = null)
-    {
+    public function __construct(
+        ?CodeHighlighterFactory $highlighters = null,
+        private readonly ?EditHistory $editHistory = null,
+    ) {
         $this->highlighters = $highlighters ?? new CodeHighlighterFactory();
     }
 
     public function open(string $path, string $content): Buffer
     {
-        $this->buffers[$path] ??= new Buffer($path, new Document($content), $this->highlighters->forFile($path));
+        if (!\array_key_exists($path, $this->buffers)) {
+            $this->buffers[$path] = new Buffer($path, $this->trackedDocument($path, $content), $this->highlighters->forFile($path));
+        }
         $buffer = $this->buffers[$path];
         $this->activePath = $path;
         $buffer->lastFocused = ++$this->focusCounter;
@@ -55,6 +59,28 @@ final class BufferManager
         $buffer->lastFocused = ++$this->focusCounter;
 
         return $buffer;
+    }
+
+    /**
+     * A text document that reports its edits, so `Last Edit Location` knows
+     * which FILE each one happened in — the pairing a Document cannot make on
+     * its own, because it does not know its path.
+     *
+     * Only here, never in {@see openPane()}: a viewer's document is an empty
+     * stand-in nobody types into, and recording its "edits" would put a picture
+     * in the list of places you were writing.
+     */
+    private function trackedDocument(string $path, string $content): Document
+    {
+        $document = new Document($content);
+        $history = $this->editHistory;
+        if (null !== $history) {
+            $document->setEditHook(static function (int $line) use ($history, $path): void {
+                $history->record($path, $line);
+            });
+        }
+
+        return $document;
     }
 
     public function has(string $path): bool

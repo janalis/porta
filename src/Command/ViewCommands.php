@@ -11,6 +11,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\EditorDecorationSink;
 use Porta\Editor\EditorDisplayOptions;
+use Porta\Editor\LastEditNavigator;
 use Porta\Editor\RecentLocationActions;
 use Porta\Layout\LayoutController;
 use Porta\Lsp\CodeLensController;
@@ -47,6 +48,7 @@ final class ViewCommands implements CommandProvider
         private readonly CodeLensController $lenses,
         private readonly EditorDecorationSink $decorations,
         private readonly RecentLocationActions $recentLocations,
+        private readonly LastEditNavigator $lastEdit,
         private readonly FileTreeWidget $tree,
         private readonly Tui $tui,
         private readonly string $docsDir,
@@ -59,6 +61,7 @@ final class ViewCommands implements CommandProvider
             ->add('toggle_bookmark', fn () => $this->bookmarks->toggle(), keyBound: KeyDispatch::Bound)
             ->add('ide_bookmarks', fn () => $this->bookmarks->show(), keyBound: KeyDispatch::Bound)
             ->add('ide_recent_locations', fn () => $this->recentLocations->show(), keyBound: KeyDispatch::Bound)
+            ->add('ide_last_edit', fn () => $this->lastEdit->goBack(), keyBound: KeyDispatch::Bound)
             ->add(
                 'ide_maximise_panel',
                 fn () => $this->layout->toggleBottomPanelMaximised(),

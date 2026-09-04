@@ -168,6 +168,21 @@ breakpoint dots, fold triangles, indent guides, identifier-occurrence and matchi
 highlighting, and dimmed inline parameter-name/type **inlay hints** from
 the language server.
 
+## Last edit location
+
+`Ctrl+Shift+Backspace` takes you back to what you were writing. Press it again
+to walk further back through the last ten places you edited; making an edit
+starts the walk over, because the next press then means "the place before here".
+
+It is a different list from navigate-back's (`Ctrl+Alt+Left`), which returns you
+from a **jump** and so knows only the places a navigation verb pushed. Scrolling
+away from your work, or opening another file from the tree, pushes nothing
+there — and that is exactly when you want this one.
+
+Consecutive edits in one place are one place, so typing a word does not fill the
+list. The caret lands at the start of the line rather than the column the edit
+was at: a stale column on a line since re-typed is a worse guess than its start.
+
 ## Copy path and reference
 
 `Ctrl+Shift+C` copies the active file's path relative to the project.
