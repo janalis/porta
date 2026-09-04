@@ -212,6 +212,49 @@ final class IdeEditingTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testFoldAllAndUnfoldAllAreReachableFromTheKEYBOARD(): void
+    {
+        // They were palette-only commands with inline labels, which is why this
+        // asserts the chords rather than the handlers: an action nothing can
+        // press is the failure mode a new binding invites.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\n\nclass A\n{\n    public function one(): void\n    {\n        \$x = 1;\n    }\n}\n"]);
+
+        // The terminal's output ACCUMULATES, so every read here clears it
+        // first and repaints. Reading it without clearing finds the opening
+        // frame and reports that nothing ever folded.
+        $screen = function ($tui, $terminal): string {
+            $terminal->clearOutput();
+            $tui->requestRender(force: true);
+            $this->frame($tui);
+
+            return AnsiUtils::stripAnsiCodes($terminal->getOutput());
+        };
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => function ($tui, $terminal) use ($screen): void {
+                    $this->assertStringContainsString('$x = 1;', $screen($tui, $terminal), 'the body starts visible');
+
+                    $tui->handleInput("\x1b[45;6u"); // ctrl+shift+-
+                    $folded = $screen($tui, $terminal);
+                    $this->assertStringContainsString(Glyphs::COLLAPSED, $folded);
+                    $this->assertStringNotContainsString('$x = 1;', $folded, 'the body is folded away');
+
+                    $tui->handleInput("\x1b[43;6u"); // ctrl+shift++ — the spelling that CANNOT bind
+                    $this->assertStringNotContainsString('$x = 1;', $screen($tui, $terminal), 'still folded');
+
+                    $tui->handleInput("\x1b[61;6u"); // ctrl+shift+= — the one that does
+                    $this->assertStringContainsString('$x = 1;', $screen($tui, $terminal), 'unfolded again');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testLastEditLocationTakesYouBackToWhatYouWereWriting(): void
     {
         // Through the running IDE, because the point is the wiring: a

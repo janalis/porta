@@ -76,6 +76,16 @@ final class ActionCatalog
         'surround_with' => ['label' => 'Surround With…'],
         'toggle_comment' => ['label' => 'Toggle Comment'],
         'toggle_fold' => ['label' => 'Collapse / Expand Fold'],
+        // PhpStorm's pair. They existed as palette-only commands with inline
+        // labels, which left them unbindable and off the keymap page — naming
+        // them here is what makes them first-class.
+        'fold_all' => ['label' => 'Fold All', 'keys' => ['ctrl+shift+-']],
+        // `=`, not `+`, for PhpStorm's Ctrl+Shift+Plus. Two reasons, and each
+        // alone is enough: a terminal reports the UNSHIFTED codepoint, so the
+        // key that arrives is `=`; and `ctrl+shift++` cannot be spelled at all
+        // — the descriptor splits on `+`, so the binding never matches
+        // anything (measured, and pinned by the E2e).
+        'unfold_all' => ['label' => 'Unfold All', 'keys' => ['ctrl+shift+=']],
         'goto_matching_bracket' => ['label' => 'Go to Matching Bracket'],
         'next_conflict' => ['label' => 'Next Conflict'],
         'prev_conflict' => ['label' => 'Previous Conflict'],

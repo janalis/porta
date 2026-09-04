@@ -65,6 +65,8 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `Ctrl+W` / `Ctrl+Shift+W` | Extend / shrink selection (word → brackets → line → file) |
 | `Ctrl+Alt+T` | Surround selection (bracket pair, quotes, `if`/`foreach`/`try`) |
 | `Ctrl+.` | Collapse / expand the code fold at the caret |
+| `Ctrl+Shift+-` | Fold all — collapse every region in the file |
+| `Ctrl+Shift+=` | Unfold all — PhpStorm's Ctrl+Shift+Plus, as the terminal reports it (unshifted) |
 | `Ctrl+A` | Select all |
 | `Home` | Smart home (first non-blank, then column 0) |
 | `Tab` / `Shift+Tab` | Indent; next / previous tab stop while a snippet is active |

@@ -108,7 +108,10 @@ a second.
   line a region starts at — `▾` open, `▸` collapsed — and clicking it folds or
   unfolds that region. With a language server the regions come from
   `foldingRange`, so a fold starts at the declaration; without one they come
-  from a brace scan, which starts it at the `{`.
+  from a brace scan, which starts it at the `{`. `Ctrl+Shift+-` collapses every
+  region in the file and `Ctrl+Shift+=` opens them all again — the fastest way
+  to see a long class as a list of its members. (`=` rather than `+`: a
+  terminal reports the unshifted key.)
 - **Line operations**: duplicate (`Ctrl+D`), delete (`Ctrl+Y`), move line
   (`Alt+Shift+↑/↓`), toggle comment (`Ctrl+/`).
 - **Clipboard** (`Ctrl+C/X/V`) also copies to the system clipboard via
