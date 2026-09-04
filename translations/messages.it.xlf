@@ -2822,6 +2822,10 @@
         <source>Close to the Right</source>
         <target>Chiudi a destra</target>
       </trans-unit>
+      <trans-unit id="788">
+        <source>%count% more result|%count% more results</source>
+        <target>%count% altro risultato|altri %count% risultati</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

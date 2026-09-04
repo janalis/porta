@@ -11,7 +11,7 @@
 | `Ctrl+E` | Recent files (press again to cycle) |
 | `Alt+5` | Recent Locations — the places you jumped away FROM, newest first, with each line's text |
 | `Ctrl+Shift+T` | The test for the current class — or back: from `FooTest.php` to `Foo.php`. Searches the project (skipping `vendor/`) and flashes when nothing matches |
-| `Ctrl+Shift+E` | Search Everywhere |
+| `Ctrl+Shift+E` | Search Everywhere — files, classes, symbols, actions, text and settings in one list; each group shows five, with a `N more results` row that grows it |
 | `Ctrl+Shift+A` | Find Action (command palette — every command by name) |
 
 ## Code navigation (LSP)

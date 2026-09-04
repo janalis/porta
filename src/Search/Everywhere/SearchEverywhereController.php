@@ -27,8 +27,19 @@ final class SearchEverywhereController
     private int $generation = 0;
     private ?string $debounceWatcher = null;
 
+    /**
+     * How many more rows one "more results" activation reveals. Growing rather
+     * than unbounding, because a grep or a workspace-symbol answer is not
+     * bounded by its source and rendering all of it would be the same mistake
+     * from the other side.
+     */
+    private const int MORE_STEP = 20;
+
     /** @var array<int, list<SearchHit>> hits keyed by category order */
     private array $hitsByCategory = [];
+
+    /** @var array<int, int> how many rows a category currently shows, when it has been grown */
+    private array $shown = [];
 
     /**
      * @param list<SearchSource>                $syncSources  files, actions (run immediately)
@@ -52,6 +63,7 @@ final class SearchEverywhereController
     {
         ++$this->generation;
         $this->hitsByCategory = [];
+        $this->shown = [];
         $this->overlay->openSearch(
             $this->translator->trans($this->title),
             $this->onQuery(...),
@@ -67,6 +79,9 @@ final class SearchEverywhereController
     {
         $generation = ++$this->generation;
         $this->hitsByCategory = [];
+        // A new query is a new list; carrying an expansion over would show one
+        // category swollen for a search that never asked for it.
+        $this->shown = [];
 
         if ('' === $text) {
             $this->seedEmpty();
@@ -108,6 +123,12 @@ final class SearchEverywhereController
 
     private function onPick(SearchHit $hit): void
     {
+        if ($hit->keepsOpen) {
+            ($hit->activate)();
+
+            return;
+        }
+
         $this->close();
         ($hit->activate)();
         $this->tui->requestRender();
@@ -178,7 +199,9 @@ final class SearchEverywhereController
     {
         $rows = [];
         foreach (SearchCategory::cases() as $category) {
-            $hits = \array_slice($this->hitsByCategory[$category->order()] ?? [], offset: 0, length: $category->cap());
+            $all = $this->hitsByCategory[$category->order()] ?? [];
+            $limit = $this->shown[$category->order()] ?? $category->cap();
+            $hits = \array_slice($all, offset: 0, length: $limit);
             if ([] === $hits) {
                 continue;
             }
@@ -186,8 +209,33 @@ final class SearchEverywhereController
             foreach ($hits as $hit) {
                 $rows[] = SearchRow::hit($hit);
             }
+            $hidden = \count($all) - \count($hits);
+            if ($hidden > 0) {
+                $rows[] = SearchRow::hit($this->moreHit($category, $hidden, $limit));
+            }
         }
         $this->overlay->setSearchRows($rows);
         $this->tui->requestRender();
+    }
+
+    /**
+     * The row that grows a category, rather than a cap you cannot see past.
+     *
+     * A hit rather than a row kind of its own, so selection and Enter reach it
+     * with nothing added to the overlay — it simply keeps the modal open, since
+     * it is asking the list to change rather than to be left.
+     */
+    private function moreHit(SearchCategory $category, int $hidden, int $limit): SearchHit
+    {
+        return new SearchHit(
+            $category,
+            $this->translator->trans('%count% more result|%count% more results', ['%count%' => $hidden]),
+            '',
+            function () use ($category, $limit): void {
+                $this->shown[$category->order()] = $limit + self::MORE_STEP;
+                $this->render();
+            },
+            keepsOpen: true,
+        );
     }
 }

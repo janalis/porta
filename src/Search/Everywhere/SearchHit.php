@@ -14,11 +14,17 @@ namespace Porta\Search\Everywhere;
  */
 final readonly class SearchHit
 {
-    /** @param \Closure(): void $activate */
+    /**
+     * @param \Closure(): void $activate
+     * @param bool             $keepsOpen a row that changes the LIST rather than leaving it
+     *                                    (the "more results" row): activating it must not
+     *                                    close the modal it is asking to grow
+     */
     public function __construct(
         public SearchCategory $category,
         public string $label,
         public string $detail,
         public \Closure $activate,
+        public bool $keepsOpen = false,
     ) {}
 }

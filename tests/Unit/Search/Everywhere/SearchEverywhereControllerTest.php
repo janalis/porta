@@ -155,6 +155,109 @@ final class SearchEverywhereControllerTest extends TestCase
         return array_values(array_filter(array_map(static fn (SearchRow $r): ?string => $r->hit?->label, $rows)));
     }
 
+    /** @return list<SearchHit> $count hits in one category, labelled f0…fN */
+    private static function hits(SearchCategory $category, int $count): array
+    {
+        return array_map(
+            static fn (int $n): SearchHit => new SearchHit($category, 'f'.$n, '', static function (): void {}),
+            range(start: 0, end: $count - 1),
+        );
+    }
+
+    public function testACappedCategoryOffersARowThatGrowsIt(): void
+    {
+        // The cap used to be the end of the list: eight files, five shown, and
+        // no way at all to reach the sixth from here.
+        $overlay = $this->overlay();
+        $files = $this->source(SearchCategory::Files);
+        $controller = $this->controller($overlay, [$files], [], new BufferManager());
+        $controller->open();
+
+        ($overlay->onQuery)('f');
+        $files->emits[0](self::hits(SearchCategory::Files, 8));
+
+        $this->assertSame(['f0', 'f1', 'f2', 'f3', 'f4', '3 more results'], $this->labels($overlay->rows));
+    }
+
+    public function testGrowingACategoryShowsTheRestAndKeepsTheModalOpen(): void
+    {
+        $overlay = $this->overlay();
+        $files = $this->source(SearchCategory::Files);
+        $controller = $this->controller($overlay, [$files], [], new BufferManager());
+        $controller->open();
+        ($overlay->onQuery)('f');
+        $files->emits[0](self::hits(SearchCategory::Files, 8));
+
+        // Picked the way any row is picked — the overlay does not know this one
+        // is different.
+        ($overlay->onPick)($overlay->rows[array_key_last($overlay->rows)]->hit);
+
+        $this->assertSame(['f0', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7'], $this->labels($overlay->rows));
+        $this->assertSame(0, $overlay->closes, 'a row that grows the list must not close it');
+    }
+
+    public function testAVeryLongCategoryGrowsByStepsRatherThanAllAtOnce(): void
+    {
+        // A grep or a workspace-symbol answer is not bounded by its source, so
+        // "show the rest" would render thousands of rows in one go.
+        $overlay = $this->overlay();
+        $files = $this->source(SearchCategory::Files);
+        $controller = $this->controller($overlay, [$files], [], new BufferManager());
+        $controller->open();
+        ($overlay->onQuery)('f');
+        $files->emits[0](self::hits(SearchCategory::Files, 100));
+
+        ($overlay->onPick)($overlay->rows[array_key_last($overlay->rows)]->hit);
+
+        $labels = $this->labels($overlay->rows);
+        $this->assertSame(25, \count($labels) - 1, 'five, then one step of twenty');
+        $this->assertSame('75 more results', $labels[array_key_last($labels)], 'and it can be grown again');
+    }
+
+    public function testASingleHiddenResultIsCountedInTheSingular(): void
+    {
+        $overlay = $this->overlay();
+        $files = $this->source(SearchCategory::Files);
+        $controller = $this->controller($overlay, [$files], [], new BufferManager());
+        $controller->open();
+
+        ($overlay->onQuery)('f');
+        $files->emits[0](self::hits(SearchCategory::Files, 6));
+
+        $this->assertContains('1 more result', $this->labels($overlay->rows));
+    }
+
+    public function testACategoryThatFitsOffersNoGrowRow(): void
+    {
+        $overlay = $this->overlay();
+        $files = $this->source(SearchCategory::Files);
+        $controller = $this->controller($overlay, [$files], [], new BufferManager());
+        $controller->open();
+
+        ($overlay->onQuery)('f');
+        $files->emits[0](self::hits(SearchCategory::Files, 5));
+
+        $this->assertSame(['f0', 'f1', 'f2', 'f3', 'f4'], $this->labels($overlay->rows));
+    }
+
+    public function testANewQueryCollapsesAGrownCategoryAgain(): void
+    {
+        // Carrying the expansion over would show one category swollen for a
+        // search that never asked for it.
+        $overlay = $this->overlay();
+        $files = $this->source(SearchCategory::Files);
+        $controller = $this->controller($overlay, [$files], [], new BufferManager());
+        $controller->open();
+        ($overlay->onQuery)('f');
+        $files->emits[0](self::hits(SearchCategory::Files, 8));
+        ($overlay->onPick)($overlay->rows[array_key_last($overlay->rows)]->hit);
+
+        ($overlay->onQuery)('g');
+        $files->emits[1](self::hits(SearchCategory::Files, 8));
+
+        $this->assertSame(['f0', 'f1', 'f2', 'f3', 'f4', '3 more results'], $this->labels($overlay->rows));
+    }
+
     public function testOpenSeedsRecentFilesAndOpensTheOverlay(): void
     {
         $buffers = new BufferManager();
