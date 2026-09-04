@@ -295,7 +295,7 @@ final class MultiCaret
             return true;
         }
         if ($kb->matches($keys, 'paste') && '' !== $clipboard) {
-            $this->applyEdit(static fn (Document $d) => $d->insert($clipboard));
+            $this->pasteBlock($clipboard);
 
             return true;
         }
@@ -315,26 +315,58 @@ final class MultiCaret
     }
 
     /**
+     * Paste at every caret, distributing the clipboard's LINES one per caret
+     * when the counts match.
+     *
+     * That is the case a block copy produces: {@see selectedBlockText()} joins
+     * each caret's selection with newlines, so copying a three-row rectangle
+     * yields three lines. Inserting all three at each of three carets — which is
+     * what this used to do — turns nine lines out of three, and block copy and
+     * paste did not round-trip.
+     *
+     * Any other count keeps the old behaviour deliberately: two lines across
+     * five carets has no correct distribution, and guessing one is worse than
+     * repeating the whole clipboard, which is at least predictable.
+     */
+    private function pasteBlock(string $clipboard): void
+    {
+        $lines = explode("\n", $clipboard);
+        // No ">1 line" clause: with one line the two branches insert the same
+        // text, so it would be a guard nothing could ever distinguish.
+        $perCaret = \count($lines) === \count($this->caretRecords());
+
+        $this->applyEdit(static fn (Document $d, int $index) => $d->insert($perCaret ? $lines[$index] : $clipboard));
+    }
+
+    /**
      * Apply an editing operation at every caret, bottom-to-top, as one atomic
      * undo step.
      *
-     * @param callable(Document): void $op
+     * The op is told the caret's index in TOP-TO-BOTTOM order, which is the
+     * order a block of text reads in. The walk itself runs bottom-to-top, so
+     * the two orders are deliberately different: an op that cares (block paste)
+     * needs the reading order, and the walk needs the safe one.
+     *
+     * @param callable(Document, int): void $op
      */
     private function applyEdit(callable $op): void
     {
         $doc = $this->document;
         $records = $this->caretRecords();
-        // Bottom-to-top so earlier (higher) edits never invalidate the
-        // positions of carets still to be processed.
-        usort($records, static fn (Caret $a, Caret $b) => [$b->line, $b->col] <=> [$a->line, $a->col]);
+        // Numbered top-to-bottom first...
+        usort($records, static fn (Caret $a, Caret $b) => [$a->line, $a->col] <=> [$b->line, $b->col]);
+        // ...then walked bottom-to-top, keeping those numbers, so earlier
+        // (higher) edits never invalidate the positions of carets still to be
+        // processed.
+        $walk = array_reverse($records, preserve_keys: true);
 
         $results = [];
-        $doc->transact(function () use ($doc, $records, $op, &$results): void {
-            foreach ($records as $record) {
+        $doc->transact(function () use ($doc, $walk, $op, &$results): void {
+            foreach ($walk as $index => $record) {
                 // Restore each caret's selection so insert/delete replace it; a
                 // point caret just moves the cursor.
                 $this->restore($record);
-                $op($doc);
+                $op($doc, $index);
                 $results[] = [$doc->getCursorLine(), $doc->getCursorCol()];
             }
         });

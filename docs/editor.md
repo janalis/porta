@@ -71,6 +71,10 @@ a second.
   **Close to the Left** and **Close to the Right** — the run of tabs beside
   this one in the strip. Every bulk close leaves unsaved tabs open and says
   how many it kept.
+- **Block copy and paste round-trip**: a column selection copies as one line
+  per row, and pasting a block whose line count matches the caret count gives
+  each caret its own line, top to bottom. A clipboard that does not match is
+  repeated whole at every caret, as before.
 - **Auto-closing brackets & quotes**: typing an opener inserts its pair,
   selections get wrapped, closers type over, and backspacing an empty pair
   removes both — toggleable (`autoPairs`).
