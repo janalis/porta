@@ -92,6 +92,11 @@ final readonly class MemberNavigation
      * stepping nowhere. The scanner reports 1-based lines and the document
      * counts from zero.
      *
+     * NOT re-sorted: {@see BreadcrumbScanner::scan()} already returns scopes by
+     * ascending `startLine`, and a filter preserves that. A sort here would be
+     * dead code no test could kill — the raw stack order (a class pops AFTER
+     * its methods) is exactly what that sort exists to fix, at the source.
+     *
      * @param list<array{label: string, startLine: int, endLine: int, kind: string}> $scopes
      *
      * @return list<array{label: string, line: int}>
@@ -106,7 +111,6 @@ final readonly class MemberNavigation
 
             $members[] = ['label' => $scope['label'], 'line' => $scope['startLine'] - 1];
         }
-        usort($members, static fn (array $a, array $b): int => $a['line'] <=> $b['line']);
 
         return $members;
     }

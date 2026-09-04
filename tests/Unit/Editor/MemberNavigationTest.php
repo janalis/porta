@@ -93,6 +93,9 @@ final class MemberNavigationTest extends TestCase
         $navigation->next();
 
         self::assertSame('Svc', $this->lastToast());
+        // Landing mid-line would put the caret wherever the previous column
+        // happened to be, on a line whose text is unrelated to it.
+        self::assertSame(0, $this->editor->getDocument()->getCursorCol());
     }
 
     public function testPastTheLastDeclarationItWrapsAndSaysSo(): void
