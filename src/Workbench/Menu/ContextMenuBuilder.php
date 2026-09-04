@@ -98,6 +98,16 @@ final class ContextMenuBuilder
             new MenuItem($this->translator->trans('Close to the Left'), '', fn () => $this->bufferService->closeTabsToTheSide($path, TabSide::Left)),
             new MenuItem($this->translator->trans('Close to the Right'), '', fn () => $this->bufferService->closeTabsToTheSide($path, TabSide::Right)),
             new MenuItem($this->translator->trans('Close All'), '', fn () => $this->bufferService->closeTabsExcept(null)),
+            // AFTER the close group, not before it: two E2e tests walk this
+            // menu by counting Down presses, so anything inserted above Close
+            // All silently moves what they select. The close verbs are the
+            // primary group anyway.
+            MenuItem::separator(),
+            new MenuItem(
+                $this->translator->trans($this->bufferService->isPinned($path) ? 'Unpin Tab' : 'Pin Tab'),
+                '',
+                fn () => $this->bufferService->togglePinned($path),
+            ),
             ...$this->fileItems($path),
         ];
     }

@@ -2834,6 +2834,14 @@
         <source>COLUMN</source>
         <target>COLONNE</target>
       </trans-unit>
+      <trans-unit id="792">
+        <source>Pin Tab</source>
+        <target>Épingler l’onglet</target>
+      </trans-unit>
+      <trans-unit id="793">
+        <source>Unpin Tab</source>
+        <target>Détacher l’onglet</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -35,6 +35,16 @@ final class Buffer
     /** Untranslated tab-title message id, overriding the basename (the architecture tab). */
     public ?string $title = null;
 
+    /**
+     * Pinned tabs survive the bulk closes — Close Others, Close All, Close to
+     * the Left/Right — and sort to the front of the strip.
+     *
+     * The point of pinning is that the tabs you keep are the ones a careless
+     * "close the rest" would take first, so the flag lives on the buffer and is
+     * persisted with the session.
+     */
+    public bool $pinned = false;
+
     public readonly CodeHighlighter $highlighter;
 
     public function __construct(

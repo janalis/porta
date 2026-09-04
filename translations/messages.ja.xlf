@@ -2834,6 +2834,14 @@
         <source>COLUMN</source>
         <target>矩形</target>
       </trans-unit>
+      <trans-unit id="792">
+        <source>Pin Tab</source>
+        <target>タブをピン留め</target>
+      </trans-unit>
+      <trans-unit id="793">
+        <source>Unpin Tab</source>
+        <target>ピン留めを解除</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

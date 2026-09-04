@@ -11,12 +11,14 @@ use Porta\Editor\OpenFocus;
 use Porta\Editor\TabSide;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * PhpStorm's Close to the Left / Close to the Right.
@@ -135,6 +137,58 @@ final class CloseTabsToTheSideTest extends TestCase
 
         $buffers->closeTabsToTheSide($this->project->path('composer.json'), TabSide::Right);
 
+        $this->assertSame(['a.php', 'b.php', 'c.php', 'd.php'], $this->tabs());
+    }
+
+    public function testAPinnedTabSurvivesEveryBulkClose(): void
+    {
+        // The whole point of pinning: the tabs you deliberately keep are
+        // exactly the ones a careless "close the rest" would take first.
+        $buffers = $this->withFourTabs();
+        $buffers->togglePinned($this->openedPath('b.php'));
+
+        $buffers->closeTabsToTheSide($this->openedPath('a.php'), TabSide::Right);
+        $this->assertSame(['a.php', 'b.php'], $this->tabs(), 'close to the right spares it');
+
+        $buffers->closeTabsExcept(null);
+        $this->assertSame(['b.php'], $this->tabs(), 'and so does close all');
+    }
+
+    public function testPinningAsksForARepaint(): void
+    {
+        // The glyph appears in the tab strip; without a frame it would not show
+        // until something else happened to redraw.
+        $buffers = $this->withFourTabs();
+        $tui = Services::resolve($this->ide, Tui::class);
+        Probe::set($tui, 'renderRequested', false);
+
+        $buffers->togglePinned($this->openedPath('b.php'));
+
+        $this->assertTrue((bool) Probe::get($tui, 'renderRequested'));
+    }
+
+    public function testPinningIsAToggleAndReportsItsState(): void
+    {
+        $buffers = $this->withFourTabs();
+        $path = $this->openedPath('c.php');
+
+        $this->assertFalse($buffers->isPinned($path));
+
+        $buffers->togglePinned($path);
+        $this->assertTrue($buffers->isPinned($path));
+
+        $buffers->togglePinned($path);
+        $this->assertFalse($buffers->isPinned($path));
+    }
+
+    public function testPinningAPathThatIsNotOpenDoesNothing(): void
+    {
+        // A stale menu closure naming a tab that has since gone.
+        $buffers = $this->withFourTabs();
+
+        $buffers->togglePinned($this->project->path('composer.json'));
+
+        $this->assertFalse($buffers->isPinned($this->project->path('composer.json')));
         $this->assertSame(['a.php', 'b.php', 'c.php', 'd.php'], $this->tabs());
     }
 

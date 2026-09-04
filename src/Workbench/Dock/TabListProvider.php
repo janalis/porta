@@ -7,6 +7,7 @@ namespace Porta\Workbench\Dock;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
+use Porta\Ui\Glyphs;
 
 /** The tab strip's rows, pulled at render time from the buffer list. */
 final class TabListProvider
@@ -19,11 +20,17 @@ final class TabListProvider
     /** @return list<array{name: string, dirty: bool, active: bool}> */
     public function tabs(): array
     {
-        return array_map(fn (Buffer $b) => [
-            'name' => $this->title($b),
-            'dirty' => $b->isDirty(),
-            'active' => $b === $this->buffers->active(),
-        ], $this->buffers->all());
+        return array_map(
+            fn (Buffer $b) => [
+                // The pin rides the NAME rather than becoming a fourth field: the
+                // strip's width arithmetic already measures the label, and adding a
+                // column to it is the one change that needs no new maths.
+                'name' => ($b->pinned ? Glyphs::PINNED.' ' : '').$this->title($b),
+                'dirty' => $b->isDirty(),
+                'active' => $b === $this->buffers->active(),
+            ],
+            $this->buffers->all(),
+        );
     }
 
     /** Help pages share one "Documentation" tab name; a titled buffer (the architecture graph) shows its translated title; everything else its basename. */

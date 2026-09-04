@@ -2834,6 +2834,14 @@
         <source>COLUMN</source>
         <target>עמודה</target>
       </trans-unit>
+      <trans-unit id="792">
+        <source>Pin Tab</source>
+        <target>הצמד לשונית</target>
+      </trans-unit>
+      <trans-unit id="793">
+        <source>Unpin Tab</source>
+        <target>בטל הצמדת לשונית</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

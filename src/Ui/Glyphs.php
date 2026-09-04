@@ -89,6 +89,11 @@ final class Glyphs
     public const string SESSION_STOPPED = '○';
     public const string SEPARATOR = '│'; // between two tabs of one family
     public const string FAMILY_SEPARATOR = '┃'; // between two families — heavier, because a drag cannot cross it
+    // A pinned tab, prefixed to its label. Distinct from DIRTY ● and CLOSE ×,
+    // which share the tab surface with it; one display column, like every
+    // glyph here.
+    public const string PINNED = '⌾';
+
     public const string CLOSE = '×'; // the tab's close affordance; {@see \Porta\Widget\Render\TabCloseGlyph} owns its shade
     public const string SCROLL_PREV = '‹';
     public const string SCROLL_NEXT = '›';

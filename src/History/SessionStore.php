@@ -25,7 +25,7 @@ final readonly class SessionStore
     }
 
     /**
-     * @param list<array{path: string, line: int, col: int}> $buffers
+     * @param list<array{path: string, line: int, col: int, pinned: bool}> $buffers
      */
     public function save(array $buffers, ?string $activePath): bool
     {
@@ -39,7 +39,7 @@ final readonly class SessionStore
     }
 
     /**
-     * @return array{buffers: list<array{path: string, line: int, col: int}>, active: ?string}|null
+     * @return array{buffers: list<array{path: string, line: int, col: int, pinned: bool}>, active: ?string}|null
      */
     public function load(): ?array
     {
@@ -60,6 +60,9 @@ final readonly class SessionStore
                 'path' => $buffer['path'],
                 'line' => (int) ($buffer['line'] ?? 0),
                 'col' => (int) ($buffer['col'] ?? 0),
+                // Absent in sessions written before pinning existed, which is
+                // the ordinary case on the first launch after an upgrade.
+                'pinned' => true === ($buffer['pinned'] ?? false),
             ];
         }
 

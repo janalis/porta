@@ -16,8 +16,8 @@ final class SessionStoreTest extends TestCase
         $store = new SessionStore($project->dir);
 
         $buffers = [
-            ['path' => '/p/a.php', 'line' => 3, 'col' => 5],
-            ['path' => '/p/b.php', 'line' => 0, 'col' => 0],
+            ['path' => '/p/a.php', 'line' => 3, 'col' => 5, 'pinned' => true],
+            ['path' => '/p/b.php', 'line' => 0, 'col' => 0, 'pinned' => false],
         ];
         $this->assertTrue($store->save($buffers, '/p/b.php'));
 
@@ -103,8 +103,11 @@ final class SessionStoreTest extends TestCase
         $loaded = new SessionStore($project->dir)->load();
         $this->assertSame(
             [
-                ['path' => '/p/a.php', 'line' => 0, 'col' => 0],
-                ['path' => '/p/b.php', 'line' => 9, 'col' => 3],
+                // No `pinned` key in these entries: a session written before
+                // pinning existed, which is the ordinary first launch after an
+                // upgrade. It reads as false rather than tripping the guard.
+                ['path' => '/p/a.php', 'line' => 0, 'col' => 0, 'pinned' => false],
+                ['path' => '/p/b.php', 'line' => 9, 'col' => 3, 'pinned' => false],
             ],
             $loaded['buffers'],
         );
@@ -130,7 +133,7 @@ final class SessionStoreTest extends TestCase
 
         $loaded = new SessionStore($project->dir)->load();
         $this->assertCount(1, $loaded['buffers']);
-        $this->assertSame(['path' => '/p/ok.php', 'line' => 2, 'col' => 0], $loaded['buffers'][0]);
+        $this->assertSame(['path' => '/p/ok.php', 'line' => 2, 'col' => 0, 'pinned' => false], $loaded['buffers'][0]);
         $this->assertNull($loaded['active']);
     }
 

@@ -2834,6 +2834,14 @@
         <source>COLUMN</source>
         <target>COLUMNA</target>
       </trans-unit>
+      <trans-unit id="792">
+        <source>Pin Tab</source>
+        <target>Fijar pestaña</target>
+      </trans-unit>
+      <trans-unit id="793">
+        <source>Unpin Tab</source>
+        <target>Desfijar pestaña</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

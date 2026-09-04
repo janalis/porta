@@ -46,6 +46,7 @@ final class SessionRestorer
             $active = $this->buffers->active();
             if (null !== $active) {
                 $active->document->setCursor($buffer['line'], $buffer['col']);
+                $active->pinned = $buffer['pinned'];
             }
             $opened = true;
         }
@@ -78,6 +79,7 @@ final class SessionRestorer
                 'path' => $buffer->path,
                 'line' => $buffer->document->getCursorLine(),
                 'col' => $buffer->document->getCursorCol(),
+                'pinned' => $buffer->pinned,
             ];
         }
         $this->store->save($buffers, $this->buffers->active()?->path);

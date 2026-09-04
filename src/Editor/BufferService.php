@@ -414,6 +414,30 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
      * buffer with unsaved changes open and flashing how many were kept, so a bulk
      * close never silently discards edits.
      */
+    /** Whether the tab for $path is pinned; false when nothing is open there. */
+    public function isPinned(string $path): bool
+    {
+        return true === $this->buffers->get($path)?->pinned;
+    }
+
+    /**
+     * Pin or unpin a tab. Pinned tabs survive every bulk close and carry the
+     * pin glyph in the strip; the state is saved with the session, because a
+     * tab you deliberately kept should still be there tomorrow.
+     */
+    public function togglePinned(string $path): void
+    {
+        $buffer = $this->buffers->get($path);
+        if (null === $buffer) {
+            return;
+        }
+
+        $buffer->pinned = !$buffer->pinned;
+        // The tab STRIP shows the pin, not the editor, so a frame is all this
+        // needs — the strip re-renders because its label changed.
+        $this->tui->requestRender();
+    }
+
     public function closeTabsExcept(?string $keep): void
     {
         $this->closeTabs(static fn (Buffer $buffer): bool => $buffer->path !== $keep, $keep);
@@ -455,7 +479,10 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
     {
         $dirtyKept = 0;
         foreach ($this->buffers->all() as $buffer) {
-            if (!$shouldClose($buffer)) {
+            // A pinned tab is not a candidate at all — that is what pinning
+            // means, and unlike the unsaved-changes case it needs no report:
+            // you asked for it, and the tab is still visibly there.
+            if ($buffer->pinned || !$shouldClose($buffer)) {
                 continue;
             }
             if ($buffer->isDirty()) {
