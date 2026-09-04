@@ -24,10 +24,11 @@ final class BreadcrumbTrailProviderTest extends TestCase
 
     private function provider(): BreadcrumbTrailProvider
     {
-        $this->editor = new CodeEditorWidget();
         $this->scopes = new DocumentScopes();
+        // The widget chooses the scope source now, so the store goes to IT.
+        $this->editor = new CodeEditorWidget(documentScopes: $this->scopes);
 
-        return new BreadcrumbTrailProvider($this->editor, $this->scopes);
+        return new BreadcrumbTrailProvider($this->editor);
     }
 
     public function testATypescriptBufferGetsATrailFromTheServersSymbols(): void

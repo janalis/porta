@@ -1236,7 +1236,7 @@ and never that anything builds it or reaches it in time. That is the same shape
 as the round that shipped a dead LSP controller with all six gates green and
 100% coverage — see `porta-self-registering-services`.
 
-## Breadcrumbs got the server's symbols; sticky scroll did not (2026-09-04)
+## ~~Breadcrumbs got the server's symbols; sticky scroll did not~~ — CLOSED (2026-09-04)
 
 `LspMapper::symbolScopes()` turns a `documentSymbol` tree into the scope shape
 `BreadcrumbScanner::scan()` produces, so `select()` reads it unchanged and every
@@ -1259,7 +1259,20 @@ The honest options, none taken yet:
   widget, but it sits in the render sequence, which is where this project's
   worst bugs have come from — not worth doing as a by-the-way.
 
-So the asymmetry is deliberate and documented rather than hidden: breadcrumbs
-name your scope in TypeScript, the sticky header above it does not. Whichever
-option is taken, it should be taken for its own reasons and not to finish this
-sentence.
+**Closed the same day, by a third option neither of those was.** The blocker was
+one property, so one was paid for rather than borrowed: `$scopeTimer` and
+`$scopeTimerKey` were always a single fact — a timer id with no idea what it is
+waiting to rescan is nothing — and folding them into `Editor\ScopeRescan` freed
+the slot that `Lsp\DocumentScopes` now occupies.
+
+`CodeEditorWidget::scopes()` therefore chooses the source itself: the offline PHP
+scan, or the server's symbols for everything else. Both readers — the trail and
+the sticky band — go through it, so they can no longer disagree about what
+encloses the caret, and `BreadcrumbTrailProvider` gave up its own copy of the
+decision. It costs one new namespace edge, `Widget>Lsp`, allowlisted in the same
+commit.
+
+The lesson is the ratchet's, not this feature's: a pinned class can still take a
+dependency, provided something it was already carrying is paid back. Hunting for
+a fold to buy a slot would be contrived; taking one that was already two halves
+of the same fact is not.

@@ -35,6 +35,7 @@ use Porta\Editor\LineNumberMode;
 use Porta\Editor\ModalHost;
 use Porta\Editor\MultiCaret;
 use Porta\Editor\OccurrenceHighlights;
+use Porta\Editor\ScopeRescan;
 use Porta\Editor\SignatureHint;
 use Porta\Editor\TemplateCatalog;
 use Porta\Editor\WrapLayout;
@@ -43,6 +44,7 @@ use Porta\Highlight\DarkTerminalTheme;
 use Porta\Highlight\TempestHighlightProvider;
 use Porta\I18n\Translator;
 use Porta\Input\EditorActionRouter;
+use Porta\Lsp\DocumentScopes;
 use Porta\Overlay\State\FindInFilesModal;
 use Porta\Overlay\State\OverlayHost;
 use Porta\Search\Everywhere\SearchOverlay;
@@ -142,10 +144,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     private const float SCOPE_DEBOUNCE_SECONDS = 0.15;
 
     /** Pending debounced scope rescan; null when none is armed. */
-    private ?string $scopeTimer = null;
-
-    /** The doc-identity:version the pending rescan was armed for. */
-    private string $scopeTimerKey = '';
+    private ?ScopeRescan $scopeRescan = null;
 
     /** @var array{0: array{0: int, 1: int}, 1: array{0: int, 1: int}}|null memoized bracket pair, keyed by version + caret */
     private ?array $bracketsMemo = null;
@@ -205,6 +204,8 @@ final class CodeEditorWidget extends AbstractWidget implements
         private readonly ?PerfCollector $perf = null,
         private readonly ?Scheduler $scheduler = null,
         private readonly OccurrenceHighlights $occurrences = new OccurrenceHighlights(),
+        /** The server's scopes, for every language the offline PHP scan cannot read. */
+        private readonly DocumentScopes $documentScopes = new DocumentScopes(),
     ) {
         $this->initStyles($styles);
         $this->callbacks = new EditorCallbacks();
@@ -545,8 +546,15 @@ final class CodeEditorWidget extends AbstractWidget implements
      */
     public function scopes(): array
     {
-        if (null === $this->filePath || !str_ends_with($this->filePath, '.php')) {
+        if (null === $this->filePath) {
             return [];
+        }
+        // PHP is scanned offline — instant, and right with no server running.
+        // Everything else takes the language server's own symbols, which reach
+        // the same shape, so the breadcrumb trail AND the sticky band work in
+        // every language rather than only in PHP.
+        if (!str_ends_with($this->filePath, '.php')) {
+            return $this->documentScopes->forPath($this->filePath);
         }
         $docId = spl_object_id($this->document);
         $key = $docId.':'.$this->document->getVersion();
@@ -571,20 +579,21 @@ final class CodeEditorWidget extends AbstractWidget implements
         // on every frame (sticky band + trail), and an ambient repaint stream
         // pushing the timer out forever would keep the trail stale for as long
         // as anything animates.
-        if ($this->scopeTimerKey !== $key) {
-            if (null !== $this->scopeTimer) {
-                $this->scheduler->cancel($this->scopeTimer);
+        if ($this->scopeRescan?->key !== $key) {
+            if (null !== $this->scopeRescan) {
+                $this->scheduler->cancel($this->scopeRescan->timerId);
             }
-            $this->scopeTimerKey = $key;
-            $this->scopeTimer = $this->scheduler->delay(self::SCOPE_DEBOUNCE_SECONDS, function (): void {
-                $this->scopeTimer = null;
-                $this->scopeTimerKey = '';
-                // Re-key from the live document — it may have moved on (or
-                // been swapped) since the edit that armed this timer.
-                $this->scopeCache = BreadcrumbScanner::scan($this->document->getText());
-                $this->scopeKey = spl_object_id($this->document).':'.$this->document->getVersion();
-                $this->invalidate(); // the settled trail needs a frame to show
-            });
+            $this->scopeRescan = new ScopeRescan(
+                $this->scheduler->delay(self::SCOPE_DEBOUNCE_SECONDS, function (): void {
+                    $this->scopeRescan = null;
+                    // Re-key from the live document — it may have moved on (or
+                    // been swapped) since the edit that armed this timer.
+                    $this->scopeCache = BreadcrumbScanner::scan($this->document->getText());
+                    $this->scopeKey = spl_object_id($this->document).':'.$this->document->getVersion();
+                    $this->invalidate(); // the settled trail needs a frame to show
+                }),
+                $key,
+            );
         }
 
         return $this->scopeCache;

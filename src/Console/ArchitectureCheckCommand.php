@@ -293,6 +293,9 @@ final class ArchitectureCheckCommand extends Command
         'Widget>Highlight',
         'Widget>Input',
         'Widget>Layout',
+        // The editor widget picks its scope source: the offline PHP scan, or the
+        // language server's symbols for every other language.
+        'Widget>Lsp',
         'Widget>Onboarding',
         'Widget>Overlay',
         'Widget>Search',

@@ -44,9 +44,8 @@ running at all. Other languages use the server's own `textDocument/documentSymbo
 answer, refreshed on save and on opening a buffer; without a server that provides
 it, the bar simply stays empty as before.
 
-**Sticky scroll is still PHP-only.** It reads the same scopes but from inside the
-editor widget, which cannot reach the server's answer without another dependency
-on the codebase's widest class — see `docs/internals/decisions.md`.
+The sticky-scroll band above the code reads the same scopes, so it names your
+enclosing class and method in every language the trail does.
 
 ## Buffers and tabs
 
