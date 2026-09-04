@@ -122,6 +122,47 @@ final class IdeTabsBuffersTest extends TestCase
         $this->assertStringContainsString('open a file from the tree', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
     }
 
+    public function testRecentFilesOffersAFileThatIsNoLongerOpen(): void
+    {
+        // The half a BufferManager cannot answer: closing the tab erases the
+        // file from `recent()`, and it is usually the one you want back. Driven
+        // through the running IDE because the store, the recorder and the
+        // switcher are three pieces and only the join is the feature.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php // a\n", 'b.php' => "<?php // b\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => static function ($tui, $terminal, $ide) use ($project): void {
+                    Services::resolve($ide, BufferService::class)
+                        ->openFile($project->path('b.php'), OpenFocus::Editor);
+                },
+                300 => function ($tui): void {
+                    $this->assertStringEndsWith('b.php', (string) $tui->getById('editor')->getFilePath());
+                    $tui->handleInput("\x1bw"); // alt+w: close b.php, leaving only a.php open
+                },
+                400 => function ($tui, $terminal): void {
+                    $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath());
+                    $terminal->clearOutput();
+                    $tui->handleInput("\x05"); // ctrl+e
+                },
+                500 => function ($tui, $terminal): void {
+                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertTrue(EditorState::pickerOpen($tui->getById('editor')));
+                    $this->assertStringContainsString('Recent Files', $screen);
+                    $this->assertStringContainsString('b.php', $screen, 'the closed file is still on offer');
+                    // Pre-selected, exactly as the previously-open file would be.
+                    $tui->handleInput("\r");
+                },
+                600 => function ($tui): void {
+                    $this->assertStringEndsWith('b.php', (string) $tui->getById('editor')->getFilePath(), 'picking it opened it again');
+                },
+            ],
+        );
+    }
+
     public function testBufferSwitchReusesHighlightCache(): void
     {
         putenv('PATH=/nonexistent');

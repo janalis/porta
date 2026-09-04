@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use Porta\History\RecentFilesStore;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
@@ -39,6 +40,7 @@ final class BufferNavigator implements BufferNavigationHandler, ViewerTabHandler
         private readonly StatusBarWidget $statusBar,
         private readonly Tui $tui,
         private readonly ProjectPaths $paths,
+        private readonly RecentFilesStore $recentFiles,
     ) {}
 
     /** Switch to the previous/next tab (+1 / -1) and focus its content. */
@@ -95,15 +97,30 @@ final class BufferNavigator implements BufferNavigationHandler, ViewerTabHandler
     #[\Override]
     public function openRecentFiles(): void
     {
-        $recent = $this->buffers->recent();
-        if (\count($recent) < 2) {
-            return;
-        }
+        $open = $this->buffers->recent();
         $items = array_map(fn (Buffer $b) => [
             'label' => basename($b->path).($b->document->isDirty() ? ' '.Glyphs::DIRTY : ''),
             'hint' => $this->paths->relative($b->path),
             'value' => $b->path,
-        ], $recent);
+        ], $open);
+
+        // Then the files that are recent but no longer open, which is the half
+        // that makes the switcher worth a keystroke: the file you want back is
+        // usually one you just closed. Gone from disk means gone from the list
+        // rather than an entry that opens an empty buffer.
+        $openPaths = array_fill_keys(array_map(static fn (Buffer $b) => $b->path, $open), value: true);
+        foreach ($this->recentFiles->all() as $path) {
+            if (($openPaths[$path] ?? null) !== null || !is_file($path)) {
+                continue;
+            }
+
+            $items[] = ['label' => basename($path), 'hint' => $this->paths->relative($path), 'value' => $path];
+        }
+
+        if (\count($items) < 2) {
+            return; // nowhere to switch to
+        }
+
         // Pre-select the previous file, like PhpStorm's Ctrl+E
         $items[] = $items[0];
         array_shift($items);
@@ -111,7 +128,11 @@ final class BufferNavigator implements BufferNavigationHandler, ViewerTabHandler
         $this->editor->openListOverlay('Recent Files', $items, function (string $path): void {
             if (null !== ($buffer = $this->buffers->setActive($path))) {
                 $this->bufferService->showBuffer($buffer);
+
+                return;
             }
+
+            $this->bufferService->openFile($path);
         });
         $this->tui->requestRender();
     }

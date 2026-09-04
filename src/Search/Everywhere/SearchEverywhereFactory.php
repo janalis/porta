@@ -9,6 +9,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\EditorTextAccess;
 use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
+use Porta\History\RecentFilesStore;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\WorkspaceSymbolClient;
@@ -40,6 +41,7 @@ final class SearchEverywhereFactory
         private readonly Tui $tui,
         private readonly Scheduler $scheduler,
         private readonly ProjectPaths $paths,
+        private readonly RecentFilesStore $recentFiles,
         private readonly Translator $translator,
         // The one shared index: both pickers and the container's TestNavigator
         // consumer used to build their own, tripling the walk and the memory.
@@ -68,6 +70,7 @@ final class SearchEverywhereFactory
             $this->buffers,
             $this->tui,
             $this->paths,
+            $this->recentFiles,
             $this->bufferService,
             $this->scheduler,
             $this->translator,
@@ -98,6 +101,7 @@ final class SearchEverywhereFactory
             $this->buffers,
             $this->tui,
             $this->paths,
+            $this->recentFiles,
             $this->bufferService,
             $this->scheduler,
             $this->translator,
@@ -120,6 +124,7 @@ final class SearchEverywhereFactory
             $this->buffers,
             $this->tui,
             $this->paths,
+            $this->recentFiles,
             $this->bufferService,
             $this->scheduler,
             $this->translator,
@@ -145,6 +150,7 @@ final class SearchEverywhereFactory
             $this->buffers,
             $this->tui,
             $this->paths,
+            $this->recentFiles,
             $this->bufferService,
             $this->scheduler,
             $this->translator,
@@ -178,6 +184,7 @@ final class SearchEverywhereFactory
             $this->buffers,
             $this->tui,
             $this->paths,
+            $this->recentFiles,
             $this->bufferService,
             $this->scheduler,
             $this->translator,

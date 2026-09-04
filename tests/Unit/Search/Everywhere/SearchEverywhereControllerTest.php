@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
+use Porta\History\RecentFilesStore;
 use Porta\I18n\Translator;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchEverywhereController;
@@ -17,6 +18,7 @@ use Porta\Search\Everywhere\SearchRow;
 use Porta\Search\Everywhere\SearchSource;
 use Porta\Support\ProjectPaths;
 use Porta\Support\Scheduler;
+use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -28,6 +30,9 @@ final class SearchEverywhereControllerTest extends TestCase
     private array $cancelled = [];
     /** @var list<array{string, bool}> */
     private array $opened = [];
+
+    /** Set by the one test that cares what the recent-files tray remembers. */
+    private ?RecentFilesStore $recentFiles = null;
 
     private function overlay(): SearchOverlay
     {
@@ -94,7 +99,7 @@ final class SearchEverywhereControllerTest extends TestCase
      * @param list<SearchSource> $sync
      * @param list<SearchSource> $async
      */
-    private function controller(SearchOverlay $overlay, array $sync, array $async, BufferManager $buffers): SearchEverywhereController
+    private function controller(SearchOverlay $overlay, array $sync, array $async, BufferManager $buffers, string $root = '/proj'): SearchEverywhereController
     {
         $opened = &$this->opened;
         $scheduled = &$this->scheduled;
@@ -106,7 +111,8 @@ final class SearchEverywhereControllerTest extends TestCase
             $async,
             $buffers,
             new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24)),
-            new ProjectPaths('/proj'),
+            new ProjectPaths($root),
+            $this->recentFiles ?? new RecentFilesStore($root),
             new class($opened) implements FileOpener {
                 /** @param list<array{string, bool}> $opened */
                 public function __construct(
@@ -278,6 +284,33 @@ final class SearchEverywhereControllerTest extends TestCase
 
         ($overlay->rows[2]->hit->activate)(); // opening a recent file
         $this->assertSame([['/proj/src/A.php', true]], $this->opened);
+    }
+
+    public function testTheTrayAlsoLISTSFilesThatAreNoLongerOpen(): void
+    {
+        // The half a BufferManager cannot answer: closing the tab erases the
+        // file from `recent()`, and it is usually the one you want back.
+        $project = new TempProject(['src/Closed.php' => '<?php', 'Gone.php' => '<?php']);
+        $this->recentFiles = new RecentFilesStore($project->dir);
+        $this->recentFiles->record($project->path('Gone.php'));
+        $this->recentFiles->record($project->path('src/Closed.php'));
+        $this->recentFiles->record($project->path('src/Open.php'));
+        unlink($project->path('Gone.php'));
+
+        $buffers = new BufferManager();
+        $buffers->open($project->path('src/Open.php'), '');
+        $overlay = $this->overlay();
+
+        $this->controller($overlay, [], [], $buffers, $project->dir)->open();
+
+        $this->assertSame(
+            ['Open.php', 'Closed.php'],
+            $this->labels($overlay->rows),
+            'the open buffer first, then the closed file — and never the deleted one',
+        );
+
+        ($overlay->rows[2]->hit?->activate)();
+        $this->assertSame([[$project->path('src/Closed.php'), true]], $this->opened, 'activating it opens it');
     }
 
     public function testQueryRunsSyncSourcesNowAndAsyncOnTheDebounce(): void

@@ -55,6 +55,14 @@ Save / Discard / Cancel prompt on unsaved changes), `Ctrl+E` opens the
 recent-files popup. Every buffer keeps its cursor, undo history and
 diagnostics. The open set is restored on the next launch.
 
+The recent-files popup outlives the tab: below the open buffers it lists the
+files this project has had open and closed, newest first, which is usually
+where the one you want is. The same list seeds Search Everywhere's empty
+state, so the two cannot disagree about what "recent" means. It is kept in
+`.porta/recent-files.json`, capped at 32, and a file that has since been
+deleted is dropped rather than offered. Help pages and images are never
+recorded — reopening a help page as editable source is not a switch.
+
 Files larger than 2 MB and non-UTF-8 files are refused. Clean buffers that
 change on disk (e.g. rewritten by a formatter) reload automatically within
 a second.
