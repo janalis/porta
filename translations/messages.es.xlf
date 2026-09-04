@@ -2842,6 +2842,10 @@
         <source>Unpin Tab</source>
         <target>Desfijar pestaña</target>
       </trans-unit>
+      <trans-unit id="795">
+        <source>Method separators</source>
+        <target>Separadores de métodos</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

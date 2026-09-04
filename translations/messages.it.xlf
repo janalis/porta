@@ -2842,6 +2842,10 @@
         <source>Unpin Tab</source>
         <target>Sblocca scheda</target>
       </trans-unit>
+      <trans-unit id="795">
+        <source>Method separators</source>
+        <target>Separatori di metodi</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

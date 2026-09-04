@@ -17,6 +17,7 @@ use Porta\Tests\Support\FakeEditorNavigation;
 use Porta\Tests\Support\FakeEditorRefactor;
 use Porta\Tests\Support\Probe;
 use Porta\Ui\Glyphs;
+use Porta\Ui\Sgr;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorCallbacks;
 use Porta\Widget\Render\LineDecorator;
@@ -168,6 +169,32 @@ final class CodeEditorWidgetTest extends TestCase
 
         $this->assertStringNotContainsString('│', $line2, 'the Interface setting off → no indent guides');
         $this->assertStringContainsString('deep();', $line2);
+    }
+
+    public function testMethodSeparatorsRuleTheEndOfEachMemberWhenTheSettingIsOn(): void
+    {
+        // Through the widget, not the collaborator: the setting has to reach
+        // the render path, which is the half that unit-testing the line source
+        // can never show.
+        $source = "<?php\n\nclass A\n{\n    public function one(): void\n    {\n    }\n\n    public function two(): void\n    {\n    }\n}\n";
+        $editor = $this->editor($source, 'members.php');
+
+        $off = $editor->render(new RenderContext(80, 14));
+        $editor->display()->setMethodSeparators(true);
+        $on = $editor->render(new RenderContext(80, 14));
+
+        // one() closes on document line 6, two() on line 10.
+        $this->assertStringContainsString(Sgr::UNDERLINE, $on[6], 'one() is closed off by a rule');
+        $this->assertStringContainsString(Sgr::UNDERLINE, $on[10], 'and so is two()');
+        $this->assertStringNotContainsString(Sgr::UNDERLINE, $off[6], 'the setting off → no rule');
+
+        // The blank line between the two members is NOT the ruled one: the
+        // rule sits under the closing brace, the way a graphical editor draws
+        // a bottom border, so it clears two()'s docblock space.
+        $this->assertStringNotContainsString(Sgr::UNDERLINE, $on[7], 'the blank line between members is untouched');
+        $this->assertStringNotContainsString(Sgr::UNDERLINE, $on[2], 'and so is the class declaration');
+
+        $this->assertExactWidth($on, 80);
     }
 
     public function testNoStickyRowsForStructurelessFile(): void

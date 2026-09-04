@@ -24,6 +24,7 @@ final class LineSpans
      * @param list<array{start: int, end: int, current: bool}>                     $matches  search matches on this line (byte cols)
      * @param list<array{severity: int, message: string, col: int, endCol?: int}>  $diags    diagnostics on this line (utf16 cols)
      * @param list<array{col: int, endCol: int, open: string, close: string}>      $semantic server semantic tokens on this line (utf16 cols), already styled
+     * @param int                                                                  $separatorTo rule this line across this many display columns; 0 for no rule
      *
      * @return array{spans: list<array{0: int, 1: int, 2: string, 3: string, 4: ?string}>, padTo: int}
      */
@@ -35,6 +36,7 @@ final class LineSpans
         array $diags,
         Styles $styles,
         array $semantic = [],
+        int $separatorTo = 0,
     ): array {
         $selection = $decorations->multiActive ? null : $decorations->selection;
         $occurrences = $decorations->occurrences;
@@ -42,6 +44,15 @@ final class LineSpans
         $carets = $decorations->carets;
         $spans = [];
         $padTo = 0;
+
+        // The method separator: an underline across the content width, drawn
+        // FIRST so anything else layers over it. It needs the line padded to
+        // that width — the line it lands on is usually the blank one between
+        // two members, which has no cells of its own to underline.
+        if ($separatorTo > 0) {
+            $spans[] = [0, $separatorTo, Sgr::UNDERLINE, Sgr::NO_UNDERLINE, null];
+            $padTo = $separatorTo;
+        }
 
         // First, so every other decoration layers over it: the semantic
         // recolour is the base coat, not an overlay. It carries a foreground

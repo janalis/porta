@@ -35,6 +35,7 @@ final class IdeConfig
         'lineNumbers' => 'absolute',
         'stickyScroll' => true,
         'indentGuides' => true,
+        'methodSeparators' => false,
         'breadcrumbs' => true,
         'autoPairs' => true,
         'formatOnSave' => false,

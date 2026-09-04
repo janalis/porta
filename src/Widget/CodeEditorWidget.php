@@ -32,6 +32,7 @@ use Porta\Editor\EditorViewport;
 use Porta\Editor\FoldModel;
 use Porta\Editor\IndentKind;
 use Porta\Editor\LineNumberMode;
+use Porta\Editor\MemberSeparators;
 use Porta\Editor\ModalHost;
 use Porta\Editor\MultiCaret;
 use Porta\Editor\OccurrenceHighlights;
@@ -1239,6 +1240,11 @@ final class CodeEditorWidget extends AbstractWidget implements
                 // the lexer would have used for that kind of symbol — and
                 // follows a theme switch without waiting for the next answer.
                 $this->syntaxTheme,
+                // Computed per frame from the same scopes the trail and the
+                // sticky band read, so the rule appears in every language they
+                // work in. Passed in rather than pushed into the decoration
+                // store: a store write invalidates, and this runs in render.
+                $this->display->methodSeparators() ? MemberSeparators::linesFor($this->scopes()) : [],
             );
             $result = $assembler->assemble(
                 $geo,

@@ -160,6 +160,24 @@ breakpoint dots, fold triangles, indent guides, identifier-occurrence and matchi
 highlighting, and dimmed inline parameter-name/type **inlay hints** from
 the language server.
 
+## Method separators
+
+Off by default (Settings → Interface, or `methodSeparators` in `.porta.json`).
+A thin rule closing off each method and named function — PhpStorm's
+separator, in the place PhpStorm puts it: along the bottom edge of the member's
+last line.
+
+It is an underline on that row rather than a row of its own, so turning it on
+costs no vertical space and shifts nothing. Under the closing brace is also the
+only placement that survives docblocks: the line ABOVE the next method is
+usually its own `/** … */` or `#[\Override]`, and a rule through one of those
+reads as a mistake.
+
+The lines come from the same scopes the breadcrumb trail and the sticky band
+read — the offline PHP scan, or the language server's document symbols — so the
+rules appear in every language those work in. Abstract and interface methods
+have no body to close, and get none.
+
 ## Soft wrap
 
 `Alt+Z`, off by default. A line longer than the pane continues on the next row

@@ -111,6 +111,13 @@ final class SettingsController
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $editor->setIndentGuides((bool) $v),
             ],
+            'methodSeparators' => [
+                'label' => 'Method separators',
+                'kind' => SettingsRowKind::Bool,
+                'group' => 'interface',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $editor->setMethodSeparators((bool) $v),
+            ],
             'breadcrumbs' => [
                 'label' => 'Breadcrumbs bar',
                 'kind' => SettingsRowKind::Bool,

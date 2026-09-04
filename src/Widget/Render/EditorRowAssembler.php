@@ -62,6 +62,8 @@ final readonly class EditorRowAssembler
          * that answers `textDocument/semanticTokens`.
          */
         private ?TerminalTheme $syntaxTheme = null,
+        /** @var array<int, true> lines carrying a member separator; [] when the setting is off */
+        private array $separators = [],
     ) {
         $this->styles = $styles ?? Styles::dark();
         $this->breakpointSet = array_fill_keys($store->breakpointLines(), value: true);
@@ -349,6 +351,7 @@ final readonly class EditorRowAssembler
             $lineDiags,
             $this->styles,
             $this->semanticSpansFor($lineIndex),
+            ($this->separators[$lineIndex] ?? null) !== null ? $contentWidth : 0,
         );
         if ($padTo > 0) {
             // Pad so an end-of-line caret has a cell to invert (the window

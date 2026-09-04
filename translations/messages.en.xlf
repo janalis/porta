@@ -2842,6 +2842,10 @@
         <source>Unpin Tab</source>
         <target>Unpin Tab</target>
       </trans-unit>
+      <trans-unit id="795">
+        <source>Method separators</source>
+        <target>Method separators</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
