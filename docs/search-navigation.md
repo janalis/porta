@@ -74,8 +74,11 @@ persistent tool window, `Ctrl+F12` the transient popup.
 ## Problems panel (`Alt+6`)
 
 Aggregated diagnostics across all open buffers — `✗` errors, `▲` warnings,
-sorted by file and line; `Enter` jumps to the diagnostic. The status bar
-carries live error/warning counts. Diagnostics come from the language
+sorted by file and line; `Enter` jumps to the diagnostic. The list is **grouped
+by file** and carries a **filter field**: type to narrow it to the file or
+message you are after, and `Alt+G` cycles the grouping (file / directory /
+nested), exactly as the Find tool does. The status bar carries live
+error/warning counts. Diagnostics come from the language
 server and from plugins that publish them (phpstan, mago, psalm).
 
 `F2` / `Shift+F2` walk this file's problems without leaving the editor — the

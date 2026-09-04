@@ -43,6 +43,19 @@ final class IdeDockToolsTest extends TestCase
         return Services::resolve($ide, BufferService::class);
     }
 
+    /** The panel's rendered line carrying $needle. */
+    private static function resultRow(mixed $tui, string $needle): string
+    {
+        $rows = $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12));
+        foreach ($rows as $row) {
+            if (str_contains(AnsiUtils::stripAnsiCodes($row), $needle)) {
+                return $row;
+            }
+        }
+
+        self::fail("no results row contains '{$needle}'");
+    }
+
     public function testHoveringThePanelTintsARowAndLeavingItClearsTheTint(): void
     {
         putenv('PATH=/nonexistent');
@@ -66,14 +79,18 @@ final class IdeDockToolsTest extends TestCase
                     $tui->tick();
 
                     // Hover the second result row; the first stays selected.
+                    // The rect's first row is chrome, then the filter field and
+                    // the file's group header, so the results begin at +3 and
+                    // the second one is +4.
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('results'));
-                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + 5, $rect->row + 2));
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + 5, $rect->row + 4));
                 },
                 300 => function ($tui, $terminal, $ide): void {
-                    $results = $tui->getById('results');
-                    $joined = implode('', $results->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12)));
-                    $this->assertStringContainsString("\x1b[48;5;236m", $joined, 'the row under the pointer is tinted');
+                    // Asserted on the hovered ROW, not the whole panel: the
+                    // filter field carries the same background, so presence
+                    // anywhere would be true whether or not anything is hovered.
+                    $this->assertStringContainsString("\x1b[48;5;236m", self::resultRow($tui, 'second'), 'the row under the pointer is tinted');
 
                     // Move into the editor: the panel's tint must not survive it.
                     $renderer = Services::resolve($ide, Renderer::class);
@@ -81,9 +98,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $editorRect->col + 5, $editorRect->row + 1));
                 },
                 400 => function ($tui): void {
-                    $results = $tui->getById('results');
-                    $joined = implode('', $results->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12)));
-                    $this->assertStringNotContainsString("\x1b[48;5;236m", $joined, 'the tint cleared when the pointer left the panel');
+                    $this->assertStringNotContainsString("\x1b[48;5;236m", self::resultRow($tui, 'second'), 'the tint cleared when the pointer left the panel');
                 },
             ],
         );

@@ -10,6 +10,7 @@ use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
+use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\Notifier;
@@ -60,7 +61,12 @@ final class SearchActions
     /** Every open buffer's diagnostics as one sorted, scannable list (kept live by {@see \Porta\Workbench\Dock\DockLiveRefreshListener}). */
     public function showProblems(): void
     {
-        $this->panels->showList(ResultsPanelMode::Problems, $this->translator->trans('Problems'), $this->problemRows->build());
+        $this->panels->showList(
+            ResultsPanelMode::Problems,
+            $this->translator->trans('Problems'),
+            $this->problemRows->build(),
+            ResultsPanelFields::problemList(),
+        );
     }
 
     /** PhpStorm-style Ctrl+Shift+T: jump from a class to its test file, or back. */

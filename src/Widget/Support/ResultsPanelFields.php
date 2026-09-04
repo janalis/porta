@@ -28,4 +28,15 @@ final readonly class ResultsPanelFields
     {
         return new self(grouped: true, filter: true);
     }
+
+    /**
+     * Problems: the same two fields the Find tool gets, and for the same
+     * reason — the list runs to every diagnostic in every open buffer, so
+     * grouping it by file is how you read it and filtering is how you find the
+     * one you came for.
+     */
+    public static function problemList(): self
+    {
+        return self::searchResults();
+    }
 }
