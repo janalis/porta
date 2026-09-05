@@ -1535,6 +1535,14 @@ four. `BookmarkStore::load()` self-heals at startup; the other three do not.
   never be present — so quick-fix matching by diagnostic code is silently
   degraded, with a comment explaining why those keys matter.
 
+  **Half of this landed in `143b4c3f`**, as a defect rather than a feature:
+  `code` and `source` are carried now, so the `codeAction` context is no longer
+  built out of absent keys. What is still discarded is `codeDescription` (the
+  server's link to its rule's documentation), the plugins' string prefixes,
+  which are now duplicating a field they could read, and `tags` — measured
+  arriving from phpactor for an unused import, WITHOUT `tagSupport` declared,
+  and the input a dim-unused / strike-deprecated style needs.
+
 A fuller inventory (client capabilities declared but unused, requests the
 bundled servers advertise and Porta never sends, `client/registerCapability`
 answered and discarded) came out of the same survey and is worth re-running
