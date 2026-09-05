@@ -22,7 +22,7 @@ final class LineSpans
 {
     /**
      * @param list<array{start: int, end: int, current: bool}>                     $matches  search matches on this line (byte cols)
-     * @param list<array{severity: int, message: string, col: int, endCol?: int}>  $diags    diagnostics on this line (utf16 cols)
+     * @param list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string}>  $diags    diagnostics on this line (utf16 cols)
      * @param list<array{col: int, endCol: int, open: string, close: string}>      $semantic server semantic tokens on this line (utf16 cols), already styled
      * @param int                                                                  $separatorTo rule this row across this many display columns; 0 for no rule
      *

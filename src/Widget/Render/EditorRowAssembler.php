@@ -302,7 +302,7 @@ final readonly class EditorRowAssembler
      * The gutter cell for one document line: git strip, line number colored by
      * the line's worst diagnostic (or highlighted on the caret line), marker.
      *
-     * @param list<array{col: int, endCol?: int, message: string, severity: int}> $lineDiags
+     * @param list<array{col: int, endCol?: int, message: string, severity: int, code?: int|string, source?: string}> $lineDiags
      */
     private function gutterCell(int $lineIndex, CaretLine $isCursorLine, array $lineDiags, int $numberWidth): string
     {
@@ -368,7 +368,7 @@ final readonly class EditorRowAssembler
      * layered selection/caret/search/occurrence/bracket/diagnostic spans,
      * inlay hints, and the collapsed-fold marker.
      *
-     * @param list<array{col: int, endCol?: int, message: string, severity: int}> $lineDiags
+     * @param list<array{col: int, endCol?: int, message: string, severity: int, code?: int|string, source?: string}> $lineDiags
      */
     /**
      * The display column a member separator's rule starts at on this ROW, or
@@ -401,7 +401,7 @@ final readonly class EditorRowAssembler
      * site until this method grew a parameter, and mago then read it as
      * `array<array-key, mixed>`.
      *
-     * @param list<array{col: int, endCol?: int, message: string, severity: int}> $lineDiags
+     * @param list<array{col: int, endCol?: int, message: string, severity: int, code?: int|string, source?: string}> $lineDiags
      */
     private function decoratedLine(
         int $lineIndex,

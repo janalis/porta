@@ -360,4 +360,73 @@ final class LspMapperTest extends TestCase
 
         $this->assertSame([[1, 0, 5, false]], $spans, 'the start is column 0, not 1 and not -1');
     }
+
+    /**
+     * `code` and `source` reach the buffer, because
+     * {@see \Porta\Lsp\RefactorController::diagnosticsAt()} puts them back into
+     * the `codeAction` context and a server that matches its own fix by code
+     * sees nothing to match without them.
+     *
+     * That controller had a test for its half already — with a diagnostic built
+     * BY HAND carrying a code. Nothing produced one, so the loop that copies it
+     * could never find anything: both ends were tested and the middle was not.
+     *
+     * Measured against a real server before it was built: phpactor answers an
+     * unused import with `code: worse.unused_import`, `source: phpactor`.
+     */
+    public function testDiagnosticsCarryTheServersCodeAndSource(): void
+    {
+        $byLine = LspMapper::diagnosticsByLine([
+            'diagnostics' => [
+                [
+                    'severity' => 2,
+                    'message' => 'Name "Thing" is imported but not used',
+                    'code' => 'worse.unused_import',
+                    'source' => 'phpactor',
+                    'range' => ['start' => ['line' => 4, 'character' => 4], 'end' => ['line' => 4, 'character' => 23]],
+                ],
+            ],
+        ]);
+
+        $this->assertSame('worse.unused_import', $byLine[4][0]['code']);
+        $this->assertSame('phpactor', $byLine[4][0]['source']);
+        $this->assertSame(2, $byLine[4][0]['severity'], 'and the fields that always worked still do');
+    }
+
+    public function testADiagnosticWithoutThemCarriesNoEmptyKeys(): void
+    {
+        // Absent, not null or '': RefactorController copies whatever is set, so
+        // an empty code would go into the context as a code the server never
+        // gave and could never match.
+        $byLine = LspMapper::diagnosticsByLine([
+            'diagnostics' => [
+                [
+                    'severity' => 1,
+                    'message' => 'boom',
+                    'range' => ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]],
+                ],
+            ],
+        ]);
+
+        $this->assertArrayNotHasKey('code', $byLine[0][0]);
+        $this->assertArrayNotHasKey('source', $byLine[0][0]);
+    }
+
+    public function testANumericCodeStaysANumberNotAString(): void
+    {
+        // The spec allows an integer code, and a server that matches on one
+        // would not recognise "1005".
+        $byLine = LspMapper::diagnosticsByLine([
+            'diagnostics' => [
+                [
+                    'severity' => 1,
+                    'message' => 'boom',
+                    'code' => 1005,
+                    'range' => ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]],
+                ],
+            ],
+        ]);
+
+        $this->assertSame(1005, $byLine[0][0]['code']);
+    }
 }

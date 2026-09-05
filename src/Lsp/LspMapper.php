@@ -426,6 +426,8 @@ final class LspMapper
      *     diagnostics?: list<array{
      *         severity?: int,
      *         message?: string,
+     *         code?: int|string,
+     *         source?: string,
      *         range: array{
      *             start: array{line?: int, character?: int},
      *             end: array{line?: int, character?: int},
@@ -433,7 +435,7 @@ final class LspMapper
      *     }>,
      * } $params
      *
-     * @return array<int, list<array{severity: int, message: string, col: int, endCol: int}>>
+     * @return array<int, list<array{severity: int, message: string, col: int, endCol: int, code?: int|string, source?: string}>>
      */
     public static function diagnosticsByLine(array $params): array
     {
@@ -441,12 +443,28 @@ final class LspMapper
         foreach ($params['diagnostics'] ?? [] as $diag) {
             $line = $diag['range']['start']['line'] ?? 0;
             $sameLine = ($diag['range']['end']['line'] ?? $line) === $line;
-            $byLine[$line][] = [
+            $mapped = [
                 'severity' => (int) ($diag['severity'] ?? 1),
                 'message' => trim((string) preg_replace('/\s+/', replacement: ' ', subject: $diag['message'] ?? '')),
                 'col' => $diag['range']['start']['character'] ?? 0,
                 'endCol' => $sameLine ? $diag['range']['end']['character'] ?? 0 : \PHP_INT_MAX,
             ];
+            // `code` and `source` ride along when the server sent them, which
+            // phpactor does for every diagnostic it raises (measured:
+            // `worse.unused_import` / `phpactor`). They are not decoration:
+            // {@see \Porta\Lsp\RefactorController::diagnosticsAt()} puts them back
+            // into the `codeAction` context because a server that matches its
+            // own fix by code sees nothing to match without them — and until
+            // they were carried here, that loop could never find one.
+            $code = $diag['code'] ?? null;
+            if (null !== $code) {
+                $mapped['code'] = $code;
+            }
+            $source = $diag['source'] ?? null;
+            if (null !== $source) {
+                $mapped['source'] = $source;
+            }
+            $byLine[$line][] = $mapped;
         }
         ksort($byLine);
 

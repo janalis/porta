@@ -45,7 +45,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     /** The debugger's stopped line (full-width band), or null when not paused here. */
     private ?int $debugLine = null;
 
-    /** @var array<int, list<array{severity: int, message: string, col: int, endCol?: int}>> keyed by 0-based line */
+    /** @var array<int, list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string}>> keyed by 0-based line */
     private array $diagnostics = [];
 
     /** @var array{errors: int, warnings: int} maintained by {@see recountDiagnostics} on every diagnostics change */
@@ -65,7 +65,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
      * theirs per buffer). Git marks and search matches are replaced by their
      * own follow-up pushes.
      *
-     * @param array<int, list<array{severity: int, message: string, col: int, endCol?: int}>> $diagnostics
+     * @param array<int, list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string}>> $diagnostics
      */
     public function resetForBuffer(array $diagnostics): void
     {
@@ -176,7 +176,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         return $this->debugLine;
     }
 
-    /** @param array<int, list<array{severity: int, message: string, col: int, endCol?: int}>> $byLine */
+    /** @param array<int, list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string}>> $byLine */
     public function setDiagnostics(array $byLine): void
     {
         $this->diagnostics = $byLine;
@@ -201,7 +201,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         $this->counts = ['errors' => $errors, 'warnings' => $warnings];
     }
 
-    /** @return array<int, list<array{severity: int, message: string, col: int, endCol?: int}>> */
+    /** @return array<int, list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string}>> */
     public function diagnostics(): array
     {
         return $this->diagnostics;

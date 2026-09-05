@@ -718,7 +718,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
      * Deliver published LSP diagnostics to the buffer whose file they are
      * about (matched by URI), updating the editor when it is the active one.
      *
-     * @param array<int, list<array{severity: int, message: string, col: int, endCol: int}>> $byLine
+     * @param array<int, list<array{severity: int, message: string, col: int, endCol: int, code?: int|string, source?: string}>> $byLine
      */
     /**
      * Store a file's change marks and, if that file is the one on screen, paint
