@@ -1568,3 +1568,30 @@ bundled servers advertise and Porta never sends, `client/registerCapability`
 answered and discarded) came out of the same survey and is worth re-running
 rather than transcribing here.
 
+## Local History does not follow a rename — and the fix needs a public promise
+
+Six path-keyed stores follow `FileRenamed`/`FileDeleted` now. A SEVENTH does
+not, and it holds the most valuable data of the lot: `local-history`'s
+`SnapshotStore` keys its snapshots by `md5(realpath)`, so renaming a file
+orphans its entire history — at exactly the moment you are most likely to want
+it. Every store above is core; this one is a plugin.
+
+The fix is small and the obstacle is not technical. `FileRenamed` is not
+`PluginObservable`, and that marker is deliberately a promise: the class is
+pinned in a literal list in `PluginObservableContractTest`, named in
+`docs/plugins.md`, and frozen from then on. It qualifies on every rule (scalar
+payload, human frequency, documented), so the question is only whether the
+public plugin surface should grow — which the marker's own docblock says is a
+diff someone reviews rather than a thing you do while passing.
+
+Two details for whoever builds it:
+
+- **A file rename is enough; a FOLDER rename is not reachable.** `dirFor()`
+  hashes the path, and md5 does not run backwards, so a directory rename cannot
+  enumerate the snapshot dirs under it without a marker file recording each
+  dir's source path. That is a schema change to what the store's own docblock
+  calls a cache.
+- **A DELETE must keep the snapshots.** They are the last copy of the content;
+  local history exists precisely so a deletion is survivable. So only the
+  rename half is wanted, and `FileDeleted` needs no marker.
+
