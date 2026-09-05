@@ -69,7 +69,8 @@ final class EditHistory
     {
         $sites = [];
         foreach ($this->sites as $site) {
-            $renamed = $site['path'] === $from ? ['path' => $to, 'line' => $site['line']] : $site;
+            $moved = ProjectPaths::moved($site['path'], $from, $to);
+            $renamed = null === $moved ? $site : ['path' => $moved, 'line' => $site['line']];
             if (($sites[\count($sites) - 1] ?? null) !== $renamed) {
                 $sites[] = $renamed;
             }

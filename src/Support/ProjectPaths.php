@@ -106,6 +106,25 @@ final class ProjectPaths
     }
 
     /**
+     * Where $path ends up when $from is renamed to $to, or null when $path was
+     * not under $from at all.
+     *
+     * The subtree half of {@see isUnder()}: renaming `src/Old` to `src/New`
+     * moves `src/Old/A.php` to `src/New/A.php`, and every store keyed by the
+     * FILES has to be able to work that out. For a plain file the answer is
+     * just $to.
+     */
+    public static function moved(string $path, string $from, string $to): ?string
+    {
+        if (!self::isUnder($path, $from)) {
+            return null;
+        }
+        $relative = Path::makeRelative(Path::canonicalize($path), Path::canonicalize($from));
+
+        return '' === $relative ? $to : $to.'/'.$relative;
+    }
+
+    /**
      * Whether the path's lowercased extension is one of $extensions — the
      * routing test every viewer and decoder claim hand-rolled inline.
      *

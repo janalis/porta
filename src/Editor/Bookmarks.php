@@ -65,11 +65,14 @@ final class Bookmarks
      */
     public function rename(string $from, string $to): void
     {
-        if (!\array_key_exists($from, $this->marks)) {
-            return;
+        foreach (array_keys($this->marks) as $marked) {
+            $moved = ProjectPaths::moved($marked, $from, $to);
+            if (null === $moved || $moved === $marked) {
+                continue;
+            }
+            $this->marks[$moved] = $this->marks[$marked];
+            unset($this->marks[$marked]);
         }
-        $this->marks[$to] = $this->marks[$from];
-        unset($this->marks[$from]);
     }
 
     /**

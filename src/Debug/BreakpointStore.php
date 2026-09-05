@@ -110,11 +110,14 @@ final class BreakpointStore
      */
     public function rename(string $from, string $to): void
     {
-        if (!\array_key_exists($from, $this->breakpoints)) {
-            return;
+        foreach (array_keys($this->breakpoints) as $file) {
+            $moved = ProjectPaths::moved($file, $from, $to);
+            if (null === $moved || $moved === $file) {
+                continue;
+            }
+            $this->breakpoints[$moved] = $this->breakpoints[$file];
+            unset($this->breakpoints[$file]);
         }
-        $this->breakpoints[$to] = $this->breakpoints[$from];
-        unset($this->breakpoints[$from]);
     }
 
     /** Drop every breakpoint on a deleted file, or under a deleted directory. */

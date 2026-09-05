@@ -204,4 +204,32 @@ final class RecentFilesStoreTest extends TestCase
         $this->assertSame(['/p/a.php'], $store->all());
         $this->assertSame(1_000_000_000, filemtime($file), 'no write for a delete that changed nothing');
     }
+
+    public function testRenamingADirectoryMovesTheEntriesInsideIt(): void
+    {
+        $project = new TempProject();
+        $store = new RecentFilesStore($project->dir);
+        $store->record('/p/olden/b.php');
+        $store->record('/p/old/a.php');
+
+        $store->rename('/p/old', '/p/new');
+
+        $this->assertSame(['/p/new/a.php', '/p/olden/b.php'], $store->all());
+    }
+
+    public function testARenameThatMovesNothingHereDoesNotRewriteTheFile(): void
+    {
+        // Every rename anywhere in the project reaches this listener.
+        $project = new TempProject();
+        $store = new RecentFilesStore($project->dir);
+        $store->record('/p/a.php');
+        $file = $project->dir.'/.porta/recent-files.json';
+        touch($file, mtime: 1_000_000_000); // backdated: mtime resolves to the second
+        clearstatcache();
+
+        $store->rename('/p/elsewhere.php', '/p/moved.php');
+
+        $this->assertSame(['/p/a.php'], $store->all());
+        $this->assertSame(1_000_000_000, filemtime($file), 'no write for a rename that changed nothing');
+    }
 }

@@ -72,12 +72,12 @@ such store just adds a listener.
 time a listener runs the old path is gone from disk and `realpath()` on it
 returns false. Only the dispatcher is still in a position to answer.
 
-`FileDeleted` is the same fact for the other half of the question, and carries
+`FileDeleted` is the same fact for the other half of the question. Both carry
 one more clause: **a directory takes its whole tree**, while the stores are
-keyed by the files inside it. A listener therefore asks
-`ProjectPaths::isUnder()` rather than comparing paths — which reads the same as
-`===` when a plain file was deleted, so a listener never has to know which it
-was handed.
+keyed by the files inside it. So a listener asks `ProjectPaths::isUnder()`
+(deleted) or `ProjectPaths::moved()` (renamed) rather than comparing paths —
+both of which answer the same as `===` for a plain file, so a listener never
+has to know which it was handed.
 
 ## Priority
 

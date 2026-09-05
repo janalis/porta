@@ -126,4 +126,29 @@ final class BookmarksTest extends TestCase
 
         $this->assertSame(['/p/a.php' => [1]], $marks->all());
     }
+
+    public function testRenamingADIRECTORYMovesTheMarksInsideIt(): void
+    {
+        // The tree offers Rename… on a folder, and the store is keyed by the
+        // files in it — so an exact-match rename left every one of them on a
+        // path that no longer exists.
+        $marks = new Bookmarks();
+        $marks->toggle('/p/keep/z.php', 0);
+        $marks->toggle('/p/old/a.php', 1);
+        $marks->toggle('/p/old/deep/b.php', 2);
+        $marks->toggle('/p/olden/c.php', 3);
+
+        $marks->rename('/p/old', '/p/new');
+
+        $this->assertSame(
+            [
+                '/p/keep/z.php' => [0],
+                '/p/olden/c.php' => [3],
+                '/p/new/a.php' => [1],
+                '/p/new/deep/b.php' => [2],
+            ],
+            $marks->all(),
+            'the subtree moved; a prefix-sharing sibling did not',
+        );
+    }
 }

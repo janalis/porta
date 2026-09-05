@@ -187,4 +187,16 @@ final class EditHistoryTest extends TestCase
 
         $this->assertSame(['path' => '/p/b.php', 'line' => 2], $history->walkBack(), 'the newest survivor, not wherever the old count landed');
     }
+
+    public function testRenamingADirectoryMovesTheSitesInsideIt(): void
+    {
+        $history = new EditHistory();
+        $history->record('/p/olden/b.php', 1);
+        $history->record('/p/old/a.php', 4);
+
+        $history->rename('/p/old', '/p/new');
+
+        $this->assertSame(['path' => '/p/new/a.php', 'line' => 4], $history->walkBack());
+        $this->assertSame(['path' => '/p/olden/b.php', 'line' => 1], $history->walkBack(), 'the sibling stayed where it was');
+    }
 }

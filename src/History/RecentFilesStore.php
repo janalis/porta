@@ -74,18 +74,17 @@ final class RecentFilesStore
      */
     public function rename(string $from, string $to): void
     {
-        if (!\in_array($from, $this->paths, strict: true)) {
-            return;
-        }
-
         // Renaming ONTO a path already in the list leaves one entry, at the
         // better of the two positions: they are the same file now.
         $renamed = [];
         foreach ($this->paths as $path) {
-            $candidate = $path === $from ? $to : $path;
+            $candidate = ProjectPaths::moved($path, $from, $to) ?? $path;
             if (!\in_array($candidate, $renamed, strict: true)) {
                 $renamed[] = $candidate;
             }
+        }
+        if ($renamed === $this->paths) {
+            return;
         }
         $this->paths = $renamed;
         $this->save();

@@ -128,4 +128,17 @@ final class BreakpointStoreTest extends TestCase
         $this->assertSame([], $store->linesFor('/p/old/a.php'), 'the conditional went with the plain one');
         $this->assertSame([1], $store->linesFor('/p/olden/b.php'), 'a shared prefix is not the same directory');
     }
+
+    public function testRenamingADirectoryMovesTheBreakpointsInsideIt(): void
+    {
+        $store = new BreakpointStore();
+        $store->toggle('/p/olden/b.php', 1);
+        $store->setDetails('/p/old/a.php', 2, 'i > 2', null, null);
+
+        $store->rename('/p/old', '/p/new');
+
+        $this->assertSame(['condition' => 'i > 2', 'hitCondition' => null, 'logMessage' => null], $store->conditionAt('/p/new/a.php', 2), 'the condition came with it');
+        $this->assertSame([], $store->linesFor('/p/old/a.php'));
+        $this->assertSame([1], $store->linesFor('/p/olden/b.php'));
+    }
 }

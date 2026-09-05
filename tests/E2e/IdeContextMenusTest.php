@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BookmarkActions;
 use Porta\Editor\Bookmarks;
+use Porta\Editor\BufferManager;
 use Porta\Editor\EditHistory;
 use Porta\History\RecentFilesStore;
 use Porta\Tests\Support\ClearsPortaLsp;
@@ -685,6 +686,68 @@ final class IdeContextMenusTest extends TestCase
 
         $this->assertFileDoesNotExist($project->path('A.php'), 'old name gone');
         $this->assertFileExists($project->path('renamed.php'), 'renamed on disk');
+    }
+
+    public function testTreeContextMenuRenamingAFOLDERMovesWhatIsInsideIt(): void
+    {
+        // The tree offers Rename… on a folder, and everything keyed by path was
+        // keyed by the FILES: an exact-match rename left the open tab pointing
+        // into a directory that no longer existed — so the reconciler flashed
+        // "deleted on disk" for a file that had merely moved, and saving it
+        // wrote the old folder back into existence, because dumpFile() creates
+        // the directories it needs.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['src/A.php' => "<?php\n", 'outside.php' => "<?php\n"]);
+        $inside = (string) realpath($project->path('src/A.php'));
+
+        $this->runIde(
+            $project,
+            $project->path('src/A.php'),
+            [
+                150 => static function ($tui): void {
+                    $tui->tick();
+                    // A second tab OUTSIDE the folder, so the walk has a buffer
+                    // to leave alone as well as one to move. The tree rows are
+                    // the project root, the collapsed `src/`, then this.
+                    $tui->handleInput("\x1b[<0;3;4M");
+                },
+                250 => static function ($tui, $terminal, $ide) use ($inside): void {
+                    // Marked through the store rather than the editor: the file
+                    // inside the folder is deliberately NOT the active tab.
+                    Services::resolve($ide, Bookmarks::class)->toggle($inside, 0);
+                    $tui->handleInput("\x1b[<2;3;3M"); // right-click the src/ row
+                },
+                330 => static function ($tui): void {
+                    // A folder's menu carries the three search items a file's
+                    // does not, so Rename… is the 8th selectable row.
+                    foreach (range(1, end: 7) as $_) {
+                        $tui->handleInput("\x1b[B");
+                    }
+                    $tui->handleInput("\r");
+                },
+                410 => function ($tui): void {
+                    foreach (range(1, end: 10) as $_) {
+                        $tui->handleInput("\x7f"); // backspace out the prefilled name
+                    }
+                    $this->typeString($tui, 'lib');
+                    $tui->handleInput("\r");
+                },
+                520 => function ($tui, $terminal, $ide) use ($project, $inside): void {
+                    $open = array_map(static fn ($b): string => $b->path, Services::resolve($ide, BufferManager::class)->all());
+                    $this->assertContains((string) realpath($project->path('lib/A.php')), $open, 'the tab inside the folder followed it');
+                    $this->assertNotContains($inside, $open, 'and none is left on the path that is gone');
+                    $this->assertContains((string) realpath($project->path('outside.php')), $open, 'the tab outside the folder was left alone');
+                    $this->assertSame(
+                        [(string) realpath($project->path('lib/A.php')) => [0]],
+                        Services::resolve($ide, Bookmarks::class)->all(),
+                        'and so did the mark inside it',
+                    );
+                },
+            ],
+        );
+
+        $this->assertFileExists($project->path('lib/A.php'), 'the folder moved on disk');
+        $this->assertDirectoryDoesNotExist($project->path('src'), 'and nothing recreated the old one');
     }
 
     public function testTreeContextMenuDeleteRetiresEveryPathKeyedStore(): void
