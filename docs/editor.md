@@ -55,6 +55,13 @@ Save / Discard / Cancel prompt on unsaved changes), `Ctrl+E` opens the
 recent-files popup. Every buffer keeps its cursor, undo history and
 diagnostics. The open set is restored on the next launch.
 
+The tab bar sits on top by default; Settings → Interface moves it to the bottom,
+left or right. A side strip is a fixed 24 columns, so on a terminal too narrow
+to seat it and still leave a file worth reading it returns to the top on its own
+and goes back to the side when the room does. Changing the setting while it is
+displaced replaces what comes back, so you never get an abandoned preference
+restored under you.
+
 The recent-files popup outlives the tab: below the open buffers it lists the
 files this project has had open and closed, newest first, which is usually
 where the one you want is. The same list seeds Search Everywhere's empty

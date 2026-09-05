@@ -96,8 +96,50 @@ final class WorkspaceLayout
      * Re-seat the tab strip around the editor body: a one-row bar above/below
      * (vertical pane) or a fixed-width list beside it (horizontal pane).
      */
+    private TabBarPosition $configuredTabs = TabBarPosition::Top;
+
+    private bool $narrowTabs = false;
+
     public function setTabBarPosition(TabBarPosition $position): void
     {
+        // Remembered, because the responsive rule may be showing something else
+        // right now and has to know what to put back. This is the only entry
+        // the settings applier uses, at boot and on every change, so it is the
+        // one place the user's CHOICE passes through.
+        $this->configuredTabs = $position;
+        $this->seatTabBar($this->narrowTabs ? TabBarPosition::Top : $position);
+    }
+
+    /**
+     * Move a side tab strip to the top while the terminal cannot seat it, and
+     * put it back where the user asked when the room returns.
+     *
+     * A no-op for a configured top/bottom bar: there is nothing to rescue, and
+     * moving it would be inventing a preference.
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain: "the terminal is too narrow to seat a side strip", one fact with two values, not a hidden second responsibility.
+    public function setNarrowTabs(bool $narrow): void
+    {
+        if ($narrow === $this->narrowTabs) {
+            return;
+        }
+        $this->narrowTabs = $narrow;
+        if (!$this->configuredTabs->isSide()) {
+            return;
+        }
+
+        $this->seatTabBar($narrow ? TabBarPosition::Top : $this->configuredTabs);
+    }
+
+    /** Whether the strip is currently sitting somewhere the user did not choose. */
+    public function tabsAreDisplaced(): bool
+    {
+        return $this->narrowTabs && $this->configuredTabs->isSide();
+    }
+
+    private function seatTabBar(TabBarPosition $position): void
+    {
+        $this->tabBar->setPosition($position);
         $this->editorPane->setStyle($position->isSide() ? new Style(flex: 1, direction: Direction::Horizontal) : new Style(flex: 1));
         $this->editorPane->clear();
         foreach ($position->tabsFirst() ? [$this->tabBar, $this->editorBody] : [$this->editorBody, $this->tabBar] as $pane) {

@@ -21,6 +21,8 @@ use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\MenuBarWidget;
+use Porta\Widget\Support\TabBarPosition;
+use Porta\Widget\TabBarWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Render\Renderer;
@@ -35,6 +37,7 @@ final class ResponsiveLayoutTest extends TestCase
     private CodeEditorWidget $editor;
     private MenuBarWidget $menuBar;
     private \Porta\Layout\WorkspaceLayout $layout;
+    private TabBarWidget $tabBar;
     private BidiTui $bidi;
     private PaneLayout $paneLayout;
     private Renderer $renderer;
@@ -47,7 +50,8 @@ final class ResponsiveLayoutTest extends TestCase
         $this->editor = new CodeEditorWidget();
         $this->editor->setId('editor');
         $this->menuBar = new MenuBarWidget();
-        $this->layout = TestWorkspaceLayout::create(rootDir: $this->project->dir, tree: $this->tree, editor: $this->editor, menuBar: $this->menuBar);
+        $this->tabBar = new TabBarWidget();
+        $this->layout = TestWorkspaceLayout::create(rootDir: $this->project->dir, tree: $this->tree, editor: $this->editor, menuBar: $this->menuBar, tabBar: $this->tabBar);
         $renderer = new Renderer(new StyleSheet());
         $this->renderer = $renderer;
         $this->bidi = new BidiTui(terminal: new VirtualTerminal(columns: $columns, rows: 30), renderer: $renderer);
@@ -77,7 +81,7 @@ final class ResponsiveLayoutTest extends TestCase
             $this->bidi,
         );
 
-        return new ResponsiveLayout($this->paneLayout, $this->tree, $editorArea, $this->bidi);
+        return new ResponsiveLayout($this->paneLayout, $this->tree, $editorArea, $this->layout, $this->bidi);
     }
 
     /** @return list<string> */
@@ -142,6 +146,73 @@ final class ResponsiveLayoutTest extends TestCase
 
         $responsive->apply(ResponsiveLayout::COLLAPSE_BELOW);
         $this->assertSame(['tree', 'separator', 'editor-pane'], $this->mainIds(), 'wide again: the sidebar restores');
+    }
+
+    public function testASideTabStripGoesToTheTopWhenTheTerminalCannotSeatIt(): void
+    {
+        // The strip is a fixed 24 columns. On a narrow terminal that is most of
+        // the screen and the file reads in what is left — which is how a
+        // one-column editor pane was reachable at all.
+        $responsive = $this->responsive();
+        $this->layout->setTabBarPosition(TabBarPosition::Right);
+        $this->assertTrue($this->tabBar->position()->isSide());
+
+        $responsive->apply(ResponsiveLayout::SIDE_TABS_BELOW - 1);
+        $this->assertSame(TabBarPosition::Top, $this->tabBar->position(), 'narrow: the strip goes up');
+        $this->assertTrue($this->layout->tabsAreDisplaced());
+
+        // Entered AND left: the rule guards on a change of state, so a one-way
+        // test proves half of it.
+        $responsive->apply(ResponsiveLayout::SIDE_TABS_BELOW);
+        $this->assertSame(TabBarPosition::Right, $this->tabBar->position(), 'wide again: back where it was asked for');
+        $this->assertFalse($this->layout->tabsAreDisplaced());
+    }
+
+    public function testAFocusedPaneKeepsItsFocusWhenTheStripMoves(): void
+    {
+        // The surgery clears and refills the editor pane, so the focused widget
+        // is detached and focus falls to the menu bar — the same hazard the
+        // sidebar collapse handles, on a second path that had none.
+        $responsive = $this->responsive();
+        $this->layout->setTabBarPosition(TabBarPosition::Right);
+        $this->bidi->setFocus($this->tree);
+
+        $responsive->apply(ResponsiveLayout::SIDE_TABS_BELOW - 1);
+
+        $this->assertSame(TabBarPosition::Top, $this->tabBar->position());
+        $this->assertSame($this->editor, $this->bidi->getFocus(), 'focus was handed to the editor, not dropped');
+    }
+
+    public function testATOPBarIsLeftAloneAtEveryWidth(): void
+    {
+        // There is nothing to rescue, and moving it would be inventing a
+        // preference the user never expressed.
+        $responsive = $this->responsive();
+        $this->layout->setTabBarPosition(TabBarPosition::Bottom);
+
+        $responsive->apply(ResponsiveLayout::SIDE_TABS_BELOW - 1);
+
+        $this->assertSame(TabBarPosition::Bottom, $this->tabBar->position());
+        $this->assertFalse($this->layout->tabsAreDisplaced(), 'nothing was displaced');
+    }
+
+    public function testChoosingAPositionWHILEDisplacedIsWhatGetsRestored(): void
+    {
+        // The staleness this design exists to avoid: the layout is told the
+        // user's CHOICE by the one thing that applies it, so a change made
+        // while the strip is displaced replaces what would otherwise be put
+        // back. Reading a boot snapshot would restore an abandoned preference.
+        $responsive = $this->responsive();
+        $this->layout->setTabBarPosition(TabBarPosition::Right);
+        $responsive->apply(ResponsiveLayout::SIDE_TABS_BELOW - 1);
+        $this->assertSame(TabBarPosition::Top, $this->tabBar->position());
+
+        // The user picks the other side while the terminal is still narrow.
+        $this->layout->setTabBarPosition(TabBarPosition::Left);
+        $this->assertSame(TabBarPosition::Top, $this->tabBar->position(), 'still too narrow to seat it');
+
+        $responsive->apply(ResponsiveLayout::SIDE_TABS_BELOW);
+        $this->assertSame(TabBarPosition::Left, $this->tabBar->position(), 'the NEW choice is restored');
     }
 
     public function testFocusedTreeHandsFocusToTheEditorBeforeCollapsing(): void
