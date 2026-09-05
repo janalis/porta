@@ -925,6 +925,32 @@ final class IdeHelpersTest extends TestCase
         $this->assertContains((string) realpath($new), $paths, 'and the new path is open in its place');
     }
 
+    /**
+     * The directory case, for the reason the file case exists: a stale tab
+     * inside a renamed folder recreates that folder on its next save, because
+     * `dumpFile()` makes the directories it needs. The tree's rename was fixed
+     * the same way, and a `RenameFile` Porta honours differently from the tree
+     * is a refactoring that half applies.
+     */
+    public function testARenamedDIRECTORYCarriesEveryBufferInsideItWithIt(): void
+    {
+        $service = Services::resolve($this->ide, BufferService::class);
+        $buffers = Services::resolve($this->ide, BufferManager::class);
+        $this->project->write('old/Deep.php', "<?php\n");
+        $outside = $this->project->write('Outside.php', "<?php\n");
+        $service->openFile($this->project->path('old/Deep.php'));
+        $service->openFile($outside);
+        $old = (string) realpath($this->project->path('old'));
+
+        rename($old, $new = $this->project->path('new'));
+        $service->onBufferRepointRequested(new BufferRepointRequested($old, $new));
+
+        $paths = array_map(static fn ($buffer) => $buffer->path, $buffers->all());
+        $this->assertContains((string) realpath($this->project->path('new/Deep.php')), $paths, 'the buffer followed its folder');
+        $this->assertNotContains($old.'/Deep.php', $paths, 'and nothing is left on the path that is gone');
+        $this->assertContains((string) realpath($outside), $paths, 'a buffer outside the folder was left alone');
+    }
+
     /** A rename of a file nobody had open has no buffer to move. */
     public function testARepointForAFileWithNoBufferIsANoOp(): void
     {

@@ -97,6 +97,13 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
      * refactoring must not yank the user to another file. A buffer left on the
      * old path would recreate the file on its next save, undoing half the
      * refactoring.
+     *
+     * A DIRECTORY moves every open buffer inside it, for that same reason and
+     * not because a server has been seen doing it: `dumpFile()` creates the
+     * directories it needs, so one stale tab writes the old folder back into
+     * existence. The tree's own rename was fixed the same way, and the two
+     * paths have to leave the same state behind — a `RenameFile` that Porta
+     * honours differently from the tree is a refactoring that half applies.
      */
     #[AsEventListener]
     public function onBufferRepointRequested(BufferRepointRequested $event): void
@@ -106,11 +113,19 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         // and buffers were keyed by the canonical path when they opened.
         $directory = realpath(\dirname($event->from));
         $from = false === $directory ? $event->from : $directory.\DIRECTORY_SEPARATOR.basename($event->from);
-        if (!$this->buffers->has($from)) {
-            return;
+        // Collected before anything is closed: closing re-enters this class,
+        // and a walk over a list being mutated underneath it is its own bug.
+        $moved = [];
+        foreach ($this->buffers->all() as $buffer) {
+            $target = ProjectPaths::moved($buffer->path, $from, $event->to);
+            if (null !== $target) {
+                $moved[$buffer->path] = $target;
+            }
         }
-        $this->buffers->close($from);
-        $this->openFile($event->to);
+        foreach ($moved as $path => $target) {
+            $this->buffers->close($path);
+            $this->openFile($target);
+        }
     }
 
     #[\Override]
