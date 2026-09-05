@@ -271,22 +271,26 @@ final class IdeFindUiTest extends TestCase
                 },
                 420 => function ($tui): void {
                     // A caret standing in NO word contributes nothing, so the
-                    // field keeps whatever it had — reopening the bar has
-                    // always remembered a query, and prefilling must not start
-                    // putting operators in it.
+                    // field keeps the query it had — reopening the bar has
+                    // always remembered one, and prefilling must not take that
+                    // away.
                     //
-                    // WHICH remembered query comes back is the bar's own
-                    // business and not asserted here: this is about the
-                    // operator never becoming one.
+                    // Column 12 is the `+`. Column 11 is the SPACE after
+                    // `$total`, which is the END of that word and therefore
+                    // inside it — the same rule CaretWordTest pins, and an easy
+                    // off-by-one to write into a test and then misread as the
+                    // bar forgetting things.
                     $tui->handleInput("\x1b"); // esc
-                    $tui->getById('editor')->getDocument()->setCursor(2, 11); // on the `+`
+                    $tui->getById('editor')->getDocument()->setCursor(2, 12); // on the `+`
                     $tui->handleInput("\x06");
                     $tui->requestRender();
                     $tui->tick();
 
-                    $row = $this->findBarRow($tui);
-                    $this->assertStringContainsString('Find:', $row, 'the bar is open');
-                    $this->assertStringNotContainsString('Find: +', $row, 'an operator is not a word');
+                    $this->assertStringContainsString(
+                        'Find: echo',
+                        $this->findBarRow($tui),
+                        'the operator prefilled nothing, so the last query stands',
+                    );
                 },
             ],
         );
