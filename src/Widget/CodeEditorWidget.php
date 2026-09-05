@@ -1292,13 +1292,28 @@ final class CodeEditorWidget extends AbstractWidget implements
      * appeared only on files with foldable regions would shift the text sideways
      * as you moved between buffers.
      */
+    /** The right-margin error stripe, which every row ends with. */
+    private const int STRIPE_WIDTH = 1;
+
     private function computeGeometry(int $columns, int $lineCount): EditorGeometry
     {
         $numberWidth = LineNumberMode::Off === $this->display->lineNumbers() ? 0 : max(3, \strlen((string) $lineCount));
-        $gutterWidth = ($this->display->vcsGutter() ? 1 : 0) + $numberWidth + 3;
-        $contentWidth = max(1, $columns - $gutterWidth - 1);
+        // git strip + number + marker + fold + a trailing space, which is what
+        // `EditorRowAssembler::gutterCell()` actually emits.
+        $natural = ($this->display->vcsGutter() ? 1 : 0) + $numberWidth + 3;
 
-        return new EditorGeometry($numberWidth, $gutterWidth, $contentWidth, $gutterWidth + $contentWidth);
+        // ALL or NOTHING. The gutter is a fixed structure of single-column
+        // cells, so a partial one would have to be cut through a marker; and a
+        // row is `gutter + content + stripe`, so keeping a full gutter in a pane
+        // that cannot seat one is how the editor came to render nine columns
+        // into one and take the IDE down with a RenderException. Below the width
+        // that seats the gutter, the stripe and a column of text, the gutter
+        // goes and the text keeps the pane — which is what the pane is for.
+        $fits = $columns >= ($natural + self::STRIPE_WIDTH + 1);
+        $gutterWidth = $fits ? $natural : 0;
+        $contentWidth = max(0, $columns - $gutterWidth - self::STRIPE_WIDTH);
+
+        return new EditorGeometry($fits ? $numberWidth : 0, $gutterWidth, $contentWidth, $gutterWidth + $contentWidth);
     }
 
     /**

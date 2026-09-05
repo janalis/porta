@@ -16,6 +16,7 @@ use Porta\Tests\Support\FakeEditorFileActions;
 use Porta\Tests\Support\FakeEditorNavigation;
 use Porta\Tests\Support\FakeEditorRefactor;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\RendersExactWidth;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Sgr;
 use Porta\Widget\CodeEditorWidget;
@@ -26,6 +27,8 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 final class CodeEditorWidgetTest extends TestCase
 {
+    use RendersExactWidth;
+
     private function editor(string $content = "<?php\n\necho 'hi';\n", string $path = 'demo.php', ?OccurrenceHighlights $occurrences = null): CodeEditorWidget
     {
         $editor = new CodeEditorWidget(occurrences: $occurrences ?? new OccurrenceHighlights());
@@ -60,14 +63,6 @@ final class CodeEditorWidgetTest extends TestCase
 
         $editor->getDocument()->setCursor(1, 0); // move back without re-rendering
         $this->assertSame($editor->gutterWidth(), $editor->caretScreenCell()['col'], 'a caret left of the viewport clamps to the gutter edge');
-    }
-
-    /** @param string[] $lines */
-    private function assertExactWidth(array $lines, int $width): void
-    {
-        foreach ($lines as $i => $line) {
-            $this->assertSame($width, AnsiUtils::visibleWidth($line), "row {$i} must be exactly {$width} columns");
-        }
     }
 
     public function testRenderContract(): void
@@ -236,6 +231,43 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertExactWidth($on, 80);
     }
 
+    /**
+     * The crash in `.porta/error.log`, twenty-one times: `RenderException:
+     * rendered line 0 with width 8, exceeding the available 1 columns`.
+     *
+     * A RenderException escapes the render loop, so this is not a cosmetic
+     * fault — it takes the IDE down. The tree, the tab bar and the status bar
+     * all render exactly one column when given one; the editor did not.
+     */
+    public function testTheEditorNeverRendersWIDERThanItsPane(): void
+    {
+        // Both gutter inputs are present: the vcs strip and a line count wide
+        // enough to push the number field past its floor of three. A fixture
+        // with neither would pass a clamp that only half works.
+        $editor = $this->editor("<?php\n".str_repeat("// a line\n", times: 120), 'narrow.php');
+        $editor->display()->setVcsGutter(true);
+
+        foreach (range(start: 1, end: 20) as $columns) {
+            $rows = $editor->render(new RenderContext($columns, 6));
+            $this->assertExactWidth($rows, $columns, "at {$columns} columns");
+        }
+    }
+
+    public function testTheWidthClampHoldsForEVERYLineNumberMode(): void
+    {
+        // `Off` collapses the number column to zero, which is a different
+        // arithmetic path through the gutter width than Absolute or Relative.
+        $editor = $this->editor("<?php\n".str_repeat("// a line\n", times: 120), 'narrow.php');
+
+        foreach ([LineNumberMode::Off, LineNumberMode::Absolute, LineNumberMode::Relative] as $mode) {
+            $editor->display()->setLineNumbers($mode);
+            foreach ([1, 2, 3, 6, 9, 11] as $columns) {
+                $rows = $editor->render(new RenderContext($columns, 4));
+                $this->assertExactWidth($rows, $columns, "{$mode->name} at {$columns} columns");
+            }
+        }
+    }
+
     public function testEveryDecorationATONCEKeepsTheRowsExact(): void
     {
         // Whitespace marks, member separators, soft wrap and indent guides all
@@ -289,6 +321,38 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertCount(1, $ruled, 'one rule, however many rows the member takes');
         $this->assertStringContainsString('"; }', AnsiUtils::stripAnsiCodes($rows[$ruled[0]]), 'and it is the row the member ENDS on');
         $this->assertExactWidth($rows, 50);
+    }
+
+    public function testAPinnedHeadersGutterHasTheSameCOLUMNSAsAnOrdinaryRow(): void
+    {
+        // `renderStickyRow()` builds its own gutter and its comment claims the
+        // columns line up with an ordinary row's, "including the fold marker".
+        // Nothing asserted it, so the fold cell and the trailing pad could swap
+        // — same width, marker one column out, and the pinned band no longer
+        // reading as the lines below it.
+        $editor = $this->editor(
+            "<?php\n\nclass A\n{\n    public function one(): void\n    {\n".str_repeat("        \$x = 1;\n", times: 30)."    }\n}\n",
+            'sticky.php',
+        );
+        // Server-shaped fold regions, which start at the DECLARATION rather
+        // than at the brace — that is what makes a pinned header a fold start,
+        // and it is the configuration the comment's claim is about. With the
+        // offline brace scan the fold column of a header is blank, and the
+        // column order cannot be observed at all.
+        $editor->setFoldRegions([[2, 38], [4, 37]]);
+        $editor->getDocument()->setCursor(25, 4); // deep inside one(): its header pins
+
+        $rows = $editor->render(new RenderContext(60, 10));
+        $pinned = AnsiUtils::stripAnsiCodes($rows[0]);
+        $gutterWidth = $editor->gutterWidth();
+
+        $this->assertStringContainsString('class A', $pinned, 'the class header is the pinned row');
+        $this->assertContains(
+            mb_substr($pinned, $gutterWidth - 2, length: 1),
+            [Glyphs::EXPANDED, Glyphs::COLLAPSED],
+            'the fold marker sits in the fold column, one before the pad',
+        );
+        $this->assertSame(' ', mb_substr($pinned, $gutterWidth - 1, length: 1), 'and the gutter ends on its pad');
     }
 
     public function testNoStickyRowsForStructurelessFile(): void

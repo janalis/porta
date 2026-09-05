@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\RendersExactWidth;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\Menu\Menu;
@@ -14,6 +15,8 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 final class MenuBarWidgetTest extends TestCase
 {
+    use RendersExactWidth;
+
     use RendersWidget;
 
     /** @var list<string> */
@@ -44,14 +47,6 @@ final class MenuBarWidgetTest extends TestCase
         ]);
 
         return $bar;
-    }
-
-    /** @param string[] $rows */
-    private function assertExactWidth(array $rows, int $width): void
-    {
-        foreach ($rows as $i => $row) {
-            $this->assertSame($width, AnsiUtils::visibleWidth($row), "row {$i} must be {$width} wide");
-        }
     }
 
     public function testClosedRendersTitleStripOnly(): void

@@ -31,6 +31,10 @@ final class EditorRowAssemblerWrapTest extends TestCase
     {
         $document = new Document($text);
         $store = new DecorationStore(static function (): void {});
+        // Deliberately gutterless, so the wrap assertions read as plain text.
+        // A consequence since the narrow-pane fix: the past-end-of-file filler
+        // is BLANK here rather than `~`, because the tilde is a gutter cell and
+        // this geometry has no gutter to put it in.
         $geometry = new EditorGeometry(numberWidth: 0, gutterWidth: 0, contentWidth: self::WIDTH, stripeCol: 0);
 
         $assembler = new EditorRowAssembler(
@@ -72,7 +76,7 @@ final class EditorRowAssemblerWrapTest extends TestCase
         $text = str_repeat('a', times: 10).str_repeat('b', times: 10).'ccccc'."\ntail\n";
 
         $this->assertSame(
-            ['aaaaaaaaaa', 'bbbbbbbbbb', 'ccccc', 'tail', '', '~'],
+            ['aaaaaaaaaa', 'bbbbbbbbbb', 'ccccc', 'tail', '', ''],
             $this->rows($text, wrap: new WrapLayout(new Document($text))),
             'each segment is the next slice, and the walk moves on when the line runs out',
         );
@@ -84,7 +88,7 @@ final class EditorRowAssemblerWrapTest extends TestCase
         $text = str_repeat('a', times: 10).str_repeat('b', times: 10).'ccccc'."\ntail\n";
 
         $this->assertSame(
-            ['aaaaaaaaaa', 'tail', '', '~', '~', '~'],
+            ['aaaaaaaaaa', 'tail', '', '', '', ''],
             $this->rows($text, wrap: null),
             'one row per line, the overflow simply not shown',
         );
@@ -94,7 +98,7 @@ final class EditorRowAssemblerWrapTest extends TestCase
     public function testALineExactlyTheWidthDoesNotSpill(): void
     {
         $this->assertSame(
-            ['aaaaaaaaaa', 'next', '', '~', '~', '~'],
+            ['aaaaaaaaaa', 'next', '', '', '', ''],
             $this->rows($exact = str_repeat('a', times: 10)."\nnext\n", wrap: new WrapLayout(new Document($exact))),
         );
     }

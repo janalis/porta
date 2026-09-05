@@ -10,6 +10,7 @@ use Porta\Editor\LineNumberMode;
 use Porta\Support\AnsiText;
 use Porta\Tests\Support\FakeEditorCompletion;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\RendersExactWidth;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorCallbacks;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -30,6 +31,8 @@ use Symfony\Component\Tui\Render\RenderContext;
  */
 final class CodeEditorGeometryTest extends TestCase
 {
+    use RendersExactWidth;
+
     private function editor(string $content = "<?php\nline one\nline two\n", string $path = 'edge.php'): CodeEditorWidget
     {
         $editor = new CodeEditorWidget();
@@ -390,18 +393,75 @@ final class CodeEditorGeometryTest extends TestCase
         $this->assertSame($without + 1, $with, 'the vcs gutter column must add exactly 1, not 0 or 2');
     }
 
-    public function testComputeGeometryContentWidthFloorsAtOneNotZeroOrTwo(): void
+    public function testAPaneTooNarrowForAGutterGetsNONERatherThanAnOversizedRow(): void
     {
+        // This test used to assert that contentWidth FLOORS at one — which was
+        // the defect, not the contract. The gutter had no matching ceiling, so
+        // a one-column pane produced `gutter + 1` columns of row and the
+        // renderer threw: twenty-one RenderExceptions in `.porta/error.log`.
+        //
+        // A row is `gutter + content + stripe`. The gutter is a fixed run of
+        // single-column cells and cannot be cut through a marker, so below the
+        // width that seats one it goes entirely and the text keeps the pane.
         $editor = $this->editor("<?php\n");
-        // A pathologically narrow pane so columns - gutterWidth - 1 would go
-        // non-positive without the floor. contentWidth itself isn't exposed,
-        // but it's exactly the difference between lastStripeCol and
-        // gutterWidth (EditorGeometry's stripeCol = gutterWidth + contentWidth).
-        $rendered = $editor->render(new RenderContext(1, 5));
-        $this->assertGreaterThanOrEqual(1, \count($rendered));
 
+        $rendered = $editor->render(new RenderContext(1, 5));
+
+        $this->assertSame(0, $editor->gutterWidth(), 'no room for a gutter');
         $contentWidth = Probe::get($editor, 'lastStripeCol') - $editor->gutterWidth();
-        $this->assertSame(1, $contentWidth);
+        $this->assertSame(0, $contentWidth, 'nor for text; the stripe is the whole row');
+        $this->assertExactWidth($rendered, 1);
+    }
+
+    public function testTheFirstWidthThatSEATSAGutterAlsoSeatsText(): void
+    {
+        // The rule, stated as an invariant rather than at a width I worked out
+        // by hand — the gutter's own width depends on the line count and on
+        // whether the vcs strip is on, so a hard-coded column is a guess that
+        // stops discriminating the moment either changes.
+        //
+        // A gutter that appears one column too early fits the pane perfectly
+        // well and shows a line number with no file beside it. The pane is for
+        // the file.
+        $editor = $this->editor("<?php\n\$distinctive = 1;\n");
+
+        $seatsAGutter = null;
+        foreach (range(start: 1, end: 40) as $columns) {
+            $editor->render(new RenderContext($columns, 4));
+            if ($editor->gutterWidth() > 0) {
+                $seatsAGutter = $columns;
+
+                break;
+            }
+        }
+
+        $this->assertNotNull($seatsAGutter, 'the gutter comes back at some width');
+        $contentWidth = Probe::get($editor, 'lastStripeCol') - $editor->gutterWidth();
+        $this->assertGreaterThanOrEqual(1, $contentWidth, 'and never before there is room for text too');
+
+        // One column narrower: no gutter, and the row is all file.
+        $rendered = $editor->render(new RenderContext($seatsAGutter - 1, 4));
+        $this->assertSame(0, $editor->gutterWidth());
+        // Which slice of the line shows depends on the horizontal scroll, so
+        // assert that the row carries the FILE rather than a particular window
+        // into it.
+        $this->assertStringContainsString('php', AnsiUtils::stripAnsiCodes($rendered[0]));
+        $this->assertExactWidth($rendered, $seatsAGutter - 1);
+    }
+
+    public function testTheGutterCOMESBACKAsSoonAsThePaneCanSeatIt(): void
+    {
+        // The other side of the all-or-nothing rule: this must not be a
+        // one-way trip into a gutterless editor.
+        $editor = $this->editor("<?php\n");
+
+        $editor->render(new RenderContext(1, 5));
+        $this->assertSame(0, $editor->gutterWidth());
+
+        $rendered = $editor->render(new RenderContext(80, 5));
+
+        $this->assertGreaterThan(0, $editor->gutterWidth(), 'the gutter returns with the room');
+        $this->assertExactWidth($rendered, 80);
     }
 
     // --- followCaret inlay shift direction --------------------------------------

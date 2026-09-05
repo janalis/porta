@@ -128,7 +128,11 @@ final readonly class EditorRowAssembler
             }
 
             if (null === $lineIndex) {
-                $result[] = $this->styles->of(Role::Placeholder)->apply(str_pad('~', max(0, $geo->gutterWidth))).AnsiText::blank($geo->contentWidth).$stripe[$stickyCount + $row];
+                // The tilde is a GUTTER cell, so it goes when the gutter does.
+                // `str_pad` never truncates — `str_pad('~', 0)` is `'~'` — so
+                // the old `max(0, …)` looked like a clamp and was not one.
+                $placeholder = 0 === $geo->gutterWidth ? '' : $this->styles->of(Role::Placeholder)->apply(str_pad('~', $geo->gutterWidth));
+                $result[] = $placeholder.AnsiText::blank($geo->contentWidth).$stripe[$stickyCount + $row];
                 continue;
             }
 
@@ -147,9 +151,15 @@ final readonly class EditorRowAssembler
 
             // A continuation row is the same line, so it carries no number and
             // no gutter marks — repeating them would read as another line.
-            $gutter = $rowSegment > 0
-                ? AnsiText::blank(max(0, $geo->gutterWidth))
-                : $this->gutterCell($lineIndex, $isCursorLine ? CaretLine::Current : CaretLine::Other, $lineDiags, $geo->numberWidth);
+            // A zero width is the pane being too narrow to seat a gutter at
+            // all, not a continuation row: `gutterCell()` builds a fixed run of
+            // cells and cannot render narrower than itself, so the geometry
+            // asks for none rather than for a smaller one.
+            $gutter = match (true) {
+                0 === $geo->gutterWidth => '',
+                $rowSegment > 0 => AnsiText::blank($geo->gutterWidth),
+                default => $this->gutterCell($lineIndex, $isCursorLine ? CaretLine::Current : CaretLine::Other, $lineDiags, $geo->numberWidth),
+            };
             // Per rendered ROW, not over the whole array: the file may be
             // fifty thousand lines and forty of them are on screen. It needs
             // the raw line, which is the only place tabs still exist.
@@ -224,7 +234,14 @@ final readonly class EditorRowAssembler
         // Same columns as an ordinary row, including the fold marker: a pinned
         // header is a fold start by construction, and a blank there would leave
         // the gutter a column narrower than every line below it.
-        $gutter = $this->vcsCell($docLine).$this->styles->of(Role::Gutter)->apply(str_pad($stickyLabel, $geo->numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT).' ').$this->foldCell($docLine).' ';
+        // Zero width is a pane too narrow to seat a gutter at all — the same
+        // all-or-nothing rule the ordinary rows follow. A pinned header that
+        // kept its gutter here would overflow the pane exactly as the ordinary
+        // rows did, and sticky scroll is ON by default, so this path is at
+        // least as reachable as that one was.
+        $gutter = 0 === $geo->gutterWidth
+            ? ''
+            : $this->vcsCell($docLine).$this->styles->of(Role::Gutter)->apply(str_pad($stickyLabel, $geo->numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT).' ').$this->foldCell($docLine).' ';
         $raw = $highlighted[$docLine] ?? '';
         $hl = $this->indentGuides ? EditorRenderer::applyIndentGuides($this->document, $raw, $docLine, $this->styles) : $raw;
         $content = EditorRenderer::renderContentLine($hScroll, $hl, $geo->contentWidth, CursorVisibility::Hidden, 0, $this->cursorStyle->marker());
