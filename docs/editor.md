@@ -201,7 +201,15 @@ A symbol is the more useful half in a message or a test filter — it survives t
 file being edited underneath it, where a line number does not — which is why the
 line number is the fallback rather than the default. The scopes come from the
 same source the breadcrumb trail reads, so this works in every language that
-does.
+does: PHP from the offline scanner, everything else from the language server's
+document symbols.
+
+The reference is spelled the way the language does — `App\Http\Svc::run` in
+PHP, `Service.handle` elsewhere. A scope carries a label and a kind and no
+language semantics, so PHP is named and the rest share `.`, which is what
+JavaScript, TypeScript, Python, Java and Go all write. A language that spells it
+`::` gets a reference that reads a little wrong; that is a smaller cost than a
+table of guesses about languages nothing here tests.
 
 ## Scratch files
 

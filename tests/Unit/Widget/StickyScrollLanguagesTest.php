@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
 use Porta\Lsp\DocumentScopes;
+use Porta\Ui\Sgr;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -51,6 +52,28 @@ final class StickyScrollLanguagesTest extends TestCase
         $top = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(60, 12))[0]);
 
         self::assertStringContainsString('Service', $top, 'the enclosing class is pinned');
+    }
+
+    public function testMethodSeparatorsAlsoReadTheSERVERSScopes(): void
+    {
+        // Same scopes, a different consumer. The offline scanner never runs for
+        // a `.ts` file, so a rule here can only have come from the server's
+        // symbols — and every other test of the feature uses PHP.
+        $scopes = new DocumentScopes();
+        self::serverScopes('/p/a.ts', $scopes);
+        $editor = $this->editor($scopes, '/p/a.ts');
+        $editor->display()->setMethodSeparators(true);
+        $editor->getDocument()->setCursor(0, 0); // back to the top, nothing scrolled off
+
+        $rows = $editor->render(new RenderContext(60, 26));
+        $ruled = array_keys(array_filter($rows, static fn (string $row): bool => str_contains($row, Sgr::UNDERLINE)));
+
+        self::assertCount(1, $ruled, 'one member, one rule');
+        self::assertStringContainsString(
+            '}',
+            AnsiUtils::stripAnsiCodes($rows[$ruled[0]]),
+            "and it closes off handle() on the server's endLine",
+        );
     }
 
     public function testWithNoServerScopesTheBandIsEmptyRatherThanWrong(): void

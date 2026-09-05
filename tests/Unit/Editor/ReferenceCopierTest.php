@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Editor;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\ReferenceCopier;
 use Porta\I18n\Translator;
+use Porta\Lsp\DocumentScopes;
 use Porta\Support\Clipboard;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\StatusReads;
@@ -44,6 +45,31 @@ final class ReferenceCopierTest extends TestCase
     private CodeEditorWidget $editor;
     private StatusBarWidget $status;
     private Tui $tui;
+
+    /** @param array<string, string> $files */
+    private function project(array $files, string $open): string
+    {
+        $this->project = new TempProject($files);
+
+        return $this->project->path($open);
+    }
+
+    /** The copier over an editor fed the SERVER's scopes rather than the PHP scanner's. */
+    private function copierFor(string $path, DocumentScopes $scopes): ReferenceCopier
+    {
+        $this->editor = new CodeEditorWidget(documentScopes: $scopes);
+        $this->editor->openFile($path, (string) file_get_contents($path));
+        $this->status = new StatusBarWidget();
+        $this->tui = TestTui::create(80, 24);
+
+        return new ReferenceCopier(
+            $this->editor,
+            new ProjectPaths($this->project->dir),
+            new Clipboard($this->tui),
+            new Notifier($this->status, $this->tui),
+            new Translator('en'),
+        );
+    }
 
     private function copier(string $source = self::SOURCE, string $file = 'src/Svc.php'): ReferenceCopier
     {
@@ -167,6 +193,26 @@ final class ReferenceCopierTest extends TestCase
         $copier->copyReference();
 
         self::assertSame('App\Http\Svc', $this->copied());
+    }
+
+    public function testAReferenceFollowsTheLANGUAGESSpelling(): void
+    {
+        // The scopes for a non-PHP file come from the language server, in the
+        // same shape the PHP scanner produces — so this reaches the same code
+        // with a file that spells qualification differently. `Service::handle`
+        // is not what a TypeScript project would search for.
+        $scopes = new DocumentScopes();
+        $path = $this->project(['src/a.ts' => "class Service {\n  handle() {\n    let x = 1;\n  }\n}\n"], 'src/a.ts');
+        $scopes->set($path, [
+            ['label' => 'Service', 'startLine' => 1, 'endLine' => 5, 'kind' => 'type'],
+            ['label' => 'handle', 'startLine' => 2, 'endLine' => 4, 'kind' => 'function'],
+        ]);
+        $copier = $this->copierFor($path, $scopes);
+        $this->editor->getDocument()->setCursor(2, 4);
+
+        $copier->copyReference();
+
+        self::assertSame('Service.handle', $this->copied());
     }
 
     public function testWithONLYANamespaceAroundItItFallsBackToPathAndLine(): void

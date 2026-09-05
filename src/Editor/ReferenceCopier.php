@@ -55,7 +55,7 @@ final readonly class ReferenceCopier
         }
 
         $line = $this->editor->getDocument()->getCursorLine();
-        $symbol = self::symbolAt($this->editor->scopes(), $line);
+        $symbol = self::symbolAt($this->editor->scopes(), $line, ProjectPaths::languageId($path));
 
         // 1-based, because a line number is for a human to read — and for the
         // `file:line` every compiler, linter and stack trace already prints.
@@ -63,8 +63,16 @@ final readonly class ReferenceCopier
     }
 
     /**
-     * The qualified symbol enclosing a 0-based line: the namespace and type
-     * joined with `\`, the member with `::`.
+     * The qualified symbol enclosing a 0-based line, spelled the way the
+     * language does: `App\Http\Svc::run` in PHP, `Service.handle` everywhere
+     * else.
+     *
+     * PHP is named and the rest share a default rather than each getting an
+     * entry, because a scope carries no language semantics — only a label and a
+     * kind — so anything finer would be a table of guesses about languages
+     * nothing here tests. `.` is what JavaScript, TypeScript, Python, Java and
+     * Go all write; a language that spells it `::` gets a reference that reads
+     * a little wrong, which is a smaller cost than the table.
      *
      * Null when nothing but a namespace encloses the caret — `App\Http` on its
      * own names the file's neighbourhood, not a place in it, and the caller has
@@ -72,8 +80,11 @@ final readonly class ReferenceCopier
      *
      * @param list<array{label: string, startLine: int, endLine: int, kind: string}> $scopes
      */
-    private static function symbolAt(array $scopes, int $line): ?string
+    private static function symbolAt(array $scopes, int $line, string $languageId): ?string
     {
+        $isPhp = 'php' === $languageId;
+        $qualifierJoin = $isPhp ? '\\' : '.';
+        $memberJoin = $isPhp ? '::' : '.';
         $qualifier = '';
         $member = null;
         $hasType = false;
@@ -87,7 +98,7 @@ final readonly class ReferenceCopier
                 if ('type' === $scope['kind']) {
                     $hasType = true;
                 }
-                $qualifier .= ('' === $qualifier ? '' : '\\').$scope['label'];
+                $qualifier .= ('' === $qualifier ? '' : $qualifierJoin).$scope['label'];
                 continue;
             }
 
@@ -107,10 +118,11 @@ final readonly class ReferenceCopier
             return $member;
         }
 
-        // `::` binds a member to a TYPE. A free function in a namespace is a
-        // name IN that namespace, so it joins the same way the namespace's
-        // parts do — `App\helper`, which is also what you would type to call it.
-        return $qualifier.($hasType ? '::' : '\\').$member;
+        // In PHP `::` binds a member to a TYPE, while a free function in a
+        // namespace is a name IN that namespace and joins the way the
+        // namespace's own parts do — `App\helper`, which is what you would
+        // type to call it. Languages that write `.` make no such distinction.
+        return $qualifier.($hasType ? $memberJoin : $qualifierJoin).$member;
     }
 
     private function put(string $text): void

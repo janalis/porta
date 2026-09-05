@@ -1381,3 +1381,36 @@ test compared `filemtime` against a value read moments earlier — two writes
 inside one second share an mtime, so a same-second rewrite slipped past. Both
 that test and the new one backdate the file first. Mutation testing found it by
 surviving the removal of an early return.
+
+## The parity features against SERVER scopes, not just the scanner (2026-09-05)
+
+`CodeEditorWidget::scopes()` answers from the offline PHP scanner for a `.php`
+file and from `Lsp\DocumentScopes` — the language server's `documentSymbol`
+answer — for everything else. `DocumentScopeController` returns early on
+`.php`, so the two sources never mix. Every test of the round's scope-reading
+features used PHP, which is to say none of them exercised the half that runs for
+every other language.
+
+Checked, and the shape holds: `LspMapper::SCOPE_KINDS` maps the LSP kinds onto
+the same `namespace`/`type`/`function` vocabulary the scanner emits, so method
+separators land correctly on a TypeScript buffer from server scopes. Pinned in
+`StickyScrollLanguagesTest`, which already had the seam for hand-set scopes.
+
+**One real difference: Copy Reference was spelling every language as PHP.** A
+TypeScript method came out `Service::handle`, which is not what a TypeScript
+project searches for. The join follows the language now — `\` and `::` for PHP,
+`.` for everything else.
+
+PHP is named and the rest share a default rather than each getting an entry: a
+scope carries a label and a kind and no language semantics, so anything finer
+would be a table of guesses about languages nothing here tests. `.` is what
+JavaScript, TypeScript, Python, Java and Go write. A `::` language reads a
+little wrong, which is the smaller cost.
+
+**A fixture note worth keeping.** `tests/Support/mock-lsp-server.php` answers
+`documentSymbol` with `selectionRange` but no `range`, and `range` is what
+`symbolScopes()` reads (falling back to `location.range`). Both are required by
+the spec; a symbol carrying neither is skipped, so that reply yields ZERO
+scopes. Nothing depends on it today — the scope tests set `DocumentScopes`
+directly — but a test written against the mock would show an empty trail and
+look like a broken feature.
