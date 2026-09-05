@@ -302,10 +302,22 @@ final class SettingsControllerTest extends TestCase
         $controller->changeSetting('breadcrumbs', false);
         $this->assertFalse($breadcrumbs->isVisible());
 
+        // The two newest rows, for the same reason the others are here: a row
+        // whose `apply` names the wrong setter is a wire nothing else checks,
+        // and both of these render nothing until the option is on.
+        $controller->changeSetting('methodSeparators', true);
+        $this->assertTrue(EditorState::display($editor)->methodSeparators());
+        $controller->changeSetting('showWhitespace', true);
+        $this->assertTrue(EditorState::display($editor)->showWhitespace());
+
         $controller->changeSetting('stickyScroll', true);
         $this->assertTrue(EditorState::display($editor)->stickyScroll());
         $controller->changeSetting('breadcrumbs', true);
         $this->assertTrue($breadcrumbs->isVisible());
+        $controller->changeSetting('methodSeparators', false);
+        $this->assertFalse(EditorState::display($editor)->methodSeparators());
+        $controller->changeSetting('showWhitespace', false);
+        $this->assertFalse(EditorState::display($editor)->showWhitespace());
     }
 
     /**

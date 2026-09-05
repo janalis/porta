@@ -256,6 +256,39 @@ final class IdeEditingTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testCopyPathAndCopyReferenceReachTheCLIPBOARDFromTheirChords(): void
+    {
+        // Both halves through the running IDE. The chords, because a binding
+        // can match its descriptor and still never fire — and the OSC 52 the
+        // terminal receives, because every other test of these two reads the
+        // flash, which a copy that never happened would still produce.
+        putenv('PATH=/nonexistent');
+        $code = "<?php\n\nnamespace App\\Http;\n\nclass Svc\n{\n    public function run(): void\n    {\n        \$x = 1;\n    }\n}\n";
+        $project = new TempProject(['src/Svc.php' => $code]);
+
+        $this->runIde(
+            $project,
+            $project->path('src/Svc.php'),
+            [
+                300 => function ($tui, $terminal): void {
+                    $tui->getById('editor')->getDocument()->setCursor(8, 8); // inside run()
+                    $terminal->clearOutput();
+                    $tui->handleInput("\x1b[99;8u"); // ctrl+alt+shift+c
+
+                    $this->awaitPaintedRaw($tui, $terminal, "\x1b]52;c;".base64_encode('App\\Http\\Svc::run'));
+                },
+                400 => function ($tui, $terminal): void {
+                    $terminal->clearOutput();
+                    $tui->handleInput("\x1b[99;6u"); // ctrl+shift+c
+
+                    $this->awaitPaintedRaw($tui, $terminal, "\x1b]52;c;".base64_encode('src/Svc.php'));
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testLastEditLocationTakesYouBackToWhatYouWereWriting(): void
     {
         // Through the running IDE, because the point is the wiring: a
