@@ -247,7 +247,7 @@ excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server
 [linter.rules]
 cyclomatic-complexity = { threshold = 145 }
 too-many-methods = { threshold = 87 }
-too-many-properties = { threshold = 32 }
+too-many-properties = { threshold = 31 }
 too-many-enum-cases = { threshold = 59 }
 excessive-parameter-list = { threshold = 23 }
 kan-defect = { threshold = 8 }
