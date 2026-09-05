@@ -18,6 +18,7 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\Sgr;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -597,6 +598,61 @@ final class IdeLspFeaturesTest extends TestCase
      * the app once, because nothing injected it — here the refresher is an
      * event listener and the buffer opening is what has to trigger it.
      */
+    public function testANonPhpBufferGetsItsScopesFromTheSERVER(): void
+    {
+        // PHP is the one language that does NOT take this path:
+        // DocumentScopeController returns early on `.php` and the offline
+        // scanner answers instead. So everything that reads scopes — the
+        // breadcrumb trail, the sticky band, the member separators — has a
+        // whole half that only runs for other languages, and it had been
+        // proved only by setting DocumentScopes by hand.
+        //
+        // The line numbers below are the mock's, which are fixed: class `Demo`
+        // spans lines 2-8 and its method `greet` 4-6, zero-based.
+        $project = new TempProject([
+            '.porta.json' => $this->mockLspConfig(),
+            'src/app.js' => "// one\n\nclass Demo {\n\n  greet() {\n    return 1;\n  }\n\n}\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('src/app.js'),
+            [
+                100 => function ($tui, $terminal): void {
+                    $this->awaitPainted($tui, $terminal, 'LSP:mock-lsp-server');
+                    $tui->getById('editor')->getDocument()->setCursor(5, 4); // inside greet()
+
+                    $crumbs = $tui->getById('breadcrumbs');
+                    $this->await(
+                        static function () use ($tui, $crumbs): bool {
+                            $tui->requestRender();
+                            $tui->tick();
+                            $rows = $crumbs->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1));
+
+                            return str_contains(AnsiUtils::stripAnsiCodes($rows[0] ?? ''), 'Demo');
+                        },
+                        what: "the server's symbols to reach the trail",
+                    );
+
+                    $plain = AnsiUtils::stripAnsiCodes($crumbs->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))[0]);
+                    $this->assertStringContainsString('Demo › greet', $plain, 'a JavaScript file gets a trail');
+                },
+                300 => function ($tui): void {
+                    // Same scopes, a second reader: the rule closes off greet()
+                    // on the server's endLine (0-based 6, the `}` line).
+                    $editor = $tui->getById('editor');
+                    $editor->display()->setMethodSeparators(true);
+                    $rows = $editor->render(new \Symfony\Component\Tui\Render\RenderContext(80, 12));
+                    $ruled = array_keys(array_filter($rows, static fn (string $row): bool => str_contains($row, Sgr::UNDERLINE)));
+
+                    $this->assertSame([6], $ruled, "one rule, on the member's last line");
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testSemanticTokensReachTheBufferInTheRunningIde(): void
     {
         $project = new TempProject([

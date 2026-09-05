@@ -1407,10 +1407,19 @@ would be a table of guesses about languages nothing here tests. `.` is what
 JavaScript, TypeScript, Python, Java and Go write. A `::` language reads a
 little wrong, which is the smaller cost.
 
-**A fixture note worth keeping.** `tests/Support/mock-lsp-server.php` answers
-`documentSymbol` with `selectionRange` but no `range`, and `range` is what
-`symbolScopes()` reads (falling back to `location.range`). Both are required by
-the spec; a symbol carrying neither is skipped, so that reply yields ZERO
-scopes. Nothing depends on it today — the scope tests set `DocumentScopes`
-directly — but a test written against the mock would show an empty trail and
-look like a broken feature.
+**The fixture was answering with no usable ranges, and is fixed.**
+`tests/Support/mock-lsp-server.php` answered `documentSymbol` with
+`selectionRange` but no `range`. The two are read by different consumers and the
+spec requires both: `flattenSymbols()` (the File Structure popup) prefers
+`selectionRange`, because it wants where to JUMP; `symbolScopes()` needs
+`range`, because a trail asks which scopes CONTAIN the caret and a name's extent
+cannot answer that. A symbol with neither is skipped, so the reply produced zero
+scopes and a test written against it would have read as a broken feature rather
+than a thin fixture.
+
+With `range` added, `IdeLspFeaturesTest::testANonPhpBufferGetsItsScopesFromTheSERVER`
+drives the whole path through a running IDE and a real server process: a
+JavaScript buffer gets a breadcrumb trail, and the member separator lands on the
+`endLine` the SERVER reported. Removing either range from the mock times the
+test out, which is the shape this had been missing — everything else about
+non-PHP scopes is proved by setting `DocumentScopes` by hand.

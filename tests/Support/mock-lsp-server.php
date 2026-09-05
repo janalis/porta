@@ -359,12 +359,28 @@ foreach (readFrames($in) as $message) {
         sendMessage($out, [
             'jsonrpc' => '2.0',
             'id' => $message['id'],
+            // Both ranges, because the two readers want different ones and the
+            // spec requires both. `selectionRange` names the symbol and is what
+            // the File Structure popup jumps to; `range` is the symbol's whole
+            // extent and is the only thing that can answer "does this scope
+            // contain the caret", which is what the breadcrumb trail, the
+            // sticky band and the member separators all ask.
+            //
+            // With `range` omitted — as it was — every symbol here was skipped
+            // and the reply produced NO scopes at all, so a test written
+            // against it would have read as a broken feature.
             'result' => [[
                 'name' => 'Demo',
                 'kind' => 5, // class
+                'range' => ['start' => ['line' => 2, 'character' => 0], 'end' => ['line' => 8, 'character' => 1]],
                 'selectionRange' => ['start' => ['line' => 2, 'character' => 6], 'end' => ['line' => 2, 'character' => 10]],
                 'children' => [
-                    ['name' => 'greet', 'kind' => 6, 'selectionRange' => ['start' => ['line' => 4, 'character' => 20], 'end' => ['line' => 4, 'character' => 25]]],
+                    [
+                        'name' => 'greet',
+                        'kind' => 6,
+                        'range' => ['start' => ['line' => 4, 'character' => 2], 'end' => ['line' => 6, 'character' => 3]],
+                        'selectionRange' => ['start' => ['line' => 4, 'character' => 20], 'end' => ['line' => 4, 'character' => 25]],
+                    ],
                     ['name' => '', 'kind' => 6], // must be skipped
                 ],
             ]],
