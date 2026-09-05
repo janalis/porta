@@ -236,6 +236,38 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertExactWidth($on, 80);
     }
 
+    public function testEveryDecorationATONCEKeepsTheRowsExact(): void
+    {
+        // Whitespace marks, member separators, soft wrap and indent guides all
+        // paint into the same row, and each was added on its own. Garble — a
+        // row whose visible width is not the pane's — is what a decoration
+        // that miscounts produces, and a wide character is where miscounting
+        // shows first.
+        $long = str_repeat('y', times: 60);
+        $editor = $this->editor(
+            "<?php\n\nclass A\n{\n    public function one(): void\n    {\n\t\$s = \"日本語{$long}\";   \n    }\n}\n",
+            'everything.php',
+        );
+        $editor->display()->setShowWhitespace(true);
+        $editor->display()->setMethodSeparators(true);
+        $editor->display()->setSoftWrap(true);
+
+        $rows = $editor->render(new RenderContext(46, 14));
+
+        $this->assertExactWidth($rows, 46);
+        foreach ($rows as $index => $row) {
+            $this->assertTrue(
+                mb_check_encoding(AnsiUtils::stripAnsiCodes($row), encoding: 'UTF-8'),
+                "row {$index} is still valid UTF-8",
+            );
+        }
+
+        // And the rule is still one rule, on the member's closing line.
+        $ruled = array_keys(array_filter($rows, static fn (string $row): bool => str_contains($row, Sgr::UNDERLINE)));
+        $this->assertCount(1, $ruled);
+        $this->assertStringContainsString('}', AnsiUtils::stripAnsiCodes($rows[$ruled[0]]));
+    }
+
     public function testAWrappedMembersRuleIsDrawnONCE_UnderItsLastRow(): void
     {
         // The defect this pins: spans are in the LINE's display columns, and a
