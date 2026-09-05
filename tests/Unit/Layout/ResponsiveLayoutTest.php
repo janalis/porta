@@ -175,8 +175,17 @@ final class ResponsiveLayoutTest extends TestCase
         // sidebar collapse handles, on a second path that had none.
         $responsive = $this->responsive();
         $this->layout->setTabBarPosition(TabBarPosition::Right);
-        $this->bidi->setFocus($this->tree);
 
+        // Collapse the sidebar FIRST, at a width the strip still fits. Both
+        // rules fire on the same call and the sidebar's threshold is the wider
+        // one, so a single narrow apply() would have the sidebar's own focus
+        // restore doing this assertion's work — which is exactly what it did
+        // until mutation testing showed the strip's restore could be deleted
+        // with the test still green.
+        $responsive->apply(ResponsiveLayout::COLLAPSE_BELOW - 1);
+        $this->assertSame(TabBarPosition::Right, $this->tabBar->position(), 'the strip still fits at this width');
+
+        $this->bidi->setFocus($this->tree);
         $responsive->apply(ResponsiveLayout::SIDE_TABS_BELOW - 1);
 
         $this->assertSame(TabBarPosition::Top, $this->tabBar->position());
