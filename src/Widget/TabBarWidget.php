@@ -39,8 +39,15 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     use StripScroll;
     use StylesDefault;
 
-    /** Display columns of the vertical (left/right) tab list. */
+    /** Display columns of the vertical (left/right) tab list, when the pane can seat them. */
     public const VERTICAL_WIDTH = 24;
+
+    /**
+     * Below this the strip has no room for a name beside its dirty dot and its
+     * close glyph, so it draws blank rather than a truncated mess. A pane that
+     * narrow is one the responsive rule takes the side strip away from anyway.
+     */
+    private const int VERTICAL_MIN = 8;
 
     private TabBarPosition $position = TabBarPosition::Top;
 
@@ -71,8 +78,8 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     /** @var list<string>|null vertical strip memo — in side position the layout engine's intrinsic measure renders this widget a second time per frame */
     private ?array $memoLines = null;
 
-    /** @var array{int, int} the [revision, rows] the memo was rendered for */
-    private array $memoKey = [-1, -1];
+    /** @var array{int, int, int} the [revision, rows, width] the memo was rendered for — the WIDTH belongs in it since the strip narrows with its pane */
+    private array $memoKey = [-1, -1, -1];
 
     /** @var list<array{row: int, col: int, width: int, step: int}> the memoized render's ▲/▼ zones */
     private array $memoZones = [];
@@ -240,6 +247,11 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
     private function renderVertical(RenderContext $context): array
     {
         $rows = max(1, $context->getRows());
+        // NEVER the constant: a widget may not emit a line wider than the pane
+        // it was handed — the renderer throws on it, and that exception escapes
+        // the render loop. The strip asks for VERTICAL_WIDTH and takes what it
+        // is given, which on a narrow terminal is less.
+        $width = min(self::VERTICAL_WIDTH, max(0, $context->getColumns()));
 
         // The FileTreeWidget idiom: in side position the layout engine's
         // intrinsic-width measure renders this widget and clears the vendor
@@ -248,7 +260,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         // ▲/▼ zones need restoring on a hit — render() clears them before
         // dispatching here; the hit-test layout is untouched since the miss
         // that built it.
-        $key = [$this->getRenderRevision(), $rows];
+        $key = [$this->getRenderRevision(), $rows, $width];
         if (null !== $this->memoLines && $key === $this->memoKey) {
             $this->indicatorZones = $this->memoZones;
 
@@ -259,6 +271,11 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
 
         $this->lastLayout = [];
         $lines = [];
+        if ($width < self::VERTICAL_MIN) {
+            // Too narrow for a tab; blank rows of the right width beat a
+            // truncated one, and beat an exception by more.
+            return $this->memoLines = array_fill(start_index: 0, count: $rows, value: AnsiText::blank($width));
+        }
         if ([] !== $tabs) {
             $activeIndex = 0;
             foreach ($tabs as $i => $candidate) {
@@ -284,36 +301,36 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             }
             $start = $this->scroll;
             if ($overflow) {
-                $lines[] = $start > 0 ? $this->indicatorRow(Glyphs::SCROLL_UP, step: -3, row: 0) : AnsiText::blank(self::VERTICAL_WIDTH);
+                $lines[] = $start > 0 ? $this->indicatorRow(Glyphs::SCROLL_UP, step: -3, row: 0) : AnsiText::blank($width);
             }
             // ' name…    ●× ': the dirty ● and the close × are right-aligned.
-            $nameWidth = self::VERTICAL_WIDTH - 5;
+            $nameWidth = $width - 5;
             foreach (\array_slice($tabs, $start, $budget, preserve_keys: true) as $index => $tab) {
                 $name = AnsiText::truncate($tab['name'], $nameWidth, pad: true);
                 $marker = $tab['dirty'] ? $this->styles->of(Role::Modified)->apply(Glyphs::DIRTY) : ' ';
                 $close = $tab['active'] ? TabCloseGlyph::active($this->styles) : TabCloseGlyph::inactive($this->styles);
                 $rowIndex = \count($lines);
-                $lines[] = TabStyle::of($this->styles, TabState::of($tab['active'], $this->isHoverCell($rowIndex, 0, self::VERTICAL_WIDTH)))->apply(' '.$name.' '.$marker.$close.' ');
+                $lines[] = TabStyle::of($this->styles, TabState::of($tab['active'], $this->isHoverCell($rowIndex, 0, $width)))->apply(' '.$name.' '.$marker.$close.' ');
                 $this->lastLayout[] = [
                     'index' => $index,
                     'row' => \count($lines) - 1,
                     'start' => 0,
-                    'width' => self::VERTICAL_WIDTH,
-                    'closeStart' => self::VERTICAL_WIDTH - TabStripRenderer::CLOSE_WIDTH,
+                    'width' => $width,
+                    'closeStart' => $width - TabStripRenderer::CLOSE_WIDTH,
                     'closeWidth' => TabStripRenderer::CLOSE_WIDTH,
                 ];
             }
             if ($overflow) {
-                $lines[] = ($start + $budget) < \count($tabs) ? $this->indicatorRow(Glyphs::SCROLL_DOWN, step: 3, row: $rows - 1) : AnsiText::blank(self::VERTICAL_WIDTH);
+                $lines[] = ($start + $budget) < \count($tabs) ? $this->indicatorRow(Glyphs::SCROLL_DOWN, step: 3, row: $rows - 1) : AnsiText::blank($width);
             }
         }
         while (\count($lines) < $rows) {
-            $lines[] = AnsiText::blank(self::VERTICAL_WIDTH);
+            $lines[] = AnsiText::blank($width);
         }
 
         $this->memoZones = $this->indicatorZones;
 
-        return $this->memoLines = $this->withMenuOverlay($lines, self::VERTICAL_WIDTH);
+        return $this->memoLines = $this->withMenuOverlay($lines, $width);
     }
 
     /** One clickable full-width ▲/▼ scroll row of the vertical list. */

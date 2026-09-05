@@ -28,6 +28,8 @@ trait RendersExactWidth
 
     abstract public static function assertNotSame(mixed $expected, mixed $actual, string $message = ''): void;
 
+    abstract public static function assertLessThanOrEqual(mixed $expected, mixed $actual, string $message = ''): void;
+
     /**
      * @param string[] $rows
      */
@@ -40,7 +42,12 @@ trait RendersExactWidth
     }
 
     /**
-     * Render at every width from 1 to $upTo and assert each row fits.
+     * Render at every width from 1 to $upTo and assert no row EXCEEDS the pane.
+     *
+     * Not equality: the renderer throws only on a row that is too wide, and a
+     * widget may legitimately be narrower than the pane it sits in — the
+     * vertical tab strip asks for a fixed 24 columns and the layout pads the
+     * rest. Equality would have failed it for behaving correctly.
      *
      * Every width, not a chosen small one: the widths that broke the editor
      * were 1 through 8, and which of them breaks depends on the gutter's own
@@ -59,11 +66,13 @@ trait RendersExactWidth
         );
 
         foreach (range(start: 1, end: $upTo) as $columns) {
-            self::assertExactWidth(
-                $widget->render(new RenderContext($columns, $paneRows)),
-                $columns,
-                "{$columns} columns",
-            );
+            foreach ($widget->render(new RenderContext($columns, $paneRows)) as $i => $row) {
+                self::assertLessThanOrEqual(
+                    $columns,
+                    AnsiUtils::visibleWidth($row),
+                    "row {$i} may not exceed the {$columns}-column pane",
+                );
+            }
         }
     }
 }

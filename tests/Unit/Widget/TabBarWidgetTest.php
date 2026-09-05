@@ -266,6 +266,58 @@ final class TabBarWidgetTest extends TestCase
         return $bar;
     }
 
+    public function testTheVerticalStripTAKESTheWidthItIsGivenWhenThatIsLessThanItsOwn(): void
+    {
+        // It asked for a fixed twenty-four columns and emitted them whatever
+        // the pane was — so on a terminal narrower than that it overflowed, and
+        // the renderer turns an over-wide row into an exception that leaves the
+        // render loop. This repo's own config puts the strip on the right.
+        //
+        // Its contract is a STABLE width the layout engine can measure, so the
+        // assertion is equality, not "no wider than": every row is exactly
+        // min(24, pane).
+        $bar = $this->verticalBar([
+            ['name' => 'Alpha.php', 'dirty' => true, 'active' => true],
+            ['name' => 'Beta.php', 'dirty' => false, 'active' => false],
+        ]);
+
+        foreach ([1, 4, 7, 8, 9, 16, 23, 24, 40] as $columns) {
+            $rows = $bar->render(new RenderContext($columns, 5));
+            $expected = min(24, $columns);
+
+            $this->assertCount(5, $rows, "the pane's rows are filled at {$columns} columns");
+            $this->assertTrue(array_is_list($rows), "the rows are a list at {$columns} columns");
+            foreach ($rows as $i => $row) {
+                $this->assertSame(
+                    $expected,
+                    AnsiUtils::visibleWidth($row),
+                    "row {$i} is exactly {$expected} columns wide at a {$columns}-column pane",
+                );
+            }
+        }
+    }
+
+    public function testTheVerticalStripSTILLSHOWSATabAtItsNarrowestUsableWidth(): void
+    {
+        // Eight columns is the floor: below it there is no room for a name
+        // beside the dirty dot and the close glyph, so the strip draws blank
+        // rather than a truncated mess. AT eight it must still show a tab —
+        // a floor one column out either way is invisible to a width assertion.
+        $bar = $this->verticalBar([['name' => 'Alpha.php', 'dirty' => false, 'active' => true]]);
+
+        $atFloor = AnsiUtils::stripAnsiCodes(implode("\n", $bar->render(new RenderContext(8, 3))));
+        $this->assertStringContainsString('A', $atFloor, 'a name, however truncated, at the floor');
+
+        // The row's shape, at a width that seats the whole name: a leading pad,
+        // the name, then the dirty and close cells against the right edge.
+        $wide = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(24, 3))[0]);
+        $this->assertStringStartsWith(' Alpha.php', $wide, 'one leading pad, then the name');
+        $this->assertStringEndsWith(' ', $wide, 'and a trailing pad after the close glyph');
+
+        $belowFloor = AnsiUtils::stripAnsiCodes(implode('', $bar->render(new RenderContext(7, 3))));
+        $this->assertSame('', trim($belowFloor), 'and nothing but blanks below it');
+    }
+
     public function testSetPositionInvalidatesOnlyOnChange(): void
     {
         $bar = new TabBarWidget();

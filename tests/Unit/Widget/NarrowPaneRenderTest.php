@@ -17,6 +17,7 @@ use Porta\Widget\FileTreeWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\Support\ResultsPanelFields;
+use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -67,6 +68,17 @@ final class NarrowPaneRenderTest extends TestCase
             ['name' => 'Beta.php', 'dirty' => false, 'active' => false],
         ]);
         yield 'tab bar' => [$tabs];
+
+        // The SIDE position is a different render path with a fixed intrinsic
+        // width, and it is what this repo's own config selects. It emitted
+        // twenty-four columns into any narrower pane.
+        $sideTabs = new TabBarWidget();
+        $sideTabs->setProvider(static fn (): array => [
+            ['name' => 'Alpha.php', 'dirty' => true, 'active' => true],
+            ['name' => 'Beta.php', 'dirty' => false, 'active' => false],
+        ]);
+        $sideTabs->setPosition(TabBarPosition::Right);
+        yield 'tab bar (side)' => [$sideTabs];
 
         $crumbs = new BreadcrumbsWidget();
         $crumbs->setProvider(static fn (): array => [
