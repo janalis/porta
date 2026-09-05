@@ -92,6 +92,20 @@ final class ProjectPaths
     }
 
     /**
+     * Whether $path IS $root or lives under it.
+     *
+     * The question a DELETE asks of a path-keyed store: removing `src/Old/`
+     * removes every file under it, while the store is keyed by the files. For
+     * a plain file this answers the same as `===`, because nothing is ever
+     * keyed under `A.php/` — so a listener never needs to know which it was
+     * handed. See {@see \Porta\Event\FileDeleted}.
+     */
+    public static function isUnder(string $path, string $root): bool
+    {
+        return Path::isBasePath($root, $path);
+    }
+
+    /**
      * Whether the path's lowercased extension is one of $extensions — the
      * routing test every viewer and decoder claim hand-rolled inline.
      *

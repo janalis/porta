@@ -10,6 +10,7 @@ use Porta\Editor\Document;
 use Porta\Editor\EditorInvalidator;
 use Porta\Editor\SelectionMode;
 use Porta\Event\BufferRepointRequested;
+use Porta\Event\FileDeleted;
 use Porta\Event\FileRenamed;
 use Porta\Support\Files;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -243,7 +244,11 @@ final readonly class WorkspaceEditor
             $path = $this->pathOf($change['uri'] ?? null);
             \assert(null !== $path, description: 'a delete with no usable path is refused before applying');
             $this->closeBufferAt($path);
+            // Canonical, and resolved BEFORE the removal — afterwards there is
+            // nothing left for realpath() to resolve. FileDeleted's contract.
+            $key = ($resolved = realpath($path)) ? $resolved : $path;
             $this->fs->remove($path);
+            $this->events->dispatch(new FileDeleted($key));
 
             return;
         }

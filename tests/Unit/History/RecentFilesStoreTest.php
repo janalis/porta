@@ -36,12 +36,12 @@ final class RecentFilesStoreTest extends TestCase
         $store->record('/b.php');
 
         $file = $project->dir.'/.porta/recent-files.json';
-        $before = filemtime($file);
+        touch($file, mtime: 1_000_000_000); // backdated: mtime resolves to the second
         clearstatcache();
         $store->record('/b.php');
 
         $this->assertSame(['/b.php', '/a.php'], $store->all());
-        $this->assertSame($before, filemtime($file), 'no rewrite for a re-show');
+        $this->assertSame(1_000_000_000, filemtime($file), 'no rewrite for a re-show');
     }
 
     public function testEmptyPathsAreIgnored(): void
@@ -154,5 +154,54 @@ final class RecentFilesStoreTest extends TestCase
         $project->write('.porta/recent-files.json', json_encode(['paths' => $paths], flags: \JSON_THROW_ON_ERROR));
 
         $this->assertCount(32, new RecentFilesStore($project->dir)->all());
+    }
+
+    public function testForgetDropsADeletedFileAndPersistsTheChange(): void
+    {
+        // The deleted file is in the MIDDLE, which is what makes the list a
+        // list: filtering preserves keys, and dropping the last entry alone
+        // would leave 0..n-1 intact and hide a missing re-index completely.
+        $project = new TempProject();
+        $store = new RecentFilesStore($project->dir);
+        $store->record('/p/oldest.php');
+        $store->record('/p/gone.php');
+        $store->record('/p/newest.php');
+
+        $store->forget('/p/gone.php');
+
+        $this->assertSame(['/p/newest.php', '/p/oldest.php'], $store->all());
+        $this->assertSame(['/p/newest.php', '/p/oldest.php'], new RecentFilesStore($project->dir)->all(), 'and the next session agrees');
+    }
+
+    public function testForgetTakesEveryFileUnderADeletedDirectory(): void
+    {
+        $project = new TempProject();
+        $store = new RecentFilesStore($project->dir);
+        $store->record('/p/old/a.php');
+        $store->record('/p/olden/b.php');
+
+        $store->forget('/p/old');
+
+        $this->assertSame(['/p/olden/b.php'], $store->all());
+    }
+
+    public function testForgettingAPathThatIsNotListedDoesNotRewriteTheFile(): void
+    {
+        // Every delete anywhere in the project reaches this listener, and most
+        // of them touch nothing here.
+        $project = new TempProject();
+        $store = new RecentFilesStore($project->dir);
+        $store->record('/p/a.php');
+        // Backdated rather than read as-is: mtime has one-second resolution, so
+        // a rewrite in the same second as the setup is invisible to a plain
+        // before/after comparison.
+        $file = $project->dir.'/.porta/recent-files.json';
+        touch($file, mtime: 1_000_000_000);
+        clearstatcache();
+
+        $store->forget('/p/b.php');
+
+        $this->assertSame(['/p/a.php'], $store->all());
+        $this->assertSame(1_000_000_000, filemtime($file), 'no write for a delete that changed nothing');
     }
 }

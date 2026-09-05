@@ -6,6 +6,7 @@ namespace Porta\History;
 
 use Porta\Container\AsIdeService;
 use Porta\Support\JsonFile;
+use Porta\Support\ProjectPaths;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -87,6 +88,28 @@ final class RecentFilesStore
             }
         }
         $this->paths = $renamed;
+        $this->save();
+    }
+
+    /**
+     * Drop a deleted file from the list, and everything under a deleted
+     * directory.
+     *
+     * The switcher would drop the entry silently anyway the moment it checked
+     * disk — but it does not check, and an entry that opens nothing is worse
+     * than no entry: it takes a row in a list capped at 32 and answers a
+     * keystroke with an error.
+     */
+    public function forget(string $path): void
+    {
+        $kept = array_values(array_filter(
+            $this->paths,
+            static fn (string $p): bool => !ProjectPaths::isUnder($p, $path),
+        ));
+        if ($kept === $this->paths) {
+            return;
+        }
+        $this->paths = $kept;
         $this->save();
     }
 

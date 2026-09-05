@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\Event\BufferRepointRequested;
+use Porta\Event\FileDeleted;
 use Porta\Event\FileRenamed;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
@@ -405,6 +406,36 @@ final class WorkspaceEditorTest extends TestCase
 
         $this->assertFalse($outcome->isRefused());
         $this->assertFileDoesNotExist($path);
+    }
+
+    /**
+     * The delete fact is canonical, and resolved BEFORE the file goes.
+     *
+     * Same symlinked-root trap as the rename above: a server spells the path
+     * its own way, while every path-keyed store is keyed the resolved way. And
+     * the ordering is the whole test — resolve after `remove()` and there is
+     * nothing left to resolve, so the fact would carry the server's spelling
+     * and every listener would look up a key it does not have.
+     */
+    public function testADeleteFactCanonicalisesAServerSpelledPathBeforeTheFileGoes(): void
+    {
+        $project = new TempProject(['gone.php' => "<?php\n"]);
+        $unresolved = $project->path('gone.php');
+        self::assertNotSame(realpath($project->dir), $project->dir, 'the fixture root must be a symlink for this to test anything');
+        $expected = realpath($unresolved);
+
+        $events = new EventDispatcher();
+        $deleted = [];
+        $events->addListener(FileDeleted::class, static function (FileDeleted $e) use (&$deleted): void {
+            $deleted[] = $e->path;
+        });
+
+        $this->workspaceEditor($events)->applyWorkspaceEdit([
+            'documentChanges' => [['kind' => 'delete', 'uri' => 'file://'.$unresolved]],
+        ]);
+
+        $this->assertSame([$expected], $deleted);
+        $this->assertFileDoesNotExist($unresolved);
     }
 
     /**

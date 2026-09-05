@@ -82,4 +82,48 @@ final class BookmarksTest extends TestCase
 
         $this->assertSame(['/p/Other.php' => [1]], $marks->all());
     }
+
+    public function testForgetDropsADeletedFilesMarks(): void
+    {
+        $marks = new Bookmarks();
+        $marks->toggle('/p/gone.php', 2);
+        $marks->toggle('/p/kept.php', 4);
+
+        $marks->forget('/p/gone.php');
+
+        $this->assertSame(['/p/kept.php' => [4]], $marks->all());
+    }
+
+    public function testForgetTakesEveryFileUNDERADeletedDirectory(): void
+    {
+        // The tree deletes a folder with one confirmation and the whole subtree
+        // goes; the store is keyed by the FILES, so equality would keep every
+        // one of them.
+        // A survivor FIRST, on purpose: the walk has to keep going past a key
+        // it does not match, and a fixture whose matches all come first cannot
+        // tell that from stopping at the first one.
+        $marks = new Bookmarks();
+        $marks->toggle('/p/keep/z.php', 1);
+        $marks->toggle('/p/old/a.php', 1);
+        $marks->toggle('/p/old/deep/b.php', 1);
+        $marks->toggle('/p/olden/c.php', 1);
+
+        $marks->forget('/p/old');
+
+        $this->assertSame(
+            ['/p/keep/z.php' => [1], '/p/olden/c.php' => [1]],
+            $marks->all(),
+            'a sibling that merely SHARES A PREFIX with the deleted directory is a different directory',
+        );
+    }
+
+    public function testForgettingAPathNothingIsMarkedUnderChangesNothing(): void
+    {
+        $marks = new Bookmarks();
+        $marks->toggle('/p/a.php', 1);
+
+        $marks->forget('/p/b.php');
+
+        $this->assertSame(['/p/a.php' => [1]], $marks->all());
+    }
 }

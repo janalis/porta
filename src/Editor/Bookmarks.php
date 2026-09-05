@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Editor;
 
 use Porta\Container\AsIdeService;
+use Porta\Support\ProjectPaths;
 
 /**
  * Bookmarked lines, keyed by absolute file path with 0-based lines — the
@@ -69,6 +70,26 @@ final class Bookmarks
         }
         $this->marks[$to] = $this->marks[$from];
         unset($this->marks[$from]);
+    }
+
+    /**
+     * Drop every mark on a deleted file — or on every file under a deleted
+     * directory, which is why this walks the keys instead of unsetting one.
+     *
+     * {@see \Porta\History\BookmarkStore::load()} already skips a path whose
+     * file has vanished, so this changes nothing about the NEXT session. It is
+     * about this one: a bookmark on a file you just deleted is still in the
+     * list, still in the gutter of a buffer that reopens, and Alt+2 still tries
+     * to jump to it.
+     */
+    public function forget(string $path): void
+    {
+        foreach (array_keys($this->marks) as $marked) {
+            if (!ProjectPaths::isUnder($marked, $path)) {
+                continue;
+            }
+            unset($this->marks[$marked]);
+        }
     }
 
     /** @param array<string, list<int>> $marks */

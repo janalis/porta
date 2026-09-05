@@ -8,6 +8,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\Document;
 use Porta\Editor\OpenFocus;
+use Porta\Event\FileDeleted;
 use Porta\Event\FileRenamed;
 use Porta\I18n\Translator;
 use Porta\Search\ProjectSearchController;
@@ -178,6 +179,9 @@ final class TreeOperations
             $key = $resolved ? $resolved : $path;
             $this->withFs($this->translator->trans('Cannot delete %file%', ['%file%' => $this->paths->relative($path)]), function () use ($path, $key): void {
                 $this->fs->remove($path);
+                // $key was resolved before the removal, which is the only time
+                // it could be — the same reason the rename above resolves early.
+                $this->events->dispatch(new FileDeleted($key));
                 if ($this->buffers->has($key)) {
                     $next = $this->buffers->close($key);
                     null !== $next ? $this->bufferService->showBuffer($next) : $this->editor->showDocument('', new Document(''));

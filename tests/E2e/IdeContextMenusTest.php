@@ -687,6 +687,57 @@ final class IdeContextMenusTest extends TestCase
         $this->assertFileExists($project->path('renamed.php'), 'renamed on disk');
     }
 
+    public function testTreeContextMenuDeleteRetiresEveryPathKeyedStore(): void
+    {
+        // The mirror of the rename test above, and the case it left open: four
+        // stores follow a file to its new name, and a DELETE used to strand all
+        // four — a bookmark you cannot reach, a breakpoint the next launch
+        // hands the adapter, a switcher row that opens nothing, and a walk back
+        // into a file that is gone. Three of the four are asserted here;
+        // BreakpointStore is not on the `porta.ide` boundary, so its listener
+        // is unit-tested instead.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\n", 'B.php' => "<?php\n"]);
+        $a = (string) realpath($project->path('A.php'));
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                150 => function ($tui, $terminal, $ide) use ($a): void {
+                    $tui->tick();
+                    $tui->getById('editor')->getDocument()->setCursor(0, 0);
+                    Services::resolve($ide, BookmarkActions::class)->toggle();
+                    $tui->handleInput('X'); // an edit, so the history has a site to lose
+
+                    $this->assertSame([$a => [0]], Services::resolve($ide, Bookmarks::class)->all(), 'marked before deleting');
+                    $this->assertContains($a, Services::resolve($ide, RecentFilesStore::class)->all());
+                },
+                250 => static function ($tui): void {
+                    $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php
+                },
+                350 => static function ($tui): void {
+                    foreach (range(1, end: 5) as $_) {
+                        $tui->handleInput("\x1b[B"); // → Delete…
+                    }
+                    $tui->handleInput("\r");
+                },
+                430 => function ($tui): void {
+                    $this->typeString($tui, 'y');
+                    $tui->handleInput("\r");
+                },
+                520 => function ($tui, $terminal, $ide) use ($a): void {
+                    $this->assertStringNotContainsString('A.php', (string) $tui->getById('editor')->getFilePath(), 'the deleted file is not still open');
+                    $this->assertSame([], Services::resolve($ide, Bookmarks::class)->all(), 'the bookmark went with the file');
+                    $this->assertNotContains($a, Services::resolve($ide, RecentFilesStore::class)->all(), 'the switcher stopped offering it');
+                    $this->assertNull(Services::resolve($ide, EditHistory::class)->walkBack(), 'and there is nowhere to walk back to');
+                },
+            ],
+        );
+
+        $this->assertFileDoesNotExist($project->path('A.php'), 'A.php removed from disk');
+    }
+
     public function testEditorContextMenuNearTheBottomFlipsUp(): void
     {
         putenv('PATH=/nonexistent');

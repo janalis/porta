@@ -141,4 +141,50 @@ final class EditHistoryTest extends TestCase
     {
         self::assertNull(new EditHistory()->walkBack());
     }
+
+    public function testForgetDropsEverySiteInADeletedFile(): void
+    {
+        $history = new EditHistory();
+        $history->record('/p/gone.php', 1);
+        $history->record('/p/kept.php', 2);
+        $history->record('/p/gone.php', 5);
+
+        $history->forget('/p/gone.php');
+
+        $this->assertSame(['path' => '/p/kept.php', 'line' => 2], $history->walkBack());
+        $this->assertNull($history->walkBack(), 'and nothing behind it');
+    }
+
+    public function testForgetCollapsesTheNEIGHBOURSItLeavesTouching(): void
+    {
+        // Removing the middle site puts two entries for the same place next to
+        // each other, and one place is one entry — otherwise a press appears to
+        // do nothing. rename() collapses for the same reason.
+        $history = new EditHistory();
+        $history->record('/p/a.php', 4);
+        $history->record('/p/gone.php', 1);
+        $history->record('/p/a.php', 4);
+
+        $history->forget('/p/gone.php');
+
+        $this->assertSame(['path' => '/p/a.php', 'line' => 4], $history->walkBack());
+        $this->assertNull($history->walkBack(), 'one place, one entry');
+    }
+
+    public function testForgetRESTARTSAWalkAlreadyInProgress(): void
+    {
+        // The walk counts back from the end. Removing entries mid-walk leaves
+        // that count pointing at a different site than the user last saw, so
+        // the next press would skip one.
+        $history = new EditHistory();
+        $history->record('/p/a.php', 1);
+        $history->record('/p/b.php', 2);
+        $history->record('/p/gone.php', 3);
+        $history->walkBack();
+        $history->walkBack();
+
+        $history->forget('/p/gone.php');
+
+        $this->assertSame(['path' => '/p/b.php', 'line' => 2], $history->walkBack(), 'the newest survivor, not wherever the old count landed');
+    }
 }

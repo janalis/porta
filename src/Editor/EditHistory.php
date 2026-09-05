@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Editor;
 
 use Porta\Container\AsIdeService;
+use Porta\Support\ProjectPaths;
 
 /**
  * Where you were last TYPING — PhpStorm's Ctrl+Shift+Backspace.
@@ -74,6 +75,30 @@ final class EditHistory
             }
         }
         $this->sites = $sites;
+    }
+
+    /**
+     * Drop every site in a deleted file, so a walk back does not land on one.
+     *
+     * Collapsing afterwards for {@see rename()}'s reason — removing a site can
+     * put two neighbours at the same place — and resetting the walk, because
+     * the entries it was counting back through are not the same entries any
+     * more. A press after a delete means "the place before here", which is what
+     * a fresh walk gives.
+     */
+    public function forget(string $path): void
+    {
+        $sites = [];
+        foreach ($this->sites as $site) {
+            if (ProjectPaths::isUnder($site['path'], $path)) {
+                continue;
+            }
+            if (($sites[\count($sites) - 1] ?? null) !== $site) {
+                $sites[] = $site;
+            }
+        }
+        $this->sites = $sites;
+        $this->walked = 0;
     }
 
     /**

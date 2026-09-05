@@ -112,4 +112,20 @@ final class BreakpointStoreTest extends TestCase
 
         $this->assertSame(['/p/Other.php'], array_keys($store->all()));
     }
+
+    public function testForgetDropsADeletedFilesBreakpointsAndItsDirectorys(): void
+    {
+        // The unrelated file is set FIRST so the walk has to pass over it: a
+        // fixture with every match at the front cannot tell "skip this one"
+        // from "stop here".
+        $store = new BreakpointStore();
+        $store->toggle('/p/olden/b.php', 1);
+        $store->toggle('/p/old/a.php', 1);
+        $store->setDetails('/p/old/a.php', 3, 'i > 2', null, null);
+
+        $store->forget('/p/old');
+
+        $this->assertSame([], $store->linesFor('/p/old/a.php'), 'the conditional went with the plain one');
+        $this->assertSame([1], $store->linesFor('/p/olden/b.php'), 'a shared prefix is not the same directory');
+    }
 }

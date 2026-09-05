@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Debug;
 
+use Porta\Support\ProjectPaths;
+
 /**
  * Line breakpoints, keyed by absolute file path with 0-based lines. Each
  * breakpoint optionally carries a condition, a hit-count condition and/or a log
@@ -113,6 +115,17 @@ final class BreakpointStore
         }
         $this->breakpoints[$to] = $this->breakpoints[$from];
         unset($this->breakpoints[$from]);
+    }
+
+    /** Drop every breakpoint on a deleted file, or under a deleted directory. */
+    public function forget(string $path): void
+    {
+        foreach (array_keys($this->breakpoints) as $file) {
+            if (!ProjectPaths::isUnder($file, $path)) {
+                continue;
+            }
+            unset($this->breakpoints[$file]);
+        }
     }
 
     public function clear(): void
