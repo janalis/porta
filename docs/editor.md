@@ -318,7 +318,9 @@ phpantom advertises `codeLensProvider`; phpactor does not, and is never asked.
 
 `F11` toggles one on the caret's line, `Alt+2` lists every mark in the project
 with the line's own text beside it. Marks show as `◈` on the gutter's marker
-column, below breakpoints and diagnostics in priority, and survive closing the
+column, below breakpoints but ABOVE diagnostics in priority — a diagnostic also
+colours the line number, paints the error stripe and writes itself at the end of
+the line, while a mark has that one cell — and they survive closing the
 file — they live in `.porta/bookmarks.json`, not on the buffer.
 
 A rename carries them with the file, whether it came from the tree or from a

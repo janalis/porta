@@ -312,15 +312,23 @@ final readonly class EditorRowAssembler
             default => $this->styles->of(Role::Gutter),
         };
         // The marker column, one glyph by priority: the debugger's stopped line,
-        // then the breakpoint dot, then the worst diagnostic's severity glyph —
-        // so each state also reads without color.
+        // then the breakpoint dot, then the BOOKMARK, then the worst
+        // diagnostic's severity glyph — so each state also reads without color.
+        //
+        // The bookmark outranks the diagnostic because it is the only one of
+        // the two with nowhere else to show. A diagnostic already colours the
+        // line NUMBER beside this cell, paints the error stripe in the right
+        // margin, writes its message inline at the end of the line and lists
+        // itself in the Problems panel; a bookmark has this cell and nothing
+        // else. Ordered the other way, a single HINT — the weakest severity
+        // there is — made a bookmark invisible.
         $marker = match (true) {
             $lineIndex === $this->store->debugLine() => $this->styles->of(Role::Breakpoint)->apply(Glyphs::STOPPED_LINE),
             ($this->logpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::LOGPOINT),
             ($this->conditionalBreakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT_CONDITIONAL),
             ($this->breakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT),
-            [] !== $lineDiags => $numStyle->apply(DiagnosticStyle::glyph(DiagnosticStyle::worst($lineDiags))),
             $this->store->isBookmarked($lineIndex) => $this->styles->of(Role::TabAccent)->apply(Glyphs::BOOKMARK),
+            [] !== $lineDiags => $numStyle->apply(DiagnosticStyle::glyph(DiagnosticStyle::worst($lineDiags))),
             default => ' ',
         };
         // The number label: empty when hidden (so str_pad to the 0-width column

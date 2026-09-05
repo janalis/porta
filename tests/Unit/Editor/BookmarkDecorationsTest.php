@@ -42,6 +42,35 @@ final class BookmarkDecorationsTest extends TestCase
         $this->assertStringNotContainsString(Glyphs::BOOKMARK, $lines[2], 'its neighbour does not');
     }
 
+    public function testAMarkSURVIVESADiagnosticOnTheSameLine(): void
+    {
+        // The marker column shows one glyph, and the diagnostic used to outrank
+        // the bookmark — so a single HINT, the weakest severity there is, made
+        // the mark invisible. The bookmark wins because it is the only one of
+        // the two with nowhere else to show: a diagnostic also colours the line
+        // number, paints the error stripe, writes itself inline at the end of
+        // the line and lists itself in the Problems panel.
+        $editor = $this->editor();
+        $bookmarks = new Bookmarks();
+        $bookmarks->toggle('/p/a.php', 1);
+        new BookmarkDecorations($bookmarks, $editor->decorations())->apply('/p/a.php');
+
+        $editor->decorations()->setDiagnostics([1 => [['col' => 0, 'endCol' => 3, 'message' => 'unused', 'severity' => 4]]]);
+
+        $lines = $editor->render(new RenderContext(40, 8));
+        $this->assertStringContainsString(Glyphs::BOOKMARK, $lines[1], 'the mark is still there under a hint');
+
+        // And an ERROR does not take it either — the strongest severity is the
+        // case someone would reach for to argue the other way.
+        $editor->decorations()->setDiagnostics([1 => [['col' => 0, 'endCol' => 3, 'message' => 'broken', 'severity' => 1]]]);
+
+        $this->assertStringContainsString(
+            Glyphs::BOOKMARK,
+            $editor->render(new RenderContext(40, 8))[1],
+            'nor under an error',
+        );
+    }
+
     public function testASwitchPaintsTheNewFilesOwnMarksAndNotTheOldFiles(): void
     {
         // The gutter is shared, so showing b.php has to CLEAR a.php's marks
