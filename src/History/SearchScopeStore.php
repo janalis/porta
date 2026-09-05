@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\History;
 
 use Porta\Support\JsonFile;
+use Porta\Support\ProjectPaths;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -68,6 +69,65 @@ final class SearchScopeStore
             'pinned' => ScopePersistence::Pinned === $persistence || ($existing['pinned'] ?? false), // a pin sticks once set
         ]);
         $this->evictRecent();
+        $this->save();
+    }
+
+    /**
+     * Follow a renamed folder, in the project-relative terms this file speaks.
+     *
+     * Both callers make the label the path — the tree's "Add to Search Scopes"
+     * and the folder search both pass the relative directory as both — so a
+     * label that WAS the path moves with it. One that is anything else is the
+     * user's word for the scope and is left alone.
+     */
+    public function rename(string $from, string $to): void
+    {
+        $changed = false;
+        foreach ($this->scopes as $index => $scope) {
+            $paths = [];
+            foreach ($scope['paths'] as $path) {
+                $paths[] = ProjectPaths::moved($path, $from, $to) ?? $path;
+            }
+            if ($paths === $scope['paths']) {
+                continue;
+            }
+            $this->scopes[$index] = [
+                'label' => $scope['label'] === $from ? $to : $scope['label'],
+                'paths' => $paths,
+                'pinned' => $scope['pinned'],
+            ];
+            $changed = true;
+        }
+        if ($changed) {
+            $this->save();
+        }
+    }
+
+    /**
+     * Drop a deleted folder from every scope, and any scope left with nowhere
+     * to search — a scope with no paths searches the whole project, which is
+     * the opposite of what its name promises.
+     */
+    public function forget(string $path): void
+    {
+        $kept = [];
+        foreach ($this->scopes as $scope) {
+            $paths = [];
+            foreach ($scope['paths'] as $scoped) {
+                if (ProjectPaths::isUnder($scoped, $path)) {
+                    continue;
+                }
+                $paths[] = $scoped;
+            }
+            if ([] === $paths) {
+                continue;
+            }
+            $kept[] = ['label' => $scope['label'], 'paths' => $paths, 'pinned' => $scope['pinned']];
+        }
+        if ($kept === $this->scopes) {
+            return;
+        }
+        $this->scopes = $kept;
         $this->save();
     }
 

@@ -221,4 +221,91 @@ final class SearchScopeStoreTest extends TestCase
         $this->assertCount(1, $store->all(), 'the live list keeps the scope');
         $this->assertFalse(is_file($project->path('.porta/search-scopes.json')), 'the file write degraded silently');
     }
+
+    public function testARenamedFolderTakesItsScopeWithIt(): void
+    {
+        // Both pinned, `src` added first: promote() unshifts, so the scope
+        // that CHANGES ends up second and the walk has to carry on past one it
+        // does not touch.
+        $tempProject = new TempProject();
+        $store = new SearchScopeStore($tempProject->dir);
+        $store->addPinned('src', ['src']);
+        $store->addPinned('tests', ['tests']);
+
+        $store->rename('src', 'lib');
+
+        $expected = [
+            ['label' => 'tests', 'paths' => ['tests'], 'pinned' => true],
+            ['label' => 'lib', 'paths' => ['lib'], 'pinned' => true],
+        ];
+        $this->assertSame($expected, $store->all(), 'the label was the path, so it moved; the untouched scope kept its place');
+        $this->assertSame($expected, new SearchScopeStore($tempProject->dir)->all(), 'and the next session agrees');
+    }
+
+    public function testARenamedFolderMovesTheScopesNESTEDUnderItAndLeavesItsLabelAlone(): void
+    {
+        $tempProject = new TempProject();
+        $store = new SearchScopeStore($tempProject->dir);
+        $store->addPinned('the widgets', ['src/Widget', 'srcery/x']);
+
+        $store->rename('src', 'lib');
+
+        $this->assertSame(
+            [
+                ['label' => 'the widgets', 'paths' => ['lib/Widget', 'srcery/x'], 'pinned' => true],
+            ],
+            $store->all(),
+            'a label the user chose is not a path and does not move; a prefix-sharing sibling is a different folder',
+        );
+    }
+
+    public function testARenameThatTouchesNoScopeDoesNotRewriteTheFile(): void
+    {
+        $tempProject = new TempProject();
+        $store = new SearchScopeStore($tempProject->dir);
+        $store->addRecent('src', ['src']);
+        $file = $tempProject->dir.'/.porta/search-scopes.json';
+        touch($file, mtime: 1_000_000_000); // backdated: mtime resolves to the second
+        clearstatcache();
+
+        $store->rename('tests', 'spec');
+
+        $this->assertSame(['src'], array_column($store->all(), 'label'));
+        $this->assertSame(1_000_000_000, filemtime($file), 'no write for a rename that changed nothing');
+    }
+
+    public function testADeletedFolderLeavesTheScopeWithNowhereToSearch(): void
+    {
+        // Dropped rather than emptied: a scope with no paths searches the whole
+        // project, which is the opposite of what its name promises.
+        $tempProject = new TempProject();
+        $store = new SearchScopeStore($tempProject->dir);
+        $store->addPinned('gone', ['src/Old']);
+        $store->addPinned('both', ['src/Old', 'tests']);
+        $store->addRecent('kept', ['src/Older']);
+
+        $store->forget('src/Old');
+
+        $expected = [
+            ['label' => 'both', 'paths' => ['tests'], 'pinned' => true],
+            ['label' => 'kept', 'paths' => ['src/Older'], 'pinned' => false],
+        ];
+        $this->assertSame($expected, $store->all());
+        $this->assertSame($expected, new SearchScopeStore($tempProject->dir)->all(), 'and the next session agrees');
+    }
+
+    public function testADeleteThatTouchesNoScopeDoesNotRewriteTheFile(): void
+    {
+        $tempProject = new TempProject();
+        $store = new SearchScopeStore($tempProject->dir);
+        $store->addRecent('src', ['src']);
+        $file = $tempProject->dir.'/.porta/search-scopes.json';
+        touch($file, mtime: 1_000_000_000);
+        clearstatcache();
+
+        $store->forget('tests');
+
+        $this->assertSame(['src'], array_column($store->all(), 'label'));
+        $this->assertSame(1_000_000_000, filemtime($file), 'no write for a delete that changed nothing');
+    }
 }
