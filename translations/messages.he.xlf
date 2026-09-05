@@ -2890,6 +2890,10 @@
         <source>No edits to go back to</source>
         <target>אין עריכות לחזור אליהן</target>
       </trans-unit>
+      <trans-unit id="813">
+        <source>Show whitespace</source>
+        <target>הצגת רווחים</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

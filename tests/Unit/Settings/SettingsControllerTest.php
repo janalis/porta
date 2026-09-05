@@ -176,7 +176,7 @@ final class SettingsControllerTest extends TestCase
         $byKey = array_column($rows, null, 'key');
 
         $this->assertSame(
-            ['language', 'theme', 'cursorShape', 'tabBarPosition', 'lineNumbers', 'stickyScroll', 'indentGuides', 'methodSeparators', 'breadcrumbs'],
+            ['language', 'theme', 'cursorShape', 'tabBarPosition', 'lineNumbers', 'stickyScroll', 'indentGuides', 'showWhitespace', 'methodSeparators', 'breadcrumbs'],
             array_column($rows, 'key'),
         );
         $this->assertSame(['en', 'fr', 'de', 'es', 'it', 'ja', 'he'], $byKey['language']->options);

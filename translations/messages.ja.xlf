@@ -2890,6 +2890,10 @@
         <source>No edits to go back to</source>
         <target>戻れる編集がありません</target>
       </trans-unit>
+      <trans-unit id="813">
+        <source>Show whitespace</source>
+        <target>空白を表示</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

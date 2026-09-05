@@ -77,6 +77,14 @@ final class Glyphs
     // Same │ value as SEPARATOR on a disjoint surface (a guide, not a border).
     public const string INDENT_GUIDE = '│';
 
+    // Show-whitespace markers, drawn INSIDE the code text. Both values are
+    // already in this vocabulary on other surfaces and the reuse is deliberate:
+    // WHITESPACE_SPACE is SEVERITY_HINT's dot, which lives in the gutter's
+    // marker column, and WHITESPACE_TAB is NAV_CURRENT's arrow, which lives in
+    // a results row. Neither shares a surface with the editor's content.
+    public const string WHITESPACE_SPACE = '·';
+    public const string WHITESPACE_TAB = '→';
+
     // The split (side-by-side) diff's centre column and gutter border.
     // Same │ value as SEPARATOR on a disjoint surface.
     public const string DIFF_COLUMN = '│';

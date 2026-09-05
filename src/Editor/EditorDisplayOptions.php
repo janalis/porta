@@ -33,6 +33,12 @@ final class EditorDisplayOptions
      * chrome than a graphical editor.
      */
     private bool $methodSeparators = false;
+
+    /**
+     * PhpStorm's Show Whitespaces, off by default: it answers a question you
+     * only sometimes have, and a terminal has one intensity to say it with.
+     */
+    private bool $showWhitespace = false;
     private bool $indentGuides = true;
 
     /** Off by default: horizontal scroll is the long-line behaviour this editor has always had. */
@@ -93,6 +99,11 @@ final class EditorDisplayOptions
         return $this->methodSeparators;
     }
 
+    public function showWhitespace(): bool
+    {
+        return $this->showWhitespace;
+    }
+
     public function setStickyScroll(bool $on): bool
     {
         return $this->apply($this->stickyScroll, $on);
@@ -101,6 +112,11 @@ final class EditorDisplayOptions
     public function setMethodSeparators(bool $on): bool
     {
         return $this->apply($this->methodSeparators, $on);
+    }
+
+    public function setShowWhitespace(bool $on): bool
+    {
+        return $this->apply($this->showWhitespace, $on);
     }
 
     public function indentGuides(): bool

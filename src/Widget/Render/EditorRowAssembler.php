@@ -9,6 +9,7 @@ use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
 use Porta\Editor\LineNumberMode;
+use Porta\Editor\WhitespaceGlyphs;
 use Porta\Editor\WrapLayout;
 use Porta\Highlight\SemanticTokenStyle;
 use Porta\Support\AnsiText;
@@ -64,6 +65,8 @@ final readonly class EditorRowAssembler
         private ?TerminalTheme $syntaxTheme = null,
         /** @var array<int, true> lines carrying a member separator; [] when the setting is off */
         private array $separators = [],
+        /** Mark leading and trailing whitespace in the rendered code. */
+        private bool $showWhitespace = false,
     ) {
         $this->styles = $styles ?? Styles::dark();
         $this->breakpointSet = array_fill_keys($store->breakpointLines(), value: true);
@@ -147,9 +150,16 @@ final readonly class EditorRowAssembler
             $gutter = $rowSegment > 0
                 ? AnsiText::blank(max(0, $geo->gutterWidth))
                 : $this->gutterCell($lineIndex, $isCursorLine ? CaretLine::Current : CaretLine::Other, $lineDiags, $geo->numberWidth);
+            // Per rendered ROW, not over the whole array: the file may be
+            // fifty thousand lines and forty of them are on screen. It needs
+            // the raw line, which is the only place tabs still exist.
+            $code = $highlighted[$lineIndex] ?? '';
+            if ($this->showWhitespace) {
+                $code = WhitespaceGlyphs::apply($code, $this->document->getLine($lineIndex));
+            }
             $hlLine = $this->decoratedLine(
                 $lineIndex,
-                $highlighted[$lineIndex] ?? '',
+                $code,
                 $decorations,
                 $lineDiags,
                 $hScroll,

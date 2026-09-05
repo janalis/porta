@@ -24,7 +24,7 @@
         " ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings"
     ],
     "interface": [
-        " Interface — 10 settings",
+        " Interface — 11 settings",
         "  Save changes to    < .porta.json > · for this session",
         "  Language           < English > · Français/Deutsch/Español/Italiano/日本語/עברית",
         "  Theme              < dark > · light/high-contrast · overrides global",
@@ -33,9 +33,9 @@
         "  Line numbers       < absolute > · off/relative",
         "● Sticky scroll      [ ] · from global",
         "  Indent guides      [x]",
+        "  Show whitespace    [ ]",
         "  Method separators  [ ]",
         "  Breadcrumbs bar    [x]",
-        "",
         "",
         "",
         "",

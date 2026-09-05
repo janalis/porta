@@ -36,6 +36,7 @@ final class IdeConfig
         'stickyScroll' => true,
         'indentGuides' => true,
         'methodSeparators' => false,
+        'showWhitespace' => false,
         'breadcrumbs' => true,
         'autoPairs' => true,
         'formatOnSave' => false,

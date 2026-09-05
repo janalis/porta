@@ -171,6 +171,45 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertStringContainsString('deep();', $line2);
     }
 
+    public function testShowWhitespaceTellsATabIndentFromASpaceIndent(): void
+    {
+        // The question the feature exists to answer, asked through the widget
+        // so the setting has to reach the render path — and asked with indent
+        // guides ON, which is the default and which takes the first cell of
+        // every indent level. The arrow loses that cell; the PADDING is what
+        // still distinguishes them, which is why a tab is drawn blank.
+        $editor = $this->editor("<?php\n\t\$tab = 1;\n    \$spaces = 2;\n", 'mixed.php');
+
+        $off = $editor->render(new RenderContext(80, 8));
+        $editor->display()->setShowWhitespace(true);
+        $rows = $editor->render(new RenderContext(80, 8));
+
+        $this->assertStringNotContainsString(
+            Glyphs::WHITESPACE_SPACE,
+            AnsiUtils::stripAnsiCodes($off[2]),
+            'nothing is marked while the setting is off',
+        );
+
+        $tabbed = AnsiUtils::stripAnsiCodes($rows[1]);
+        $spaced = AnsiUtils::stripAnsiCodes($rows[2]);
+        $this->assertStringContainsString(Glyphs::INDENT_GUIDE.'   $tab = 1;', $tabbed, 'a tab pads with blank');
+        $this->assertStringContainsString(Glyphs::INDENT_GUIDE.'···$spaces = 2;', $spaced, 'four spaces are four dots');
+
+        // The rule this decoration lives or dies by.
+        $this->assertExactWidth($rows, 80);
+    }
+
+    public function testShowWhitespaceMarksTRAILINGSpaceButNotInnerOnes(): void
+    {
+        $editor = $this->editor("<?php\n\$x = 1;   \n", 'trail.php');
+        $editor->display()->setShowWhitespace(true);
+
+        $line = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(80, 8))[1]);
+
+        $this->assertStringContainsString('$x = 1;···', $line, 'the junk after the semicolon shows');
+        $this->assertStringNotContainsString('$x·=·1;', $line, 'the spaces between words do not');
+    }
+
     public function testMethodSeparatorsRuleTheEndOfEachMemberWhenTheSettingIsOn(): void
     {
         // Through the widget, not the collaborator: the setting has to reach

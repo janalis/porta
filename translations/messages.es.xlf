@@ -2890,6 +2890,10 @@
         <source>No edits to go back to</source>
         <target>No hay ediciones a las que volver</target>
       </trans-unit>
+      <trans-unit id="813">
+        <source>Show whitespace</source>
+        <target>Mostrar espacios en blanco</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

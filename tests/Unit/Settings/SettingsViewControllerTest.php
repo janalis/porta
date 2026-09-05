@@ -442,7 +442,10 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame('interface', $this->nav->selectedId());
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
-        $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 12)));
+        // Tall enough for the whole page: the assertion below names its LAST
+        // row, so a viewport that merely fits today's count would start failing
+        // the next time the page gains one.
+        $screen = implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 24)));
         $this->assertStringContainsString('Theme', $screen);
         $this->assertStringContainsString('Line numbers', $screen);
         $this->assertStringContainsString('Sticky scroll', $screen);

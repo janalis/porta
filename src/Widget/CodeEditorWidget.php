@@ -1245,6 +1245,7 @@ final class CodeEditorWidget extends AbstractWidget implements
                 // work in. Passed in rather than pushed into the decoration
                 // store: a store write invalidates, and this runs in render.
                 $this->display->methodSeparators() ? MemberSeparators::linesFor($this->scopes()) : [],
+                $this->display->showWhitespace(),
             );
             $result = $assembler->assemble(
                 $geo,

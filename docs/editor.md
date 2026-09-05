@@ -223,6 +223,27 @@ deliver — every modified `Insert` sequence parses to nothing — so the `S` ch
 stands in. Rebind it like any other action; see
 [keybindings.md](keybindings.md).
 
+## Show whitespace
+
+Off by default (Settings → Interface, or `showWhitespace` in `.porta.json`).
+Leading and trailing whitespace is drawn: a space as `·`, a tab as `→` followed
+by blank to its stop.
+
+**Leading and trailing only** — not the spaces between words. PhpStorm offers
+the three separately, and turning the inner ones on writes a dot between every
+word; that is legible on a wide screen with a pale grey and unreadable in a
+terminal, which has one intensity and eighty columns. It is also where the
+questions are: is this file indented with tabs or spaces, and is there junk
+after the semicolon.
+
+A tab is drawn blank after its arrow rather than dotted, which is what a
+graphical editor does and what keeps it legible here: the indent guides take the
+first cell of every indent level, arrow included, so it is the *padding* that
+tells a tab from four spaces — blank against four dots.
+
+The substitution is one display column for one, so nothing downstream sees a
+different line than it would have.
+
 ## Method separators
 
 Off by default (Settings → Interface, or `methodSeparators` in `.porta.json`).
