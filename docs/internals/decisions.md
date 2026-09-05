@@ -1423,3 +1423,120 @@ JavaScript buffer gets a breadcrumb trail, and the member separator lands on the
 `endLine` the SERVER reported. Removing either range from the mock times the
 test out, which is the shape this had been missing — everything else about
 non-PHP scopes is proved by setting `DocumentScopes` by hand.
+
+## The crash in the error log had three sites (2026-09-05)
+
+Round 7 began by reading `.porta/error.log` rather than surveying for features.
+It held one distinct failure, twenty-one times: `RenderException: rendered line 0
+with width 8, exceeding the available 1 columns`. That exception escapes the
+render loop, so each entry is the IDE going down mid-session.
+
+`computeGeometry()` floored the content at one column and put no ceiling on the
+gutter, so below about nine columns the row was `gutter + 1` whatever the pane
+had been given. **The gutter is all-or-nothing now**: it is a fixed run of
+single-column cells and cannot be cut through a marker, so below the width that
+seats it, the stripe and one column of text, it goes and the text keeps the
+pane.
+
+**Fixing it found two more sites**, which is the part worth recording:
+
+- The past-EOF `~` is a gutter cell, and `str_pad('~', 0)` returns `'~'` — so
+  the `max(0, …)` wrapped around it looked like a clamp and never was one.
+- `renderStickyRow()` builds its own gutter and overflowed identically. Reaching
+  it needs a scrolled buffer with scopes, which is why the first sweep walked
+  past it; sticky scroll is ON by default.
+- And a third, outside the editor: `TabBarWidget`'s side strip emitted a fixed
+  24 columns whatever the pane was, so it overflowed at EVERY width below 24.
+
+Three widgets — tree, status bar, horizontal tab bar — were already correct, so
+the pattern existed three times over and the broken one simply had no test at a
+hostile width. `tests/Support/RendersExactWidth` is the shared assertion now,
+replacing two private copies that had never been pointed at one.
+
+**Its sweep refuses a widget that renders nothing.** An empty pane satisfies
+"every row fits" the way an empty pane satisfies "the content stopped changing",
+so every widget in the sweep is given a provider or a row set first — four of
+them needed opening before they drew anything at all.
+
+**The invariant is "no row EXCEEDS its pane", not equality.** The first version
+asserted equality and would have failed the side tab strip for behaving
+correctly: it asks for a stable intrinsic width and the layout pads the rest.
+Its stricter contract — exactly `min(24, pane)` — is asserted in its own test.
+
+### The strip's position is owned by WorkspaceLayout, not the responsive rule
+
+Clamping stopped the overflow; it did not stop a 24-column strip taking most of
+a 30-column terminal. Below twice its own width it returns to the top now.
+
+The question was who remembers the position to restore. `ResponsiveLayout`
+holding it needs telling when the user changes the setting, and the obvious
+route — the settings applier calling into it — added a constructor argument to
+**eight** test construction sites. `WorkspaceLayout` already performs the
+surgery and already receives the user's choice at boot and on every change, so
+putting the memory there cost **one** site and fixes the staleness properly: a
+position chosen while the strip is displaced replaces what gets put back, where
+reading the boot config would restore an abandoned preference.
+
+A configured top or bottom bar is never touched — there is nothing to rescue and
+moving it would be inventing a preference.
+
+### Two defects the UI survey found alongside it
+
+- **Alt+X on the Problems panel exported the last GREP**, closed the panel you
+  were reading and opened that file over it. The key is offered by every GROUPED
+  panel, and Problems is grouped so it can be read by file; the handler was not
+  routed by the bound tab, unlike its sibling rerun handler — which is why F5
+  was correctly inert there while Alt+X was not.
+- **A bookmark was invisible on any line with a diagnostic**, including a HINT.
+  The bookmark outranks it now, because it is the only one of the two with
+  nowhere else to show: a diagnostic also colours the line number, paints the
+  error stripe, writes itself inline and lists itself in the Problems panel. The
+  cost — severity no longer reads from the marker glyph without colour on a line
+  that is both — is stated in the ordering comment rather than left to
+  contradict the code.
+
+### Mutation testing was right twice where my reasoning was not
+
+It reported the tab strip's focus restore as deletable. I put that down to a
+stale coverage map after many edits in one run and said I would re-check later.
+A control proved it right: both responsive rules fire on the same `apply()`, the
+sidebar's threshold is the wider one, and the sidebar's own focus restore was
+doing my assertion's work. **The assertion passed for a reason unrelated to what
+it claimed** — the same shape as the joins this round exists to fix.
+
+Earlier in the same round it also showed that I had COPIED the sidebar's
+focus-restore condition rather than sharing it: eight survivors on the duplicate,
+all killed by extracting the one method both paths now call.
+
+*Re-opens on:* nothing for the crash. The threshold at which a side strip yields
+(`SIDE_TABS_BELOW`, twice the strip's width) is a UX choice and would re-open on
+a measurement that a narrower editor is still usable.
+
+## Carried forward from round 7's survey (2026-09-05)
+
+Not built, and deliberately not: the round was scoped to the crash and the
+defects behind it.
+
+**`FileDeleted`'s re-open condition is met.** It was deferred "the day anything
+else needs one". Four path-keyed stores now follow `FileRenamed` — bookmarks,
+breakpoints, `EditHistory` and `RecentFilesStore` — and a DELETE strands all
+four. `BookmarkStore::load()` self-heals at startup; the other three do not.
+
+**Two features, both the round-4 shape — data that arrives and is discarded:**
+
+- `CompletionItem::$detail` is fetched, mapped onto every item
+  (`LspMapper.php:115`) and read by nobody. That is PhpStorm's type column,
+  already on the wire. `documentation` is not even mapped, though
+  `documentationFormat` is advertised in the client capabilities.
+- LSP `source` / `code` / `codeDescription` are dropped at
+  `diagnosticsByLine()`. Three bundled plugins work around it by
+  string-prefixing the code into the message, and `RefactorController` copies
+  `code`/`source`/`data` onto its `codeAction` context from fields that can
+  never be present — so quick-fix matching by diagnostic code is silently
+  degraded, with a comment explaining why those keys matter.
+
+A fuller inventory (client capabilities declared but unused, requests the
+bundled servers advertise and Porta never sends, `client/registerCapability`
+answered and discarded) came out of the same survey and is worth re-running
+rather than transcribing here.
+
