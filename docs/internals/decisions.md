@@ -1517,10 +1517,23 @@ a measurement that a narrower editor is still usable.
 Not built, and deliberately not: the round was scoped to the crash and the
 defects behind it.
 
-**`FileDeleted`'s re-open condition is met.** It was deferred "the day anything
-else needs one". Four path-keyed stores now follow `FileRenamed` — bookmarks,
-breakpoints, `EditHistory` and `RecentFilesStore` — and a DELETE strands all
-four. `BookmarkStore::load()` self-heals at startup; the other three do not.
+**`FileDeleted`'s re-open condition is met** — and it landed in `f5b8f8cb`. It
+was deferred "the day anything else needs one". Four path-keyed stores follow
+`FileRenamed` — bookmarks, breakpoints, `EditHistory` and `RecentFilesStore` —
+and a DELETE stranded all four. `BookmarkStore::load()` self-heals at startup;
+the other three did not.
+
+Worth keeping from the build: nobody CHECKED the condition. It was met by the
+rename round that created the stores, and it sat met until a survey read the
+entry again — the same failure the 2026-09-03 note records for code vision.
+A stated re-open condition is only as good as the habit of re-reading it.
+
+The delete fact carries one clause the rename does not: a DIRECTORY takes its
+whole tree, while the stores are keyed by the files inside it, so a listener
+asks `ProjectPaths::isUnder()` rather than comparing paths. `FileRenamed` has
+the same gap in the other direction — renaming a directory re-keys nothing
+under it — and that one is still open. It is less visible because the tree's
+rename is usually a file, and no store is keyed by directory.
 
 **Two features, both the round-4 shape — data that arrives and is discarded:**
 
