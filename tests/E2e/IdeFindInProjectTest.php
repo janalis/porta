@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Tui;
@@ -594,6 +596,31 @@ final class IdeFindInProjectTest extends TestCase
                     $this->assertStringContainsString('src/B.php', $content, 'every matched file is listed');
                     $this->assertStringContainsString('2: // tok here', $content, 'line numbers are 1-based');
                     $this->assertStringContainsString('search-results.txt', (string) $tui->getById('editor')->getFilePath(), 'the export opens in the editor');
+                },
+                1000 => static function ($tui, $terminal, $ide): void {
+                    // A grouped panel that is NOT a search. Alt+X is offered on
+                    // it because the key is gated on grouping, which Problems
+                    // turns on to read its list by file.
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_problems');
+                },
+                1100 => function ($tui, $terminal, $ide): void {
+                    $this->awaitPainted($tui, $terminal, 'Problems');
+                    $tui->handleInput("\x1bx"); // alt+x on the Problems panel
+                },
+                1250 => function ($tui, $terminal, $ide): void {
+                    // It used to export the last GREP — which is still in
+                    // memory from the step above — close the panel you were
+                    // reading and open that file over it.
+                    $this->frame($tui);
+                    $this->assertNotNull(
+                        Services::resolve($ide, BottomDock::class)->visiblePanel(),
+                        'the panel you were reading is still open',
+                    );
+                    $this->assertStringContainsString(
+                        'Problems',
+                        AnsiUtils::stripAnsiCodes($terminal->getOutput()),
+                        'and it is still the Problems list',
+                    );
                 },
             ],
         );

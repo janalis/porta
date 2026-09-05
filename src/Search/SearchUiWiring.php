@@ -125,10 +125,27 @@ final class SearchUiWiring
         }
     }
 
-    /** Alt+X writes the current results to a file and opens it in the editor. */
+    /**
+     * Alt+X writes the current results to a file and opens it in the editor.
+     *
+     * Routed by the BOUND tab, exactly as {@see onRerunRequested()} is. The key
+     * reaches here from ANY grouped panel — the Problems list is grouped for
+     * the same display reasons the Find tool is — and only a find-in-project
+     * tab has results of its own to write. Unrouted, Alt+X on Problems exported
+     * the last GREP, closed the panel you were reading and opened that file
+     * instead; with no prior search it flashed "Nothing to export" at you.
+     *
+     * A contributed tool has no export hook to offer ({@see \Porta\Workbench\Dock\DockToolHandlers}
+     * carries `activate` and `rerun` only), so for those the key stays inert
+     * rather than reaching for someone else's results.
+     */
     #[AsEventListener]
     public function onExportRequested(ResultsExportRequested $event): void
     {
+        if (null === $this->panels->activeTool()?->searchState) {
+            return;
+        }
+
         $path = $this->projectSearch->exportResults();
         if ('' !== $path) {
             $this->panels->closeTab(DockTab::Results); // only the exported search's tab closes

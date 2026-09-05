@@ -21,7 +21,9 @@ use Porta\Search\LanguageFilter;
 use Porta\Search\ProjectSearch;
 use Porta\Search\ProjectSearchController;
 use Porta\Search\ResultContextProvider;
+use Porta\Search\SearchOptions;
 use Porta\Search\SearchScopeResolver;
+use Porta\Search\SearchTabState;
 use Porta\Search\SearchUiWiring;
 use Porta\Search\TokenClassifier;
 use Porta\Support\ProjectPaths;
@@ -31,14 +33,17 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
+use Porta\Ui\ScopeKind;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\FindBarWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
+use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockToolHandlers;
+use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\EditorArea;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -242,9 +247,37 @@ final class SearchUiWiringTest extends TestCase
             ['path' => 'a.php', 'line' => 1, 'text' => '$needle = 1;', 'ranges' => []],
         ]);
 
+        // Bound to a find-in-project tab, which is what an export is FOR. The
+        // handler is routed by the tab, exactly as the rerun handler is.
+        $tab = $this->dock->showList(ResultsPanelMode::Search, 'Find', [], ResultsPanelFields::searchResults());
+        $tab->searchState = new SearchTabState('needle', new SearchOptions(), [], '', ScopeKind::Project);
+
         $wiring->onExportRequested(new ResultsExportRequested());
 
         $this->assertCount(1, $this->opened, 'the exported file was opened');
         $this->assertStringContainsString('needle', (string) file_get_contents($this->opened[0]));
+    }
+
+    public function testExportRequestedFromAPanelThatIsNOTASearchDoesNothing(): void
+    {
+        // Alt+X is offered by every GROUPED panel, and the Problems list is
+        // grouped so it can be read by file. Unrouted, the key exported the
+        // last grep, closed the panel being read and opened that file over it.
+        $project = new TempProject();
+        $wiring = $this->wiring($project->dir);
+        $searchController = Probe::get($wiring, 'projectSearch');
+        Probe::set($searchController, 'lastSearchQuery', 'needle');
+        Probe::set($searchController, 'lastSearchResults', [
+            ['path' => 'a.php', 'line' => 1, 'text' => '$needle = 1;', 'ranges' => []],
+        ]);
+
+        // A grouped, non-search tab — no searchState, which is what says "this
+        // panel has no results of its own to write".
+        $this->dock->showList(ResultsPanelMode::Problems, 'Problems', [], ResultsPanelFields::problemList());
+
+        $wiring->onExportRequested(new ResultsExportRequested());
+
+        $this->assertSame([], $this->opened, 'nothing was written and nothing was opened');
+        $this->assertNotNull($this->dock->visiblePanel(), 'and the panel being read is still there');
     }
 }
