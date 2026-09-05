@@ -162,8 +162,13 @@ final readonly class EditorRowAssembler
                 $code,
                 $decorations,
                 $lineDiags,
-                $hScroll,
+                // The window THIS ROW shows. Under soft wrap that is the
+                // segment's offset, not the widget's hScroll (which wrapping
+                // forces to zero) — the padding bound below is about what is
+                // visible, and on a wrapped line that differs per row.
+                null === $this->wrap ? $hScroll : WrapLayout::offsetOf($rowSegment, $geo->contentWidth),
                 $geo->contentWidth,
+                $this->separatorFrom($lineIndex, $rowSegment, $geo->contentWidth),
             );
 
             $content = EditorRenderer::renderContentLine(
@@ -340,6 +345,39 @@ final readonly class EditorRowAssembler
      *
      * @param list<array{col: int, endCol?: int, message: string, severity: int}> $lineDiags
      */
+    /**
+     * The display column a member separator's rule starts at on this ROW, or
+     * null when this row carries none.
+     *
+     * Null rather than a negative sentinel: `-1` and `-2` mean the same thing
+     * to every caller, so the sentinel had slack nothing could assert.
+     *
+     * A soft-wrapped line is one line across several rows, and the rule closes
+     * off the member — so it belongs under the last of them, not under each.
+     * Spans are in the line's own display columns, which is why the answer is
+     * an offset rather than a flag.
+     */
+    private function separatorFrom(int $lineIndex, int $rowSegment, int $contentWidth): ?int
+    {
+        if (($this->separators[$lineIndex] ?? null) === null) {
+            return null;
+        }
+        if (null === $this->wrap) {
+            return 0;
+        }
+
+        return $rowSegment === ($this->wrap->rowsFor($lineIndex, $contentWidth) - 1)
+            ? WrapLayout::offsetOf($rowSegment, $contentWidth)
+            : null;
+    }
+
+    /**
+     * Spelled out rather than inferred: the type came from the single call
+     * site until this method grew a parameter, and mago then read it as
+     * `array<array-key, mixed>`.
+     *
+     * @param list<array{col: int, endCol?: int, message: string, severity: int}> $lineDiags
+     */
     private function decoratedLine(
         int $lineIndex,
         string $highlighted,
@@ -347,6 +385,7 @@ final readonly class EditorRowAssembler
         array $lineDiags,
         int $hScroll,
         int $contentWidth,
+        ?int $separatorFrom = null,
     ): string {
         $doc = $this->document;
         $hlLine = $this->indentGuides ? EditorRenderer::applyIndentGuides($doc, $highlighted, $lineIndex, $this->styles) : $highlighted;
@@ -361,7 +400,7 @@ final readonly class EditorRowAssembler
             $lineDiags,
             $this->styles,
             $this->semanticSpansFor($lineIndex),
-            ($this->separators[$lineIndex] ?? null) !== null ? $contentWidth : 0,
+            null === $separatorFrom ? 0 : $separatorFrom + $contentWidth,
         );
         if ($padTo > 0) {
             // Pad so an end-of-line caret has a cell to invert (the window

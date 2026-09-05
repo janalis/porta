@@ -24,7 +24,7 @@ final class LineSpans
      * @param list<array{start: int, end: int, current: bool}>                     $matches  search matches on this line (byte cols)
      * @param list<array{severity: int, message: string, col: int, endCol?: int}>  $diags    diagnostics on this line (utf16 cols)
      * @param list<array{col: int, endCol: int, open: string, close: string}>      $semantic server semantic tokens on this line (utf16 cols), already styled
-     * @param int                                                                  $separatorTo rule this line across this many display columns; 0 for no rule
+     * @param int                                                                  $separatorTo rule this row across this many display columns; 0 for no rule
      *
      * @return array{spans: list<array{0: int, 1: int, 2: string, 3: string, 4: ?string}>, padTo: int}
      */
@@ -50,6 +50,12 @@ final class LineSpans
         // that width — the line it lands on is usually the blank one between
         // two members, which has no cells of its own to underline.
         if ($separatorTo > 0) {
+            // From zero, and the row's own clip does the rest: spans are in the
+            // LINE's display columns and get clipped to the window the row
+            // shows, so an anchored start would be redundant. What decides
+            // WHICH row is ruled is the caller passing 0 for the others — a
+            // soft-wrapped line is one line across several rows, and the rule
+            // closes off the member under the last of them, not under each.
             $spans[] = [0, $separatorTo, Sgr::UNDERLINE, Sgr::NO_UNDERLINE, null];
             $padTo = $separatorTo;
         }

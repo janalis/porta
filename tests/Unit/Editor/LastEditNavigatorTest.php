@@ -84,6 +84,27 @@ final class LastEditNavigatorTest extends TestCase
         self::assertSame([['path' => '/b.php', 'focus' => true]], $this->files->opened, 'opened, and focused');
     }
 
+    public function testAREFUSEDOpenLeavesTheCaretWhereItWas(): void
+    {
+        // The file has been deleted or is unreadable, so the opener declines
+        // and says so. Without the guard the caret would then jump to that
+        // line number in whatever file is still on screen — a line belonging
+        // to a different file. The recording opener models the refusal for
+        // free: it accepts the call and never changes what the editor shows.
+        $history = new EditHistory();
+        $history->record('/gone.php', line: 40);
+        $navigator = $this->navigator($history);
+        $this->editor->openFile('/a.php', "one\ntwo\nthree\n");
+        $this->editor->getDocument()->setCursor(1, 2);
+
+        $navigator->goBack();
+
+        self::assertSame([['path' => '/gone.php', 'focus' => true]], $this->files->opened, 'it did try');
+        self::assertSame('/a.php', $this->editor->getFilePath(), 'and is still here');
+        self::assertSame(1, $this->editor->getDocument()->getCursorLine(), 'the caret did not move');
+        self::assertSame(2, $this->editor->getDocument()->getCursorCol());
+    }
+
     public function testItLandsAtTheSTARTOfTheLineAndAsksForAFrame(): void
     {
         // Column 0 rather than the column the edit was at: a stale column on a

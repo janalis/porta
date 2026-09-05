@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferService;
+use Porta\Editor\CloseMode;
 use Porta\Editor\OpenFocus;
 use Porta\Support\RevoltScheduler;
 use Porta\Tests\Support\ClearsPortaLsp;
@@ -286,10 +287,39 @@ final class IdeEditingTest extends TestCase
                     // jump, so nothing was pushed onto that stack.
                     $tui->handleInput("\x1b[127;6u");
                 },
-                550 => function ($tui): void {
+                550 => function ($tui) use ($project): void {
                     $editor = $tui->getById('editor');
                     $this->assertStringEndsWith('A.php', (string) $editor->getFilePath());
                     $this->assertSame(30, $editor->getDocument()->getCursorLine());
+
+                    // Now edit B.php and delete it. Walking back to a file that
+                    // has gone must not move the caret in the file still on
+                    // screen — that line number belongs to another file.
+                    $tui->handleInput("\x1b[1;5D"); // ctrl+left: away from the edit, no jump recorded
+                    $editor->getDocument()->setCursor(2, 0);
+                    $tui->handleInput('Z'); // an edit in A.php at line 2
+                },
+                650 => static function ($tui, $terminal, $ide) use ($project): void {
+                    Services::resolve($ide, BufferService::class)
+                        ->openFile($project->path('B.php'), OpenFocus::Editor);
+                    $tui->requestRender();
+                    $tui->tick();
+                    $tui->getById('editor')->getDocument()->setCursor(1, 0);
+                    $tui->handleInput('Q'); // an edit in B.php, the newest one
+                },
+                750 => function ($tui, $terminal, $ide) use ($project): void {
+                    Services::resolve($ide, BufferService::class)->closeActiveBuffer(CloseMode::Force);
+                    unlink($project->path('B.php'));
+                    $tui->requestRender();
+                    $tui->tick();
+
+                    $editor = $tui->getById('editor');
+                    $this->assertStringEndsWith('A.php', (string) $editor->getFilePath());
+                    $editor->getDocument()->setCursor(20, 0);
+
+                    $tui->handleInput("\x1b[127;6u"); // walk back into the deleted file
+                    $this->assertStringEndsWith('A.php', (string) $editor->getFilePath(), 'still here');
+                    $this->assertSame(20, $editor->getDocument()->getCursorLine(), 'and the caret did not jump');
                 },
             ],
         );

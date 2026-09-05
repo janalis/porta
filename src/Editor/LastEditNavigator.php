@@ -45,6 +45,13 @@ final readonly class LastEditNavigator
 
         if ($site['path'] !== $this->editor->getFilePath()) {
             $this->files->openFile($site['path'], OpenFocus::Editor);
+            if ($site['path'] !== $this->editor->getFilePath()) {
+                // Refused — the file has been deleted or is unreadable, and
+                // the opener has already said so. Without this the caret would
+                // then jump to that line number in whatever file is still on
+                // screen, which is a different file's line.
+                return;
+            }
         }
         // Column 0: the line is what a person remembers about where they were
         // typing, and a stale column on a line since re-typed is a worse guess

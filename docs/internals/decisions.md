@@ -1329,3 +1329,43 @@ away from, and a terminal resize re-takes the new screen instead of falling
 back to the stored proportion.
 
 The first attempt was reverted rather than shipped half-right; this is the second.
+
+## Review pass on the PhpStorm-parity increments (2026-09-05)
+
+Nine increments shipped across two days, each through all six gates plus
+diff-scoped mutation testing. This pass asked the question the gates cannot:
+what would a defect look like if it passed them? Three hypotheses, two real.
+
+**Confirmed — the method separator was drawn on every row of a soft-wrapped
+member.** Spans are in the LINE's display columns; a rule anchored at column 0
+is inherited by every row that line occupies. A member whose last line wraps got
+three stacked underlines instead of one rule. Unreachable without soft wrap ON
+(off by default) *and* a member long enough to wrap, which is why nothing
+noticed.
+
+The fix is per-ROW gating: the rule is emitted only for the segment the line
+ends on. Two things fell out of it worth keeping:
+
+- `decoratedLine()` was clamping its padding to `$hScroll + $contentWidth`, and
+  wrapping forces `$hScroll` to 0 — so on a wrapped line the bound described the
+  FIRST row's window whatever row was being built. It gets the row's own offset
+  now. That was a latent inconsistency, not introduced by the separator.
+- The first fix also anchored the span at the row's start column. Measured: that
+  parameter changes nothing, because spans are already clipped to the row's
+  window. It was removed rather than kept as decoration — mutation testing found
+  it by surviving, which is the useful half of a survivor.
+
+**Confirmed — Last Edit Location moved the caret after a REFUSED open.** Walking
+back to a file that has since been deleted flashes "Cannot read …" from the
+opener and returns; the navigator then set the caret to that line number in
+whatever file was still on screen. A line number from another file. One guard,
+and an E2e that deletes the file mid-scenario.
+
+**Refuted — the deleted file itself.** `BufferService::openFile()` already
+guards `is_file()`/`is_readable()` and reports it, so nothing opens an empty
+buffer for a path that has gone. Only the caret half was wrong.
+
+**Not examined, and worth a look:** neither `RecentFilesStore` nor `EditHistory`
+follows a rename, where bookmarks and breakpoints do (see *Renames carry their
+marks*). The effect is mild — a renamed file drops off the recent list instead of
+following it — but it is an inconsistency with a decision already taken.

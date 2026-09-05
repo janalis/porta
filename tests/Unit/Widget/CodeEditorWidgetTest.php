@@ -236,6 +236,29 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertExactWidth($on, 80);
     }
 
+    public function testAWrappedMembersRuleIsDrawnONCE_UnderItsLastRow(): void
+    {
+        // The defect this pins: spans are in the LINE's display columns, and a
+        // rule anchored at column 0 was inherited by every row a soft-wrapped
+        // line occupied — three stacked underlines instead of one rule closing
+        // off the member. Only reachable with wrap ON and a member whose last
+        // line is long enough to wrap, which is why every gate passed it.
+        $long = str_repeat('y', times: 70);
+        $editor = $this->editor(
+            "<?php\n\nclass A\n{\n    public function one(): void { \$x = \"{$long}\"; }\n}\n",
+            'wrapped.php',
+        );
+        $editor->display()->setMethodSeparators(true);
+        $editor->display()->setSoftWrap(true);
+
+        $rows = $editor->render(new RenderContext(50, 12));
+        $ruled = array_keys(array_filter($rows, static fn (string $row): bool => str_contains($row, Sgr::UNDERLINE)));
+
+        $this->assertCount(1, $ruled, 'one rule, however many rows the member takes');
+        $this->assertStringContainsString('"; }', AnsiUtils::stripAnsiCodes($rows[$ruled[0]]), 'and it is the row the member ENDS on');
+        $this->assertExactWidth($rows, 50);
+    }
+
     public function testNoStickyRowsForStructurelessFile(): void
     {
         $editor = $this->editor("<?php\n".str_repeat("echo 1;\n", times: 30), 'flat.php');
