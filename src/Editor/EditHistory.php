@@ -57,6 +57,26 @@ final class EditHistory
     }
 
     /**
+     * Follow a renamed file, so a walk back still lands where you were typing.
+     *
+     * Collapsing again afterwards, because a rename can make two neighbours the
+     * same place — edit `A.php:5`, edit `B.php:5`, rename B to A — and the
+     * class promises that one place is one entry. Without it a press would
+     * appear to do nothing.
+     */
+    public function rename(string $from, string $to): void
+    {
+        $sites = [];
+        foreach ($this->sites as $site) {
+            $renamed = $site['path'] === $from ? ['path' => $to, 'line' => $site['line']] : $site;
+            if (($sites[\count($sites) - 1] ?? null) !== $renamed) {
+                $sites[] = $renamed;
+            }
+        }
+        $this->sites = $sites;
+    }
+
+    /**
      * The next site to go to, walking back one more each call, or null when
      * there is nothing left to walk to.
      *

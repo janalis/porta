@@ -62,6 +62,34 @@ final class RecentFilesStore
         $this->save();
     }
 
+    /**
+     * Follow a renamed file rather than lose it.
+     *
+     * Without this the old path simply stops existing on disk and the switcher
+     * drops it silently — the file you renamed a minute ago, which is exactly
+     * the one you are most likely to want back. Bookmarks and breakpoints have
+     * followed renames for as long as {@see \Porta\Event\FileRenamed} has
+     * existed; this is the same obligation.
+     */
+    public function rename(string $from, string $to): void
+    {
+        if (!\in_array($from, $this->paths, strict: true)) {
+            return;
+        }
+
+        // Renaming ONTO a path already in the list leaves one entry, at the
+        // better of the two positions: they are the same file now.
+        $renamed = [];
+        foreach ($this->paths as $path) {
+            $candidate = $path === $from ? $to : $path;
+            if (!\in_array($candidate, $renamed, strict: true)) {
+                $renamed[] = $candidate;
+            }
+        }
+        $this->paths = $renamed;
+        $this->save();
+    }
+
     /** @return list<string> */
     private function load(): array
     {

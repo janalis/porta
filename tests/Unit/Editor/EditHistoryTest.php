@@ -94,6 +94,49 @@ final class EditHistoryTest extends TestCase
         self::assertSame([14, 13, 12, 11, 10, 9, 8, 7, 6, 5], $walked);
     }
 
+    public function testARenamedFileIsFOLLOWED(): void
+    {
+        $history = new EditHistory();
+        $history->record('/a.php', line: 4);
+        $history->record('/b.php', line: 9);
+
+        $history->rename('/a.php', '/renamed.php');
+
+        self::assertSame(['path' => '/b.php', 'line' => 9], $history->walkBack());
+        self::assertSame(['path' => '/renamed.php', 'line' => 4], $history->walkBack());
+    }
+
+    public function testARenameThatMakesTwoNeighboursTheSamePlaceCollapsesThem(): void
+    {
+        // Edit A:5, edit B:5, rename B to A — one place, one entry. Without
+        // collapsing, a press would appear to do nothing.
+        $history = new EditHistory();
+        $history->record('/a.php', line: 5);
+        $history->record('/b.php', line: 5);
+        $history->record('/c.php', line: 1);
+
+        $history->rename('/b.php', '/a.php');
+
+        self::assertSame(['path' => '/c.php', 'line' => 1], $history->walkBack());
+        self::assertSame(['path' => '/a.php', 'line' => 5], $history->walkBack());
+        self::assertNull($history->walkBack(), 'the pair became one entry');
+    }
+
+    public function testARenameOfTheSameLineInADIFFERENTFileKeepsBothEntries(): void
+    {
+        // Only NEIGHBOURS collapse. A:5, B:9, A:5 stays three places.
+        $history = new EditHistory();
+        $history->record('/a.php', line: 5);
+        $history->record('/b.php', line: 9);
+        $history->record('/x.php', line: 5);
+
+        $history->rename('/x.php', '/a.php');
+
+        self::assertSame(['path' => '/a.php', 'line' => 5], $history->walkBack());
+        self::assertSame(['path' => '/b.php', 'line' => 9], $history->walkBack());
+        self::assertSame(['path' => '/a.php', 'line' => 5], $history->walkBack());
+    }
+
     public function testWithNoEditsAtAllThereIsNowhereToGo(): void
     {
         self::assertNull(new EditHistory()->walkBack());

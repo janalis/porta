@@ -8,6 +8,8 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BookmarkActions;
 use Porta\Editor\Bookmarks;
+use Porta\Editor\EditHistory;
+use Porta\History\RecentFilesStore;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\FindModalReads;
 use Porta\Tests\Support\GitBinary;
@@ -626,6 +628,9 @@ final class IdeContextMenusTest extends TestCase
                     // is about the mark SURVIVING it.
                     $tui->getById('editor')->getDocument()->setCursor(0, 0);
                     Services::resolve($ide, BookmarkActions::class)->toggle();
+                    // …and make an EDIT, so the two path-keyed stores added in
+                    // the parity round have something to lose too.
+                    $tui->handleInput('X');
                     $this->assertSame(
                         [(string) realpath($project->path('A.php')) => [0]],
                         Services::resolve($ide, Bookmarks::class)->all(),
@@ -658,6 +663,21 @@ final class IdeContextMenusTest extends TestCase
                         Glyphs::BOOKMARK,
                         implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))),
                         'and is painted on the new buffer',
+                    );
+
+                    // Every store keyed by path has to follow, not just the
+                    // marks. These two are the newest of them, and a listener
+                    // nobody registers passes every gate.
+                    $renamed = (string) realpath($project->path('renamed.php'));
+                    $this->assertContains(
+                        $renamed,
+                        Services::resolve($ide, RecentFilesStore::class)->all(),
+                        'the recent-files list followed the rename',
+                    );
+                    $this->assertSame(
+                        ['path' => $renamed, 'line' => 0],
+                        Services::resolve($ide, EditHistory::class)->walkBack(),
+                        'and so did the place you were last typing',
                     );
                 },
             ],

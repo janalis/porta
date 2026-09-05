@@ -66,6 +66,56 @@ final class RecentFilesStoreTest extends TestCase
         $this->assertSame('/f8.php', $store->all()[31], 'oldest of the kept 32');
     }
 
+    public function testARenamedFileIsFOLLOWEDNotLost(): void
+    {
+        // Otherwise the old path stops existing on disk and the switcher drops
+        // it silently — the file you renamed a minute ago being exactly the one
+        // you are most likely to want back.
+        $project = new TempProject();
+        $store = new RecentFilesStore($project->dir);
+        $store->record('/a.php');
+        $store->record('/b.php');
+
+        $store->rename('/a.php', '/renamed.php');
+
+        self::assertSame(['/b.php', '/renamed.php'], $store->all(), 'in place, not moved to the front');
+        self::assertSame(['/b.php', '/renamed.php'], new RecentFilesStore($project->dir)->all(), 'and written down');
+    }
+
+    public function testRenamingONTOAPathAlreadyListedLeavesOneEntry(): void
+    {
+        // They are the same file now, and the better of the two positions is
+        // the one to keep.
+        $project = new TempProject();
+        $store = new RecentFilesStore($project->dir);
+        $store->record('/old.php');
+        $store->record('/target.php');
+
+        $store->rename('/old.php', '/target.php');
+
+        self::assertSame(['/target.php'], $store->all());
+    }
+
+    public function testRenamingAFileTheListNeverSawChangesNothing(): void
+    {
+        $project = new TempProject();
+        $store = new RecentFilesStore($project->dir);
+        $store->record('/a.php');
+
+        // Backdated rather than compared against "now": two writes inside one
+        // second share an mtime, so a same-second rewrite would slip past.
+        $file = $project->dir.'/.porta/recent-files.json';
+        $backdated = time() - 3600;
+        touch($file, $backdated);
+        clearstatcache();
+
+        $store->rename('/elsewhere.php', '/other.php');
+
+        self::assertSame(['/a.php'], $store->all());
+        clearstatcache();
+        self::assertSame($backdated, filemtime($file), 'and nothing was rewritten');
+    }
+
     public function testItSurvivesTheProcess(): void
     {
         $project = new TempProject();

@@ -59,8 +59,9 @@ The recent-files popup outlives the tab: below the open buffers it lists the
 files this project has had open and closed, newest first, which is usually
 where the one you want is. The same list seeds Search Everywhere's empty
 state, so the two cannot disagree about what "recent" means. It is kept in
-`.porta/recent-files.json`, capped at 32, and a file that has since been
-deleted is dropped rather than offered. Help pages and images are never
+`.porta/recent-files.json`, capped at 32. A file that has since been deleted is
+dropped rather than offered, and one that has been renamed follows the rename
+the way bookmarks and breakpoints do. Help pages and images are never
 recorded — reopening a help page as editable source is not a switch.
 
 Files larger than 2 MB and non-UTF-8 files are refused. Clean buffers that
@@ -183,8 +184,9 @@ away from your work, or opening another file from the tree, pushes nothing
 there — and that is exactly when you want this one.
 
 Consecutive edits in one place are one place, so typing a word does not fill the
-list. The caret lands at the start of the line rather than the column the edit
-was at: a stale column on a line since re-typed is a worse guess than its start.
+list, and a renamed file is followed rather than lost. The caret lands at the
+start of the line rather than the column the edit was at: a stale column on a
+line since re-typed is a worse guess than its start.
 
 ## Copy path and reference
 

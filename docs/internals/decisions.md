@@ -1365,7 +1365,19 @@ and an E2e that deletes the file mid-scenario.
 guards `is_file()`/`is_readable()` and reports it, so nothing opens an empty
 buffer for a path that has gone. Only the caret half was wrong.
 
-**Not examined, and worth a look:** neither `RecentFilesStore` nor `EditHistory`
-follows a rename, where bookmarks and breakpoints do (see *Renames carry their
-marks*). The effect is mild — a renamed file drops off the recent list instead of
-following it — but it is an inconsistency with a decision already taken.
+**Third, and fixed the same day:** neither `RecentFilesStore` nor `EditHistory`
+followed a rename, where bookmarks and breakpoints do (see *Renames carry their
+marks*). `FileRenamed`'s own docblock states the obligation — "everything keyed
+by path has to follow, and each store knows only its own keys" — so each got the
+listener the others have. The rename E2e that already existed for bookmarks
+grew the two assertions rather than a second walk through the same menu.
+
+`EditHistory::rename()` re-collapses afterwards: a rename can make two
+neighbours the same place (edit `A:5`, edit `B:5`, rename B to A), and the class
+promises one place is one entry. Without it a press would appear to do nothing.
+
+**A weak assertion found on the way.** The store's "a re-show writes nothing"
+test compared `filemtime` against a value read moments earlier — two writes
+inside one second share an mtime, so a same-second rewrite slipped past. Both
+that test and the new one backdate the file first. Mutation testing found it by
+surviving the removal of an early return.
