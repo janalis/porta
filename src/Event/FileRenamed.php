@@ -16,8 +16,18 @@ namespace Porta\Event;
  * **Both paths are canonical**, spelled the way buffers key them: the
  * dispatcher resolves them, because only it can. By the time a listener runs,
  * `$from` no longer exists and `realpath()` on it returns false.
+ *
+ * **A directory carries its whole tree.** Renaming `src/Old` moves
+ * `src/Old/A.php` with it, and every store is keyed by the FILES — so a
+ * listener asks {@see \Porta\Support\ProjectPaths::moved()} rather than
+ * comparing paths. For a plain file that answers the same as `===`.
+ *
+ * Observable by plugins, because anything a plugin keys by path has the same
+ * obligation core does: `local-history` keeps a file's snapshots under a hash
+ * of its path, and without this they are orphaned by the rename — at the moment
+ * you are most likely to want them.
  */
-final readonly class FileRenamed
+final readonly class FileRenamed implements PluginObservable
 {
     public function __construct(
         public string $from,
