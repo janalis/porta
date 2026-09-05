@@ -27,7 +27,12 @@ long the server's answer is. Find usages (`Alt+F7`) fills the results panel.
 ## Find in file
 
 `Ctrl+F` finds incrementally with live match highlighting; `Ctrl+R` adds a
-replace field. `F3`/`Shift+F3` cycle matches, `Tab` switches fields,
+replace field. It opens prefilled — with the selection if there is one, and
+otherwise with the identifier the caret is standing in, `$sigil` and all — and
+searches for it straight away, so finding the symbol under the caret is one
+keystroke. A caret standing in no word contributes nothing and the field keeps
+what it had; a multi-line selection prefills nothing, because the field is one
+line. `F3`/`Shift+F3` cycle matches, `Tab` switches fields,
 `Alt+R` replaces the current match, `Alt+A` replaces all. `Alt+X` toggles
 regex mode and `Alt+W` whole-word (note: in this bar `Alt+R` means replace —
 the Find-in-Files modal uses `Alt+R` for its regex toggle instead). In regex

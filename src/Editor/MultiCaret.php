@@ -193,7 +193,7 @@ final class MultiCaret
      */
     public function addNextOccurrence(): void
     {
-        $word = $this->currentCaretWord();
+        $word = CaretWord::at($this->document);
         if ('' === $word) {
             return;
         }
@@ -217,7 +217,7 @@ final class MultiCaret
 
     public function selectAllOccurrences(): void
     {
-        $word = $this->currentCaretWord();
+        $word = CaretWord::at($this->document);
         if ('' === $word) {
             return;
         }
@@ -603,20 +603,6 @@ final class MultiCaret
             }
         }
         $this->extraCarets = $unique;
-    }
-
-    private function currentCaretWord(): string
-    {
-        $doc = $this->document;
-        $line = $doc->getLine($doc->getCursorLine());
-        // Grab the identifier surrounding the cursor.
-        $before = substr($line, offset: 0, length: $doc->getCursorCol());
-        $after = substr($line, $doc->getCursorCol());
-        $m = [];
-        $left = preg_match('/[\w$]+$/u', $before, $m) ? $m[0] : '';
-        $right = preg_match('/^\w+/u', $after, $m) ? $m[0] : '';
-
-        return $left.$right;
     }
 
     /**

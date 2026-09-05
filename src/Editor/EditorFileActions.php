@@ -58,9 +58,16 @@ final class EditorFileActions implements EditorFileActionHandler
 
     private function openFindBar(FindMode $mode): void
     {
-        $initial = $this->editor->getDocument()->getSelectedText();
+        $document = $this->editor->getDocument();
+        $selected = $document->getSelectedText();
+        // The selection when there is one, the identifier the caret stands in
+        // otherwise — PhpStorm's rule, and the one that makes Ctrl+F on a
+        // symbol a single keystroke instead of a keystroke and retyping it.
+        // A multi-line selection prefills nothing: the field is one line, and
+        // its first line alone would search for something nobody asked for.
+        $initial = '' === $selected ? CaretWord::at($document) : $selected;
         $this->findBar->open(
-            new EditorFindTarget($this->editor->getDocument(), $this->editor->decorations()),
+            new EditorFindTarget($document, $this->editor->decorations()),
             $mode,
             str_contains($initial, "\n") ? '' : $initial,
         );

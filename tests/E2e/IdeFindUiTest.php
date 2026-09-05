@@ -14,6 +14,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Widget\Support\ResultsPanelFields;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The find-in-files modal and results pane UI: carets, wheel
@@ -206,6 +207,86 @@ final class IdeFindUiTest extends TestCase
                     $this->assertStringContainsString('· 1 shown', $tui->getById('results')->statusText(), 'filtered count');
                     $this->assertStringContainsString('src/A.php', $panel);
                     $this->assertStringNotContainsString('other/B.php', $panel, 'the non-matching file is filtered out');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    /** The find bar's single row, as text. */
+    private function findBarRow(Tui $tui): string
+    {
+        return AnsiUtils::stripAnsiCodes(
+            implode('', $tui->getById('find-bar')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))),
+        );
+    }
+
+    public function testCtrlFPrefillsWithTheWordTheCaretIsIn(): void
+    {
+        // PhpStorm's rule: the selection if there is one, the identifier the
+        // caret stands in otherwise. Porta only ever did the first half, so
+        // Ctrl+F on a symbol meant retyping the symbol.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n\$total = 1;\necho \$total + \$total;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal): void {
+                    $tui->getById('editor')->getDocument()->setCursor(1, 3); // inside $total
+                    $tui->handleInput("\x06"); // ctrl+f
+
+                    // The sigil comes with it, and the count proves the field
+                    // really ran the search rather than merely showing text.
+                    $this->awaitPainted($tui, $terminal, 'Find: $total');
+
+                    // Three matches, because opening with a query SEARCHES —
+                    // the prefill is not just text in a field. Which one is
+                    // current is MatchJump's existing nearest-match rule (the
+                    // caret sits inside the first, so the next one is), and not
+                    // this feature's business to pin.
+                    $this->assertStringContainsString(
+                        '/3]',
+                        AnsiUtils::stripAnsiCodes($terminal->getOutput()),
+                        'and it searched for it',
+                    );
+                    $tui->handleInput("\x1b"); // esc
+                },
+                320 => function ($tui): void {
+                    // A DIFFERENT word replaces the last query rather than
+                    // appending to it or being ignored.
+                    //
+                    // Read from the WIDGET, not the terminal: the terminal's
+                    // output accumulates the whole session, so a negative
+                    // assertion against it finds an earlier frame and passes or
+                    // fails for the wrong reason.
+                    $tui->getById('editor')->getDocument()->setCursor(2, 1); // inside `echo`
+                    $tui->handleInput("\x06");
+                    $tui->requestRender();
+                    $tui->tick();
+
+                    $this->assertStringContainsString('Find: echo', $this->findBarRow($tui));
+                },
+                420 => function ($tui): void {
+                    // A caret standing in NO word contributes nothing, so the
+                    // field keeps whatever it had — reopening the bar has
+                    // always remembered a query, and prefilling must not start
+                    // putting operators in it.
+                    //
+                    // WHICH remembered query comes back is the bar's own
+                    // business and not asserted here: this is about the
+                    // operator never becoming one.
+                    $tui->handleInput("\x1b"); // esc
+                    $tui->getById('editor')->getDocument()->setCursor(2, 11); // on the `+`
+                    $tui->handleInput("\x06");
+                    $tui->requestRender();
+                    $tui->tick();
+
+                    $row = $this->findBarRow($tui);
+                    $this->assertStringContainsString('Find:', $row, 'the bar is open');
+                    $this->assertStringNotContainsString('Find: +', $row, 'an operator is not a word');
                 },
             ],
         );
