@@ -1568,7 +1568,16 @@ bundled servers advertise and Porta never sends, `client/registerCapability`
 answered and discarded) came out of the same survey and is worth re-running
 rather than transcribing here.
 
-## Local History does not follow a rename — and the fix needs a public promise
+## Local History follows a rename now (built 2026-09-05, `1d31206e`)
+
+The entry below is kept because its reasoning is what the build followed. What
+changed: `FileRenamed` IS `PluginObservable` now — the promise was made
+deliberately, with the contract test's list and `docs/plugins.md` updated in the
+same commit. A FILE rename is followed; a directory's still is not, for the md5
+reason below, and `FileDeleted` is still not observable because local history
+keeping a deleted file's snapshots is the whole point of it.
+
+## The finding as it stood
 
 Six path-keyed stores follow `FileRenamed`/`FileDeleted` now. A SEVENTH does
 not, and it holds the most valuable data of the lot: `local-history`'s
