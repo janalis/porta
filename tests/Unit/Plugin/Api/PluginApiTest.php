@@ -611,6 +611,29 @@ final class PluginApiTest extends TestCase
         $this->assertSame([], $this->diagnostics->published[1]['byLine']);
     }
 
+    public function testTheRULEThatFiredTravelsAsItsOwnFieldOrNotAtAll(): void
+    {
+        // Its own field so the Problems panel can put it at the END of the row.
+        // Absent when the tool named no rule: an empty `code` there would show
+        // as a blank handle after every message.
+        $api = $this->api();
+
+        $api->setDiagnostics('/p/a.php', [
+            ['line' => 0, 'message' => 'boom', 'code' => 'no-empty-catch-clause'],
+            ['line' => 1, 'message' => 'no rule'],
+            ['line' => 2, 'message' => 'blank rule', 'code' => ''],
+        ]);
+
+        $this->assertSame(
+            [
+                0 => [['severity' => 1, 'message' => 'boom', 'col' => 0, 'endCol' => 0, 'code' => 'no-empty-catch-clause']],
+                1 => [['severity' => 1, 'message' => 'no rule', 'col' => 0, 'endCol' => 0]],
+                2 => [['severity' => 1, 'message' => 'blank rule', 'col' => 0, 'endCol' => 0]],
+            ],
+            $this->diagnostics->published[0]['byLine'],
+        );
+    }
+
     public function testPublishingToAListToolTheresNoRegistrationForIsRefused(): void
     {
         // The id is the plugin's own bare one and gets namespaced on the way

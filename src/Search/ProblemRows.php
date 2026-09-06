@@ -22,7 +22,18 @@ final readonly class ProblemRows
         private ProjectPaths $paths,
     ) {}
 
-    /** @return list<array{path: string, line: int, text: string}> */
+    /**
+     * The rows for the Problems panel.
+     *
+     * The rule's own name rides at the end when the source gave one —
+     * `worse.unused_import`, `no-empty-catch-clause`. It is what you search for
+     * to suppress a rule, what you paste into an issue, and the only way to
+     * tell two identically-worded findings apart. It is NOT in the message:
+     * three bundled analyser plugins used to prefix it there by hand, which put
+     * it in front of the sentence you were trying to read.
+     *
+     * @return list<array{path: string, line: int, text: string}>
+     */
     public function build(): array
     {
         $results = [];
@@ -31,10 +42,14 @@ final readonly class ProblemRows
             foreach ($buffer->diagnostics as $line => $list) {
                 foreach ($list as $diag) {
                     $marker = DiagnosticStyle::glyph($diag['severity']);
+                    // Not cast: the shape says `int|string`, and both compare
+                    // false against '' and concatenate the same. A cast here
+                    // would be a step nothing could observe.
+                    $code = $diag['code'] ?? '';
                     $results[] = [
                         'path' => $rel,
                         'line' => $line,
-                        'text' => $marker.' '.$diag['message'],
+                        'text' => $marker.' '.$diag['message'].('' === $code ? '' : '  '.$code),
                     ];
                 }
             }

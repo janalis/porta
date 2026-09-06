@@ -1575,14 +1575,19 @@ re-points every open buffer under a renamed folder.
   "open this rule's docs" verb would be a command with nothing to open.
   **Re-open** when a server is observed sending it.
 
-  **The plugins' string prefixes are a different gap than this bullet said.**
-  `plugins/mago` builds `"no-empty-catch-clause: Do not use empty catch"` by
-  hand because `PluginApi::setDiagnostics()` takes line, column, severity and
-  message and nothing else — the gap is in the PLUGIN API, not in the LSP
-  mapper, and carrying a `code` through it would be plumbing with no consumer
-  until something DRAWS the code. The feature underneath is "the Problems panel
-  shows which rule fired", which would serve LSP and plugin diagnostics alike.
-  That is a round to scope, not a cleanup to slip in.
+  **The plugins' string prefixes were a different gap than this bullet said,
+  and it is closed.** `plugins/mago` built
+  `"no-empty-catch-clause: Do not use empty catch"` by hand because
+  `PluginApi::setDiagnostics()` took line, column, severity and message and
+  nothing else — a PLUGIN API gap, not an LSP one.
+
+  Built as the round it needed rather than a cleanup, because the middle layer
+  changes what people SEE: the Problems panel shows the rule at the END of the
+  row, `setDiagnostics()` takes a `code`, and mago and psalm stop prefixing. The
+  sentence reads clean inline; the rule is what you search for, not what you
+  read past. Two E2e tests pinned the prefixed form and failed — updated to
+  assert the SPLIT (no prefix inline, the rule at the end of the panel row)
+  rather than just the new string.
 
 **`labelDetails` — measured and turned down (2026-09-06).** LSP 3.17's
 `CompletionItemLabelDetails` arrives from phpantom_lsp on every item

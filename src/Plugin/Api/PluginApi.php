@@ -1171,7 +1171,7 @@ final class PluginApi
      * and replace any previous set for that file, so an empty list clears
      * them. A path with no open buffer is a silent no-op.
      *
-     * @param list<array{line: int, message: string, severity?: int, column?: int}> $diagnostics 0-based line; severity 1 = error (default), 2 = warning
+     * @param list<array{line: int, message: string, severity?: int, column?: int, code?: string}> $diagnostics 0-based line; severity 1 = error (default), 2 = warning; `code` names the rule that fired
      */
     public function setDiagnostics(string $path, array $diagnostics): void
     {
@@ -1179,12 +1179,21 @@ final class PluginApi
         $byLine = [];
         foreach ($diagnostics as $diagnostic) {
             $column = max(0, $diagnostic['column'] ?? 0);
-            $byLine[max(0, $diagnostic['line'])][] = [
+            $row = [
                 'severity' => $diagnostic['severity'] ?? 1,
                 'message' => $diagnostic['message'],
                 'col' => $column,
                 'endCol' => $column,
             ];
+            // The rule that fired, when the tool names one. Its own field
+            // rather than glued onto the message: the Problems panel shows it
+            // at the END of the row, and a plugin that prefixed it by hand put
+            // it in front of the sentence the reader wants.
+            $code = $diagnostic['code'] ?? '';
+            if ('' !== $code) {
+                $row['code'] = $code;
+            }
+            $byLine[max(0, $diagnostic['line'])][] = $row;
         }
         $runtime->diagnostics->applyDiagnostics(Uri::fromPath($path), $byLine);
         $runtime->tui->requestRender();

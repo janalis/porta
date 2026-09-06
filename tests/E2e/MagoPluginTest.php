@@ -119,11 +119,16 @@ final class MagoPluginTest extends TestCase
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('mago: 1 issue in a.php', $screen);
-                    $this->assertStringContainsString('test-rule: Bad thing', $screen, 'the diagnostic renders inline');
+                    // The rule's name is not in the message any more: the
+                    // sentence reads first inline, and `test-rule` is shown at
+                    // the END of the row in the Problems panel, where it is
+                    // what you search for rather than what you read past.
+                    $this->assertStringContainsString('Bad thing', $screen, 'the diagnostic renders inline');
+                    $this->assertStringNotContainsString('test-rule: Bad thing', $screen, 'and not with the rule glued to the front of it');
 
                     $tui->handleInput("\x1b6"); // alt+6 → Problems panel
-                    $this->awaitPainted($tui, $terminal, '✗ test-rule: Bad thing');
-                    $this->assertStringContainsString('✗ test-rule: Bad thing', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->awaitPainted($tui, $terminal, 'Bad thing  test-rule');
+                    $this->assertStringContainsString('✗ Bad thing  test-rule', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the rule rides at the END of the panel row');
                     $tui->handleInput("\x1b");
 
                     $this->installStub($project, "echo json_encode(['issues' => []]); exit(0);");

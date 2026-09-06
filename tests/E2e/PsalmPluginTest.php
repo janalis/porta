@@ -88,13 +88,19 @@ final class PsalmPluginTest extends TestCase
                     // the inline diagnostic lands in the editor separately. Await
                     // the LAST thing asserted, not the first.
                     $this->awaitPainted($tui, $terminal, 'psalm: 1 issue in a.php');
-                    $this->awaitPainted($tui, $terminal, 'UndefinedVariable: Boom detected');
+                    // Inline: the SENTENCE, with nothing in front of it. The
+                    // rule's name used to be glued to the message by the plugin
+                    // because there was nowhere else to put it.
+                    $this->awaitPainted($tui, $terminal, 'Boom detected');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->assertStringNotContainsString('UndefinedVariable: Boom detected', $screen, 'the rule is not part of the message');
 
-                    // The Problems panel aggregates it like any LSP diagnostic.
+                    // The Problems panel aggregates it like any LSP diagnostic
+                    // — and this is where the rule's name belongs, at the END
+                    // of the row: what you search for, not what you read past.
                     $tui->handleInput("\x1b6"); // alt+6
-                    $this->awaitPainted($tui, $terminal, '✗ UndefinedVariable: Boom detected');
-                    $this->assertStringContainsString('✗ UndefinedVariable: Boom detected', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->awaitPainted($tui, $terminal, 'Boom detected  UndefinedVariable');
+                    $this->assertStringContainsString('✗ Boom detected  UndefinedVariable', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\x1b"); // close the panel
 
                     // Swap in a clean stub and re-analyse: diagnostics clear.

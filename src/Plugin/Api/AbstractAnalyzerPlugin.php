@@ -40,7 +40,7 @@ abstract class AbstractAnalyzerPlugin extends AbstractToolPlugin
      *
      * @param array<array-key, mixed> $report
      *
-     * @return list<array{line: int, message: string, severity?: int, column?: int}>
+     * @return list<array{line: int, message: string, severity?: int, column?: int, code?: string}>
      */
     abstract protected function diagnostics(array $report): array;
 

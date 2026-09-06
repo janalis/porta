@@ -46,7 +46,8 @@ return new class('psalm', 'psalm') extends AbstractAnalyzerPlugin {
             $diagnostics[] = [
                 'line' => max(0, (int) ($issue['line_from'] ?? 1) - 1), // psalm lines are 1-based
                 'column' => max(0, (int) ($issue['column_from'] ?? 1) - 1),
-                'message' => trim((string) ($issue['type'] ?? 'psalm').': '.(string) ($issue['message'] ?? '')),
+                'message' => trim((string) ($issue['message'] ?? '')),
+                'code' => (string) ($issue['type'] ?? ''),
                 'severity' => match ($issue['severity'] ?? '') {
                     'error' => 1,
                     'info' => 3,
