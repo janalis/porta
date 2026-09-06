@@ -1580,10 +1580,61 @@ forty-six would come out of the name's width to repeat what sits beside it.
 sending `labelDetails.detail` — the parameter list, which phpantom folds into
 the label instead.
 
-A fuller inventory (client capabilities declared but unused, requests the
-bundled servers advertise and Porta never sends, `client/registerCapability`
-answered and discarded) came out of the same survey and is worth re-running
-rather than transcribing here.
+## The advertised-but-unasked survey, run (2026-09-06)
+
+The inventory the entry above deferred, now measured rather than described.
+Both servers were initialized and their whole capability set dumped, then
+compared with every `textDocument/*` and `workspace/*` method Porta sends.
+
+Porta sends 23 textDocument methods. Four things the servers advertise and it
+never asks for:
+
+- **`textDocument/documentLink`** (phpantom only). Measured on a file with URLs
+  in a docblock, a `@see`, and a `require __DIR__.'/Other.php'`: it returns
+  exactly ONE link, the require path. It does not link URLs or `@see` targets.
+  So the feature is "include paths are clickable", which in autoloaded code is
+  a handful of lines in `bin/`. **Turned down**; re-open if a server starts
+  linking docblock references.
+- **`textDocument/onTypeFormatting`** (phpantom only). Porta already indents,
+  pairs and re-indents as you type. Server-driven formatting on `}` would
+  arrive asynchronously into a buffer the user is still typing into, fighting
+  the local behaviour for the same keystroke. **Turned down** on that conflict,
+  not on cost.
+- **`textDocument/linkedEditingRange`** (phpantom only). Its use is renaming
+  the halves of an HTML tag pair together; PHP has no equivalent worth a
+  round-trip. **Turned down.**
+- **`textDocument/inlineValue`** (phpactor only). **This one is worth
+  building** — see below.
+
+Also confirmed: `prepareCallHierarchy` and `rangeFormatting` are sent to servers
+that advertise NEITHER, which matches the capability gates already in place —
+they degrade to nothing rather than erroring.
+
+## Inline debug values — measured, sized, not built
+
+`textDocument/inlineValue` is PhpStorm's "variable values shown at the end of
+the line while stopped at a breakpoint". phpactor advertises it and answers it
+properly. Measured, stopped inside a method with three locals, it returns one
+`InlineValueVariableLookup` per variable:
+
+```json
+{"range": {...}, "variableName": "$count", "caseSensitiveLookup": true}
+```
+
+The server says WHERE and WHICH NAME; the VALUE comes from the debugger. Porta
+has both halves already: `DebugController::loadScopes()` fetches every scope's
+variables the moment the session stops, and `LineAnnotationSink` draws dim text
+at the end of a line.
+
+What it needs, and why it is a round rather than an afternoon: the two halves
+are owned by different subsystems that have never spoken. It is a JOIN — LSP
+ranges married to DAP values, keyed by variable name, invalidated on every step
+— and every defect this session came from a join, not from a piece. It also
+needs a channel decision: `LineAnnotationSink` is one slot per line and a
+plugin already writes to it, so debug values and git blame would fight over the
+same cell unless one of them yields.
+
+**Do not start it without deciding that ownership first.**
 
 ## Local History follows a rename now (built 2026-09-05, `1d31206e`)
 
