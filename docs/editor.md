@@ -221,6 +221,21 @@ its squiggle, its gutter mark, its stripe cell and the Problems panel. They
 disappear the moment the debuggee continues or the session ends: they were
 facts about a frame that is running again.
 
+## The Problems panel
+
+`Alt+6` collects every diagnostic in the open buffers, sorted by file then line.
+A row is the severity glyph, the message, and — when the source named one — the
+**rule that fired**, at the end:
+
+```
+✗ Name "Other" is imported but not used  worse.unused_import
+```
+
+At the end rather than in front, because the rule is what you search for to
+suppress it or to tell two identically-worded findings apart; the sentence is
+what you read the row for. It comes from the language server's `code`, or from
+an analyser plugin that passed one.
+
 ## Unused and deprecated code
 
 A diagnostic's **severity** says how bad something is; its **tags** say what
