@@ -1547,9 +1547,8 @@ re-points every open buffer under a renamed folder.
 - ~~`CompletionItem::$detail` is fetched, mapped onto every item
   (`LspMapper.php:115`) and read by nobody.~~ **Drawn since `b4e9d7ea`** — the
   popup's type column, with the name served first and the type taking what is
-  left. Still open from this bullet: `documentation` is not even mapped, though
-  `documentationFormat` is advertised in the client capabilities, so the
-  popup can show a type but not a description.
+  left. `documentation` followed in `4536c1c1` — a panel beside the popup,
+  on the same resolve round-trip. This bullet is closed.
 - LSP `source` / `code` / `codeDescription` are dropped at
   `diagnosticsByLine()`. Three bundled plugins work around it by
   string-prefixing the code into the message, and `RefactorController` copies
@@ -1564,6 +1563,22 @@ re-points every open buffer under a renamed folder.
   which are now duplicating a field they could read, and `tags` — measured
   arriving from phpactor for an unused import, WITHOUT `tagSupport` declared,
   and the input a dim-unused / strike-deprecated style needs.
+
+**`labelDetails` — measured and turned down (2026-09-06).** LSP 3.17's
+`CompletionItemLabelDetails` arrives from phpantom_lsp on every item
+(`{description: "App"}` for a class, the owning class for a member) and Porta
+drops it. VS Code draws it as a dim suffix after the label, so it looks like the
+obvious next thing.
+
+It is redundant HERE. The case that would justify it is two completions with the
+same name — and for `new Th` phpantom sends two items both labelled `Thread`,
+with `detail` `Thread` and `Swoole\Thread`. The type column already tells them
+apart, using the more informative of the two strings. A third column inside
+forty-six would come out of the name's width to repeat what sits beside it.
+
+**Re-open it** if the row ever loses its type column, or if a server turns up
+sending `labelDetails.detail` — the parameter list, which phpantom folds into
+the label instead.
 
 A fuller inventory (client capabilities declared but unused, requests the
 bundled servers advertise and Porta never sends, `client/registerCapability`
