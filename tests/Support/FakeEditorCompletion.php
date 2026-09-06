@@ -13,6 +13,8 @@ final class FakeEditorCompletion implements EditorCompletionHandler
     public function __construct(
         private readonly ?\Closure $requestCompletion = null,
         private readonly ?\Closure $resolveCompletion = null,
+        /** Called as ($rawItem, $onDetail); a scenario answers by invoking $onDetail. */
+        private readonly ?\Closure $resolveCompletionDetail = null,
         private readonly ?\Closure $requestSignatureHelp = null,
         private readonly ?\Closure $scheduleDidChange = null,
         private readonly ?\Closure $viewportScrolled = null,
@@ -42,6 +44,13 @@ final class FakeEditorCompletion implements EditorCompletionHandler
     {
         if (null !== $this->resolveCompletion) {
             ($this->resolveCompletion)($item);
+        }
+    }
+
+    public function resolveCompletionDetail(array $item, \Closure $onDetail): void
+    {
+        if (null !== $this->resolveCompletionDetail) {
+            ($this->resolveCompletionDetail)($item, $onDetail);
         }
     }
 

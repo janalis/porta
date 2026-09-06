@@ -184,6 +184,12 @@ the language server.
 Each row is the name, the server's **type** and the item's kind: a method's
 signature or a property's type, in the muted pen so the name still reads first.
 
+Where the type comes from depends on the server, and both are handled: some
+send it with the completion, some only answer when asked. Porta asks about the
+rows on screen — once per item, and never at all when the type is already there
+or the server does not offer to resolve. A row that scrolls in under a newly
+typed prefix may show no type until the selection reaches it.
+
 The name is served first and the type takes what is left. A completion whose
 label you cannot read is not a completion — the type is what you check once the
 name is already the one you meant — so at a narrow width the type is truncated,

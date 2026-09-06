@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Editor;
 
 use Porta\Support\FuzzyMatcher;
+use Porta\Widget\Render\PopupMetrics;
 use Symfony\Component\Tui\Input\Keybindings;
 
 /**
@@ -25,6 +26,14 @@ final class EditorCompletion
     private ?int $hovered = null;
     private string $prefix = '';
     private ?CompletionBox $box = null;
+    /**
+     * Items already asked about: object id => the label asked about. An item is
+     * asked once and once only, however often the popup re-filters around it or
+     * the selection walks back over it.
+     *
+     * @var array<int, string>
+     */
+    private array $detailAsked = [];
     private readonly SnippetSession $snippet;
 
     /**
@@ -33,6 +42,7 @@ final class EditorCompletion
      * @param \Closure(string): bool   $isInsertable       whether a keystroke is insertable text
      * @param \Closure(int, int): void          $requestCompletion  ask the IDE for completions at (line, utf16 col)
      * @param \Closure(array<string, mixed>): void $resolveCompletion resolve deferred edits for a raw server item
+     * @param \Closure(array<string, mixed>, \Closure(string): void): void $resolveDetail ask for an item's type, deferred by some servers
      */
     public function __construct(
         private readonly Document $document,
@@ -41,6 +51,7 @@ final class EditorCompletion
         private readonly \Closure $isInsertable,
         private readonly \Closure $requestCompletion,
         private readonly \Closure $resolveCompletion,
+        private readonly \Closure $resolveDetail,
     ) {
         $this->snippet = new SnippetSession($document, $invalidate, $notifyChange);
     }
@@ -53,6 +64,8 @@ final class EditorCompletion
         $this->selected = 0;
         $this->hovered = null; // the list rebuilt under a still pointer
         $this->open = [] !== $this->filtered();
+        $this->detailAsked = [];
+        $this->askForVisibleDetails();
         ($this->invalidate)();
     }
 
@@ -139,6 +152,7 @@ final class EditorCompletion
 
         if ($kb->matches($keys, 'cursor_up')) {
             $this->selected = ($this->selected - 1 + \count($filtered)) % \count($filtered);
+            $this->askForVisibleDetails();
             ($this->invalidate)();
 
             return true;
@@ -146,6 +160,7 @@ final class EditorCompletion
 
         if ($kb->matches($keys, 'cursor_down')) {
             $this->selected = ($this->selected + 1) % \count($filtered);
+            $this->askForVisibleDetails();
             ($this->invalidate)();
 
             return true;
@@ -206,6 +221,7 @@ final class EditorCompletion
         }
         $count = \count($filtered);
         $this->selected = ((($this->selected + $delta) % $count) + $count) % $count;
+        $this->askForVisibleDetails();
         ($this->invalidate)();
     }
 
@@ -312,6 +328,57 @@ final class EditorCompletion
         $doc->replaceBeforeCursor(\strlen($prefix), $item->insertText);
         $doc->endCompound();
         $this->close();
+    }
+
+    /**
+     * Ask the server for the types of the rows now on screen.
+     *
+     * Some servers send the type with the completion and some make you ask:
+     * measured, phpantom_lsp answers `detail: "string"` in the response itself,
+     * while phpactor sends label/kind/insertText and nothing else and only
+     * answers `pub greet(string $who): string` to `completionItem/resolve`. A
+     * type column fed only by the first response is empty against the second.
+     *
+     * Only what is on screen, and only once per item: the list can be hundreds
+     * of entries and resolving all of them is a request storm for eight visible
+     * rows. The window is the renderer's own, from {@see PopupMetrics}.
+     *
+     * The gap this leaves, stated rather than hidden: typing narrows the filter
+     * without going through here, so a row that scrolls in under a new prefix
+     * may show no type until the selection reaches it. Servers that send the
+     * type inline never show the gap at all.
+     */
+    private function askForVisibleDetails(): void
+    {
+        $filtered = $this->filtered();
+        $window = \array_slice($filtered, max(0, $this->selected - PopupMetrics::COMPLETION_ROWS + 1), PopupMetrics::COMPLETION_ROWS);
+        foreach ($window as $item) {
+            $id = spl_object_id($item);
+            if ('' !== $item->detail || null !== ($this->detailAsked[$id] ?? null) || [] === $item->raw) {
+                continue;
+            }
+            $this->detailAsked[$id] = $item->label;
+            ($this->resolveDetail)($item->raw, function (string $detail) use ($item): void {
+                $this->applyDetail($item, $detail);
+            });
+        }
+    }
+
+    /**
+     * Put a resolved type on its item, if that item is still in the list — the
+     * answer can arrive after the popup closed or was rebuilt by a newer
+     * request, and the one thing it must not do is write a type onto whatever
+     * now sits at that position.
+     */
+    private function applyDetail(CompletionItem $item, string $detail): void
+    {
+        $index = array_search($item, $this->items, strict: true);
+        if (!\is_int($index)) {
+            return;
+        }
+        $this->items[$index] = $item->withDetail($detail);
+        $this->detailAsked[spl_object_id($this->items[$index])] = $item->label;
+        ($this->invalidate)();
     }
 
     /** @return list<CompletionItem> */

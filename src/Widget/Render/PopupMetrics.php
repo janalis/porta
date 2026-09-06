@@ -24,6 +24,14 @@ final class PopupMetrics
     /** Inner-width cap for the caret-anchored completion popup. */
     public const int COMPLETION_MAX_INNER = 46;
 
+    /**
+     * Rows the completion popup shows at once. Here rather than private to the
+     * renderer because {@see \Porta\Editor\EditorCompletion} resolves exactly
+     * what is on screen — two places computing the same window separately is
+     * how one of them ends up resolving a row nobody can see.
+     */
+    public const int COMPLETION_ROWS = 8;
+
     /** Find in Files never squeezes below this inner width (content- or drag-sized). */
     public const int FIND_MIN_WIDTH = 48;
 

@@ -26,4 +26,18 @@ final readonly class CompletionItem
         public ?string $snippet = null,
         public array $raw = [],
     ) {}
+
+    /**
+     * The same item with the type the server only gives on resolve.
+     *
+     * Measured, and it is why this exists: phpactor's completion RESPONSE
+     * carries label, kind and insertText and nothing else — no `detail` at all
+     * — while `completionItem/resolve` answers `pub greet(string $who): string`
+     * for the same item. A type column fed only by the first response is empty
+     * against that server.
+     */
+    public function withDetail(string $detail): self
+    {
+        return new self($this->label, $this->insertText, $this->kind, $detail, $this->additionalTextEdits, $this->snippet, $this->raw);
+    }
 }

@@ -390,7 +390,7 @@ final class EditorRenderer
 
     // --- Overlays ----------------------------------------------------------
 
-    private const POPUP_MAX_ITEMS = 8;
+    private const POPUP_MAX_ITEMS = PopupMetrics::COMPLETION_ROWS;
 
     /**
      * Draw the signature hint as a {@see PopupFrame}d one-liner above the

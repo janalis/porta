@@ -55,7 +55,7 @@ final class ColumnModeTest extends TestCase
         };
         $this->multiCaret = new MultiCaret($this->doc, $noop, $noop);
         $autoPair = new AutoPairService();
-        $completion = new EditorCompletion($this->doc, $noop, $noop, TextInput::isPrintable(...), $noop, $noop);
+        $completion = new EditorCompletion($this->doc, $noop, $noop, TextInput::isPrintable(...), $noop, $noop, $noop);
         $structural = new EditorStructural($this->doc, $autoPair, $noop, $noop, $noop);
 
         return new EditorActions(

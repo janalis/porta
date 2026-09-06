@@ -21,6 +21,20 @@ interface EditorCompletionHandler
      */
     public function resolveCompletion(array $item): void;
 
+    /**
+     * Ask for an item's type, for the servers that do not send one until asked.
+     *
+     * Separate from {@see resolveCompletion()} because they answer different
+     * questions at different times: that one runs when an item is ACCEPTED and
+     * applies the auto-import edits it comes back with, this one runs while the
+     * popup is open and only reads the type. One call doing both would apply
+     * edits for an item the user has not chosen.
+     *
+     * @param array<string, mixed>   $item     the raw LSP CompletionItem
+     * @param \Closure(string): void $onDetail called only when a type comes back
+     */
+    public function resolveCompletionDetail(array $item, \Closure $onDetail): void;
+
     public function requestSignatureHelp(int $line, int $col): void;
 
     /** The document content changed (debounced didChange). */

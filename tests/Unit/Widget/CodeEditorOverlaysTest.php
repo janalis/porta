@@ -559,6 +559,7 @@ final class CodeEditorOverlaysTest extends TestCase
             static fn (): bool => true,
             static function (): void {},
             static function (): void {},
+            static function (): void {},
         );
         $completion->moveSelection(1);
         $this->addToAssertionCount(1); // no crash, no invalidation needed

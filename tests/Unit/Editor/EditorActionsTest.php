@@ -55,6 +55,7 @@ final class EditorActionsTest extends TestCase
             TextInput::isPrintable(...),
             $this->record('requestCompletion'),
             $this->record('resolveCompletion'),
+            $this->record('resolveCompletionDetail'),
         );
         $structural = new EditorStructural($this->doc, $autoPair, $invalidate, $notifyChange, $this->record('openListOverlay'));
         $this->foldModel = new FoldModel($this->doc);

@@ -275,6 +275,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             $this->isInsertable(...),
             fn (int $l, int $c) => $this->callbacks->completion?->requestCompletion($l, $c),
             fn (array $raw) => $this->callbacks->completion?->resolveCompletion($raw),
+            fn (array $raw, \Closure $onDetail) => $this->callbacks->completion?->resolveCompletionDetail($raw, $onDetail),
         );
     }
 

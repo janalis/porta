@@ -197,6 +197,40 @@ final class CompletionController extends AbstractLspController implements Editor
         });
     }
 
+    /**
+     * Fetch an item's `detail` — its type or signature — for the popup's type
+     * column, from servers that defer it.
+     *
+     * Measured, and the reason this exists: phpantom_lsp puts `detail` in the
+     * completion response, phpactor puts NOTHING there and answers
+     * `pub greet(string $who): string` only to `completionItem/resolve`.
+     *
+     * Gated on the server saying it resolves: sending the request to one that
+     * does not is an error response per item per popup, and a server that
+     * answers nothing useful should cost nothing at all.
+     *
+     * @param array<string, mixed>  $item
+     * @param \Closure(string): void $onDetail
+     */
+    #[\Override]
+    public function resolveCompletionDetail(array $item, \Closure $onDetail): void
+    {
+        /** @var mixed $provider */
+        $provider = $this->lsp->serverCapability($this->editor->getFilePath(), 'completionProvider');
+        if (!\is_array($provider) || true !== ($provider['resolveProvider'] ?? false)) {
+            return;
+        }
+        $this->lsp->request('completionItem/resolve', $item, function (mixed $result) use ($onDetail): void {
+            /** @var mixed $detail */
+            $detail = \is_array($result) ? $result['detail'] ?? null : null;
+            if (!\is_string($detail) || '' === $detail) {
+                return;
+            }
+            $onDetail($detail);
+            $this->tui->requestRender();
+        });
+    }
+
     #[\Override]
     public function requestSignatureHelp(int $line, int $col): void
     {

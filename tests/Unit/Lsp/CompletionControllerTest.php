@@ -273,6 +273,60 @@ final class CompletionControllerTest extends TestCase
         $this->assertSame('textDocument/didChange', end($this->client->notifications)['method'] ?? null, 'the buffer resync notifies the server');
     }
 
+    public function testResolveCompletionDetailAnswersWithTheServersType(): void
+    {
+        // phpactor's real answer, measured: its completion RESPONSE carries no
+        // detail at all, and this is where the type for the popup's column
+        // comes from.
+        $controller = $this->controller(capabilities: ['completionProvider' => ['resolveProvider' => true]]);
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$t->\n");
+        $seen = [];
+
+        $controller->resolveCompletionDetail(['label' => 'greet'], static function (string $detail) use (&$seen): void {
+            $seen[] = $detail;
+        });
+        $painted = $this->requestedRenderSince(function (): void {
+            $this->client->requests[0]['respond'](['label' => 'greet', 'detail' => 'pub greet(string $who): string']);
+        });
+
+        $this->assertSame(['pub greet(string $who): string'], $seen);
+        // The answer lands long after the frame that drew the popup; without a
+        // redraw the column stays empty until something else repaints.
+        $this->assertTrue($painted, 'a resolved type asks for a repaint');
+    }
+
+    public function testResolveCompletionDetailIsNotEvenSENTToAServerThatDoesNotResolve(): void
+    {
+        // One request per visible row per popup, every one of them answered
+        // with an error. A server that can tell you nothing should cost
+        // nothing.
+        $controller = $this->controller(capabilities: ['completionProvider' => ['triggerCharacters' => ['>']]]);
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$t->\n");
+
+        $controller->resolveCompletionDetail(['label' => 'greet'], static function (string $detail): void {
+            self::fail('nothing should answer: '.$detail);
+        });
+
+        $this->assertSame([], $this->client->requests);
+    }
+
+    public function testAResolveThatComesBackWithNoTypeChangesNothing(): void
+    {
+        // The column shows what the server said, and "" is not something it
+        // said — an empty detail must leave the row as it was rather than
+        // overwrite a type the first response did give.
+        $controller = $this->controller(capabilities: ['completionProvider' => ['resolveProvider' => true]]);
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$t->\n");
+        $called = false;
+
+        $controller->resolveCompletionDetail(['label' => 'greet'], static function (string $detail) use (&$called): void {
+            $called = true;
+        });
+        $this->client->requests[0]['respond'](['label' => 'greet', 'detail' => '']);
+
+        $this->assertFalse($called);
+    }
+
     public function testResolveCompletionWithNoEditsIsANoOp(): void
     {
         $controller = $this->controller();
