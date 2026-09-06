@@ -295,6 +295,53 @@ final class CompletionControllerTest extends TestCase
         $this->assertTrue($painted, 'a resolved type asks for a repaint');
     }
 
+    public function testAResolveThatAnswersONLYADocblockStillAnswers(): void
+    {
+        // phpantom_lsp's shape: it sends the type with the completion and keeps
+        // the docblock for the resolve. A guard that needed BOTH would drop the
+        // half that only ever arrives here.
+        $controller = $this->controller(capabilities: ['completionProvider' => ['resolveProvider' => true]]);
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$t->\n");
+        $seen = [];
+
+        $controller->resolveCompletionDetail(['label' => 'name'], static function (string $detail, string $documentation) use (&$seen): void {
+            $seen[] = [$detail, $documentation];
+        });
+        $this->client->requests[0]['respond'](['label' => 'name', 'documentation' => ['kind' => 'markdown', 'value' => 'The name.']]);
+
+        $this->assertSame([['', 'The name.']], $seen, 'no type, and the docblock still comes through');
+    }
+
+    public function testAResolveThatAnswersNEITHERHalfDoesNotCallBack(): void
+    {
+        $controller = $this->controller(capabilities: ['completionProvider' => ['resolveProvider' => true]]);
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$t->\n");
+        $called = false;
+
+        $controller->resolveCompletionDetail(['label' => 'greet'], static function (string $detail, string $documentation) use (&$called): void {
+            $called = true;
+        });
+        $this->client->requests[0]['respond'](['label' => 'greet']);
+
+        $this->assertFalse($called, 'an answer with nothing in it is not an answer');
+    }
+
+    public function testANONSTRINGTypeIsTreatedAsNoTypeRatherThanCoerced(): void
+    {
+        // Wire data: a server that sends `detail: 42` would otherwise put "42"
+        // in the type column, which is worse than an empty one.
+        $controller = $this->controller(capabilities: ['completionProvider' => ['resolveProvider' => true]]);
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$t->\n");
+        $seen = [];
+
+        $controller->resolveCompletionDetail(['label' => 'greet'], static function (string $detail, string $documentation) use (&$seen): void {
+            $seen[] = [$detail, $documentation];
+        });
+        $this->client->requests[0]['respond'](['label' => 'greet', 'detail' => 42, 'documentation' => 'Greets.']);
+
+        $this->assertSame([['', 'Greets.']], $seen);
+    }
+
     public function testResolveCompletionDetailIsNotEvenSENTToAServerThatDoesNotResolve(): void
     {
         // One request per visible row per popup, every one of them answered

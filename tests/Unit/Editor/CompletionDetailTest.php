@@ -26,8 +26,14 @@ final class CompletionDetailTest extends TestCase
     /** @var list<array<string, mixed>> raw items the popup asked about */
     private array $asked = [];
 
-    /** @var list<\Closure(string): void> how to answer each of them */
-    private array $answer = [];
+    /** @var list<\Closure(string, string): void> how to answer each of them */
+    private array $replies = [];
+
+    /** Answer the $index'th request the popup made, with either half or both. */
+    private function answer(int $index, string $detail = '', string $documentation = ''): void
+    {
+        $this->replies[$index]($detail, $documentation);
+    }
 
     private function completion(Document $document = new Document('')): EditorCompletion
     {
@@ -40,9 +46,9 @@ final class CompletionDetailTest extends TestCase
             static fn (): bool => true,
             $noop,
             $noop,
-            function (array $item, \Closure $onDetail): void {
+            function (array $item, \Closure $onResolved): void {
                 $this->asked[] = $item;
-                $this->answer[] = $onDetail;
+                $this->replies[] = $onResolved;
             },
         );
     }
@@ -69,13 +75,21 @@ final class CompletionDetailTest extends TestCase
         $this->assertSame([['label' => 'greet']], $this->asked, 'the raw server item goes back as the resolve request');
     }
 
-    public function testAnItemThatALREADYCarriesItsTypeIsNotAsked(): void
+    public function testAnItemThatALREADYCarriesBothHalvesIsNotAsked(): void
     {
-        // phpantom_lsp's answer. Asking anyway would be one request per row per
-        // popup for something already on screen.
+        // Asking anyway would be one request per row per popup for something
+        // already on screen. BOTH halves, though: a type without a docblock is
+        // still a reason to ask, which is the usual shape from phpantom_lsp.
         $completion = $this->completion();
 
-        $completion->show([$this->item('name', 'string')]);
+        $completion->show([new CompletionItem(
+            label: 'name',
+            insertText: 'name',
+            kind: 'prop',
+            detail: 'string',
+            raw: ['label' => 'name'],
+            documentation: 'The name of the thing.',
+        )]);
 
         $this->assertSame([], $this->asked);
     }
@@ -85,7 +99,7 @@ final class CompletionDetailTest extends TestCase
         $completion = $this->completion();
         $completion->show([$this->item('greet')]);
 
-        $this->answer[0]('pub greet(string $who): string');
+        $this->answer(0, detail: 'pub greet(string $who): string');
 
         $this->assertSame('pub greet(string $who): string', $this->itemsOf($completion)[0]->detail);
     }
@@ -114,8 +128,8 @@ final class CompletionDetailTest extends TestCase
         $completion->show([$this->item('greet')]);
 
         $completion->show([$this->item('greet')]);
-        $this->answer[0]('a type');
-        $this->answer[1]('another type');
+        $this->answer(0, detail: 'a type');
+        $this->answer(1, detail: 'another type');
 
         $this->assertCount(2, $this->asked, 'a NEW list is a new question; the same item within one list is not');
     }
@@ -130,7 +144,7 @@ final class CompletionDetailTest extends TestCase
         $completion->show([$this->item('greet')]);
         $completion->show([$this->item('other')]);
 
-        $this->answer[0]('pub greet(string $who): string');
+        $this->answer(0, detail: 'pub greet(string $who): string');
 
         $this->assertSame('', $this->itemsOf($completion)[0]->detail, 'the item it was asked for is not in this list');
         $this->assertSame('other', $this->itemsOf($completion)[0]->label);
@@ -169,7 +183,7 @@ final class CompletionDetailTest extends TestCase
         $completion = $this->completion();
 
         $completion->show([
-            $this->item('typed', 'string'),
+            new CompletionItem(label: 'known', insertText: 'known', kind: 'fn', detail: 'string', raw: ['label' => 'known'], documentation: 'Both halves already.'),
             $this->item('untyped'),
             new CompletionItem(label: 'template', insertText: 'template', kind: 'snippet', detail: ''),
             $this->item('alsoUntyped'),
@@ -183,7 +197,7 @@ final class CompletionDetailTest extends TestCase
         $completion = $this->completion();
         $completion->show([$this->item('first'), $this->item('second')]);
 
-        $this->answer[1]('the second type');
+        $this->answer(1, detail: 'the second type');
 
         $items = $this->itemsOf($completion);
         $this->assertSame('', $items[0]->detail, 'the row before it is untouched');
@@ -206,14 +220,14 @@ final class CompletionDetailTest extends TestCase
             static fn (): bool => true,
             $noop,
             $noop,
-            function (array $item, \Closure $onDetail): void {
-                $this->answer[] = $onDetail;
+            function (array $item, \Closure $onResolved): void {
+                $this->replies[] = $onResolved;
             },
         );
         $completion->show([$this->item('greet')]);
         $painted = 0;
 
-        $this->answer[0]('pub greet(): void');
+        $this->answer(0, detail: 'pub greet(): void');
 
         $this->assertSame(1, $painted);
     }
@@ -255,5 +269,45 @@ final class CompletionDetailTest extends TestCase
         $completion->handleInput('k', $keys);
 
         $this->assertSame('item40', end($this->asked)['label'], 'the wrap lands on the last row and asks about it');
+    }
+
+    public function testTheDOCBLOCKArrivesOnTheSameRoundTrip(): void
+    {
+        // One request, both halves. Asking twice for two parts of one answer
+        // would double the traffic for nothing.
+        $completion = $this->completion();
+        $completion->show([$this->item('greet')]);
+
+        $this->answer(0, detail: 'pub greet(): string', documentation: 'Greets somebody.');
+
+        $item = $this->itemsOf($completion)[0];
+        $this->assertSame('pub greet(): string', $item->detail);
+        $this->assertSame('Greets somebody.', $item->documentation);
+    }
+
+    public function testAHalfANSWERDoesNotBlankTheHalfTheFirstResponseGAVE(): void
+    {
+        // phpantom_lsp sends the type with the completion and the docblock only
+        // on resolve. A resolve that answers with no type must leave the type
+        // that is already there.
+        $completion = $this->completion();
+        $completion->show([$this->item('name', 'string')]);
+
+        $this->answer(0, documentation: 'The name of the thing.');
+
+        $item = $this->itemsOf($completion)[0];
+        $this->assertSame('string', $item->detail, 'the type the first response gave survives');
+        $this->assertSame('The name of the thing.', $item->documentation);
+    }
+
+    public function testAnItemWithATypeButNODOCBLOCKIsStillAskedAbout(): void
+    {
+        // The docblock is the half servers defer most, so "it has a type
+        // already" is not a reason to stop asking.
+        $completion = $this->completion();
+
+        $completion->show([$this->item('name', 'string')]);
+
+        $this->assertSame(['name'], array_column($this->asked, 'label'));
     }
 }

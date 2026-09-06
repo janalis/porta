@@ -384,6 +384,219 @@ final class CodeEditorOverlaysTest extends TestCase
         $this->assertExactWidth($rows, 60);
     }
 
+    /** @param non-empty-string $doc */
+    private function documentedEditor(string $doc, int $rows = 14): CodeEditorWidget
+    {
+        $editor = $this->editor();
+        $editor->getDocument()->setCursor(2, 5);
+        $editor->showCompletions([
+            new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: 'string', documentation: $doc),
+            new CompletionItem(label: 'name', insertText: 'name', kind: 'prop', detail: 'string'),
+        ]);
+
+        return $editor;
+    }
+
+    public function testTheSelectedItemsDOCBLOCKIsShownBesideThePopup(): void
+    {
+        // Both servers send `documentation` and neither sends it with the
+        // completion — it comes back on the resolve the type column already
+        // asks for, so the panel costs no extra traffic.
+        $editor = $this->documentedEditor("Greets somebody by name.\n\npublic function greet(string \$who): string");
+
+        $rows = $editor->render(new RenderContext(120, 14));
+        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $rows));
+
+        $this->assertStringContainsString('Greets somebody by name.', $screen);
+        $this->assertStringContainsString('public function greet(string $who): string', $screen);
+        $this->assertExactWidth($rows, 120);
+    }
+
+    public function testTheDOCBLOCKPanelIsTALLERThanTheListWhenItNeedsToBe(): void
+    {
+        // Two matching completions must not mean two lines of docblock: the
+        // panel's height is its own. A panel bounded by the list would show a
+        // sentence and a half beside a two-item popup.
+        $editor = $this->documentedEditor("one\ntwo\nthree\nfour\nfive\nsix");
+
+        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(120, 14))));
+
+        $this->assertStringContainsString('six', $screen, 'the sixth line is there beside a two-row list');
+    }
+
+    public function testTheDOCBLOCKFollowsTheSelection(): void
+    {
+        // The panel is about the row you are ON. Moving to an item with no
+        // documentation must take the panel with it rather than leave the
+        // previous item's prose beside the new name.
+        $editor = $this->documentedEditor('Greets somebody by name.');
+        $editor->render(new RenderContext(120, 14));
+
+        $editor->movePopupSelection(1); // → `name`, which has no documentation
+        $rows = $editor->render(new RenderContext(120, 14));
+        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $rows));
+
+        $this->assertStringNotContainsString('Greets somebody by name.', $screen);
+        // The panel is GONE, not blank: an empty frame beside the list is a
+        // box that says nothing and takes forty-six columns to say it.
+        $this->assertSame(1, substr_count(AnsiUtils::stripAnsiCodes($rows[3]), needle: '╭'), 'one box on screen, not two');
+    }
+
+    public function testTheDOCBLOCKGoesLEFTWhenThereIsNoRoomOnTheRight(): void
+    {
+        // A caret far along a long line: the popup is anchored under it, near
+        // the right edge, so the panel cannot go where it normally goes. A
+        // fixture with the caret at column 5 proves nothing here — it has room
+        // on the right and never takes the other branch.
+        $editor = $this->editor("<?php\n\$a = 1;\n".str_repeat('x', times: 55)." echo\n");
+        $editor->getDocument()->setCursor(2, 60);
+        $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '', documentation: 'Greets somebody.')]);
+
+        $rows = $editor->render(new RenderContext(100, 10));
+        $row = AnsiUtils::stripAnsiCodes($rows[4]);
+
+        $this->assertStringContainsString('Greets somebody.', $row, 'the panel moved to the other side rather than vanishing');
+        $this->assertLessThan(mb_strpos($row, needle: 'greet '), mb_strpos($row, needle: 'Greets somebody.'), 'and it is to the LEFT of the list');
+        // The panel's own drop shadow falls to its right: flush against the
+        // popup it paints over the popup's left border.
+        $this->assertStringContainsString('│ │ greet', $row, 'both boxes keep all four walls');
+        $this->assertExactWidth($rows, 100);
+    }
+
+    public function testNoROOMOnEitherSideMeansNoPanelRatherThanAKeyhole(): void
+    {
+        // Twenty columns of a docblock is not a docblock. The popup keeps the
+        // pane it was given, and every row still measures exactly.
+        $editor = $this->editor();
+        $editor->getDocument()->setCursor(2, 5);
+        $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '', documentation: 'Greets somebody.')]);
+
+        $rows = $editor->render(new RenderContext(40, 14));
+
+        $this->assertStringNotContainsString('Greets somebody.', implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $rows)));
+        $this->assertExactWidth($rows, 40);
+    }
+
+    public function testAPopupThatOpenedUPWARDGrowsItsPanelUpwardToo(): void
+    {
+        // The caret is directly under an upward popup. A panel aligned to the
+        // popup's TOP would grow down across the line being typed.
+        $editor = $this->editor();
+        $editor->getDocument()->setCursor(2, 5);
+        $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '', documentation: "one\ntwo\nthree\nfour\nfive")]);
+
+        // A pane with the caret near the bottom: the popup opens above it.
+        $rows = $editor->render(new RenderContext(120, 5));
+        $plain = array_map(AnsiUtils::stripAnsiCodes(...), $rows);
+
+        // The caret is on row 3 here. The room above is what caps the panel, so
+        // the docblock is CUT rather than the panel sliding down over the line
+        // being typed — clamping the position instead would do exactly that.
+        $this->assertStringContainsString('one', $plain[1], 'the panel is there, beside the popup');
+        $this->assertStringNotContainsString('│', $plain[3], 'and it stops at the popup\'s bottom edge, above the caret row');
+        $this->assertExactWidth($rows, 120);
+    }
+
+    public function testThePanelTakesTheRightHandSideWhenItJUSTFits(): void
+    {
+        // Both sides of the boundary, because a fit test that is one column out
+        // still draws a panel — on the wrong side, or not at all — and every
+        // row still measures exactly either way.
+        $editor = $this->editor();
+        $editor->getDocument()->setCursor(2, 5);
+        $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '', documentation: 'Greets somebody.')]);
+
+        // The popup's frame ends at column 25 here and the panel needs 46 + 2,
+        // so 71 is the exact width at which the right-hand side works.
+        $fits = $editor->render(new RenderContext(71, 10));
+        $this->assertStringContainsString('╮╭', AnsiUtils::stripAnsiCodes($fits[3]), 'flush against the popup, on the right');
+        $this->assertExactWidth($fits, 71);
+
+        $oneShort = $editor->render(new RenderContext(70, 10));
+        $this->assertStringNotContainsString('Greets somebody.', implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $oneShort)), 'one column short and there is no room on either side');
+        $this->assertExactWidth($oneShort, 70);
+    }
+
+    public function testTheDOCBLOCKIsCUTToTheRoomAboveTheCaret(): void
+    {
+        // The room decides the height BEFORE the text is cut. The count is the
+        // assertion: a panel one row taller would sit over the caret line, and
+        // one row shorter would throw away a line it had room for.
+        $editor = $this->editor();
+        $editor->getDocument()->setCursor(2, 5);
+        $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '', documentation: "one\ntwo\nthree\nfour\nfive")]);
+
+        $plain = array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(120, 5)));
+
+        // The popup opens upward over rows 0..2, so the panel gets one content
+        // row between its own two borders.
+        $this->assertStringContainsString('one', $plain[1]);
+        $this->assertStringNotContainsString('two', implode("\n", $plain), 'the second line had nowhere to go');
+    }
+
+    public function testTheLEFTSideHasItsOwnBoundaryAndOneColumnDecidesIt(): void
+    {
+        // Found by sweeping the caret across a line of one-character words with
+        // a leading space, which is what puts the anchor on an odd column: at
+        // this caret the panel lands EXACTLY at column 0, and one caret earlier
+        // there is no side to put it on.
+        //
+        // Column 0 is the case worth owning. The left placement needs a column
+        // of clearance the right one does not — its shadow falls inwards — so
+        // its boundary is its own, and a fixture that never reaches the edge
+        // cannot tell "fits" from "fits with a column to spare".
+        $fits = $this->docPopupAt(caret: 41);
+        $short = $this->docPopupAt(caret: 40);
+
+        $this->assertSame(1, mb_strpos($fits, needle: 'DOC'), 'the panel starts at column 0, its text one in');
+        $this->assertLessThan(mb_strpos($fits, needle: '│ greet'), mb_strpos($fits, needle: 'DOC'), 'left of the list');
+        $this->assertStringNotContainsString('DOC', $short, 'one column short: no side to put it on');
+
+        // And the column BELOW the boundary, which the odd grid steps over:
+        // without the leading space the anchor lands on even columns, and this
+        // caret is the one where the panel would begin at column -1. The guard
+        // and the column it guards have to be the same subtraction — a check
+        // that says "fits" about a column the placement then shifts one further
+        // left writes off the start of the row.
+        $this->assertStringNotContainsString('DOC', $this->docPopupAt(caret: 41, grid: ''), 'a panel at column -1 is not a panel');
+    }
+
+    /**
+     * The completion row of a popup anchored at $caret on a line of
+     * one-character words.
+     *
+     * $grid is load-bearing: a leading space shifts every word onto an odd
+     * column, and the anchor moves two columns per caret — so each grid can
+     * only ever reach one parity, and the boundary needs both.
+     */
+    private function docPopupAt(int $caret, string $grid = ' '): string
+    {
+        $editor = $this->editor("<?php\n\$a = 1;\n".$grid.str_repeat('y ', times: 40)."\n");
+        $editor->getDocument()->setCursor(2, $caret);
+        $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '', documentation: 'DOC')]);
+        $rows = $editor->render(new RenderContext(100, 10));
+        $this->assertExactWidth($rows, 100);
+
+        return AnsiUtils::stripAnsiCodes($rows[4]);
+    }
+
+    public function testThePanelStopsAtTheRowsTheROOMAllows(): void
+    {
+        // Exactly four lines, not three and not five: the height is the room
+        // less the two border rows, and an off-by-one there either throws away
+        // a line it had room for or writes one past the pane.
+        $editor = $this->editor();
+        $editor->getDocument()->setCursor(2, 5);
+        $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '', documentation: "L1\nL2\nL3\nL4\nL5\nL6")]);
+
+        $rows = $editor->render(new RenderContext(120, 9));
+        $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $rows));
+
+        $this->assertStringContainsString('L4', $screen);
+        $this->assertStringNotContainsString('L5', $screen);
+        $this->assertExactWidth($rows, 120);
+    }
+
     public function testCompletionClickAcceptsSuggestion(): void
     {
         $editor = $this->completionEditor();

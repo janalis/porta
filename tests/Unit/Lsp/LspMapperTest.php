@@ -492,4 +492,36 @@ final class LspMapperTest extends TestCase
         $this->assertArrayNotHasKey('tags', $byLine[0][0], 'an empty list would open a faint span over nothing');
         $this->assertArrayNotHasKey('tags', $byLine[1][0]);
     }
+
+    public function testACompletionItemsDOCBLOCKIsFlattenedLikeAHover(): void
+    {
+        // Measured: both servers answer `documentation` as MarkupContent with
+        // markdown, and phpactor's opens with a ```php fence. Same shape hover
+        // sends, so it goes through the same reader — fences and all.
+        $items = LspMapper::mapCompletionItems([[
+            'label' => 'greet',
+            'documentation' => ['kind' => 'markdown', 'value' => "### App\\Thing::greet\n\n```php\n<?php public function greet(): string\n```"],
+        ]]);
+
+        $this->assertStringContainsString('App\\Thing::greet', $items[0]->documentation);
+        $this->assertStringNotContainsString('```', $items[0]->documentation, 'the fence is chrome for a markdown renderer, not for a terminal');
+    }
+
+    public function testACompletionItemWithNoDOCBLOCKCarriesAnEmptyOne(): void
+    {
+        // Not null: the item's field is a string, and the popup asks "is there
+        // anything to show" of a string.
+        $items = LspMapper::mapCompletionItems([['label' => 'greet']]);
+
+        $this->assertSame('', $items[0]->documentation);
+    }
+
+    public function testAPLAINSTRINGDocumentationIsTakenAsItIs(): void
+    {
+        // The spec allows `string | MarkupContent`, and older servers send the
+        // string.
+        $items = LspMapper::mapCompletionItems([['label' => 'greet', 'documentation' => 'Greets somebody.']]);
+
+        $this->assertSame('Greets somebody.', $items[0]->documentation);
+    }
 }

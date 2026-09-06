@@ -535,7 +535,111 @@ final class EditorRenderer
             $lines[$row] = OverlayCompositor::into($lines[$row], $borderCol, $framedWidth, $columns, $framedRow);
         }
         $lines = ModalShadow::blit($lines, $borderTop, $borderCol, $framedWidth, $framedHeight, $columns, $styles);
+        self::completionDoc($lines, $columns, $borderCol, $borderTop, $framedWidth, $framedHeight, $below, $visible[$selectedInWindow] ?? null, $styles);
 
         return new CompletionBox($borderCol + 1, $width, $borderTop + 1, \count($visible), $windowOffset);
+    }
+
+    /**
+     * The selected item's docblock, in its own frame beside the popup.
+     *
+     * Both bundled servers send `documentation` and neither sends it with the
+     * completion — it arrives on `completionItem/resolve`, the same round-trip
+     * the type column already makes — so this costs no extra traffic.
+     *
+     * Beside, not below: the popup already sits under the caret, and a panel
+     * under IT would be reading a docblock through a keyhole two rows from the
+     * bottom of the terminal. It goes right of the popup when there is room and
+     * left when there is not; when neither fits, there is no panel, which is
+     * the correct amount of a docblock to show in twenty columns.
+     *
+     * Its height is its OWN, not the popup's: two matching completions must not
+     * mean two lines of docblock. It grows down from the popup's top, or up
+     * from its bottom when the popup itself opened upward — the caret is on the
+     * other side of that edge, and a panel that grew the wrong way would cover
+     * the line being typed.
+     *
+     * The text is what fits; the rest of a docblock is what hover is for.
+     *
+     * @param list<string> $lines
+     */
+    private static function completionDoc(
+        array &$lines,
+        int $columns,
+        int $popupCol,
+        int $popupTop,
+        int $popupWidth,
+        int $popupHeight,
+        // @mago-expect lint:no-boolean-flag-parameter -- not a mode switch: this is the
+        // popup's own placement, computed once by the caller and passed down so the panel
+        // grows AWAY from the caret instead of re-deriving geometry that has moved on.
+        bool $below,
+        ?CompletionItem $selected,
+        Styles $styles,
+    ): void {
+        $text = null === $selected ? '' : $selected->documentation;
+        if ('' === $text) {
+            return;
+        }
+        $framedWidth = PopupMetrics::COMPLETION_DOC_INNER + PopupFrame::CHROME_COLS;
+        $right = $popupCol + $popupWidth;
+        // A column of clearance on the left placement, because the panel's own
+        // drop shadow falls to ITS right: sat flush against the popup it paints
+        // over the popup's left border, which reads as a box missing a wall.
+        $col = match (true) {
+            ($right + $framedWidth) <= $columns => $right,
+            ($popupCol - $framedWidth - 1) >= 0 => $popupCol - $framedWidth - 1,
+            default => null,
+        };
+        if (null === $col) {
+            return;
+        }
+
+        $body = [];
+        foreach (explode("\n", $text) as $paragraph) {
+            foreach (AnsiText::wrap($paragraph, PopupMetrics::COMPLETION_DOC_INNER) as $wrapped) {
+                $body[] = $wrapped;
+            }
+        }
+        // Down from the popup's top, or up from its bottom when the popup
+        // opened upward — the caret is on the other side of that edge, and a
+        // panel growing the wrong way would cover the line being typed.
+        //
+        // The room in that direction is what caps the height, BEFORE the text
+        // is cut to fit: clamping the position instead would slide the panel
+        // back over the caret whenever the docblock was taller than the room.
+        // Counted off the rows themselves rather than the pane height: they are
+        // the thing being written into, and deriving the room from anything
+        // else leaves a gap where a row could land past the end of the array.
+        $room = $below ? \count($lines) - $popupTop : $popupTop + $popupHeight;
+        // At least one row is always left: the popup chose its own direction by
+        // fitting its OWN frame there, and that frame is two rows of chrome
+        // plus an item — so `$room` is never below three and this slice never
+        // empties the panel.
+        $body = \array_slice($body, offset: 0, length: min(self::POPUP_MAX_ITEMS, $room - PopupFrame::CHROME_ROWS));
+        $framedHeight = \count($body) + PopupFrame::CHROME_ROWS;
+        $top = $below ? $popupTop : $popupTop + $popupHeight - $framedHeight;
+
+        $framed = [PopupFrame::top(PopupMetrics::COMPLETION_DOC_INNER, $styles)];
+        foreach ($body as $row) {
+            // Truncated but not padded: {@see PopupFrame::rail()} pads to the
+            // inner width itself — it calls that the single place the invariant
+            // is enforced — and a second pad here could only ever agree with it.
+            $framed[] = PopupFrame::rail(
+                $styles->of(Role::CompletionHint)->apply(AnsiText::truncate($row, PopupMetrics::COMPLETION_DOC_INNER)),
+                PopupMetrics::COMPLETION_DOC_INNER,
+                $styles,
+            );
+        }
+        $framed[] = PopupFrame::bottom(PopupMetrics::COMPLETION_DOC_INNER, $styles);
+
+        // No bounds guard: the height was capped by the room above, so every
+        // row of this frame is inside the array by construction — below,
+        // `$top + $framedHeight <= count($lines)`; above, it is the popup's own
+        // bottom edge, and the popup was placed inside the pane.
+        foreach ($framed as $i => $framedRow) {
+            $lines[$top + $i] = OverlayCompositor::into($lines[$top + $i], $col, $framedWidth, $columns, $framedRow);
+        }
+        $lines = ModalShadow::blit($lines, $top, $col, $framedWidth, $framedHeight, $columns, $styles);
     }
 }

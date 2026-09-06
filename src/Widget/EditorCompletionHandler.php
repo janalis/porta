@@ -30,8 +30,8 @@ interface EditorCompletionHandler
      * popup is open and only reads the type. One call doing both would apply
      * edits for an item the user has not chosen.
      *
-     * @param array<string, mixed>   $item     the raw LSP CompletionItem
-     * @param \Closure(string): void $onDetail called only when a type comes back
+     * @param array<string, mixed>           $item     the raw LSP CompletionItem
+     * @param \Closure(string, string): void $onDetail (type, documentation) — either may be '' when the server sent only one
      */
     public function resolveCompletionDetail(array $item, \Closure $onDetail): void;
 

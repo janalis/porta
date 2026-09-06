@@ -25,6 +25,7 @@ final readonly class CompletionItem
         public array $additionalTextEdits = [],
         public ?string $snippet = null,
         public array $raw = [],
+        public string $documentation = '',
     ) {}
 
     /**
@@ -38,6 +39,12 @@ final readonly class CompletionItem
      */
     public function withDetail(string $detail): self
     {
-        return new self($this->label, $this->insertText, $this->kind, $detail, $this->additionalTextEdits, $this->snippet, $this->raw);
+        return new self($this->label, $this->insertText, $this->kind, $detail, $this->additionalTextEdits, $this->snippet, $this->raw, $this->documentation);
+    }
+
+    /** The same item with the docblock the server sent — like {@see withDetail()}, usually only on resolve. */
+    public function withDocumentation(string $documentation): self
+    {
+        return new self($this->label, $this->insertText, $this->kind, $this->detail, $this->additionalTextEdits, $this->snippet, $this->raw, $documentation);
     }
 }

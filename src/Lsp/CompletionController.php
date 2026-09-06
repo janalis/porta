@@ -209,8 +209,12 @@ final class CompletionController extends AbstractLspController implements Editor
      * does not is an error response per item per popup, and a server that
      * answers nothing useful should cost nothing at all.
      *
-     * @param array<string, mixed>  $item
-     * @param \Closure(string): void $onDetail
+     * The docblock rides along, from the same round-trip: both servers send it
+     * here and nowhere else, and asking twice for two halves of one answer
+     * would double the traffic for nothing.
+     *
+     * @param array<string, mixed>           $item
+     * @param \Closure(string, string): void $onDetail
      */
     #[\Override]
     public function resolveCompletionDetail(array $item, \Closure $onDetail): void
@@ -223,10 +227,12 @@ final class CompletionController extends AbstractLspController implements Editor
         $this->lsp->request('completionItem/resolve', $item, function (mixed $result) use ($onDetail): void {
             /** @var mixed $detail */
             $detail = \is_array($result) ? $result['detail'] ?? null : null;
-            if (!\is_string($detail) || '' === $detail) {
-                return;
+            $documentation = \is_array($result) ? LspMapper::documentationText($result['documentation'] ?? null) : null;
+            $detail = \is_string($detail) ? $detail : '';
+            if ('' === $detail && (null === $documentation || '' === $documentation)) {
+                return; // nothing came back that the popup could show
             }
-            $onDetail($detail);
+            $onDetail($detail, $documentation ?? '');
             $this->tui->requestRender();
         });
     }

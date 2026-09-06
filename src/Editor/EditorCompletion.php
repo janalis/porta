@@ -42,7 +42,7 @@ final class EditorCompletion
      * @param \Closure(string): bool   $isInsertable       whether a keystroke is insertable text
      * @param \Closure(int, int): void          $requestCompletion  ask the IDE for completions at (line, utf16 col)
      * @param \Closure(array<string, mixed>): void $resolveCompletion resolve deferred edits for a raw server item
-     * @param \Closure(array<string, mixed>, \Closure(string): void): void $resolveDetail ask for an item's type, deferred by some servers
+     * @param \Closure(array<string, mixed>, \Closure(string, string): void): void $resolveDetail ask for an item's type and docblock, deferred by some servers
      */
     public function __construct(
         private readonly Document $document,
@@ -354,30 +354,37 @@ final class EditorCompletion
         $window = \array_slice($filtered, max(0, $this->selected - PopupMetrics::COMPLETION_ROWS + 1), PopupMetrics::COMPLETION_ROWS);
         foreach ($window as $item) {
             $id = spl_object_id($item);
-            if ('' !== $item->detail || null !== ($this->detailAsked[$id] ?? null) || [] === $item->raw) {
+            // A row with BOTH already needs nothing; one with only a type still
+            // wants its docblock, which is the half servers defer most.
+            if ('' !== $item->detail && '' !== $item->documentation || null !== ($this->detailAsked[$id] ?? null) || [] === $item->raw) {
                 continue;
             }
             $this->detailAsked[$id] = $item->label;
-            ($this->resolveDetail)($item->raw, function (string $detail) use ($item): void {
-                $this->applyDetail($item, $detail);
+            ($this->resolveDetail)($item->raw, function (string $detail, string $documentation) use ($item): void {
+                $this->applyResolved($item, $detail, $documentation);
             });
         }
     }
 
     /**
-     * Put a resolved type on its item, if that item is still in the list — the
+     * Put a resolved type and docblock on their item, if it is still in the
+     * list — the
      * answer can arrive after the popup closed or was rebuilt by a newer
      * request, and the one thing it must not do is write a type onto whatever
      * now sits at that position.
      */
-    private function applyDetail(CompletionItem $item, string $detail): void
+    private function applyResolved(CompletionItem $item, string $detail, string $documentation): void
     {
         $index = array_search($item, $this->items, strict: true);
         if (!\is_int($index)) {
             return;
         }
-        $this->items[$index] = $item->withDetail($detail);
-        $this->detailAsked[spl_object_id($this->items[$index])] = $item->label;
+        // Neither half overwrites what the first response already gave: a
+        // server that answers only one of them must not blank the other.
+        $resolved = '' === $detail ? $item : $item->withDetail($detail);
+        $resolved = '' === $documentation ? $resolved : $resolved->withDocumentation($documentation);
+        $this->items[$index] = $resolved;
+        $this->detailAsked[spl_object_id($resolved)] = $item->label;
         ($this->invalidate)();
     }
 

@@ -116,10 +116,23 @@ final class LspMapper
                 additionalTextEdits: $additional,
                 snippet: $isSnippet ? $raw : null,
                 raw: $item,
+                documentation: self::documentationText($item['documentation'] ?? null) ?? '',
             );
         }
 
         return $mapped;
+    }
+
+    /**
+     * A completion item's `documentation`, flattened to text.
+     *
+     * The same `string | MarkupContent` shape hover's `contents` uses, so it
+     * goes through the same reader rather than a second one that would drift
+     * from it — including the markdown cleanup, which a terminal needs for both.
+     */
+    public static function documentationText(mixed $documentation): ?string
+    {
+        return null === $documentation ? null : self::hoverToText(['contents' => $documentation]);
     }
 
     /**

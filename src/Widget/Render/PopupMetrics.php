@@ -32,6 +32,13 @@ final class PopupMetrics
      */
     public const int COMPLETION_ROWS = 8;
 
+    /**
+     * Inner width of the docblock panel beside the completion popup. Wider than
+     * the list is tall is the wrong shape for prose, and a panel as narrow as
+     * the list would wrap every sentence twice.
+     */
+    public const int COMPLETION_DOC_INNER = 44;
+
     /** Find in Files never squeezes below this inner width (content- or drag-sized). */
     public const int FIND_MIN_WIDTH = 48;
 
