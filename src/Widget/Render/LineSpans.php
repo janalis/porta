@@ -22,7 +22,7 @@ final class LineSpans
 {
     /**
      * @param list<array{start: int, end: int, current: bool}>                     $matches  search matches on this line (byte cols)
-     * @param list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string}>  $diags    diagnostics on this line (utf16 cols)
+     * @param list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>  $diags    diagnostics on this line (utf16 cols)
      * @param list<array{col: int, endCol: int, open: string, close: string}>      $semantic server semantic tokens on this line (utf16 cols), already styled
      * @param int                                                                  $separatorTo rule this row across this many display columns; 0 for no rule
      *
@@ -110,8 +110,17 @@ final class LineSpans
             $startDisp = EditorRenderer::utf16ToDisplayCol($doc, $lineIndex, $diag['col']);
             $endUtf16 = $diag['endCol'] ?? ($diag['col'] + 1);
             $endDisp = \PHP_INT_MAX === $endUtf16 ? \PHP_INT_MAX : max($startDisp + 1, EditorRenderer::utf16ToDisplayCol($doc, $lineIndex, $endUtf16));
-            // Curly, severity-colored underline (degrades to a plain underline).
-            $spans[] = [$startDisp, $endDisp, DiagnosticStyle::underlineOpen($diag['severity'], $styles), DiagnosticStyle::underlineClose(), null];
+            // Curly, severity-colored underline (degrades to a plain
+            // underline), plus what the diagnostic's tags say about the code
+            // itself: faint for unused, struck through for deprecated.
+            $tags = $diag['tags'] ?? [];
+            $spans[] = [
+                $startDisp,
+                $endDisp,
+                DiagnosticStyle::underlineOpen($diag['severity'], $styles).DiagnosticStyle::tagOpen($tags),
+                DiagnosticStyle::tagClose($tags).DiagnosticStyle::underlineClose(),
+                null,
+            ];
         }
         foreach ($carets as $caret) {
             // Each caret's selection (possibly spanning lines), drawn before

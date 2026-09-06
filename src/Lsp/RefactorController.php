@@ -240,9 +240,10 @@ final class RefactorController extends AbstractLspController implements EditorRe
     }
 
     /**
-     * The caret line's diagnostics in LSP shape. `code` and `data` ride along
-     * when the server gave them: a server that matches its own fix by code sees
-     * nothing to match without them.
+     * The caret line's diagnostics in LSP shape. `code`, `source`, `data` and
+     * `tags` ride along when the server gave them: a server that matches its own
+     * fix by code sees nothing to match without them, and the context is meant
+     * to hand back the diagnostic it published, not a summary of it.
      *
      * @return list<array<string, mixed>>
      */
@@ -260,7 +261,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
                 'severity' => $diag['severity'],
                 'message' => $diag['message'],
             ];
-            foreach (['code', 'source', 'data'] as $key) {
+            foreach (['code', 'source', 'data', 'tags'] as $key) {
                 /** @var mixed $extra */
                 $extra = $diag[$key] ?? null;
                 if (null !== $extra) {

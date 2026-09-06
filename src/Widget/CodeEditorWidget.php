@@ -294,7 +294,7 @@ final class CodeEditorWidget extends AbstractWidget implements
      * Display an existing document (buffer switch: cursor, undo history and
      * diagnostics are preserved by the caller's Buffer).
      *
-     * @param array<int, list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string}>> $diagnostics
+     * @param array<int, list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> $diagnostics
      * @param CodeHighlighter|null                                                            $highlighter buffer-owned highlighter
      *                                                                                                     whose cache survives switches
      * @param ResolvedEditorConfig|null                                                       $editorConfig the file's resolved

@@ -11,6 +11,6 @@ namespace Porta\Editor;
  */
 interface DiagnosticsSink
 {
-    /** @param array<int, list<array{severity: int, message: string, col: int, endCol: int, code?: int|string, source?: string}>> $byLine 0-based line => diagnostics */
+    /** @param array<int, list<array{severity: int, message: string, col: int, endCol: int, code?: int|string, source?: string, tags?: list<int>}>> $byLine 0-based line => diagnostics */
     public function applyDiagnostics(string $uri, array $byLine): void;
 }

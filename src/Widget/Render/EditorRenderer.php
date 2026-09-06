@@ -331,7 +331,7 @@ final class EditorRenderer
      *                                                                                                 inlay hints and the collapsed-fold marker),
      *                                                                                                 not the raw doc line's width, or the message
      *                                                                                                 would slice into those decorations
-     * @param list<array{message?: string, severity?: int, col?: int, endCol?: int, code?: int|string, source?: string}> $diags
+     * @param list<array{message?: string, severity?: int, col?: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}> $diags
      */
     public static function appendInlineDiagnostic(int $hScroll, int $textDisplayWidth, array $diags, string $content, int $contentWidth, Styles $styles): string
     {

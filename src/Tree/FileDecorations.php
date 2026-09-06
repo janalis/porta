@@ -64,7 +64,7 @@ final readonly class FileDecorations
      * the first error: nothing outranks it, and this runs every frame over every
      * open buffer's whole diagnostic set.
      *
-     * @param array<int, list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string}>> $byLine
+     * @param array<int, list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> $byLine
      */
     private function worstMarkable(array $byLine): int
     {

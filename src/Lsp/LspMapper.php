@@ -428,6 +428,7 @@ final class LspMapper
      *         message?: string,
      *         code?: int|string,
      *         source?: string,
+     *         tags?: list<int>,
      *         range: array{
      *             start: array{line?: int, character?: int},
      *             end: array{line?: int, character?: int},
@@ -435,7 +436,7 @@ final class LspMapper
      *     }>,
      * } $params
      *
-     * @return array<int, list<array{severity: int, message: string, col: int, endCol: int, code?: int|string, source?: string}>>
+     * @return array<int, list<array{severity: int, message: string, col: int, endCol: int, code?: int|string, source?: string, tags?: list<int>}>>
      */
     public static function diagnosticsByLine(array $params): array
     {
@@ -463,6 +464,16 @@ final class LspMapper
             $source = $diag['source'] ?? null;
             if (null !== $source) {
                 $mapped['source'] = $source;
+            }
+            // `tags` say what KIND of thing this is — unused, deprecated —
+            // which severity cannot: phpactor reports an unused import at
+            // severity 2, indistinguishable from a warning about working code
+            // until the tag is drawn. Kept as ints rather than the enum: this
+            // is wire data, and a server may send a tag from a spec newer than
+            // this one, which the renderer should ignore rather than choke on.
+            $tags = array_values(array_filter($diag['tags'] ?? [], \is_int(...)));
+            if ([] !== $tags) {
+                $mapped['tags'] = $tags;
             }
             $byLine[$line][] = $mapped;
         }

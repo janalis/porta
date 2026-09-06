@@ -17,7 +17,7 @@ use Porta\Highlight\CodeHighlighter;
  */
 final class Buffer
 {
-    /** @var array<int, list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string}>> */
+    /** @var array<int, list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> */
     public array $diagnostics = [];
 
     /** The file's resolved `.editorconfig`, applied on open and reused on save. */

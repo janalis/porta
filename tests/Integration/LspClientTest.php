@@ -54,7 +54,12 @@ final class LspClientTest extends TestCase
                     'completion' => [
                         'completionItem' => ['snippetSupport' => true, 'documentationFormat' => ['plaintext', 'markdown']],
                     ],
-                    'publishDiagnostics' => ['relatedInformation' => false],
+                    'publishDiagnostics' => [
+                        'relatedInformation' => false,
+                        // Declared even though phpactor sends the tags unasked:
+                        // a server that gates on the declaration sends none.
+                        'tagSupport' => ['valueSet' => [1, 2]],
+                    ],
                     'hover' => ['contentFormat' => ['plaintext', 'markdown']],
                     'definition' => ['linkSupport' => false],
                     'references' => ['dynamicRegistration' => false],

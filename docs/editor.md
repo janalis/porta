@@ -179,6 +179,29 @@ breakpoint dots, fold triangles, indent guides, identifier-occurrence and matchi
 highlighting, and dimmed inline parameter-name/type **inlay hints** from
 the language server.
 
+## Unused and deprecated code
+
+A diagnostic's **severity** says how bad something is; its **tags** say what
+kind of thing it is, and the two are independent. An unused import arrives from
+phpactor at severity 2 — the same severity as a warning about code that runs —
+so without the tag it looks exactly like a real problem, and the only way to
+tell them apart is to read the message.
+
+So tagged ranges are drawn differently from the text around them:
+
+| Tag | Drawn |
+| --- | --- |
+| unnecessary | faint — code that does nothing, the terminal's version of PhpStorm's grey |
+| deprecated | struck through |
+
+Both keep the severity-coloured underline they always had, so the tag adds to
+what the diagnostic says rather than replacing it. A tag Porta does not
+recognise draws normally.
+
+Nothing needs turning on: the client advertises `tagSupport` in the handshake,
+and servers that send tags have theirs drawn. phpactor sends them for unused
+imports; a server that sends none is unaffected.
+
 ## Last edit location
 
 `Ctrl+Shift+Backspace` takes you back to what you were writing. Press it again

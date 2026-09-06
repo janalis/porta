@@ -429,4 +429,67 @@ final class LspMapperTest extends TestCase
 
         $this->assertSame(1005, $byLine[0][0]['code']);
     }
+
+    /**
+     * Measured before it was built: phpactor answers an unused import with
+     * `tags: [1]` — and sends them WITHOUT `tagSupport` being declared, so
+     * Porta was receiving and discarding them the whole time.
+     */
+    public function testDiagnosticsCarryTheirTags(): void
+    {
+        $byLine = LspMapper::diagnosticsByLine([
+            'diagnostics' => [
+                [
+                    'severity' => 2,
+                    'message' => 'Name "Thing" is imported but not used',
+                    'tags' => [1],
+                    'range' => ['start' => ['line' => 4, 'character' => 4], 'end' => ['line' => 4, 'character' => 23]],
+                ],
+            ],
+        ]);
+
+        $this->assertSame([1], $byLine[4][0]['tags']);
+    }
+
+    public function testATagFromANewerSpecIsCarriedAndAnUnusableOneIsDropped(): void
+    {
+        // Kept as ints, not mapped onto the enum: an unrecognised tag means
+        // "draw it normally", which the renderer already does — refusing the
+        // whole diagnostic over one would lose the message too. A tag that is
+        // not an int is not a tag at all.
+        $byLine = LspMapper::diagnosticsByLine([
+            'diagnostics' => [
+                [
+                    'severity' => 1,
+                    'message' => 'boom',
+                    'tags' => [99, 'unnecessary', 2],
+                    'range' => ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]],
+                ],
+            ],
+        ]);
+
+        $this->assertSame([99, 2], $byLine[0][0]['tags'], 'renumbered too: the renderer walks a list');
+    }
+
+    public function testADiagnosticWithNoUsABLETagsCarriesNoTagsKey(): void
+    {
+        $byLine = LspMapper::diagnosticsByLine([
+            'diagnostics' => [
+                [
+                    'severity' => 1,
+                    'message' => 'boom',
+                    'tags' => ['nonsense'],
+                    'range' => ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]],
+                ],
+                [
+                    'severity' => 1,
+                    'message' => 'no tags at all',
+                    'range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 1]],
+                ],
+            ],
+        ]);
+
+        $this->assertArrayNotHasKey('tags', $byLine[0][0], 'an empty list would open a faint span over nothing');
+        $this->assertArrayNotHasKey('tags', $byLine[1][0]);
+    }
 }

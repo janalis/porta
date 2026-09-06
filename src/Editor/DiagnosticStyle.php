@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use Porta\Lsp\DiagnosticTag;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
 
 /**
@@ -112,5 +114,62 @@ final class DiagnosticStyle
     public static function underlineClose(): string
     {
         return "\x1b[59m\x1b[24m";
+    }
+
+    /**
+     * What a diagnostic's TAGS do to the text they cover: unused code goes
+     * faint, deprecated code is struck through.
+     *
+     * Severity cannot say either. phpactor reports an unused import at
+     * severity 2 — the same severity as a warning about code that runs — so
+     * without this the two read identically and the only way to tell them
+     * apart is to read the message. Faint and struck-through are what a
+     * terminal has instead of PhpStorm's grey and its line.
+     *
+     * Unknown tags are skipped rather than refused: a server may send one from
+     * a newer spec than this, and an unrecognised tag means "draw it normally".
+     *
+     * The close cancels intensity, which also cancels BOLD — the same trade the
+     * bracket-match span makes. It matters only for a bold token that is inside
+     * a tagged range and whose bold continues past it, which a symbol name
+     * followed by a semicolon is not.
+     *
+     * @param list<int> $tags LSP DiagnosticTag values
+     */
+    public static function tagOpen(array $tags): string
+    {
+        // Collected rather than concatenated: appending to a string that is
+        // still empty reads the same as assigning to it, so the first branch
+        // would have no way to prove it appends — and appending is the whole
+        // contract when a symbol carries both tags.
+        $open = [];
+        if (\in_array(DiagnosticTag::Unnecessary->value, $tags, strict: true)) {
+            $open[] = Sgr::FAINT;
+        }
+        if (\in_array(DiagnosticTag::Deprecated->value, $tags, strict: true)) {
+            $open[] = Sgr::STRIKETHROUGH;
+        }
+
+        return implode('', $open);
+    }
+
+    /**
+     * Cancel exactly what {@see tagOpen} set, in the reverse order — a span
+     * that closes an attribute it never opened bleeds it off the rest of the
+     * line.
+     *
+     * @param list<int> $tags
+     */
+    public static function tagClose(array $tags): string
+    {
+        $close = [];
+        if (\in_array(DiagnosticTag::Deprecated->value, $tags, strict: true)) {
+            $close[] = Sgr::NO_STRIKETHROUGH;
+        }
+        if (\in_array(DiagnosticTag::Unnecessary->value, $tags, strict: true)) {
+            $close[] = Sgr::NORMAL_INTENSITY;
+        }
+
+        return implode('', $close);
     }
 }

@@ -39,6 +39,12 @@ final class Sgr
     /** Cancel reverse video (leaving other attributes intact). */
     public const string NO_REVERSE = "\x1b[27m";
 
+    /** Struck through — a deprecated symbol, the way an editor with fonts would draw it. */
+    public const string STRIKETHROUGH = "\x1b[9m";
+
+    /** Cancel strikethrough (leaving other attributes intact). */
+    public const string NO_STRIKETHROUGH = "\x1b[29m";
+
     public const string UNDERLINE = "\x1b[4m";
 
     /** Cancel underline (leaving other attributes intact). */

@@ -10,6 +10,7 @@ use Porta\Editor\FindMode;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\OccurrenceHighlights;
 use Porta\Editor\SelectionMode;
+use Porta\Lsp\LspMapper;
 use Porta\Tests\Support\FakeBufferNavigation;
 use Porta\Tests\Support\FakeEditorCompletion;
 use Porta\Tests\Support\FakeEditorFileActions;
@@ -926,6 +927,88 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertStringContainsString("\x1b[4:3m", $rendered[1], 'curly underline');
         $this->assertStringContainsString("\x1b[58;5;203m", $rendered[1], 'red underline color for the error');
         $this->assertExactWidth($rendered, 80);
+    }
+
+    public function testAnUNUSEDSymbolIsDrawnFaintAndADEPRECATEDOneStruckThrough(): void
+    {
+        // Severity cannot say either thing: phpactor reports an unused import
+        // at severity 2, the same severity as a warning about code that runs.
+        // Measured from it: `tags: [1]` on `worse.unused_import`.
+        $editor = $this->editor("<?php\nuse App\\Unused;\nold_function();\n", 'tags.php');
+        $editor
+            ->decorations()
+            ->setDiagnostics([
+                1 => [['severity' => 2, 'message' => 'Unused import', 'col' => 4, 'endCol' => 14, 'tags' => [1]]],
+                2 => [['severity' => 2, 'message' => 'Deprecated', 'col' => 0, 'endCol' => 12, 'tags' => [2]]],
+            ]);
+
+        $rendered = $editor->render(new RenderContext(80, 10));
+
+        $this->assertStringContainsString(Sgr::FAINT, $rendered[1], 'the unused import is dimmed');
+        $this->assertStringContainsString(Sgr::NORMAL_INTENSITY, $rendered[1], 'and the dimming stops at the end of the range');
+        $this->assertStringNotContainsString(Sgr::STRIKETHROUGH, $rendered[1], 'unused is not deprecated');
+        $this->assertStringContainsString(Sgr::STRIKETHROUGH, $rendered[2], 'the deprecated call is struck through');
+        $this->assertStringContainsString(Sgr::NO_STRIKETHROUGH, $rendered[2]);
+        $this->assertStringContainsString("\x1b[4:5m", $rendered[1], 'and both keep the severity underline they always had');
+        $this->assertExactWidth($rendered, 80);
+    }
+
+    public function testASymbolThatIsBOTHUnusedAndDeprecatedGetsBothAttributes(): void
+    {
+        // The tags are a list, not a choice: an unused import OF a deprecated
+        // class carries both, and each attribute has to be added to the other
+        // rather than replace it — at both ends, because a close that drops one
+        // leaves it bleeding down the rest of the line.
+        $editor = $this->editor("<?php\nuse App\\Old;\n", 'both.php');
+        $editor->decorations()->setDiagnostics([1 => [['severity' => 2, 'message' => 'Unused deprecated import', 'col' => 4, 'endCol' => 11, 'tags' => [1, 2]]]]);
+
+        $row = $editor->render(new RenderContext(80, 10))[1];
+
+        $this->assertStringContainsString(Sgr::FAINT, $row);
+        $this->assertStringContainsString(Sgr::STRIKETHROUGH, $row);
+        $this->assertStringContainsString(Sgr::NORMAL_INTENSITY, $row);
+        $this->assertStringContainsString(Sgr::NO_STRIKETHROUGH, $row);
+    }
+
+    public function testADiagnosticWithNoTagsDrawsExactlyWhatItAlwaysDid(): void
+    {
+        // The regression that matters: every diagnostic anyone has ever seen
+        // carries no tags, and a close for an attribute that was never opened
+        // bleeds it across the rest of the line.
+        $editor = $this->editor("<?php
+\$a = f();
+", 'plain.php');
+        $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => 'Boom', 'col' => 0, 'endCol' => 2]]]);
+
+        $rendered = $editor->render(new RenderContext(80, 10));
+
+        $this->assertStringNotContainsString(Sgr::FAINT, $rendered[1]);
+        $this->assertStringNotContainsString(Sgr::NORMAL_INTENSITY, $rendered[1]);
+        $this->assertStringNotContainsString(Sgr::NO_STRIKETHROUGH, $rendered[1]);
+    }
+
+    public function testAServersOwnPAYLOADReachesTheRowStillTagged(): void
+    {
+        // The join, not the pieces: the mapper's output goes straight into the
+        // decorations with no step in between, so a key added at one end and
+        // read at the other is exactly the shape that passes two unit tests and
+        // still draws nothing. This payload is phpactor's, as measured — an
+        // unused import at severity 2 with `tags: [1]`.
+        $editor = $this->editor("<?php\nuse App\\Thing;\n", 'wire.php');
+        $editor
+            ->decorations()
+            ->setDiagnostics(LspMapper::diagnosticsByLine([
+                'diagnostics' => [[
+                    'severity' => 2,
+                    'message' => 'Name "Thing" is imported but not used',
+                    'code' => 'worse.unused_import',
+                    'source' => 'phpactor',
+                    'tags' => [1],
+                    'range' => ['start' => ['line' => 1, 'character' => 4], 'end' => ['line' => 1, 'character' => 13]],
+                ]],
+            ]));
+
+        $this->assertStringContainsString(Sgr::FAINT, $editor->render(new RenderContext(80, 10))[1], 'the import the server called unused is drawn as unused');
     }
 
     public function testDiagnosticSeverityStylingWorstFirst(): void

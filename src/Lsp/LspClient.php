@@ -191,7 +191,14 @@ final class LspClient implements LspClientInterface
                 'completion' => [
                     'completionItem' => ['snippetSupport' => true, 'documentationFormat' => ['plaintext', 'markdown']],
                 ],
-                'publishDiagnostics' => ['relatedInformation' => false],
+                // `tagSupport` says the editor can DRAW an unused or deprecated
+                // symbol differently rather than only listing it. phpactor sends
+                // the tags whether or not it is declared; a server that gates on
+                // the declaration sends nothing without it, and it costs a line.
+                'publishDiagnostics' => [
+                    'relatedInformation' => false,
+                    'tagSupport' => ['valueSet' => [DiagnosticTag::Unnecessary->value, DiagnosticTag::Deprecated->value]],
+                ],
                 'hover' => ['contentFormat' => ['plaintext', 'markdown']],
                 'definition' => ['linkSupport' => false],
                 'references' => ['dynamicRegistration' => false],
