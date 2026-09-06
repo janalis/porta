@@ -483,6 +483,14 @@ final class EditorRenderer
         $width = 12;
         foreach ($visible as $item) {
             $width = max($width, mb_strwidth($item->label) + mb_strwidth($item->kind) + 5);
+            // The server's `detail` — a signature for a method, a type for a
+            // property — asked for but never drawn until now. Guarded on the
+            // detail being there at all: the extra column this term adds is the
+            // SEPARATOR, and an item with no type needs no separator. Without
+            // the guard every popup in the IDE grew by one column.
+            if ('' !== $item->detail) {
+                $width = max($width, mb_strwidth($item->label) + mb_strwidth($item->detail) + mb_strwidth($item->kind) + 6);
+            }
         }
         $width = min($width, PopupMetrics::COMPLETION_MAX_INNER, $columns - 2 - PopupFrame::CHROME_COLS);
 
@@ -499,9 +507,23 @@ final class EditorRenderer
         foreach ($visible as $i => $item) {
             $style = $styles->of(self::rowRole($i, $selectedInWindow, null === $hovered ? null : $hovered - $windowOffset));
             $kindTag = $styles->of(Role::CompletionKind)->apply($item->kind);
-            $labelWidth = $width - mb_strwidth($item->kind) - 3;
-            $label = AnsiText::truncate($item->label, $labelWidth, pad: true);
-            $framed[] = PopupFrame::rail($style->apply(' '.$label.' '.$kindTag.' '), $width, $styles);
+            // The label column absorbs the slack, so the kind tag stays flush
+            // right whatever the item is called; the detail is what is left
+            // between them, which puts it flush right against the kind.
+            $avail = $width - mb_strwidth($item->kind) - 3;
+            // The NAME is served first and the type takes what is left: a
+            // completion whose label you cannot read is not a completion, while
+            // the type is what you check once the name is already the one you
+            // meant. At a narrow width the type disappears rather than the name.
+            $detailWidth = min(mb_strwidth($item->detail), max(0, $avail - min(mb_strwidth($item->label), $avail) - 1));
+            $detail = 0 === $detailWidth
+                ? ''
+                // No pad: $detailWidth is capped BY the detail's own width, so
+                // the truncation always fills the cell exactly and padding
+                // could never do anything.
+                : ' '.$styles->of(Role::CompletionHint)->apply(AnsiText::truncate($item->detail, $detailWidth));
+            $label = AnsiText::truncate($item->label, $avail - $detailWidth - (0 === $detailWidth ? 0 : 1), pad: true);
+            $framed[] = PopupFrame::rail($style->apply(' '.$label.$detail.' '.$kindTag.' '), $width, $styles);
         }
         $framed[] = PopupFrame::bottom($width, $styles);
 

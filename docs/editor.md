@@ -179,6 +179,16 @@ breakpoint dots, fold triangles, indent guides, identifier-occurrence and matchi
 highlighting, and dimmed inline parameter-name/type **inlay hints** from
 the language server.
 
+## The completion popup
+
+Each row is the name, the server's **type** and the item's kind: a method's
+signature or a property's type, in the muted pen so the name still reads first.
+
+The name is served first and the type takes what is left. A completion whose
+label you cannot read is not a completion — the type is what you check once the
+name is already the one you meant — so at a narrow width the type is truncated,
+and when the name alone fills the row the type is not drawn at all.
+
 ## Unused and deprecated code
 
 A diagnostic's **severity** says how bad something is; its **tags** say what

@@ -303,6 +303,87 @@ final class CodeEditorOverlaysTest extends TestCase
         return $editor;
     }
 
+    public function testTheCompletionPopupSHOWSTheServersTypeColumn(): void
+    {
+        // `detail` — a method's signature, a property's type — has been mapped
+        // onto every item since completions existed and drawn by nobody. It is
+        // PhpStorm's type column, and it was already on the wire.
+        $editor = $this->editor();
+        $editor->getDocument()->setCursor(2, 5);
+        $editor->showCompletions([
+            new CompletionItem(label: 'name', insertText: 'name', kind: 'prop', detail: 'string'),
+            new CompletionItem(label: 'handle', insertText: 'handle', kind: 'fn', detail: '(Request $r): Response'),
+        ]);
+
+        $rows = $editor->render(new RenderContext(120, 20));
+        $body = implode("\n", $rows);
+
+        $this->assertStringContainsString('string', $body, "the property's type is shown");
+        $this->assertStringContainsString('(Request $r): Response', $body, "and the method's signature");
+        $this->assertStringContainsString("\x1b[38;5;244m", $body, 'in the muted pen, so the name still reads first');
+        $this->assertExactWidth($rows, 120);
+    }
+
+    public function testATypeTooLongForTheBoxYIELDSToTheNAME(): void
+    {
+        // A completion you cannot read the name of is not a completion. The
+        // type is what you check once the name is already the one you meant, so
+        // it is the half that gets truncated — and at some width it disappears
+        // rather than squeezing the label below what a name needs.
+        $editor = $this->editor();
+        $editor->getDocument()->setCursor(2, 5);
+        $editor->showCompletions([
+            new CompletionItem(
+                label: 'withAVeryLongDescriptiveName',
+                insertText: 'withAVeryLongDescriptiveName',
+                kind: 'fn',
+                detail: '(ContainerInterface $container, LoggerInterface $logger, array $options = []): static',
+            ),
+        ]);
+
+        $rows = $editor->render(new RenderContext(60, 20));
+        $body = implode("\n", $rows);
+
+        $this->assertStringContainsString('withAVeryLongDescr', $body, 'the name survives, truncated at worst');
+        // The exact cell, not just "shorter": the width is one subtraction, and
+        // an off-by-one there still renders something perfectly plausible.
+        $this->assertStringContainsString('(ContainerI…', $body, 'the type takes exactly what the name left');
+        $this->assertStringNotContainsString('(ContainerIn', $body, 'and not one column more');
+        $this->assertExactWidth($rows, 60);
+    }
+
+    public function testANameThatFillsTheBoxLeavesTheTypeNOTHINGAndIsNotSqueezed(): void
+    {
+        // The end of the same rule: when the name alone fills the row, the type
+        // is not shown at all — not one column of it, and not an ellipsis
+        // standing in for it. A single leftover column would cost the name a
+        // character to say nothing.
+        $editor = $this->editor();
+        $editor->getDocument()->setCursor(2, 5);
+        $editor->showCompletions([
+            new CompletionItem(
+                label: 'aNameLongEnoughToFillTheWholeCompletionRowByItself',
+                insertText: 'aNameLongEnoughToFillTheWholeCompletionRowByItself',
+                kind: 'fn',
+                detail: 'string',
+            ),
+        ]);
+
+        $rows = $editor->render(new RenderContext(60, 20));
+        $body = implode("\n", $rows);
+
+        // The whole cell, because "no type" has near-misses that all look
+        // plausible: a one-column type showing a bare ellipsis, or a type cell
+        // of negative width that the frame's rail quietly absorbs. Both cost
+        // the name a character to say nothing.
+        $this->assertStringContainsString(
+            '│ aNameLongEnoughToFillTheWholeCompletionR… fn │',
+            AnsiUtils::stripAnsiCodes($body),
+            'every column that is left goes to the name, and the type is simply absent',
+        );
+        $this->assertExactWidth($rows, 60);
+    }
+
     public function testCompletionClickAcceptsSuggestion(): void
     {
         $editor = $this->completionEditor();
