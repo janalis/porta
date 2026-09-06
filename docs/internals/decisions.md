@@ -1544,10 +1544,12 @@ re-points every open buffer under a renamed folder.
 
 **Two features, both the round-4 shape — data that arrives and is discarded:**
 
-- `CompletionItem::$detail` is fetched, mapped onto every item
-  (`LspMapper.php:115`) and read by nobody. That is PhpStorm's type column,
-  already on the wire. `documentation` is not even mapped, though
-  `documentationFormat` is advertised in the client capabilities.
+- ~~`CompletionItem::$detail` is fetched, mapped onto every item
+  (`LspMapper.php:115`) and read by nobody.~~ **Drawn since `b4e9d7ea`** — the
+  popup's type column, with the name served first and the type taking what is
+  left. Still open from this bullet: `documentation` is not even mapped, though
+  `documentationFormat` is advertised in the client capabilities, so the
+  popup can show a type but not a description.
 - LSP `source` / `code` / `codeDescription` are dropped at
   `diagnosticsByLine()`. Three bundled plugins work around it by
   string-prefixing the code into the message, and `RefactorController` copies
