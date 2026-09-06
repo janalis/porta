@@ -1556,13 +1556,33 @@ re-points every open buffer under a renamed folder.
   never be present — so quick-fix matching by diagnostic code is silently
   degraded, with a comment explaining why those keys matter.
 
-  **Half of this landed in `143b4c3f`**, as a defect rather than a feature:
-  `code` and `source` are carried now, so the `codeAction` context is no longer
-  built out of absent keys. What is still discarded is `codeDescription` (the
-  server's link to its rule's documentation), the plugins' string prefixes,
-  which are now duplicating a field they could read, and `tags` — measured
-  arriving from phpactor for an unused import, WITHOUT `tagSupport` declared,
-  and the input a dim-unused / strike-deprecated style needs.
+  **This bullet is closed.** `code` and `source` landed in `143b4c3f` (a defect,
+  not a feature: the `codeAction` context was being built out of absent keys)
+  and `tags` in `334ff0f1`.
+
+  **`codeDescription` was measured and turned down (2026-09-06).** phpactor's
+  whole diagnostic for an unused import is:
+
+  ```json
+  {"range": {...}, "severity": 2, "code": "worse.unused_import",
+   "source": "phpactor", "message": "Name \"Other\" is imported but not used",
+   "tags": [1, 1]}
+  ```
+
+  Six keys, and Porta now reads all six. There is no `codeDescription` — it is
+  the server's link to its rule's documentation, and neither bundled server
+  sends one (phpantom_lsp publishes no diagnostics at all). Building the
+  "open this rule's docs" verb would be a command with nothing to open.
+  **Re-open** when a server is observed sending it.
+
+  **The plugins' string prefixes are a different gap than this bullet said.**
+  `plugins/mago` builds `"no-empty-catch-clause: Do not use empty catch"` by
+  hand because `PluginApi::setDiagnostics()` takes line, column, severity and
+  message and nothing else — the gap is in the PLUGIN API, not in the LSP
+  mapper, and carrying a `code` through it would be plumbing with no consumer
+  until something DRAWS the code. The feature underneath is "the Problems panel
+  shows which rule fired", which would serve LSP and plugin diagnostics alike.
+  That is a round to scope, not a cleanup to slip in.
 
 **`labelDetails` — measured and turned down (2026-09-06).** LSP 3.17's
 `CompletionItemLabelDetails` arrives from phpantom_lsp on every item
