@@ -47,6 +47,7 @@ final class LightTheme
                 Role::DiagHintDim->selector() => new Style(color: 240),
                 Role::CurrentLineNumber->selector() => new Style(color: 240),
                 Role::Placeholder->selector() => new Style(color: 250),
+                Role::DebugValue->selector() => new Style(color: 28),
                 Role::Inlay->selector() => new Style(color: 245),
                 Role::IndentGuide->selector() => new Style(color: 250),
                 Role::VcsAdded->selector() => new Style(color: 28),

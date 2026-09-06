@@ -13,6 +13,7 @@ use Porta\Debug\DebugController;
 use Porta\Debug\DebugSessionState;
 use Porta\Debug\EditorDecorations;
 use Porta\Debug\ExceptionFilterStore;
+use Porta\Debug\InlineValues;
 use Porta\Debug\WatchStore;
 use Porta\Editor\Document;
 use Porta\Editor\FileOpener;
@@ -22,10 +23,14 @@ use Porta\Event\DebugStatusChanged;
 use Porta\Event\DebugVariableEditRequested;
 use Porta\Event\DebugWatchRemovalRequested;
 use Porta\I18n\Translator;
+use Porta\Lsp\InlineValueRequest;
+use Porta\Lsp\LspSessionPool;
 use Porta\Support\ProjectPaths;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FakeDapClient;
+use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestBottomDock;
@@ -47,6 +52,8 @@ final class DebugControllerTest extends TestCase
     private DebugPanelWidget $panel;
     private StatusBarWidget $statusBar;
     private FakeDapClient $client;
+
+    private FakeLspClient $lspClient;
     private ExceptionFilterStore $filters;
     private TerminalSessions $sessions;
     private Tui $tui;
@@ -56,7 +63,28 @@ final class DebugControllerTest extends TestCase
     /** @var list<string> */
     private array $opened = [];
 
-    private function controller(Presence $withAdapter = Presence::With, Presence $withFile = Presence::With): DebugController
+    /** A pool whose one session answers with $capabilities, for the tests that reach the LSP. */
+    private function lspPool(array $capabilities): LspSessionPool
+    {
+        $pool = new LspSessionPool(
+            '/p',
+            $active = new FixedActiveFile(),
+            new Translator('en'),
+            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->lspClient = new FakeLspClient($capabilities),
+        );
+        $pool->configure(
+            ['php' => ['command' => ['php-ls'], 'name' => 'php-ls']],
+            static function (string $line): void {},
+            static function (array $params): void {},
+            static fn (array $edit): bool => false,
+        );
+        $active->set('/p/prog.php');
+        $pool->notifyDidOpen('/p/prog.php', "<?php\n", 'php', 1);
+
+        return $pool;
+    }
+
+    private function controller(Presence $withAdapter = Presence::With, Presence $withFile = Presence::With, ?LspSessionPool $lsp = null): DebugController
     {
         $this->editor = new CodeEditorWidget();
         if (Presence::With === $withFile) {
@@ -121,6 +149,15 @@ final class DebugControllerTest extends TestCase
             $this->filters = new ExceptionFilterStore(),
             $this->sessions,
             $dock,
+            // A pool with no server up: `serverCapability()` answers null, so
+            // the inline-value request is never sent and these scenarios see
+            // exactly what they saw before it existed. The join has its own
+            // test.
+            new InlineValues(
+                new InlineValueRequest($lsp ?? new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator())),
+                $this->editor->decorations(),
+                $tui,
+            ),
         );
         // Compiled from #[AsEventListener] in the container.
         $dispatcher->addListener(DebugFrameSelected::class, $controller->onFrameSelected(...));
@@ -336,6 +373,56 @@ final class DebugControllerTest extends TestCase
         // into the fresh session before it has stopped anywhere of its own.
         $controller->applyEditorDecorations('/p/prog.php');
         $this->assertStringNotContainsString('▶', implode("\n", $this->editor->render(new RenderContext(80, 8))), 'no stale stopped-line from the previous session');
+    }
+
+    public function testTheStopASKSTheServerAboutTheTOPFramesVariables(): void
+    {
+        // The wire, not the pieces: the stop has to reach the LSP with the
+        // frame the debugger actually stopped in. `$currentFrameId` is set by
+        // loadScopes AFTER this runs, so reading it there would ask about the
+        // PREVIOUS stop — one frame behind, every time.
+        $controller = $this->controller(lsp: $this->lspPool(['inlineValueProvider' => true]));
+
+        $this->pauseAtBreakpoint($controller, line: 2);
+
+        $asked = array_values(array_filter($this->lspClient->requests, static fn (array $r): bool => 'textDocument/inlineValue' === $r['method']));
+        $this->assertCount(1, $asked, 'one request per stop');
+        $this->assertSame(1, $asked[0]['params']['context']['frameId'], 'the TOP frame, which is #0');
+        $this->assertSame(2, $asked[0]['params']['context']['stoppedLocation']['start']['line']);
+        // A window either side of the stop, so a scroll after stopping does not
+        // need a second round-trip.
+        $this->assertSame(0, $asked[0]['params']['range']['start']['line'], 'clamped at the top of the file');
+        $this->assertSame(42, $asked[0]['params']['range']['end']['line']);
+
+        // And the other half: the adapter's variables reach the join, so
+        // answering the request paints.
+        $asked[0]['respond']([[
+            'range' => ['start' => ['line' => 2, 'character' => 0], 'end' => ['line' => 2, 'character' => 2]],
+            'variableName' => '$x',
+        ]]);
+        $this->assertSame([2 => '$x = 42'], $this->editor->decorations()->debugValues());
+    }
+
+    public function testCONTINUINGTakesTheInlineValuesOffTheScreen(): void
+    {
+        // They were facts about a frame that is running again, and left on
+        // screen they look live.
+        $controller = $this->controller();
+        $this->editor->decorations()->setDebugValues([2 => '$x = 42']);
+
+        $controller->onContinued();
+
+        $this->assertSame([], $this->editor->decorations()->debugValues());
+    }
+
+    public function testTERMINATINGTakesThemTooEvenWithoutAContinue(): void
+    {
+        $controller = $this->controller();
+        $this->editor->decorations()->setDebugValues([2 => '$x = 42']);
+
+        $controller->onTerminated();
+
+        $this->assertSame([], $this->editor->decorations()->debugValues());
     }
 
     public function testStoppedMarshalsEditorPanelStatusAndFrameJumps(): void

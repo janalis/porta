@@ -43,6 +43,13 @@ interface EditorDecorationSink
     public function setLineAnnotations(array $byLine): void;
 
     /**
+     * The debugger's variable values for the active file, 0-based line => text.
+     *
+     * @param array<int, string> $byLine
+     */
+    public function setDebugValues(array $byLine): void;
+
+    /**
      * @param list<int> $lines            0-based lines carrying a breakpoint in this file
      * @param list<int> $conditionalLines the subset carrying a condition/hit-count (◆ instead of ●)
      * @param list<int> $logpointLines    the subset carrying a log message (◇ — logs instead of pausing)

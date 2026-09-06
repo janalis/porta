@@ -373,7 +373,7 @@ final class EditorRenderer
      * which wins the slot when both apply. $textDisplayWidth is the decorated
      * line's on-screen width (see appendInlineDiagnostic).
      */
-    public static function appendAnnotation(int $hScroll, int $textDisplayWidth, string $text, string $content, int $contentWidth, Styles $styles): string
+    public static function appendAnnotation(int $hScroll, int $textDisplayWidth, string $text, string $content, int $contentWidth, Styles $styles, Role $role = Role::Inlay): string
     {
         $textEnd = max(0, $textDisplayWidth - $hScroll);
         $start = min($contentWidth, $textEnd) + 2; // two-space gap
@@ -385,7 +385,7 @@ final class EditorRenderer
         $label = AnsiText::truncate((string) preg_replace('/\s+/', replacement: ' ', subject: $text), $available);
         $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
 
-        return AnsiText::padRight($head.$styles->of(Role::Inlay)->apply($label), $contentWidth);
+        return AnsiText::padRight($head.$styles->of($role)->apply($label), $contentWidth);
     }
 
     // --- Overlays ----------------------------------------------------------

@@ -81,6 +81,15 @@ enum Role
     case CurrentLineNumber;
     case Placeholder;
     case Inlay;
+
+    /**
+     * The debugger's value for a line, in the trailing slot. Its own role
+     * rather than {@see Inlay}'s grey: an inlay hint is what the code MEANS and
+     * is always there, a debug value is what it currently HOLDS and is there
+     * only while stopped — reading the same would make a live value look like
+     * part of the source.
+     */
+    case DebugValue;
     case IndentGuide;
     case VcsAdded;
     case VcsModified;

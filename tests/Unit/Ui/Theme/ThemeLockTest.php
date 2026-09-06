@@ -54,6 +54,7 @@ final class ThemeLockTest extends TestCase
         yield 'current-line-number' => [Role::CurrentLineNumber, new Style(color: 252)];
         yield 'placeholder' => [Role::Placeholder, new Style(color: 238)];
         yield 'inlay' => [Role::Inlay, new Style(color: 243)];
+        yield 'debug-value' => [Role::DebugValue, new Style(color: 149)];
         yield 'indent-guide' => [Role::IndentGuide, new Style(color: 238)];
         yield 'git-added' => [Role::VcsAdded, new Style(color: 114)];
         yield 'git-modified' => [Role::VcsModified, new Style(color: 75)];
@@ -120,6 +121,7 @@ final class ThemeLockTest extends TestCase
         yield 'current-line-number' => [Role::CurrentLineNumber, new Style(color: 240)];
         yield 'placeholder' => [Role::Placeholder, new Style(color: 250)];
         yield 'inlay' => [Role::Inlay, new Style(color: 245)];
+        yield 'debug-value' => [Role::DebugValue, new Style(color: 28)];
         yield 'indent-guide' => [Role::IndentGuide, new Style(color: 250)];
         yield 'git-added' => [Role::VcsAdded, new Style(color: 28)];
         yield 'git-modified' => [Role::VcsModified, new Style(color: 25)];
@@ -225,6 +227,7 @@ final class ThemeLockTest extends TestCase
         $this->assertEquals(new Style(background: 19, color: 231, bold: true), $hc->of(Role::SelectedRow), 'white-on-deep-blue selection, bold');
         $this->assertEquals(new Style(color: 231), $hc->of(Role::Bright), 'near-white base text');
         $this->assertEquals(new Style(color: 226), $hc->of(Role::DiagWarn), 'bright yellow warnings');
+        $this->assertEquals(new Style(color: 118), $hc->of(Role::DebugValue), 'bright green live values');
         $this->assertEquals($hc->of(Role::DiagError), $hc->of(Role::DiagErrorDim), 'no dim tier in high contrast');
         $this->assertEquals($hc->of(Role::DiagInfo), $hc->of(Role::DiagInfoDim), 'no dim tier in high contrast');
     }

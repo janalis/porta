@@ -101,6 +101,12 @@ final class ArchitectureCheckCommand extends Command
         'Debug>Container',
         'Debug>Editor',
         'Debug>Event',
+        // Inline debug values: the LSP says WHERE the variables are, the debug
+        // adapter says what they hold. One side has to know the other, and it
+        // is this one — the debugger knows WHEN the join means anything, and
+        // the answer stops being true when it steps. No cycle: Lsp does not
+        // reach back into Debug.
+        'Debug>Lsp',
         'Debug>Support',
         'Debug>Terminal',
         'Debug>Ui',

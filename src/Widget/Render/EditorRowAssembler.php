@@ -207,13 +207,22 @@ final readonly class EditorRowAssembler
             // line's lineDisplayWidth, and placing the message by the raw width
             // would slice into them (the code/hints get overprinted). Compute the
             // width only when there is something to place after it.
-            $hasInlineDiagnostic = $this->inlineDiagnostics && [] !== $lineDiags;
-            $annotation = $hasInlineDiagnostic ? '' : $this->store->lineAnnotations()[$lineIndex] ?? '';
-            if ($hasInlineDiagnostic || '' !== $annotation) {
+            // One cell, three claimants, in this order: the debugger's value
+            // for the line, the inline diagnostic, the plugin annotation.
+            //
+            // The value wins because it only exists while the debugger is
+            // STOPPED — a mode entered on purpose, answering the question being
+            // asked right now — and because the other two keep their other
+            // surfaces: a diagnostic still has its squiggle, its gutter mark,
+            // its stripe cell and the Problems panel; blame has Alt+B.
+            $debugValue = $this->store->debugValues()[$lineIndex] ?? '';
+            $hasInlineDiagnostic = '' === $debugValue && $this->inlineDiagnostics && [] !== $lineDiags;
+            $trailing = '' !== $debugValue || $hasInlineDiagnostic ? $debugValue : $this->store->lineAnnotations()[$lineIndex] ?? '';
+            if ($hasInlineDiagnostic || '' !== $trailing) {
                 $textDisplayWidth = AnsiUtils::visibleWidth($hlLine);
                 $content = $hasInlineDiagnostic
                     ? EditorRenderer::appendInlineDiagnostic($hScroll, $textDisplayWidth, $lineDiags, $content, $geo->contentWidth, $this->styles)
-                    : EditorRenderer::appendAnnotation($hScroll, $textDisplayWidth, $annotation, $content, $geo->contentWidth, $this->styles);
+                    : EditorRenderer::appendAnnotation($hScroll, $textDisplayWidth, $trailing, $content, $geo->contentWidth, $this->styles, '' === $debugValue ? Role::Inlay : Role::DebugValue);
             }
 
             $result[] = $gutter.$content.$stripe[$stickyCount + $row];

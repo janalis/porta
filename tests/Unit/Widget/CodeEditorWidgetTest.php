@@ -1011,6 +1011,74 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertStringContainsString(Sgr::FAINT, $editor->render(new RenderContext(80, 10))[1], 'the import the server called unused is drawn as unused');
     }
 
+    public function testTheDEBUGValueWinsTheTrailingCellFromTheDiagnosticAndTheAnnotation(): void
+    {
+        // One cell, three claimants. The value wins because it only exists
+        // while the debugger is STOPPED — a mode entered on purpose, answering
+        // the question being asked right now — and because the other two keep
+        // their other surfaces: the diagnostic has its squiggle, its gutter
+        // mark, its stripe cell and the Problems panel; blame has Alt+B.
+        $editor = $this->editor("<?php\n\$count = 41;\n", 'debug.php');
+        $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
+        $editor->decorations()->setLineAnnotations([1 => 'you, 3 days ago']);
+        $editor->decorations()->setDebugValues([1 => '$count = 41']);
+
+        $rows = $editor->render(new RenderContext(80, 10));
+        $row = AnsiUtils::stripAnsiCodes($rows[1]);
+
+        $this->assertStringContainsString('$count = 41', $row);
+        $this->assertStringNotContainsString('Boom', $row, 'the diagnostic keeps every surface but this one');
+        $this->assertStringNotContainsString('3 days ago', $row);
+        $this->assertExactWidth($rows, 80);
+    }
+
+    public function testWithoutADebugValueTheCellFallsBackToWhatItAlwaysShowed(): void
+    {
+        // The regression that matters: every line in every file with no
+        // debugger running takes this path, and a precedence chain that got the
+        // empty case wrong would blank the inline diagnostics everywhere.
+        $editor = $this->editor("<?php\n\$count = 41;\n\$other = 1;\n", 'debug.php');
+        $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
+        $editor->decorations()->setLineAnnotations([2 => 'you, 3 days ago']);
+        $editor->decorations()->setDebugValues([]);
+
+        $rows = $editor->render(new RenderContext(80, 10));
+
+        $this->assertStringContainsString('Boom', AnsiUtils::stripAnsiCodes($rows[1]));
+        $this->assertStringContainsString('3 days ago', AnsiUtils::stripAnsiCodes($rows[2]));
+        $this->assertExactWidth($rows, 80);
+    }
+
+    public function testADebugValueOnONELineLeavesTheOtherLinesAlone(): void
+    {
+        // Per line, not per file: stopping on line 2 must not silence a
+        // diagnostic on line 1.
+        $editor = $this->editor("<?php\n\$count = 41;\n\$other = 1;\n", 'debug.php');
+        $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
+        $editor->decorations()->setDebugValues([2 => '$other = 1']);
+
+        $rows = $editor->render(new RenderContext(80, 10));
+
+        $this->assertStringContainsString('Boom', AnsiUtils::stripAnsiCodes($rows[1]));
+        $this->assertStringContainsString('$other = 1', AnsiUtils::stripAnsiCodes($rows[2]));
+    }
+
+    public function testTheDebugValueIsDrawnInItsOWNPenNotTheInlayGrey(): void
+    {
+        // An inlay hint is what the code MEANS and is always there; a debug
+        // value is what it currently HOLDS and only while stopped. Reading the
+        // same would make a live value look like part of the source.
+        $editor = $this->editor("<?php\n\$count = 41;\n\$other = 1;\n", 'pen.php');
+        $editor->decorations()->setDebugValues([1 => '$count = 41']);
+        $editor->decorations()->setLineAnnotations([2 => 'you, 3 days ago']);
+
+        $rows = $editor->render(new RenderContext(80, 10));
+
+        $this->assertStringContainsString("\x1b[38;5;149m", $rows[1], 'the debug pen');
+        $this->assertStringContainsString("\x1b[38;5;243m", $rows[2], 'and the annotation keeps the inlay grey');
+        $this->assertStringNotContainsString("\x1b[38;5;149m", $rows[2]);
+    }
+
     public function testDiagnosticSeverityStylingWorstFirst(): void
     {
         // line 1: an error and a warning share the line → error (worst) wins the

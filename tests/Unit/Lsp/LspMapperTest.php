@@ -524,4 +524,89 @@ final class LspMapperTest extends TestCase
 
         $this->assertSame('Greets somebody.', $items[0]->documentation);
     }
+
+    public function testInlineValueLookupsAreWhereAVariableIsAndWhatItIsCalled(): void
+    {
+        // phpactor's real answer, measured stopped inside a method.
+        $lookups = LspMapper::inlineValueLookups([[
+            'range' => ['start' => ['line' => 14, 'character' => 8], 'end' => ['line' => 14, 'character' => 14]],
+            'variableName' => '$count',
+            'caseSensitiveLookup' => true,
+        ]]);
+
+        $this->assertSame([['line' => 14, 'endCol' => 14, 'name' => '$count']], $lookups, 'the END column, because the value goes after the variable');
+    }
+
+    public function testTheOTHERTwoInlineValueKindsAreDropped(): void
+    {
+        // The spec has three. `InlineValueText` is text the SERVER already
+        // rendered and `InlineValueEvaluatableExpression` is an expression for
+        // the debugger to evaluate — neither is a name that the variables of a
+        // stopped frame can be looked up by, which is the only join this client
+        // can make.
+        // A usable entry on BOTH sides of the unusable ones, so skipping one
+        // cannot read as stopping at it.
+        $lookups = LspMapper::inlineValueLookups([
+            ['range' => ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 6]], 'variableName' => '$first'],
+            ['range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 4]], 'text' => 'count = 41'],
+            'not an entry at all',
+            ['range' => ['start' => ['line' => 2, 'character' => 0], 'end' => ['line' => 2, 'character' => 4]], 'expression' => '$this->count'],
+            ['range' => ['start' => ['line' => 3, 'character' => 0], 'end' => ['line' => 3, 'character' => 6]], 'variableName' => '$kept'],
+        ]);
+
+        $this->assertSame(
+            [
+                ['line' => 0, 'endCol' => 6, 'name' => '$first'],
+                ['line' => 3, 'endCol' => 6, 'name' => '$kept'],
+            ],
+            $lookups,
+        );
+    }
+
+    public function testAMultiLineLookupIsDroppedRatherThanClipped(): void
+    {
+        // A variable is one identifier, so a range spanning lines is not one —
+        // and drawing its value against the first line would put it beside code
+        // that does not assign it.
+        $lookups = LspMapper::inlineValueLookups([[
+            'range' => ['start' => ['line' => 4, 'character' => 8], 'end' => ['line' => 6, 'character' => 2]],
+            'variableName' => '$spread',
+        ]]);
+
+        $this->assertSame([], $lookups);
+    }
+
+    public function testGARBAGEInTheInlineValueListIsSkippedNotFatal(): void
+    {
+        $this->assertSame([], LspMapper::inlineValueLookups(null));
+        $this->assertSame([], LspMapper::inlineValueLookups(['not an entry']));
+        $this->assertSame([], LspMapper::inlineValueLookups([['variableName' => '$noRange']]));
+        $this->assertSame([], LspMapper::inlineValueLookups([['range' => ['start' => ['line' => 1]], 'variableName' => '']]));
+    }
+
+    public function testALookupWithNoENDColumnLandsAtTheStartOfTheLine(): void
+    {
+        // `character` is required by the spec and therefore optional in
+        // practice. Zero is the honest answer — the value goes at the start of
+        // the line rather than one column off the front of it, which is where
+        // any other default puts it.
+        $lookups = LspMapper::inlineValueLookups([[
+            'range' => ['start' => ['line' => 2, 'character' => 0], 'end' => ['line' => 2]],
+            'variableName' => '$count',
+        ]]);
+
+        $this->assertSame([['line' => 2, 'endCol' => 0, 'name' => '$count']], $lookups);
+    }
+
+    public function testASTRINGColumnIsANumberByTheTimeItLeaves(): void
+    {
+        // Wire data. The column is arithmetic downstream — it orders two values
+        // on one line — and a numeric string sorts as a string.
+        $lookups = LspMapper::inlineValueLookups([[
+            'range' => ['start' => ['line' => 2, 'character' => 0], 'end' => ['line' => 2, 'character' => '14']],
+            'variableName' => '$count',
+        ]]);
+
+        $this->assertSame([['line' => 2, 'endCol' => 14, 'name' => '$count']], $lookups);
+    }
 }

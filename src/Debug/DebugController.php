@@ -67,6 +67,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         private readonly ExceptionFilterStore $exceptionFilters,
         private readonly TerminalSessions $sessions,
         private readonly BottomDock $dock,
+        private readonly InlineValues $inlineValues,
     ) {
         // Only the variable expansion stays a closure: it is
         // continuation-passing — the widget hands in the channel the answer
@@ -396,7 +397,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
 
                 return;
             }
-            $this->showStop($top['path'], $top['line']);
+            $this->showStop($top['path'], $top['line'], $top['id']);
             $this->panel->setSessionState(DebugState::Paused, $this->paths->relative($top['path']).':'.($top['line'] + 1));
             $this->loadScopes($session, $top['id']);
             $this->panel->setFrames($display);
@@ -431,15 +432,22 @@ final class DebugController implements DebugSessionObserver, StatusSegment
                     continue;
                 }
 
-                $session->variables($scope['variablesReference'], fn (array $variables) => $this->panel->setVariables($scope['variablesReference'], $variables));
+                // The same delivery feeds two readers: the panel, which lists
+                // them by scope, and the inline values, which want them by name.
+                $session->variables($scope['variablesReference'], function (array $variables) use ($scope): void {
+                    $this->panel->setVariables($scope['variablesReference'], $variables);
+                    $this->inlineValues->addVariables($variables);
+                });
             }
             $this->tui->requestRender();
         });
     }
 
-    private function showStop(string $path, int $line): void
+    /** $frameId is passed rather than read from `$currentFrameId`: `loadScopes()` sets that AFTER this runs. */
+    private function showStop(string $path, int $line, int $frameId): void
     {
         $this->state->stopAt($path, $line);
+        $this->inlineValues->stoppedAt($path, $line, $frameId);
         $this->files->openFile($path);
         $this->editor->jumpTo($line, 0);
         $this->applyEditorDecorations($path);
@@ -531,6 +539,8 @@ final class DebugController implements DebugSessionObserver, StatusSegment
     public function onContinued(): void
     {
         $this->state->clear();
+        // The values were facts about a frame that is running again.
+        $this->inlineValues->clear();
         $this->editor->decorations()->setDebugLine(null);
         $this->panel->setSessionState(DebugState::Running, null);
         $this->dispatcher->dispatch(new DebugStatusChanged());
@@ -553,6 +563,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
     {
         $this->state->clear();
         $this->frames = [];
+        $this->inlineValues->clear();
         $this->editor->decorations()->setDebugLine(null);
         $this->panel->setSessionState(DebugState::Terminated, null);
         $this->dispatcher->dispatch(new DebugStatusChanged());

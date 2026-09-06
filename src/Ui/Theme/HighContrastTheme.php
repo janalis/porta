@@ -48,6 +48,7 @@ final class HighContrastTheme
                 Role::DiagHintDim->selector() => new Style(color: 250),
                 Role::CurrentLineNumber->selector() => new Style(color: 231),
                 Role::Placeholder->selector() => new Style(color: 244),
+                Role::DebugValue->selector() => new Style(color: 118),
                 Role::Inlay->selector() => new Style(color: 250),
                 Role::IndentGuide->selector() => new Style(color: 242),
                 Role::VcsAdded->selector() => new Style(color: 120),

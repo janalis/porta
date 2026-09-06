@@ -1610,7 +1610,33 @@ Also confirmed: `prepareCallHierarchy` and `rangeFormatting` are sent to servers
 that advertise NEITHER, which matches the capability gates already in place —
 they degrade to nothing rather than erroring.
 
-## Inline debug values — measured, sized, not built
+## Inline debug values — built (`see below for the ownership it settled`)
+
+**Built.** The entry below is kept because it is the reasoning the build
+followed, and because the ownership question it refused to answer in code is
+answered here:
+
+- **The join lives on the DEBUG side**, in `Porta\Debug\InlineValues` — its own
+  class, not a method on the controller that already carries eighteen
+  dependencies. That side knows WHEN the join means anything: the answer stops
+  being true the moment the debuggee steps.
+- **`Debug>Lsp` is a new namespace edge**, in the allowlist with its reason. One
+  of the two sides had to know the other; no cycle results.
+- **The trailing cell is settled by PRECEDENCE, not by sharing.** Debug values
+  get their own channel — `LineAnnotationSink` is one map that REPLACES, so two
+  writers would clobber each other on every step. In the cell: debug value,
+  then inline diagnostic, then blame. The value wins because it exists only
+  while stopped, and the other two keep their other surfaces.
+- **`Role::DebugValue`** rather than reusing `Inlay`'s grey, moving the enum
+  ratchet to 60: an inlay hint is what the code MEANS and is always there, a
+  debug value is what it currently HOLDS and only while stopped.
+
+One real bug came out of writing the wire test: `showStop()` read
+`$currentFrameId`, which `loadScopes()` sets AFTERWARDS — so the request would
+have asked about the previous stop, one frame behind, every time. The frame id
+is passed explicitly now.
+
+## The reasoning it followed
 
 `textDocument/inlineValue` is PhpStorm's "variable values shown at the end of
 the line while stopped at a breakpoint". phpactor advertises it and answers it

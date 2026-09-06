@@ -124,6 +124,44 @@ final class LspMapper
     }
 
     /**
+     * `textDocument/inlineValue` → where each variable sits and what it is
+     * called.
+     *
+     * Only `InlineValueVariableLookup` entries are read — the ones carrying a
+     * `variableName`. The spec's other two kinds hand back TEXT the server has
+     * already rendered (`InlineValueText`) or an EXPRESSION for the debugger to
+     * evaluate (`InlineValueEvaluatableExpression`); neither is a name the
+     * variables of a stopped frame can be looked up by, which is the only join
+     * this client can make. phpactor sends lookups.
+     *
+     * The end column is where the value goes — after the variable, not before
+     * it — and a lookup whose range spans lines is dropped rather than clipped,
+     * because a variable is one identifier and a multi-line range is not one.
+     *
+     * @return list<array{line: int, endCol: int, name: string}>
+     */
+    public static function inlineValueLookups(mixed $result): array
+    {
+        $lookups = [];
+        /** @var mixed $entry each entry is untrusted wire data — the guards below are the narrowing */
+        foreach (\is_array($result) ? $result : [] as $entry) {
+            if (!\is_array($entry)) {
+                continue;
+            }
+            /** @var mixed $name */
+            $name = $entry['variableName'] ?? null;
+            /** @var mixed $line */
+            $line = $entry['range']['start']['line'] ?? null;
+            if (!\is_string($name) || '' === $name || !\is_int($line) || ($entry['range']['end']['line'] ?? $line) !== $line) {
+                continue;
+            }
+            $lookups[] = ['line' => $line, 'endCol' => (int) ($entry['range']['end']['character'] ?? 0), 'name' => $name];
+        }
+
+        return $lookups;
+    }
+
+    /**
      * A completion item's `documentation`, flattened to text.
      *
      * The same `string | MarkupContent` shape hover's `contents` uses, so it

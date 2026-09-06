@@ -160,9 +160,12 @@ excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server
 #                                StylesDefault trait absorbed its $styles
 #                                field; FindInFilesModal sits at 32 too after
 #                                reabsorbing the round-5 VOs as plain fields)
-#   too-many-enum-cases      59  Ui/Role (the theme role vocabulary; 58 until
+#   too-many-enum-cases      60  Ui/Role (the theme role vocabulary; 58 until
 #                                OccurrenceWriteBg joined it — a read and a write
-#                                occurrence cannot share one role)
+#                                occurrence cannot share one role — and 60 with
+#                                DebugValue: an inlay hint is what the code
+#                                MEANS and is always there, a debug value is
+#                                what it currently HOLDS and only while stopped)
 #   excessive-parameter-list 22  Bootstrap/WidgetHooks' constructor — near-
 #                                unmoved since round 2 (splitting it was
 #                                measured: it INCREASES coupling edges). Round
@@ -248,7 +251,7 @@ excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server
 cyclomatic-complexity = { threshold = 145 }
 too-many-methods = { threshold = 87 }
 too-many-properties = { threshold = 31 }
-too-many-enum-cases = { threshold = 59 }
+too-many-enum-cases = { threshold = 60 }
 excessive-parameter-list = { threshold = 23 }
 kan-defect = { threshold = 8 }
 halstead = { effort-threshold = 21435, difficulty-threshold = 30, volume-threshold = 3236 }

@@ -195,6 +195,32 @@ label you cannot read is not a completion — the type is what you check once th
 name is already the one you meant — so at a narrow width the type is truncated,
 and when the name alone fills the row the type is not drawn at all.
 
+## Inline debug values
+
+Stopped at a breakpoint, each line that assigns a variable shows what it holds,
+after the code:
+
+```php
+$count = 41;                    $count = 41
+$name = 'thing';                $name = 'thing'
+```
+
+It is a join of two protocols that do not know about each other. The language
+server says WHERE the variables are and what they are called
+(`textDocument/inlineValue`); the debug adapter says what they hold. A variable
+the server names but the adapter has not reported is simply not shown — it has
+not been assigned yet at this point in the frame.
+
+Only servers that offer it are asked: phpactor does, phpantom_lsp does not, and
+a server that cannot answer is never sent the request.
+
+The values share the trailing slot with the inline diagnostic and with a
+plugin's line annotation (git blame). While the debugger is stopped the value
+wins, because the other two keep their other surfaces — a diagnostic still has
+its squiggle, its gutter mark, its stripe cell and the Problems panel. They
+disappear the moment the debuggee continues or the session ends: they were
+facts about a frame that is running again.
+
 ## Unused and deprecated code
 
 A diagnostic's **severity** says how bad something is; its **tags** say what

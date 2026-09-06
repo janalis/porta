@@ -48,6 +48,7 @@ final class DarkTheme
                 Role::DiagHintDim->selector() => new Style(color: 240),
                 Role::CurrentLineNumber->selector() => new Style(color: 252),
                 Role::Placeholder->selector() => new Style(color: 238),
+                Role::DebugValue->selector() => new Style(color: 149),
                 Role::Inlay->selector() => new Style(color: 243),
                 Role::IndentGuide->selector() => new Style(color: 238),
                 Role::VcsAdded->selector() => new Style(color: 114),

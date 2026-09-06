@@ -53,6 +53,8 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
 
     /** @var array<int, list<array{col: int, text: string}>> inlay hints per line: byte col => dim label */
     private array $inlayHints = [];
+    /** @var array<int, string> 0-based line => the debugger's values for it */
+    private array $debugValues = [];
 
     /** @param \Closure(): void $invalidate request a redraw */
     public function __construct(
@@ -73,6 +75,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         $this->recountDiagnostics();
         $this->inlayHints = [];
         $this->lineAnnotations = [];
+        $this->debugValues = [];
         $this->breakpointLines = [];
         $this->bookmarkLines = [];
         $this->codeLenses = [];
@@ -106,6 +109,30 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     public function vcsMarks(): array
     {
         return $this->vcsMarks;
+    }
+
+    /**
+     * The debugger's variable values for this file, 0-based line => the text
+     * shown after it; [] clears.
+     *
+     * Its own slot rather than {@see setLineAnnotations()}: that one is the
+     * plugin channel (git blame writes it) and the map REPLACES, so sharing it
+     * would mean two writers clobbering each other every time the debugger
+     * stepped. They compete for the same CELL, which the row assembler settles
+     * by precedence — but they do not compete for the same variable.
+     *
+     * @param array<int, string> $byLine
+     */
+    public function setDebugValues(array $byLine): void
+    {
+        $this->debugValues = $byLine;
+        ($this->invalidate)();
+    }
+
+    /** @return array<int, string> */
+    public function debugValues(): array
+    {
+        return $this->debugValues;
     }
 
     /** @param array<int, string> $byLine 0-based line => trailing annotation (blame); [] clears */
