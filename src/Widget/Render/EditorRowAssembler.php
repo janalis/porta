@@ -181,8 +181,13 @@ final readonly class EditorRowAssembler
                 $this->separatorFrom($lineIndex, $rowSegment, $geo->contentWidth),
             );
 
+            // The column this ROW starts at: the horizontal scroll normally,
+            // the segment's own offset when the line is wrapped. Everything
+            // placed after the text has to measure from the same origin.
+            $rowOffset = null === $this->wrap ? $hScroll : WrapLayout::offsetOf($rowSegment, $geo->contentWidth);
+
             $content = EditorRenderer::renderContentLine(
-                null === $this->wrap ? $hScroll : WrapLayout::offsetOf($rowSegment, $geo->contentWidth),
+                $rowOffset,
                 $hlLine,
                 $geo->contentWidth,
                 $isCursorLine && $this->showCaret && !$decorations->multiActive ? CursorVisibility::Shown : CursorVisibility::Hidden,
@@ -220,9 +225,15 @@ final readonly class EditorRowAssembler
             $trailing = '' !== $debugValue || $hasInlineDiagnostic ? $debugValue : $this->store->lineAnnotations()[$lineIndex] ?? '';
             if ($hasInlineDiagnostic || '' !== $trailing) {
                 $textDisplayWidth = AnsiUtils::visibleWidth($hlLine);
+                // $rowOffset, not $hScroll: on a wrapped line those differ, and
+                // measuring the trailing text from the scroll put it past the
+                // end of every segment — so a wrapped line showed no blame, no
+                // inline message and no debug value at all. With the row's own
+                // origin it lands after the text on the LAST segment, which is
+                // where the line actually ends.
                 $content = $hasInlineDiagnostic
-                    ? EditorRenderer::appendInlineDiagnostic($hScroll, $textDisplayWidth, $lineDiags, $content, $geo->contentWidth, $this->styles)
-                    : EditorRenderer::appendAnnotation($hScroll, $textDisplayWidth, $trailing, $content, $geo->contentWidth, $this->styles, '' === $debugValue ? Role::Inlay : Role::DebugValue);
+                    ? EditorRenderer::appendInlineDiagnostic($rowOffset, $textDisplayWidth, $lineDiags, $content, $geo->contentWidth, $this->styles)
+                    : EditorRenderer::appendAnnotation($rowOffset, $textDisplayWidth, $trailing, $content, $geo->contentWidth, $this->styles, '' === $debugValue ? Role::Inlay : Role::DebugValue);
             }
 
             $result[] = $gutter.$content.$stripe[$stickyCount + $row];

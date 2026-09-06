@@ -1063,6 +1063,36 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertStringContainsString('$other = 1', AnsiUtils::stripAnsiCodes($rows[2]));
     }
 
+    public function testTheTRAILINGCellFindsTheLastRowOfASoftWrappedLine(): void
+    {
+        // It used to find no row at all. The trailing slot measured from the
+        // horizontal SCROLL while the content was sliced at the wrap segment's
+        // offset, so every segment of a wrapped line looked full — and a blame
+        // annotation, an inline diagnostic and a debug value alike were
+        // silently dropped. Pre-existing, and inherited by every consumer of
+        // that cell; found by rendering the combination rather than the pieces.
+        $editor = $this->editor("<?php\n\$total = 'aaaa' . 'bbbb' . 'cccc' . 'dddd';\n", 'wrapped.php');
+        $editor->display()->setSoftWrap(true);
+        $editor->decorations()->setLineAnnotations([1 => 'you, 3 days ago']);
+
+        $rows = array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(40, 10)));
+
+        $this->assertStringNotContainsString('3 days ago', $rows[1], 'the first segment is full');
+        $this->assertStringContainsString('3 days ago', $rows[2], 'it goes after the text ends, on the last segment');
+    }
+
+    public function testADebugValueOnASoftWrappedLineFollowsTheSameRule(): void
+    {
+        $editor = $this->editor("<?php\n\$total = 'aaaa' . 'bbbb' . 'cccc' . 'dddd';\n", 'wrapped.php');
+        $editor->display()->setSoftWrap(true);
+        $editor->decorations()->setDebugValues([1 => 'V = 1']);
+
+        $rows = array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(40, 10)));
+
+        $this->assertStringNotContainsString('V = 1', $rows[1]);
+        $this->assertStringContainsString('V = 1', $rows[2]);
+    }
+
     public function testTheDebugValueIsDrawnInItsOWNPenNotTheInlayGrey(): void
     {
         // An inlay hint is what the code MEANS and is always there; a debug

@@ -26,11 +26,17 @@ final class EditorRowAssemblerWrapTest extends TestCase
     private const int WIDTH = 10;
 
     /** @return list<string> plain content columns, gutter stripped */
-    /** @param bool|null $wrap null renders unwrapped; true builds a layout — the assembler's own shape */
-    private function rows(string $text, ?WrapLayout $wrap, int $contentRows = 6): array
+    /**
+     * @param bool|null            $wrap        null renders unwrapped; true builds a layout — the assembler's own shape
+     * @param \Closure(DecorationStore): void|null $decorate what to hang on the document before it is walked
+     */
+    private function rows(string $text, ?WrapLayout $wrap, int $contentRows = 6, ?\Closure $decorate = null): array
     {
         $document = new Document($text);
         $store = new DecorationStore(static function (): void {});
+        if (null !== $decorate) {
+            $decorate($store);
+        }
         // Deliberately gutterless, so the wrap assertions read as plain text.
         // A consequence since the narrow-pane fix: the past-end-of-file filler
         // is BLANK here rather than `~`, because the tilde is a gutter cell and
