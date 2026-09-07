@@ -1738,6 +1738,47 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## A deleted file can be brought back (built 2026-09-07, `412d64f7`)
+
+The limitation the entry below names, closed one commit later — and the reason
+it looked like a core round was wrong. It needed **no new core verb**, because
+core already does this for a scratch file: mint it on disk, then open it.
+Reading `ScratchFiles` was the whole design step.
+
+**Two halves, and either alone is useless.** Enter on a Recent Changes row whose
+file is gone shows that file's snapshots rather than flashing "cannot read" —
+the per-file view asks the ACTIVE file what it is about, so a file with no
+buffer could not be asked about at all. And restoring one recreates the file.
+
+**The rule it appears to break is the reason it is allowed.**
+`replaceDocument()` never touches disk because a file that EXISTS is the user's
+to keep and save is their verb. Here there is nothing to keep, no buffer to
+replace, and no disk state to lose — recreating is a creation, not an
+overwrite. Stating which half of the rule is doing the work is what makes the
+exception safe to write down.
+
+**And underneath both, a defect nothing else would have found.**
+`SnapshotStore::dirFor()` keyed the history directory on `realpath($path)` —
+which returns **false the moment the file is deleted**, so the key CHANGED on
+deletion. On any tree reached through a symlink (`/var` on macOS, a symlinked
+checkout) that orphans a file's history at exactly the moment it becomes the
+only copy of it. The directory is still there, so it is what gets canonicalised
+now, with the file's own name put back; an existing file's key is bit-for-bit
+what it was, so nothing already stored is orphaned by the fix.
+
+**The shape worth keeping: a key built from something that only resolves while
+the thing exists cannot survive the thing.** It read as canonicalisation and it
+was a liveness check. The feature that exposed it is the one whose entire
+purpose is outliving deletion — which is why it took this long to see, and why
+"what does this expression return when the input is gone" is the question to ask
+of any identity derived from the filesystem.
+
+**Three changes, three tests that fail without them**, and the store's is the
+one that needed a fixture built rather than found: an explicit `link -> real`
+symlink inside the temp project, because on a machine whose temp directory is
+already symlinked the bug is invisible in the other direction — and on one
+whose temp directory is real, it would not reproduce at all.
+
 ## A restore could land in the wrong file (built 2026-09-07, `8f8ab755`)
 
 Swept the new Recent Changes view against its obvious degenerate case — the
