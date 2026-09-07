@@ -1738,6 +1738,32 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## The combination nobody asked about: paste history × multiple carets (2026-09-07)
+
+Round 6's lesson applied to this session's OWN work rather than to someone
+else's: after a feature round, ask which COMBINATIONS are untested. Four verbs
+were added to `EditorActions::CLIPBOARD_LINE_ACTIONS` this session, and that is
+the list consulted when extra carets exist — so every one of them met the
+multi-caret path for the first time.
+
+Three behave exactly like the pre-existing `toggle_comment` does there, which is
+the answer that needed checking rather than fixing. **`Ctrl+Shift+V` did not.**
+With two carets, `Ctrl+V` pasted at BOTH and paste-from-history — picking the
+same entry — pasted at ONE.
+
+The cause is a timing asymmetry that no amount of reading the two verbs
+side by side would show: `Ctrl+V` is intercepted by
+{@see \Porta\Editor\MultiCaret::handleInput()} BEFORE the action table sees
+it, while the history pick arrives later, from an overlay callback, long after
+that interception could happen. Two keys that differ only in WHICH text they
+paste were differing in where.
+
+`pasteBlock()` is public now, and both keys go through it. That is the whole
+fix, and the reason it is worth an entry is the method: the defect was found by
+listing what the round had touched and asking what it now met, not by a gate, a
+mutant or a crash. None of those could have found it — every one of the verbs
+was correct alone.
+
 ## Cross-file undo (built 2026-09-07)
 
 The last of `decisions.md`'s own open entries, and the half that needed a

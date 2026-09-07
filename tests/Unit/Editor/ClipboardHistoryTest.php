@@ -140,6 +140,42 @@ final class ClipboardHistoryTest extends TestCase
     }
 
     /**
+     * With several carets, `Ctrl+Shift+V` lands where `Ctrl+V` would.
+     *
+     * The two keys differ in WHICH text, never in where — and they very nearly
+     * differed in both. `Ctrl+V` is intercepted by the multi-caret path before
+     * the action table ever sees it, while the history pick arrives later from
+     * an overlay callback, long after that interception could happen; so the
+     * plain key pasted at every caret and this one at exactly one. Found by
+     * asking which COMBINATION of this session's features was untested, which
+     * is the only way it would have been found.
+     */
+    public function testPastingFromHistoryReachesEveryCaretJustAsPlainPasteDoes(): void
+    {
+        // Each case is the FULL key sequence, so the two paths differ only in
+        // what is typed — an `if` inside the loop would let them drift.
+        $expected = null;
+        foreach (['plain' => ["\x16"], 'history' => ["\x1b[118;6u", "\r"]] as $how => $keys) {
+            $editor = $this->editor("one\ntwo\nthree\n");
+            $this->copyLine($editor, 0); // `one`
+
+            $doc = $editor->getDocument();
+            $doc->setCursor(1, 3);
+            $editor->handleInput("\x1b[1;7B"); // ctrl+alt+down: a second caret
+
+            foreach ($keys as $key) {
+                $editor->handleInput($key);
+            }
+
+            $lines = $editor->getDocument()->getLines();
+            $expected ??= $lines;
+            $this->assertSame($expected, $lines, "{$how} paste");
+        }
+
+        $this->assertSame(['one', 'twoone', 'throneee', ''], $expected, 'and both reached BOTH carets');
+    }
+
+    /**
      * The history crosses buffers, which is the whole point and the thing a
      * per-document field could never do. `EditorActions` is rebuilt on every
      * switch; the ring is handed over by HANDLE, so this passes only because

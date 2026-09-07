@@ -328,7 +328,16 @@ final class MultiCaret
      * five carets has no correct distribution, and guessing one is worse than
      * repeating the whole clipboard, which is at least predictable.
      */
-    private function pasteBlock(string $clipboard): void
+    /**
+     * Public because `Ctrl+V` is not the only way to paste.
+     *
+     * Clipboard HISTORY picks an older entry and then inserts it, and it must
+     * land in the same places `Ctrl+V` would — the two keys differ in WHICH
+     * text, never in where. Reached through {@see handleInput()} for the plain
+     * key and called directly by the history verb, which the multi-caret path
+     * cannot intercept because the pick happens later, in an overlay callback.
+     */
+    public function pasteBlock(string $clipboard): void
     {
         $lines = explode("\n", $clipboard);
         // No ">1 line" clause: with one line the two branches insert the same

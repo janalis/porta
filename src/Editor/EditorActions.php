@@ -625,12 +625,30 @@ final class EditorActions
         });
     }
 
+    /**
+     * Insert pasted text where the carets are — all of them.
+     *
+     * The multi-caret branch is not an optimisation: `Ctrl+V` reaches
+     * {@see MultiCaret::handleInput()} before this class's action table and
+     * distributes a block one line per caret, while the HISTORY pick arrives
+     * later, from an overlay callback, long after that interception could
+     * happen. Without this the two keys pasted the same text in different
+     * places, which was a real inconsistency and is the reason `pasteBlock()`
+     * is public.
+     */
     private function pasteText(string $text): void
     {
-        if ('' !== $text) {
-            $this->document->insert($text);
-            $this->host->notifyChange();
+        if ('' === $text) {
+            return;
         }
+        if ($this->multiCaret->hasMultiple()) {
+            $this->multiCaret->pasteBlock($text);
+            $this->host->notifyChange();
+
+            return;
+        }
+        $this->document->insert($text);
+        $this->host->notifyChange();
     }
 
     private function openLineBelow(): void
