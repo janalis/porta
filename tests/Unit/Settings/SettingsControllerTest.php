@@ -23,6 +23,7 @@ use Porta\Ide;
 use Porta\Layout\ViewRegions;
 use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
+use Porta\Lsp\RefactoringUndo;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Onboarding\OnboardingState;
 use Porta\Search\FileIndex;
@@ -558,7 +559,7 @@ final class SettingsControllerTest extends TestCase
 
         return new FormatOnSave(
             $pool,
-            new WorkspaceEditor(new BufferManager(), $editor, $pool, new EventDispatcher()),
+            new WorkspaceEditor(new BufferManager(), $editor, $pool, new EventDispatcher(), new RefactoringUndo(new BufferManager(), new EventDispatcher())),
             $editor,
             new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
             new Translator('en'),

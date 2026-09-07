@@ -1022,6 +1022,22 @@
         <source>Toggle Comment</source>
         <target>Basculer le commentaire</target>
       </trans-unit>
+      <trans-unit id="238u0">
+        <source>Undo Last Refactoring</source>
+        <target>Annuler la dernière refactorisation</target>
+      </trans-unit>
+      <trans-unit id="238u1">
+        <source>No refactoring to undo</source>
+        <target>Aucune refactorisation à annuler</target>
+      </trans-unit>
+      <trans-unit id="238u2">
+        <source>Refactoring undone</source>
+        <target>Refactorisation annulée</target>
+      </trans-unit>
+      <trans-unit id="238u3">
+        <source>%file% changed since; nothing was undone</source>
+        <target>%file% a changé depuis ; rien n’a été annulé</target>
+      </trans-unit>
       <trans-unit id="238g">
         <source>The formatter sent overlapping edits; nothing changed</source>
         <target>Le formateur a envoyé des modifications qui se chevauchent ; rien n’a changé</target>

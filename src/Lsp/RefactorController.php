@@ -32,9 +32,42 @@ final class RefactorController extends AbstractLspController implements EditorRe
         Translator $translator,
         private readonly BufferManager $buffers,
         private readonly WorkspaceEditor $workspaceEditor,
+        private readonly RefactoringUndo $undo,
         private readonly ProjectPaths $paths,
     ) {
         parent::__construct($lsp, $editor, $tui, $notifier, $translator);
+    }
+
+    /**
+     * Take back the last multi-file refactoring, whole.
+     *
+     * A separate verb from `Ctrl+Z` because an undo stack is per DOCUMENT, and
+     * a rename across twenty files was twenty undos in the buffers that were
+     * open and nothing for the files that were not. Making `Ctrl+Z` reach other
+     * files would be a bigger lie than a second key.
+     *
+     * Refuses rather than guesses: if anything it would touch has moved on, it
+     * names the file and does nothing, because undoing a buffer typed into
+     * since would take back the typing instead.
+     */
+    public function undoLastRefactoring(): void
+    {
+        if (!$this->undo->hasPending()) {
+            $this->flash($this->trans('No refactoring to undo'));
+
+            return;
+        }
+
+        // No requestRender() after the flash: Notifier::notify() ends with one,
+        // and adding a second is this repo's own hard rule. The mutation run is
+        // what caught it — the extra call could be deleted with nothing
+        // noticing, which is exactly what "already requests a render" means.
+        $blocker = $this->undo->undo();
+        $this->flash(
+            null === $blocker
+                ? $this->trans('Refactoring undone')
+                : $this->trans('%file% changed since; nothing was undone', ['%file%' => $this->paths->relative($blocker)]),
+        );
     }
 
     /**

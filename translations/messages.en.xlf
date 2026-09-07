@@ -1022,6 +1022,22 @@
         <source>Toggle Comment</source>
         <target>Toggle Comment</target>
       </trans-unit>
+      <trans-unit id="238u0">
+        <source>Undo Last Refactoring</source>
+        <target>Undo Last Refactoring</target>
+      </trans-unit>
+      <trans-unit id="238u1">
+        <source>No refactoring to undo</source>
+        <target>No refactoring to undo</target>
+      </trans-unit>
+      <trans-unit id="238u2">
+        <source>Refactoring undone</source>
+        <target>Refactoring undone</target>
+      </trans-unit>
+      <trans-unit id="238u3">
+        <source>%file% changed since; nothing was undone</source>
+        <target>%file% changed since; nothing was undone</target>
+      </trans-unit>
       <trans-unit id="238g">
         <source>The formatter sent overlapping edits; nothing changed</source>
         <target>The formatter sent overlapping edits; nothing changed</target>

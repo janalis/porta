@@ -14,6 +14,7 @@ use Porta\Event\FileRenamed;
 use Porta\Event\FileRewritten;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
+use Porta\Lsp\RefactoringUndo;
 use Porta\Lsp\Uri;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Tests\Support\FixedActiveFile;
@@ -34,7 +35,13 @@ final class WorkspaceEditorTest extends TestCase
         $this->buffers = new BufferManager();
         $this->editor = new CodeEditorWidget();
 
-        return new WorkspaceEditor($this->buffers, $this->editor, new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')), $events ?? new EventDispatcher());
+        return new WorkspaceEditor(
+            $this->buffers,
+            $this->editor,
+            new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
+            $events ?? new EventDispatcher(),
+            new RefactoringUndo(new BufferManager(), new EventDispatcher()),
+        );
     }
 
     /** @param array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}} $range */
@@ -750,6 +757,7 @@ final class WorkspaceEditorTest extends TestCase
             new CodeEditorWidget(),
             new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
             new EventDispatcher(),
+            new RefactoringUndo(new BufferManager(), new EventDispatcher()),
             $throwing,
         );
 

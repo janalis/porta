@@ -13,6 +13,7 @@ use Porta\Lsp\LanguageServerProvider;
 use Porta\Lsp\LspBootstrapper;
 use Porta\Lsp\LspLog;
 use Porta\Lsp\LspSessionPool;
+use Porta\Lsp\RefactoringUndo;
 use Porta\Lsp\ServerMessageReporter;
 use Porta\Lsp\ServerProgress;
 use Porta\Lsp\WorkspaceEditor;
@@ -84,7 +85,7 @@ final class LspBootstrapperInboundTest extends TestCase
         $bootstrapper = new LspBootstrapper(
             $pool,
             new LspLog($clock, $events),
-            new WorkspaceEditor($buffers, $invalidator, $pool, $events),
+            new WorkspaceEditor($buffers, $invalidator, $pool, $events, new RefactoringUndo(new BufferManager(), new EventDispatcher())),
             $diagnostics,
             $notifier,
             new Translator('en'),

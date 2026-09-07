@@ -31,6 +31,7 @@ use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LanguageServerProvider;
 use Porta\Lsp\LspReconfigurer;
 use Porta\Lsp\LspSessionPool;
+use Porta\Lsp\RefactoringUndo;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Plugin\Lifecycle\ToolInstaller;
@@ -1081,7 +1082,7 @@ final class SettingsViewControllerTest extends TestCase
 
         return new FormatOnSave(
             $pool,
-            new WorkspaceEditor(new BufferManager(), $editor, $pool, new EventDispatcher()),
+            new WorkspaceEditor(new BufferManager(), $editor, $pool, new EventDispatcher(), new RefactoringUndo(new BufferManager(), new EventDispatcher())),
             $editor,
             new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
             new Translator('en'),

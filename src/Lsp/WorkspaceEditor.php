@@ -53,6 +53,7 @@ final readonly class WorkspaceEditor
         private EditorInvalidator $editor,
         private LspSessionPool $lsp,
         private EventDispatcherInterface $events,
+        private RefactoringUndo $undo,
         private Filesystem $fs = new Filesystem(),
     ) {}
 
@@ -75,6 +76,7 @@ final readonly class WorkspaceEditor
         $changes = \is_array($edit['changes'] ?? null) ? $edit['changes'] : [];
         $touched = 0;
         $skipped = [];
+        $this->undo->begin();
         foreach ($changes as $uri => $edits) {
             $this->editOne((string) $uri, $edits, $touched, $skipped);
         }
@@ -97,6 +99,10 @@ final readonly class WorkspaceEditor
 
         $touched = 0;
         $skipped = [];
+        // After the refusal check, so a refused edit does not throw away the
+        // undo of the one before it — nothing was applied, so there is nothing
+        // to take back and the previous refactoring is still the last one.
+        $this->undo->begin();
         foreach ($changes as $change) {
             $kind = \is_string($change['kind'] ?? null) ? $change['kind'] : '';
             if ('' !== $kind) {
@@ -312,6 +318,7 @@ final readonly class WorkspaceEditor
 
                 return;
             }
+            $this->undo->recordBuffer($buffer->path, $buffer->document->getVersion());
             if ($buffer === $this->buffers->active()) {
                 $this->editor->invalidate();
             }
@@ -340,6 +347,7 @@ final readonly class WorkspaceEditor
             // BufferSaved, so this is the only moment its previous content
             // still exists anywhere — see {@see FileRewritten}.
             $this->events->dispatch(new FileRewritten($target, $contents));
+            $this->undo->recordFile($target, $contents, $document->getText());
         } catch (IOException) {
             // The writability check passed and the write still failed (a full
             // disk, a read-only mount, a race). Uncaught this escapes the LSP

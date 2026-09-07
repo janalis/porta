@@ -11,6 +11,7 @@ use Porta\Editor\EditorInvalidator;
 use Porta\I18n\Translator;
 use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
+use Porta\Lsp\RefactoringUndo;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FakeScheduler;
@@ -68,7 +69,7 @@ final class FormatOnSaveTest extends TestCase
         };
         $formatOnSave = new FormatOnSave(
             $this->pool,
-            new WorkspaceEditor(new BufferManager(), $editor, $this->pool, new EventDispatcher()),
+            new WorkspaceEditor(new BufferManager(), $editor, $this->pool, new EventDispatcher(), new RefactoringUndo(new BufferManager(), new EventDispatcher())),
             $counting,
             new Notifier(
                 $this->status = new StatusBarWidget(),

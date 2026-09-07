@@ -1022,6 +1022,22 @@
         <source>Toggle Comment</source>
         <target>הפעל/כבה הערה</target>
       </trans-unit>
+      <trans-unit id="238u0">
+        <source>Undo Last Refactoring</source>
+        <target>בטל את הריפקטורינג האחרון</target>
+      </trans-unit>
+      <trans-unit id="238u1">
+        <source>No refactoring to undo</source>
+        <target>אין ריפקטורינג לבטל</target>
+      </trans-unit>
+      <trans-unit id="238u2">
+        <source>Refactoring undone</source>
+        <target>הריפקטורינג בוטל</target>
+      </trans-unit>
+      <trans-unit id="238u3">
+        <source>%file% changed since; nothing was undone</source>
+        <target>%file% השתנה מאז; דבר לא בוטל</target>
+      </trans-unit>
       <trans-unit id="238g">
         <source>The formatter sent overlapping edits; nothing changed</source>
         <target>המעצב שלח עריכות חופפות; דבר לא השתנה</target>

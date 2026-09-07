@@ -34,6 +34,7 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `Alt+6` | Problems panel |
 | `Alt+9` | Notification log — every flash the status bar showed and you missed |
 | `Ctrl+Alt+H` | Local history |
+| `Ctrl+Alt+Z` | Undo the last multi-file refactoring, across every file it touched (`Ctrl+Z` is per file); refuses and names the file if anything changed since |
 
 ## Files and buffers
 

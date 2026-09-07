@@ -666,9 +666,9 @@ neither is a judgement call, just unfinished:
   since 2026-09-07 they keep a local-history snapshot of what the write replaced
   (see "A rewritten file keeps what it replaced" below), so the recovery is
   per-file and manual rather than absent. **A single undo for the whole
-  refactoring is still open**, and it is the harder half: it needs the buffers'
-  own stacks and the disk files to move together, which is an ownership question
-  and not a missing snapshot.
+  refactoring landed 2026-09-07** — see "Cross-file undo" below. What remains
+  genuinely open is only its integration with `Ctrl+Z`, which is per document by
+  construction and is left alone deliberately.
 
 ## The polish sweep — bookmarks (2026-09-02)
 
@@ -1737,6 +1737,42 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 **an entry that says OPEN is read as a to-do, so it is the one kind of staleness
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
+
+## Cross-file undo (built 2026-09-07)
+
+The last of `decisions.md`'s own open entries, and the half that needed a
+decision rather than a snapshot: `Ctrl+Z` is per DOCUMENT, so a rename across
+twenty files was twenty undos in the buffers that happened to be open and
+nothing at all for the rest.
+
+**It is a separate verb (`Ctrl+Alt+Z`), not a smarter `Ctrl+Z`.** An undo stack
+belongs to a document; making one reach into other files would be a bigger lie
+than a second key, and it would have to answer what happens when a refactoring's
+entry interleaves with per-buffer undos — a question with no good answer and no
+user behind it. For the same reason ONE refactoring is remembered, not a stack.
+
+**It refuses rather than guesses, and it checks everything before touching
+anything.** If any participant has moved on — a buffer typed into, a file
+changed on disk — nothing is undone and the message names the file. Undoing a
+buffer edited since would take back the typing, because the document's stack has
+no idea which step was the refactoring; restoring a file changed on disk would
+discard whatever changed it. A partial undo of a refactoring is the state nobody
+can reason about.
+
+Two smaller decisions worth the words. A buffer CLOSED since is not a blocker —
+there is nothing left to undo for it, and refusing the whole thing because a tab
+was shut would make the verb useless in the workflow it exists for. And undoing
+a disk file announces `FileRewritten` carrying the REFACTORED text, because that
+version is about to exist nowhere: without it, undoing loses the refactoring
+irrecoverably, which is the hole the forward direction was just fixed for.
+
+**Mutation found a test of mine passing vacuously**, again by the familiar
+route: `testUndoingClearsWhatItTookBack` opened the buffer AFTER applying the
+edit, so with no buffer and no file on disk nothing was ever recorded,
+`hasPending()` was already false, and the assertion passed against a class that
+cleared nothing. The `begin()` mutant is what surfaced it. Two more survivors
+were real gaps rather than weak fixtures — nothing checked that a SECOND
+refactoring forgets the first, in either payload shape.
 
 ## A rewritten file keeps what it replaced (built 2026-09-07)
 

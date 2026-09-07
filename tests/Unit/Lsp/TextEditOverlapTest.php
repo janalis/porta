@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\Lsp\LspSessionPool;
+use Porta\Lsp\RefactoringUndo;
 use Porta\Lsp\TextEditOverlap;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Tests\Support\FixedActiveFile;
@@ -38,7 +39,7 @@ final class TextEditOverlapTest extends TestCase
         $editor = new CodeEditorWidget();
         $pool = new LspSessionPool('/tmp/proj', new FixedActiveFile('/tmp/proj/a.php'), new \Porta\I18n\Translator('en'));
 
-        return new WorkspaceEditor(new BufferManager(), $editor, $pool, new EventDispatcher());
+        return new WorkspaceEditor(new BufferManager(), $editor, $pool, new EventDispatcher(), new RefactoringUndo(new BufferManager(), new EventDispatcher()));
     }
 
     /**

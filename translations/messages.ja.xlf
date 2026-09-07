@@ -1022,6 +1022,22 @@
         <source>Toggle Comment</source>
         <target>コメントを切替</target>
       </trans-unit>
+      <trans-unit id="238u0">
+        <source>Undo Last Refactoring</source>
+        <target>最後のリファクタリングを元に戻す</target>
+      </trans-unit>
+      <trans-unit id="238u1">
+        <source>No refactoring to undo</source>
+        <target>元に戻すリファクタリングがありません</target>
+      </trans-unit>
+      <trans-unit id="238u2">
+        <source>Refactoring undone</source>
+        <target>リファクタリングを元に戻しました</target>
+      </trans-unit>
+      <trans-unit id="238u3">
+        <source>%file% changed since; nothing was undone</source>
+        <target>%file% がその後変更されました。何も元に戻していません</target>
+      </trans-unit>
       <trans-unit id="238g">
         <source>The formatter sent overlapping edits; nothing changed</source>
         <target>フォーマッタが重複する編集を返しました。変更はありません</target>

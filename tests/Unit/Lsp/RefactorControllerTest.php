@@ -12,6 +12,7 @@ use Porta\Editor\SelectionMode;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\RefactorController;
+use Porta\Lsp\RefactoringUndo;
 use Porta\Lsp\Uri;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Support\ProjectPaths;
@@ -33,6 +34,7 @@ final class RefactorControllerTest extends TestCase
     private FakeLspClient $client;
     private CodeEditorWidget $editor;
     private BufferManager $buffers;
+    private RefactoringUndo $undo;
     private StatusBarWidget $statusBar;
     private Tui $tui;
 
@@ -81,7 +83,8 @@ final class RefactorControllerTest extends TestCase
             new Notifier($this->statusBar, $tui),
             new Translator('en'),
             $this->buffers,
-            new WorkspaceEditor($this->buffers, $this->editor, $pool, new EventDispatcher()),
+            new WorkspaceEditor($this->buffers, $this->editor, $pool, new EventDispatcher(), $this->undo = new RefactoringUndo($this->buffers, new EventDispatcher())),
+            $this->undo,
             new ProjectPaths('/tmp/proj'),
         );
     }
@@ -117,7 +120,8 @@ final class RefactorControllerTest extends TestCase
             new Notifier($this->statusBar, $tui),
             new Translator('en'),
             $this->buffers,
-            new WorkspaceEditor($this->buffers, $this->editor, $pool, new EventDispatcher()),
+            new WorkspaceEditor($this->buffers, $this->editor, $pool, new EventDispatcher(), $this->undo = new RefactoringUndo($this->buffers, new EventDispatcher())),
+            $this->undo,
             new ProjectPaths('/tmp/proj'),
         );
         $buffer = $this->buffers->open('/tmp/proj/a.php', "<?php\n\$x = 1;\n");
@@ -612,6 +616,32 @@ final class RefactorControllerTest extends TestCase
      * opened this — a file neither the server nor the user asked for, reported
      * as a success.
      */
+    /**
+     * The user-facing half of the cross-file undo: it says which of the three
+     * things happened, and never claims one that did not.
+     */
+    public function testUndoLastRefactoringSaysWhatHappened(): void
+    {
+        [$controller] = $this->ready();
+
+        $controller->undoLastRefactoring();
+        $this->assertStringContainsString('No refactoring to undo', $this->flashed(), 'nothing recorded yet');
+
+        $buffer = $this->buffers->get('/tmp/proj/a.php');
+        $this->undo->recordBuffer($buffer->path, $buffer->document->getVersion());
+        $this->assertTrue(
+            $this->requestedRenderSince($controller->undoLastRefactoring(...)),
+            'a frame is asked for — through the flash, which already does it',
+        );
+        $this->assertStringContainsString('Refactoring undone', $this->flashed());
+
+        // And with the buffer moved on since, it refuses and names the file
+        // RELATIVE to the project, like every other path this UI shows.
+        $this->undo->recordBuffer($buffer->path, $buffer->document->getVersion() + 1);
+        $controller->undoLastRefactoring();
+        $this->assertStringContainsString('a.php changed since', $this->flashed());
+    }
+
     public function testReformatWithOverlappingEditsChangesNothingAndSaysSo(): void
     {
         [$controller] = $this->ready();

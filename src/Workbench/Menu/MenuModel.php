@@ -44,6 +44,7 @@ final class MenuModel
         'Edit' => [
             'e:undo',
             'e:redo',
+            'i:ide_undo_refactoring',
             self::SEP,
             'e:cut',
             'e:copy',
