@@ -461,7 +461,13 @@ final class RefactorController extends AbstractLspController implements EditorRe
             $buffer = $this->buffers->get($path);
             if (null !== $buffer) {
                 /** @var list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}> $result */
-                $this->workspaceEditor->applyTextEdits($buffer->document, $result);
+                if (!$this->workspaceEditor->applyTextEdits($buffer->document, $result)) {
+                    // Overlapping edits: the file is untouched, and saying so
+                    // beats "Reformatted" over a file that is not.
+                    $this->flash($this->trans('The formatter sent overlapping edits; nothing changed'));
+
+                    return;
+                }
                 if ($buffer === $this->buffers->active()) {
                     $this->editor->invalidate();
                 }

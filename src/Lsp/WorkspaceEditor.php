@@ -36,6 +36,13 @@ use Symfony\Component\Filesystem\Filesystem;
  * rename because one file is read-only would be worse than doing the other 19;
  * those files are skipped and NAMED in the outcome instead of quietly vanishing
  * from the count.
+ *
+ * **Overlapping ranges skip their file rather than aborting the edit**, and
+ * that is a deliberate deviation from the letter of the spec, which calls such
+ * a WorkspaceEdit invalid outright. The reason is the rule above: a resource
+ * operation that half-applies is unrecoverable, which is why those abort, while
+ * a text file left alone is merely not yet renamed and is named in the outcome.
+ * Porta used to apply them — see {@see TextEditOverlap} for what that did.
  */
 #[AsIdeService]
 final readonly class WorkspaceEditor
@@ -299,7 +306,11 @@ final readonly class WorkspaceEditor
 
         $buffer = $this->bufferAt($target);
         if (null !== $buffer) {
-            $this->applyTextEdits($buffer->document, $edits);
+            if (!$this->applyTextEdits($buffer->document, $edits)) {
+                $skipped[] = $target;
+
+                return;
+            }
             if ($buffer === $this->buffers->active()) {
                 $this->editor->invalidate();
             }
@@ -315,7 +326,11 @@ final readonly class WorkspaceEditor
             return;
         }
         $document = new Document($contents);
-        $this->applyTextEdits($document, $edits);
+        if (!$this->applyTextEdits($document, $edits)) {
+            $skipped[] = $target;
+
+            return;
+        }
         try {
             $this->fs->dumpFile($target, $document->getText());
             ++$touched;
@@ -328,9 +343,23 @@ final readonly class WorkspaceEditor
         }
     }
 
-    /** @param list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText?: string}> $edits */
-    public function applyTextEdits(Document $document, array $edits): void
+    /**
+     * Apply one file's text edits, or refuse them all.
+     *
+     * Returns whether they were applied. Overlapping ranges are the one
+     * refusal: the sort below is what makes the rest work and is also what
+     * hides them, since two edits over the same characters both land and the
+     * second clamps into whatever the first produced. See
+     * {@see TextEditOverlap}.
+     *
+     * @param list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText?: string}> $edits
+     */
+    public function applyTextEdits(Document $document, array $edits): bool
     {
+        if (null !== TextEditOverlap::describe($edits)) {
+            return false;
+        }
+
         // Bottom-up so earlier positions stay valid
         usort(
             $edits,
@@ -353,5 +382,7 @@ final readonly class WorkspaceEditor
                 $document->insert($edit['newText'] ?? '');
             }
         });
+
+        return true;
     }
 }

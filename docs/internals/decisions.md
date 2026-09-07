@@ -656,10 +656,11 @@ displacing for a refactoring reachable one keystroke away.
 **Deliberately still open, and NOT caused by this round** — both predate it and
 neither is a judgement call, just unfinished:
 
-- **Overlap detection between text edits.** LSP says overlapping edits make a
-  `WorkspaceEdit` invalid. Porta applies them bottom-up and both land, the later
-  one clamping into whatever the earlier produced: corruption rather than an
-  error.
+- ~~**Overlap detection between text edits.**~~ **CLOSED 2026-09-07** — see
+  "Overlapping text edits are refused now" below. The entry read: LSP says
+  overlapping edits make a `WorkspaceEdit` invalid, Porta applies them bottom-up
+  and both land, the later one clamping into whatever the earlier produced:
+  corruption rather than an error.
 - **Cross-file undo.** A multi-file rename is one undo step *per buffer*, and
   files rewritten on disk (those with no open buffer) cannot be undone at all.
   The refusal pass added this round narrows the blast radius — an edit that
@@ -1701,6 +1702,51 @@ One real bug came out of writing the wire test: `showStop()` read
 `$currentFrameId`, which `loadScopes()` sets AFTERWARDS — so the request would
 have asked about the previous stop, one frame behind, every time. The frame id
 is passed explicitly now.
+
+## Overlapping text edits are refused now (built 2026-09-07)
+
+Taken off `decisions.md`'s OWN open list rather than the round backlog, and the
+lesson is that the list was worth reading: this was filed as "not a judgement
+call, just unfinished" and it corrupts files. Measured before fixing — two
+overlapping edits over `alpha beta` produced **`X`**, and the outcome reported
+success.
+
+The mechanism is that the fix for one problem hid another: edits are sorted
+bottom-up so earlier positions stay valid, which is correct and is exactly what
+makes two edits over the same characters both land, the second clamping into
+whatever the first left behind. Nothing in the pipeline had an opinion.
+
+**The spec's precision matters, because the naive check forbids something
+legal.** Ranges must not overlap, "however, it is possible that multiple edits
+have the same start position: multiple inserts, or any number of inserts
+followed by a single remove or replace edit" — which is how a server adds two
+`use` lines at one point. So a shared start is fine, an adjacent range
+(`next.start == this.end`) is fine, and only a range reaching INTO another is an
+overlap.
+
+**Refusing the FILE, not the whole edit, is a deliberate deviation** from the
+letter of the spec, which calls such a WorkspaceEdit invalid outright. The
+reason is this class's existing and argued rule: a resource operation that
+half-applies is unrecoverable, which is why those abort; a text file left alone
+is merely not yet renamed, and it is named in the outcome. Refusing 19 good
+files because the 20th is malformed is what that rule exists to prevent.
+
+**The path that matters most is format-on-save**, which this user has on with
+mago's auto-format besides. A refusal there leaves the buffer exactly as they
+wrote it and the save still happens — the save is the point, the formatting is
+the courtesy.
+
+**A test that was already there passed for the wrong reason.** `FormatOnSaveTest`
+asserted "the invalidated editor repaints the new text" by rendering, and the
+mutant that deletes the `invalidate()` call survived: the widget composes its
+rows from the document either way. That is round 7's lesson verbatim — a render
+cannot observe an invalidation — and it is COUNTED now.
+
+Four mutants are judged equivalent, with the reasoning in the code: the `?? 0`
+defaults for a missing coordinate are unreachable from a conforming server, and
+which constant they degenerate to cannot change the verdict, because a range
+missing a coordinate is empty or inverted and neither can overlap anything under
+the `next.start >= this.end` test.
 
 ## The find surfaces, read off the user's own state (2026-09-07)
 

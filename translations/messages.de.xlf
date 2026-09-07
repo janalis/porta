@@ -1022,6 +1022,10 @@
         <source>Toggle Comment</source>
         <target>Kommentar umschalten</target>
       </trans-unit>
+      <trans-unit id="238g">
+        <source>The formatter sent overlapping edits; nothing changed</source>
+        <target>Der Formatierer sendete überlappende Änderungen; nichts wurde geändert</target>
+      </trans-unit>
       <trans-unit id="238f">
         <source>Complete Current Statement</source>
         <target>Anweisung vervollständigen</target>

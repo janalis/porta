@@ -96,10 +96,15 @@ final class FormatOnSave
                 // version guard skips them and the save keeps the user's text.
                 if (null === $error && \is_array($result) && [] !== $result && $buffer->document->getVersion() === $version) {
                     /** @var list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}> $result */
-                    $this->workspaceEditor->applyTextEdits($buffer->document, $result);
-                    $this->lsp->notifyFullChange($buffer->path, $buffer->document);
-                    $this->editor->invalidate();
-                    $this->tui->requestRender();
+                    // A refusal (overlapping edits) leaves the buffer exactly as
+                    // the user wrote it and the save below still happens — which
+                    // is the whole contract of format-on-save: the save is the
+                    // point, the formatting is the courtesy.
+                    if ($this->workspaceEditor->applyTextEdits($buffer->document, $result)) {
+                        $this->lsp->notifyFullChange($buffer->path, $buffer->document);
+                        $this->editor->invalidate();
+                        $this->tui->requestRender();
+                    }
                 }
                 $save();
             },

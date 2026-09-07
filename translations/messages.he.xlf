@@ -1022,6 +1022,10 @@
         <source>Toggle Comment</source>
         <target>הפעל/כבה הערה</target>
       </trans-unit>
+      <trans-unit id="238g">
+        <source>The formatter sent overlapping edits; nothing changed</source>
+        <target>המעצב שלח עריכות חופפות; דבר לא השתנה</target>
+      </trans-unit>
       <trans-unit id="238f">
         <source>Complete Current Statement</source>
         <target>השלם את ההוראה</target>

@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Lsp;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
+use Porta\Editor\EditorInvalidator;
 use Porta\I18n\Translator;
 use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
@@ -32,6 +33,7 @@ final class FormatOnSaveTest extends TestCase
     private \Symfony\Component\Tui\Tui $tui;
     private int $saves = 0;
     private StatusBarWidget $status;
+    private int $invalidations = 0;
 
     private function formatOnSave(): FormatOnSave
     {
@@ -52,10 +54,22 @@ final class FormatOnSaveTest extends TestCase
             static function (array $params): void {},
             static fn (array $edit): bool => false,
         );
+        $this->invalidations = 0;
+        $counting = new class($this->invalidations) implements EditorInvalidator {
+            public function __construct(
+                private int &$count,
+            ) {}
+
+            #[\Override]
+            public function invalidate(): void
+            {
+                ++$this->count;
+            }
+        };
         $formatOnSave = new FormatOnSave(
             $this->pool,
             new WorkspaceEditor(new BufferManager(), $editor, $this->pool, new EventDispatcher()),
-            $editor,
+            $counting,
             new Notifier(
                 $this->status = new StatusBarWidget(),
                 $tui = TestTui::create(80, 24),
@@ -160,8 +174,12 @@ final class FormatOnSaveTest extends TestCase
         $this->assertGreaterThan($notificationsBefore, \count($this->client->notifications), 'the pool was told about the full change');
         $this->assertSame('textDocument/didChange', end($this->client->notifications)['method']);
         $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'), 'a render was requested');
+        // COUNTED, not rendered. The editor composes its rows from the document
+        // either way, so a screen assertion passes whether or not the memoised
+        // lines were dropped — this one did, for as long as it existed.
+        $this->assertSame(1, $this->invalidations, 'the editor was invalidated exactly once');
         $screen = implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->render(new RenderContext(80, 8))));
-        $this->assertStringContainsString('<?php $a = 1;', $screen, 'the invalidated editor repaints the new text');
+        $this->assertStringContainsString('<?php $a = 1;', $screen, 'and it shows the new text');
     }
 
     public function testTimeoutSavesUnformattedAndDropsTheLateResponse(): void

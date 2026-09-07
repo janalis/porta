@@ -267,6 +267,85 @@ final class WorkspaceEditorTest extends TestCase
         $this->assertSame("0123456789\n", file_get_contents($path), 'and its content is left alone');
     }
 
+    /**
+     * Overlapping edits skip their file and NAME it, whether that file is open
+     * or on disk.
+     *
+     * Both paths, because they are separate code: an open buffer is edited in
+     * place and a closed file is read, edited and written back, and a refusal
+     * wired into one of them only would corrupt the other. And named rather
+     * than silently dropped, which is the rule the whole outcome type exists
+     * for.
+     */
+    public function testOverlappingEditsSkipAnOpenBufferAndSayWhich(): void
+    {
+        $we = $this->workspaceEditor();
+        $buffer = $this->buffers->open('/p/a.php', "0123456789\n");
+
+        $outcome = $we->applyWorkspaceEdit([
+            'changes' => [
+                Uri::fromPath('/p/a.php') => [
+                    self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 5]], 'X'),
+                    self::edit(['start' => ['line' => 0, 'character' => 2], 'end' => ['line' => 0, 'character' => 7]], 'Y'),
+                ],
+            ],
+        ]);
+
+        $this->assertSame(0, $outcome->touched);
+        $this->assertSame(['/p/a.php'], $outcome->skipped, 'named, not silently dropped');
+        $this->assertSame("0123456789\n", $buffer->document->getText(), 'untouched');
+    }
+
+    public function testOverlappingEditsSkipAClosedFileOnDisk(): void
+    {
+        $project = new TempProject(['a.php' => "0123456789\n"]);
+        $we = $this->workspaceEditor();
+
+        $outcome = $we->applyWorkspaceEdit([
+            'changes' => [
+                Uri::fromPath($project->path('a.php')) => [
+                    self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 5]], 'X'),
+                    self::edit(['start' => ['line' => 0, 'character' => 2], 'end' => ['line' => 0, 'character' => 7]], 'Y'),
+                ],
+            ],
+        ]);
+
+        $this->assertSame(0, $outcome->touched);
+        // realpath'd: the URI is canonicalised on the way in, and on macOS
+        // the temp dir is a symlink.
+        $this->assertSame([realpath($project->path('a.php'))], $outcome->skipped);
+        $this->assertSame("0123456789\n", file_get_contents($project->path('a.php')), 'nothing was written');
+    }
+
+    /**
+     * And ONE bad file does not cost the others. This is the tolerance rule the
+     * class docblock argues for, applied to a new reason for skipping: refusing
+     * a 20-file rename because the 20th is malformed would be worse than doing
+     * the 19.
+     */
+    public function testAFileWithOverlappingEditsDoesNotStopTheRest(): void
+    {
+        $we = $this->workspaceEditor();
+        $good = $this->buffers->open('/p/good.php', "0123456789\n");
+        $this->buffers->open('/p/bad.php', "0123456789\n");
+
+        $outcome = $we->applyWorkspaceEdit([
+            'changes' => [
+                Uri::fromPath('/p/bad.php') => [
+                    self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 5]], 'X'),
+                    self::edit(['start' => ['line' => 0, 'character' => 2], 'end' => ['line' => 0, 'character' => 7]], 'Y'),
+                ],
+                Uri::fromPath('/p/good.php') => [
+                    self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'Z'),
+                ],
+            ],
+        ]);
+
+        $this->assertSame(1, $outcome->touched);
+        $this->assertSame(['/p/bad.php'], $outcome->skipped);
+        $this->assertSame("Z123456789\n", $good->document->getText());
+    }
+
     public function testBufferLookupFallsBackToARealpathMatch(): void
     {
         $project = new TempProject(['a.php' => "0123456789\n"]);

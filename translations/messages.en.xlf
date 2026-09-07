@@ -1022,6 +1022,10 @@
         <source>Toggle Comment</source>
         <target>Toggle Comment</target>
       </trans-unit>
+      <trans-unit id="238g">
+        <source>The formatter sent overlapping edits; nothing changed</source>
+        <target>The formatter sent overlapping edits; nothing changed</target>
+      </trans-unit>
       <trans-unit id="238f">
         <source>Complete Current Statement</source>
         <target>Complete Current Statement</target>

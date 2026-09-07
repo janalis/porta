@@ -604,6 +604,31 @@ final class RefactorControllerTest extends TestCase
         $this->assertSame('textDocument/didChange', end($this->client->notifications)['method']);
     }
 
+    /**
+     * A formatter that sends overlapping edits gets nothing applied, and the
+     * flash says so rather than claiming a reformat that did not happen.
+     *
+     * Applying them turned `alpha beta` into `X` in the measurement that
+     * opened this — a file neither the server nor the user asked for, reported
+     * as a success.
+     */
+    public function testReformatWithOverlappingEditsChangesNothingAndSaysSo(): void
+    {
+        [$controller] = $this->ready();
+        $before = $this->buffers->get('/tmp/proj/a.php')->document->getText();
+
+        $controller->requestReformat();
+        $request = end($this->client->requests);
+        $request['respond']([
+            ['range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 5]], 'newText' => 'X'],
+            ['range' => ['start' => ['line' => 1, 'character' => 2], 'end' => ['line' => 1, 'character' => 6]], 'newText' => 'Y'],
+        ], error: null);
+
+        $this->assertSame($before, $this->buffers->get('/tmp/proj/a.php')->document->getText(), 'untouched');
+        $this->assertStringContainsString('overlapping edits', $this->flashed());
+        $this->assertStringNotContainsString('Reformatted', $this->flashed(), 'and it does not claim otherwise');
+    }
+
     public function testReformatForANonActiveBufferDoesNotInvalidateTheEditor(): void
     {
         [$controller, $pool] = $this->ready();
