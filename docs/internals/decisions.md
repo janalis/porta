@@ -1738,6 +1738,48 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## Find a node in the graph (built 2026-09-07, `68e95823`)
+
+Picked from evidence rather than a backlog: the user's one logged session that
+morning was spent in the graph viewer, so the question was what that pane
+lacks. Selection existed (`n`/`p`, click) and there was **no way to reach a
+node you can NAME** — which is the only way anyone looks for one in a graph of
+two hundred namespaces drawn as identical boxes.
+
+`/` and `Graph: Find Node` open the filterable list over every node, in the
+`n`/`p` order; picking selects and pans. The row hint is the node's **in/out
+degree**, which is the argument for a list existing at all: the hub you are
+hunting is drawn exactly like every other box, and in a list it is the row with
+fifteen edges. It reuses the type-to-filter overlay built earlier this session,
+so the feature is a command, a key and two accessors.
+
+**Two seams, both existing patterns rather than new ones.**
+
+- `focusNode()` is EXTRACTED from the `n`/`p` cycling, not written beside it.
+  "Which node is selected" and "where the viewport is" are one fact, and a
+  picker that selected a node three screens off without moving would be a
+  search that finds nothing you can see. This is the round's recurring defect
+  shape — two sources of truth about one fact — refused before it existed.
+- The widget knows only that the key was pressed. Opening an overlay needs the
+  api, which only `plugin.php` has, so the pane takes an **optional trailing
+  closure**, the way a widget takes a dispatcher. The widget's own suite hands
+  it a counter double; the app-level test is what proves the wire.
+
+**A coverage gap that was really a dead guard.** `nodeChoices()` skipped a
+`selectionOrder` id with no node behind it, and that line can never run — the
+order is BUILT from those nodes, and `cycleSelection()` has always indexed them
+directly. Deleted rather than tested: an unreachable guard that a test invents
+a way to reach is worse than none, because it documents a case that does not
+exist. The neighbouring guard in `focusNode()` was KEPT, and the difference is
+that one takes an id from OUTSIDE (the picker's row value) where a stale tab
+really can hand it a number that has gone.
+
+**And one vacuous await, caught by reading it rather than by it failing.**
+After `clearOutput()`, "A is no longer on screen" is satisfied by the blank
+screen before anything repaints. The condition has to carry a positive half —
+"C is there AND A is not" — which is [[settle-loops-need-content]] in its
+smallest form: a negative assertion needs something to have happened first.
+
 ## The key gate could not see the plugins (built 2026-09-07, `6f7ae435`)
 
 `KeybindingsDocTest` walked `src/` for `getDefaultKeybindings()`, discovered
