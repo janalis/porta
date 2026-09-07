@@ -78,6 +78,7 @@ final class EditorKeymap
             'paste_history' => ['ctrl+shift+v'],
             'insert_line_below' => ['shift+enter'],
             'insert_line_above' => ['ctrl+alt+enter'],
+            'complete_statement' => ['ctrl+shift+enter'],
             'indent' => [Key::TAB],
             'prev_tab_stop' => ['shift+tab'],
             'accept_completion' => [Key::ENTER],

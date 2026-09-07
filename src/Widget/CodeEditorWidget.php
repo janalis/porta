@@ -40,6 +40,7 @@ use Porta\Editor\MultiCaret;
 use Porta\Editor\OccurrenceHighlights;
 use Porta\Editor\ScopeRescan;
 use Porta\Editor\SignatureHint;
+use Porta\Editor\StatementSyntax;
 use Porta\Editor\TemplateCatalog;
 use Porta\Editor\WrapLayout;
 use Porta\Highlight\CodeHighlighter;
@@ -1045,6 +1046,13 @@ final class CodeEditorWidget extends AbstractWidget implements
     public function commentSyntax(): ?CommentSyntax
     {
         return CommentSyntax::forGrammar($this->highlighter->getLanguage());
+    }
+
+    /** How the current language ends a statement, or null when it has none. */
+    #[\Override]
+    public function statementSyntax(): ?StatementSyntax
+    {
+        return StatementSyntax::forGrammar($this->highlighter->getLanguage());
     }
 
     private function closeCompletion(): void

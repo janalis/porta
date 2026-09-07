@@ -179,6 +179,54 @@ final class LineOperations
     }
 
     /**
+     * The closers $line opened and never shut, in the order they must be typed.
+     *
+     * A stack, not a count per bracket kind: `foo([a` needs `])` and not `)]`,
+     * and only a stack knows which. A closer with no opener (`a)b`) pops
+     * nothing and is ignored — the line is already wrong in a way this verb
+     * cannot fix, and inventing an opener for it would make it worse.
+     *
+     * Quotes are NOT tracked, so `"a("` counts an unclosed paren. Recognising
+     * that needs a lexer; {@see \Porta\Editor\Document::completeStatement()}
+     * carries the limit in its docblock.
+     */
+    public static function missingClosers(string $line): string
+    {
+        $pairs = ['(' => ')', '[' => ']'];
+        $stack = [];
+        foreach (str_split($line) as $char) {
+            if (\array_key_exists($char, $pairs)) {
+                $stack[] = $pairs[$char];
+
+                continue;
+            }
+            if ([] !== $stack && $char === $stack[\count($stack) - 1]) {
+                array_pop($stack);
+            }
+        }
+
+        return implode('', array_reverse($stack));
+    }
+
+    /**
+     * Whether $line still needs $terminator on the end.
+     *
+     * Not merely "does it already end in one". A line ending in an opening or
+     * separating character is a statement that CONTINUES — `foo(`, `[1,`,
+     * `a &&` — and terminating it there would cut it in half. So would adding
+     * one after a block brace, which is not a statement at all.
+     */
+    public static function wantsTerminator(string $line, string $terminator): bool
+    {
+        $trimmed = rtrim($line);
+        if ('' === $trimmed || str_ends_with($trimmed, $terminator)) {
+            return false;
+        }
+
+        return !\in_array(substr($trimmed, offset: -1), ['{', '}', ',', ':', '(', '[', '&', '|', '+', '-', '*', '/', '.', '=', '?'], strict: true);
+    }
+
+    /**
      * Where a statement-move of $delta lands the block at $first..$last, or null
      * when it would run off the buffer. A run of blank lines counts as one step,
      * so a statement hops over the gap rather than into it.

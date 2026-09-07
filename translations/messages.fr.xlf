@@ -1022,6 +1022,10 @@
         <source>Toggle Comment</source>
         <target>Basculer le commentaire</target>
       </trans-unit>
+      <trans-unit id="238f">
+        <source>Complete Current Statement</source>
+        <target>Compléter l’instruction</target>
+      </trans-unit>
       <trans-unit id="238e">
         <source>Paste from History</source>
         <target>Coller depuis l’historique</target>

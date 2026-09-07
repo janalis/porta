@@ -8,7 +8,9 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\Caret;
 use Porta\Editor\CommentSyntax;
 use Porta\Editor\Document;
+use Porta\Editor\LinePlacement;
 use Porta\Editor\SelectionMode;
+use Porta\Editor\StatementSyntax;
 
 final class DocumentTest extends TestCase
 {
@@ -872,6 +874,8 @@ final class DocumentTest extends TestCase
         $bump($doc->indentSelection(...));
         $bump($doc->dedentSelection(...));
         $bump(static fn () => $doc->toggleComment(CommentSyntax::lineOnly('//')));
+        $bump(static fn () => $doc->openLine(LinePlacement::Below));
+        $bump(static fn () => $doc->completeStatement(StatementSyntax::forGrammar('php') ?? throw new \LogicException('php is in the table')));
         $bump(static fn () => $doc->replaceAll('reset'));
         $bump($doc->undo(...));
         $bump($doc->redo(...));

@@ -1150,6 +1150,60 @@ final class Document
         $this->touch();
     }
 
+    /**
+     * PhpStorm's `Ctrl+Shift+Enter`: finish the line and start the next one.
+     *
+     * Three steps, in order, each skipped when it does not apply:
+     *
+     * 1. **Close what this line opened.** Unbalanced `(` and `[` get their
+     *    partners, so `foo(bar` becomes `foo(bar)`.
+     * 2. **Open a block, or end a statement.** A line whose first word is one
+     *    of the language's block keywords gets the opener and a closing line
+     *    beneath; anything else gets the terminator, unless it already ends in
+     *    one or in punctuation that says the statement continues.
+     * 3. **Leave the caret on a fresh line**, indented to match.
+     *
+     * **The bracket count does not know about strings.** `echo "a(b"` counts an
+     * unclosed paren and would add one. A parser would not, and Porta has none
+     * here — the mitigation is that this is an explicit keystroke and the whole
+     * thing is ONE undo step, not that the case cannot arise. Recorded rather
+     * than hidden.
+     */
+    public function completeStatement(StatementSyntax $syntax): void
+    {
+        $line = rtrim($this->lines[$this->cursorLine]);
+        $indent = substr($line, offset: 0, length: \strlen($line) - \strlen(ltrim($line)));
+        $body = $line.LineOperations::missingClosers($line);
+
+        // The block pair when this line opens one, null otherwise — carried as
+        // the VALUE rather than as a boolean beside it, so every use below
+        // narrows on the same null check instead of asserting a fact the
+        // analyser then calls redundant.
+        $opened = null !== $syntax->block && $syntax->opensABlock($line) ? $syntax->block : null;
+        $terminator = $syntax->terminator;
+
+        // A block and a terminator are alternatives, never both: `if ($x) {;`
+        // is nobody's intention.
+        $body .= match (true) {
+            null !== $opened => $opened[0],
+            null !== $terminator && LineOperations::wantsTerminator($body, $terminator) => $terminator,
+            default => '',
+        };
+
+        // A null CLOSER means the block is the indent itself (Python), so there
+        // is a line to open under the header and nothing to put below it.
+        $closer = null !== $opened && null !== $opened[1] ? [$indent.$opened[1]] : [];
+        $caretLine = $indent.(null === $opened ? '' : $this->indentUnit());
+
+        $this->pushUndo();
+        $this->selection->clear();
+        array_splice($this->lines, $this->cursorLine, length: 1, replacement: [$body, $caretLine, ...$closer]);
+        ++$this->cursorLine;
+        $this->cursorCol = \strlen($caretLine);
+        $this->goalCol = null;
+        $this->touch();
+    }
+
     public function deleteBackward(): bool
     {
         if ($this->hasSelection()) {

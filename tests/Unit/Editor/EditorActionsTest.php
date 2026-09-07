@@ -16,6 +16,7 @@ use Porta\Editor\EditorStructural;
 use Porta\Editor\FoldModel;
 use Porta\Editor\MultiCaret;
 use Porta\Editor\SelectionMode;
+use Porta\Editor\StatementSyntax;
 use Porta\Input\TextInput;
 use Porta\Tests\Support\FakeEditorHost;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -63,7 +64,7 @@ final class EditorActionsTest extends TestCase
 
         $host = new FakeEditorHost(function (string $method, array $args): void {
             $this->calls[$method][] = $args;
-        });
+        }, statement: StatementSyntax::forGrammar('php'));
 
         $ring = new ClipboardRing();
         $ring->push($clipboard);
@@ -138,6 +139,21 @@ final class EditorActionsTest extends TestCase
 
         $actions->run('insert_line_above');
         $this->assertSame(2, $this->count_('notifyChange'));
+    }
+
+    /**
+     * Complete-statement too, and for the same reason: the lines come out
+     * right whether or not the host is told, so only a counting seam can see
+     * the missing repaint and the missing `didChange`.
+     */
+    public function testCompleteStatementNotifiesTheHost(): void
+    {
+        $actions = $this->actions("return 1\n");
+
+        $actions->run('complete_statement');
+
+        $this->assertSame('return 1;', $this->doc->getLine(0));
+        $this->assertSame(1, $this->count_('notifyChange'));
     }
 
     public function testRunUndoRedoRoundTrip(): void

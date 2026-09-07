@@ -77,6 +77,7 @@ final class ActionCatalog
         'paste_history' => ['label' => 'Paste from History'],
         'insert_line_below' => ['label' => 'Start New Line'],
         'insert_line_above' => ['label' => 'Start New Line Before Current'],
+        'complete_statement' => ['label' => 'Complete Current Statement'],
         'toggle_comment' => ['label' => 'Toggle Comment'],
         'toggle_block_comment' => ['label' => 'Toggle Block Comment'],
         'toggle_fold' => ['label' => 'Collapse / Expand Fold'],

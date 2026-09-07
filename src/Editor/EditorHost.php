@@ -61,6 +61,9 @@ interface EditorHost
     /** How the buffer's language spells a comment, or null when it has no comment form. */
     public function commentSyntax(): ?CommentSyntax;
 
+    /** How the buffer's language ends a statement, or null when it has no statement to complete. */
+    public function statementSyntax(): ?StatementSyntax;
+
     public function autoPairsEnabled(): bool;
 
     public function isInsertable(string $data): bool;

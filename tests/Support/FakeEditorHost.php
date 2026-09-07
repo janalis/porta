@@ -6,6 +6,7 @@ namespace Porta\Tests\Support;
 
 use Porta\Editor\CommentSyntax;
 use Porta\Editor\EditorHost;
+use Porta\Editor\StatementSyntax;
 use Porta\Input\TextInput;
 
 /**
@@ -20,6 +21,7 @@ final class FakeEditorHost implements EditorHost
         private readonly \Closure $recorder,
         public int $rows = 5,
         public ?string $comment = '//',
+        public ?StatementSyntax $statement = null,
         public bool $autoPairs = true,
     ) {}
 
@@ -80,6 +82,11 @@ final class FakeEditorHost implements EditorHost
     public function openListOverlay(string $title, array $items, callable $onPick): void
     {
         ($this->recorder)('openListOverlay', [$title, $items, $onPick]);
+    }
+
+    public function statementSyntax(): ?StatementSyntax
+    {
+        return $this->statement;
     }
 
     public function commentSyntax(): ?CommentSyntax

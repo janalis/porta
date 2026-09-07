@@ -68,6 +68,7 @@ final class EditorActions
         'move_line_down',
         'insert_line_below',
         'insert_line_above',
+        'complete_statement',
         'toggle_comment',
         'toggle_block_comment',
         'toggle_fold',
@@ -550,6 +551,7 @@ final class EditorActions
             'toggle_case' => $this->notifyIfChanged($this->document->toggleCaseLines(...)),
             'insert_line_below' => $this->openLineBelow(),
             'insert_line_above' => $this->openLineAbove(),
+            'complete_statement' => $this->completeCurrentStatement(),
             'toggle_comment' => $this->toggleLineComment(),
             'toggle_block_comment' => $this->toggleBlockComment(),
             'toggle_fold' => $this->toggleFold(),
@@ -647,6 +649,14 @@ final class EditorActions
     {
         $this->document->duplicateLines();
         $this->host->notifyChange();
+    }
+
+    private function completeCurrentStatement(): void
+    {
+        if (null !== ($syntax = $this->host->statementSyntax())) {
+            $this->document->completeStatement($syntax);
+            $this->host->notifyChange();
+        }
     }
 
     private function toggleLineComment(): void

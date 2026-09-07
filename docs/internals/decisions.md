@@ -1702,6 +1702,53 @@ One real bug came out of writing the wire test: `showStop()` read
 have asked about the previous stop, one frame behind, every time. The frame id
 is passed explicitly now.
 
+## Complete Current Statement, once it had a table (built 2026-09-07)
+
+Filed one round earlier as blocked, with the blocker named: it has to know that
+a statement ends in `;` and a block opens with `{`, and that neither is true in
+Python or YAML. `Editor\StatementSyntax` is that table, gated over every
+grammar the same way `CommentSyntax` is.
+
+**The difference from the comment table changes what the gate is FOR.** Every
+language has some comment form, so a `null` there was always an omission. Most
+languages have no statement to complete — JSON, Markdown, TOML, `.env` — so
+`null` here is a real answer, and the gate exists to make it a written-down one
+rather than a gap that looks the same. `Ctrl+Shift+Enter` doing nothing in JSON
+is correct; the test asserting it uses a language the table says `null` for
+rather than one merely absent from it.
+
+**Three rows are worth defending:** Go has no terminator (the compiler inserts
+semicolons and gofmt removes them) but still braces, which is the case that
+proves the two halves are independent. Python's block has no CLOSER — it is the
+indent — so the closer is separately nullable. CSS has `;` and no keywords: its
+`{` follows a selector, which cannot be recognised without parsing, so brace
+completion is left out rather than half-supported.
+
+**The opener is stored exactly as it is appended** — `' {'` and `':'`. The
+first draft spaced it in the code and produced `if x > 1 :`; whether a brace is
+spaced off the condition and a colon binds to it is a fact about each language
+and belongs in each language's row, not in a separator rule.
+
+**What mutation testing was worth here.** Six survivors, and one named a real
+case: dropping the `^` from the first-word match made `} else {` — a line that
+CLOSES one block and opens the next, already carrying its brace — read as a
+block opener and gain a second one. Another was better answered by changing the
+code than by testing it: `mb_strtolower` on a head the pattern has already
+restricted to ASCII is a guard against an input the function cannot receive, so
+it is `strtolower` now.
+
+**The limit is written down as a test, not only as a docblock.** The bracket
+count does not read strings, so `echo "a(b"` counts an unclosed paren and gets
+one. A parser would not, and there is none here; the mitigations are that this
+is an explicit keystroke and one undo step. `testAParenInsideAStringIsCountedAndThatIsKnown`
+exists so the behaviour is a decision rather than a surprise — and so that
+anyone who fixes it properly has a test to change.
+
+Also caught in passing, by the test failing rather than by review: `foo(` is NOT
+a line that continues. Its bracket closes to `foo()`, which is a whole statement
+and does want its semicolon. The continuation rule is about what the line ends
+with AFTER the closers land.
+
 ## The logs, read again — and the instrument was the defect (2026-09-07)
 
 Round 7's habit, run once more, and worth recording because the ANSWER was
@@ -1808,14 +1855,10 @@ was tried, and `composer analyze` refuses both. That is the distinction worth
 keeping: a line mutation cannot kill is not automatically a line to delete, and
 the way to tell is to delete it and run the gate.
 
-**Still open, and why:** *Complete Current Statement* (`Ctrl+Shift+Enter`) needs
-to know that a statement ends in `;`, that a block opens with `{`, and that
-neither is true in Python or YAML — so it needs a per-language table like
-{@see \Porta\Editor\CommentSyntax}'s, not a PHP heuristic applied to every
-buffer. Shipping the heuristic would be exactly the mistake
-`porta-fixtures-overstate` records, in a new place. Also open: clipboard-history
-mnemonics, bookmark mnemonics, and Go to Super method (no LSP request answers
-it; see the capability table).
+**Still open:** bookmark mnemonics, and Go to Super method (no LSP request
+answers it; see the capability table). *Complete Current Statement* was filed
+here as needing a per-language table before it could ship — it has one now, see
+below.
 
 ## Type-to-filter in the list overlays (built 2026-09-07)
 

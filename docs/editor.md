@@ -122,6 +122,16 @@ a second.
   terminal reports the unshifted key.)
 - **Line operations**: duplicate (`Ctrl+D`), delete (`Ctrl+Y`), move line
   (`Alt+Shift+↑/↓`).
+- **Complete the current statement** (`Ctrl+Shift+Enter`): closes the brackets
+  the line opened, then either ends the statement or opens a block, and leaves
+  the caret on a fresh line. `$x = foo(1, bar(2` becomes `$x = foo(1, bar(2));`
+  and `if ($x > 1` becomes `if ($x > 1) {` with an indented line and a closing
+  brace. What counts as a terminator, a block and a block keyword is per
+  language — Go writes no semicolons, Python's block is a `:` and its indent,
+  and JSON, YAML and Markdown have no statement to complete, so the key does
+  nothing there. A line ending in an operator is a statement that continues and
+  is left alone. One undo step. The bracket count does not read strings, so a
+  parenthesis inside one is counted.
 - **Start a new line** below (`Shift+Enter`) or above (`Ctrl+Alt+Enter`)
   without splitting this one — whatever column the caret is in. Plain `Enter`
   still splits at the caret; these two do not look at it. The new line copies
