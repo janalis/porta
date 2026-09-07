@@ -182,6 +182,11 @@ final class ActionCatalog
         // the persistent Structure TOOL WINDOW, Ctrl+F12 the transient popup.
         'ide_structure' => ['label' => 'Structure', 'keys' => ['alt+7']],
         'ide_todo' => ['label' => 'Show TODOs', 'keys' => ['alt+8'], 'adoptable' => true], // implemented by the bundled todo plugin
+        // The next free digit, keeping the panels contiguous. It had a handler
+        // and a View-menu entry but no catalog row at all, so it was the one
+        // panel with no default key and no Settings → Keymap line to give it
+        // one — reachable only by someone who already knew it was there.
+        'ide_notifications' => ['label' => 'Notification Log', 'keys' => ['alt+9']],
         'ide_command_palette' => ['label' => 'Find Action', 'keys' => ['ctrl+shift+a']],
         'ide_search_everywhere' => ['label' => 'Search Everywhere', 'keys' => ['ctrl+shift+e']],
         'ide_local_history' => ['label' => 'Show Local History', 'keys' => ['ctrl+alt+h'], 'adoptable' => true], // implemented by the bundled local-history plugin

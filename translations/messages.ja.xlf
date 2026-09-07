@@ -2894,6 +2894,14 @@
         <source>Show whitespace</source>
         <target>空白を表示</target>
       </trans-unit>
+      <trans-unit id="814">
+        <source>%action% comes from a bundled plugin that "enabledPlugins" does not list</source>
+        <target>%action% は "enabledPlugins" に列挙されていない同梱プラグインの機能です</target>
+      </trans-unit>
+      <trans-unit id="815">
+        <source>Notification Log</source>
+        <target>通知ログ</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

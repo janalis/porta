@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace Porta\Input;
 
+use Porta\Config\ActionCatalog;
 use Porta\Config\CommandRegistry;
 use Porta\Config\LiveKeybindings;
 use Porta\Container\AsIdeService;
+use Porta\I18n\Translator;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\State\OverlayHost;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\MenuBarWidget;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Event\InputEvent;
 use Symfony\Component\Tui\Tui;
 
@@ -34,6 +37,8 @@ final class InputDispatcher
         private readonly CommandRegistry $commands,
         private readonly LiveKeybindings $keybindings,
         private readonly OverlayHost $overlays,
+        private readonly Notifier $notifier,
+        private readonly Translator $translator,
     ) {}
 
     public function dispatch(InputEvent $event): void
@@ -106,6 +111,49 @@ final class InputDispatcher
 
             $event->stopPropagation();
             $this->commands->run($id);
+
+            return;
+        }
+
+        $this->explainAnAdoptedVerbNobodyImplements($data);
+    }
+
+    /**
+     * A key the catalog binds, that nothing answers to, said out loud.
+     *
+     * An ADOPTABLE id is core naming a verb that a bundled plugin implements —
+     * `Alt+8` is Show TODOs, implemented by `plugins/todo`. With that plugin
+     * unlisted the command is never registered, so it is not even in the loop
+     * above: the key matches nothing and the press does nothing, in silence.
+     * The menu at least hides its own entry; the KEY had no such courtesy.
+     *
+     * The trap that gets you here is `enabledPlugins`: it REPLACES the bundled
+     * defaults rather than adding to them, so a list written to add a language
+     * server drops every default it does not repeat. That is deliberate and
+     * stays — this is the sentence that makes it visible, at the moment the
+     * missing verb is actually reached for rather than at every boot.
+     */
+    private function explainAnAdoptedVerbNobodyImplements(string $data): void
+    {
+        foreach (array_keys(ActionCatalog::ACTIONS) as $id) {
+            // `has()` is the short circuit that makes this free: with every
+            // bundled plugin loaded it is true for all eighteen adoptable ids
+            // and nothing reaches the descriptor match below. The cost appears
+            // only for someone who turned one off — who is the person this
+            // sentence exists for.
+            //
+            // Deliberately NOT gated on the catalog declaring a default key:
+            // thirteen of the eighteen have none (git's verbs live on its own
+            // menu), and `matches()` reads the LIVE map, so a user who bound
+            // one of those by hand is exactly as entitled to the explanation.
+            if (!ActionCatalog::isAdoptable($id) || $this->commands->has($id) || !$this->keybindings->matches($data, $id)) {
+                continue;
+            }
+
+            $this->notifier->flash($this->translator->trans(
+                '%action% comes from a bundled plugin that "enabledPlugins" does not list',
+                ['%action%' => $this->translator->trans(ActionCatalog::label($id))],
+            ));
 
             return;
         }
