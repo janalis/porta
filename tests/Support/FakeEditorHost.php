@@ -76,6 +76,12 @@ final class FakeEditorHost implements EditorHost
         return $this->rows;
     }
 
+    /** @param list<array{label: string, hint: string, value: string}> $items */
+    public function openListOverlay(string $title, array $items, callable $onPick): void
+    {
+        ($this->recorder)('openListOverlay', [$title, $items, $onPick]);
+    }
+
     public function commentSyntax(): ?CommentSyntax
     {
         return null === $this->comment ? null : CommentSyntax::lineOnly($this->comment);

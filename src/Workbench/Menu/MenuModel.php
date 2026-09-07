@@ -48,6 +48,7 @@ final class MenuModel
             'e:cut',
             'e:copy',
             'e:paste',
+            'e:paste_history',
             self::SEP,
             'e:duplicate_line',
             'e:delete_line',

@@ -75,6 +75,7 @@ final class EditorKeymap
             // second way to split this one. Plain Enter still splits, so
             // nothing is lost by giving the chord its real meaning.
             'new_line' => [Key::ENTER],
+            'paste_history' => ['ctrl+shift+v'],
             'insert_line_below' => ['shift+enter'],
             'insert_line_above' => ['ctrl+alt+enter'],
             'indent' => [Key::TAB],

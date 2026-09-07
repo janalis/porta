@@ -23,6 +23,15 @@ interface EditorHost
     public function jumpTo(int $line, int $utf16Col): void;
 
     /**
+     * Show a modal list to pick from — the third of the prompt/jump primitives
+     * above, and the one clipboard history needs.
+     *
+     * @param list<array{label: string, hint: string, value: string}> $items
+     * @param callable(string): void                                  $onPick receives the picked item's value
+     */
+    public function openListOverlay(string $title, array $items, callable $onPick): void;
+
+    /**
      * Show (or clear) the signature popup. $activeRange is the BYTE slice of
      * $hint holding the argument being typed, emphasised so a five-parameter
      * signature does not read the same at every comma.

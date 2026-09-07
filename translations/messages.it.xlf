@@ -1022,6 +1022,10 @@
         <source>Toggle Comment</source>
         <target>Attiva/disattiva commento</target>
       </trans-unit>
+      <trans-unit id="238e">
+        <source>Paste from History</source>
+        <target>Incolla dalla cronologia</target>
+      </trans-unit>
       <trans-unit id="238c">
         <source>Start New Line</source>
         <target>Inizia una nuova riga</target>

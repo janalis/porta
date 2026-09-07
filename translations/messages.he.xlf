@@ -1022,6 +1022,10 @@
         <source>Toggle Comment</source>
         <target>הפעל/כבה הערה</target>
       </trans-unit>
+      <trans-unit id="238e">
+        <source>Paste from History</source>
+        <target>הדבק מההיסטוריה</target>
+      </trans-unit>
       <trans-unit id="238c">
         <source>Start New Line</source>
         <target>התחל שורה חדשה</target>

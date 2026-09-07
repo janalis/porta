@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\ActionCatalog;
 use Porta\Editor\AutoPairService;
 use Porta\Editor\Caret;
+use Porta\Editor\ClipboardRing;
 use Porta\Editor\Document;
 use Porta\Editor\EditorActions;
 use Porta\Editor\EditorCompletion;
@@ -64,7 +65,10 @@ final class EditorActionsTest extends TestCase
             $this->calls[$method][] = $args;
         });
 
-        return new EditorActions($this->doc, $this->multiCaret, $completion, $structural, $this->foldModel, $autoPair, $host, $clipboard);
+        $ring = new ClipboardRing();
+        $ring->push($clipboard);
+
+        return new EditorActions($this->doc, $this->multiCaret, $completion, $structural, $this->foldModel, $autoPair, $host, $ring);
     }
 
     private function count_(string $name): int
@@ -83,6 +87,47 @@ final class EditorActionsTest extends TestCase
      * is never told — a stale frame and stale diagnostics, from a verb whose
      * own output is perfect. Two mutants lived on exactly that.
      */
+    /**
+     * What the clipboard-history picker OFFERS — asserted here because the
+     * list overlay is composited above the editor widget rather than by it, so
+     * a render of the widget alone shows a bare buffer however open the picker
+     * is.
+     *
+     * The multi-line entry keeps its newlines as `⏎` rather than being cut to
+     * its first line: what tells two copies apart is usually three short lines
+     * against one long one, and a list of first lines throws that away. It is
+     * also what the picker's filter matches on.
+     */
+    public function testThePasteHistoryPickerShowsEveryCopyWithItsShape(): void
+    {
+        $actions = $this->actions("alpha beta\ngamma\n");
+        $ring = $actions->clipboardRing();
+        $ring->push('one');
+        $ring->push("two\nthree");
+
+        $actions->run('paste_history');
+
+        $this->assertSame(1, $this->count_('openListOverlay'));
+        [$title, $items] = $this->calls['openListOverlay'][0];
+        $this->assertSame('Paste from History', $title);
+        $this->assertSame(
+            [
+                ['label' => 'two⏎three', 'hint' => '', 'value' => '0'],
+                ['label' => 'one', 'hint' => '', 'value' => '1'],
+            ],
+            $items,
+            'newest first, newlines shown, index as the value',
+        );
+    }
+
+    /** Nothing copied yet: the verb opens nothing rather than an empty box. */
+    public function testThePasteHistoryPickerIsNotOfferedWhenNothingWasCopied(): void
+    {
+        $this->actions()->run('paste_history');
+
+        $this->assertSame(0, $this->count_('openListOverlay'));
+    }
+
     public function testTheOpenLineVerbsNotifyTheHost(): void
     {
         $actions = $this->actions("  a\n");
@@ -360,7 +405,7 @@ final class EditorActionsTest extends TestCase
         $kb = new Keybindings(['copy' => ['ctrl+c']]);
         $actions->handleKey("\x03", $kb);
 
-        $this->assertSame("foo\nfoo", $actions->clipboardValue(), 'one clipboard line per caret');
+        $this->assertSame("foo\nfoo", $actions->clipboardRing()->latest(), 'one clipboard line per caret');
         $this->assertSame([["foo\nfoo"]], $this->calls['fireCopy']);
         $this->assertTrue($this->multiCaret->hasMultiple(), 'copy keeps the carets');
         // selectBothFoos()'s setExtras() already fired one invalidate(); the
@@ -376,7 +421,7 @@ final class EditorActionsTest extends TestCase
         $kb = new Keybindings(['cut' => ['ctrl+x']]);
         $actions->handleKey("\x18", $kb);
 
-        $this->assertSame("foo\nfoo", $actions->clipboardValue());
+        $this->assertSame("foo\nfoo", $actions->clipboardRing()->latest());
         $this->assertSame(" x\n y\n", $this->doc->getText());
     }
 

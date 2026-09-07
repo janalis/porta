@@ -74,6 +74,7 @@ final class ActionCatalog
         'expand_selection' => ['label' => 'Extend Selection'],
         'shrink_selection' => ['label' => 'Shrink Selection'],
         'surround_with' => ['label' => 'Surround With…'],
+        'paste_history' => ['label' => 'Paste from History'],
         'insert_line_below' => ['label' => 'Start New Line'],
         'insert_line_above' => ['label' => 'Start New Line Before Current'],
         'toggle_comment' => ['label' => 'Toggle Comment'],

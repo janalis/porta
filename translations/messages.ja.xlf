@@ -1022,6 +1022,10 @@
         <source>Toggle Comment</source>
         <target>コメントを切替</target>
       </trans-unit>
+      <trans-unit id="238e">
+        <source>Paste from History</source>
+        <target>履歴から貼り付け</target>
+      </trans-unit>
       <trans-unit id="238c">
         <source>Start New Line</source>
         <target>新しい行を開始</target>

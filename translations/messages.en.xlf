@@ -1022,6 +1022,10 @@
         <source>Toggle Comment</source>
         <target>Toggle Comment</target>
       </trans-unit>
+      <trans-unit id="238e">
+        <source>Paste from History</source>
+        <target>Paste from History</target>
+      </trans-unit>
       <trans-unit id="238c">
         <source>Start New Line</source>
         <target>Start New Line</target>

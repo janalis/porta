@@ -144,7 +144,13 @@ a second.
   the target is the whole line, so a one-line block comment comes off from
   anywhere on it, while one spanning several lines has to be selected first.
 - **Clipboard** (`Ctrl+C/X/V`) also copies to the system clipboard via
-  OSC 52.
+  OSC 52. `Ctrl+Shift+V` opens the **clipboard history** — the last 20 things
+  you copied, newest first, with the picker's type-to-filter over all of them.
+  Newlines show as `⏎`, so a three-line copy is distinguishable from a long
+  one at a glance instead of both reading as their first line. Re-copying
+  something already in the list moves it back to the top rather than adding a
+  duplicate, the history is one list across every buffer in the session, and
+  picking an entry also makes it what plain `Ctrl+V` pastes next.
 
 ## Live templates
 

@@ -30,7 +30,7 @@ final class EditorActions
         private readonly FoldModel $foldModel,
         private readonly AutoPairService $autoPair,
         private readonly EditorHost $host,
-        private string $clipboard = '',
+        private readonly ClipboardRing $clipboard = new ClipboardRing(),
     ) {
         $this->column = new ColumnSelection();
     }
@@ -62,6 +62,7 @@ final class EditorActions
         'copy',
         'cut',
         'paste',
+        'paste_history',
         'duplicate_line',
         'move_line_up',
         'move_line_down',
@@ -75,8 +76,15 @@ final class EditorActions
     /** Every table-dispatched action id, for the catalog cross-check test. */
     public const array TABLE_ACTIONS = [...self::PRE_CARET_ACTIONS, ...self::HISTORY_STRUCTURE_ACTIONS, ...self::CLIPBOARD_LINE_ACTIONS];
 
-    /** The clipboard content, handed to the next instance on a buffer switch. */
-    public function clipboardValue(): string
+    /**
+     * The clipboard, handed to the next instance on a buffer switch.
+     *
+     * The RING rather than its top entry, and by handle: one history across
+     * every buffer in the session is the only version of the feature worth
+     * having, since the copy you want back is usually from the file you just
+     * left.
+     */
+    public function clipboardRing(): ClipboardRing
     {
         return $this->clipboard;
     }
@@ -154,8 +162,8 @@ final class EditorActions
         // Block copy/cut: intercept before MultiCaret::handleInput (which does
         // not know the copy/cut verbs and would collapse the carets first).
         if ($this->multiCaret->hasMultiple() && ($kb->matches($keys, 'copy') || $kb->matches($keys, 'cut'))) {
-            $this->clipboard = $this->multiCaret->selectedBlockText();
-            $this->host->fireCopy($this->clipboard);
+            $this->clipboard->push($this->multiCaret->selectedBlockText());
+            $this->host->fireCopy($this->clipboard->latest());
             if ($kb->matches($keys, 'cut')) {
                 $this->multiCaret->deleteSelections();
 
@@ -168,7 +176,7 @@ final class EditorActions
 
         // With multiple carets active, most editing/movement keys apply to
         // every caret; unhandled keys collapse back to a single caret.
-        return $this->multiCaret->hasMultiple() && $this->multiCaret->handleInput($keys, $kb, $this->clipboard, fn (string $d) => $this->host->isInsertable($d));
+        return $this->multiCaret->hasMultiple() && $this->multiCaret->handleInput($keys, $kb, $this->clipboard->latest(), fn (string $d) => $this->host->isInsertable($d));
     }
 
     /** Whether keyboard column selection is on — the status bar says so. */
@@ -532,6 +540,7 @@ final class EditorActions
             'copy' => $this->copySelection(),
             'cut' => $this->cutSelection(),
             'paste' => $this->pasteClipboard(),
+            'paste_history' => $this->pasteFromHistory(),
             'duplicate_line' => $this->duplicateCurrentLines(),
             'delete_line' => $this->notifyIfChanged($this->document->deleteLines(...)),
             'move_line_up' => $this->notifyIfChanged(fn (): bool => $this->document->moveLines(-1)),
@@ -578,8 +587,46 @@ final class EditorActions
 
     private function pasteClipboard(): void
     {
-        if ('' !== $this->clipboard) {
-            $this->document->insert($this->clipboard);
+        $this->pasteText($this->clipboard->latest());
+    }
+
+    /**
+     * PhpStorm's `Ctrl+Shift+V`: paste something you copied EARLIER.
+     *
+     * Newlines are shown as `⏎` rather than the entry being cut to its first
+     * line, because what tells two copies apart is usually their shape — three
+     * short lines against one long one — and a list of first lines throws
+     * exactly that away. It is also what the picker's filter matches on, so
+     * typing part of any line finds the entry.
+     *
+     * The pick is PROMOTED to the top, so the plain `Ctrl+V` after it repeats
+     * what you just pasted rather than the thing you reached past.
+     */
+    private function pasteFromHistory(): void
+    {
+        $entries = $this->clipboard->entries();
+        if ([] === $entries) {
+            return;
+        }
+
+        $items = [];
+        foreach ($entries as $index => $text) {
+            $items[] = ['label' => str_replace(search: "\n", replace: '⏎', subject: $text), 'hint' => '', 'value' => (string) $index];
+        }
+
+        $this->host->openListOverlay('Paste from History', $items, function (string $index) use ($entries): void {
+            // Cast for the same reason array_values() is there in the ring:
+            // the overlay's value is a string and the list is keyed by int.
+            $text = $entries[(int) $index] ?? '';
+            $this->clipboard->push($text);
+            $this->pasteText($text);
+        });
+    }
+
+    private function pasteText(string $text): void
+    {
+        if ('' !== $text) {
+            $this->document->insert($text);
             $this->host->notifyChange();
         }
     }
@@ -714,8 +761,8 @@ final class EditorActions
         if (!$doc->hasSelection()) {
             return false;
         }
-        $this->clipboard = $doc->getSelectedText();
-        $this->host->fireCopy($this->clipboard);
+        $this->clipboard->push($doc->getSelectedText());
+        $this->host->fireCopy($this->clipboard->latest());
 
         return true;
     }

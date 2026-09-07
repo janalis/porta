@@ -71,6 +71,7 @@ final class EditorKeymapTest extends TestCase
                 'goto_matching_bracket' => ['ctrl+shift+m'],
 
                 'new_line' => [Key::ENTER],
+                'paste_history' => ['ctrl+shift+v'],
                 'insert_line_below' => ['shift+enter'],
                 'insert_line_above' => ['ctrl+alt+enter'],
                 'indent' => [Key::TAB],

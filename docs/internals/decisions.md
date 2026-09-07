@@ -1701,6 +1701,65 @@ One real bug came out of writing the wire test: `showStop()` read
 have asked about the previous stop, one frame behind, every time. The frame id
 is passed explicitly now.
 
+## The missing editor verbs, two of three (built 2026-09-07)
+
+Round 8's backlog listed six verbs PhpStorm has and Porta lacked. Two landed
+(`dfa8ae85`, and the clipboard history below); one is deliberately still open.
+
+**Start New Line above / below (`Shift+Enter`, `Ctrl+Alt+Enter`).** The COLUMN
+is the whole reason these are separate verbs from Enter — Enter splits the line
+at the caret, so starting a statement from the middle of one costs an End first
+and starting one above costs Home, Enter, Up. `shift+enter` had been an ALIAS
+for `new_line`, a second way to do what Enter already does; it has its PhpStorm
+meaning now, and plain Enter still splits.
+
+The indent rule is asymmetric on purpose: going DOWN from a line that ends in an
+opener takes one more level (the rule `insertNewLine()` already follows, so the
+two keys never disagree about the same position), and going UP takes none. A
+line above a `}` is inside the block and a line above an `if` is outside it, and
+nothing on the line says which — copying the indent is neutral where guessing is
+wrong half the time.
+
+**Clipboard history (`Ctrl+Shift+V`).** The clipboard was a `string` field on
+`EditorActions`, handed to the next instance on every buffer switch. It is a
+`ClipboardRing` passed by HANDLE now, which is what makes the feature mean
+anything: one history across every buffer in the session, because the copy you
+want back is usually from the file you just left. A string could only ever have
+been handed over by value.
+
+- **Re-copying PROMOTES rather than duplicates.** Otherwise the list fills with
+  the same snippet from the four times you pasted it around, and what you were
+  looking for is pushed off the end by its own duplicates.
+- **Newlines show as `⏎` rather than the entry being cut to its first line.**
+  What tells two copies apart is usually their shape — three short lines against
+  one long one — and a list of first lines throws exactly that away. It is also
+  what the picker's filter matches on, which is why this landed after the
+  overlay filter and not before.
+- **Picking promotes too**, so the plain `Ctrl+V` after it repeats what you just
+  pasted rather than the entry you reached past. Without that the two keys
+  disagree about what "the clipboard" is, one keystroke apart.
+
+`EditorHost` gained `openListOverlay()` — the third of the prompt/jump
+primitives its docblock already claimed, and the alternative was a ninth
+constructor closure on `EditorActions`.
+
+**Two mutation survivors, both judged and both VERIFIED rather than argued:**
+`array_values()` in the ring and the `(int)` cast on the picked index are
+type-preserving, not behavioural — the runtime survives without either
+(`array_unshift` renumbers; PHP coerces a numeric string offset). Removing them
+was tried, and `composer analyze` refuses both. That is the distinction worth
+keeping: a line mutation cannot kill is not automatically a line to delete, and
+the way to tell is to delete it and run the gate.
+
+**Still open, and why:** *Complete Current Statement* (`Ctrl+Shift+Enter`) needs
+to know that a statement ends in `;`, that a block opens with `{`, and that
+neither is true in Python or YAML — so it needs a per-language table like
+{@see \Porta\Editor\CommentSyntax}'s, not a PHP heuristic applied to every
+buffer. Shipping the heuristic would be exactly the mistake
+`porta-fixtures-overstate` records, in a new place. Also open: clipboard-history
+mnemonics, bookmark mnemonics, and Go to Super method (no LSP request answers
+it; see the capability table).
+
 ## Type-to-filter in the list overlays (built 2026-09-07)
 
 Round 8's step 1 gave the results PANEL grouping and a filter, and its "not in

@@ -13,6 +13,7 @@ use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\AutoPairService;
 use Porta\Editor\BreadcrumbScanner;
 use Porta\Editor\CaretMotion;
+use Porta\Editor\ClipboardRing;
 use Porta\Editor\CommentSyntax;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\DecorationStore;
@@ -226,7 +227,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->autoPair = new AutoPairService();
         $this->mouse = $this->newEditorMouse($this->document);
         $this->structural = $this->newEditorStructural($this->document);
-        $this->actions = $this->newEditorActions($this->document, '');
+        $this->actions = $this->newEditorActions($this->document, new ClipboardRing());
         $this->actionRouter = new EditorActionRouter(
             fn (): EditorCallbacks => $this->callbacks,
             fn (): array => [$this->document->getCursorLine(), $this->document->getCursorColUtf16()],
@@ -280,7 +281,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         );
     }
 
-    private function newEditorActions(Document $document, string $clipboard): EditorActions
+    private function newEditorActions(Document $document, ClipboardRing $clipboard): EditorActions
     {
         return new EditorActions($document, $this->multiCaret, $this->completion, $this->structural, $this->foldModel, $this->autoPair, $this, $clipboard);
     }
@@ -325,7 +326,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->scroll = new EditorScroll($document, $this->foldModel, $this->invalidate(...));
         $this->mouse = $this->newEditorMouse($document);
         $this->structural = $this->newEditorStructural($document);
-        $this->actions = $this->newEditorActions($document, $this->actions->clipboardValue());
+        $this->actions = $this->newEditorActions($document, $this->actions->clipboardRing());
         $this->overlayHost->closeList();
         $this->invalidate();
     }
