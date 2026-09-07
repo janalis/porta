@@ -12,6 +12,7 @@ use Porta\Ui\CaretVisibility;
 use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Support\ListFilter;
 use Porta\Widget\Support\RowSelection;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -28,25 +29,37 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 final class PickerLayout
 {
     /**
+     * What marks the speed-search row. A magnifier would read as "search",
+     * which this is not — the list is already fetched and nothing is being
+     * asked of a server; it is a sieve over rows already on screen.
+     */
+    private const string FILTER_GLYPH = '≡';
+
+    /**
      * @param array{int, int, int, int}                                                                                                                             $bounds
-     * @param array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, onPick: callable(string): void} $overlay
+     * @param array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
      *
      * @return array{rows: list<string>, top: int, col: int, width: int, box: ModalBox}
      */
-    public static function layoutList(array $bounds, array $overlay, Styles $styles, bool $closeHovered): array
+    public static function layoutList(array $bounds, array $overlay, Styles $styles, bool $closeHovered, string $emptyMessage = ''): array
     {
         [$boundTop, $boundLeft, $boundBottom, $boundRight] = $bounds;
         $columns = $boundRight - $boundLeft;
         $rows = $boundBottom - $boundTop;
 
-        $items = $overlay['items'];
+        $filter = $overlay['filter']->value();
+        $items = ListFilter::matching($overlay['items'], $filter);
         $selected = $overlay['selected'];
         $maxItems = max(1, min(\count($items), $rows - 5, 12));
         $windowStart = IntMath::clamp($selected - $maxItems + 1, 0, \count($items) - $maxItems);
         $visible = \array_slice($items, $windowStart, $maxItems);
 
         $width = mb_strwidth($overlay['title']) + 8; // the frame's title-bar chrome (corners, hint, ×) needs its room
-        foreach ($visible as $item) {
+        // Measured over the UNFILTERED list, and over all of it rather than the
+        // visible window: a box sized from what survives the filter shrinks and
+        // re-centres on every keystroke, walking out from under the eye reading
+        // it. The width is a property of the list, not of this frame's slice.
+        foreach ($overlay['items'] as $item) {
             $width = max($width, mb_strwidth($item['label']) + mb_strwidth($item['hint']) + 6);
         }
         $width = min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER);
@@ -58,13 +71,30 @@ final class PickerLayout
             $label = AnsiText::truncate($item['label'], $width - $hintWidth - 3, pad: true);
             $content[] = $style->apply(' '.$label.' '.$styles->of(Role::CompletionHint)->apply($item['hint']).' ');
         }
+        if ([] === $visible) {
+            $content[] = $styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate(' '.$emptyMessage, $width, pad: true, ellipsis: ''));
+        }
+        // The filter row appears only once something is typed, so every list
+        // that was fine without one looks exactly as it did — and the moment it
+        // narrows, what narrowed it is on screen rather than being a mode the
+        // user has to remember entering. No caret: the search modal owns the
+        // one caret a frame may carry, and this is a filter, not a field.
+        $header = '' === $filter ? [] : [$styles->of(Role::Toolbar)->apply(AnsiText::truncate(' '.self::FILTER_GLYPH.' '.$filter, $width, pad: true))];
         $popup = [
             ModalFrame::titleBar($overlay['title'], $width + ModalFrame::CHROME_COLS, $styles, $closeHovered),
-            ...ModalFrame::wrap($content, $width, $styles),
+            ...ModalFrame::wrap([...$header, ...$content], $width, $styles),
         ];
 
         [$top, $col] = self::centered($bounds, \count($popup), $width + ModalFrame::CHROME_COLS);
-        $box = new ModalBox($top, $col, $width + ModalFrame::CHROME_COLS, \count($popup), headerRows: ModalFrame::CHROME_ROWS_TOP, windowStart: $windowStart, count: \count($visible));
+        $box = new ModalBox(
+            $top,
+            $col,
+            $width + ModalFrame::CHROME_COLS,
+            \count($popup),
+            headerRows: \count($header) + ModalFrame::CHROME_ROWS_TOP,
+            windowStart: $windowStart,
+            count: \count($visible),
+        );
 
         return ['rows' => $popup, 'top' => $top, 'col' => $col, 'width' => $width + ModalFrame::CHROME_COLS, 'box' => $box];
     }

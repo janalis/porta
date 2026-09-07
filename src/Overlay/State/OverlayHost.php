@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Overlay\State;
 
 use Porta\Container\AsIdeService;
+use Porta\I18n\Translator;
 use Porta\Overlay\Region\ModalBox;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
@@ -14,6 +15,7 @@ use Porta\Ui\Role;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\PickerLayout;
+use Porta\Widget\Support\ListFilter;
 use Porta\Widget\Support\StylesDefault;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Tui;
@@ -38,7 +40,7 @@ final class OverlayHost
 {
     use StylesDefault;
 
-    /** @var array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, onPick: callable(string): void}|null */
+    /** @var array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void}|null */
     private ?array $overlay = null;
     /** last-rendered overlay box, for mouse hit-testing */
     private ?ModalBox $overlayBox = null;
@@ -54,6 +56,7 @@ final class OverlayHost
     private ?ModalBox $searchBox = null;
 
     private readonly CursorStyle $cursorStyle;
+    private readonly Translator $translator;
 
     /** Repaint request. A frame, not a widget invalidation — nothing below owns these boxes. */
     private readonly \Closure $invalidate;
@@ -62,9 +65,11 @@ final class OverlayHost
         ?Tui $tui = null,
         ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
+        ?Translator $translator = null,
     ) {
         $this->initStyles($styles);
         $this->cursorStyle = $cursorStyle ?? new CursorStyle();
+        $this->translator = $translator ?? new Translator('en');
         $this->invalidate = static function () use ($tui): void {
             $tui?->requestRender();
         };
@@ -81,7 +86,7 @@ final class OverlayHost
         if ([] === $items) {
             return;
         }
-        $this->overlay = ['title' => $title, 'items' => $items, 'selected' => 0, 'hovered' => null, 'onPick' => $onPick];
+        $this->overlay = ['title' => $title, 'items' => $items, 'selected' => 0, 'hovered' => null, 'filter' => new TextField(style: $this->cursorStyle), 'onPick' => $onPick];
         ($this->invalidate)();
     }
 
@@ -314,33 +319,53 @@ final class OverlayHost
         }
     }
 
-    /** @param array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, onPick: callable(string): void} $overlay the open list overlay (non-null) */
+    /** @param array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay the open list overlay (non-null) */
     private function handleOverlayInput(string $keys, Keybindings $kb, array $overlay): void
     {
-        $count = \count($overlay['items']);
+        $count = \count($this->matching($overlay));
 
         if ($kb->matches($keys, 'select_cancel')) {
+            // Esc clears the filter before it closes the list. Typing is how
+            // you get around a long list, so a typo in the filter must not
+            // also cost you the list you were reading.
+            if ('' !== $overlay['filter']->value()) {
+                $overlay['filter']->clear();
+                $this->refiltered($overlay);
+
+                return;
+            }
             $this->overlay = null;
             ($this->invalidate)();
 
             return;
         }
+        if ($kb->matches($keys, 'delete_char_backward')) {
+            if ($overlay['filter']->backspace()) {
+                $this->refiltered($overlay);
+            }
+
+            return;
+        }
+        // Nothing below can run against an empty list: every one of them steps
+        // the selection modulo $count, and a filter that matches nothing makes
+        // that a division by zero. The surface stays open showing why.
+        if (0 === $count) {
+            $this->typeIntoFilter($overlay, $keys);
+
+            return;
+        }
         if ($kb->matches($keys, 'cursor_up')) {
-            $overlay['selected'] = ($overlay['selected'] - 1 + $count) % $count;
-            $this->overlay = $overlay;
-            ($this->invalidate)();
+            $this->reselect($overlay, ($overlay['selected'] - 1 + $count) % $count);
 
             return;
         }
         if ($kb->matches($keys, 'cursor_down')) {
-            $overlay['selected'] = ($overlay['selected'] + 1) % $count;
-            $this->overlay = $overlay;
-            ($this->invalidate)();
+            $this->reselect($overlay, ($overlay['selected'] + 1) % $count);
 
             return;
         }
         if ($kb->matches($keys, 'accept_completion')) {
-            $item = $overlay['items'][$overlay['selected']];
+            $item = $this->matching($overlay)[$overlay['selected']];
             $onPick = $overlay['onPick'];
             $this->overlay = null;
             $onPick($item['value']);
@@ -350,10 +375,79 @@ final class OverlayHost
         }
         if ($kb->matches($keys, 'recent_files')) {
             // Ctrl+E again cycles like PhpStorm
-            $overlay['selected'] = ($overlay['selected'] + 1) % $count;
-            $this->overlay = $overlay;
-            ($this->invalidate)();
+            $this->reselect($overlay, ($overlay['selected'] + 1) % $count);
+
+            return;
         }
+        $this->typeIntoFilter($overlay, $keys);
+    }
+
+    /**
+     * A printable keystroke narrows the list — PhpStorm's speed search, which
+     * every list popup there has and none of Porta's had.
+     *
+     * Round 8 gave the results PANEL a filter and said so; the overlays were
+     * left handling four keys, so `Ctrl+F12` on a forty-method class was a
+     * list you could only walk. {@see TextField::insert()} decides what counts
+     * as printable, so a chord this method does not recognise is swallowed
+     * rather than typed, exactly as it was before.
+     *
+     * @param array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
+     */
+    private function typeIntoFilter(array $overlay, string $keys): void
+    {
+        if ($overlay['filter']->insert($keys)) {
+            $this->refiltered($overlay);
+        }
+    }
+
+    /**
+     * After the filter changed: back to the top, and no hover.
+     *
+     * Both because the ROWS MOVED. The old selected index now names a
+     * different item, and picking the one you never looked at is worse than
+     * losing your place; the mouse-hover highlight is stale for exactly the
+     * same reason, and it would sit on the wrong row until the pointer next
+     * moves — which, mid-keystroke, may be never.
+     *
+     * @param array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
+     */
+    private function refiltered(array $overlay): void
+    {
+        $overlay['hovered'] = null;
+        $this->reselect($overlay, 0);
+    }
+
+    /**
+     * Store the overlay back with a new selection and repaint.
+     *
+     * The write-back is not incidental: `$overlay` is an ARRAY, so every handler
+     * above holds a copy, and one that mutates its own and forgets this line
+     * changes nothing at all.
+     *
+     * @param array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
+     */
+    private function reselect(array $overlay, int $selected): void
+    {
+        $overlay['selected'] = $selected;
+        $this->overlay = $overlay;
+        ($this->invalidate)();
+    }
+
+    /**
+     * The items the filter admits.
+     *
+     * Every index in the overlay — `selected`, `hovered`, the mouse hit-test —
+     * counts against THIS list rather than the full one. Two index spaces for
+     * one visible list is how a filtered picker opens the wrong item.
+     *
+     * @param array{title: string, items: list<array{label: string, hint: string, value: string}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
+     *
+     * @return list<array{label: string, hint: string, value: string}>
+     */
+    private function matching(array $overlay): array
+    {
+        return ListFilter::matching($overlay['items'], $overlay['filter']->value());
     }
 
     /**
@@ -375,8 +469,10 @@ final class OverlayHost
             return true;
         }
         $index = $this->overlayBox?->itemAt($relRow, $relCol);
-        if (null !== $index) {
-            $item = $overlay['items'][$index];
+        // Against the FILTERED list, like every other index here — the row the
+        // pointer is over is the row the box drew.
+        $item = null === $index ? null : $this->matching($overlay)[$index] ?? null;
+        if (null !== $item) {
             $onPick = $overlay['onPick'];
             $this->overlay = null;
             ($this->invalidate)();
@@ -467,10 +563,10 @@ final class OverlayHost
     public function moveListSelection(int $delta): void
     {
         $overlay = $this->overlay;
-        if (null === $overlay || [] === $overlay['items']) {
+        if (null === $overlay || [] === $this->matching($overlay)) {
             return;
         }
-        $count = \count($overlay['items']);
+        $count = \count($this->matching($overlay));
         $overlay['selected'] = ((($overlay['selected'] + $delta) % $count) + $count) % $count;
         $this->overlay = $overlay;
         ($this->invalidate)();
@@ -608,7 +704,14 @@ final class OverlayHost
         $this->promptBox = null;
         $placed = [];
         if (null !== $this->overlay) {
-            $placed[] = $this->place(PickerLayout::layoutList($bounds, $this->overlay, $this->styles, PickerSurface::ListOverlay === $this->closeHovered), $this->overlayBox);
+            // The FULL overlay, filter and all: layout narrows the rows with
+            // the same rule this class indexes by, and sizes the box against
+            // the unnarrowed list so it does not shrink and re-centre under
+            // the reader on every keystroke.
+            $placed[] = $this->place(
+                PickerLayout::layoutList($bounds, $this->overlay, $this->styles, PickerSurface::ListOverlay === $this->closeHovered, $this->translator->trans('no matches')),
+                $this->overlayBox,
+            );
         }
         if (null !== $this->search) {
             // Only the TOPMOST surface renders the caret (the prompt wins): two

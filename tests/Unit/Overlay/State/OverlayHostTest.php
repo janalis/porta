@@ -13,6 +13,7 @@ use Porta\Search\Everywhere\SearchRow;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestTui;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\OverlayCompositor;
 use Porta\Widget\Render\TabCloseGlyph;
@@ -1177,7 +1178,7 @@ final class OverlayHostTest extends TestCase
         }
         $host = $this->host();
         $host->openList('L', $items, static fn () => null);
-        Probe::set($host, 'overlay', ['title' => 'L', 'items' => $items, 'selected' => 15, 'hovered' => 10, 'onPick' => static fn () => null]);
+        Probe::set($host, 'overlay', ['title' => 'L', 'items' => $items, 'selected' => 15, 'hovered' => 10, 'filter' => new TextField(), 'onPick' => static fn () => null]);
 
         $lines = $this->canvas($host, 80, 20);
         $selectedRow = null;

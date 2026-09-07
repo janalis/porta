@@ -500,7 +500,15 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
         $editor->handleInput("\x1b[A"); // up from 0 wraps to last
         $editor->handleInput("\x05"); // ctrl+e cycles forward (wraps to first)
-        $editor->handleInput('q'); // unknown key ignored
+        // A printable key is no longer ignored — it filters. `q` matches
+        // neither row, and the surface stays open saying so rather than
+        // picking something on the next Enter.
+        $editor->handleInput('q');
+        $editor->handleInput("\r");
+        $this->assertNull($picked, 'Enter over an empty result picks nothing');
+
+        $editor->handleInput("\x1b"); // Esc clears the filter, keeping the list
+        $this->assertTrue(EditorState::pickerOpen($editor));
         $editor->handleInput("\r");
         $this->assertSame('1', $picked);
 

@@ -1701,6 +1701,63 @@ One real bug came out of writing the wire test: `showStop()` read
 have asked about the previous stop, one frame behind, every time. The frame id
 is passed explicitly now.
 
+## Type-to-filter in the list overlays (built 2026-09-07)
+
+Round 8's step 1 gave the results PANEL grouping and a filter, and its "not in
+this round" list said the OVERLAYS were left out: `Ctrl+F12` on a forty-method
+class opened a list you could only walk. The overlay handled four keys — up,
+down, Enter, Esc — and every printable keystroke fell on the floor.
+
+It is universal rather than opt-in, because that is PhpStorm's speed search and
+because a per-caller flag is a decision ten call sites can get wrong. The two
+verbs each prefer the other's fallback, so no key is dead: the filter row
+appears only once something is typed, so a list that was fine without one still
+opens looking exactly as it did.
+
+**Three decisions the tests exist to hold:**
+
+- **Esc clears the filter before it closes the surface.** Typing is how you get
+  around a long list; a typo must not also cost you the list.
+- **Any filter edit puts the selection back on the first survivor and drops the
+  hover**, because the ROWS MOVED. The old index names a different item, and
+  picking the one you never looked at is worse than losing your place.
+- **The empty-list guard returns before the movement keys and still lets a
+  character through.** Every movement steps the selection modulo the row count,
+  so a filter matching nothing is a division by zero one arrow-press away; and
+  without the second half the filter is a trap you can only Esc out of.
+
+**The architecture gate wrote the design.** Filtering started in the state tier,
+which handed the render tier the narrowed rows — and `arch` refused the reverse
+call outright (`OverlayHost <-> PickerLayout`). Handing down the RESULT works
+for the rows and loses the WIDTH: the box is centered and sized from its
+content, so a box measured on what survives the filter shrinks and re-centres on
+every keystroke, crawling out from under the eye reading it. Layout needs both
+lists, so it needs the RULE — `Widget\Support\ListFilter`, a pure function both
+tiers call. The gate turned "where does this go" into a question with one
+answer.
+
+**What mutation testing was worth here: 23 survivors, and the shapes repeat.**
+Eight were concat arithmetic in one line building the filter row, all alive
+under `assertStringContainsString` — the same lesson round 7's completion type
+column taught, so the row is pinned WHOLE now. Three were `mb_strtolower` →
+`strtolower`, which an ASCII fixture cannot tell apart; and the first fixture
+written for them did not either, because `Größe` has only an ASCII uppercase
+letter, so both functions produce the same string. The letter being folded has
+to be the multibyte one.
+
+**And `pad: true` turned out to be load-bearing in a way no stripped-text
+assertion can see.** The padding happens BEFORE the style wraps the row, so
+dropping it leaves a highlight bar that stops under the text instead of crossing
+the box — identical text, visibly broken row. That one is asserted against the
+raw ANSI.
+
+Three survivors are judged equivalent, all `ReturnRemoval`, all verified rather
+than argued: two guard a fall-through into `typeIntoFilter`, which is reached
+only by non-printable chords that `TextField::insert` rejects
+(`src/Ui/TextField.php:65`); the third is the empty-needle fast path, and
+`str_contains($x, '')` is `true`, so falling through returns the same list more
+slowly.
+
 ## Comments work in every language now (built 2026-09-07)
 
 Round 8's backlog filed this as "block comment is missing, and Twig has no

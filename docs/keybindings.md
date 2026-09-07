@@ -44,7 +44,7 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `Ctrl+Alt+Shift+C` | Copy a reference to the caret — the enclosing symbol (`App\Svc::run`), or `path:line` when there is none |
 | `Ctrl+Alt+Shift+S` | New scratch file — pick a language, get an empty buffer in `<home>/.porta/scratches/` |
 | `Ctrl+Shift+N` / `Ctrl+P` | Go to file (fuzzy finder) |
-| `Ctrl+E` | Recent files popup (`Ctrl+E` again cycles, `Enter` opens) |
+| `Ctrl+E` | Recent files popup (`Ctrl+E` again cycles, `Enter` opens, and typing filters) |
 | `Ctrl+←` / `Ctrl+→` | Previous / next editor tab |
 | `Ctrl+Shift+←` / `Ctrl+Shift+→` | Move the active tab left / right |
 | `Ctrl+F4` / `Alt+W` | Close the active buffer (unsaved changes prompt) |
@@ -108,7 +108,7 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `Ctrl+Alt+O` | Optimize imports (`source.organizeImports`; applied straight away when the server offers one) |
 | `Ctrl+Shift+P` | Parameter info — re-summon the signature popup (PhpStorm's `Ctrl+P`, which Go to File owns here) |
 | `Shift+F1` | Quick documentation |
-| `Ctrl+F12` | File structure popup |
+| `Ctrl+F12` | File structure popup (type to filter — the symbol's KIND counts, so `method` narrows a class to its methods) |
 | `Alt+7` | Structure panel (persistent, on the dock) |
 | `F2` / `Shift+F2` | Next / previous problem in this file (wraps, and says so) |
 | `Alt+↓` / `Alt+↑` | Next / previous declaration — class or method (wraps, and says so) |
@@ -194,6 +194,12 @@ When an image tab is active:
 | Arrows / `Shift+arrows` | Pan |
 
 ## Mouse
+
+**Every list popup filters as you type** — file structure, recent files, quick
+fixes, Run…, the scratch-file languages, a plugin's own list. The typed text
+shows above the rows, `Backspace` widens it again, and `Esc` clears the filter
+before it closes the popup, so a typo never costs you the list. The match is
+case-insensitive and covers the row's label and its right-hand hint.
 
 SGR mouse reporting (modes 1000/1003/1006) is enabled: click to place the
 cursor, drag to select (double-click a word, triple-click a line,
