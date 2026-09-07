@@ -6,7 +6,9 @@ namespace Porta\Tests\Unit\Help;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ActionCatalog;
+use Porta\Overlay\State\FindInFilesModal;
 use Porta\Widget\EditorKeymap;
+use Porta\Widget\FindBarWidget;
 use Porta\Workbench\Menu\MenuModel;
 
 /**
@@ -65,6 +67,131 @@ final class KeybindingsDocTest extends TestCase
         }
 
         $this->assertSame([], $missing, "a menu advertises these and docs/keybindings.md does not mention them:\n  ".implode("\n  ", $missing));
+    }
+
+    /**
+     * A MODAL's own keys are the only way to use it, so an undocumented one is
+     * a feature nobody can reach.
+     *
+     * This is a THIRD binding channel, after the catalog and the editor's
+     * keymap: the find bar and the find-in-files modal each carry a private
+     * map of their own, matched with the editor's parser but merged with
+     * nothing. That makes the case for documenting them stronger than the menu
+     * argument above, not weaker — a menu item at least advertises the verb
+     * exists, while `Alt+T` inside the find modal is advertised by nothing at
+     * all. The modal draws its option toggles as bare glyphs (`.*`, `Aa`,
+     * `\b`), clickable and silent about their chords.
+     *
+     * Measured when this was written: the two surfaces bind 28 keys, 18 of
+     * them their own rather than a modal convention, and the doc's Search
+     * section named 9 of those.
+     *
+     * And it reads the doc's **Search section**, not the whole file, which is
+     * the difference between "this chord appears somewhere" and "this chord is
+     * documented HERE". Whole-file matching reported three missing keys and
+     * called the rest documented — including the modal's `Alt+↑`/`Alt+↓` query
+     * recall, which the doc mentions only as the editor's previous/next
+     * declaration. A gate satisfied by a row that says something else about
+     * the same key is worse than no gate, because it reads as a guarantee.
+     * That is round 8's substring lesson one level up: the wrong SCOPE rather
+     * than the wrong boundary.
+     */
+    public function testEveryKeyAModalBindsForItselfAppearsInTheDoc(): void
+    {
+        $doc = self::expandPairs(self::normalise(self::section('Search')));
+
+        $missing = [];
+        foreach (self::modalKeys() as $surface => $keys) {
+            foreach ($keys as $id => $key) {
+                if (self::mentions($doc, $key)) {
+                    continue;
+                }
+                $missing[] = "{$surface}: {$id} → {$key}";
+            }
+        }
+
+        $this->assertSame([], $missing, "a modal binds these and docs/keybindings.md does not mention them:\n  ".implode("\n  ", $missing));
+    }
+
+    /**
+     * One `## `-delimited section of the doc, by heading.
+     *
+     * @return string its body, heading excluded
+     */
+    private static function section(string $heading): string
+    {
+        $doc = (string) file_get_contents(__DIR__.'/../../../docs/keybindings.md');
+        $parts = preg_split('/^## /m', $doc);
+        self::assertIsArray($parts, 'the doc splits into sections');
+        foreach ($parts as $part) {
+            if (str_starts_with($part, $heading."\n")) {
+                return $part;
+            }
+        }
+
+        self::fail("docs/keybindings.md has no `## {$heading}` section");
+    }
+
+    /**
+     * Every key the two find surfaces bind for themselves, minus the six that
+     * every modal in the world uses the same way.
+     *
+     * The exclusions are deliberately narrow. `Esc`, `Enter`, `Tab`,
+     * `Backspace` and the arrows are conventions a reader brings with them;
+     * `Delete` is NOT on that list even though it looks like it belongs there,
+     * because in the find modal it excludes a match from a bulk replace, which
+     * is a verb and not a convention.
+     *
+     * @return array<string, array<string, string>>
+     */
+    private static function modalKeys(): array
+    {
+        $universal = ['escape', 'enter', 'tab', 'backspace', 'up', 'down'];
+
+        $surfaces = [];
+        foreach (['find in files' => self::findModalKeys(), 'find bar' => self::findBarKeys()] as $surface => $map) {
+            foreach ($map as $id => $keys) {
+                foreach ($keys as $key) {
+                    if (\in_array(mb_strtolower($key), $universal, strict: true)) {
+                        continue;
+                    }
+                    $surfaces[$surface][$id] = $key;
+                }
+            }
+        }
+
+        return $surfaces;
+    }
+
+    /** @return array<string, list<string>> */
+    private static function findModalKeys(): array
+    {
+        // @mago-expect lint:inline-variable-return -- getConstant() returns
+        // mixed, and the @var on the assignment is what shapes the rows.
+        /** @var array<string, list<string>> $keys */
+        $keys = new \ReflectionClass(FindInFilesModal::class)->getConstant('KEYS');
+
+        return $keys;
+    }
+
+    /**
+     * The find bar's are a protected METHOD of the framework's keybinding
+     * trait rather than a constant, so they come out through reflection the
+     * same way — the point being that the two surfaces disagree about where
+     * they keep this, and the gate must not care.
+     *
+     * @return array<string, list<string>>
+     */
+    private static function findBarKeys(): array
+    {
+        $method = new \ReflectionMethod(FindBarWidget::class, 'getDefaultKeybindings');
+
+        // @mago-expect lint:inline-variable-return -- invoke() returns mixed,
+        // and the @var on the assignment is what shapes the rows.
+        /** @var array<string, list<string>> $keys */
+        $keys = $method->invoke(null);
+
+        return $keys;
     }
 
     /**

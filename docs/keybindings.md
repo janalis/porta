@@ -129,8 +129,31 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 
 | Key | Action |
 | --- | --- |
-| `Ctrl+F` / `Ctrl+R` | Find / find-and-replace in file (`F3`/`Shift+F3` cycle, `Tab` switches field, `Alt+R` replace, `Alt+A` replace all) |
-| `Ctrl+Shift+F` | Find in Files (regex `Alt+R`, case `Alt+C`, whole word `Alt+W`; `Tab` to the replace field, `Alt+A` replaces across the project) |
+| `Ctrl+F` / `Ctrl+R` | Find / find-and-replace in file (`F3`/`Shift+F3` cycle, `Tab` switches field, `Alt+X` regex, `Alt+W` whole word, `Alt+R` replace, `Alt+A` replace all, `Alt+↑`/`Alt+↓` recall an earlier query) |
+| `Ctrl+Shift+F` | Find in Files — see the table below |
+
+Both find surfaces share one query history — what you looked for in this
+project, whichever surface you looked from — kept in `.porta/search-history.json`
+and recorded when you press `Enter`, not as you type.
+
+### Inside Find in Files
+
+The option toggles above the results are clickable, and these are their keys.
+Note that regex is `Alt+X` in the in-file find bar and `Alt+R` here: `Alt+R`
+replaces in the bar, and neither surface can have both.
+
+| Key | Action |
+| --- | --- |
+| `Alt+R` / `Alt+C` / `Alt+W` | Regex (`.*`) / match case (`Aa`) / whole word (`\b`) |
+| `Alt+V` | Preserve case when replacing (`Pc`) — replacing `foo` in `Foo` writes `Bar`, not `bar` |
+| `Alt+T` | Cycle where matches count: anywhere (`·"`), only inside comments and strings (`i"`), or everywhere except them (`x"`) — the classification is per file and language-aware |
+| `Alt+S` | Cycle the search scope (whole project, or one you saved) |
+| `Alt+↑` / `Alt+↓` | Recall an earlier query into the field |
+| `Shift+Enter` | A literal newline in the query — how you search for text spanning two lines |
+| `Enter` / `Alt+Enter` | Open the selected result / send every result to the Find panel |
+| `Tab` | Move between the find, replace and file-mask fields |
+| `Delete` | Exclude the selected match from `Alt+A`'s bulk replace |
+| `Alt+A` | Replace across the project (every match still included) |
 | `Ctrl+G` | Go to line |
 | `Ctrl+Shift+T` | Go to test / go to tested class |
 

@@ -8,8 +8,10 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
 use Porta\Editor\FindMode;
 use Porta\Event\FindQueryUpdated;
+use Porta\History\SearchHistoryStore;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\FakeFindTarget;
+use Porta\Tests\Support\TempProject;
 use Porta\Widget\FindBarWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -23,6 +25,187 @@ final class FindBarWidgetTest extends TestCase
         foreach (str_split($text) as $ch) {
             $bar->handleInput($ch);
         }
+    }
+
+    /**
+     * The query as the BAR DRAWS IT.
+     *
+     * Not a public accessor added for the test — `Find: …` is what the user
+     * reads, and asserting it keeps the recall's whole wire (field, repaint,
+     * render) in the assertion rather than only the field.
+     */
+    private function shownQuery(FindBarWidget $bar): string
+    {
+        $plain = AnsiUtils::stripAnsiCodes(implode('', $bar->render(new RenderContext(120, 1))));
+        // Up to the `[n/m]` counter, not `\S+`: an EMPTY query leaves the field
+        // blank and the counter is the next non-space thing on the row, so a
+        // greedy match reports `[0/0]` as the query and every assertion about
+        // clearing the field passes against it.
+        $m = [];
+        self::assertSame(1, preg_match('/Find:([^\[]*)/', $plain, $m), 'the bar draws a Find field');
+
+        return trim($m[1]);
+    }
+
+    /**
+     * `Alt+↑`/`Alt+↓` recall past queries — from the PROJECT search's history,
+     * shared rather than a second store.
+     *
+     * The in-file bar had no history at all while find-in-files persisted one
+     * to `.porta/search-history.json` and recalled it with the same chords.
+     * Sharing means what you just found in a file is one keystroke away when
+     * you next want it across the project.
+     */
+    public function testTheQueryHistoryIsRecalledAndIsTheProjectSearchs(): void
+    {
+        $project = new TempProject();
+        $history = new SearchHistoryStore($project->dir);
+        $history->add('earlier');
+
+        $bar = new FindBarWidget(new Translator('en'), history: $history);
+        $bar->setFocused(true);
+        $bar->open(new FakeFindTarget(new Document("nothing here\n")), mode: FindMode::Find);
+
+        $bar->handleInput("\x1b[1;3A"); // alt+up
+        $this->assertSame('earlier', $this->shownQuery($bar), 'a query the PROJECT search recorded');
+
+        $bar->handleInput("\x1b[1;3B"); // alt+down, back past the newest
+        $this->assertSame('', $this->shownQuery($bar), 'and back to an empty field, not stuck on the newest');
+    }
+
+    /**
+     * The cursor walks BOTH ways and keeps its place.
+     *
+     * Up-up-down-up must land back on the older entry. A recall that reset the
+     * cursor on its way — which is what dropping the handler's `return` does,
+     * by falling through to the plain-typing path that clears it — passes every
+     * single-step assertion and then starts the walk over on the next press.
+     */
+    public function testTheHistoryCursorSurvivesAStepBackTheOtherWay(): void
+    {
+        $project = new TempProject();
+        $history = new SearchHistoryStore($project->dir);
+        $history->add('older');
+        $history->add('newer');
+
+        $bar = new FindBarWidget(new Translator('en'), history: $history);
+        $bar->setFocused(true);
+        $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
+
+        $bar->handleInput("\x1b[1;3A");
+        $bar->handleInput("\x1b[1;3A");
+        $this->assertSame('older', $this->shownQuery($bar));
+
+        $bar->handleInput("\x1b[1;3B"); // back towards the newest
+        $this->assertSame('newer', $this->shownQuery($bar));
+
+        $bar->handleInput("\x1b[1;3A"); // and onwards again, from where it was
+        $this->assertSame('older', $this->shownQuery($bar), 'the walk continued rather than restarting');
+    }
+
+    /**
+     * Recall targets the QUERY field only. Dropping a past search into the
+     * REPLACEMENT is never what the chord means — and it is the field that
+     * would silently rewrite the file on the next Alt+A.
+     */
+    public function testRecallDoesNothingWhileTheReplaceFieldIsActive(): void
+    {
+        $project = new TempProject();
+        $history = new SearchHistoryStore($project->dir);
+        $history->add('earlier');
+
+        $bar = new FindBarWidget(new Translator('en'), history: $history);
+        $bar->setFocused(true);
+        $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Replace);
+        $bar->handleInput("\t"); // to the replacement field
+
+        $bar->handleInput("\x1b[1;3A");
+
+        $plain = AnsiUtils::stripAnsiCodes(implode('', $bar->render(new RenderContext(120, 1))));
+        $this->assertStringNotContainsString('earlier', $plain, 'neither field took it');
+    }
+
+    /**
+     * A recalled query is SEARCHED FOR, not merely shown.
+     *
+     * The field and the render would look right either way; what tells them
+     * apart is the match count, and a recall that skipped the re-run would
+     * leave the bar reporting the previous query's hits under the new text.
+     */
+    public function testARecalledQueryReRunsTheSearch(): void
+    {
+        $project = new TempProject();
+        $history = new SearchHistoryStore($project->dir);
+        $history->add('beta');
+
+        $bar = new FindBarWidget(new Translator('en'), history: $history);
+        $bar->setFocused(true);
+        $bar->open(new FakeFindTarget(new Document("alpha\nbeta\nbeta\n")), mode: FindMode::Find);
+        $this->type($bar, 'alpha');
+        $this->assertCount(1, $bar->getMatchesByLine(), 'one line holds `alpha`');
+
+        $bar->handleInput("\x1b[1;3A");
+
+        $this->assertSame('beta', $this->shownQuery($bar));
+        $this->assertCount(2, $bar->getMatchesByLine(), 'and two hold `beta`');
+    }
+
+    /**
+     * Enter records the query, and typing does not.
+     *
+     * Recording as you type would put every PREFIX of every query in the list
+     * — `e`, `ea`, `ear` — and push the one you meant twenty entries down.
+     */
+    public function testOnlyASubmittedQueryJoinsTheHistory(): void
+    {
+        $project = new TempProject();
+        $history = new SearchHistoryStore($project->dir);
+
+        $bar = new FindBarWidget(new Translator('en'), history: $history);
+        $bar->setFocused(true);
+        $bar->open(new FakeFindTarget(new Document("foo\n")), mode: FindMode::Find);
+
+        $this->type($bar, 'foo');
+        $this->assertSame([], $history->all(), 'typing records nothing');
+
+        $bar->handleInput("\r");
+        $this->assertSame(['foo'], $history->all());
+    }
+
+    /**
+     * Typing leaves history-browsing, so the next `Alt+↑` starts from the top
+     * rather than from wherever the cursor was left three searches ago.
+     */
+    public function testTypingResetsTheHistoryCursor(): void
+    {
+        $project = new TempProject();
+        $history = new SearchHistoryStore($project->dir);
+        $history->add('older');
+        $history->add('newer');
+
+        $bar = new FindBarWidget(new Translator('en'), history: $history);
+        $bar->setFocused(true);
+        $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
+
+        $bar->handleInput("\x1b[1;3A");
+        $bar->handleInput("\x1b[1;3A");
+        $this->assertSame('older', $this->shownQuery($bar), 'two steps back');
+
+        $this->type($bar, 'z');
+        $bar->handleInput("\x1b[1;3A");
+        $this->assertSame('newer', $this->shownQuery($bar), 'and the walk starts over');
+    }
+
+    /** With no history wired at all the chords are inert, not fatal. */
+    public function testABarWithNoHistoryStoreIgnoresTheRecallChords(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
+
+        $bar->handleInput("\x1b[1;3A");
+
+        $this->assertSame('', $this->shownQuery($bar));
     }
 
     public function testClosedBarRendersNothingAndIgnoresInput(): void

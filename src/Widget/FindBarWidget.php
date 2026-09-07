@@ -11,6 +11,7 @@ use Porta\Editor\Document;
 use Porta\Editor\FindMode;
 use Porta\Editor\SelectionMode;
 use Porta\Event\FindQueryUpdated;
+use Porta\History\SearchHistoryStore;
 use Porta\I18n\Translator;
 use Porta\Search\CaseMode;
 use Porta\Search\FindTarget;
@@ -63,6 +64,8 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     private readonly TextField $query;
     private readonly TextField $replacement;
     private int $activeField = 0; // 0 = find, 1 = replace
+    /** cursor into the shared query history while browsing it, or -1 when not */
+    private int $historyCursor = -1;
 
     /** Session-lifetime search options (survive close/reopen, like the modal's). */
     private bool $regex = false;
@@ -76,11 +79,21 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
 
     private ?FindTarget $target = null;
 
+    /**
+     * The history is the PROJECT search's, shared rather than a second store.
+     *
+     * One list of "things you looked for in this project", recallable from
+     * either surface: what you just found in a file is very often what you
+     * next want across the project, and a second `.json` would make that one
+     * keystroke into retyping. It also means the in-file bar inherits the
+     * cap, the dedup and the persistence without owning any of them.
+     */
     public function __construct(
         private readonly Translator $translator,
         ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
         private readonly ?EventDispatcherInterface $events = null,
+        private readonly ?SearchHistoryStore $history = null,
     ) {
         $this->initStyles($styles);
         $this->query = new TextField(style: $cursorStyle);
@@ -148,8 +161,24 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         }
 
         if ($kb->matches($data, 'find_next')) {
+            // Recorded on Enter/F3 rather than as you type: every prefix of
+            // every query would otherwise land in the list, and the one you
+            // meant would be twenty entries down.
+            $this->history?->add($this->query->value());
             $this->refreshIfStale();
             $this->gotoMatch($this->currentIndex + 1);
+
+            return;
+        }
+
+        if ($kb->matches($data, 'history_prev')) {
+            $this->recallHistory(1);
+
+            return;
+        }
+
+        if ($kb->matches($data, 'history_next')) {
+            $this->recallHistory(-1);
 
             return;
         }
@@ -200,8 +229,38 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             return;
         }
 
-        // Plain text input
+        // Plain text input. Typing leaves history-browsing, so the next
+        // Alt+Up starts from the top again rather than from wherever the
+        // cursor was left three searches ago.
+        $this->historyCursor = -1;
         $this->editActiveField(static fn (TextField $field): bool => $field->insert($data));
+    }
+
+    /**
+     * Walk the recent-query history into the query field: $step +1 is older.
+     *
+     * Cursor `-1` is "not browsing", and stepping back to it restores an empty
+     * field rather than sticking on the newest entry — the same contract
+     * {@see \Porta\Overlay\State\FindInFilesModal} implements, because it is
+     * the same history and two surfaces that recalled it differently would be
+     * the more confusing outcome.
+     */
+    private function recallHistory(int $step): void
+    {
+        // The QUERY field only, whichever is focused. Recalling a past search
+        // into the REPLACEMENT is never what the chord means, and the modal
+        // gates it the same way.
+        $queries = $this->history?->all() ?? [];
+        $next = $this->historyCursor + $step;
+        if (0 !== $this->activeField || $next < -1 || $next >= \count($queries)) {
+            return;
+        }
+        $this->historyCursor = $next;
+        $this->editActiveField(static function (TextField $field) use ($queries, $next): bool {
+            $field->setValue(-1 === $next ? '' : $queries[$next]);
+
+            return true;
+        });
     }
 
     /**
@@ -541,6 +600,10 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
             'toggle_word' => ['alt+w'],
             'replace_all' => ['alt+a'],
             'delete_char_backward' => [Key::BACKSPACE],
+            // The same chords the find-in-files modal recalls with, because it
+            // is the same history.
+            'history_prev' => ['alt+up'],
+            'history_next' => ['alt+down'],
         ];
     }
 }

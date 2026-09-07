@@ -299,6 +299,10 @@ final class ArchitectureCheckCommand extends Command
         'Widget>Debug',
         'Widget>Editor',
         'Widget>Help',
+        // The find bar recalls the PROJECT search's query history rather than
+        // keeping a second one; one list of what you looked for in this
+        // project, reachable from either find surface.
+        'Widget>History',
         'Widget>Highlight',
         'Widget>Input',
         'Widget>Layout',

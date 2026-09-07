@@ -1702,6 +1702,58 @@ One real bug came out of writing the wire test: `showStop()` read
 have asked about the previous stop, one frame behind, every time. The frame id
 is passed explicitly now.
 
+## The find surfaces, read off the user's own state (2026-09-07)
+
+Picked by evidence rather than from the backlog order. `.porta/` holds no
+`bookmarks.json` at all and only four local-history snapshots, so bookmark
+mnemonics and a project-wide history view are features for someone else; what
+it does hold is **five saved search scopes** and a `search-history.json`. This
+user searches.
+
+Two findings followed, one of them a gate's blind spot again.
+
+**A modal's own keymap is a THIRD binding channel.** Round 8 widened the
+keybindings-doc gate from `ActionCatalog` to `EditorKeymap`; `FindInFilesModal`
+and `FindBarWidget` each carry a private map merged with nothing. The case for
+documenting those is stronger than the menu argument, not weaker — a menu item
+at least advertises that a verb exists, while the modal draws its toggles as
+bare glyphs (`.*`, `Aa`, `\b`, `Pc`) that are clickable and silent about their
+chords. Measured: the two surfaces bind 28 keys, 18 of them their own rather
+than a modal convention, and the doc's Search section named 9.
+
+**And the gate had to learn SCOPE, not just boundaries.** Matching against the
+whole file reported three missing keys and called the rest documented —
+including the modal's `Alt+↑`/`Alt+↓` query recall, which the doc mentions only
+as the editor's previous/next declaration. A gate satisfied by a row that says
+something ELSE about the same key is worse than no gate, because it reads as a
+guarantee. Reading the `## Search` section alone took the count from 3 to 9,
+which are now written down. That is round 8's substring lesson one level up:
+the wrong scope rather than the wrong boundary.
+
+**The in-file find bar had no query history at all** while find-in-files
+persisted one and recalled it with `Alt+↑`/`Alt+↓`. It shares that store now
+rather than getting a second: one list of what you looked for in this project,
+reachable from either surface, so what you just found in a file is one
+keystroke away when you next want it project-wide. `Widget>History` is a new
+allowlisted edge with that reason. Recorded on `Enter`, never as you type —
+otherwise every prefix of every query lands in the list and the one you meant
+is twenty entries down.
+
+**One doc row was wrong and I nearly shipped it.** I wrote that `Alt+T` matches
+the query's words in any order; it cycles a `TokenScope` — anywhere, only
+inside comments and strings, or everywhere except them. Reading `TokenScope`
+instead of inferring from the glyph is what caught it. `claims-are-not-guards`
+applies to documentation as much as to code comments: no gate reads prose, so
+the only check on a doc row is whether its author looked.
+
+Mutation named three more, all real: dropping a recall handler's `return` falls
+through to the plain-typing path that RESETS the history cursor, so the walk
+silently restarts on the next press (every single-step assertion still passes);
+mixing `||` for `&&` in the guard let a recall land in the REPLACEMENT field,
+which is the one that rewrites files on the next `Alt+A`; and returning `false`
+from the field edit skips the re-run, leaving the bar reporting the previous
+query's hit count under the new text.
+
 ## Complete Current Statement, once it had a table (built 2026-09-07)
 
 Filed one round earlier as blocked, with the blocker named: it has to know that
