@@ -955,9 +955,12 @@ an unresolved `file://` URI now. **A fixture that pre-satisfies the invariant
 cannot test it** — the same lesson as the mock advertising nothing while
 answering everything.
 
-*Still open:* a DELETE strands marks the same way, though far less visibly —
-`BookmarkStore::load()` drops vanished paths at startup, so it self-heals across
-a restart. Worth a `FileDeleted` fact the day anything else needs one.
+~~*Still open:* a DELETE strands marks the same way…~~ **CLOSED in round 7**
+(`f5b8f8cb`): `FileDeleted` exists and `BookmarkPathListener::onFileDeleted()`
+calls `Bookmarks::forget()`. The entry stood as "still open" for five rounds
+after it was done — which is the same drift the rest of this file warns about,
+pointed at itself. An entry that says OPEN is read as a to-do, so a stale one
+costs a round rather than merely misinforming.
 
 ## The decoration sink left the widget (2026-09-02)
 
@@ -1705,6 +1708,35 @@ One real bug came out of writing the wire test: `showStop()` read
 `$currentFrameId`, which `loadScopes()` sets AFTERWARDS — so the request would
 have asked about the previous stop, one frame behind, every time. The frame id
 is passed explicitly now.
+
+## The doc-to-code references were audited, and no gate is possible (2026-09-07)
+
+Prompted by finding a "*Still open*" entry that had been closed five rounds
+earlier. If one claim had drifted, others might have, and this file is what
+`CLAUDE.md` points at for "settled — do not re-propose without new evidence": a
+stale entry costs a round rather than merely misinforming.
+
+**Measured: 78 backticked `Class::method()` references across `docs/`, and all
+78 are correct.** Three name symbols that no longer exist — `GitClient::diff()`,
+`WorkspaceView::cases()`, `DecorationStore::bookmarkedLines()` — and every one
+does so DELIBERATELY, in a sentence about what used to be there
+("were byte-identical", "now ranges over", "was written and then deleted").
+
+**So the gate that suggested itself must not be built.** A decision record's job
+includes naming what is gone, and the thing that separates a historical
+reference from a broken one is TENSE, which no matcher reads. A gate here would
+be satisfied only by an exceptions list, and an exceptions list is where the
+wrong entries would hide. This is the counter-case to the round's other habit:
+not every prose-to-code claim is gateable, and the tell is whether the prose is
+about the present.
+
+What WAS wrong was a claim with no symbol in it at all: the bookmarks entry's
+"*Still open:* a DELETE strands marks the same way … worth a `FileDeleted` fact
+the day anything else needs one", implemented in round 7 and left saying open.
+Corrected above. The lesson is narrower and more useful than "audit the docs":
+**an entry that says OPEN is read as a to-do, so it is the one kind of staleness
+that costs work rather than accuracy.** Those are worth re-reading when a round
+closes something nearby.
 
 ## A rewritten file keeps what it replaced (built 2026-09-07)
 
