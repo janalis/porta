@@ -251,6 +251,7 @@ than magnifying pixels — see [the editor guide](editor.md#graph-viewer).
 | `1` | Actual size |
 | Arrows / `Shift+arrows` | Pan (also the wheel, or dragging) |
 | `n` / `p` | Select the next / previous node, framing it and naming it in the status bar |
+| `/` | Find a node by name — a filterable list of every node with its in/out degree; picking one selects it and pans to it |
 | `v` | Toggle bitmap / cell rendering — the picture `dot` draws, or node labels as real terminal text, which stays readable when the bitmap's type is a few pixels tall (no effect on a PlantUML picture, which has no layout to draw from) |
 
 ## Git view

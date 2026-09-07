@@ -216,6 +216,75 @@ final class GraphViewerWidgetTest extends TestCase
         $this->assertContains('view', $handler->events, 'selection pings the status bar');
     }
 
+    /**
+     * The rows are the picker's whole content, and the DEGREE is what a list
+     * can say that the picture cannot — the hub you are looking for is drawn
+     * exactly like every other box.
+     */
+    public function testEveryNodeIsOfferedAsAPickerRowWithItsDegree(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $widget = $this->widget();
+        $widget->show('/p/g.dot', 'dot');
+        $widget->render(new RenderContext(80, 24));
+
+        $choices = $widget->nodeChoices();
+
+        $this->assertSame(['A', 'B', 'C'], array_column($choices, 'label'), 'every node, in the n/p order');
+        // The fixture is the chain A -> B -> C, so the ends disagree about
+        // which way their single edge points — swapping in for out swaps A's
+        // hint with C's.
+        $this->assertSame(['0 in · 1 out', '1 in · 1 out', '1 in · 0 out'], array_column($choices, 'hint'));
+        $this->assertSame([], array_filter($choices, static fn (array $row): bool => '' === $row['value']), 'every row carries a node id');
+    }
+
+    public function testWithNoLayoutThereIsNothingToPickAndNoPickerIsAsked(): void
+    {
+        $asked = 0;
+        $widget = new GraphViewerWidget($this->engine, new Translator('en'), scheduler: $this->scheduler, onFindNode: static function () use (&$asked): void {
+            ++$asked;
+        });
+
+        $this->assertSame([], $widget->nodeChoices(), 'a pane showing nothing offers nothing');
+        $widget->handleInput('/');
+        $this->assertSame(0, $asked, 'and the key is a no-op rather than an empty overlay');
+    }
+
+    /**
+     * The key and the picker are separate halves on purpose: the widget knows
+     * the key was pressed, the plugin owns the overlay. This is the seam.
+     */
+    public function testTheFindKeyAsksForThePickerAndTheResultSelectsAndPans(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $asked = 0;
+        $widget = new GraphViewerWidget($this->engine, new Translator('en'), scheduler: $this->scheduler, onFindNode: static function () use (&$asked): void {
+            ++$asked;
+        });
+        $widget->show('/p/g.dot', 'dot');
+        $widget->render(new RenderContext(80, 24));
+
+        $widget->handleInput('/');
+        $this->assertSame(1, $asked);
+
+        $last = $widget->nodeChoices()[2];
+        $widget->focusNode((int) $last['value']);
+        $this->assertStringContainsString('· '.$last['label'], $widget->statusInfo(), 'picking a row selects that node');
+    }
+
+    public function testFocusingANodeThatIsNotThereChangesNothing(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $widget = $this->widget();
+        $widget->show('/p/g.dot', 'dot');
+        $widget->render(new RenderContext(80, 24));
+        $widget->handleInput('n');
+
+        $widget->focusNode(9999);
+
+        $this->assertStringContainsString('· A', $widget->statusInfo(), 'a stale id must not clear the selection');
+    }
+
     public function testClickSelectsAndEmptySpaceDeselects(): void
     {
         $this->engine->nextResult = self::layout();

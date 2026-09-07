@@ -2234,6 +2234,22 @@
         <source>Graph: Select Previous Node</source>
         <target>グラフ: 前のノードを選択</target>
       </trans-unit>
+      <trans-unit id="816">
+        <source>Graph: Find Node</source>
+        <target>グラフ: ノードを検索</target>
+      </trans-unit>
+      <trans-unit id="817">
+        <source>Find node</source>
+        <target>ノードを検索</target>
+      </trans-unit>
+      <trans-unit id="818">
+        <source>No graph nodes to search</source>
+        <target>検索できるノードがありません</target>
+      </trans-unit>
+      <trans-unit id="819">
+        <source>%in% in · %out% out</source>
+        <target>入 %in% · 出 %out%</target>
+      </trans-unit>
       <trans-unit id="532">
         <source>graphviz not found — install graphviz, or set the "dotPath" setting</source>
         <target>graphviz が見つかりません — graphviz をインストールするか、"dotPath" 設定を指定してください</target>
@@ -2251,7 +2267,7 @@
         <target>グラフファイルが大きすぎます (&gt; 10 MB)</target>
       </trans-unit>
       <trans-unit id="536">
-        <source>+/- zoom  0 fit  n/p select  Ctrl+Q quit</source>
+        <source>+/- zoom  0 fit  n/p select  / find  Ctrl+Q quit</source>
         <target>+/- ズーム  0 フィット  n/p 選択  Ctrl+Q 終了</target>
       </trans-unit>
       <trans-unit id="537">

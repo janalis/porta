@@ -114,6 +114,11 @@ final class GraphViewerWidget extends NavigablePaneWidget
         // arrives through {@see setRenderMode()}.
         ?string $renderMode = null,
         ?Styles $styles = null,
+        // Trailing and optional, the way a dispatcher is: the widget knows the
+        // key was pressed and which nodes exist, and nothing else. Opening an
+        // overlay is the PLUGIN's to do — it holds the api — and the widget
+        // tests need not thread one through to exercise everything else.
+        private readonly ?\Closure $onFindNode = null,
     ) {
         $this->initStyles($styles);
         // Hand-built (a plugin class cannot be a container service), so the id
@@ -237,7 +242,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
     /** This pane's status-segment key hints (n/p select, unlike the image pane's). */
     protected function keysHint(): string
     {
-        return $this->translator->trans('+/- zoom  0 fit  n/p select  Ctrl+Q quit');
+        return $this->translator->trans('+/- zoom  0 fit  n/p select  / find  Ctrl+Q quit');
     }
 
     /**
@@ -317,6 +322,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
             $kb->matches($data, 'graph_render_mode') => $this->toggleRenderMode(),
             $kb->matches($data, 'graph_select_next') => $this->cycleSelection(1),
             $kb->matches($data, 'graph_select_prev') => $this->cycleSelection(-1),
+            $kb->matches($data, 'graph_find_node') => $this->findNode(),
             $kb->matches($data, 'next_buffer') => $this->handler?->cycleBuffer(1),
             $kb->matches($data, 'prev_buffer') => $this->handler?->cycleBuffer(-1),
             $kb->matches($data, 'close_buffer') => $this->handler?->closeBuffer(),
@@ -341,6 +347,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
             'graph_render_mode' => ['v'],
             'graph_select_next' => ['n'],
             'graph_select_prev' => ['p'],
+            'graph_find_node' => ['/'],
             // Re-bound to the editor's defaults so tab management keeps working
             // while the code editor is detached (see EditorKeymap).
             'next_buffer' => ['ctrl+right'],
@@ -524,7 +531,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
     /** n/p: walk the (y, x)-ordered node list, panning the selection into view. */
     private function cycleSelection(int $dir): void
     {
-        if ([] === $this->selectionOrder || null === $this->layout || null === $this->view) {
+        if ([] === $this->selectionOrder) {
             return;
         }
         $count = \count($this->selectionOrder);
@@ -532,15 +539,80 @@ final class GraphViewerWidget extends NavigablePaneWidget
         if (null !== $this->selected) {
             $index = (int) array_search($this->selected, $this->selectionOrder, strict: true);
         }
-        $this->selected = $this->selectionOrder[((($index + $dir) % $count) + $count) % $count];
-        $node = $this->layout->nodes[$this->selected];
-        // Pan just enough that the selected node's center is inside the viewport.
+        $this->focusNode($this->selectionOrder[((($index + $dir) % $count) + $count) % $count]);
+    }
+
+    /**
+     * Ask for the node picker. A picture with no layout has no nodes, and a
+     * pane built without the closure simply has no picker.
+     */
+    private function findNode(): void
+    {
+        $find = $this->onFindNode;
+        if (null === $this->layout || null === $find) {
+            return;
+        }
+        $find();
+    }
+
+    /**
+     * Select $id and pan just enough that it is on screen.
+     *
+     * Shared by `n`/`p` and the node picker deliberately: "which node is
+     * selected" and "where the viewport is" are one fact, and a picker that
+     * selected a node three screens away without moving would be a search that
+     * finds nothing you can see.
+     */
+    public function focusNode(int $id): void
+    {
+        $node = $this->layout->nodes[$id] ?? null;
+        if (null === $node || null === $this->view) {
+            return;
+        }
+        $this->selected = $id;
         $scale = $this->view->effectiveScale($this->lastCols, 2 * $this->lastRows);
         $rect = $this->view->visibleRect($this->lastCols, 2 * $this->lastRows);
         $dx = (int) round(($node->x - ($rect['srcX'] + (($this->lastCols / $scale) / 2))) * $scale);
         $dy = (int) round(($node->y - ($rect['srcY'] + ($this->lastRows / $scale))) * $scale);
         $this->view->panBy($dx, $dy, $this->lastCols, 2 * $this->lastRows);
         $this->afterViewChange();
+    }
+
+    /**
+     * Every node as a picker row, in the same (y, x) order `n`/`p` walks.
+     *
+     * The hint is the node's DEGREE, which is the one fact about a node that a
+     * list can show and the picture cannot: in an architecture graph the hubs
+     * are what you are looking for, and they are invisible in an alphabetical
+     * list of two hundred namespaces.
+     *
+     * @return list<array{label: string, hint: string, value: string}>
+     */
+    public function nodeChoices(): array
+    {
+        if (null === $this->layout) {
+            return [];
+        }
+        $in = [];
+        $out = [];
+        foreach ($this->layout->edges as $edge) {
+            $out[$edge->tail] = ($out[$edge->tail] ?? 0) + 1;
+            $in[$edge->head] = ($in[$edge->head] ?? 0) + 1;
+        }
+        $rows = [];
+        foreach ($this->selectionOrder as $id) {
+            // Direct, not guarded: the cycling order is BUILT from these nodes,
+            // so a missing one is a broken invariant rather than a case — the
+            // same access {@see cycleSelection()} has always made.
+            $node = $this->layout->nodes[$id];
+            $rows[] = [
+                'label' => strtr($node->label, ["\n" => ' ']),
+                'hint' => $this->translator->trans('%in% in · %out% out', ['%in%' => $in[$id] ?? 0, '%out%' => $out[$id] ?? 0]),
+                'value' => (string) $id,
+            ];
+        }
+
+        return $rows;
     }
 
     /** @return list<string> */

@@ -230,6 +230,77 @@ final class IdeGraphViewerTest extends TestCase
         );
     }
 
+    /**
+     * `/` over the pane, then the picker: the wire is the plugin's closure,
+     * which the widget's own suite cannot see (it is handed a double there).
+     *
+     * The FILTER is the half worth an app-level test — the overlay narrows on
+     * what you type, and picking the survivor has to select the node the
+     * picture was showing all along.
+     */
+    public function testTheFindKeyOpensAPickerThatFiltersAndSelectsTheNode(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => (string) json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
+            'g.dot' => self::SMALL_DOT,
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            $project->path('g.dot'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    $screen = static fn (): string => AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                    $this->await(static fn (): bool => str_contains($screen(), 'nodes'), what: 'the graph layout to land');
+
+                    $terminal->clearOutput();
+                    $tui->handleInput('/');
+                    $this->await(static fn (): bool => str_contains($screen(), 'Find node'), what: 'the node picker to paint');
+                    $listed = $screen();
+                    $this->assertStringContainsString('1 in · 1 out', $listed, 'each row carries the node degree');
+
+                    // Type to narrow: only C survives, so Enter cannot pick A.
+                    // Both halves in ONE condition: a cleared terminal satisfies
+                    // "A is gone" before anything has repainted at all.
+                    $terminal->clearOutput();
+                    $tui->handleInput('c');
+                    $this->await(static fn (): bool => str_contains($screen(), '1 in · 0 out') && !str_contains($screen(), '0 in · 1 out'), what: 'the filter to leave C and drop A');
+
+                    $terminal->clearOutput();
+                    $tui->handleInput("\r");
+                    $this->await(static fn (): bool => str_contains($screen(), '· C'), what: 'the picked node to reach the status bar');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    /** With no graph tab there is nothing to search, and the command says so instead of opening an empty list. */
+    public function testTheFindCommandSaysSoWhenNoGraphIsOpen(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => (string) json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
+            'a.php' => "<?php\n",
+        ]);
+        $this->phpOnlyPath($project);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function ($tui, $terminal, $ide): void {
+                    $terminal->clearOutput();
+                    Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:find-node');
+                    $this->await(static fn (): bool => str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No graph nodes to search'), what: 'the empty-graph flash');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testTheBitmapPaintsAndTheRenderModeKeyFlipsBackToTheCells(): void
     {
         $project = new TempProject([

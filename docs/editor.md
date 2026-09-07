@@ -619,6 +619,14 @@ gets); pan with the arrows, the wheel, or by dragging; select nodes with
 Zooming in re-renders the graph at a higher resolution rather than magnifying
 pixels, so labels sharpen as you go.
 
+`/` finds a node by name. Two hundred namespaces laid out by `dot` are not
+something you can read your way through, so the key opens the ordinary
+filterable list over every node — type to narrow it — and picking one selects
+that node and pans to it, exactly as `n`/`p` would. Each row carries the node's
+**in/out degree**, which is the one thing a list can say and the picture cannot:
+the hub you are looking for is the row with fifteen edges, and it looks like
+every other box on screen. `Graph: Find Node` does the same from the palette.
+
 `v` toggles the two renderings. **Bitmap** is what the graph actually looks
 like — dot's own splines, arrowheads and fonts — and **cells** draws the node
 labels as real terminal text, which stays readable at a pane size where the

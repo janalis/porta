@@ -78,6 +78,22 @@ return new class('graph-viewer') extends AbstractPlugin {
         $dot = new DotLayoutEngine($api->projectRoot(), static fn (): ?string => self::path($setting('dotPath')));
         $plantUml = new PlantUmlEngine($api->projectRoot(), static fn (): ?string => self::path($setting('plantumlPath')));
         $renderMode = (string) $values['renderMode'];
+        // The `/` key and the palette command reach ONE closure. The widget
+        // knows the key was pressed and which nodes exist; opening an overlay
+        // needs the api, which only this file has. Not an arrow fn: it reads
+        // $this->widget, which the pane factory assigns.
+        $findNode = function () use ($api): void {
+            $widget = $this->widget;
+            $choices = null === $widget ? [] : $widget->nodeChoices();
+            if ([] === $choices) {
+                $api->flash($api->trans('No graph nodes to search'));
+
+                return;
+            }
+            $api->pick($api->trans('Find node'), $choices, static function (string $value) use ($widget): void {
+                $widget?->focusNode((int) $value);
+            });
+        };
         $api->registerActions([
             'graph_zoom_in' => 'Graph: Zoom In',
             'graph_zoom_out' => 'Graph: Zoom Out',
@@ -89,6 +105,7 @@ return new class('graph-viewer') extends AbstractPlugin {
             'graph_pan_down' => 'Graph: Pan Down',
             'graph_select_next' => 'Graph: Select Next Node',
             'graph_select_prev' => 'Graph: Select Previous Node',
+            'graph_find_node' => 'Graph: Find Node',
             'graph_render_mode' => 'Graph: Toggle Bitmap/Cell Rendering',
         ]);
         $api->registerPane(
@@ -97,8 +114,8 @@ return new class('graph-viewer') extends AbstractPlugin {
             // can be pushed into the standing pane (the two paths need no push,
             // being read per spawn).
             // @mago-expect lint:prefer-arrow-function -- the body ASSIGNS to $this->widget; an arrow function hides a side effect inside an expression
-            function (PaneServices $pane) use ($dot, $plantUml, $renderMode): EditorPaneWidget {
-                return $this->widget = new GraphViewerWidget($dot, $pane->translator, $plantUml, new ImageDecoder(), $pane->scheduler, $renderMode, $pane->styles);
+            function (PaneServices $pane) use ($dot, $plantUml, $renderMode, $findNode): EditorPaneWidget {
+                return $this->widget = new GraphViewerWidget($dot, $pane->translator, $plantUml, new ImageDecoder(), $pane->scheduler, $renderMode, $pane->styles, $findNode);
             },
             // The pane's payload is the DOT (or PlantUML) source. The size guard
             // is the plugin's own: core has no opinion about how big a diagram
@@ -165,6 +182,7 @@ return new class('graph-viewer') extends AbstractPlugin {
                 },
             );
         };
+        $api->registerCommand('find-node', 'Graph: Find Node', $findNode);
         $api->registerCommand('export-svg', 'Graph: Export SVG', static fn () => $export(GraphExportFormat::Svg));
         $api->registerCommand('export-png', 'Graph: Export PNG', static fn () => $export(GraphExportFormat::Png));
         $isDotTab = static fn (): bool => null !== ($file = $api->activeFile()) && DotFiles::isDotPath($file);

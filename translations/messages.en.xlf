@@ -2234,6 +2234,22 @@
         <source>Graph: Select Previous Node</source>
         <target>Graph: Select Previous Node</target>
       </trans-unit>
+      <trans-unit id="816">
+        <source>Graph: Find Node</source>
+        <target>Graph: Find Node</target>
+      </trans-unit>
+      <trans-unit id="817">
+        <source>Find node</source>
+        <target>Find node</target>
+      </trans-unit>
+      <trans-unit id="818">
+        <source>No graph nodes to search</source>
+        <target>No graph nodes to search</target>
+      </trans-unit>
+      <trans-unit id="819">
+        <source>%in% in · %out% out</source>
+        <target>%in% in · %out% out</target>
+      </trans-unit>
       <trans-unit id="532">
         <source>graphviz not found — install graphviz, or set the "dotPath" setting</source>
         <target>graphviz not found — install graphviz, or set the "dotPath" setting</target>
@@ -2251,8 +2267,8 @@
         <target>Graph file too large (&gt; 10 MB)</target>
       </trans-unit>
       <trans-unit id="536">
-        <source>+/- zoom  0 fit  n/p select  Ctrl+Q quit</source>
-        <target>+/- zoom  0 fit  n/p select  Ctrl+Q quit</target>
+        <source>+/- zoom  0 fit  n/p select  / find  Ctrl+Q quit</source>
+        <target>+/- zoom  0 fit  n/p select  / find  Ctrl+Q quit</target>
       </trans-unit>
       <trans-unit id="537">
         <source>Architecture command failed: %error%</source>

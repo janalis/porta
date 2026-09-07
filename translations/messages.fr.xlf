@@ -2234,6 +2234,22 @@
         <source>Graph: Select Previous Node</source>
         <target>Graphe : Sélectionner le nœud précédent</target>
       </trans-unit>
+      <trans-unit id="816">
+        <source>Graph: Find Node</source>
+        <target>Graphe : Rechercher un nœud</target>
+      </trans-unit>
+      <trans-unit id="817">
+        <source>Find node</source>
+        <target>Rechercher un nœud</target>
+      </trans-unit>
+      <trans-unit id="818">
+        <source>No graph nodes to search</source>
+        <target>Aucun nœud à rechercher</target>
+      </trans-unit>
+      <trans-unit id="819">
+        <source>%in% in · %out% out</source>
+        <target>%in% entrant · %out% sortant</target>
+      </trans-unit>
       <trans-unit id="532">
         <source>graphviz not found — install graphviz, or set the "dotPath" setting</source>
         <target>graphviz introuvable — installez graphviz ou définissez le réglage « dotPath »</target>
@@ -2251,7 +2267,7 @@
         <target>Fichier de graphe trop volumineux (&gt; 10 Mo)</target>
       </trans-unit>
       <trans-unit id="536">
-        <source>+/- zoom  0 fit  n/p select  Ctrl+Q quit</source>
+        <source>+/- zoom  0 fit  n/p select  / find  Ctrl+Q quit</source>
         <target>+/- zoom  0 ajuster  n/p sélection  Ctrl+Q quitter</target>
       </trans-unit>
       <trans-unit id="537">
