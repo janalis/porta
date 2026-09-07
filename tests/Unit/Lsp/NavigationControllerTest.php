@@ -684,7 +684,13 @@ final class NavigationControllerTest extends TestCase
             ],
         ]], error: null);
 
-        $this->assertStringContainsString('a.php:2', $this->panel(), 'the call landed as a jumpable row');
+        // Grouped now, like the Find and Problems panels: the FILE is the
+        // header and the row carries the line under it, so the old flat
+        // `a.php:2` spelling is gone by design.
+        $panel = $this->panel();
+        $this->assertStringContainsString('a.php', $panel, 'the file heads its group');
+        $this->assertStringContainsString('2', $panel, 'and the call landed as a jumpable row under it');
+        $this->assertStringContainsString('Filter:', $panel, 'a hierarchy runs long enough to need narrowing');
     }
 
     /**

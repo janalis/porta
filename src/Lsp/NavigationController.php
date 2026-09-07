@@ -16,6 +16,7 @@ use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorNavigationHandler;
+use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\Notifier;
@@ -383,7 +384,12 @@ final class NavigationController extends AbstractLspController implements Editor
                 }
 
                 /** @var list<array{uri?: string, range?: array<array-key, mixed>}> $result */
-                $this->panels->showList(ResultsPanelMode::Search, $this->trans('Usages'), $this->locationRows($result));
+                // Grouped and filterable, for the reason
+                // {@see ResultsPanelFields::problemList()} states about
+                // diagnostics — and it applies harder here. Usages of a common
+                // symbol run to dozens of rows across a dozen files, which is
+                // the list you least want flat.
+                $this->panels->showList(ResultsPanelMode::Search, $this->trans('Usages'), $this->locationRows($result), ResultsPanelFields::searchResults());
 
                 return true;
             },
@@ -458,7 +464,7 @@ final class NavigationController extends AbstractLspController implements Editor
                             return false;
                         }
                         $name = \is_string($item['name'] ?? null) ? $item['name'] : '?';
-                        $this->panels->showList(ResultsPanelMode::Search, $this->trans($title, ['%symbol%' => $name]), $this->locationRows($locations));
+                        $this->panels->showList(ResultsPanelMode::Search, $this->trans($title, ['%symbol%' => $name]), $this->locationRows($locations), ResultsPanelFields::searchResults());
 
                         return true;
                     },
@@ -570,7 +576,13 @@ final class NavigationController extends AbstractLspController implements Editor
     {
         $title = $this->trans('Structure');
         $this->requestStructure(
-            fn (array $rows) => $this->panels->showList(ResultsPanelMode::Structure, $title, $rows),
+            // Grouped as well, which is the opposite of what it looks like it
+            // should be. One file gets ONE header — and the alternative is not
+            // "no header", it is the same path repeated on every row, because
+            // an ungrouped row prints `path:line` in front of its text. The
+            // header says it once; the filter is how you reach a method in a
+            // forty-method class.
+            fn (array $rows) => $this->panels->showList(ResultsPanelMode::Structure, $title, $rows, ResultsPanelFields::searchResults()),
             fn () => $this->flash($this->trans('No symbols in this file')),
         );
     }
