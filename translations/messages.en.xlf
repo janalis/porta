@@ -430,6 +430,10 @@
         <source>Restored from local history</source>
         <target>Restored from local history</target>
       </trans-unit>
+      <trans-unit id="820">
+        <source>Cannot restore %file% — it is no longer there</source>
+        <target>Cannot restore %file% — it is no longer there</target>
+      </trans-unit>
       <trans-unit id="117">
         <source>Run</source>
         <target>Run</target>

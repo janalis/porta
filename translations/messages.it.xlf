@@ -430,6 +430,10 @@
         <source>Restored from local history</source>
         <target>Ripristinato dalla cronologia locale</target>
       </trans-unit>
+      <trans-unit id="820">
+        <source>Cannot restore %file% — it is no longer there</source>
+        <target>Impossibile ripristinare %file% — il file non c’è più</target>
+      </trans-unit>
       <trans-unit id="117">
         <source>Run</source>
         <target>Esegui</target>
