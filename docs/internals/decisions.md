@@ -1667,7 +1667,9 @@ never asks for:
   the halves of an HTML tag pair together; PHP has no equivalent worth a
   round-trip. **Turned down.**
 - **`textDocument/inlineValue`** (phpactor only). **This one is worth
-  building** — see below.
+  building** — see below. Built; and because "phpactor only" is the whole
+  problem when you run phpantom, built twice — the second route reads phpantom's
+  semantic tokens for the same ranges.
 
 Also confirmed: `prepareCallHierarchy` and `rangeFormatting` are sent to servers
 that advertise NEITHER, which matches the capability gates already in place —
@@ -1698,6 +1700,32 @@ One real bug came out of writing the wire test: `showStop()` read
 `$currentFrameId`, which `loadScopes()` sets AFTERWARDS — so the request would
 have asked about the previous stop, one frame behind, every time. The frame id
 is passed explicitly now.
+
+## Inline debug values reach phpantom too (built 2026-09-07, `3a5c726f`)
+
+Round 8 recorded this as a whole round of its own and it was half a day, because
+the measurement answered it: the feature above is gated on `inlineValueProvider`
+and **phpantom does not advertise it**, so on the setup it was built for it
+never fired once.
+
+The values were never the server's. They come from the DAP frame; the server
+supplies only the WHERE — which range on which line names a variable. phpantom
+answers that question under a different name: its `semanticTokensProvider` emits
+`variable` and `parameter` tokens whose ranges **include the `$`** (`"$count"`,
+not `"count"`), which is exactly how the debug adapter names the variables in a
+frame. So the fallback is a lookup against decorations already on screen, not a
+heuristic that guesses at identifiers — measure the token text before assuming
+a fallback needs one.
+
+- `InlineValueRequest::forRange()` returns whether it ASKED. `false` is not an
+  error and not an empty answer; it is "this server has no opinion", and only
+  then does the fallback run. A server that answers with an empty list is not
+  second-guessed — it said there are no variables here, and that is an answer.
+- **`property` tokens are skipped.** `$this->count` is not a frame local, and
+  its token covers only `count` anyway, so including them would look up a name
+  the frame does not have.
+- No paint after the fallback fills `$this->lookups`: `clear()` ran first, so a
+  paint there could only draw the empty map it had just written.
 
 ## The reasoning it followed
 
