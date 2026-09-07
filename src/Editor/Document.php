@@ -1171,8 +1171,14 @@ final class Document
      */
     public function completeStatement(StatementSyntax $syntax): void
     {
-        $line = rtrim($this->lines[$this->cursorLine]);
-        $indent = substr($line, offset: 0, length: \strlen($line) - \strlen(ltrim($line)));
+        // The indent comes from the ORIGINAL line and the statement from the
+        // rtrimmed one, because on a whitespace-only line those disagree:
+        // rtrim leaves nothing, so taking the indent from it dropped the caret
+        // to column 0 on a blank line inside an indented block — where Enter
+        // and Shift+Enter both keep their place.
+        $raw = $this->lines[$this->cursorLine];
+        $indent = substr($raw, offset: 0, length: \strlen($raw) - \strlen(ltrim($raw)));
+        $line = rtrim($raw);
         $body = $line.LineOperations::missingClosers($line);
 
         // The block pair when this line opens one, null otherwise — carried as

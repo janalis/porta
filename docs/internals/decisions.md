@@ -1738,6 +1738,29 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## Every new verb against a degenerate document (2026-09-07)
+
+Fifth pass, and the cheapest sweep of the lot: run all five verbs this session
+added over an empty buffer, a blank line, a whitespace-only line, a file with no
+trailing newline, and a tab-indented blank. Twenty-five results, printed and
+read.
+
+Nothing threw — which was the first thing worth knowing — and one row was
+wrong. `Ctrl+Shift+Enter` on a whitespace-only line ATE THE INDENT, dropping the
+caret to column 0, where `Enter` and `Shift+Enter` both stay put.
+
+The cause is a single expression doing two jobs: `rtrim()` finds the statement,
+and the indent was taken from its result. On every ordinary line those agree; on
+a whitespace-only line the trimmed text is empty and has no indent to find. The
+indent comes from the ORIGINAL line now and the statement from the trimmed one,
+which is the same split the block-comment verb needed for the same input — a
+blank line inside an indented block is the shape that separates them.
+
+**The sweep is worth keeping as a habit.** Five verbs × five degenerate
+documents is one `php -r` and thirty seconds, it needs no test written first,
+and the output is short enough to read every line. Coverage and mutation had
+passed over this; it is not the kind of thing they look for.
+
 ## The clipboard history was a memory regression (2026-09-07)
 
 Fourth pass of the combination question, this time about a RESOURCE rather than

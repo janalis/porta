@@ -312,6 +312,32 @@ final class CompleteStatementTest extends TestCase
     }
 
     /**
+     * On a blank line INSIDE an indented block, the caret keeps its place.
+     *
+     * `rtrim()` finds the statement and leaves nothing on a whitespace-only
+     * line, so taking the indent from the trimmed text dropped the caret to
+     * column 0 — where `Enter` and `Shift+Enter` both stay put. The indent
+     * comes from the original line and the statement from the trimmed one,
+     * because on this input the two disagree.
+     *
+     * Found by running every verb this session added against a handful of
+     * degenerate documents and reading the output; nothing else was looking.
+     */
+    public function testABlankIndentedLineKeepsTheCaretWhereItWas(): void
+    {
+        foreach (['    ', "\t\t"] as $indent) {
+            $doc = new Document($indent."\n");
+            $doc->setCursor(0, \strlen($indent));
+
+            $doc->completeStatement(self::php());
+
+            $this->assertSame('', $doc->getLine(0), 'the blank line loses its trailing whitespace');
+            $this->assertSame($indent, $doc->getLine(1), 'and the caret line keeps the indent');
+            $this->assertSame(\strlen($indent), $doc->getCursorCol());
+        }
+    }
+
+    /**
      * The limit, written down as a test rather than only as a docblock: the
      * bracket count does not know about strings, so a paren inside one is
      * counted. A parser would not; Porta has none here, and the mitigation is
