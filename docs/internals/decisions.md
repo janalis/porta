@@ -1738,6 +1738,43 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## Local history learned which file it was holding (built 2026-09-07, `3d860665`)
+
+Local History could answer "what happened to THIS file" and nothing else. The
+reason was structural rather than an omission: a file's snapshots live in
+`.porta/history/<hash-of-path>/`, and **hashes do not run backwards**, so the
+store physically could not name the file a directory belonged to. Every
+project-wide question — what did I change today, which files did I touch before
+lunch — was unanswerable, and no amount of walking the store would have helped.
+
+A one-line `path` sidecar beside the snapshots is the whole fix, and `recent()`
+then walks the store and returns files newest-first. Two decisions in it are
+worth keeping:
+
+- **Written on every snapshot, not only on directory creation.** A directory
+  made before this existed gains its name the next time that file is saved, so
+  the format heals itself rather than needing a migration step nobody would run.
+  A directory that never heals is skipped, not guessed at.
+- **Written AFTER the snapshot, inside the same `try`.** This started out first,
+  sharing the `mkdir` try — and the coverage gate caught it: with the sidecar
+  ahead of the snapshot, the existing throwing-`Filesystem` test returned `-1`
+  from the first block and **the snapshot write's own catch became
+  unreachable**, at 99.95%. The gate was right about more than coverage. Naming
+  a directory that holds no snapshot is the wrong order, and a store that cannot
+  write the snapshot must not report success for having written its label.
+
+`list()` matches `/^(\d+)\.snap$/`, so the sidecar is not mistakable for a
+snapshot and pruning cannot reach it.
+
+**Reached two ways, both plugin-local** — the `local-history-recent` list tool
+and a `Recent Changes` command. No core change was needed for any of it, which
+is the plugin API doing its job. Rows carry a real path and line 0 so Enter
+opens the file; a list tool registered AFTER `$manager->commit($api)` renders
+nothing, which cost a test.
+
+**Mutation says nothing here** (`source.directories` is `src` only), so the
+sidecar write was killed by hand instead: delete the line, two tests fail.
+
 ## The command layer holds too, and the sweep is now exhausted (2026-09-07)
 
 The last layer the technique had not reached: every command in
