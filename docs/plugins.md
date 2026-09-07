@@ -267,6 +267,7 @@ never firing.
 | `GitRemoteCompleted` | `string $operation` (`fetch`/`pull`/`push`), `bool $ok` |
 | `WorkingTreeChanged` | — the working tree moved under version control: a stage, stash, commit, reset or pull |
 | `FileRenamed` | `string $from`, `string $to` — both absolute and canonical; `$from` is already gone from disk. A DIRECTORY carries its whole tree, so anything you key by path should ask `ProjectPaths::moved()` rather than compare |
+| `FileRewritten` | `string $path`, `string $previousText` — a refactoring rewrote a file that had no open buffer. The payload is what the write REPLACED: the new content is on disk already, and the old exists nowhere else. Not a save, and no `BufferSaved` fires for it |
 
 Four rules govern the list, and they are enforced by a test rather than by
 convention:

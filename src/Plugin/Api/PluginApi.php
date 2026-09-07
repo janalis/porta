@@ -11,6 +11,7 @@ use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferReloaded;
 use Porta\Event\BufferSaved;
+use Porta\Event\FileRewritten;
 use Porta\Event\IdeReady;
 use Porta\Event\IdeShuttingDown;
 use Porta\Event\PluginObservable;
@@ -806,6 +807,24 @@ final class PluginApi
     public function onFileSaved(\Closure $listener): void
     {
         $this->listen(BufferSaved::class, static fn (BufferSaved $event) => $listener($event->buffer->path));
+    }
+
+    /**
+     * A refactoring rewrote a file that had no open buffer.
+     *
+     * The listener receives the path and **the text the write replaced** — the
+     * new content is on disk and needs no announcement, while the old exists
+     * nowhere else once the write returns. This is not a save and no
+     * {@see onFileSaved} fires for it: a save is something the user did, to a
+     * buffer that has its own undo stack.
+     *
+     * @param \Closure(string, string): void $listener receives the absolute path and the previous text
+     *
+     * @throws PluginException
+     */
+    public function onFileRewritten(\Closure $listener): void
+    {
+        $this->listen(FileRewritten::class, static fn (FileRewritten $event) => $listener($event->path, $event->previousText));
     }
 
     /**

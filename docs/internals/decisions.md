@@ -661,11 +661,14 @@ neither is a judgement call, just unfinished:
   overlapping edits make a `WorkspaceEdit` invalid, Porta applies them bottom-up
   and both land, the later one clamping into whatever the earlier produced:
   corruption rather than an error.
-- **Cross-file undo.** A multi-file rename is one undo step *per buffer*, and
-  files rewritten on disk (those with no open buffer) cannot be undone at all.
-  The refusal pass added this round narrows the blast radius — an edit that
-  cannot be honoured now changes nothing — but it does nothing for an edit that
-  applies successfully and is then regretted.
+- **Cross-file undo.** A multi-file rename is one undo step *per buffer*. Files
+  rewritten on disk (those with no open buffer) used to have no recovery AT ALL;
+  since 2026-09-07 they keep a local-history snapshot of what the write replaced
+  (see "A rewritten file keeps what it replaced" below), so the recovery is
+  per-file and manual rather than absent. **A single undo for the whole
+  refactoring is still open**, and it is the harder half: it needs the buffers'
+  own stacks and the disk files to move together, which is an ownership question
+  and not a missing snapshot.
 
 ## The polish sweep — bookmarks (2026-09-02)
 
@@ -1702,6 +1705,39 @@ One real bug came out of writing the wire test: `showStop()` read
 `$currentFrameId`, which `loadScopes()` sets AFTERWARDS — so the request would
 have asked about the previous stop, one frame behind, every time. The frame id
 is passed explicitly now.
+
+## A rewritten file keeps what it replaced (built 2026-09-07)
+
+The other half of the same open entry, and the half that was a hole rather than
+a limitation. `local-history` snapshots on `BufferSaved`, which needs an open
+buffer; the editor's undo stack is per document. So a twenty-file rename wrote
+eighteen files with **no recovery path at all** — measured, not assumed: the
+plugin's only snapshot hook is `onFileSaved`, and a `dumpFile()` from
+`WorkspaceEditor` fires no save.
+
+`Event\FileRewritten` is a new `PluginObservable` fact, and it carries **the
+text the write replaced** rather than the text it produced. That is the whole
+design: the new content is on disk and needs no announcing, while the old exists
+nowhere else the moment `dumpFile()` returns. `HistoryTool::snapshotReplaced()`
+therefore does NOT read the file the way `snapshot()` does — reading here would
+store the refactored version and call it history, which is the one version that
+is no help, since it is what is on disk.
+
+**It is deliberately not a save.** A save is something the user did to a buffer
+that has its own undo stack; this is something a server asked for, to a file the
+user may never have opened. An open buffer is not announced, because it has both
+of those and announcing would put two versions in history for one change.
+
+Adding to the observable set is a review point with a procedure, and the
+procedure worked: the contract test refused the event until `docs/plugins.md`
+described it, and `EventListenerWiringTest` refused it until the "observed only
+at runtime" list said why core compiles no listener. Both failures arrived
+before any thought about them did.
+
+**Mutation says little here** — one mutant over the whole diff, because the
+`src/` half is a data class, one dispatch line and one hook, and plugin code
+generates none (`porta-mutation-scope-src-only`). The weight is on the two
+tests: the payload is the OLD text, and a failed write announces nothing.
 
 ## Overlapping text edits are refused now (built 2026-09-07)
 

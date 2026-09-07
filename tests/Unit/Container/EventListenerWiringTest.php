@@ -273,6 +273,12 @@ final class EventListenerWiringTest extends TestCase
             'GitCommitted',
             'GitRemoteCompleted',
             'WorkingTreeChanged',
+            // A refactoring rewriting a buffer-less file. Core has nothing to
+            // do about it — the write already happened and the new content is
+            // what the workspace wanted; the only reaction is a RECOVERY one,
+            // and recovery is local-history's, registered through
+            // onFileRewritten at runtime.
+            'FileRewritten',
         ];
 
         $dispatcher = $this->dispatcher();

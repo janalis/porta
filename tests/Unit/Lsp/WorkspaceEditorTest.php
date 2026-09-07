@@ -11,6 +11,7 @@ use Porta\Editor\Document;
 use Porta\Event\BufferRepointRequested;
 use Porta\Event\FileDeleted;
 use Porta\Event\FileRenamed;
+use Porta\Event\FileRewritten;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\Uri;
@@ -247,6 +248,84 @@ final class WorkspaceEditorTest extends TestCase
 
         $this->assertSame(1, $outcome->touched);
         $this->assertSame("X123456789\n", file_get_contents($project->path('a.php')));
+    }
+
+    /**
+     * A file rewritten on disk announces what it REPLACED.
+     *
+     * This is the only moment the previous content exists anywhere: the file
+     * has no buffer, so no undo stack and no `BufferSaved`, and a twenty-file
+     * rename left eighteen files changed with no recovery at all. The payload
+     * is the OLD text on purpose — the new content is already on disk.
+     */
+    public function testAFileRewrittenOnDiskAnnouncesWhatItReplaced(): void
+    {
+        $project = new TempProject(['a.php' => "0123456789\n"]);
+        $seen = [];
+        $events = new EventDispatcher();
+        $events->addListener(FileRewritten::class, static function (FileRewritten $e) use (&$seen): void {
+            $seen[] = [$e->path, $e->previousText];
+        });
+        $we = $this->workspaceEditor($events);
+
+        $we->applyWorkspaceEdit([
+            'changes' => [
+                Uri::fromPath($project->path('a.php')) => [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X')],
+            ],
+        ]);
+
+        $this->assertSame([[realpath($project->path('a.php')), "0123456789\n"]], $seen);
+        $this->assertSame("X123456789\n", file_get_contents($project->path('a.php')), 'and the new text is on disk');
+    }
+
+    /**
+     * An OPEN buffer does not announce it: it has its own undo stack, and its
+     * save will snapshot through the usual path. Announcing both would put two
+     * versions in local history for one change.
+     */
+    public function testAnOpenBufferIsNotAnnouncedAsRewritten(): void
+    {
+        $seen = 0;
+        $events = new EventDispatcher();
+        $events->addListener(FileRewritten::class, static function () use (&$seen): void {
+            ++$seen;
+        });
+        $we = $this->workspaceEditor($events);
+        $this->buffers->open('/p/a.php', "0123456789\n");
+
+        $we->applyWorkspaceEdit([
+            'changes' => [
+                Uri::fromPath('/p/a.php') => [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X')],
+            ],
+        ]);
+
+        $this->assertSame(0, $seen);
+    }
+
+    /** A write that FAILED replaced nothing, so it announces nothing. */
+    public function testAnUnwritableFileAnnouncesNothing(): void
+    {
+        $project = new TempProject(['a.php' => "0123456789\n"]);
+        $path = $project->path('a.php');
+        chmod($path, permissions: 0o444);
+        $seen = 0;
+        $events = new EventDispatcher();
+        $events->addListener(FileRewritten::class, static function () use (&$seen): void {
+            ++$seen;
+        });
+        $we = $this->workspaceEditor($events);
+
+        try {
+            $we->applyWorkspaceEdit([
+                'changes' => [
+                    Uri::fromPath($path) => [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X')],
+                ],
+            ]);
+        } finally {
+            chmod($path, permissions: 0o644);
+        }
+
+        $this->assertSame(0, $seen);
     }
 
     public function testClosedUnwritableFileIsSkipped(): void

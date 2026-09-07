@@ -12,6 +12,7 @@ use Porta\Editor\SelectionMode;
 use Porta\Event\BufferRepointRequested;
 use Porta\Event\FileDeleted;
 use Porta\Event\FileRenamed;
+use Porta\Event\FileRewritten;
 use Porta\Support\Files;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Filesystem\Exception\IOException;
@@ -334,6 +335,11 @@ final readonly class WorkspaceEditor
         try {
             $this->fs->dumpFile($target, $document->getText());
             ++$touched;
+            // Announced only AFTER the write succeeded, and carrying what the
+            // write replaced. A file with no buffer has no undo stack and no
+            // BufferSaved, so this is the only moment its previous content
+            // still exists anywhere — see {@see FileRewritten}.
+            $this->events->dispatch(new FileRewritten($target, $contents));
         } catch (IOException) {
             // The writability check passed and the write still failed (a full
             // disk, a read-only mount, a race). Uncaught this escapes the LSP
