@@ -93,6 +93,9 @@ final class MenuModel
             'e:surround_with',
             self::SEP,
             'e:toggle_fold',
+            // Both directions: the pair is bound and labelled alike, and a menu
+            // offering only one of them reads as the other not existing.
+            'e:add_caret_above',
             'e:add_caret_below',
             'e:add_next_occurrence',
         ],

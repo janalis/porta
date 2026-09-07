@@ -31,6 +31,7 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `Ctrl+Shift+\`` / `Alt+F11` | Open a new terminal session |
 | `Alt+1` | Focus the project tree |
 | `Alt+6` | Problems panel |
+| `Alt+9` | Notification log — every flash the status bar showed and you missed |
 | `Ctrl+Alt+H` | Local history |
 
 ## Files and buffers
@@ -62,6 +63,10 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `Ctrl+/` / `Ctrl+-` | Toggle line comment |
 | `Alt+Shift+↑/↓` | Move line or selection up / down |
 | `Ctrl+Shift+↑/↓` | Move statement up / down (hops blank-line gaps) |
+| `Ctrl+Shift+J` | Join the selected lines (or this line and the next) into one |
+| `Ctrl+Shift+S` | Sort the selected lines |
+| `Ctrl+Shift+U` | Toggle the case of the selected lines |
+| `Ctrl+Shift+M` | Jump to the bracket matching the one at the caret |
 | `Ctrl+W` / `Ctrl+Shift+W` | Extend / shrink selection (word → brackets → line → file) |
 | `Ctrl+Alt+T` | Surround selection (bracket pair, quotes, `if`/`foreach`/`try`) |
 | `Ctrl+.` | Collapse / expand the code fold at the caret |
