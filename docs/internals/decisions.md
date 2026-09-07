@@ -1746,6 +1746,29 @@ instead of inferring from the glyph is what caught it. `claims-are-not-guards`
 applies to documentation as much as to code comments: no gate reads prose, so
 the only check on a doc row is whether its author looked.
 
+**Then the class, not the instance.** Round 7's habit — after fixing one, grep
+for the STORES rather than for the bug — applied here means every `src/` class
+with a `getDefaultKeybindings()`, and the gate discovers them by walking `src/`
+rather than listing them. A hard-coded list is a checklist a new widget walks
+silently past; the walk catches the next one the day it is written, and FQCN is
+determined by path here so it can name the class from the file. Six more
+undocumented keys, on surfaces this user reaches constantly: the results
+panel's `Alt+G` (cycle grouping), `Alt+E` (collapse/expand all) and `F5`
+(re-run), the terminal's `Ctrl+PageUp`/`Ctrl+PageDown` session switching, and
+settings' bare `2`.
+
+`CodeEditorWidget` is excluded from that walk WITH ITS REASON: its map is
+`EditorKeymap::defaults()`, whose twenty-two micro-bindings are undocumented on
+purpose, and sweeping it in would silently re-open a decision that was made and
+argued. An exclusion without a reason is how a gate quietly stops meaning
+anything.
+
+**And the prose had drifted where nothing reads it.** Three docblocks in
+`ResultsPanelWidget` say the context toggle is `Alt+.`; the binding is `alt+m`.
+[[stale-justifications-survive-moves]] again — the binding moved and the
+sentences did not, and no gate reads a docblock. Writing the doc row is what
+surfaced it.
+
 Mutation named three more, all real: dropping a recall handler's `return` falls
 through to the plain-typing path that RESETS the history cursor, so the walk
 silently restarts on the next press (every single-step assertion still passes);

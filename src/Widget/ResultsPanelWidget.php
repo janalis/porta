@@ -70,7 +70,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     private ResultGrouping $grouping = ResultGrouping::File;
     /** @var array<string, bool> group key (file or directory) => collapsed (grouped mode only) */
     private array $collapsed = [];
-    /** @var array<int, bool> matchIndex => its context lines are expanded (Alt+.) */
+    /** @var array<int, bool> matchIndex => its context lines are expanded (Alt+M) */
     private array $contextExpanded = [];
     /** @var array<int, list<array{line: int, text: string}>> matchIndex => cached neighbouring lines */
     private array $contextCache = [];
@@ -95,7 +95,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
 
     /**
      * Set the provider of the neighbouring source lines shown around an expanded
-     * match (Alt+.).
+     * match (Alt+M).
      *
      * @param \Closure(string, int): list<array{line: int, text: string}> $provider (relativePath, line) => lines
      */
@@ -457,7 +457,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         $this->events?->dispatch(new ResultRowActivated($result['path'], $result['line']));
     }
 
-    /** Alt+. on a match row toggles the neighbouring source lines shown beneath it. */
+    /** Alt+M on a match row toggles the neighbouring source lines shown beneath it. */
     private function toggleContext(int $index): void
     {
         $row = $this->displayRows[$index] ?? null;

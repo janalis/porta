@@ -25,10 +25,11 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `F1` | Open the documentation browser (these guides, fully rendered; see the Help viewer table below) |
 | `Ctrl+Shift+A` | Find Action (command palette) |
 | `Ctrl+Shift+E` | Search Everywhere |
-| `Ctrl+,` | Settings |
+| `Ctrl+,` | Settings (inside: `Ctrl+F` finds a setting, `R` resets the selected row, `2` jumps to Keybindings, `[`/`]` change a value, `Tab` switches pane) |
 | `Ctrl+Alt+D` | Git view (changes, staging, history) |
 | `Ctrl+\`` / `Alt+F12` | Toggle the integrated terminal |
 | `Ctrl+Shift+\`` / `Alt+F11` | Open a new terminal session |
+| `Ctrl+PageDown` / `Ctrl+PageUp` | Next / previous terminal session (`Ctrl+Shift+W` closes one) |
 | `Alt+1` | Focus the project tree |
 | `Alt+6` | Problems panel |
 | `Alt+9` | Notification log — every flash the status bar showed and you missed |
@@ -177,6 +178,22 @@ replaces in the bar, and neither surface can have both.
 
 The debugger's `F7`/`F8`/`F9`/`Shift+F8`/`Ctrl+F2` keys are gated on a
 running session — without one they fall through to their editor meanings.
+
+## Results panels
+
+The shared list at the bottom — Find in Files, Problems, Usages, Structure,
+TODOs, Bookmarks and a plugin's own. Whichever tool filled it, these are its
+keys.
+
+| Key | Action |
+| --- | --- |
+| `Enter` | Open the row's file at its line |
+| `Alt+G` | Cycle how rows are grouped: by file, by directory, or nested |
+| `Alt+E` | Collapse every group, or expand them all when they are already collapsed |
+| `Alt+M` | Show or hide the source lines around the selected match |
+| `F5` | Run the search again and refresh the rows |
+| `Alt+X` | Write a Find in Files result set to a file and open it (inert on the other tools, which have no export to offer) |
+| type | Filter the rows, where the tool offers a filter (Find in Files, Problems, Usages, Structure) |
 
 ## File tree
 

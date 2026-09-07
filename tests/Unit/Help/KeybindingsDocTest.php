@@ -70,6 +70,103 @@ final class KeybindingsDocTest extends TestCase
     }
 
     /**
+     * EVERY surface in `src/` that binds keys for itself, discovered rather
+     * than listed.
+     *
+     * The two find surfaces below were the instance; this is the class. Round
+     * 7's lesson was that after fixing one "X must follow a rename" you
+     * enumerate the stores rather than grepping for the bug, and the same move
+     * here found six more undocumented keys across three widgets the user
+     * reaches constantly — the results panel's grouping and re-run verbs, and
+     * the terminal's session switching.
+     *
+     * Discovery matters more than the six. A hard-coded list is a checklist
+     * that a NEW widget silently walks past; walking `src/` for the method
+     * means the next one is caught the day it is written. FQCN is determined
+     * by path in this repository, so the walk can name the class from the file.
+     *
+     * This test asks only "is the chord in the doc AT ALL", where
+     * {@see testEveryKeyAModalBindsForItselfAppearsInTheDoc} asks the stronger
+     * question of the Search section. The weaker rule is the honest one here:
+     * these surfaces spread across half the doc's sections, and there is no
+     * per-widget section to scope to without inventing a mapping that would
+     * itself need maintaining.
+     */
+    public function testEveryKeyAnySurfaceBindsForItselfAppearsInTheDoc(): void
+    {
+        $doc = self::expandPairs(self::normalise((string) file_get_contents(__DIR__.'/../../../docs/keybindings.md')));
+
+        $missing = [];
+        foreach (self::surfaceKeymaps() as $class => $keys) {
+            foreach ($keys as $id => $bound) {
+                foreach ($bound as $key) {
+                    if (\in_array(self::normalise($key), self::CONVENTIONS, strict: true) || self::mentions($doc, $key)) {
+                        continue;
+                    }
+                    $missing[] = "{$class}: {$id} → {$key}";
+                }
+            }
+        }
+
+        $this->assertSame([], $missing, "a surface binds these for itself and docs/keybindings.md does not mention them:\n  ".implode("\n  ", $missing));
+    }
+
+    /**
+     * Keys a reader already knows, so a surface need not write them down.
+     *
+     * Deliberately narrow, and it does NOT include the keys that only look
+     * conventional: `Delete` excludes a match from a bulk replace in the find
+     * modal, and a bare `2` jumps to a settings section. Both are verbs.
+     * Normalised spelling, because that is what the comparison uses.
+     *
+     * @var list<string>
+     */
+    private const array CONVENTIONS = ['escape', 'enter', 'tab', 'shift+tab', 'backspace', 'up', 'down', 'arrowl', 'arrowr', 'pgup', 'pgdn', 'home', 'end', 'space'];
+
+    /**
+     * Every `src/` class with a `getDefaultKeybindings()`, mapped to what it
+     * returns.
+     *
+     * The framework's trait declares it `protected static`, so reflection is
+     * the only way in from outside — and a public accessor added so a test
+     * could ask would be test-only code in `src`.
+     *
+     * @return array<string, array<string, list<string>>>
+     */
+    private static function surfaceKeymaps(): array
+    {
+        $root = \dirname(__DIR__, levels: 3);
+        $maps = [];
+        /** @var \SplFileInfo $file */
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root.'/src')) as $file) {
+            if ('php' !== $file->getExtension() || !str_contains((string) file_get_contents($file->getPathname()), 'function getDefaultKeybindings')) {
+                continue;
+            }
+            // The EDITOR is not one of these surfaces. Its map is
+            // {@see EditorKeymap::defaults()}, whose twenty-two micro-bindings
+            // (arrows, shift+arrows, ctrl+home) are undocumented ON PURPOSE —
+            // see this class's docblock — and it has its own gate above,
+            // narrowed to the verbs a menu advertises. Sweeping it in here
+            // would silently re-open a decision that was made and argued.
+            if (str_ends_with($file->getPathname(), '/Widget/CodeEditorWidget.php')) {
+                continue;
+            }
+            // FQCN is determined by path — a rule this repository states and
+            // the arch gate enforces, so the walk can name the class.
+            $relative = substr($file->getPathname(), \strlen($root.'/src/'), length: -4);
+            $class = 'Porta\\'.str_replace(search: '/', replace: '\\', subject: $relative);
+            $method = new \ReflectionMethod($class, 'getDefaultKeybindings');
+            /** @var array<string, list<string>> $keys */
+            $keys = $method->invoke(null);
+            $maps[$class] = $keys;
+        }
+
+        self::assertNotSame([], $maps, 'the walk found no keymaps at all, which means it is broken rather than clean');
+
+        return $maps;
+    }
+
+    /**
      * A MODAL's own keys are the only way to use it, so an undocumented one is
      * a feature nobody can reach.
      *
