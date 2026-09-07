@@ -34,6 +34,10 @@ use Symfony\Component\Filesystem\Filesystem;
  * not a thing anyone asks for, and a stack would have to answer what happens
  * when its entries interleave with per-buffer undos — a question with no good
  * answer and no user behind it.
+ *
+ * **Text edits only.** An edit that also CREATES, RENAMES or DELETES files is
+ * not remembered at all ({@see decline()}), because undoing its text and leaving
+ * the new file standing is the partial state this class exists to refuse.
  */
 #[AsIdeService]
 final class RefactoringUndo
@@ -44,17 +48,77 @@ final class RefactoringUndo
     /** @var array<string, array{previous: string, written: string}> disk path => what it held before and after */
     private array $files = [];
 
+    /** Whether the next thing recorded starts a new refactoring. */
+    private bool $fresh = false;
+
+    /** Whether THIS refactoring has been ruled out, so nothing more is recorded for it. */
+    private bool $declined = false;
+
     public function __construct(
         private readonly BufferManager $bufferManager,
         private readonly EventDispatcherInterface $events,
         private readonly Filesystem $fs = new Filesystem(),
     ) {}
 
-    /** Start remembering a fresh refactoring, forgetting the previous one. */
+    /**
+     * Start remembering a fresh refactoring — LAZILY.
+     *
+     * The previous one is not discarded here but on the first thing recorded,
+     * and the difference is a defect that was already shipped once: an edit
+     * every file of which is refused changes nothing, and clearing eagerly threw
+     * away the undo of the refactoring before it for a keystroke that did
+     * nothing at all. Placing the eager call after one refusal check merely
+     * moved the hole to the next kind of refusal — per-file overlap, which
+     * happens deeper. Lazily, "nothing was recorded" and "nothing is forgotten"
+     * are the same condition by construction, whatever the reason.
+     */
     public function begin(): void
+    {
+        $this->fresh = true;
+        $this->declined = false;
+    }
+
+    /**
+     * This refactoring cannot be taken back — discard what was remembered, now.
+     *
+     * For an edit carrying RESOURCE OPERATIONS. Files created, renamed or
+     * deleted are not recorded here, so undoing would restore the text and
+     * leave the new file standing, or write content back to a path the rename
+     * moved. A partial undo of a refactoring is the state nobody can reason
+     * about, and the previous refactoring is not the answer either: the user
+     * pressing undo means the thing they just did.
+     */
+    public function decline(): void
+    {
+        $this->clear();
+        // For the REST of this refactoring, not just until the next record: an
+        // edit that creates a file usually edits it immediately afterwards, and
+        // remembering that half would offer an undo of exactly the part that
+        // makes no sense alone.
+        $this->declined = true;
+    }
+
+    /**
+     * Whether this group may record — clearing the previous one the first time
+     * it does.
+     */
+    private function openGroup(): bool
+    {
+        if ($this->declined) {
+            return false;
+        }
+        if ($this->fresh) {
+            $this->clear();
+        }
+
+        return true;
+    }
+
+    private function clear(): void
     {
         $this->buffers = [];
         $this->files = [];
+        $this->fresh = false;
     }
 
     /**
@@ -63,13 +127,17 @@ final class RefactoringUndo
      */
     public function recordBuffer(string $path, int $versionAfter): void
     {
-        $this->buffers[$path] = $versionAfter;
+        if ($this->openGroup()) {
+            $this->buffers[$path] = $versionAfter;
+        }
     }
 
     /** A file with no buffer took part: what it held, and what was written over it. */
     public function recordFile(string $path, string $previous, string $written): void
     {
-        $this->files[$path] = ['previous' => $previous, 'written' => $written];
+        if ($this->openGroup()) {
+            $this->files[$path] = ['previous' => $previous, 'written' => $written];
+        }
     }
 
     /**
@@ -117,7 +185,7 @@ final class RefactoringUndo
             $this->events->dispatch(new FileRewritten($path, $texts['written']));
         }
 
-        $this->begin();
+        $this->clear();
 
         return null;
     }

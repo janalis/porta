@@ -1738,6 +1738,39 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## Two more from the same list, both in the undo I had just written (2026-09-07)
+
+The combination method again, this time pointed at the newest thing in the tree
+rather than the oldest — and it found two defects in code that was a commit old,
+100% covered and mutation-clean.
+
+**An edit that changed nothing threw away the undo before it.** The group was
+cleared eagerly at the start of every application, so a second refactoring whose
+every file was refused for overlapping edits left the user with nothing to undo,
+for a keystroke that had done nothing at all. I had already seen this shape once
+and guarded it by moving the eager clear AFTER the resource-refusal check — which
+merely moved the hole to the next kind of refusal, one that happens deeper and
+per file. **A placement rule is not a fix.** The group opens on the first thing
+RECORDED now, so "nothing recorded" and "nothing forgotten" are one condition by
+construction, whatever the reason and however deep it is decided.
+
+**And the verb overclaimed.** Its docblock said it takes back the last
+refactoring "whole"; resource operations record nothing, so undoing an "extract
+to new class" would have restored the words and left the new file standing. Such
+an edit is now `decline()`d — remembered not at all, so `Ctrl+Alt+Z` says there
+is nothing to undo rather than offering half. The previous refactoring is not
+the answer either: undo means the thing you just did.
+
+The `decline()` state has to last for the REST of the group, which the first
+attempt got wrong: an edit that creates a file edits it immediately afterwards,
+and clearing-then-allowing recorded exactly the half that makes no sense alone.
+
+**What this says about the method.** Both defects were invisible to every gate,
+and the second was invisible to review because the docblock and the code agreed
+— the docblock was simply wrong about what the code covered. Listing what a
+round touched and asking what each thing now MEETS found in one sitting what
+coverage, mutation and three readings had not.
+
 ## The combination nobody asked about: paste history × multiple carets (2026-09-07)
 
 Round 6's lesson applied to this session's OWN work rather than to someone

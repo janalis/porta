@@ -99,13 +99,15 @@ final readonly class WorkspaceEditor
 
         $touched = 0;
         $skipped = [];
-        // After the refusal check, so a refused edit does not throw away the
-        // undo of the one before it — nothing was applied, so there is nothing
-        // to take back and the previous refactoring is still the last one.
         $this->undo->begin();
         foreach ($changes as $change) {
             $kind = \is_string($change['kind'] ?? null) ? $change['kind'] : '';
             if ('' !== $kind) {
+                // A create, rename or delete puts this edit beyond the reach of
+                // Ctrl+Alt+Z: only text is remembered, so undoing would restore
+                // the words and leave the new file standing. Refused outright
+                // rather than half-offered.
+                $this->undo->decline();
                 $this->applyResourceOperation($kind, $change);
 
                 continue;

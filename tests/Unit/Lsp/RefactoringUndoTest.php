@@ -154,6 +154,68 @@ final class RefactoringUndoTest extends TestCase
     }
 
     /**
+     * An edit that changes NOTHING does not throw away the undo before it.
+     *
+     * Shipped broken once: the group was cleared eagerly at the start of every
+     * application, so a second refactoring whose every file was refused —
+     * overlapping edits — left the user with nothing to undo, for a keystroke
+     * that had done nothing. Placing the eager clear after the resource-refusal
+     * check only moved the hole to the next kind of refusal, which is deeper
+     * and per-file. The group opens on the first thing RECORDED instead, so
+     * "nothing recorded" and "nothing forgotten" are one condition whatever the
+     * reason.
+     */
+    public function testAnEditThatAppliesNothingLeavesTheEarlierUndoAlone(): void
+    {
+        $we = $this->workspaceEditor();
+        $first = $this->buffers->open('/p/first.php', "one\n");
+        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath('/p/first.php') => [self::edit(0, 3, 'ONE')]]]);
+
+        $this->buffers->open('/p/second.php', "two\n");
+        $we->applyWorkspaceEdit([
+            'changes' => [
+                Uri::fromPath('/p/second.php') => [
+                    // Overlapping: refused per file, deep inside the walk.
+                    self::edit(0, 3, 'X'),
+                    self::edit(1, 3, 'Y'),
+                ],
+            ],
+        ]);
+
+        $this->assertTrue($this->undo->hasPending(), 'the first refactoring survives an edit that did nothing');
+        $this->assertNull($this->undo->undo());
+        $this->assertSame("one\n", $first->document->getText());
+    }
+
+    /**
+     * A refactoring that CREATES, renames or deletes a file is not offered for
+     * undo at all.
+     *
+     * Only text is remembered, so undoing an "extract to new class" would put
+     * the words back and leave the new file standing — the partial state this
+     * class exists to refuse. And the previous refactoring is not the answer
+     * either: undo means the thing you just did, so it is forgotten too.
+     */
+    public function testAResourceOperationPutsTheEditBeyondUndo(): void
+    {
+        $project = new TempProject(['a.php' => "one\n"]);
+        $we = $this->workspaceEditor();
+        $this->buffers->open($project->path('a.php'), "one\n");
+        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath($project->path('a.php')) => [self::edit(0, 3, 'ONE')]]]);
+        $this->assertTrue($this->undo->hasPending(), 'a plain text edit is undoable');
+
+        $we->applyWorkspaceEdit([
+            'documentChanges' => [
+                ['kind' => 'create', 'uri' => Uri::fromPath($project->path('made.php'))],
+                ['textDocument' => ['uri' => Uri::fromPath($project->path('made.php'))], 'edits' => [self::edit(0, 0, 'hello')]],
+            ],
+        ]);
+
+        $this->assertFileExists($project->path('made.php'), 'the refactoring itself still happened');
+        $this->assertFalse($this->undo->hasPending(), 'and nothing is offered to take it back');
+    }
+
+    /**
      * A restore that cannot be written names the file rather than throwing.
      *
      * The same shape the FORWARD direction has for an unwritable file: the
