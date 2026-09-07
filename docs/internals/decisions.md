@@ -1738,6 +1738,38 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## The sweep turned on the OLD verbs, and they hold (2026-09-07)
+
+Having found six defects sweeping this session's own work, the same technique
+went to the ninety-one verbs `EditorKeymap` already bound. **Nothing broke**, and
+that is worth writing down so nobody repeats it:
+
+- **546 verb × degenerate-document pairs threw nothing** (empty buffer, blank
+  line, whitespace-only line, no trailing newline, tabs, one character).
+- **637 pairs broke no invariant**: never zero lines, the caret always inside the
+  document, the text always valid UTF-8. So the class of defect found in the new
+  verbs is about SEMANTICS, not robustness — the verb layer does not corrupt a
+  document, whatever it is asked.
+
+Robustness is not correctness, so two verbs with a real oracle were round-tripped:
+
+- **`toggle_case` is deliberately not an involution.** `aBc` → `ABC` → `abc`:
+  mixed case uppercases first. That is PhpStorm's behaviour and it is right;
+  recorded because it LOOKS like a bug in a round-trip table.
+- **The comment verbs normalise**, and every difference found is normalisation:
+  `//x` re-commented is `// x` (the space is added deliberately), and `//` alone
+  uncomments to nothing, because that is what uncommenting a bare `//` means.
+
+**One real inconsistency, measured and accepted.** The BLOCK form of `Ctrl+/`
+strips trailing whitespace (`x  ` → `x`) where the LINE form keeps it. It is the
+same two-sources-of-truth shape as the round's other findings — one verb, two
+implementations, disagreeing on one input class. It is left alone because
+preserving trailing whitespace *inside* a comment is not something anyone wants,
+because `blockUnwrapped()` would have to stop trimming to bring it back, and
+because no content is lost either way. *Re-opens if* a language whose comments
+are meaningful whitespace ever appears, or if the asymmetry surfaces in a diff
+somebody minds.
+
 ## Sweeping the rest, and two clean results worth recording (2026-09-07)
 
 The sweep pointed at everything else this session touched. Two areas came back
