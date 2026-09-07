@@ -58,7 +58,7 @@ final class EditorActions
      */
     private const array PRE_CARET_ACTIONS = ['goto_line', 'rename_symbol', 'trigger_completion', 'parameter_info', 'toggle_column_mode', 'add_caret_above', 'add_caret_below', 'add_next_occurrence'];
     private const array HISTORY_STRUCTURE_ACTIONS = ['undo', 'redo', 'expand_selection', 'shrink_selection', 'goto_matching_bracket'];
-    private const array CLIPBOARD_LINE_ACTIONS = ['copy', 'cut', 'paste', 'duplicate_line', 'move_line_up', 'move_line_down', 'toggle_comment', 'toggle_fold'];
+    private const array CLIPBOARD_LINE_ACTIONS = ['copy', 'cut', 'paste', 'duplicate_line', 'move_line_up', 'move_line_down', 'toggle_comment', 'toggle_block_comment', 'toggle_fold'];
 
     /** Every table-dispatched action id, for the catalog cross-check test. */
     public const array TABLE_ACTIONS = [...self::PRE_CARET_ACTIONS, ...self::HISTORY_STRUCTURE_ACTIONS, ...self::CLIPBOARD_LINE_ACTIONS];
@@ -528,6 +528,7 @@ final class EditorActions
             'join_lines' => $this->notifyIfChanged($this->document->joinLines(...)),
             'toggle_case' => $this->notifyIfChanged($this->document->toggleCaseLines(...)),
             'toggle_comment' => $this->toggleLineComment(),
+            'toggle_block_comment' => $this->toggleBlockComment(),
             'toggle_fold' => $this->toggleFold(),
             'fold_all' => $this->foldAll(),
             'unfold_all' => $this->unfoldAll(),
@@ -577,8 +578,16 @@ final class EditorActions
 
     private function toggleLineComment(): void
     {
-        if (null !== ($prefix = $this->host->commentPrefix())) {
-            $this->document->toggleComment($prefix);
+        if (null !== ($syntax = $this->host->commentSyntax())) {
+            $this->document->toggleComment($syntax);
+            $this->host->notifyChange();
+        }
+    }
+
+    private function toggleBlockComment(): void
+    {
+        if (null !== ($syntax = $this->host->commentSyntax())) {
+            $this->document->toggleBlockComment($syntax);
             $this->host->notifyChange();
         }
     }

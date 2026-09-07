@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Caret;
+use Porta\Editor\CommentSyntax;
 use Porta\Editor\Document;
 use Porta\Editor\SelectionMode;
 
@@ -422,11 +423,11 @@ final class DocumentTest extends TestCase
         $doc->beginSelect();
         $doc->setCursor(1, 4, selection: SelectionMode::Keep);
 
-        $doc->toggleComment('//');
+        $doc->toggleComment(CommentSyntax::lineOnly('//'));
         $this->assertStringContainsString('// return', $doc->getLine(0));
         $this->assertStringContainsString('// echo', $doc->getLine(1));
 
-        $doc->toggleComment('//');
+        $doc->toggleComment(CommentSyntax::lineOnly('//'));
         $this->assertSame('    return 1;', $doc->getLine(0));
     }
 
@@ -870,7 +871,7 @@ final class DocumentTest extends TestCase
         $bump(static fn () => $doc->replaceBeforeCursor(0, 'z'));
         $bump($doc->indentSelection(...));
         $bump($doc->dedentSelection(...));
-        $bump(static fn () => $doc->toggleComment('//'));
+        $bump(static fn () => $doc->toggleComment(CommentSyntax::lineOnly('//')));
         $bump(static fn () => $doc->replaceAll('reset'));
         $bump($doc->undo(...));
         $bump($doc->redo(...));
@@ -1023,7 +1024,7 @@ final class DocumentTest extends TestCase
         $doc->beginSelect();
         $doc->setCursor(3, 5, selection: SelectionMode::Keep); // lines 1-3
 
-        $doc->toggleComment('//');
+        $doc->toggleComment(CommentSyntax::lineOnly('//'));
         $this->assertSame(['z', '// one', '// two', '// three', 'tail'], $doc->getLines());
     }
 

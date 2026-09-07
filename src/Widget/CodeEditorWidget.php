@@ -13,6 +13,7 @@ use Porta\Editor\ActiveFileProvider;
 use Porta\Editor\AutoPairService;
 use Porta\Editor\BreadcrumbScanner;
 use Porta\Editor\CaretMotion;
+use Porta\Editor\CommentSyntax;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\DecorationStore;
 use Porta\Editor\Document;
@@ -1031,18 +1032,18 @@ final class CodeEditorWidget extends AbstractWidget implements
     }
 
     /**
-     * Line-comment prefix for the current language, or null when unsupported.
+     * How the current language spells a comment, or null when it has none.
+     *
+     * This used to be a fourteen-arm match returning a prefix string, which
+     * could not express "block comments only" and so answered null for Twig —
+     * leaving `Ctrl+/` dead there and in thirty other grammars. The table is
+     * {@see CommentSyntax}'s now; the widget's job is only to say which
+     * language the buffer is in.
      */
     #[\Override]
-    public function commentPrefix(): ?string
+    public function commentSyntax(): ?CommentSyntax
     {
-        return match ($this->highlighter->getLanguage()) {
-            'php', 'javascript', 'typescript', 'css', 'scss', 'jsonc' => '//',
-            'bash', 'yaml', 'dotenv', 'ini', 'python', 'dockerfile', 'terraform' => '#',
-            'sql' => '--',
-            'twig' => null, // block comments only
-            default => null,
-        };
+        return CommentSyntax::forGrammar($this->highlighter->getLanguage());
     }
 
     private function closeCompletion(): void

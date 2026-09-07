@@ -538,10 +538,17 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testCommentPrefixVariants(): void
     {
         $cases = [
-            ['script.sh', 'echo hi',   '# echo hi'],
-            ['query.sql', 'SELECT 1;', '-- SELECT 1;'],
-            ['page.twig', '{{ x }}',   '{{ x }}'], // twig: unsupported, no change
-            ['notes.xyz', 'plain',     'plain'], // unknown language: no change
+            ['script.sh', 'echo hi',    '# echo hi'],
+            ['query.sql', 'SELECT 1;',  '-- SELECT 1;'],
+            // Twig's only comment form is a block, so the LINE verb wraps the
+            // line in it. This case read `no change` for as long as the prefix
+            // was a bare string with nothing to say but `//`, `#` or `--`.
+            ['page.twig', '{{ x }}',    '{# {{ x }} #}'],
+            // Same for CSS — and `//` was not merely missing here, it was
+            // WRONG: it comments out nothing and breaks the next rule.
+            ['theme.css', 'a { b: c }', '/* a { b: c } */'],
+            ['page.html', '<p>hi</p>',  '<!-- <p>hi</p> -->'],
+            ['notes.xyz', 'plain',      'plain'], // unknown language: no change
         ];
         foreach ($cases as [$file, $before, $after]) {
             $editor = $this->editor($before."\n", $file);
@@ -549,6 +556,41 @@ final class CodeEditorWidgetEdgeTest extends TestCase
             $editor->handleInput("\x1f"); // toggle_comment
             $this->assertSame($after, $editor->getDocument()->getLine(0), $file);
         }
+    }
+
+    /**
+     * The chord, through a running widget. `Ctrl+/` reaching the document was
+     * never in doubt; `Ctrl+Shift+/` is a NEW binding on the editor's own
+     * keymap channel, and round 6's lesson was that a verb can be correct at
+     * both ends while nothing drives the key to it.
+     *
+     * CSI-u, because a modified `/` is not something a terminal reports
+     * without the Kitty protocol — the same reason the doc warns about
+     * `Alt+Shift+↑`.
+     */
+    public function testCtrlShiftSlashReachesTheBlockCommentVerb(): void
+    {
+        $editor = $this->editor("    return 1;\n", 'demo.php');
+        $editor->getDocument()->setCursor(0, 8);
+
+        $editor->handleInput("\x1b[47;6u"); // ctrl+shift+/
+        $this->assertSame('    /* return 1; */', $editor->getDocument()->getLine(0));
+
+        $editor->handleInput("\x1b[47;6u");
+        $this->assertSame('    return 1;', $editor->getDocument()->getLine(0), 'the same chord takes it off again');
+    }
+
+    /**
+     * And the fallback, at the same seam: Python has no block form, so the
+     * block chord line-comments rather than doing nothing.
+     */
+    public function testCtrlShiftSlashFallsBackToTheLineFormWhereThereIsNoBlock(): void
+    {
+        $editor = $this->editor("print(1)\n", 'demo.py');
+        $editor->getDocument()->setCursor(0, 0);
+
+        $editor->handleInput("\x1b[47;6u");
+        $this->assertSame('# print(1)', $editor->getDocument()->getLine(0));
     }
 
     public function testEscapeClearsSelection(): void

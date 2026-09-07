@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
+use Porta\Editor\CommentSyntax;
 use Porta\Editor\EditorHost;
 use Porta\Input\TextInput;
 
@@ -75,9 +76,9 @@ final class FakeEditorHost implements EditorHost
         return $this->rows;
     }
 
-    public function commentPrefix(): ?string
+    public function commentSyntax(): ?CommentSyntax
     {
-        return $this->comment;
+        return null === $this->comment ? null : CommentSyntax::lineOnly($this->comment);
     }
 
     public function autoPairsEnabled(): bool

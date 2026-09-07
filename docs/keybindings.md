@@ -60,7 +60,8 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `Ctrl+Y` / `Ctrl+Shift+K` | Delete line or selected lines |
 | `Ctrl+K` | Delete to end of line |
 | `Alt+Backspace` | Delete word backwards |
-| `Ctrl+/` / `Ctrl+-` | Toggle line comment |
+| `Ctrl+/` / `Ctrl+-` | Toggle line comment (in a language whose only comment form is a block — Twig, CSS, HTML, Markdown — each line is wrapped in that block instead) |
+| `Ctrl+Shift+/` | Toggle block comment around the selection, or the current line's content; falls back to the line comment where the language has no block form |
 | `Alt+Shift+↑/↓` | Move line or selection up / down |
 | `Ctrl+Shift+↑/↓` | Move statement up / down (hops blank-line gaps) |
 | `Ctrl+Shift+J` | Join the selected lines (or this line and the next) into one |

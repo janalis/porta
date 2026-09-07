@@ -67,6 +67,7 @@ final class EditorKeymap
             'prev_conflict' => ['shift+f7'],
             'resolve_conflict' => ['alt+m'],
             'toggle_comment' => ['ctrl+/', 'ctrl+-'],
+            'toggle_block_comment' => ['ctrl+shift+/'],
             'toggle_fold' => ['ctrl+.'],
             'goto_matching_bracket' => ['ctrl+shift+m'],
 

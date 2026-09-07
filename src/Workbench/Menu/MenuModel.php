@@ -52,6 +52,7 @@ final class MenuModel
             'e:duplicate_line',
             'e:delete_line',
             'e:toggle_comment',
+            'e:toggle_block_comment',
             'e:move_line_up',
             'e:move_line_down',
             self::SEP,

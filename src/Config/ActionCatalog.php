@@ -75,6 +75,7 @@ final class ActionCatalog
         'shrink_selection' => ['label' => 'Shrink Selection'],
         'surround_with' => ['label' => 'Surround With…'],
         'toggle_comment' => ['label' => 'Toggle Comment'],
+        'toggle_block_comment' => ['label' => 'Toggle Block Comment'],
         'toggle_fold' => ['label' => 'Collapse / Expand Fold'],
         // PhpStorm's pair. They existed as palette-only commands with inline
         // labels, which left them unbindable and off the keymap page — naming

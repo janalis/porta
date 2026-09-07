@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\CommentSyntax;
 use Porta\Editor\Document;
 use Porta\Editor\SelectionMode;
 
@@ -225,10 +226,10 @@ final class DocumentEdgeTest extends TestCase
         $doc->beginSelect();
         $doc->setCursor(2, 4, selection: SelectionMode::Keep);
 
-        $doc->toggleComment('//');
+        $doc->toggleComment(CommentSyntax::lineOnly('//'));
         $this->assertSame(['// code', '', '// more'], $doc->getLines());
 
-        $doc->toggleComment('//');
+        $doc->toggleComment(CommentSyntax::lineOnly('//'));
         $this->assertSame(['code', '', 'more'], $doc->getLines());
     }
 

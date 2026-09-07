@@ -121,7 +121,23 @@ a second.
   to see a long class as a list of its members. (`=` rather than `+`: a
   terminal reports the unshifted key.)
 - **Line operations**: duplicate (`Ctrl+D`), delete (`Ctrl+Y`), move line
-  (`Alt+Shift+↑/↓`), toggle comment (`Ctrl+/`).
+  (`Alt+Shift+↑/↓`).
+- **Comments**, in every language Porta can colour. `Ctrl+/` comments the line
+  or the selected lines one at a time; `Ctrl+Shift+/` puts one block comment
+  around exactly what is selected — `foo(bar, baz)` with `bar` selected becomes
+  `foo(/* bar */, baz)` — or around the current line's content when nothing is.
+  Either key comes off again the same way it went on.
+
+  Each prefers a different form and falls back to the other, which is what
+  makes both work everywhere: `Ctrl+/` in a Twig, CSS, HTML or Markdown file
+  wraps each line in that language's block delimiters, because none of them has
+  a line comment at all, and `Ctrl+Shift+/` in Python or YAML line-comments,
+  because neither has a block. `Ctrl+Shift+/` on a blank line opens an empty
+  comment with the caret inside it.
+
+  Un-commenting a block needs the target to BE the comment: with no selection
+  the target is the whole line, so a one-line block comment comes off from
+  anywhere on it, while one spanning several lines has to be selected first.
 - **Clipboard** (`Ctrl+C/X/V`) also copies to the system clipboard via
   OSC 52.
 

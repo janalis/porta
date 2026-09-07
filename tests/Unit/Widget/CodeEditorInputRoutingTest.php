@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\CommentSyntax;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\SnippetTabStop;
 use Porta\Tests\Support\FakeEditorCompletion;
@@ -16,8 +17,8 @@ use Symfony\Component\Tui\Render\RenderContext;
 
 /**
  * handleInput()'s bracketed-paste guard, its signature-hint/action-router
- * dispatch, the small drag/snippet pass-throughs, commentPrefix()'s match
- * arms, and composePopups()'s row/box placement — split out of
+ * dispatch, the small drag/snippet pass-throughs, the commentSyntax() routing
+ * join, and composePopups()'s row/box placement — split out of
  * CodeEditorWidgetEdgeTest.php to stay under its pinned method-count budget.
  */
 final class CodeEditorInputRoutingTest extends TestCase
@@ -145,55 +146,33 @@ final class CodeEditorInputRoutingTest extends TestCase
         $this->assertFalse($snippet->isActive(), 'clearSnippetSession must reach completion->clearSnippet()');
     }
 
-    // --- commentPrefix() match arms ---------------------------------------------
+    // --- commentSyntax(): the widget names the language, the table answers ---
 
-    /** @return iterable<string, array{string, string|null}> */
-    public static function commentPrefixLanguages(): iterable
+    /**
+     * The widget's job shrank to one line when the fourteen-arm match became
+     * {@see CommentSyntax}'s table, so this is no longer a per-language
+     * enumeration — CommentSyntaxTest owns that, over EVERY grammar rather
+     * than the fifteen someone remembered. What is left here is the join: the
+     * PATH resolves to a grammar and the grammar reaches the table.
+     *
+     * The three cases are the three answer shapes, which is what a routing
+     * test can go wrong about: a line form, a block-only form, and nothing.
+     */
+    public function testCommentSyntaxRoutesThePathsGrammarToTheTable(): void
     {
-        yield 'php' => ['php', '//'];
-        yield 'javascript' => ['javascript', '//'];
-        yield 'typescript' => ['typescript', '//'];
-        yield 'css' => ['css', '//'];
-        yield 'scss' => ['scss', '//'];
-        yield 'jsonc' => ['jsonc', '//'];
-        yield 'bash' => ['bash', '#'];
-        yield 'yaml' => ['yaml', '#'];
-        yield 'dotenv' => ['dotenv', '#'];
-        yield 'ini' => ['ini', '#'];
-        yield 'python' => ['python', '#'];
-        yield 'dockerfile' => ['dockerfile', '#'];
-        yield 'terraform' => ['terraform', '#'];
-        yield 'sql' => ['sql', '--'];
-        yield 'twig' => ['twig', null];
-        yield 'unknown' => ['plaintext', null];
-    }
-
-    #[\PHPUnit\Framework\Attributes\DataProvider('commentPrefixLanguages')]
-    public function testCommentPrefixPerLanguage(string $extension, ?string $expected): void
-    {
-        $map = [
-            'php' => 'demo.php',
-            'javascript' => 'demo.js',
-            'typescript' => 'demo.ts',
-            'css' => 'demo.css',
-            'scss' => 'demo.scss',
-            'jsonc' => 'demo.jsonc',
-            'bash' => 'demo.sh',
-            'yaml' => 'demo.yaml',
-            'dotenv' => '.env',
-            'ini' => 'demo.ini',
-            'python' => 'demo.py',
-            'dockerfile' => 'Dockerfile',
-            'terraform' => 'demo.tf',
-            'sql' => 'demo.sql',
-            'twig' => 'demo.twig',
-            'plaintext' => 'demo.unknownext',
-        ];
-        $path = $map[$extension];
         $editor = new CodeEditorWidget();
-        $editor->openFile($path, 'x');
 
-        $this->assertSame($expected, $editor->commentPrefix(), "language '{$extension}' via {$path}");
+        $editor->openFile('demo.php', 'x');
+        $this->assertSame('//', $editor->commentSyntax()?->line);
+        $this->assertSame(['/*', '*/'], $editor->commentSyntax()?->block);
+
+        // The file the round was about: block-only, and null before it.
+        $editor->openFile('page.twig', 'x');
+        $this->assertNull($editor->commentSyntax()?->line);
+        $this->assertSame(['{#', '#}'], $editor->commentSyntax()?->block);
+
+        $editor->openFile('demo.unknownext', 'x');
+        $this->assertNull($editor->commentSyntax());
     }
 
     // --- composePopups: cursorScreenRow / setBox(null) / anchorCol -------------

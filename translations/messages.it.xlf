@@ -1022,6 +1022,10 @@
         <source>Toggle Comment</source>
         <target>Attiva/disattiva commento</target>
       </trans-unit>
+      <trans-unit id="238b">
+        <source>Toggle Block Comment</source>
+        <target>Attiva/disattiva commento a blocchi</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>Albero: comprimi</target>

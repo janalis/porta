@@ -657,19 +657,104 @@ final class Document
     }
 
     /**
-     * Toggle a line comment prefix on the current line or selected block.
+     * Comment out the current line or selected block, one line at a time.
+     *
+     * Prefers the language's LINE form and falls back to wrapping each line in
+     * its block pair, which is what gives Twig, HTML, Markdown and CSS a
+     * working `Ctrl+/` — none of them has a line comment, and the old
+     * signature (a bare prefix string) had no way to say so.
      */
-    public function toggleComment(string $prefix): void
+    public function toggleComment(CommentSyntax $syntax): void
     {
         $this->pushUndo();
         [$first, $last] = $this->selectedLineSpan();
+        $lines = \array_slice($this->lines, $first, $last - $first + 1);
 
-        $block = LineOperations::commentToggled(\array_slice($this->lines, $first, $last - $first + 1), $prefix);
+        // The `['', '']` cannot be reached: a CommentSyntax with neither form
+        // is not constructible, so a null line guarantees a block pair. It is
+        // here because the type system cannot see that invariant, not because
+        // a language might have nothing.
+        [$open, $close] = $syntax->block ?? ['', ''];
+        $block = null !== $syntax->line
+            ? LineOperations::commentToggled($lines, $syntax->line)
+            : LineOperations::blockCommentToggled($lines, $open, $close);
         foreach ($block as $offset => $line) {
             $this->lines[$first + $offset] = $line;
         }
         $this->cursorCol = min($this->cursorCol, \strlen($this->lines[$this->cursorLine]));
         $this->touch();
+    }
+
+    /**
+     * Wrap the selection — or, with none, the current line's content — in the
+     * language's block pair, and unwrap it when it is already exactly wrapped.
+     *
+     * Character-precise, unlike {@see toggleComment()}: `foo(bar, baz)` with
+     * `bar` selected becomes `foo(/* bar *\/, baz)`. A language with no block
+     * form delegates to the line verb, so this key is never dead where the
+     * other one works.
+     *
+     * The limit worth knowing: unwrapping needs the TARGET RANGE to be the
+     * comment. With no selection the target is the whole line, so a one-line
+     * block comment un-toggles from anywhere on it; a comment spanning several
+     * lines has to be selected. Scanning outwards for an enclosing comment is a
+     * parser's job, not a range operation's.
+     */
+    public function toggleBlockComment(CommentSyntax $syntax): void
+    {
+        if (null === $syntax->block) {
+            $this->toggleComment($syntax);
+
+            return;
+        }
+
+        [$open, $close] = $syntax->block;
+        $range = $this->getSelectionRange() ?? $this->contentRangeOfCursorLine();
+        $text = $this->getTextInRange($range['startLine'], $range['startCol'], $range['endLine'], $range['endCol']);
+        $inner = LineOperations::blockUnwrapped($text, $open, $close);
+
+        $this->beginCompound();
+        $this->setSelectionRange($range['startLine'], $range['startCol'], $range['endLine'], $range['endCol']);
+        // Deleted explicitly rather than left to insert(): unwrapping an empty
+        // comment produces an empty replacement, and insert('') returns before
+        // it clears the selection.
+        $this->deleteSelection();
+        $this->insert($inner ?? $open.' '.$text.' '.$close);
+        // An empty target means the caret sat on a blank line and the user is
+        // OPENING a comment rather than commenting something out, so leave the
+        // caret between the delimiters instead of after the closer. No need to
+        // ask whether this was an unwrap: empty text is shorter than any pair
+        // of delimiters, so $inner is null whenever $text is ''.
+        if ('' === $text) {
+            $this->cursorCol -= \strlen($close) + 1;
+        }
+        $this->endCompound();
+    }
+
+    /**
+     * The cursor line's content span: its first non-blank byte to its end.
+     *
+     * The indent is deliberately outside it — a block comment wrapping the
+     * leading whitespace would be legal and would ruin the file's shape.
+     *
+     * @return array{startLine: int, startCol: int, endLine: int, endCol: int}
+     */
+    private function contentRangeOfCursorLine(): array
+    {
+        $line = $this->lines[$this->cursorLine];
+        $start = \strlen($line) - \strlen(ltrim($line));
+
+        // max(), because rtrim() takes a WHOLLY blank line to length 0 while
+        // $start is its full width — an inverted range, which reads as text
+        // through substr's negative length and then deletes the indent on its
+        // way to inserting the comment. An indented blank line is exactly where
+        // someone opens a comment.
+        return [
+            'startLine' => $this->cursorLine,
+            'startCol' => $start,
+            'endLine' => $this->cursorLine,
+            'endCol' => max($start, \strlen(rtrim($line))),
+        ];
     }
 
     /**

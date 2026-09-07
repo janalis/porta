@@ -1022,6 +1022,10 @@
         <source>Toggle Comment</source>
         <target>コメントを切替</target>
       </trans-unit>
+      <trans-unit id="238b">
+        <source>Toggle Block Comment</source>
+        <target>ブロックコメントの切り替え</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>ツリー: 折りたたむ</target>

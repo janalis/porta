@@ -75,6 +75,26 @@ final class MenuModelTest extends TestCase
         $this->assertSame(['File', 'Edit', 'Navigate', 'Code', 'Run', 'Git', 'View', 'Help'], $titles);
     }
 
+    /**
+     * The Edit menu carries the new block-comment verb, labelled and keyed.
+     *
+     * The `e:` dispatch itself is proven by the E2e that runs Undo off this
+     * menu, so what this asserts is the half that is per-item and easy to get
+     * wrong: an id with no {@see \Porta\Config\ActionCatalog} row renders as
+     * the raw id, and a key the editor's keymap does not carry renders with an
+     * empty shortcut column. Both look like working menus.
+     */
+    public function testTheEditMenuOffersBlockCommentWithItsKey(): void
+    {
+        $menus = $this->build(new CommandRegistry(), new CodeEditorWidget());
+
+        $item = $this->item($menus, 'Edit', 'Toggle Block Comment');
+        $this->assertSame('Ctrl+Shift+/', $item->shortcut);
+
+        // Beside the line verb, not instead of it: they are two verbs.
+        $this->assertSame('Ctrl+/', $this->item($menus, 'Edit', 'Toggle Comment')->shortcut);
+    }
+
     public function testAViewlessContributionAddsItsMenuAndNoViewSafeEntry(): void
     {
         // A contributed menu need not belong to a view ('' viewId): it still

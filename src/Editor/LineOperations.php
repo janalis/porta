@@ -114,6 +114,71 @@ final class LineOperations
     }
 
     /**
+     * The block with every non-blank line WRAPPED in $open/$close, or unwrapped
+     * when they all already are.
+     *
+     * This is what makes `Ctrl+/` work in a language whose only comment form is
+     * a block — Twig, HTML, Markdown, CSS. It is deliberately per-line rather
+     * than one pair around the whole range, because that is what the LINE verb
+     * means: each line is independently commented out, so deleting one of them
+     * afterwards cannot orphan a closer.
+     *
+     * @param string[] $block
+     *
+     * @return list<string>
+     */
+    public static function blockCommentToggled(array $block, string $open, string $close): array
+    {
+        $allCommented = true;
+        foreach ($block as $line) {
+            $trimmed = trim($line);
+            if ('' !== $trimmed && null === self::blockUnwrapped($trimmed, $open, $close)) {
+                $allCommented = false;
+                break;
+            }
+        }
+
+        $out = [];
+        foreach ($block as $line) {
+            $trimmed = trim($line);
+            if ('' === $trimmed) {
+                $out[] = $line;
+
+                continue;
+            }
+            $indent = substr($line, offset: 0, length: \strlen($line) - \strlen(ltrim($line)));
+            // Asked only while uncommenting, so the null branch below reads as
+            // one condition rather than as `$allCommented` plus a null check
+            // the loop above has already proved cannot fire.
+            $unwrapped = $allCommented ? self::blockUnwrapped($trimmed, $open, $close) : null;
+            $out[] = null !== $unwrapped
+                ? $indent.$unwrapped
+                : $indent.$open.' '.$trimmed.' '.$close;
+        }
+
+        return $out;
+    }
+
+    /**
+     * $text with its enclosing block comment removed, or null when it is not
+     * one.
+     *
+     * The length clause is the whole reason this is a function rather than a
+     * `str_starts_with` beside a `str_ends_with`: `<!-->` starts with `<!--`
+     * AND ends with `-->` while being neither — five characters cannot hold a
+     * four- and a three-character delimiter — so the naive test computes a
+     * negative inner length and hands `substr` a garbage range.
+     */
+    public static function blockUnwrapped(string $text, string $open, string $close): ?string
+    {
+        if (\strlen($text) < (\strlen($open) + \strlen($close)) || !str_starts_with($text, $open) || !str_ends_with($text, $close)) {
+            return null;
+        }
+
+        return trim(substr($text, \strlen($open), \strlen($text) - \strlen($open) - \strlen($close)));
+    }
+
+    /**
      * Where a statement-move of $delta lands the block at $first..$last, or null
      * when it would run off the buffer. A run of blank lines counts as one step,
      * so a statement hops over the gap rather than into it.

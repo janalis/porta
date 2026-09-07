@@ -1701,6 +1701,70 @@ One real bug came out of writing the wire test: `showStop()` read
 have asked about the previous stop, one frame behind, every time. The frame id
 is passed explicitly now.
 
+## Comments work in every language now (built 2026-09-07)
+
+Round 8's backlog filed this as "block comment is missing, and Twig has no
+comment verb at all". Measuring it first turned a feature request into a defect
+report: `Ctrl+/` was a **dead key in thirty-one of the forty-five grammars**
+`LanguageMap::grammars()` can produce — Twig, HTML, Markdown, XML, Blade, Vue,
+Svelte, OCaml, Go, Rust, Java, Kotlin, Swift, Lua, Ruby, Haskell and fourteen
+more. And in CSS it was worse than dead: it inserted `//`, which is not a
+comment in CSS at all, so the key silently broke the rule that followed it.
+
+**The shape of the old answer was the bug.** `commentPrefix(): ?string` — a
+fourteen-arm match with `default => null` — could not express "this language
+comments with a block", so Twig's entry was literally `'twig' => null, // block
+comments only`. In that shape "no comment form" and "nobody got round to it" are
+the same value, which is why every gate passed for the whole life of the
+feature.
+
+So the answer is a VO with up to two forms (`CommentSyntax`), and the table
+lists **every grammar explicitly, including the two that legitimately have
+none** — `json` forbids comments (that is what `jsonc` is for) and `diff` is
+generated. `CommentSyntaxTest` gates the table against `LanguageMap::grammars()`
+in BOTH directions: a new language fails until someone says how it comments, and
+a removed one fails until its row goes. That is the part that stops this
+reopening.
+
+**The two verbs are defined in terms of each other**, which is why they are one
+change and not two: `Ctrl+/` prefers the line form and falls back to wrapping
+each line in the block pair; `Ctrl+Shift+/` prefers the block pair and falls
+back to the line form. Neither key is ever dead in a language that can be
+commented at all. The block verb is character-precise — `foo(bar, baz)` with
+`bar` selected becomes `foo(/* bar */, baz)` — and its un-toggle needs the
+target range to BE the comment; scanning outwards for an enclosing one is a
+parser's job, not a range operation's.
+
+**Two structural decisions worth keeping:**
+
+- **The block pair is one nested column, not two flat ones.** `['<!--', null]`
+  is a plausible typo, and as two columns it downgraded a language to "no block
+  form" in silence. Nested, half a pair is not a shape the table can hold. This
+  came out of a mutation survivor: the `&&` pairing the two columns had nothing
+  that could distinguish it from `||`, and the fix was to delete the condition
+  rather than to test it.
+- **`css` is the one entry that changes an answer** rather than adding one, so
+  it has its own test naming why: `//` is a SCSS extension.
+
+**A real bug came out of the mutation run**, at the usual distance from what the
+mutant was about. An `Assignment` mutant on the caret arithmetic was EQUIVALENT
+in every test — `$cursorCol -= 3` and `$cursorCol = 3` agree when the line
+starts at column 0. Writing the case where they disagree meant an INDENTED blank
+line, and there the content range ran BACKWARDS: `rtrim()` takes a wholly blank
+line to length zero while the span starts at its full width. A backwards range
+does not throw — `substr` reads a negative length as counting back from the end
+— so it read as empty text and then deleted the indent on its way to inserting
+the comment. Clamped with `max()`.
+
+**How to apply:** an equivalent mutant is a question about which inputs the tests
+never reach, not a verdict that the code is fine. Both times this round, asking
+"what input would tell these two apart?" produced a case worth having, and once
+it produced a bug.
+
+One survivor was judged rather than killed: `break` → `continue` in the
+already-commented scan is a pure early exit, and the pre-existing
+`commentToggled` directly above has the same shape.
+
 ## Inline debug values reach phpantom too (built 2026-09-07, `3a5c726f`)
 
 Round 8 recorded this as a whole round of its own and it was half a day, because

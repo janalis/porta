@@ -1022,6 +1022,10 @@
         <source>Toggle Comment</source>
         <target>Toggle Comment</target>
       </trans-unit>
+      <trans-unit id="238b">
+        <source>Toggle Block Comment</source>
+        <target>Toggle Block Comment</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>Tree: Collapse</target>

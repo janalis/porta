@@ -49,7 +49,8 @@ interface EditorHost
      */
     public function wrapWidth(): ?int;
 
-    public function commentPrefix(): ?string;
+    /** How the buffer's language spells a comment, or null when it has no comment form. */
+    public function commentSyntax(): ?CommentSyntax;
 
     public function autoPairsEnabled(): bool;
 
