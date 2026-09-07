@@ -40,16 +40,20 @@ final class PerfCollectorTest extends TestCase
     {
         $perf = $this->collector();
 
+        // Hundreds of milliseconds, not tens, and the reason is the SCALE
+        // factor: these are seconds internally and milliseconds in the log, and
+        // at a 30ms gap a 0.1% error in that conversion still prints `30.0`.
+        // The numbers have to be big enough that getting the unit wrong shows.
         $perf->passMark();
-        $this->clock->modify('+10 milliseconds');
+        $this->clock->modify('+100 milliseconds');
         $perf->passMark();
-        $this->clock->modify('+30 milliseconds');
+        $this->clock->modify('+500 milliseconds');
         $perf->passMark();
         $perf->beat();
 
         $log = $this->log($perf);
         $this->assertStringContainsString('passes=3', $log);
-        $this->assertStringContainsString('gapMs p50=10.0 p95=30.0 max=30.0', $log);
+        $this->assertStringContainsString('gapMs p50=100.0 p95=500.0 max=500.0', $log);
         $this->assertStringContainsString('2026-08-26 10:00:00', $log);
     }
 
@@ -121,7 +125,40 @@ final class PerfCollectorTest extends TestCase
         $lines = array_values(array_filter(explode("\n", $this->log($perf))));
         $this->assertCount(2, $lines);
         $this->assertStringContainsString('passes=1', $lines[1]);
-        $this->assertStringContainsString('gapMs p50=0.0 p95=0.0 max=0.0', $lines[1]);
+        // `-`, not `0.0`: one pass has no PREDECESSOR, so there is no gap to
+        // measure — which is not the same fact as a gap of zero, and printing
+        // it as a number says the loop turned round instantly.
+        $this->assertStringContainsString('gapMs p50=- p95=- max=-', $lines[1]);
+    }
+
+    /**
+     * A field with NO samples reads `-`, and one whose samples are genuinely
+     * near-zero reads `0.0`. They are different facts and the log used to
+     * print them the same.
+     *
+     * `edMs` is where it bites, because it is the one timing field with no
+     * counter beside it: `paints=0` explains an empty `paintMs`, and nothing
+     * in the line says whether the editor rendered. So `edMs p50=0.0` meant
+     * either "twenty renders, each free" or "no renders at all" — and reading
+     * a real session's perf.log that way produced the conclusion "the editor
+     * is free, so the frame's time is elsewhere in the tree", which the log
+     * never supported and may be exactly backwards.
+     *
+     * The two halves are asserted together on purpose: a change that printed
+     * `-` for everything would satisfy the first alone.
+     */
+    public function testAnAbsentMeasurementIsNotPrintedAsAFastOne(): void
+    {
+        $absent = $this->collector();
+        $absent->passMark();
+        $absent->beat();
+        $this->assertStringContainsString('edMs p50=- p95=-', $this->log($absent), 'the editor never rendered');
+
+        $fast = $this->collector();
+        $fast->passMark();
+        $fast->editorMark(0.0);
+        $fast->beat();
+        $this->assertStringContainsString('edMs p50=0.0 p95=0.0', $this->log($fast), 'it rendered, and cost nothing');
     }
 
     public function testTheFrameHookRegistersOnConstruction(): void
@@ -245,7 +282,7 @@ final class PerfCollectorTest extends TestCase
         $perf->passMark();
         $perf->beat();
         $lines = array_values(array_filter(explode("\n", $this->log($perf))));
-        $this->assertStringContainsString('edMs p50=0.0 p95=0.0', $lines[1]);
+        $this->assertStringContainsString('edMs p50=- p95=-', $lines[1]);
         $this->assertStringContainsString('hlFull=0 hlSplice=0', $lines[1]);
     }
 

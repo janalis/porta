@@ -1612,7 +1612,8 @@ is the finding: `error.log` holds only round 7's twenty-one crashes (fixed);
 `freeze.log` has 213 events of which 166 predate the 2026-08-25 slice fix, and
 since it there are ZERO hard blocks (was 41) with a median stall of 0.56s;
 `perf.log`'s 43 slow paints are all on one day, none in the twelve since. Do not
-re-survey those without new entries.
+re-survey those without new entries. (**Overtaken 2026-09-07** — there are new
+entries; see the log reading below.)
 
 So the round was four instances of one shape — the capability exists and one
 call site, one gate or one catalogue row does not use it:
@@ -1700,6 +1701,62 @@ One real bug came out of writing the wire test: `showStop()` read
 `$currentFrameId`, which `loadScopes()` sets AFTERWARDS — so the request would
 have asked about the previous stop, one frame behind, every time. The frame id
 is passed explicitly now.
+
+## The logs, read again — and the instrument was the defect (2026-09-07)
+
+Round 7's habit, run once more, and worth recording because the ANSWER was
+different from the one the numbers first suggested.
+
+| log | what it holds now |
+| --- | --- |
+| `error.log` | untouched since **2026-08-27**. Round 7's three-site `RenderException` fix holds; the 21 entries are all pre-fix |
+| `freeze.log` | **2** new entries, both `loop stalled … (recovered)` (0.67s, 0.54s), both inside one 24-second window |
+| `perf.log` | **15** `slow-paint` lines, `render=100–408ms`, `write=1ms` — all inside that same 24-second window, then nothing across two later sessions |
+
+**The window is 09:09:14–09:09:38 at `load=11–12`**, on a machine whose load at
+that moment was very plausibly this repository's own gate runs. `write=1ms`
+with `pendingBytes` at 70k–260k says the terminal was not draining either,
+which is what a saturated machine looks like from inside a process. Two later
+sessions the same morning are clean: `paintMs p50=0.7`, no slow paints, no
+stalls. **No Porta defect is claimed from this**, and the next reader should
+check the `load=` column before treating a burst as a regression.
+
+**What WAS a defect is the field I nearly diagnosed it with.** Every beat line
+carries `edMs p50=… p95=…`, the editor widget's share of the frame, and every
+line in that window read `edMs p50=0.0 p95=0.0` while `renderMs p50` sat at
+11–90ms. The obvious reading — "the editor is free, so the frame's time is
+elsewhere in the widget tree" — is one the log cannot support:
+`percentile([])` returned `0.0`, so an EMPTY sample set printed exactly like a
+set of fast ones.
+
+Every other timing field has a counter beside it that gives the difference
+away — `paints=0` explains an empty `paintMs`. `edMs` has none: nothing in the
+line says whether the editor rendered at all. So the field read the same for
+"twenty renders, each free" and "no renders", and the conclusion it invited may
+be exactly backwards.
+
+An absent measurement prints `-` now, across all five timing groups. The test
+asserts BOTH halves — `-` with no samples, `0.0` with a genuinely zero one —
+because a change that printed `-` for everything would satisfy the first alone.
+
+**How to apply:** this is [[claims-are-not-guards]] pointed at an instrument
+rather than at prose. Before reasoning from a diagnostic field, ask what it
+prints when it has nothing to say; if that is indistinguishable from a real
+measurement, the field cannot carry the argument. It is the same shape as the
+comment table's `default => null`, one layer further out — and the tell is the
+same, a value that means two things.
+
+Removing the ambiguity also removed a line: `percentile()`'s own empty guard
+returned the `0.0` that caused all of this, and with the check moved up into
+its only caller it became unreachable — the coverage gate said so before any
+argument did. Deleted rather than tested, which is the third time in this
+repository's rounds that a mutation-or-coverage signal has been better answered
+by removing a guard than by exercising it.
+
+While fixing it, mutation testing named a second one: the `max=` field's
+milliseconds conversion was pinned by a 30ms fixture, and at 30ms a 0.1% scale
+error still prints `30.0`. The fixture is hundreds of milliseconds now. **A unit
+conversion needs a magnitude big enough to expose getting it wrong.**
 
 ## The missing editor verbs, two of three (built 2026-09-07)
 

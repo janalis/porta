@@ -65,7 +65,13 @@ widget's own share as `edMs`, the syntax-parse kind counters
 (`hlFull`/`hlSplice` — whole-document re-parses vs incremental splices, fed
 by the highlighter's `onParse` seam), the terminal backlog and the 1-minute
 load average per beat — and any single frame over 100ms gets an immediate
-`slow-paint` line naming the layer. BidiTui always runs the manual render
+`slow-paint` line naming the layer. **A timing field with no samples prints
+`-`, not `0.0`**: a percentile of nothing is not a fast measurement, and
+`edMs` is the one field with no counter beside it to give the difference away
+(`paints=0` explains an empty `paintMs`; nothing says whether the editor
+rendered). Reading a real log as though `edMs p50=0.0` meant "the editor is
+free" is how you conclude the frame's time is elsewhere in the tree when the
+log never said so. BidiTui always runs the manual render
 path (byte-equivalent to the vendor's, verified) so the two phases can be
 timed separately. The first painted frame also stamps a one-shot `boot` line
 from `Support/BootTrace` (created in the console entrypoint, published as a

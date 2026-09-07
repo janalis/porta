@@ -233,7 +233,7 @@ final class PerfCollector
             return;
         }
         $this->log->append(\sprintf(
-            '%s in=%d wheel=%d passes=%d paints=%d paceSkip=%d capSkip=%d coalesced=%d gapMs p50=%.1f p95=%.1f max=%.1f paintMs p50=%.1f p95=%.1f busy=%d renderMs p50=%.1f p95=%.1f writeMs p50=%.1f p95=%.1f edMs p50=%.1f p95=%.1f hlFull=%d hlSplice=%d pend=%d load=%.1f',
+            '%s in=%d wheel=%d passes=%d paints=%d paceSkip=%d capSkip=%d coalesced=%d gapMs p50=%s p95=%s max=%s paintMs p50=%s p95=%s busy=%d renderMs p50=%s p95=%s writeMs p50=%s p95=%s edMs p50=%s p95=%s hlFull=%d hlSplice=%d pend=%d load=%.1f',
             $this->clock->now()->format('Y-m-d H:i:s'),
             $this->inputs,
             $this->wheels,
@@ -242,18 +242,18 @@ final class PerfCollector
             $this->paceSkips,
             $this->capSkips,
             $this->coalesced,
-            1000 * self::percentile($this->passGaps, 0.50),
-            1000 * self::percentile($this->passGaps, 0.95),
-            1000 * ([] === $this->passGaps ? 0.0 : max($this->passGaps)),
-            1000 * self::percentile($this->paintDurations, 0.50),
-            1000 * self::percentile($this->paintDurations, 0.95),
+            self::ms($this->passGaps, 0.50),
+            self::ms($this->passGaps, 0.95),
+            [] === $this->passGaps ? self::NO_SAMPLES : \sprintf('%.1f', 1000 * max($this->passGaps)),
+            self::ms($this->paintDurations, 0.50),
+            self::ms($this->paintDurations, 0.95),
             (int) (1000 * array_sum($this->paintDurations)),
-            1000 * self::percentile($this->renderDurations, 0.50),
-            1000 * self::percentile($this->renderDurations, 0.95),
-            1000 * self::percentile($this->writeDurations, 0.50),
-            1000 * self::percentile($this->writeDurations, 0.95),
-            1000 * self::percentile($this->editorDurations, 0.50),
-            1000 * self::percentile($this->editorDurations, 0.95),
+            self::ms($this->renderDurations, 0.50),
+            self::ms($this->renderDurations, 0.95),
+            self::ms($this->writeDurations, 0.50),
+            self::ms($this->writeDurations, 0.95),
+            self::ms($this->editorDurations, 0.50),
+            self::ms($this->editorDurations, 0.95),
             $this->hlFull,
             $this->hlSplices,
             null !== $this->pendingBytes ? (int) ($this->pendingBytes)() : 0,
@@ -267,12 +267,44 @@ final class PerfCollector
         return $this->log->path();
     }
 
-    /** @param list<float> $samples */
+    /**
+     * What an empty sample set prints. NOT `0.0`, which is the whole point:
+     * a percentile of nothing is not a fast measurement, and the two read
+     * identically as a number.
+     *
+     * `edMs` is where this bites. Every other timing field has a counter
+     * beside it that gives it away — `paints=0` says why `paintMs` is empty —
+     * and the editor's has none, so `edMs p50=0.0` means either "the editor
+     * rendered twenty times and cost nothing" or "the editor never rendered",
+     * with nothing in the line to separate them. Reading a real session's log
+     * this way produced the conclusion "the editor is free, so the frame's
+     * time is elsewhere in the widget tree", which the log does not support
+     * and may be exactly backwards.
+     */
+    private const string NO_SAMPLES = '-';
+
+    /**
+     * One percentile, in milliseconds, or {@see NO_SAMPLES} when there is
+     * nothing to take one of.
+     *
+     * @param list<float> $samples
+     */
+    private static function ms(array $samples, float $q): string
+    {
+        return [] === $samples ? self::NO_SAMPLES : \sprintf('%.1f', 1000 * self::percentile($samples, $q));
+    }
+
+    /**
+     * The empty case is NOT guarded here any more, and that is the point of
+     * the guard moving up: returning `0.0` for no samples is what made an
+     * absent measurement print as a fast one. {@see ms()} is the only caller
+     * and answers `-` before reaching this, so the parameter is non-empty by
+     * contract rather than by a branch nothing can take.
+     *
+     * @param non-empty-list<float> $samples
+     */
     private static function percentile(array $samples, float $q): float
     {
-        if ([] === $samples) {
-            return 0.0;
-        }
         sort($samples);
 
         // Nearest-rank: the smallest sample with at least q of the set at or
