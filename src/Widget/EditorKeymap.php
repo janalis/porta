@@ -71,7 +71,12 @@ final class EditorKeymap
             'toggle_fold' => ['ctrl+.'],
             'goto_matching_bracket' => ['ctrl+shift+m'],
 
-            'new_line' => [Key::ENTER, 'shift+enter'],
+            // PhpStorm's Shift+Enter is Start New Line — a line BELOW, not a
+            // second way to split this one. Plain Enter still splits, so
+            // nothing is lost by giving the chord its real meaning.
+            'new_line' => [Key::ENTER],
+            'insert_line_below' => ['shift+enter'],
+            'insert_line_above' => ['ctrl+alt+enter'],
             'indent' => [Key::TAB],
             'prev_tab_stop' => ['shift+tab'],
             'accept_completion' => [Key::ENTER],

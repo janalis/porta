@@ -51,6 +51,8 @@ final class MenuModel
             self::SEP,
             'e:duplicate_line',
             'e:delete_line',
+            'e:insert_line_below',
+            'e:insert_line_above',
             'e:toggle_comment',
             'e:toggle_block_comment',
             'e:move_line_up',

@@ -1022,6 +1022,14 @@
         <source>Toggle Comment</source>
         <target>コメントを切替</target>
       </trans-unit>
+      <trans-unit id="238c">
+        <source>Start New Line</source>
+        <target>新しい行を開始</target>
+      </trans-unit>
+      <trans-unit id="238d">
+        <source>Start New Line Before Current</source>
+        <target>前に新しい行を開始</target>
+      </trans-unit>
       <trans-unit id="238b">
         <source>Toggle Block Comment</source>
         <target>ブロックコメントの切り替え</target>

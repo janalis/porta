@@ -55,6 +55,8 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | Key | Action |
 | --- | --- |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo (typing runs coalesce) |
+| `Shift+Enter` | Start a new line below this one, whatever column the caret is in (plain `Enter` still splits the line) |
+| `Ctrl+Alt+Enter` | Start a new line above this one |
 | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / cut / paste (also the system clipboard via OSC 52) |
 | `Ctrl+D` | Duplicate line or selection |
 | `Ctrl+Y` / `Ctrl+Shift+K` | Delete line or selected lines |

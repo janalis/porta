@@ -122,6 +122,11 @@ a second.
   terminal reports the unshifted key.)
 - **Line operations**: duplicate (`Ctrl+D`), delete (`Ctrl+Y`), move line
   (`Alt+Shift+↑/↓`).
+- **Start a new line** below (`Shift+Enter`) or above (`Ctrl+Alt+Enter`)
+  without splitting this one — whatever column the caret is in. Plain `Enter`
+  still splits at the caret; these two do not look at it. The new line copies
+  its neighbour's indent, and going DOWN from a line that opens a block takes
+  one more level.
 - **Comments**, in every language Porta can colour. `Ctrl+/` comments the line
   or the selected lines one at a time; `Ctrl+Shift+/` puts one block comment
   around exactly what is selected — `foo(bar, baz)` with `bar` selected becomes

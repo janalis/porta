@@ -58,7 +58,19 @@ final class EditorActions
      */
     private const array PRE_CARET_ACTIONS = ['goto_line', 'rename_symbol', 'trigger_completion', 'parameter_info', 'toggle_column_mode', 'add_caret_above', 'add_caret_below', 'add_next_occurrence'];
     private const array HISTORY_STRUCTURE_ACTIONS = ['undo', 'redo', 'expand_selection', 'shrink_selection', 'goto_matching_bracket'];
-    private const array CLIPBOARD_LINE_ACTIONS = ['copy', 'cut', 'paste', 'duplicate_line', 'move_line_up', 'move_line_down', 'toggle_comment', 'toggle_block_comment', 'toggle_fold'];
+    private const array CLIPBOARD_LINE_ACTIONS = [
+        'copy',
+        'cut',
+        'paste',
+        'duplicate_line',
+        'move_line_up',
+        'move_line_down',
+        'insert_line_below',
+        'insert_line_above',
+        'toggle_comment',
+        'toggle_block_comment',
+        'toggle_fold',
+    ];
 
     /** Every table-dispatched action id, for the catalog cross-check test. */
     public const array TABLE_ACTIONS = [...self::PRE_CARET_ACTIONS, ...self::HISTORY_STRUCTURE_ACTIONS, ...self::CLIPBOARD_LINE_ACTIONS];
@@ -527,6 +539,8 @@ final class EditorActions
             'sort_lines' => $this->notifyIfChanged($this->document->sortLines(...)),
             'join_lines' => $this->notifyIfChanged($this->document->joinLines(...)),
             'toggle_case' => $this->notifyIfChanged($this->document->toggleCaseLines(...)),
+            'insert_line_below' => $this->openLineBelow(),
+            'insert_line_above' => $this->openLineAbove(),
             'toggle_comment' => $this->toggleLineComment(),
             'toggle_block_comment' => $this->toggleBlockComment(),
             'toggle_fold' => $this->toggleFold(),
@@ -568,6 +582,18 @@ final class EditorActions
             $this->document->insert($this->clipboard);
             $this->host->notifyChange();
         }
+    }
+
+    private function openLineBelow(): void
+    {
+        $this->document->openLine(LinePlacement::Below);
+        $this->host->notifyChange();
+    }
+
+    private function openLineAbove(): void
+    {
+        $this->document->openLine(LinePlacement::Above);
+        $this->host->notifyChange();
     }
 
     private function duplicateCurrentLines(): void

@@ -70,7 +70,9 @@ final class EditorKeymapTest extends TestCase
                 'toggle_fold' => ['ctrl+.'],
                 'goto_matching_bracket' => ['ctrl+shift+m'],
 
-                'new_line' => [Key::ENTER, 'shift+enter'],
+                'new_line' => [Key::ENTER],
+                'insert_line_below' => ['shift+enter'],
+                'insert_line_above' => ['ctrl+alt+enter'],
                 'indent' => [Key::TAB],
                 'prev_tab_stop' => ['shift+tab'],
                 'accept_completion' => [Key::ENTER],

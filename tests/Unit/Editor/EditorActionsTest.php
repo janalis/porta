@@ -74,6 +74,27 @@ final class EditorActionsTest extends TestCase
 
     // --- run(): every verb ----------------------------------------------------
 
+    /**
+     * The two open-line verbs tell the host the buffer changed.
+     *
+     * Asserted here rather than beside the edit itself, because a test that
+     * reads the document back cannot see this at all: without the call the
+     * lines are still right, the screen never repaints and the language server
+     * is never told — a stale frame and stale diagnostics, from a verb whose
+     * own output is perfect. Two mutants lived on exactly that.
+     */
+    public function testTheOpenLineVerbsNotifyTheHost(): void
+    {
+        $actions = $this->actions("  a\n");
+
+        $actions->run('insert_line_below');
+        $this->assertSame(['  a', '  ', ''], $this->doc->getLines());
+        $this->assertSame(1, $this->count_('notifyChange'));
+
+        $actions->run('insert_line_above');
+        $this->assertSame(2, $this->count_('notifyChange'));
+    }
+
     public function testRunUndoRedoRoundTrip(): void
     {
         $actions = $this->actions('start');

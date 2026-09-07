@@ -74,6 +74,8 @@ final class ActionCatalog
         'expand_selection' => ['label' => 'Extend Selection'],
         'shrink_selection' => ['label' => 'Shrink Selection'],
         'surround_with' => ['label' => 'Surround With…'],
+        'insert_line_below' => ['label' => 'Start New Line'],
+        'insert_line_above' => ['label' => 'Start New Line Before Current'],
         'toggle_comment' => ['label' => 'Toggle Comment'],
         'toggle_block_comment' => ['label' => 'Toggle Block Comment'],
         'toggle_fold' => ['label' => 'Collapse / Expand Fold'],

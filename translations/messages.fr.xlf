@@ -1022,6 +1022,14 @@
         <source>Toggle Comment</source>
         <target>Basculer le commentaire</target>
       </trans-unit>
+      <trans-unit id="238c">
+        <source>Start New Line</source>
+        <target>Commencer une nouvelle ligne</target>
+      </trans-unit>
+      <trans-unit id="238d">
+        <source>Start New Line Before Current</source>
+        <target>Commencer une nouvelle ligne avant</target>
+      </trans-unit>
       <trans-unit id="238b">
         <source>Toggle Block Comment</source>
         <target>Basculer le commentaire de bloc</target>

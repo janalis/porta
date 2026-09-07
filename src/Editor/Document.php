@@ -1112,6 +1112,44 @@ final class Document
         $this->touch();
     }
 
+    /**
+     * Open an empty line above or below the caret's, and put the caret on it.
+     *
+     * PhpStorm's `Shift+Enter` / `Ctrl+Alt+Enter`, and the reason they are
+     * different verbs from Enter is the WHOLE point of them: Enter splits the
+     * line at the caret, so starting a new statement from the middle of one
+     * means End first, and starting one above means Home, Enter, Up. These two
+     * ignore the column entirely.
+     *
+     * The new line copies its neighbour's indent — plus one unit when opening
+     * BELOW a line that ends in an opener, which is the same rule
+     * {@see insertNewLine()} follows and the case where the two verbs would
+     * otherwise disagree about the same keystroke.
+     *
+     * There is deliberately no matching rule for Above. A line above a `}` is
+     * inside the block and a line above an `if` is outside it, and nothing on
+     * the line itself says which — guessing would be wrong half the time,
+     * where copying the indent is merely neutral.
+     */
+    public function openLine(LinePlacement $placement): void
+    {
+        $this->pushUndo();
+        $this->selection->clear();
+        $line = $this->lines[$this->cursorLine];
+        $m = [];
+        $indent = preg_match('/^[\t ]+/', $line, $m) ? $m[0] : '';
+        if (LinePlacement::Below === $placement && 1 === preg_match('/[{([]\s*$/', $line)) {
+            $indent .= $this->indentUnit();
+        }
+
+        $at = LinePlacement::Below === $placement ? $this->cursorLine + 1 : $this->cursorLine;
+        array_splice($this->lines, $at, length: 0, replacement: [$indent]);
+        $this->cursorLine = $at;
+        $this->cursorCol = \strlen($indent);
+        $this->goalCol = null;
+        $this->touch();
+    }
+
     public function deleteBackward(): bool
     {
         if ($this->hasSelection()) {
