@@ -1738,6 +1738,66 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## The zoom was the freeze, and perf.log said so (built 2026-09-07, `45a7de8e`)
+
+Round 8's plan recorded the runtime logs as CLEAN — 43 slow paints, all on one
+day twelve days earlier. **That reading was of a log that has since been
+replaced.** `perf.log` now holds one 2026-09-07 session and nothing else, and it
+is not clean: fifteen slow paints inside a 24-second window, two of them past
+the watchdog's threshold and recorded in `freeze.log` as a stalled loop, and the
+session relaunched twice in the minute after. Check a log's DATES before quoting
+a previous round's summary of it — the file is a ring, not an archive.
+
+**What the numbers said before any guessing:**
+
+| field | reading | what it rules out |
+| --- | --- | --- |
+| `writeMs` p95 ≈ 1ms vs `renderMs` p95 = 408ms | the widget tree, not the terminal | the `NonBlockingWriter`, the PTY |
+| `edMs` p50 = p95 = **0.0** every second | the code editor did not render at all | four rounds of editor perf work |
+| `hlFull` = `hlSplice` = 0 | nothing was parsed | the highlighter |
+| frames of 100–230 KB on an 11.9k-cell screen | ~17 bytes per cell — every cell its own colour | anything text-shaped |
+
+That is a per-cell-coloured full-screen surface with no editor in it, which on
+this user's enabled plugins is the graph viewer. Reproduced headlessly against
+the real repo at their terminal size: a 130 KB frame, 0.0ms static, 7ms per pan,
+**48ms per zoom step**.
+
+**The defect is a pricing mistake.** `imagecopyresampled` costs what its SOURCE
+costs to read, not what its target costs to write — shrinking the 2173×3147
+bitmap to 77×112 and to 616×896 both take ~31ms, because both read 6.8M pixels.
+`ScaledSource`'s memo is keyed on the scale, and a zoom is a NEW scale on every
+keystroke, so it misses every frame and pays the full read every frame. Held
+down, that is the stalled loop.
+
+The fix is staged resampling: take the copy from the coarsest cached HALVING of
+the image that still holds ≥2× the target in both axes, and build the halvings
+once per image instead of once per scale. **31ms → 0.9ms per resample; 48ms →
+8-9ms per zoom frame**, which is what a pan costs. The remaining spikes are one
+chain build per new bitmap `dot` delivers, not per frame. Memory grows by a
+third of one image (¼ + ¹⁄₁₆ + …) and is dropped with it, so the viewer's "no
+cache per tab" rule is untouched. Both viewers share the class.
+
+**Three guards, and two of them only became guards after a control run:**
+
+1. The oversample floor. A first quality test compared staged against direct on
+   a RULED GRID and read 1.000/255 at floors of 1, 2 and 3 alike — a fixture
+   that cannot tell the values apart, and an `assertLessThan(8.0)` where the
+   answer was 1.0. Line art at a size that halves untidily separates them:
+   2.3/255 at a floor of 2, 3.8 at a floor of 1.
+2. **The climb back up survived its first test entirely.** Zooming back IN must
+   step back to a finer level; deleting the `break` that stops it makes the copy
+   a 3× MAGNIFICATION of a coarse one. Every size assertion passes anyway — the
+   dimensions are computed off the ORIGINAL image, so they are the same number
+   whichever level the pixels came from. Only the picture knows: 3.5/255
+   climbing, 21.6 magnified.
+3. Dropping the levels with the image, killed by asserting the level widths.
+
+**The transferable lesson is (2), and it is the round's:** an assertion on a
+value that is *derived from the input rather than from the work* is not testing
+the work. Both readings agreed on 128 because both were told to produce 128.
+Mutation is what surfaced it, by hand — `source.directories` is `src` only, so
+Infection sees nothing in `plugins/`.
+
 ## Local history learned which file it was holding (built 2026-09-07, `3d860665`)
 
 Local History could answer "what happened to THIS file" and nothing else. The
