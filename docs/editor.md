@@ -554,6 +554,19 @@ line is what restoring would bring back and a `+` line is what it would take
 away. The newest snapshot is always the file as it stands, because saving is
 what takes one, and picking it says so rather than opening an empty panel.
 
+**Recent Changes** (the command palette) answers the other question — not
+"what did this file look like before", but "what have I been changing", which
+is what you want when you do not yet know which file to ask about. It lists
+every file with history, the file changed last on top, with when it changed and
+how many versions it has; `Enter` opens one, and `Ctrl+Alt+H` on it then shows
+that file's snapshots.
+
+A file is listed once it has been saved at least once since this version: the
+history directory is named after a HASH of the path, and a hash does not run
+backwards, so each one records its own path now. Directories written before that
+are skipped rather than shown as a hash, and the next save on that file adds it
+back.
+
 That comparison is the one part that needs `git` on your `PATH` — it runs
 `git diff --no-index`, which takes two arbitrary paths and so works in a
 project that is not a repository. Without git the snapshots still record and

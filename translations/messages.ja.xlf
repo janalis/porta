@@ -1022,6 +1022,18 @@
         <source>Toggle Comment</source>
         <target>コメントを切替</target>
       </trans-unit>
+      <trans-unit id="238h0">
+        <source>No local history yet</source>
+        <target>ローカル履歴はまだありません</target>
+      </trans-unit>
+      <trans-unit id="238h1">
+        <source>%count% versions</source>
+        <target>%count% 個のバージョン</target>
+      </trans-unit>
+      <trans-unit id="238h2">
+        <source>Recent Changes</source>
+        <target>最近の変更</target>
+      </trans-unit>
       <trans-unit id="238u0">
         <source>Undo Last Refactoring</source>
         <target>最後のリファクタリングを元に戻す</target>

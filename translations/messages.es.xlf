@@ -1022,6 +1022,18 @@
         <source>Toggle Comment</source>
         <target>Alternar comentario</target>
       </trans-unit>
+      <trans-unit id="238h0">
+        <source>No local history yet</source>
+        <target>Aún no hay historial local</target>
+      </trans-unit>
+      <trans-unit id="238h1">
+        <source>%count% versions</source>
+        <target>%count% versiones</target>
+      </trans-unit>
+      <trans-unit id="238h2">
+        <source>Recent Changes</source>
+        <target>Cambios recientes</target>
+      </trans-unit>
       <trans-unit id="238u0">
         <source>Undo Last Refactoring</source>
         <target>Deshacer la última refactorización</target>
