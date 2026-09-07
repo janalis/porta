@@ -619,6 +619,14 @@ gets); pan with the arrows, the wheel, or by dragging; select nodes with
 Zooming in re-renders the graph at a higher resolution rather than magnifying
 pixels, so labels sharpen as you go.
 
+`v` toggles the two renderings. **Bitmap** is what the graph actually looks
+like — dot's own splines, arrowheads and fonts — and **cells** draws the node
+labels as real terminal text, which stays readable at a pane size where the
+bitmap's type is a few pixels tall. Cells is also what paints when dot cannot
+produce a bitmap at all (no libgd) or has not answered yet, and the standing
+preference is the graph-viewer plugin's `renderMode` setting. A PlantUML
+picture has no layout to draw from, so it ignores the toggle.
+
 The same tab opens **PlantUML** documents — `.puml`, `.plantuml`, `.pu`,
 `.iuml` and `.wsd` — rendered by the `plantuml` tool: set the *PlantUML path*
 setting to a launcher **or straight to a `plantuml.jar`** (it is run with

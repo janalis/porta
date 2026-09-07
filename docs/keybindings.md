@@ -238,6 +238,41 @@ When an image tab is active:
 | `1` | Actual size |
 | Arrows / `Shift+arrows` | Pan |
 
+## Graph viewer
+
+When a `.dot`, `.gv` or PlantUML tab is active. The zoom keys match the image
+viewer's, but zooming in re-renders the graph at a higher resolution rather
+than magnifying pixels — see [the editor guide](editor.md#graph-viewer).
+
+| Key | Action |
+| --- | --- |
+| `=` / `-` | Zoom in / out (also `Ctrl+wheel`, anchored at the pointer) |
+| `0` / `f` | Fit to window |
+| `1` | Actual size |
+| Arrows / `Shift+arrows` | Pan (also the wheel, or dragging) |
+| `n` / `p` | Select the next / previous node, framing it and naming it in the status bar |
+| `v` | Toggle bitmap / cell rendering — the picture `dot` draws, or node labels as real terminal text, which stays readable when the bitmap's type is a few pixels tall (no effect on a PlantUML picture, which has no layout to draw from) |
+
+## Git view
+
+The full-screen view `Ctrl+Alt+D` opens; `Tab` cycles panes and `Esc` closes.
+[The git guide](git.md#the-git-view-ctrlaltd) has the whole workflow.
+
+| Key | Action |
+| --- | --- |
+| `1` / `2` | Changes tab / History tab |
+| `Space` | Stage or unstage — the selected file in Changes, the hunk or selection in the diff |
+| `d` / `Delete` | Discard the selected file's changes (inline confirm) |
+| `v` | Start a line range in the diff, then `Space` stages just those lines |
+| `c` | Cycle diff context (git default → ±10 lines → whole file) |
+| `s` | Toggle unified / side-by-side (persisted) |
+| `w` | Toggle hide-whitespace (persisted) |
+| `Ctrl+C` | Copy the selected diff lines |
+| `Ctrl+Enter` | Commit the staged changes |
+| `Alt+M` | Toggle amend, prefilling the last commit's message |
+| `Enter` | In History, switch between the commit list and its file list |
+| `f` / `p` / `Shift+P` | Fetch / pull / push |
+
 ## Mouse
 
 **Every list popup filters as you type** — file structure, recent files, quick

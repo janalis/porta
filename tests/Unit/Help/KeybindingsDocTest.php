@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Help;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ActionCatalog;
 use Porta\Overlay\State\FindInFilesModal;
+use Porta\Plugin\Runtime\PluginManifest;
 use Porta\Widget\EditorKeymap;
 use Porta\Widget\FindBarWidget;
 use Porta\Workbench\Menu\MenuModel;
@@ -124,8 +125,8 @@ final class KeybindingsDocTest extends TestCase
     private const array CONVENTIONS = ['escape', 'enter', 'tab', 'shift+tab', 'backspace', 'up', 'down', 'arrowl', 'arrowr', 'pgup', 'pgdn', 'home', 'end', 'space'];
 
     /**
-     * Every `src/` class with a `getDefaultKeybindings()`, mapped to what it
-     * returns.
+     * Every class ANYWHERE in the tree with a `getDefaultKeybindings()`, mapped
+     * to what it returns.
      *
      * The framework's trait declares it `protected static`, so reflection is
      * the only way in from outside — and a public accessor added so a test
@@ -137,33 +138,69 @@ final class KeybindingsDocTest extends TestCase
     {
         $root = \dirname(__DIR__, levels: 3);
         $maps = [];
-        /** @var \SplFileInfo $file */
-        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root.'/src')) as $file) {
-            if ('php' !== $file->getExtension() || !str_contains((string) file_get_contents($file->getPathname()), 'function getDefaultKeybindings')) {
-                continue;
+        foreach (self::sourceRoots($root) as $prefix => $directory) {
+            /** @var \SplFileInfo $file */
+            foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory)) as $file) {
+                if ('php' !== $file->getExtension() || !str_contains((string) file_get_contents($file->getPathname()), 'function getDefaultKeybindings')) {
+                    continue;
+                }
+                // The EDITOR is not one of these surfaces. Its map is
+                // {@see EditorKeymap::defaults()}, whose twenty-two micro-bindings
+                // (arrows, shift+arrows, ctrl+home) are undocumented ON PURPOSE —
+                // see this class's docblock — and it has its own gate above,
+                // narrowed to the verbs a menu advertises. Sweeping it in here
+                // would silently re-open a decision that was made and argued.
+                if (str_ends_with($file->getPathname(), '/Widget/CodeEditorWidget.php')) {
+                    continue;
+                }
+                // FQCN is determined by path — a rule this repository states and
+                // the arch gate enforces, so the walk can name the class.
+                $relative = substr($file->getPathname(), \strlen($directory.'/'), length: -4);
+                $class = $prefix.str_replace(search: '/', replace: '\\', subject: $relative);
+                $method = new \ReflectionMethod($class, 'getDefaultKeybindings');
+                /** @var array<string, list<string>> $keys */
+                $keys = $method->invoke(null);
+                $maps[$class] = $keys;
             }
-            // The EDITOR is not one of these surfaces. Its map is
-            // {@see EditorKeymap::defaults()}, whose twenty-two micro-bindings
-            // (arrows, shift+arrows, ctrl+home) are undocumented ON PURPOSE —
-            // see this class's docblock — and it has its own gate above,
-            // narrowed to the verbs a menu advertises. Sweeping it in here
-            // would silently re-open a decision that was made and argued.
-            if (str_ends_with($file->getPathname(), '/Widget/CodeEditorWidget.php')) {
-                continue;
-            }
-            // FQCN is determined by path — a rule this repository states and
-            // the arch gate enforces, so the walk can name the class.
-            $relative = substr($file->getPathname(), \strlen($root.'/src/'), length: -4);
-            $class = 'Porta\\'.str_replace(search: '/', replace: '\\', subject: $relative);
-            $method = new \ReflectionMethod($class, 'getDefaultKeybindings');
-            /** @var array<string, list<string>> $keys */
-            $keys = $method->invoke(null);
-            $maps[$class] = $keys;
         }
 
         self::assertNotSame([], $maps, 'the walk found no keymaps at all, which means it is broken rather than clean');
 
         return $maps;
+    }
+
+    /**
+     * Where key-binding classes can live, as namespace prefix => directory.
+     *
+     * `src/` is one of these and NOT the only one: a bundled plugin binds keys
+     * through the same trait, and the git view and the graph viewer are whole
+     * surfaces reached only by their own keys. Walking `src/` alone made both
+     * of them invisible to a gate whose whole promise is that nothing is —
+     * which is this class's own lesson (a hard-coded list is a checklist the
+     * next surface walks past) applied one directory out.
+     *
+     * The plugins' prefixes are read from their MANIFESTS, the same source the
+     * autoloader uses, so a plugin cannot be missed by being spelled
+     * differently and a new one is swept in the day it is added.
+     *
+     * @return array<string, string>
+     */
+    private static function sourceRoots(string $root): array
+    {
+        $roots = ['Porta\\' => $root.'/src'];
+        $manifests = glob($root.'/plugins/*/plugin.php');
+        foreach (false === $manifests ? [] : $manifests as $pluginFile) {
+            foreach (PluginManifest::beside($pluginFile)->autoloadDirs() as $prefix => $directories) {
+                foreach ($directories as $directory) {
+                    if (!is_dir($directory)) {
+                        continue;
+                    }
+                    $roots[$prefix] = rtrim($directory, characters: '/');
+                }
+            }
+        }
+
+        return $roots;
     }
 
     /**
@@ -352,9 +389,27 @@ final class KeybindingsDocTest extends TestCase
      */
     private static function expandPairs(string $normalised): string
     {
-        return (string) preg_replace_callback(
+        return self::expandArrows((string) preg_replace_callback(
             '~((?:[a-z]+\+)+)([a-z0-9]+)/([a-z0-9]+)~',
             static fn (array $m): string => $m[0].' '.$m[1].$m[3],
+            $normalised,
+        ));
+    }
+
+    /**
+     * The doc's `Shift+arrows` shorthand, expanded to the four chords it names.
+     *
+     * The same argument as {@see expandPairs}: a pan row that says "arrows" is
+     * better writing than four rows saying up, down, left and right, so the
+     * gate reads the shorthand rather than driving the doc towards a table
+     * nobody wants to read. Bare `arrows` needs no expansion — the unmodified
+     * arrow keys are conventions the gate already excuses.
+     */
+    private static function expandArrows(string $normalised): string
+    {
+        return (string) preg_replace_callback(
+            '~((?:[a-z]+\+)+)arrows~',
+            static fn (array $m): string => $m[0].' '.$m[1].'arrowl '.$m[1].'arrowr '.$m[1].'up '.$m[1].'down',
             $normalised,
         );
     }
