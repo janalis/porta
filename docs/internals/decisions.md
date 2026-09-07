@@ -1738,6 +1738,55 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## The sweep found the shape the staging got wrong (built 2026-09-07, `8fcefa33`)
+
+The staged resampling above shipped with one quality test at one shape. A sweep
+over **54 shape/scale pairs**, each measured against a single-stage copy, found
+where that was not enough: an elongated image (97×5011) drifts **7.7/255** from
+a direct resample, against ~1 everywhere else. The docblock said the difference
+was invisible. At that shape it was not, and one fixture could never have said
+so.
+
+**The defect was the stopping rule, not the staging.** Halving was bounded only
+by "stay at least 2× the target", which for a narrow axis keeps halving long
+after it has stopped paying — and each integer halving of a small dimension
+truncates and quantises. The chain exists to bound the pixels READ, so the rule
+now bounds them directly: stop once a level is at or under **600k pixels**,
+which already resamples in ~2.5ms. Worst of the same 54 pairs: **1.7/255**.
+
+It is a knee rather than a guess. 400k leaves the worst at 3.9, 600k reaches
+1.7, and 1M and 1.6M pick the identical level — the curve is flat above it. The
+graph viewer's own zoom is unchanged end to end (8ms a frame, against 48 before
+the staging landed), because for its scales the chosen level is the same either
+way. **The extra precision was free in the case that motivated the work.**
+
+**Two rules now, guarding different failures**, and separating them is what made
+both testable. The budget stops a chain going too deep; the oversample floor
+stops it sampling a level that would have to be MAGNIFIED back up. A single
+combined dial could not be pinned by either test — raising the floor to 4 also
+fixed the elongated shape, which is how a dial that is really two things hides.
+
+**Five mutants, five kills, and three of them needed the test moved:**
+
+1. Budget removed — caught only after the quality fixture moved to the tall
+   shape. On the OLD fixture the budget changed nothing.
+2. Floor lowered to 1 — needed a fixture where the budget does not bind first:
+   900×900 at a third, where the only halving the budget would allow is 450, a
+   mere 1.5× the target.
+3. **The climb's `break` survived twice before it died.** With the budget the
+   first retarget made both branches pick the same level; the discriminating
+   target is one no level oversamples at all, where failing to climb is an
+   outright blow-up — 0.0/255 against 6.3.
+4. Levels not dropped with the image.
+5. `>` flipped to `>=` — an equivalent mutant everywhere except exactly at the
+   boundary, so the fixture is exactly 600,000 pixels (1000×600). Contriving
+   the boundary is cheap and it makes the constant's DIRECTION mean something.
+
+**The transferable part is (3) and the shape it repeats:** a test whose inputs
+were chosen before a rule changed usually still passes, and usually stops
+discriminating. Re-running the controls after every retune is what caught it —
+the second time this session that a control was the thing that was wrong.
+
 ## Find a node in the graph (built 2026-09-07, `68e95823`)
 
 Picked from evidence rather than a backlog: the user's one logged session that
