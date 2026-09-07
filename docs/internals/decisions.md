@@ -1738,6 +1738,34 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## Sweeping the rest, and two clean results worth recording (2026-09-07)
+
+The sweep pointed at everything else this session touched. Two areas came back
+CLEAN, and saying so is the point — a negative result stops the next round
+re-checking them:
+
+- **The overlay filter renders correctly for anything typed into it.** Empty
+  labels, whitespace-only labels, a single item, a 300-character label, and
+  filters of `""`, a space, `..`, `%s`, 200 characters, CJK and emoji: no throw,
+  and every row's visible width equals the box width in all of them. That is the
+  invariant behind [[tui-garble-overwide-line]], and the filter row does not
+  break it.
+- **`RefactoringUndo` survives every degenerate state**: undo with nothing
+  recorded, `decline()` before any `begin()`, an empty group, a double undo, a
+  file that vanished (blocked, correctly).
+
+One thing did come out of it. `hasPending()` counted a buffer that had since been
+CLOSED, and the undo skips those by design — so refactoring one file, closing its
+tab and pressing the key answered "Refactoring undone" over a workspace nothing
+had touched. **What is pending is what could actually be restored**, so the
+question is asked of the live buffers now, which is the same set the undo walks.
+
+That is the general shape of the last three fixes and worth naming: two places
+answered questions about the same thing and disagreed — the statement vs the
+indent, the recorded set vs the restorable set, the keyword test vs the
+already-done test. **A verb with two sources of truth about one fact will
+eventually be asked an input that separates them.**
+
 ## Every new verb against a degenerate document (2026-09-07)
 
 Fifth pass, and the cheapest sweep of the lot: run all five verbs this session

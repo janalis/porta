@@ -149,7 +149,18 @@ final class RefactoringUndo
      */
     public function hasPending(): bool
     {
-        return [] !== $this->buffers || [] !== $this->files;
+        // A buffer CLOSED since is skipped by the undo (it has nothing left to
+        // take back), so counting it here would promise a restore that cannot
+        // happen: refactor one file, close its tab, and the answer was
+        // "Refactoring undone" over a workspace nothing had touched. What is
+        // pending is what could actually be restored.
+        foreach (array_keys($this->buffers) as $path) {
+            if (null !== $this->bufferManager->get($path)) {
+                return true;
+            }
+        }
+
+        return [] !== $this->files;
     }
 
     /**

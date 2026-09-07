@@ -327,6 +327,27 @@ final class RefactoringUndoTest extends TestCase
     }
 
     /**
+     * When the ONLY participant has been closed there is nothing to offer.
+     *
+     * A closed buffer is deliberately skipped by the undo — it has nothing left
+     * to take back — so counting it as pending promised a restore that could
+     * not happen: refactor one file, close its tab, press the key, and the
+     * answer was "Refactoring undone" over a workspace nothing had touched.
+     * What is pending is what could actually be restored.
+     */
+    public function testClosingTheOnlyParticipantLeavesNothingToUndo(): void
+    {
+        $we = $this->workspaceEditor();
+        $this->buffers->open('/p/a.php', "one\n");
+        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath('/p/a.php') => [self::edit(0, 3, 'ONE')]]]);
+        $this->assertTrue($this->undo->hasPending());
+
+        $this->buffers->close('/p/a.php');
+
+        $this->assertFalse($this->undo->hasPending(), 'and the verb says so instead of claiming success');
+    }
+
+    /**
      * A buffer CLOSED since is not a blocker.
      *
      * There is nothing left to undo for it — the close either saved it or
