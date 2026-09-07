@@ -28,6 +28,21 @@ final class ClipboardRing
      */
     public const int DEPTH = 20;
 
+    /**
+     * Total bytes the history may retain.
+     *
+     * Depth alone is not a bound: the clipboard used to be one string, and
+     * twenty of them is twenty times whatever you last copied. `Ctrl+A`,
+     * `Ctrl+C` on a large file twenty times retained 38 MB in a process that
+     * runs all day — a change in resource behaviour no gate can see, and one
+     * this class introduced.
+     *
+     * The NEWEST entry is exempt: it is what `Ctrl+V` pastes, and that worked
+     * for any size before there was a history. The budget only decides how far
+     * back the list reaches.
+     */
+    public const int BUDGET = 1_048_576;
+
     /** @var list<string> newest first */
     private array $entries = [];
 
@@ -44,7 +59,7 @@ final class ClipboardRing
         // would not.
         $kept = array_values(array_filter($this->entries, static fn (string $entry): bool => $entry !== $text));
         array_unshift($kept, $text);
-        $this->entries = \array_slice($kept, offset: 0, length: self::DEPTH);
+        $this->entries = self::withinBudget(\array_slice($kept, offset: 0, length: self::DEPTH));
     }
 
     /** What `Ctrl+V` pastes: the most recent copy, or '' when nothing has been copied. */
@@ -57,5 +72,26 @@ final class ClipboardRing
     public function entries(): array
     {
         return $this->entries;
+    }
+
+    /**
+     * $entries with the oldest dropped until they fit {@see BUDGET}.
+     *
+     * Never below one: the newest is what `Ctrl+V` pastes and is kept whatever
+     * its size, so a single huge copy still pastes and simply leaves no room
+     * for a history behind it.
+     *
+     * @param list<string> $entries newest first
+     *
+     * @return list<string>
+     */
+    private static function withinBudget(array $entries): array
+    {
+        $total = array_sum(array_map(\strlen(...), $entries));
+        while (\count($entries) > 1 && $total > self::BUDGET) {
+            $total -= \strlen(array_pop($entries));
+        }
+
+        return $entries;
     }
 }

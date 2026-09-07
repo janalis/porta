@@ -1738,6 +1738,40 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## The clipboard history was a memory regression (2026-09-07)
+
+Fourth pass of the combination question, this time about a RESOURCE rather than
+a behaviour: what changed about the process when the clipboard stopped being one
+string? Twenty of them is twenty times whatever you last copied. `Ctrl+A`,
+`Ctrl+C` on a large file, twenty times, retained **38 MB** in a session that
+runs all day — where before it retained one copy.
+
+Bounded by BYTES now as well as by count, with the newest exempt: it is what
+`Ctrl+V` pastes, and that worked for any size before there was a history at
+all. A budget that could drop it would be a regression dressed as a bound.
+
+**Two things about the verification are worth more than the fix.**
+
+The first assertion was `assertLessThan(10, count(...))` for a fixture that
+should leave exactly one — and it passes at NINE, which is precisely what the
+surviving mutant produced. **A bound is not an assertion when the correct answer
+is a single number.**
+
+And two mutants then survived a fixture I had reasoned about rather than run: I
+analysed the budget as applied once at the end, when `push()` applies it on
+every call. With equal-sized entries each push costs exactly one drop, so an
+arithmetic error inside the loop reaches the same answer. Killing them needed a
+push that costs SEVERAL drops — ten small copies, then a big one — which came
+from running the thing and looking, not from thinking harder.
+
+**Also recorded: three E2e failures in this round were machine load, and half of
+it was mine.** I had a `paratest` run and a mutation run going at once, on a box
+already carrying OrbStack at 113% CPU. Load average 38. Run alone at
+`PORTA_TEST_PROCESSES=4 nice -n 10`, the suite passed 359/359. The rule the
+memory already carried — check `uptime` before believing an E2e failure — now
+has a companion: do not run two `paratest` instances at once, they share the
+cache directory and thrash.
+
 ## Press it twice: complete-statement doubled the brace (2026-09-07)
 
 Third pass of the combination method, and this one needed no combination at

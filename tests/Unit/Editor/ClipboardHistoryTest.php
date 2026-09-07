@@ -66,6 +66,87 @@ final class ClipboardHistoryTest extends TestCase
         $this->assertSame(['a', 'c', 'b'], $ring->entries());
     }
 
+    /**
+     * The history is bounded by BYTES as well as by count.
+     *
+     * Depth alone is not a bound. The clipboard used to be one string, and
+     * twenty of them is twenty times whatever you last copied — `Ctrl+A`,
+     * `Ctrl+C` on a large file, twenty times, retained 38 MB in a process that
+     * runs all day. That is a change in resource behaviour this class
+     * introduced and no gate can see.
+     */
+    public function testABigCopyDoesNotLeaveTwentyOfItselfBehind(): void
+    {
+        $ring = new ClipboardRing();
+        $big = str_repeat('x', times: 600_000);
+
+        foreach (range(start: 1, end: 10) as $i) {
+            $ring->push($big.$i);
+        }
+
+        $retained = array_sum(array_map(\strlen(...), $ring->entries()));
+        $this->assertLessThanOrEqual(ClipboardRing::BUDGET, $retained, 'inside the budget');
+        // EXACTLY one: ten copies of 600 kB against a 1 MB budget leave room
+        // for a single entry. `assertLessThan(10, …)` was the first version and
+        // it passes at NINE — which is what a subtraction turned into an
+        // assignment produces, and it survived because of that.
+        $this->assertCount(1, $ring->entries());
+    }
+
+    /**
+     * One push can need SEVERAL entries dropped, and the running total has to
+     * come down with each.
+     *
+     * Ten small copies fit; a big one arriving after them does not, and making
+     * room takes nine drops rather than one. Equal-sized fixtures cannot show
+     * this — the budget is re-applied on every push, so each one is a single
+     * drop, and an arithmetic error inside the loop reaches the same answer.
+     * Two mutants (`-=` written as `=`, and as `+=`) survived a four-equal-copy
+     * fixture for exactly that reason.
+     */
+    public function testOnePushCanCostSeveralEntries(): void
+    {
+        $ring = new ClipboardRing();
+        foreach (range(start: 0, end: 9) as $i) {
+            $ring->push(str_repeat((string) $i, times: 100_000));
+        }
+        $this->assertCount(10, $ring->entries(), 'a megabyte of small copies all fit');
+
+        $ring->push(str_repeat('Z', times: 900_000));
+
+        $this->assertCount(2, $ring->entries(), 'the newcomer and one survivor');
+        $this->assertLessThanOrEqual(ClipboardRing::BUDGET, array_sum(array_map(\strlen(...), $ring->entries())));
+    }
+
+    /** Exactly at the budget is inside it, so nothing is dropped. */
+    public function testEntriesSummingToExactlyTheBudgetAreAllKept(): void
+    {
+        $ring = new ClipboardRing();
+        $half = intdiv(ClipboardRing::BUDGET, num2: 2);
+        $ring->push(str_repeat('a', times: $half));
+        $ring->push(str_repeat('b', times: $half));
+
+        $this->assertCount(2, $ring->entries());
+        $this->assertSame(ClipboardRing::BUDGET, array_sum(array_map(\strlen(...), $ring->entries())));
+    }
+
+    /**
+     * And the newest is kept whatever its size, because it is what `Ctrl+V`
+     * pastes — which worked for any copy before there was a history at all.
+     * A budget that could drop it would be a regression dressed as a bound.
+     */
+    public function testTheNewestCopySurvivesEvenAloneOverBudget(): void
+    {
+        $ring = new ClipboardRing();
+        $huge = str_repeat('y', times: 4_000_000);
+
+        $ring->push('small');
+        $ring->push($huge);
+
+        $this->assertSame($huge, $ring->latest(), 'still pastes');
+        $this->assertSame([$huge], $ring->entries(), 'and it is the only thing left');
+    }
+
     public function testItForgetsPastItsDepth(): void
     {
         $ring = new ClipboardRing();
