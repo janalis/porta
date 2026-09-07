@@ -1738,6 +1738,31 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## The command layer holds too, and the sweep is now exhausted (2026-09-07)
+
+The last layer the technique had not reached: every command in
+`ActionCatalog::ACTIONS` that the registry answers to, run against three
+degenerate IDE states — **no file open**, a file open, and **a file DELETED from
+disk under its own buffer**, which is where round 7 found one of its defects.
+
+**171 command/state pairs, nothing thrown.** Six spawning or terminating
+commands were skipped by name (`ide_quit`, the terminals, run, debug) and that
+exclusion is the only gap.
+
+**The sweep is now exhausted**, and saying so is the point of this entry. Three
+consecutive passes came back clean — the overlay filter's rendering, the
+ninety-one pre-existing editor verbs, and now the command layer — after six
+passes that each found something. The technique finds defects in code written in
+the last few hours and nothing in code that has been exercised for months, which
+is what one would hope and is now measured rather than assumed.
+
+**What it does NOT cover, for whoever picks it up next:** it proves nothing
+throws and no invariant breaks. Both of the semantic defects it found in this
+session's verbs were caught by READING twenty-five lines of output, and that does
+not scale past a few dozen cases. For a larger surface the technique needs an
+oracle — a round trip, an invariant, a second implementation to disagree with —
+and the round-trip pass above is the worked example of finding one.
+
 ## The sweep turned on the OLD verbs, and they hold (2026-09-07)
 
 Having found six defects sweeping this session's own work, the same technique
