@@ -1798,6 +1798,35 @@ the work. Both readings agreed on 128 because both were told to produce 128.
 Mutation is what surfaced it, by hand — `source.directories` is `src` only, so
 Infection sees nothing in `plugins/`.
 
+### The sweep that says it was the only one (2026-09-07)
+
+Having a headless render bench made it cheap to ask whether the graph viewer was
+one of a family, so every other surface was measured the same way: opened, then
+twelve renders with a navigation key between them.
+
+| surface | p50 with input | frame |
+| --- | --- | --- |
+| Git: Changes, Git: File History | 0.7 / 1.6ms | 14–17 KB |
+| Problems, Structure, Local History, Recent Changes | 0.2–1.9ms | 15–18 KB |
+| Notification Log, LSP log, Bookmarks, Recent Locations | 0.2–0.4ms | 15–16 KB |
+| Find in Project, Go to Symbol | 0.0ms | 20–22 KB |
+| Settings, Documentation, Welcome, Maximize Panel | 0.0–2.0ms | 13–24 KB |
+| **the graph viewer, zooming** | **48ms** (now 8) | **130 KB** |
+
+**Sixteen surfaces, one outlier.** Nothing else is within an order of magnitude
+on either axis, and the round's whole diagnosis rests on that: the log recorded
+frames of 100–230 KB, and the identification was made from the byte count before
+anything was opened.
+
+That reasoning was then controlled, because a big enough terminal could in
+principle make a text surface that large. It cannot: the Problems panel goes
+15 KB at 213×56, 34 KB at 320×90 and **60 KB at 425×120** — 51,000 cells, far
+past any real terminal — and stays under 1ms throughout. Only a rasterised
+surface reaches six figures, because only a rasterised surface gives every cell
+its own 24-bit foreground AND background. **A frame's SIZE identifies the
+surface that drew it**, which makes `pendingBytes` in a `slow-paint` line more
+diagnostic than it looks.
+
 ## Local history learned which file it was holding (built 2026-09-07, `3d860665`)
 
 Local History could answer "what happened to THIS file" and nothing else. The
