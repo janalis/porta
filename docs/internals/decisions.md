@@ -1605,6 +1605,44 @@ forty-six would come out of the name's width to repeat what sits beside it.
 sending `labelDetails.detail` — the parameter list, which phpantom folds into
 the label instead.
 
+## Round 8 — the machinery was there and did not reach (2026-09-07)
+
+Started by reading the logs, as round 7 taught. This time they were CLEAN, which
+is the finding: `error.log` holds only round 7's twenty-one crashes (fixed);
+`freeze.log` has 213 events of which 166 predate the 2026-08-25 slice fix, and
+since it there are ZERO hard blocks (was 41) with a median stall of 0.56s;
+`perf.log`'s 43 slow paints are all on one day, none in the twelve since. Do not
+re-survey those without new entries.
+
+So the round was four instances of one shape — the capability exists and one
+call site, one gate or one catalogue row does not use it:
+
+1. **Find Usages was flat** while Problems and Find-in-Files pass
+   `searchResults()` for a reason that applies harder to usages. Structure is
+   grouped too, and that is the opposite of the obvious answer: one file gets
+   ONE header, where ungrouped means the same path printed on every row.
+2. **The doc gate could not see the editor's binding channel** — 86 ids. Widened
+   to the subset with no defence (a verb on a MENU), which is four. It also
+   matched on a SUBSTRING (`ctrl+shift+u` inside `ctrl+shift+up`; `f1` inside
+   `f10`) and could not read the doc's `Alt+Shift+↑/↓` shorthand — that
+   shorthand is good writing, so the gate learned it rather than banning it.
+3. **The Notification Log had no catalogue row**, so no key and no Settings →
+   Keymap line. `Alt+9`.
+4. **A key whose bundled plugin is unlisted now explains itself** instead of
+   matching nothing in silence.
+
+**The plan said warn at BOOT for 4, and that was wrong.** Built it; the
+settings-page golden failed with the warning as a toast over the page, which
+showed it would fire every launch forever — including for someone who dropped a
+plugin deliberately, with no way to say so. Explaining at the key press is
+silent otherwise and names both the verb and the setting.
+
+**Two tests passed for the wrong reason and were caught by controls**, which is
+the reusable part. The doc gate's first version reported 29 missing keys because
+it could not read a shorthand; and the first E2e passed because
+`phpunit.xml.dist` pins `PORTA_EMBEDDED_PLUGINS=/nonexistent` suite-wide, so the
+plugin was absent for a reason unrelated to the config under test.
+
 ## The advertised-but-unasked survey, run (2026-09-06)
 
 The inventory the entry above deferred, now measured rather than described.
