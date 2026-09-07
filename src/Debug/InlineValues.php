@@ -7,6 +7,7 @@ namespace Porta\Debug;
 use Porta\Container\AsIdeService;
 use Porta\Editor\EditorDecorationSink;
 use Porta\Lsp\InlineValueRequest;
+use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -45,6 +46,7 @@ final class InlineValues
         private readonly InlineValueRequest $request,
         private readonly EditorDecorationSink $decorations,
         private readonly Tui $tui,
+        private readonly CodeEditorWidget $editor,
     ) {}
 
     /**
@@ -54,10 +56,59 @@ final class InlineValues
     public function stoppedAt(string $path, int $line, int $frameId): void
     {
         $this->clear();
-        $this->request->forRange($path, max(0, $line - self::MARGIN_LINES), $line + self::MARGIN_LINES, $frameId, $line, function (array $lookups): void {
+        $from = max(0, $line - self::MARGIN_LINES);
+        $to = $line + self::MARGIN_LINES;
+        $asked = $this->request->forRange($path, $from, $to, $frameId, $line, function (array $lookups): void {
             $this->lookups = $lookups;
             $this->paint();
         });
+        if (!$asked) {
+            // The server does not offer `inlineValue` — phpantom_lsp, which is
+            // most PHP setups. Its SEMANTIC TOKENS answer the same question
+            // exactly: measured, it types `$count` and `$times` as `variable`
+            // and `parameter` with ranges whose text INCLUDES the `$`, which is
+            // how the debug adapter spells a name. Porta already asks for the
+            // whole document's tokens for colouring, so this costs nothing and
+            // guesses nothing.
+            // No paint here: `clear()` above emptied the values, so a paint
+            // now could only ever draw the empty map it just wrote. The next
+            // `addVariables()` is what puts anything on screen — and the
+            // controller always stops before it loads the frame's scopes.
+            $this->lookups = $this->variablesFromSemanticTokens($from, $to);
+        }
+    }
+
+    /**
+     * The variables the colouring pass already found, as inline-value lookups.
+     *
+     * Only `variable` and `parameter`: a `property` token is `name` in
+     * `$this->name` — no `$`, and not a name the frame's variables are keyed
+     * by — while the declaration `public string $name` is typed `property` too
+     * and is not a local at all. `$this` comes through as a variable and the
+     * adapter reports it, so it joins like any other.
+     *
+     * @return list<array{line: int, endCol: int, name: string}>
+     */
+    private function variablesFromSemanticTokens(int $fromLine, int $toLine): array
+    {
+        $document = $this->editor->getDocument();
+        $decorations = $this->editor->decorations();
+
+        $lookups = [];
+        foreach (range($fromLine, $toLine) as $line) {
+            foreach ($decorations->semanticTokensAt($line) as $token) {
+                if ('variable' !== $token['type'] && 'parameter' !== $token['type']) {
+                    continue;
+                }
+                $name = mb_substr($document->getLine($line), $token['col'], $token['endCol'] - $token['col']);
+                if ('' === $name) {
+                    continue;
+                }
+                $lookups[] = ['line' => $line, 'endCol' => $token['endCol'], 'name' => $name];
+            }
+        }
+
+        return $lookups;
     }
 
     /**

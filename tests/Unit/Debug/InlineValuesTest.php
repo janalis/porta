@@ -68,6 +68,7 @@ final class InlineValuesTest extends TestCase
             new InlineValueRequest($pool),
             $this->editor->decorations(),
             $this->tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 10)),
+            $this->editor,
         );
     }
 
@@ -246,5 +247,223 @@ final class InlineValuesTest extends TestCase
         $values->addVariables([['name' => '$count', 'value' => '41', 'variablesReference' => 0]]);
 
         $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'));
+    }
+
+    /**
+     * A server with no `inlineValue` — phpantom_lsp, which is most PHP setups.
+     *
+     * Its SEMANTIC TOKENS answer the same question and Porta already has them:
+     * the colouring pass fetches the whole document, and measured against the
+     * real server a local is typed `variable` with a range whose text includes
+     * the `$`, which is exactly how the adapter spells a name. Nothing is
+     * guessed and nothing extra is asked for.
+     */
+    private function withoutInlineValueSupport(string $text): InlineValues
+    {
+        $this->editor = new CodeEditorWidget();
+        $this->editor->showDocument('/p/a.php', new Document($text));
+
+        $pool = new LspSessionPool('/p', new FixedActiveFile(), new Translator('en'));
+
+        return new InlineValues(
+            new InlineValueRequest($pool),
+            $this->editor->decorations(),
+            $this->tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 10)),
+            $this->editor,
+        );
+    }
+
+    public function testTheCOLOURINGSTokensStandInWhenTheServerHasNoInlineValues(): void
+    {
+        $values = $this->withoutInlineValueSupport("<?php\n\$count = 41;\n");
+        // What SemanticTokensController stored for this file: the `$count` at
+        // column 0..6, typed as a local.
+        $this->editor
+            ->decorations()
+            ->setSemanticTokens([
+                1 => [['col' => 0, 'endCol' => 6, 'type' => 'variable', 'modifiers' => []]],
+            ]);
+
+        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->addVariables([['name' => '$count', 'value' => '41', 'variablesReference' => 0]]);
+
+        $this->assertSame([1 => '$count = 41'], $this->painted(), 'the name came from the token text, with its $');
+    }
+
+    public function testAPROPERTYTokenIsNotALocalAndIsSkipped(): void
+    {
+        // `$this->name` types `name` as a property — no `$`, and not a key the
+        // frame's variables are listed under. The declaration `public string
+        // $name` is a property too, and is not a local at all.
+        $values = $this->withoutInlineValueSupport("<?php\nreturn \$this->name;\n");
+        $this->editor
+            ->decorations()
+            ->setSemanticTokens([
+                1 => [
+                    ['col' => 7, 'endCol' => 12, 'type' => 'variable', 'modifiers' => []],
+                    ['col' => 14, 'endCol' => 18, 'type' => 'property', 'modifiers' => []],
+                ],
+            ]);
+
+        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->addVariables([
+            ['name' => '$this', 'value' => 'Thing', 'variablesReference' => 1],
+            ['name' => 'name', 'value' => "'x'", 'variablesReference' => 0],
+        ]);
+
+        $this->assertSame([1 => '$this = Thing'], $this->painted(), 'the property is not offered even though the adapter happens to report that name');
+    }
+
+    public function testAPARAMETERCountsAsALocal(): void
+    {
+        $values = $this->withoutInlineValueSupport("<?php\nfunction f(int \$times) {}\n");
+        $this->editor
+            ->decorations()
+            ->setSemanticTokens([
+                1 => [['col' => 15, 'endCol' => 21, 'type' => 'parameter', 'modifiers' => []]],
+            ]);
+
+        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->addVariables([['name' => '$times', 'value' => '3', 'variablesReference' => 0]]);
+
+        $this->assertSame([1 => '$times = 3'], $this->painted());
+    }
+
+    public function testWithNoTokensEitherNothingIsPainted(): void
+    {
+        // A server offering neither is not an error, it is a file with no
+        // inline values — and an empty paint is what says so.
+        $values = $this->withoutInlineValueSupport("<?php\n\$count = 41;\n");
+
+        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->addVariables([['name' => '$count', 'value' => '41', 'variablesReference' => 0]]);
+
+        $this->assertSame([], $this->painted());
+    }
+
+    public function testASTALETokenMapPaintsNothingRatherThanAnEmptyName(): void
+    {
+        // Tokens are fetched per document VERSION and the buffer can be edited
+        // after — the colouring pass guards against a stale PATH, not a stale
+        // edit. A token pointing past the end of a shortened line slices to '',
+        // which would otherwise join against nothing and paint " = 41".
+        $values = $this->withoutInlineValueSupport("<?php\n\$c;\n");
+        $this->editor
+            ->decorations()
+            ->setSemanticTokens([
+                1 => [['col' => 40, 'endCol' => 46, 'type' => 'variable', 'modifiers' => []]],
+            ]);
+
+        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->addVariables([['name' => '$count', 'value' => '41', 'variablesReference' => 0]]);
+
+        $this->assertSame([], $this->painted());
+    }
+
+    public function testASKIPPEDTokenDoesNotStopTheOnesAfterIt(): void
+    {
+        // Three reasons to skip and a usable token after each: a property, a
+        // token pointing past the end of the line, and then the local that
+        // actually matters. Skipping is the normal case on any real line.
+        $values = $this->withoutInlineValueSupport("<?php\n\$this->name = \$c;\n");
+        $this->editor
+            ->decorations()
+            ->setSemanticTokens([
+                1 => [
+                    ['col' => 7, 'endCol' => 11, 'type' => 'property', 'modifiers' => []],
+                    ['col' => 90, 'endCol' => 96, 'type' => 'variable', 'modifiers' => []],
+                    ['col' => 14, 'endCol' => 16, 'type' => 'variable', 'modifiers' => []],
+                ],
+            ]);
+
+        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->addVariables([['name' => '$c', 'value' => '7', 'variablesReference' => 0]]);
+
+        $this->assertSame([1 => '$c = 7'], $this->painted());
+    }
+
+    public function testAMULTIBYTELineSlicesTheNameByCHARACTERSNotBytes(): void
+    {
+        // The server counts in characters and PHP strings are bytes. With `é`
+        // ahead of it on the line, a byte-wise slice reads two columns short
+        // and hands the join a name no frame ever had.
+        $values = $this->withoutInlineValueSupport("<?php\n\$s = 'héllo'; \$count = 41;\n");
+        $line = "\$s = 'héllo'; \$count = 41;";
+        $at = mb_strpos($line, needle: '$count');
+        $this->editor
+            ->decorations()
+            ->setSemanticTokens([
+                1 => [['col' => $at, 'endCol' => $at + 6, 'type' => 'variable', 'modifiers' => []]],
+            ]);
+
+        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->addVariables([['name' => '$count', 'value' => '41', 'variablesReference' => 0]]);
+
+        $this->assertSame([1 => '$count = 41'], $this->painted());
+    }
+
+    public function testTWOVariablesOnALineBothComeThrough(): void
+    {
+        $values = $this->withoutInlineValueSupport("<?php\n\$a = \$b;\n");
+        $this->editor
+            ->decorations()
+            ->setSemanticTokens([
+                1 => [
+                    ['col' => 0, 'endCol' => 2, 'type' => 'variable', 'modifiers' => []],
+                    ['col' => 5, 'endCol' => 7, 'type' => 'variable', 'modifiers' => []],
+                ],
+            ]);
+
+        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->addVariables([
+            ['name' => '$a', 'value' => '1', 'variablesReference' => 0],
+            ['name' => '$b', 'value' => '2', 'variablesReference' => 0],
+        ]);
+
+        $this->assertSame([1 => '$a = 1, $b = 2'], $this->painted());
+    }
+
+    public function testAServerThatANSWERSKeepsTheTokensOutOfIt(): void
+    {
+        // The fallback runs only when the request was not SENT. A server that
+        // was asked owns the answer, and mixing the two sources would paint a
+        // variable the server deliberately left out.
+        $this->lookups = [['line' => 1, 'endCol' => 6, 'name' => '$count']];
+        $values = $this->values();
+        $this->editor
+            ->decorations()
+            ->setSemanticTokens([
+                1 => [['col' => 0, 'endCol' => 6, 'type' => 'variable', 'modifiers' => []]],
+                2 => [['col' => 0, 'endCol' => 5, 'type' => 'variable', 'modifiers' => []]],
+            ]);
+        $this->serverAnswered($values);
+
+        $values->addVariables([
+            ['name' => '$count', 'value' => '41', 'variablesReference' => 0],
+            ['name' => "\$name", 'value' => "'x'", 'variablesReference' => 0],
+        ]);
+
+        $this->assertSame([1 => '$count = 41'], $this->painted(), 'only what the server named');
+    }
+
+    public function testAServerAnsweringNOTHINGIsNotSecondGuessedByTheTokens(): void
+    {
+        // "There are no inline values on these lines" is an answer, and the
+        // fallback must not overrule it — it exists for a server that cannot be
+        // ASKED, not for one that was asked and said none. Without that
+        // distinction the tokens would paint variables the server deliberately
+        // left out, on exactly the lines it had looked at.
+        $this->lookups = [];
+        $values = $this->values();
+        $this->editor
+            ->decorations()
+            ->setSemanticTokens([
+                1 => [['col' => 0, 'endCol' => 6, 'type' => 'variable', 'modifiers' => []]],
+            ]);
+        $this->serverAnswered($values);
+
+        $values->addVariables([['name' => '$count', 'value' => '41', 'variablesReference' => 0]]);
+
+        $this->assertSame([], $this->painted());
     }
 }

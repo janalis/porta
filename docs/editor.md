@@ -211,8 +211,12 @@ server says WHERE the variables are and what they are called
 the server names but the adapter has not reported is simply not shown — it has
 not been assigned yet at this point in the frame.
 
-Only servers that offer it are asked: phpactor does, phpantom_lsp does not, and
-a server that cannot answer is never sent the request.
+Both bundled servers can supply the WHERE, by different routes. phpactor answers
+`textDocument/inlineValue` directly. phpantom_lsp does not offer that request at
+all — so its **semantic tokens** stand in: the same pass that colours the file
+types each local as a `variable` or a `parameter`, and the range it gives is the
+name with its `$`. Nothing extra is fetched and nothing is guessed; a server
+that offers neither simply shows no values.
 
 The values share the trailing slot with the inline diagnostic and with a
 plugin's line annotation (git blame). While the debugger is stopped the value

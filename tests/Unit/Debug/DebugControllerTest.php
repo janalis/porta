@@ -157,6 +157,7 @@ final class DebugControllerTest extends TestCase
                 new InlineValueRequest($lsp ?? new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator())),
                 $this->editor->decorations(),
                 $tui,
+                $this->editor,
             ),
         );
         // Compiled from #[AsEventListener] in the container.

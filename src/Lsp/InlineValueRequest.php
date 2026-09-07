@@ -37,12 +37,17 @@ final readonly class InlineValueRequest
      * previous answer still being true, but it IS the same as having nothing to
      * draw — and the caller clears either way.
      *
+     * Returns whether the server was ASKED, so a caller that has another way to
+     * find the variables knows when to use it: phpantom_lsp does not offer this
+     * request at all, and silence from here is indistinguishable from an answer
+     * that has not arrived yet.
+     *
      * @param \Closure(list<array{line: int, endCol: int, name: string}>): void $deliver
      */
-    public function forRange(string $path, int $fromLine, int $toLine, int $frameId, int $stoppedLine, \Closure $deliver): void
+    public function forRange(string $path, int $fromLine, int $toLine, int $frameId, int $stoppedLine, \Closure $deliver): bool
     {
         if (true !== $this->lsp->serverCapability($path, 'inlineValueProvider')) {
-            return;
+            return false;
         }
         $this->lsp->request(
             'textDocument/inlineValue',
@@ -70,5 +75,7 @@ final readonly class InlineValueRequest
                 }
             },
         );
+
+        return true;
     }
 }
