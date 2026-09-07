@@ -1738,6 +1738,51 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## A restore could land in the wrong file (built 2026-09-07, `8f8ab755`)
+
+Swept the new Recent Changes view against its obvious degenerate case — the
+file a row names has been DELETED — and the defect that surfaced predates the
+view entirely.
+
+`HistoryTool::restore()` ends in `replaceDocument()`, which replaces whatever is
+ACTIVE, so it first asks core to open the file the listed snapshots belong to.
+It checked that the file was not already active. **It never checked that the
+open worked.** `openFile()` declines a file that has been deleted or made
+unreadable — it flashes and returns — and the snapshot then lands in whichever
+buffer the user is looking at. Reproduced before fixing: list `a.php`'s history,
+delete `a.php`, switch to `other.php`, press Enter, and `other.php` now holds
+`a.php`'s old contents.
+
+The fix is one line of shape: **check the postcondition, not the attempt.** The
+guard that was there asked whether the open was NEEDED; the one that matters
+asks whether it HAPPENED. `PluginApi::replaceDocument()`'s own docblock warns
+that "the buffer the user is looking at may not be the one your subprocess
+read" — the warning was heeded and then undone by trusting a call that can
+decline.
+
+**Where the sweep pointed and what it found are different places**, and that is
+the entry's point: the question was about a view added an hour earlier, and the
+answer was in a verb that had been shipping for weeks. A degenerate case is a
+probe into everything downstream of it, not a test of the thing you just wrote.
+
+**Left deliberately, with what it would take:** a file that is gone cannot be
+restored at all, although its snapshots are on disk and Recent Changes still
+lists them — which is precisely the case local history exists for. Recovering
+one means opening a buffer for a path with no file behind it, and the plugin API
+has no such verb; `replaceDocument()` never touches disk by design, because save
+stays the user's verb. That is a core seam and its own round, not a rider on
+this fix.
+
+### And an operational note, because it cost twenty minutes
+
+`composer test` stalled at 6592/6594 and had to be killed. All four suites then
+passed alone, and a clean `composer test` passed in 2:42. The one thing that was
+different: **a test file was edited WHILE the run was in flight** — paratest
+loads test files in workers as it goes, so rewriting one under a running suite
+is editing the thing being read. Causation is not proven, but the correlation is
+exact and the discipline costs nothing: no edits while a suite runs. Distinct
+from [[porta-paratest-background-hang]], which is the coverage MERGE stalling.
+
 ## The sweep found the shape the staging got wrong (built 2026-09-07, `8fcefa33`)
 
 The staged resampling above shipped with one quality test at one shape. A sweep
