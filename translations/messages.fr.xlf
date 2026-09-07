@@ -430,6 +430,14 @@
         <source>Restored from local history</source>
         <target>Restauré depuis l’historique local</target>
       </trans-unit>
+      <trans-unit id="821">
+        <source>%file% is gone — restoring a version will bring it back</source>
+        <target>%file% n’existe plus — restaurer une version le recréera</target>
+      </trans-unit>
+      <trans-unit id="822">
+        <source>Cannot write %file%</source>
+        <target>Impossible d’écrire %file%</target>
+      </trans-unit>
       <trans-unit id="820">
         <source>Cannot restore %file% — it is no longer there</source>
         <target>Impossible de restaurer %file% — le fichier n’existe plus</target>

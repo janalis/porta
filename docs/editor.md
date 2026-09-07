@@ -561,6 +561,14 @@ every file with history, the file changed last on top, with when it changed and
 how many versions it has; `Enter` opens one, and `Ctrl+Alt+H` on it then shows
 that file's snapshots.
 
+**A file you deleted is still in that list, and `Enter` on it goes straight to
+its snapshots** — there is no file to open, and its history is now the only copy
+left, which is the case local history exists for. Restoring a version then
+recreates the file and opens it. That is the one restore that writes to disk:
+everywhere else `Enter` replaces the buffer and saving stays yours, because a
+file that exists is yours to keep; here there is nothing to keep and nothing to
+overwrite.
+
 A file is listed once it has been saved at least once since this version: the
 history directory is named after a HASH of the path, and a hash does not run
 backwards, so each one records its own path now. Directories written before that

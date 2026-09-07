@@ -430,6 +430,14 @@
         <source>Restored from local history</source>
         <target>שוחזר מההיסטוריה המקומית</target>
       </trans-unit>
+      <trans-unit id="821">
+        <source>%file% is gone — restoring a version will bring it back</source>
+        <target>%file% כבר לא קיים — שחזור גרסה יחזיר אותו</target>
+      </trans-unit>
+      <trans-unit id="822">
+        <source>Cannot write %file%</source>
+        <target>לא ניתן לכתוב את %file%</target>
+      </trans-unit>
       <trans-unit id="820">
         <source>Cannot restore %file% — it is no longer there</source>
         <target>לא ניתן לשחזר את %file% — הקובץ כבר לא קיים</target>
