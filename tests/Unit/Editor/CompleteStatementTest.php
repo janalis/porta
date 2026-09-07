@@ -245,6 +245,57 @@ final class CompleteStatementTest extends TestCase
     }
 
     /**
+     * A line that already has its block does not get a second one.
+     *
+     * Pressing the key twice was all it took: `if ($x) {` became
+     * `if ($x) { {`, and Python's `if x:` became `if x::`. The keyword test
+     * says "this line OPENS a block"; it took a second rule to say "and has not
+     * already", which is the mirror of the one the terminator has had all along.
+     *
+     * The one-line form counts as having its block too — `if ($x) { run(); }`
+     * ends in the CLOSER, and a brace after it would be nonsense.
+     */
+    public function testALineThatAlreadyHasItsBlockGainsNothing(): void
+    {
+        $python = StatementSyntax::forGrammar('python');
+        \assert($python instanceof StatementSyntax, description: 'python is in the table');
+
+        foreach ([
+            ['    if ($x) {', self::php()],
+            ['    if ($x) {}', self::php()],
+            ['    if ($x) { run(); }', self::php()],
+            ['    if x:', $python],
+        ] as [$text, $syntax]) {
+            $doc = new Document($text."\n");
+            $doc->setCursor(0, 5);
+
+            $doc->completeStatement($syntax);
+
+            $this->assertSame($text, $doc->getLine(0), $text);
+            $this->assertSame('    ', $doc->getLine(1), 'and it still moves on: '.$text);
+        }
+    }
+
+    /**
+     * The two ways a line can already have its brace and not look like it.
+     *
+     * Asserted on {@see LineOperations::wantsBlockOpener()} directly, because
+     * the caller trims before asking and so cannot reach either: a line with
+     * TRAILING whitespace still ends in its brace, and a brace written tight
+     * against the condition (`if($x){`) still is one — the table stores the
+     * opener as ` {`, space included, so an untrimmed comparison misses it and
+     * writes a second.
+     */
+    public function testABraceCountsHoweverItIsSpaced(): void
+    {
+        $this->assertFalse(LineOperations::wantsBlockOpener('if ($x) {   ', ' {', '}'), 'trailing whitespace');
+        $this->assertFalse(LineOperations::wantsBlockOpener('if($x){', ' {', '}'), 'no space before it');
+        $this->assertFalse(LineOperations::wantsBlockOpener('   ', ' {', '}'), 'a blank line opens nothing');
+
+        $this->assertTrue(LineOperations::wantsBlockOpener('if ($x)', ' {', '}'), 'and a line with no brace still wants one');
+    }
+
+    /**
      * A line that closes one block and opens the next already has its brace.
      * `} else {` must not gain a second one — the keyword is not the head of
      * the line, and that is exactly what the anchored match is for.

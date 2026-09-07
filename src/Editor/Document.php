@@ -1179,7 +1179,8 @@ final class Document
         // the VALUE rather than as a boolean beside it, so every use below
         // narrows on the same null check instead of asserting a fact the
         // analyser then calls redundant.
-        $opened = null !== $syntax->block && $syntax->opensABlock($line) ? $syntax->block : null;
+        $block = $syntax->block;
+        $opened = null !== $block && $syntax->opensABlock($line) && LineOperations::wantsBlockOpener($line, $block[0], $block[1]) ? $block : null;
         $terminator = $syntax->terminator;
 
         // A block and a terminator are alternatives, never both: `if ($x) {;`

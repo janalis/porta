@@ -227,6 +227,29 @@ final class LineOperations
     }
 
     /**
+     * Whether $line still needs its block opened.
+     *
+     * The mirror of {@see wantsTerminator()}, and missing from the first
+     * version of complete-statement — so `if ($x) {` gained a SECOND brace
+     * (`if ($x) { {`) and Python's `if x:` a second colon. Pressing the key
+     * twice is all it took.
+     *
+     * A line already ending in the opener has its block; so has one ending in
+     * the CLOSER, which is the whole one-line form `if ($x) { run(); }`. The
+     * opener is trimmed because the table stores it as it is appended, leading
+     * space and all.
+     */
+    public static function wantsBlockOpener(string $line, string $opener, ?string $closer): bool
+    {
+        $trimmed = rtrim($line);
+        if ('' === $trimmed || str_ends_with($trimmed, trim($opener))) {
+            return false;
+        }
+
+        return null === $closer || !str_ends_with($trimmed, $closer);
+    }
+
+    /**
      * Where a statement-move of $delta lands the block at $first..$last, or null
      * when it would run off the buffer. A run of blank lines counts as one step,
      * so a statement hops over the gap rather than into it.

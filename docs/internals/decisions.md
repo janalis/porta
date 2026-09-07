@@ -1738,6 +1738,33 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## Press it twice: complete-statement doubled the brace (2026-09-07)
+
+Third pass of the combination method, and this one needed no combination at
+all — only the question "what does this verb do to a line it has already
+finished". `Ctrl+Shift+Enter` on `if ($x) {` produced `if ($x) { {`, and on
+Python's `if x:` produced `if x::`.
+
+The keyword test answered "this line OPENS a block" and nothing asked "and has
+it already". The terminator branch had that rule from the first day —
+{@see \Porta\Editor\LineOperations::wantsTerminator()} refuses a line already
+ending in one — and the block branch was written without its mirror. **When a
+verb has two branches that do the same KIND of thing, the guards belong in both
+or the asymmetry is the bug.**
+
+The one-line form counts as finished too: `if ($x) { run(); }` ends in the
+CLOSER, and a brace after it is nonsense.
+
+Two mutation survivors then named the two ways a brace can be there without
+looking like it — trailing whitespace after it, and one written tight against
+the condition (`if($x){`), which the untrimmed comparison missed because the
+table stores the opener as ` {`, space included.
+
+**Worth noting how cheap the finding was.** Every one of this session's
+combination defects came from running the verb over a handful of hand-written
+inputs and READING the output, before any test existed. Coverage, mutation and
+three code readings had passed over all of them.
+
 ## Two more from the same list, both in the undo I had just written (2026-09-07)
 
 The combination method again, this time pointed at the newest thing in the tree
