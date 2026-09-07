@@ -1738,6 +1738,46 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## The key gate could not see the plugins (built 2026-09-07, `6f7ae435`)
+
+`KeybindingsDocTest` walked `src/` for `getDefaultKeybindings()`, discovered
+rather than listed — and a BUNDLED PLUGIN binds through the same trait, so six
+widgets were invisible to it: the git view's four and both viewers. Its own
+argument (a hard-coded list is a checklist the next surface walks past) applied
+to itself one directory out, so the roots are discovered as well, read from each
+plugin's manifest — the same source the autoloader uses, so a plugin cannot be
+missed by being spelled differently.
+
+Widened first, and it named **twenty keys**. What they turned out to be is the
+interesting part, because only one was a plain omission:
+
+1. **Eight were the doc being read wrong.** `Shift+arrows` is one row for four
+   chords, and better writing than four rows; the gate now expands it the way
+   it already expands `Alt+Shift+↑/↓`. Recorded before and worth repeating: a
+   text gate that forbids a shorthand drives the doc towards a worse table.
+2. **One was a real hole.** The graph viewer's `v` — bitmap versus cell
+   rendering — was documented in neither the key reference nor the editor
+   guide's graph section, which describes every other key that pane binds.
+3. **The rest were documented in the wrong FILE.** The git view's keys are
+   fully and correctly written up in `git.md`, and the graph viewer's in
+   `editor.md`; `keybindings.md`, the index that claims to list every key, had
+   no section for either surface. Both have one now, linked to the guide.
+
+**And the cross-surface version of the Search-section problem is still open,
+deliberately.** The graph viewer's `=`, `-`, `0`, `f` and `1` pass the
+whole-file match because the IMAGE viewer's section documents those chords —
+a reader of that section learns nothing about the graph pane. Scoping per
+surface needs a widget→section mapping that would itself need maintaining, and
+that trade was already argued in this class. The rows were written out per
+surface because that is correct, not because the gate asked.
+
+**A control passed for the wrong reason for the third time this session**, in a
+new way: to check the widened gate catches a NEW plugin key I added
+`ctrl+alt+shift+j` to a viewer's map and the gate stayed green — because that
+chord is already a documented Porta binding. The control needs a chord the doc
+CANNOT contain, and `ctrl+alt+shift+f12` failed it correctly. When inventing a
+value to prove a gate fires, check that the value is actually absent first.
+
 ## The zoom was the freeze, and perf.log said so (built 2026-09-07, `45a7de8e`)
 
 Round 8's plan recorded the runtime logs as CLEAN — 43 slow paints, all on one
