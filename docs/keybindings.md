@@ -211,9 +211,11 @@ to add one and `Shift+Click` to take a range. A modified click only selects:
 it does not open the file, because the point of a pair is to act on both.
 Moving the cursor without a modifier drops back to one file.
 
-With exactly two selected, **Git › Compare Selected Files** diffs them into a
-**Compare** panel (`git diff --no-index`, so neither file has to be tracked —
-though the git plugin still wants a repository around it).
+With exactly two selected, **Compare Selected Files** — on the Git menu and on
+a tree row's right-click — diffs them into a **Compare** panel (`git diff
+--no-index`, so neither file has to be tracked, though the git plugin still
+wants a repository around it). Right-clicking inside the selection keeps it;
+right-clicking elsewhere collapses to the row under the pointer.
 
 ## Help viewer
 

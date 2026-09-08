@@ -158,6 +158,22 @@ final class FileTreeMultiSelectTest extends TestCase
         $this->assertNotSame(self::style($cursorRow), self::style($selectedRow), 'and not styled as the cursor row, which is somewhere else');
     }
 
+    public function testRightClickingInsideTheSelectionKeepsItAndOutsideCollapsesIt(): void
+    {
+        // A context menu acts on the pair you built — but only while you are
+        // pointing at it. Pointing somewhere else and getting a command that
+        // silently acts on two other files is the failure this prevents.
+        $tree = $this->tree();
+        $tree->clickRow(1);
+        $tree->clickRow(2, ClickIntent::Add);
+
+        $tree->nodeAt(2); // inside
+        $this->assertSame(['a.php', 'b.php'], array_map(basename(...), $tree->selectedPaths()));
+
+        $tree->nodeAt(3); // outside
+        $this->assertSame(['c.php'], array_map(basename(...), $tree->selectedPaths()));
+    }
+
     /** The leading escape sequence of a rendered row, which is its style. */
     private static function style(string $line): string
     {

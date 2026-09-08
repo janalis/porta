@@ -202,9 +202,17 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             return null;
         }
         $this->list->select($index);
+        // Right-clicking INSIDE the selection keeps it — that is how a menu
+        // acts on the pair you built. Right-clicking outside it collapses to
+        // the row under the pointer, because a menu that silently acts on two
+        // files you are not pointing at is worse than one that acts on one.
+        $node = $this->visible[$index];
+        if (!$this->selection->has($node->path)) {
+            $this->selection->only($node->path);
+        }
         $this->invalidate();
 
-        return $this->visible[$index];
+        return $node;
     }
 
     public function refresh(): void
