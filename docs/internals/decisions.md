@@ -1806,8 +1806,10 @@ obvious version cannot work.
 
 - **Process count, and it is free.** 170s at 4 processes, ~90s at 8 (which is
   already the script's default — a whole session was spent at 4 for no reason),
-  62s at 12, **52s at 12 without `--functional`**. The `--functional` split is
-  deliberate and worth its 10s; the throttle is not, unless the box is shared.
+  62s at 12, 52s at 12 without `--functional`, and **52s at `auto` (16) WITH
+  it**. The `--functional` split is deliberate and worth its 10s; four more
+  cores buy that 10s back, so on an idle box the safe split is free. The
+  throttle is what costs, unless the box is shared.
 - **The serial plugins pass costs 146s for 36s of work.** The 110s is the merge
   bug's price. Parallel paratest is closed, but *six serial phpunit runs, one per
   plugin, several at once* has no merge inside any single run — a different shape
@@ -1817,10 +1819,48 @@ obvious version cannot work.
   ~144s of serial CPU sits in the boot path rather than in any test.
 - **Unit is the mirror image**: 157 cases (2.9%) are 67% of its time, clustered
   in ~10 classes that really sleep — 70 `sleep`/`usleep` call sites.
-- **`opcache.enable_cli` is Off**, and contributing.md measures 4.7× on
-  compilation. Worth trying for `composer test` only: opcache serving a cached
-  op_array bypasses pcov's compile-time instrumentation, so under coverage it
-  would be a silent loss, not a win.
+- ~~**`opcache.enable_cli` is Off**, and contributing.md measures 4.7× on
+  compilation.~~ Measured and closed — see below. It is 1.5×, it does not reach
+  the suite, and under pcov it inflates the percentage rather than deflating it.
+
+### Two levers measured, neither taken (2026-09-08)
+
+**opcache is not a test-loop lever, and the 4.7× this repo quoted is stale.**
+Re-measured with `opcache.enable_cli=1` + `opcache.file_cache` on PHP 8.5-zts,
+five runs each: compiling all 707 files of `src/` in a fresh process is **55ms
+without it and 37ms with** — 1.5× and 18ms, not 122ms → 26ms. `composer test`
+at eight processes ran 92.0 / 89.4s without and 90.4 / 87.8 / 89.2s with, which
+is the noise, and the arithmetic said so before the stopwatch did: a paratest
+worker compiles `src/` ONCE and then runs thousands of tests, so eight workers
+save eight times 18ms. It stays worth setting for `bin/porta` (`bin/porta-dev
+container` 0.29 → 0.24s, five runs each, no overlap) and it is documented as an
+environment note, not as a gate.
+
+**The pcov caveat is real — and points the other way from how it was written.**
+The worry recorded here was a silent coverage LOSS. Measured, one file's
+coverage run reports **1,792 executable statements with opcache on where it
+reports 1,813 with it off** — the same lines covered, `FileTreeWidget` counted
+as 185 statements instead of 189. The denominator moves, so the percentage goes
+UP. A loss would have been caught by the 100% gate on the next run; an
+inflation is precisely what nothing notices.
+
+**Narrowing `pcov.directory` from `.` + an exclude regex to `src` buys 5%, and
+5% is under the bar set for touching the coverage run.** It landed nowhere.
+The first pair of measurements said it was a 35% REGRESSION — 185s against
+137s — and that was the box, not the setting: re-running the unchanged baseline
+read 160s while the load average climbed past 25. Alternating the two settings
+over a fixed workload (Unit, under pcov, 8 processes, A/B/A/B) gives A 64.8 /
+58.0s against B 60.4 / 56.3s, with byte-identical maps — 20,873 statements,
+19,258 covered, both variants. So: a real but small win, in exchange for
+changing what pcov records, in the one part of this build that has twice
+produced a number that moved for a reason nobody could see. Not worth it.
+**Two runs taken minutes apart on a shared box are not a comparison** —
+alternate the variants or do not report the difference.
+
+With this, the coverage-run experiment is closed in both halves: the
+bootstrap-sweep hypothesis was falsified earlier (the sweep contributes 0 files,
+and `PORTA_CONTAINER_CACHE=off` is what makes the merge correct), and the
+`pcov.directory` half is measured and declined.
 
 ## A duplication gate, and what it found (built 2026-09-08, `f2d1d519`)
 
