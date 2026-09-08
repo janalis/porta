@@ -43,20 +43,52 @@ PORTA_TEST_PROCESSES=4 nice -n 10 composer test   # busier than usual
 PORTA_TEST_PROCESSES=auto composer test           # the box is yours
 ```
 
-Measured on the 16-core machine, load ~7, one run at a time:
+Measured on the 16-core machine, one run at a time, alternated:
 
-| processes | full suite |
-| --- | --- |
-| 4 | 170s |
-| 8 (the default) | ~90s |
-| 12 | 62s |
-| `auto` (16, what CI sets) | **52s** |
-| 12, without `--functional` | 52s |
+| processes | full suite | `composer coverage` |
+| --- | --- | --- |
+| 4 | 170s | |
+| 8 (the default) | ~90s | 137s |
+| 12 | 62s | |
+| `auto` (16, what CI sets) | 52s | 76s |
+| 24 | 39.5s | **64–72s** |
+| 32 | **34s** | E2e errors — see below |
+| 48 | wedged at 99% | |
 
-So the throttle costs **more than three times the wall clock**, and it is worth
-reaching for only when the box really is shared — check `uptime` rather than
-assuming. `nice` costs nothing when the box is idle and yields the CPU when it
-is not, so it is worth adding even at full parallelism.
+So the throttle costs **five times the wall clock**, and it is worth reaching
+for only when the box really is shared — check `uptime` rather than assuming.
+`nice` costs nothing when the box is idle and yields the CPU when it is not, so
+it is worth adding even at full parallelism.
+
+### More processes than cores, because the suite waits
+
+`auto` is not the ceiling, and the reason is in the CPU numbers: at 16 processes
+the full suite burns 182s of CPU over 51.7s of wall clock — **3.5 of 16 cores**.
+Under coverage at 8 it is 3.3. The suite is **wait-bound, not CPU-bound**: the
+Revolt loop runs in real time, ~70 `sleep`/`usleep` sites sit in ~10 Unit
+classes, and E2e pays a ~0.4s boot floor per test. Four fifths of the box is
+idle while a gate runs, which is why oversubscribing it works — at 32 processes
+utilisation reaches 6.7 cores and the suite is 34s.
+
+Where it stops, both measured here:
+
+- **48 processes wedged** at `6588 / 6610 (99%)` with no worker processes left
+  alive and three dangling pipes on the parent — the wedge `testing.md`
+  describes, reached by asking for more workers than the box will start
+  cleanly.
+- **32 under `composer coverage` failed two E2e tests** (a flash asserted as
+  `Opened https://…` never arrived) while completing fine without coverage. pcov
+  makes every worker slower, so the same worker count buys more contention; the
+  coverage pass has a lower ceiling than the plain suite. 24 is green under both.
+
+`--testsuite Unit` gains almost nothing past 16 (23s at 16, 20.0s at 24, 21.5s
+at 32): the oversubscription win lives in E2e and Integration, which are the
+suites that wait.
+
+**Killing a wedged run means killing the tree.** paratest's workers do not die
+with their parent, and orphans wedge the NEXT run at exactly the same point —
+observed twice in a row, and cured by `pkill -9 -f vendor/bin/paratest` before
+re-running. Check `ps` for stragglers before believing a second wedge.
 
 `--functional` splits by test METHOD rather than by file. It is what makes the
 suite's ordering assumptions safe to hold (see `phpunit.xml.dist` on
@@ -261,12 +293,12 @@ that might be.
 edit. While work is in progress, two commands are the loop:
 
 ```bash
-vendor/bin/paratest --processes=16 --functional --testsuite Unit   # 23s
-composer verify:quick                                             # 4s
+vendor/bin/paratest --processes=24 --functional --testsuite Unit   # 20s
+composer verify:quick                                              # 4s
 ```
 
-The Unit suite is **5,508 of the 6,610 tests** and runs in **23s at 16
-processes, 41s at 8** — a quarter of the full suite's wall clock for five
+The Unit suite is **5,508 of the 6,610 tests** and runs in **20s at 24
+processes, 23s at 16, 41s at 8** — a quarter of the full suite's wall clock for five
 sixths of its cases. What it does not run is the part that boots an IDE:
 Integration, E2e and the plugin suites. So it is the fast answer to "did I
 break the thing I just touched", and it is not an answer about wiring, focus,
@@ -294,6 +326,16 @@ Where it is visible is a single-shot command — `bin/porta-dev container` goes
 opcache.enable_cli = 1
 opcache.file_cache = /tmp/php-opcache   ; persists compiled code across runs
 ```
+
+**Spotlight indexes the build output.** `mdfind -onlyin . "kMDItemFSName ==
+'clover.xml'"` returns `coverage/clover.xml` — a 1.8MB file every coverage run
+rewrites, next to a 65MB `.phpunit.cache/`, all of it re-indexed afterwards.
+`mds` and `mdworker_shared` were the top CPU consumers on this box between gate
+runs. Dropping an empty `.metadata_never_index` into `coverage/` and
+`.phpunit.cache/` stops it; both directories are gitignored, so the marker is
+per-checkout and costs nothing. This is an observation with a cheap remedy, not
+a measured speed-up — what it definitely buys is quieter measurements, since
+that indexing lands on whatever runs next.
 
 **Never under pcov.** opcache serving a cached op_array bypasses pcov's
 compile-time instrumentation, and the damage is to the DENOMINATOR, which is
