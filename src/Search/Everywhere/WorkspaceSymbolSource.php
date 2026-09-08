@@ -21,7 +21,7 @@ final class WorkspaceSymbolSource implements SearchSource
     private int $token = 0;
 
     /**
-     * @param \Closure(string, \Closure(list<array{path: string, line: int, name: string, kind: int, label: string}>): void): void $searchSymbols
+     * @param \Closure(string, \Closure(list<array{path: string, line: int, name: string, kind: int}>): void): void $searchSymbols
      * @param list<int>                    $kinds    allowed LSP SymbolKinds; empty = all
      * @param \Closure(string, OpenFocus): void $openFile fn(absolutePath, focus)
      * @param \Closure(int, int): void     $jumpTo   fn(line, col)

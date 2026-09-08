@@ -25,8 +25,8 @@ final class WorkspaceSymbolClientTest extends TestCase
 
         $this->assertSame(
             [
-                ['path' => 'src/User.php', 'line' => 9, 'name' => 'User', 'kind' => 5, 'label' => '[class] User'],
-                ['path' => 'src/f.php', 'line' => 2, 'name' => 'greet', 'kind' => 12, 'label' => '[fn] greet'],
+                ['path' => 'src/User.php', 'line' => 9, 'name' => 'User', 'kind' => 5],
+                ['path' => 'src/f.php', 'line' => 2, 'name' => 'greet', 'kind' => 12],
             ],
             $mapped,
         );
@@ -43,7 +43,7 @@ final class WorkspaceSymbolClientTest extends TestCase
         );
 
         $this->assertCount(1, $mapped, 'the uri-less symbol is dropped');
-        $this->assertSame('Bare', $mapped[0]['label'], 'unknown kind → no [kind] prefix');
+        $this->assertSame('Bare', $mapped[0]['name']);
         $this->assertSame(0, $mapped[0]['line']);
         $this->assertSame(0, $mapped[0]['kind']);
     }
@@ -72,16 +72,6 @@ final class WorkspaceSymbolClientTest extends TestCase
         $this->assertSame(5, $mapped[0]['kind'], 'cast to int, not left as the string "5"');
         $this->assertSame('123', $mapped[0]['name'], 'cast to string, not left as the int 123');
         $this->assertSame(9, $mapped[0]['line'], 'cast to int, not left as the string "9"');
-    }
-
-    public function testMapTrimsTheLabelWhenTheNameIsEmpty(): void
-    {
-        $mapped = WorkspaceSymbolClient::map(
-            [['name' => '', 'kind' => 5, 'location' => ['uri' => 'file:///proj/a.php', 'range' => ['start' => ['line' => 0]]]]],
-            new ProjectPaths('/proj'),
-        );
-
-        $this->assertSame('[class]', $mapped[0]['label'], 'no trailing space from the empty name');
     }
 
     public function testMapOfANonArrayResultIsEmpty(): void
