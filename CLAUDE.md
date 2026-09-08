@@ -12,32 +12,32 @@ routed below — read the page before working in that area, not after.
 ## Commands
 
 ```bash
-composer dev      composer test      composer test:serial
-composer analyze  composer lint      composer arch
-composer format   composer format:check                composer duplication
+composer verify   composer verify:quick   composer dev    composer test
+composer analyze  composer lint      composer arch       composer test:serial
+composer format   composer format:check                  composer duplication
 composer coverage:check              composer container
 ```
 
 Always invoke the gates through the composer scripts. Capture their output rather than
 paging it: `composer analyze > /tmp/x.log 2>&1; echo "exit=$?"`.
 
-The parallel gates default to HALF the cores, because a dev box usually shares them
-with runners or another agent (CI sets `PORTA_TEST_PROCESSES: auto` explicitly). Turn
-it down further with `PORTA_TEST_PROCESSES=4 nice -n 10 composer test`, or up with
-`auto`; `contributing.md` has the numbers.
+The parallel gates default to HALF the cores, because a dev box usually shares them with
+runners or another agent (CI sets `PORTA_TEST_PROCESSES: auto`). Turn it down with
+`PORTA_TEST_PROCESSES=4 nice -n 10`, or up with `auto`; `contributing.md` has the numbers.
 
-## Definition of done — every commit passes all seven
+## Definition of done — `composer verify` green
 
-- `composer test` — green.
-- `composer coverage:check` — **100% line coverage**, over `src/` AND every plugin's own
-  `src/`. Plugin code must be covered by that plugin's OWN tests.
-- `composer analyze` and `composer lint` — **zero findings each**. Both exit 0 while
-  reporting issues, so read the output, not the exit code. Fix, or suppress in place with
-  a reasoned `// @mago-expect lint:<rule> -- why` / `analysis:<rule>`.
+All seven, cheapest first, stopping at the first failure; `verify:quick` skips the tail.
+
+- `composer coverage:check` — **100% line coverage** over `src/` AND every plugin's own
+  `src/`, by that plugin's OWN tests. It runs the suite, so `composer test` is not a gate.
+- `composer analyze` and `composer lint` — **zero findings each** at any severity: the
+  scripts pass `--minimum-fail-level=note`, where mago's own default fails on errors only.
+  Fix, or suppress with a reasoned `// @mago-expect lint:<rule> -- why`.
 - `composer arch` — fails on drift in EITHER direction. A new edge is added to the
   allowlist in the same commit; a vanished edge is removed from it.
-- `composer duplication` — **zero clones**, over everything. Share it, or say in the
-  code why the copy is the honest shape. There is no allowlist.
+- `composer duplication` — **zero clones** tree-wide, no allowlist: share it, or say in
+  the code why the copy is the honest shape.
 - `composer format:check` — clean.
 
 ## Hard rules

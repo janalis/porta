@@ -53,8 +53,8 @@
         "dev": "@php bin/porta",
         "format": "mago format",
         "format:check": "mago format --check",
-        "lint": "mago lint",
-        "analyze": "mago analyze",
+        "lint": "mago lint --minimum-fail-level=note",
+        "analyze": "mago analyze --minimum-fail-level=note",
         "test": "@php vendor/bin/paratest --processes=${PORTA_TEST_PROCESSES:-$(( ($(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) + 1) / 2 ))} --functional",
         "test:serial": "@php vendor/bin/phpunit --order-by=default",
         "coverage": "@php -d pcov.enabled=1 -d pcov.directory=. -d pcov.exclude='#/(vendor|tests)/#' vendor/bin/paratest --processes=${PORTA_TEST_PROCESSES:-$(( ($(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) + 1) / 2 ))} --functional --passthru-php=\"'-d' 'pcov.enabled=1' '-d' 'pcov.directory=.' '-d' 'pcov.exclude=#/(vendor|tests)/#'\" --coverage-clover coverage/clover.xml",
@@ -66,8 +66,20 @@
             "@php bin/porta-dev coverage:check coverage/plugins-clover.xml 100 --only=/plugins/ --require=plugins"
         ],
         "arch": "@php bin/porta-dev arch",
+        "flake:scan": "@php bin/porta-dev flake:scan",
         "duplication": "@php vendor/bin/phpcpd --exclude vendor src plugins tests bin config",
         "container": "@php bin/porta-dev container",
+        "verify:quick": [
+            "@format:check",
+            "@lint",
+            "@analyze",
+            "@arch",
+            "@duplication"
+        ],
+        "verify": [
+            "@verify:quick",
+            "@coverage:check"
+        ],
         "mutate": [
             "@php -d pcov.enabled=1 vendor/bin/phpunit --testsuite=Unit --order-by=default --coverage-xml=coverage/infection/coverage-xml --log-junit=coverage/infection/junit.xml",
             "@php vendor/bin/infection --coverage=coverage/infection --skip-initial-tests --git-diff-lines --git-diff-base=HEAD --threads=${PORTA_MUTATE_THREADS:-$(( ($(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) + 1) / 2 ))} --test-framework-options='--testsuite=Unit --colors=never' --show-mutations"

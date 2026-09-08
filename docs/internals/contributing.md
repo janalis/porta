@@ -13,6 +13,9 @@ composer coverage:check # the suite with coverage, 100% enforced
 composer lint           # mago lint
 composer arch           # the architecture ratchet
 composer duplication    # phpcpd — zero copy-paste clones, tree-wide
+composer verify         # all seven, cheapest first, stopping at the first failure
+composer verify:quick   # the five fast ones (~3s) — the mid-work check
+composer flake:scan     # run the suite N times and name what failed at least once
 composer format         # mago format (apply)
 composer format:check   # mago format --check
 composer container      # kernel-less debug:container
@@ -40,9 +43,24 @@ PORTA_TEST_PROCESSES=4 nice -n 10 composer test   # busier than usual
 PORTA_TEST_PROCESSES=auto composer test           # the box is yours
 ```
 
-Measured on a 16-core machine: ~20s at `auto`, ~2m45s at 4. `nice` costs nothing
-when the box is idle and yields the CPU when it is not, so it is worth adding
-even at full parallelism.
+Measured on the 16-core machine, load ~7, one run at a time:
+
+| processes | full suite |
+| --- | --- |
+| 4 | 170s |
+| 8 (the default) | ~90s |
+| 12 | 62s |
+| 12, without `--functional` | **52s** |
+
+So the throttle costs **more than three times the wall clock**, and it is worth
+reaching for only when the box really is shared — check `uptime` rather than
+assuming. `nice` costs nothing when the box is idle and yields the CPU when it
+is not, so it is worth adding even at full parallelism.
+
+`--functional` splits by test METHOD rather than by file. It is what makes the
+suite's ordering assumptions safe to hold (see `phpunit.xml.dist` on
+`executionOrder="random"`), and at 12 processes it costs 10s against per-class
+chunking — a trade the suite makes on purpose, not an oversight.
 
 `composer container` takes flags after `--`: `--loaded`, `--tag=<name>`,
 `--aliases`.
@@ -65,7 +83,13 @@ composer analyze > /tmp/x.log 2>&1; echo "exit=$?"
 
 ## Definition of done
 
-Every commit passes all seven. CI (`.github/workflows/ci.yml`) runs them.
+`composer verify` runs all seven and stops at the first failure — cheapest
+first, `coverage:check` last, because it runs the whole suite and so subsumes
+`composer test`. Running `composer test` *and* `coverage:check` ran that suite
+twice; over one session that repetition was 31% of 233 minutes of test
+execution. CI (`.github/workflows/ci.yml`) still calls the gates individually
+across its five jobs, deliberately: `testing.md`'s flake doctrine reads the
+divergence between the `tests` and `coverage` jobs as its machine-load tell.
 
 **`composer test`** — green. Two tests drive real git and opener subprocesses
 and were hardened against timing: the git plugin's
@@ -117,10 +141,14 @@ codebase: `PerfCollector`'s load-average cast is unprovable because mago's
 `sys_getloadavg()` stub returns an untyped array, and every explicit narrowing
 adds a branch the coverage gate then refuses.
 
-**Both mago gates exit 0 while reporting issues.** The exit code is not the
-gate — read the tail of the output. That is not theoretical: the lint tail
-reached 93 findings and analyze 3 warnings before anyone noticed, because
-everything in this repo checks `$?`.
+**Both mago scripts pass `--minimum-fail-level=note`, and that is load-bearing.**
+mago's own default is `error`, so `mago lint` exits **0** while reporting
+warnings — measured across a session, 11 of 11 runs with findings exited 0,
+while `mago analyze` exited non-zero every time. So CI's Lint step was green on
+warnings, and the gate held only because a human read the output; that is also
+how the lint tail once reached 93 findings and analyze 3 warnings before anyone
+noticed. With the flag the exit code IS the gate again — but keep capturing the
+output anyway, because the code says only that something failed.
 
 **`composer lint`** — **zero findings** (the 2026-08 burn-down retired the
 standing tail, so the count IS the contract now — no comparing against a
@@ -184,6 +212,37 @@ and each plugin's declared class directory, which means it scans itself: keep
 it importing nothing from `Porta\`, or it grows the very edges it grades. That
 is also why it re-reads each plugin's `composer.json` by hand instead of using
 `PluginManifest`.
+
+## What the verify loop actually costs
+
+Measured on the 16-core box at four processes, one command at a time, so the
+ratios are trustworthy even where the absolutes are not:
+
+| | seconds |
+| --- | --- |
+| the five static gates together | **4.1** |
+| `composer test` | 170 |
+| `composer coverage` (the same suite, under pcov) | 241 |
+| `composer coverage:plugins` (serial) | 146 |
+| `composer coverage:check` end to end | **387** |
+
+Three things follow, and they are why `composer verify` is shaped the way it is.
+
+**The static gates are free.** All five cost 4s — 1% of `coverage:check`.
+Running them first costs nothing and stops a six-minute run that a missing
+newline would have failed anyway. Parallelising them would buy nothing and lose
+deterministic output.
+
+**pcov and the forced container recompile cost 71s** — the same 6,609 tests are
+170s without coverage and 241s with. Part is instrumentation; part is
+`tests/bootstrap.php` turning the container cache off under pcov, so each of the
+suite's ~458 Ide boots recompiles instead of loading the shared dump.
+
+**The serial plugins pass costs 146s for work that takes 36s in parallel.** That
+110s is the price of the php-code-coverage merge bug the pass exists to dodge,
+and it is the largest avoidable number in the loop — see `plugin-system.md` for
+why parallel paratest cannot be the answer, and `decisions.md` for the shape
+that might be.
 
 ## Startup performance notes
 
