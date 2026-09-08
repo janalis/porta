@@ -1738,6 +1738,40 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## Three modal titles were English in every locale (built 2026-09-08, `130bd4db`)
+
+Went to RENDER the clipboard picker, could not get the overlay to composite in
+either the widget rig or a booted probe, and read the code that builds it
+instead. The defect was there: `pasteFromHistory()` handed the overlay a bare
+`'Paste from History'`, and `openListOverlay()` does not translate — it passes
+the title straight to the overlay host. Every other overlay in `src/`
+translates at its call site.
+
+**Nothing could catch it, and the reason is this round's recurring shape.** The
+catalogs DO carry "Paste from History" — as the ACTION's palette label,
+translated somewhere else entirely. `CatalogCoverageTest` gates `trans()`
+literals, so a string present in the catalogs FOR A DIFFERENT CONSUMER satisfies
+every gate while this call site bypasses translation completely. Third instance
+this round of a gate satisfied by something that only looks like the thing.
+
+**Enumerated rather than fixed the one**, which is the habit that keeps paying:
+`grep openListOverlay | grep -v trans` found two more — `BufferNavigator`'s
+'Recent Files', and the peek overlay's `'Peek: '.$file.':'.$line`, whose entire
+title is assembled from a literal. `RefactorController`'s four and
+`BufferService`'s were already right, so the rule was known and the exceptions
+were drift.
+
+**The test asserts the FRENCH title.** With the default `en` translator every
+one of these renders identically whether it is translated or not — an
+assertion on the English string passes in both worlds and is the reason this
+survived. When a fix is "route it through the translator", the only honest
+assertion is in another locale.
+
+The picker still has not been seen on screen. It is composited by the app-level
+overlay host, not by the editor widget, so neither the widget rig nor a probe
+that drives keys reaches it; the E2e suite is where that assertion belongs and
+this is a note that it is still owed.
+
 ## The snapshot list did not say whose (built 2026-09-08, `d14e3735`)
 
 Rendered the panel the deleted-file path opens, and read it:
