@@ -1877,6 +1877,41 @@ bootstrap-sweep hypothesis was falsified earlier (the sweep contributes 0 files,
 and `PORTA_CONTAINER_CACHE=off` is what makes the merge correct), and the
 `pcov.directory` half is measured and declined.
 
+## Go to Super Method, and what the servers actually advertise (2026-09-08, `b8cf05bb`)
+
+The last feature on the open list, and it was open because "no LSP request
+answers it" — still true: neither phpantom nor phpactor advertises a call or
+type hierarchy. `Search/SuperMethodNavigator` answers it from the project's own
+files instead, climbing `extends` / `implements` / `use <trait>` by SHORT name
+through the shared `FileIndex`, because a class's short name is its file name in
+any PSR-4 tree. That is `TestNavigator`'s trick, reused rather than reinvented.
+
+Three things the tests forced, each of which had been wrong first:
+
+- **Interface and abstract methods have no body**, so `BreadcrumbScanner` opens
+  no scope for them — and those are precisely the declarations an override
+  points at. The lookup is a token pass; the first version found traits and
+  grandparents and silently missed every interface.
+- **Vendored parents are the search index's scope, not this feature's.** The
+  filter written here killed no mutation (the index already excludes vendor by
+  default) and was the wrong answer once "Search vendor/ files" is on — the
+  parent you want is often the framework's. Both directions of that setting
+  have a test now.
+- **The parents that matter are the enclosing type's.** Setting "collect from
+  any type in the file" passed every test until a two-classes-in-one-file case
+  was written; fixtures are exactly where that shape lives.
+
+**And the probe that closed the sibling idea.** Go to Implementation looked like
+the same story — until both servers were re-probed: `definitionProvider`,
+`implementationProvider`, `typeDefinitionProvider`, `referencesProvider`,
+`documentSymbolProvider` and `workspaceSymbolProvider` are all advertised by
+BOTH. The existing `goto_implementation` action is the whole feature, and there
+is nothing of ours to add. The capability table now records the navigation half
+it had never covered.
+
+*The rule this keeps proving:* probe before building. The one gap that was real
+took a day; the one that looked identical took ten minutes to disprove.
+
 ## Round 8: render the surface, then read it (2026-09-08, `0e68d5d4`…`9f83f35b`)
 
 Six defects, every one found by booting the IDE into a `VirtualTerminal` and
