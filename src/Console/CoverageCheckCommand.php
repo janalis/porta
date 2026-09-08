@@ -159,7 +159,10 @@ final class CoverageCheckCommand extends Command
 
         // A scoped run sums the rows it kept; an unscoped one over a SINGLE
         // report reads that report's own totals, which also count files with
-        // nothing executable.
+        // nothing executable — and, if one ever reached the report, vendored
+        // ones, which the rows skip. That difference is why `composer coverage`
+        // excludes vendor at the PCOV level rather than leaving it to this:
+        // third-party lines in an unscoped total dilute the gate.
         $totals = null === $sole ? null : self::element($sole, '/coverage/project/metrics');
         $ownTotals = null === $only && null !== $sole;
         $totalStatements = $ownTotals ? self::number($totals, 'statements') : array_sum(array_column($rows, 'statements'));

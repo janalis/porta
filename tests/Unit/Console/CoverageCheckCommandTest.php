@@ -497,6 +497,31 @@ final class CoverageCheckCommandTest extends TestCase
         );
     }
 
+    public function testOneReportUnscopedIsGradedByItsOwnTotals(): void
+    {
+        // The two totals differ exactly where the rows skip something the
+        // report counted: a vendored file. That is why `composer coverage`
+        // excludes vendor at the PCOV level rather than leaving it to this —
+        // a report carrying third-party lines would dilute an unscoped total,
+        // and the gate would pass on someone else's code.
+        $project = new TempProject(['clover.xml' => $this->clover(
+            [
+                '/p/src/Widget/Zebra.php' => [4, 4],
+                '/p/vendor/acme/Lib.php' => [1, 6], // skipped as a ROW, counted in the totals
+            ],
+            totalCovered: 5,
+            totalStatements: 10,
+        )]);
+
+        $tester = $this->tester();
+        $status = $tester->execute(['clover' => $project->path('clover.xml'), 'threshold' => '100']);
+        $display = $tester->getDisplay();
+
+        $this->assertStringNotContainsString('Lib.php', $display, 'a vendored file is never a row');
+        $this->assertStringContainsString('TOTAL: 50.00% (5/10)', $display, "and the report's own totals are what an unscoped run grades");
+        $this->assertSame(Command::FAILURE, $status);
+    }
+
     public function testTwoReportsAreGradedTogether(): void
     {
         // The sharded plugin pass: several serial runs, one report each, and
