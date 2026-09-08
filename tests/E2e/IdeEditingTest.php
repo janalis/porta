@@ -9,6 +9,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferService;
 use Porta\Editor\CloseMode;
 use Porta\Editor\OpenFocus;
+use Porta\Editor\SelectionMode;
 use Porta\Support\RevoltScheduler;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
@@ -254,6 +255,78 @@ final class IdeEditingTest extends TestCase
         );
 
         $this->addToAssertionCount(1);
+    }
+
+    /**
+     * The clipboard history through the running app, because the picker is
+     * composited by the OVERLAY HOST and not by the editor widget: every other
+     * test of it reads state (`pickerOpen`, then Down and Enter) and would pass
+     * on a picker that draws nothing at all. This is the one that looks.
+     *
+     * It also reads the ROW SHAPE off the screen. Newlines render as `⏎`
+     * rather than the entry being cut to its first line, because what tells two
+     * copies apart is usually their shape — and that argument is only worth
+     * anything if the marker actually reaches the terminal.
+     */
+    public function testTheClipboardHistoryPickerDRAWSEveryCopyWithItsShape(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n\$alpha = 1;\n\$beta = 2;\n\$gamma = 3;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => function ($tui, $terminal): void {
+                    $document = $tui->getById('editor')->getDocument();
+                    // One single-line copy and one spanning two lines, so the
+                    // ⏎ has something to mark and the rows differ in shape.
+                    foreach ([[1, 1], [2, 3]] as [$from, $to]) {
+                        $document->setCursor($from, 0);
+                        $document->beginSelect();
+                        $document->setCursor($to, \strlen($document->getLine($to)), SelectionMode::Keep);
+                        $tui->handleInput("\x03"); // ctrl+c
+                    }
+
+                    $terminal->clearOutput();
+                    $tui->handleInput("\x1b[118;6u"); // ctrl+shift+v
+                    $this->awaitPainted($tui, $terminal, 'Paste from History');
+
+                    // The BOX, not the screen: every string in this picker is
+                    // also in the buffer behind it, so a screen-wide assertion
+                    // passes on a picker that offers nothing at all — measured,
+                    // by cutting the older entry and watching it still pass.
+                    $box = self::pickerBox(AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->assertStringContainsString('$beta = 2;⏎$gamma = 3;', $box, 'the two-line copy keeps its shape on one row');
+                    $this->assertStringContainsString('$alpha = 1;', $box, 'and the older copy is still offered');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    /** The last-painted picker card, from its title row to the frame's foot. */
+    private static function pickerBox(string $screen): string
+    {
+        $rows = explode("\n", $screen);
+        $start = null;
+        foreach ($rows as $index => $row) {
+            if (!str_contains($row, 'Paste from History')) {
+                continue;
+            }
+            $start = $index; // the LAST frame's card, not the first
+        }
+        self::assertNotNull($start, 'no picker card was painted at all');
+        $card = [];
+        for ($row = $start; $row < \count($rows); ++$row) {
+            $card[] = $rows[$row];
+            if (str_contains($rows[$row], Glyphs::MODAL_BOTTOM_LEFT)) {
+                break;
+            }
+        }
+
+        return implode("\n", $card);
     }
 
     public function testCopyPathAndCopyReferenceReachTheCLIPBOARDFromTheirChords(): void
