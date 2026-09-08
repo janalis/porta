@@ -6,8 +6,11 @@ namespace Porta\Editor;
 
 use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
+use Porta\Ui\ShortcutFormatter;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\ResultsPanelMode;
+use Porta\Workbench\Notifier;
+use Symfony\Component\Tui\Input\Keybindings;
 
 /**
  * The two bookmark verbs: toggle one on the caret's line, and list them all.
@@ -26,6 +29,8 @@ final readonly class BookmarkActions
         private BottomDock $dock,
         private Translator $translator,
         private BookmarkDecorations $decorations,
+        private Notifier $notifier,
+        private Keybindings $keys,
     ) {}
 
     /** F11 on the caret's line. A viewer tab has no lines to bookmark. */
@@ -46,6 +51,22 @@ final readonly class BookmarkActions
     /** The Bookmarks tool — every mark across the project, newest file order. */
     public function show(): void
     {
-        $this->dock->showList(ResultsPanelMode::Bookmarks, $this->translator->trans('Bookmarks'), $this->rows->build());
+        $rows = $this->rows->build();
+        $this->dock->showList(ResultsPanelMode::Bookmarks, $this->translator->trans('Bookmarks'), $rows);
+        if ([] !== $rows) {
+            return;
+        }
+
+        // An empty panel reading `0 results` teaches nothing, and this panel is
+        // the one people reach first: the verb that fills it lives on a key
+        // they have not pressed yet. The key is resolved, not spelled — on a
+        // Mac F11 is a media key until the keyboard setting says otherwise, so
+        // this is exactly the binding somebody rebinds.
+        $binding = ShortcutFormatter::format($this->keys->getBindings('toggle_bookmark')[0] ?? '');
+        $this->notifier->flash(
+            '' === $binding
+                ? $this->translator->trans('No bookmarks yet — Toggle Bookmark adds one on the caret’s line')
+                : $this->translator->trans('No bookmarks yet — press %key% on a line to add one', ['%key%' => $binding]),
+        );
     }
 }

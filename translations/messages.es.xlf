@@ -1142,6 +1142,14 @@
         <source>Super method: %label%</source>
         <target>Método padre: %label%</target>
       </trans-unit>
+      <trans-unit id="837">
+        <source>No bookmarks yet — press %key% on a line to add one</source>
+        <target>Aún no hay marcadores — pulsa %key% en una línea para añadir uno</target>
+      </trans-unit>
+      <trans-unit id="838">
+        <source>No bookmarks yet — Toggle Bookmark adds one on the caret’s line</source>
+        <target>Aún no hay marcadores — «Alternar marcador» añade uno en la línea del cursor</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>Árbol: contraer</target>

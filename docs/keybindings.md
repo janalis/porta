@@ -7,6 +7,14 @@ rebindable — see [Custom keymap](#custom-keymap) below, or use
 Heavily modified chords (e.g. `Alt+Shift+↑`) work best in terminals with the
 Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 
+**On macOS the function keys are media keys** unless *System Settings →
+Keyboard → Use F1, F2, etc. as standard function keys* is on — otherwise `F11`
+dims the display rather than dropping a bookmark, and the app never sees it.
+Either turn that setting on, hold `Fn`, or rebind: this map uses `F2`, `F5`–`F12`
+for problems, run/debug, bookmarks, the menu, panes and the context menu, so a
+Mac with the default keyboard setting will feel like several of them do
+nothing.
+
 ## Application
 
 | Key | Action |

@@ -1142,6 +1142,14 @@
         <source>Super method: %label%</source>
         <target>スーパーメソッド: %label%</target>
       </trans-unit>
+      <trans-unit id="837">
+        <source>No bookmarks yet — press %key% on a line to add one</source>
+        <target>ブックマークはまだありません — 行の上で %key% を押すと追加できます</target>
+      </trans-unit>
+      <trans-unit id="838">
+        <source>No bookmarks yet — Toggle Bookmark adds one on the caret’s line</source>
+        <target>ブックマークはまだありません — 「ブックマークの切り替え」でカーソル行に追加できます</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>ツリー: 折りたたむ</target>

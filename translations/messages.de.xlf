@@ -1142,6 +1142,14 @@
         <source>Super method: %label%</source>
         <target>Übergeordnete Methode: %label%</target>
       </trans-unit>
+      <trans-unit id="837">
+        <source>No bookmarks yet — press %key% on a line to add one</source>
+        <target>Noch keine Lesezeichen — %key% auf einer Zeile fügt eines hinzu</target>
+      </trans-unit>
+      <trans-unit id="838">
+        <source>No bookmarks yet — Toggle Bookmark adds one on the caret’s line</source>
+        <target>Noch keine Lesezeichen — „Lesezeichen umschalten“ fügt eines in der Cursorzeile hinzu</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>Baum: einklappen</target>

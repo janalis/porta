@@ -13,25 +13,33 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\LineTextReader;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestTui;
 use Porta\Ui\Glyphs;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\ResultsPanelMode;
+use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class BookmarkActionsTest extends TestCase
 {
+    use StatusReads;
+
     private BufferManager $buffers;
     private Bookmarks $bookmarks;
     private BottomDock $dock;
     private ResultsPanelWidget $results;
     private CodeEditorWidget $editor;
+    private StatusBarWidget $status;
+    private ?Keybindings $keys = null;
 
     private function actions(): BookmarkActions
     {
@@ -48,6 +56,8 @@ final class BookmarkActionsTest extends TestCase
             $this->dock,
             new Translator('en'),
             new BookmarkDecorations($this->bookmarks, $this->editor->decorations()),
+            new Notifier($this->status = new StatusBarWidget(), TestTui::create(100, 24)),
+            $this->keys ?? new Keybindings(['toggle_bookmark' => ['f11']]),
         );
     }
 
@@ -129,5 +139,43 @@ final class BookmarkActionsTest extends TestCase
         $actions->toggle();
 
         $this->assertSame([], $this->bookmarks->all());
+    }
+
+    public function testAnEmptyBookmarksPanelSaysHowToFillIt(): void
+    {
+        // The panel people reach first, showing `0 results` and teaching
+        // nothing — while the verb that fills it lives on a key they have not
+        // pressed. The key is RESOLVED: on a Mac F11 is a media key until the
+        // keyboard setting says otherwise, so this is exactly the binding
+        // somebody rebinds.
+        $actions = $this->actions();
+
+        $actions->show();
+
+        $this->assertStringContainsString('No bookmarks yet', $this->flashText($this->status));
+        $this->assertStringContainsString('F11', $this->flashText($this->status));
+    }
+
+    public function testWithNoKeyBoundItNamesTheActionInstead(): void
+    {
+        // A keymap file may name the action with no keys at all — the merge
+        // replaces per action — and printing an empty chord would read as a
+        // typo rather than as an unbound verb.
+        $this->keys = new Keybindings(['toggle_bookmark' => []]);
+
+        $this->actions()->show();
+
+        $this->assertStringContainsString('Toggle Bookmark adds one', $this->flashText($this->status));
+    }
+
+    public function testWithBookmarksThePanelSpeaksForItself(): void
+    {
+        $actions = $this->actions();
+        $this->buffers->open('/p/a.php', "one\ntwo\n");
+        $actions->toggle();
+
+        $actions->show();
+
+        $this->assertSame('', trim($this->flashText($this->status)), 'a list that has rows needs no instructions');
     }
 }

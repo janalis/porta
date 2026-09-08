@@ -1142,6 +1142,14 @@
         <source>Super method: %label%</source>
         <target>Metodo padre: %label%</target>
       </trans-unit>
+      <trans-unit id="837">
+        <source>No bookmarks yet — press %key% on a line to add one</source>
+        <target>Nessun segnalibro — premi %key% su una riga per aggiungerne uno</target>
+      </trans-unit>
+      <trans-unit id="838">
+        <source>No bookmarks yet — Toggle Bookmark adds one on the caret’s line</source>
+        <target>Nessun segnalibro — «Attiva/disattiva segnalibro» ne aggiunge uno sulla riga del cursore</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>Albero: comprimi</target>

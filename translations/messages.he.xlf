@@ -1142,6 +1142,14 @@
         <source>Super method: %label%</source>
         <target>מתודת־על: %label%</target>
       </trans-unit>
+      <trans-unit id="837">
+        <source>No bookmarks yet — press %key% on a line to add one</source>
+        <target>אין עדיין סימניות — הקישו %key% על שורה כדי להוסיף</target>
+      </trans-unit>
+      <trans-unit id="838">
+        <source>No bookmarks yet — Toggle Bookmark adds one on the caret’s line</source>
+        <target>אין עדיין סימניות — ״החלפת סימנייה״ מוסיפה אחת בשורת הסמן</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>עץ: כווץ</target>
