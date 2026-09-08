@@ -1738,6 +1738,50 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## "A hash does not run backwards" was only half true (built 2026-09-08, `b3daad2c`)
+
+Checked what the new project-wide view would actually SHOW on this machine's
+real store before assuming it worked. **Two directories, four snapshots, zero
+sidecars** — so Recent Changes was empty on arrival and would stay empty until
+each of those files was saved again. For a file nobody is editing any more that
+never happens, and that is the file whose history is worth having. A feature
+that is correct and empty is not shipped.
+
+**The claim in my own docblock was the obstacle, and it was wrong.** "The
+directory is named by a hash of the path and a hash does not run backwards" is
+true, and beside the point: a hash cannot be INVERTED but it can be
+RECOGNISED, and the set of paths worth trying is the files in this project.
+Hashing 1,580 of them matched both directories (`.porta.json`, `src/Ide.php`).
+
+**This is [[claims-are-not-guards]] in a docblock, one level up from the usual
+form.** The sentence was not merely unverified — it was load-bearing, because
+it is what stopped me writing the backfill in the first place. An impossibility
+argument in a comment deserves the same suspicion as an invariant in a comment,
+and the test is the same: state the domain. "A hash cannot be inverted" and
+"a hash over an enumerable domain cannot be recognised" are different claims,
+and only the first one is true.
+
+**Three decisions in the scan, each with its cost measured:**
+
+- **Skip list** (`.git`, `vendor`, `node_modules`, `.idea`, `.phpunit.cache`):
+  7,000 files and ~200ms on this repo instead of tens of thousands.
+- **A bound**, now a constructor knob for the same reason `$maxPerFile` is one:
+  a project can be arbitrarily large and a one-off backfill must not become a
+  hang on somebody's monorepo.
+- **An EMPTY sidecar for whatever it cannot name**, which `recent()` already
+  reads as "skip". That marker is the whole reason the scan happens once. Its
+  absence would be a 200ms walk on EVERY invocation for the rest of the store's
+  life, because a deleted file's directory is exactly the kind that never
+  matches — and deleted files became a supported case one commit earlier. A
+  save writes the real name over any marker, so nothing is written off forever.
+
+**Six mutants, five killed; the sixth is the one worth writing down.** Emptying
+the skip list changes no behaviour any test could see — it is a performance
+constant. What made it testable was asking what it COSTS rather than what it
+saves: a file edited inside `vendor/` is not backfilled. That is a real,
+user-visible consequence of a performance decision, and pinning it turns an
+equivalent mutant into a killed one without inventing a timing assertion.
+
 ## A deleted file can be brought back (built 2026-09-07, `412d64f7`)
 
 The limitation the entry below names, closed one commit later — and the reason
