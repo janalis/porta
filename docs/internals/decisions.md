@@ -1738,6 +1738,33 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## Placeholder parity: six mismatches, no defects, one trap (built 2026-09-08, `85efe632`)
+
+Checked every `%name%` in every source string against its target, across all
+seven catalogs — 731 units each. **Six mismatches, and not one is a bug.** Five
+locales translate the ZERO-count tool sentence with `%noun%` where the English
+says `%nouns%` ("aucun problème" is singular), and Japanese uses the same noun
+in both branches of the plural because it does not mark one.
+
+**They work only because `flashCount()` hands BOTH nouns to BOTH sentences.**
+That line reads like a shrug — why supply a placeholder the string does not
+name? — and it is load-bearing: trimming the array to the placeholders the
+ENGLISH source happens to use would put a literal `%noun%` on screen in five
+locales. Nothing would catch it. The catalogs would still be complete, the
+strings still translated, and `en` still perfect.
+
+So the reason is a comment at the call site and the behaviour is a test — in
+FRENCH, because `en` cannot tell the two worlds apart. Same lesson as the modal
+titles: **when a fix or an invariant is about translation, the assertion has to
+be in a locale that differs.**
+
+**And the sweep's own result is worth recording as a method note.** Parity is
+not a gate-able invariant: a target may legitimately use a placeholder the
+source does not, so long as something supplies it. Every one of the six needed
+the CALL SITE to resolve. What IS gate-able is the other direction — a target
+using a placeholder that no call site supplies — and that needs the params, not
+the catalogs, so it is not a catalog check at all.
+
 ## Swept for the rest of them; there are none (2026-09-08)
 
 The check the entry below ends on — "for any field in a mapped row shape, ask
