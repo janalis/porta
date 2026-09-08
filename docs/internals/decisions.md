@@ -1738,6 +1738,42 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## The sweep, and a wrong conclusion inside it (built 2026-09-08, `5816e431`)
+
+Swept every picker in the suite with a content assertion, by replacing its
+rows' labels with `ZZZ0`, `ZZZ1`… and re-running. **Five surfaces, three
+weak, two sound.**
+
+| surface | asserted against | verdict |
+| --- | --- | --- |
+| clipboard history | whole screen | weak — the copies are the buffer |
+| File Structure popup | whole screen | weak — the symbols are the buffer |
+| recent-files switcher | whole screen | weak — `b.php` is in the TREE |
+| git branch picker | whole screen | **sound** — dies on a relabel |
+| Go to Symbol | whole screen | **sound** — see below |
+
+**All three weak ones shared a second property**: each had a real assertion
+beside the decorative one — the caret moved, the file opened — so each proved
+the picker WORKED while proving nothing about what it SAID. That is the shape
+that survives review, because the test reads as covered.
+
+**And Go to Symbol cost me a wrong conclusion, which is the entry's point.** It
+survived the first mutation, so it went on the weak list — but I had mutated
+`WorkspaceSymbolClient`'s `label`, which that modal does not display: it renders
+`name`. Mutating the field the row actually shows kills the test. It was sound
+all along, and I nearly recorded it as a defect.
+
+**A surviving mutant is only evidence when the mutation reaches what the
+assertion reads.** The check is the same one this whole round keeps arriving
+at, turned on the tool: before believing a survivor, render the surface and
+confirm the thing you changed is the thing on screen. Doing that here would
+have shown `Greeter` in the row and `src/Target.php:4` beside it, and the
+question "which field is that?" answers itself.
+
+Its assertion is sliced to the card anyway — inside that frame `Greeter` can
+only come from the row, since the query line reads `> greet` and the hint is a
+path — but for precision, not for a defect.
+
 ## The same hole in a test I did not write (built 2026-09-08, `91bbf157`)
 
 Having found that my own picker test passed against the whole screen, the
