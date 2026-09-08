@@ -12,6 +12,7 @@ use Porta\Ui\Glyphs;
 use Porta\Widget\BufferNavigationHandler;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\ViewerTabHandler;
+use Porta\Workbench\Notifier;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Tui\Tui;
@@ -43,6 +44,7 @@ final class BufferNavigator implements BufferNavigationHandler, ViewerTabHandler
         private readonly ProjectPaths $paths,
         private readonly RecentFilesStore $recentFiles,
         private readonly Translator $translator,
+        private readonly Notifier $notifier,
     ) {}
 
     /** Switch to the previous/next tab (+1 / -1) and focus its content. */
@@ -120,7 +122,14 @@ final class BufferNavigator implements BufferNavigationHandler, ViewerTabHandler
         }
 
         if (\count($items) < 2) {
-            return; // nowhere to switch to
+            // Nowhere to switch to — said, not swallowed. A keystroke that
+            // does nothing at all is indistinguishable from a broken binding,
+            // and this one is most likely to be pressed on the first file of a
+            // session, which is exactly when a new user is deciding whether
+            // the shortcut works.
+            $this->notifier->flash($this->translator->trans('No other files to switch to'));
+
+            return;
         }
 
         // Pre-select the previous file, like PhpStorm's Ctrl+E

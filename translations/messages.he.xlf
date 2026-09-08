@@ -1102,6 +1102,14 @@
         <source>The two files are identical</source>
         <target>שני הקבצים זהים</target>
       </trans-unit>
+      <trans-unit id="827">
+        <source>No other files to switch to</source>
+        <target>אין קבצים אחרים לעבור אליהם</target>
+      </trans-unit>
+      <trans-unit id="828">
+        <source>Nothing copied yet</source>
+        <target>עדיין לא הועתק דבר</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>עץ: כווץ</target>

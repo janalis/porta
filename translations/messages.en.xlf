@@ -1102,6 +1102,14 @@
         <source>The two files are identical</source>
         <target>The two files are identical</target>
       </trans-unit>
+      <trans-unit id="827">
+        <source>No other files to switch to</source>
+        <target>No other files to switch to</target>
+      </trans-unit>
+      <trans-unit id="828">
+        <source>Nothing copied yet</source>
+        <target>Nothing copied yet</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>Tree: Collapse</target>

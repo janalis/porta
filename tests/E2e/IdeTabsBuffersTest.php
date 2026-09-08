@@ -126,6 +126,36 @@ final class IdeTabsBuffersTest extends TestCase
         $this->assertStringContainsString('open a file from the tree', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
     }
 
+    public function testRecentFilesSaysSoWhenThereIsNowhereToSwitch(): void
+    {
+        // One file, one session: the switcher has nothing to offer, and it used
+        // to swallow the keystroke whole. On the first file of a session that
+        // reads as a broken binding rather than as an empty list.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php // a\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                300 => function ($tui, $terminal): void {
+                    $terminal->clearOutput();
+                    $tui->handleInput("\x05"); // ctrl+e
+                    $this->frame($tui);
+
+                    $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')), 'no picker with nowhere to go');
+                    $this->assertStringContainsString(
+                        'No other files to switch to',
+                        AnsiUtils::stripAnsiCodes($terminal->getOutput()),
+                        'and it says so',
+                    );
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testRecentFilesOffersAFileThatIsNoLongerOpen(): void
     {
         // The half a BufferManager cannot answer: closing the tab erases the

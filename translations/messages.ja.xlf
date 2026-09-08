@@ -1102,6 +1102,14 @@
         <source>The two files are identical</source>
         <target>2 つのファイルは同一です</target>
       </trans-unit>
+      <trans-unit id="827">
+        <source>No other files to switch to</source>
+        <target>切り替えられる他のファイルはありません</target>
+      </trans-unit>
+      <trans-unit id="828">
+        <source>Nothing copied yet</source>
+        <target>まだ何もコピーしていません</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>ツリー: 折りたたむ</target>

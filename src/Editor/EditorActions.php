@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Editor;
 
 use Porta\I18n\Translator;
+use Porta\Support\FlashSink;
 use Porta\Widget\Render\EditorRenderer;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -37,6 +38,11 @@ final class EditorActions
         // the one string this class shows the user is a modal TITLE, which
         // every other overlay in `src/` translates at its call site.
         private readonly Translator $translator = new Translator('en'),
+        // The other thing this class occasionally has to say: that a verb had
+        // nothing to act on. Optional for the same reason the translator is —
+        // the widget-tree tests thread neither — and typed as the Support role
+        // rather than the Ui service, so `Editor` keeps holding no Ui.
+        private readonly ?FlashSink $flash = null,
     ) {
         $this->column = new ColumnSelection();
     }
@@ -614,6 +620,11 @@ final class EditorActions
     {
         $entries = $this->clipboard->entries();
         if ([] === $entries) {
+            // First run has an empty ring, which is exactly when someone tries
+            // the shortcut to see what it does. Silence there reads as a broken
+            // binding rather than as an empty list.
+            $this->flash?->flash($this->translator->trans('Nothing copied yet'));
+
             return;
         }
 

@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Editor;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\ClipboardRing;
 use Porta\Editor\SelectionMode;
+use Porta\Support\FlashSink;
 use Porta\Tests\Support\EditorState;
 use Porta\Widget\CodeEditorWidget;
 
@@ -286,5 +287,29 @@ final class ClipboardHistoryTest extends TestCase
         $editor->handleInput("\x1b[118;6u");
 
         $this->assertFalse(EditorState::pickerOpen($editor));
+    }
+
+    public function testTheHistoryKeystrokeSaysSoWhenNothingHasBeenCopied(): void
+    {
+        // The first-run state, and the moment someone tries the shortcut to see
+        // what it does: an empty ring used to swallow the keystroke whole,
+        // which reads as a broken binding rather than as an empty list.
+        $flash = new class implements FlashSink {
+            /** @var list<string> */
+            public array $said = [];
+
+            public function flash(string $message, float $seconds = 2.5): void
+            {
+                $this->said[] = $message;
+            }
+        };
+        $editor = new CodeEditorWidget(flash: $flash);
+        $editor->openFile('demo.php', "alpha\n");
+        $editor->setFocused(true);
+
+        $editor->handleInput("\x1b[118;6u"); // ctrl+shift+v with nothing copied
+
+        $this->assertFalse(EditorState::pickerOpen($editor), 'no picker over an empty ring');
+        $this->assertSame(['Nothing copied yet'], $flash->said);
     }
 }

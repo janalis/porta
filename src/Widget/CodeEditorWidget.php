@@ -54,6 +54,7 @@ use Porta\Overlay\State\OverlayHost;
 use Porta\Search\Everywhere\SearchOverlay;
 use Porta\Search\Everywhere\SearchRow;
 use Porta\Support\AnsiText;
+use Porta\Support\FlashSink;
 use Porta\Support\IntMath;
 use Porta\Support\PerfCollector;
 use Porta\Support\ProjectPaths;
@@ -207,6 +208,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         ?OverlayHost $overlayHost = null,
         private readonly ?PerfCollector $perf = null,
         private readonly ?Scheduler $scheduler = null,
+        private readonly ?FlashSink $flash = null,
         private readonly OccurrenceHighlights $occurrences = new OccurrenceHighlights(),
         /** The server's scopes, for every language the offline PHP scan cannot read. */
         private readonly DocumentScopes $documentScopes = new DocumentScopes(),
@@ -284,7 +286,7 @@ final class CodeEditorWidget extends AbstractWidget implements
 
     private function newEditorActions(Document $document, ClipboardRing $clipboard): EditorActions
     {
-        return new EditorActions($document, $this->multiCaret, $this->completion, $this->structural, $this->foldModel, $this->autoPair, $this, $clipboard, $this->translator);
+        return new EditorActions($document, $this->multiCaret, $this->completion, $this->structural, $this->foldModel, $this->autoPair, $this, $clipboard, $this->translator, $this->flash);
     }
 
     // --- Public API --------------------------------------------------------
