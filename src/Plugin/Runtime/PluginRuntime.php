@@ -19,6 +19,7 @@ use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Lifecycle\PluginLifecycleOps;
 use Porta\Support\Clipboard;
 use Porta\Tree\FileStatusSink;
+use Porta\Widget\FileTreeWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Dock\DockToolController;
 use Porta\Workbench\Menu\MenuFileContext;
@@ -55,5 +56,6 @@ final readonly class PluginRuntime
         public StatusBarWidget $statusBar,
         public EditorViewOptions $editorView,
         public PluginLifecycleOps $lifecycle,
+        public FileTreeWidget $tree,
     ) {}
 }

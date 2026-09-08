@@ -1095,6 +1095,22 @@ final class PluginApi
         return $this->manager->runtime()->menuFile->file() ?? $this->activeFile();
     }
 
+    /**
+     * The files selected in the project tree, in the order the tree shows them.
+     *
+     * One file is the ordinary case — the tree always has its cursor row
+     * selected — and several mean the user built a set deliberately, with
+     * Ctrl+Click, Shift+Click or Shift+arrows. A command that acts on a pair
+     * (comparing two files, say) reads this and says so when the count is
+     * wrong; directories are never in it.
+     *
+     * @return list<string>
+     */
+    public function selectedFiles(): array
+    {
+        return $this->manager->runtime()->tree->selectedPaths();
+    }
+
     /** The active text document's full contents, or null when none is active. */
     public function documentText(): ?string
     {

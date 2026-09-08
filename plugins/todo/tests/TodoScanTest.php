@@ -28,6 +28,7 @@ use Porta\Todo\TodoScan;
 use Porta\Tree\FileStatuses;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\FileTreeWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
@@ -90,6 +91,7 @@ final class TodoScanTest extends TestCase
             new StatusBarWidget(),
             new CodeEditorWidget(),
             new FakePluginLifecycle(),
+            new FileTreeWidget(sys_get_temp_dir()),
         ));
 
         $api = new PluginApi('todo', $manager, $project->dir, $settings);

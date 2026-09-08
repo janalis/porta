@@ -44,9 +44,11 @@ use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestTui;
 use Porta\Tree\FileStatuses;
+use Porta\Ui\ClickIntent;
 use Porta\Ui\Theme\Theme;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\FileTreeWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
@@ -119,6 +121,7 @@ final class PluginApiTest extends TestCase
                     new StatusBarWidget(),
                     $this->editor,
                     new FakePluginLifecycle(),
+                    new FileTreeWidget(sys_get_temp_dir()),
                 ),
             );
         }
@@ -428,6 +431,7 @@ final class PluginApiTest extends TestCase
                 new StatusBarWidget(),
                 new CodeEditorWidget(),
                 lifecycle: $lifecycle = new FakePluginLifecycle(),
+                tree: new FileTreeWidget(sys_get_temp_dir()),
             ),
         );
         $api = new PluginApi('demo', $manager, $project->dir, $settings);
@@ -673,6 +677,7 @@ final class PluginApiTest extends TestCase
             new StatusBarWidget(),
             new CodeEditorWidget(),
             new FakePluginLifecycle(),
+            new FileTreeWidget(sys_get_temp_dir()),
         ));
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
         $api->registerListTool('todo', 'TODO');
@@ -686,6 +691,46 @@ final class PluginApiTest extends TestCase
         $api->updateList('todo', [['path' => 'a.php', 'line' => 0, 'text' => 'second']]);
         $this->assertSame('second', $tab->rows[0]['text']);
         $this->assertFalse($tab->searching);
+    }
+
+    public function testAPluginSeesTheFilesSelectedInTheTree(): void
+    {
+        // The half a plugin cannot get to on its own: the tree is core's, and
+        // a command that acts on a pair has to know which pair.
+        $project = new TempProject(['a.php' => "<?php\n", 'b.php' => "<?php\n"]);
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings($project->dir, [], null, self::projectScope($project->dir)));
+        $tui = TestTui::create(100, 24);
+        $dock = TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget());
+        $tree = new FileTreeWidget($project->dir);
+        $manager->wireRuntime(new PluginRuntime(
+            new Notifier(new StatusBarWidget(), $tui),
+            new Translator('en'),
+            new CodeEditorWidget(),
+            new RecordingFileOpener(),
+            $tui,
+            new RecordingDiagnosticsSink(),
+            new CodeEditorWidget()->decorations(),
+            new RecordingChangeMarkSink(),
+            new FileStatuses(),
+            new BufferManager(),
+            new DockToolController($manager, $dock, new ProjectPaths($project->dir)),
+            TestDockTools::replacer(),
+            new CodeEditorWidget(),
+            new MenuFileContext(),
+            new ViewRegistry(),
+            new Clipboard($tui),
+            new StatusBarWidget(),
+            new CodeEditorWidget(),
+            new FakePluginLifecycle(),
+            $tree,
+        ));
+        $api = new PluginApi('demo', $manager, $project->dir, new PluginSettings($project->dir, [], null, self::projectScope($project->dir)));
+
+        $this->assertSame(['a.php'], array_map(basename(...), $api->selectedFiles()), 'the tree opens with its cursor row selected');
+
+        $tree->clickRow(2, ClickIntent::Add);
+
+        $this->assertSame(['a.php', 'b.php'], array_map(basename(...), $api->selectedFiles()));
     }
 
     public function testAPluginMayAskTheUserSomething(): void
@@ -800,6 +845,7 @@ final class PluginApiTest extends TestCase
             $statusBar ?? new StatusBarWidget(),
             $editor,
             new FakePluginLifecycle(),
+            new FileTreeWidget(sys_get_temp_dir()),
         ));
 
         return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));

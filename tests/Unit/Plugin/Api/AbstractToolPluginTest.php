@@ -28,6 +28,7 @@ use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestTui;
 use Porta\Tree\FileStatuses;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\FileTreeWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Notifier;
@@ -166,6 +167,7 @@ final class AbstractToolPluginTest extends TestCase
             new StatusBarWidget(),
             new CodeEditorWidget(),
             new FakePluginLifecycle(),
+            new FileTreeWidget(sys_get_temp_dir()),
         ));
 
         return new PluginApi($pluginName, $manager, $this->project->dir, $settings);
