@@ -50,7 +50,8 @@ Measured on the 16-core machine, load ~7, one run at a time:
 | 4 | 170s |
 | 8 (the default) | ~90s |
 | 12 | 62s |
-| 12, without `--functional` | **52s** |
+| `auto` (16, what CI sets) | **52s** |
+| 12, without `--functional` | 52s |
 
 So the throttle costs **more than three times the wall clock**, and it is worth
 reaching for only when the box really is shared — check `uptime` rather than
@@ -60,7 +61,9 @@ is not, so it is worth adding even at full parallelism.
 `--functional` splits by test METHOD rather than by file. It is what makes the
 suite's ordering assumptions safe to hold (see `phpunit.xml.dist` on
 `executionOrder="random"`), and at 12 processes it costs 10s against per-class
-chunking — a trade the suite makes on purpose, not an oversight.
+chunking — a trade the suite makes on purpose, not an oversight. Note where the
+last two rows land: four more cores buy back exactly what `--functional` costs,
+so on an idle box the safe split is free.
 
 `composer container` takes flags after `--`: `--loaded`, `--tag=<name>`,
 `--aliases`.
@@ -238,24 +241,67 @@ deterministic output.
 `tests/bootstrap.php` turning the container cache off under pcov, so each of the
 suite's ~458 Ide boots recompiles instead of loading the shared dump.
 
+**opcache is not a test-loop lever.** It is worth setting for `bin/porta`
+(see below), and the loop does not feel it: `composer test` at eight processes
+ran 92.0s and 89.4s without it, 90.4s / 87.8s / 89.2s with — inside the noise.
+The arithmetic says why before the stopwatch does. A paratest worker compiles
+`src/` once and then runs thousands of tests, so eight workers save eight times
+18ms, not eight times a minute. Do not spend a round on it, and keep it off for
+`composer coverage`.
+
 **The serial plugins pass costs 146s for work that takes 36s in parallel.** That
 110s is the price of the php-code-coverage merge bug the pass exists to dodge,
 and it is the largest avoidable number in the loop — see `plugin-system.md` for
 why parallel paratest cannot be the answer, and `decisions.md` for the shape
 that might be.
 
+## The inner loop
+
+`composer verify` is the definition of done, not the thing to run after every
+edit. While work is in progress, two commands are the loop:
+
+```bash
+vendor/bin/paratest --processes=16 --functional --testsuite Unit   # 23s
+composer verify:quick                                             # 4s
+```
+
+The Unit suite is **5,508 of the 6,610 tests** and runs in **23s at 16
+processes, 41s at 8** — a quarter of the full suite's wall clock for five
+sixths of its cases. What it does not run is the part that boots an IDE:
+Integration, E2e and the plugin suites. So it is the fast answer to "did I
+break the thing I just touched", and it is not an answer about wiring, focus,
+rendering or a plugin — those live in the suites it skips, and `composer
+verify` is what says done.
+
+**There is deliberately no "test what I touched" mapper.** Only **49% of
+`src/` classes** (344 of 707) have a `tests/Unit/<same path>Test.php`, so a
+path-derived selection would silently run nothing for half the tree and report
+green. Run a whole suite instead; it is 23 seconds.
+
 ## Startup performance notes
 
 Most of a Porta boot is PHP **source compilation**, not work: with
 `opcache.enable_cli=0` (the default) every launch recompiles the autoload
 maps, the ~212KB container dump and several hundred class files. Enabling
-opcache for the CLI cuts that ~4.7× (measured 122ms → 26ms compiling all of
-`src/`):
+opcache for the CLI cuts that — by less than this page used to say. Compiling
+all 707 files of `src/` in a fresh process, five runs each, medians: **55ms
+without it, 37ms with**. That is 1.5× and 18ms, not the 4.7× (122ms → 26ms)
+recorded here before; the old figure predates PHP 8.5 and does not reproduce.
+Where it is visible is a single-shot command — `bin/porta-dev container` goes
+0.29s → 0.24s, five runs each, no overlap between the two sets.
 
 ```ini
 opcache.enable_cli = 1
 opcache.file_cache = /tmp/php-opcache   ; persists compiled code across runs
 ```
+
+**Never under pcov.** opcache serving a cached op_array bypasses pcov's
+compile-time instrumentation, and the damage is to the DENOMINATOR, which is
+the direction nothing notices: one file's unit test run reports 1,813
+executable statements with opcache off and 1,792 with it on — same lines
+covered, `FileTreeWidget` counted as 185 statements instead of 189 — so the
+percentage goes UP. `composer coverage` must run in a shell where
+`opcache.enable_cli` is off.
 
 This is an environment setting — `bin/porta` cannot set it for itself. Two
 measurement caveats when quoting startup numbers: a **dev checkout** eagerly
