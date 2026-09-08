@@ -5,12 +5,10 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Bootstrap;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Ide;
 use Porta\Layout\WorkspaceLayout;
-use Porta\Onboarding\OnboardingState;
+use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
-use Porta\Tests\Support\TempProject;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\HelpViewerWidget;
@@ -18,9 +16,6 @@ use Porta\Widget\MenuBarWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
-use Porta\Workbench\Notifier;
-use Porta\Workbench\View\ViewRegistry;
-use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -31,21 +26,11 @@ use Symfony\Component\Tui\Tui;
  */
 final class WidgetHooksTest extends TestCase
 {
-    private TempProject $project;
-    private Ide $ide;
+    use BootsIde;
 
     protected function setUp(): void
     {
-        $this->project = new TempProject(['composer.json' => '{}']);
-        new OnboardingState($this->project->dir)->markWelcomeSeen();
-        // Ide's constructor runs the full boot tail (WidgetHooks::wire() included).
-        $this->ide = new Ide($this->project->dir, null, new VirtualTerminal(columns: 80, rows: 24));
-    }
-
-    protected function tearDown(): void
-    {
-        Services::resolve($this->ide, ViewRegistry::class)->closeAll();
-        Services::resolve($this->ide, Notifier::class)->dismissAll();
+        $this->bootIde(['composer.json' => '{}']);
     }
 
     public function testEditorGetsARealWiredCallbacksInstanceNotItsBarePlaceholderDefault(): void

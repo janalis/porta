@@ -9,15 +9,10 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\Editor\TabSide;
-use Porta\Ide;
-use Porta\Onboarding\OnboardingState;
+use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
-use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
-use Porta\Workbench\Notifier;
-use Porta\Workbench\View\ViewRegistry;
-use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -30,28 +25,18 @@ use Symfony\Component\Tui\Tui;
  */
 final class CloseTabsToTheSideTest extends TestCase
 {
-    private TempProject $project;
-    private Ide $ide;
+    use BootsIde;
 
     #[\Override]
     protected function setUp(): void
     {
-        $this->project = new TempProject([
+        $this->bootIde([
             'composer.json' => '{}',
             'a.php' => "<?php\n// a\n",
             'b.php' => "<?php\n// b\n",
             'c.php' => "<?php\n// c\n",
             'd.php' => "<?php\n// d\n",
         ]);
-        new OnboardingState($this->project->dir)->markWelcomeSeen();
-        $this->ide = new Ide($this->project->dir, null, new VirtualTerminal(columns: 80, rows: 24));
-    }
-
-    #[\Override]
-    protected function tearDown(): void
-    {
-        Services::resolve($this->ide, ViewRegistry::class)->closeAll();
-        Services::resolve($this->ide, Notifier::class)->dismissAll();
     }
 
     /** Opens a.php … d.php in that order and returns the buffer service. */

@@ -21,16 +21,15 @@ use Porta\Lsp\NavigationController;
 use Porta\Lsp\RefactorController;
 use Porta\Lsp\Uri;
 use Porta\Lsp\WorkspaceEditor;
-use Porta\Onboarding\OnboardingState;
 use Porta\Search\SearchActions;
 use Porta\Settings\SettingsScope;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\AwaitsGit;
+use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\Services;
-use Porta\Tests\Support\TempProject;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Render\Renderer;
@@ -43,17 +42,14 @@ use Symfony\Component\Tui\Tui;
  */
 final class IdeHelpersTest extends TestCase
 {
+    use BootsIde;
+
     use AwaitsGit;
     use PumpsLoop;
 
-    private TempProject $project;
-    private Ide $ide;
-
     protected function setUp(): void
     {
-        $this->project = new TempProject(['composer.json' => '{}']);
-        new OnboardingState($this->project->dir)->markWelcomeSeen();
-        $this->ide = new Ide($this->project->dir, null, new VirtualTerminal(columns: 80, rows: 24));
+        $this->bootIde(['composer.json' => '{}']);
         // Palette commands below toggle real settings, and the session scope
         // defaults to Global — the suite's SHARED fixture home. Pin the writes
         // to this project, which goes away with its temp dir.
@@ -66,11 +62,6 @@ final class IdeHelpersTest extends TestCase
      * and subprocess watchers a real session would. This is that finally, in
      * the three parts a non-running IDE can still have armed.
      */
-    protected function tearDown(): void
-    {
-        Services::resolve($this->ide, ViewRegistry::class)->closeAll();
-        Services::resolve($this->ide, Notifier::class)->dismissAll();
-    }
 
     private function call(string $method, mixed ...$args): mixed
     {

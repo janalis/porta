@@ -35,6 +35,36 @@ final class FindInFilesModalTest extends TestCase
         $this->invalidateCount = 0;
     }
 
+    /**
+     * A modal over {@see results()} with replace-all wired, already switched to
+     * the replace field with "bar" typed in — where every excluded-set case
+     * starts, because the excluded set only means anything once there is a
+     * replacement to apply it to.
+     *
+     * `$replaced` is by reference rather than returned because the callback
+     * fires later, when the test presses the key: what the caller needs is the
+     * SLOT the callback will write into.
+     */
+    private function modalTypedForReplaceAll(?array &$replaced): FindInFilesModal
+    {
+        $modal = $this->modal();
+        $modal->setCallbacks(new FindModalCallbacks(
+            onReplaceAll: static function (string $r, array $excluded) use (&$replaced): void {
+                $replaced = [$r, $excluded];
+            },
+            previewReplacement: static fn (string $old, string $repl): string => str_replace('foo', $repl, $old),
+        ));
+        $modal->open('Find in Files');
+        $modal->setPreview($this->results());
+
+        $modal->handleInput("\t", $this->kb); // query → replace
+        foreach (str_split('bar') as $ch) {
+            $modal->handleInput($ch, $this->kb);
+        }
+
+        return $modal;
+    }
+
     private function modal(): FindInFilesModal
     {
         return new FindInFilesModal(static fn () => null);
@@ -326,21 +356,8 @@ final class FindInFilesModalTest extends TestCase
 
     public function testAReIncludedMatchIsOmittedFromTheExcludedSet(): void
     {
-        $modal = $this->modal();
         $replaced = null;
-        $modal->setCallbacks(new FindModalCallbacks(
-            onReplaceAll: static function (string $r, array $excluded) use (&$replaced): void {
-                $replaced = [$r, $excluded];
-            },
-            previewReplacement: static fn (string $old, string $repl): string => str_replace('foo', $repl, $old),
-        ));
-        $modal->open('Find in Files');
-        $modal->setPreview($this->results());
-
-        $modal->handleInput("\t", $this->kb); // query → replace
-        foreach (str_split('bar') as $ch) {
-            $modal->handleInput($ch, $this->kb);
-        }
+        $modal = $this->modalTypedForReplaceAll($replaced);
 
         // Toggle the first match's exclude on, then off again: its `false` entry
         // is skipped when the excluded set is collected for replace-all.
@@ -1128,20 +1145,9 @@ final class FindInFilesModalTest extends TestCase
 
     public function testExcludedIndicesCollectsEveryExcludedMatchNotJustTheFirst(): void
     {
-        $modal = $this->modal();
         $replaced = null;
-        $modal->setCallbacks(new FindModalCallbacks(
-            onReplaceAll: static function (string $r, array $excluded) use (&$replaced): void {
-                $replaced = [$r, $excluded];
-            },
-            previewReplacement: static fn (string $old, string $repl): string => str_replace('foo', $repl, $old),
-        ));
-        $modal->open('Find in Files');
-        $modal->setPreview($this->results()); // rows: [hdrA, match0, match1, hdrB, match2]; selected starts on match0
-        $modal->handleInput("\t", $this->kb);
-        foreach (str_split('bar') as $ch) {
-            $modal->handleInput($ch, $this->kb);
-        }
+        $modal = $this->modalTypedForReplaceAll($replaced);
+        // rows: [hdrA, match0, match1, hdrB, match2]; selected starts on match0
 
         $modal->handleInput("\x1b[3~", $this->kb); // exclude match0 (selected)
         $modal->handleInput("\x1b[B", $this->kb); // → match1

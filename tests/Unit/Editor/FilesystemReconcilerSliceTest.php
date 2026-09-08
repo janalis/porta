@@ -10,15 +10,11 @@ use Porta\Editor\BufferService;
 use Porta\Editor\CloseMode;
 use Porta\Editor\OpenFocus;
 use Porta\Ide;
-use Porta\Onboarding\OnboardingState;
+use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
-use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
 use Porta\Widget\FileTreeWidget;
-use Porta\Workbench\Notifier;
-use Porta\Workbench\View\ViewRegistry;
-use Symfony\Component\Tui\Terminal\VirtualTerminal;
 
 /**
  * The poll timer's amortized reconciliation path: bounded slices of buffers
@@ -27,22 +23,12 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
  */
 final class FilesystemReconcilerSliceTest extends TestCase
 {
-    private TempProject $project;
-    private Ide $ide;
+    use BootsIde;
 
     #[\Override]
     protected function setUp(): void
     {
-        $this->project = new TempProject(['composer.json' => '{}']);
-        new OnboardingState($this->project->dir)->markWelcomeSeen();
-        $this->ide = new Ide($this->project->dir, null, new VirtualTerminal(columns: 80, rows: 24));
-    }
-
-    #[\Override]
-    protected function tearDown(): void
-    {
-        Services::resolve($this->ide, ViewRegistry::class)->closeAll();
-        Services::resolve($this->ide, Notifier::class)->dismissAll();
+        $this->bootIde(['composer.json' => '{}']);
     }
 
     private function buffers(): BufferService
