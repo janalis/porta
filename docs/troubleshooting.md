@@ -17,6 +17,11 @@ the project root:
 A freeze with a **clean** freeze.log means the loop is alive but input is
 being swallowed upstream — see the known vendor issues below.
 
+The stall gap is measured on a MONOTONIC clock, so **closing the laptop leaves
+nothing in the log**: a suspended process is not a blocked loop. Entries in
+older logs reading `loop stalled for 1078.06s` are that, not a freeze — the
+wall clock had jumped while nothing was running.
+
 ### Fixed in Porta
 
 - **Language-server / debug-adapter pipe deadlock** (the most common cause of

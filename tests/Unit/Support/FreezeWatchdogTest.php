@@ -13,36 +13,66 @@ use Symfony\Component\Clock\NativeClock;
 
 final class FreezeWatchdogTest extends TestCase
 {
+    /** A monotonic clock a test drives by hand, in seconds. */
+    private float $monotonic = 100.0;
+
     public function testADriftPastTheThresholdIsLoggedWithItsDuration(): void
     {
         $project = new TempProject();
         $clock = new MockClock('2026-07-13 10:00:00');
-        $watchdog = new FreezeWatchdog($project->dir, $clock, driftThreshold: 3.0, signalsAvailable: false);
+        $watchdog = new FreezeWatchdog($project->dir, $clock, driftThreshold: 3.0, signalsAvailable: false, monotonic: $this->ticking());
 
         $watchdog->start();
         $watchdog->heartbeat();
+        $this->monotonic += 5.0;
         $clock->modify('+5 seconds');
         $watchdog->heartbeat();
         $watchdog->stop();
 
         $log = (string) file_get_contents($watchdog->logFile());
         $this->assertStringContainsString('loop stalled for 5.00s (recovered)', $log);
-        $this->assertStringContainsString('2026-07-13 10:00:05', $log);
+        $this->assertStringContainsString('2026-07-13 10:00:05', $log, 'the wall clock still stamps the line — it just no longer measures the gap');
+    }
+
+    public function testAMachineThatSleptIsNotAStall(): void
+    {
+        // What this log actually had a dozen of: `loop stalled for 1078.06s`,
+        // which is a laptop having been shut. The loop was not blocked — it was
+        // not running — and the most alarming line in the file was noise.
+        $project = new TempProject();
+        $clock = new MockClock('2026-07-13 10:00:00');
+        $watchdog = new FreezeWatchdog($project->dir, $clock, driftThreshold: 3.0, signalsAvailable: false, monotonic: $this->ticking());
+
+        $watchdog->start();
+        $watchdog->heartbeat();
+        $clock->modify('+18 minutes'); // the wall clock jumps…
+        $this->monotonic += 0.2; // …while the process was suspended
+        $watchdog->heartbeat();
+        $watchdog->stop();
+
+        $this->assertFileDoesNotExist($watchdog->logFile(), 'a suspended process is not a blocked loop');
     }
 
     public function testStayingUnderTheThresholdWritesNothing(): void
     {
         $project = new TempProject();
         $clock = new MockClock();
-        $watchdog = new FreezeWatchdog($project->dir, $clock, driftThreshold: 3.0, signalsAvailable: false);
+        $watchdog = new FreezeWatchdog($project->dir, $clock, driftThreshold: 3.0, signalsAvailable: false, monotonic: $this->ticking());
 
         $watchdog->start();
         $watchdog->heartbeat(); // the first beat has no predecessor: nothing to measure
+        $this->monotonic += 1.0;
         $clock->modify('+1 second');
         $watchdog->heartbeat();
         $watchdog->stop();
 
         $this->assertFileDoesNotExist($watchdog->logFile());
+    }
+
+    /** @return \Closure(): float */
+    private function ticking(): \Closure
+    {
+        return fn (): float => $this->monotonic;
     }
 
     public function testAlarmHandlerLogsABacktraceAndSignalsDisarmOnStop(): void
@@ -75,10 +105,11 @@ final class FreezeWatchdogTest extends TestCase
     {
         $project = new TempProject(['blocker' => 'a regular file where .porta should go']);
         // rootDir pointing at a FILE: mkdir and the append both fail quietly.
-        $watchdog = new FreezeWatchdog($project->path('blocker'), $clock = new MockClock(), driftThreshold: 1.0, signalsAvailable: false);
+        $watchdog = new FreezeWatchdog($project->path('blocker'), $clock = new MockClock(), driftThreshold: 1.0, signalsAvailable: false, monotonic: $this->ticking());
 
         $watchdog->start();
         $watchdog->heartbeat();
+        $this->monotonic += 5.0;
         $clock->modify('+5 seconds');
         $watchdog->heartbeat(); // would log — the failure must not throw
         $watchdog->stop();

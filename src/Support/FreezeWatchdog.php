@@ -14,7 +14,12 @@ use Revolt\EventLoop;
  *
  * - drift: a heartbeat timer measures the gap between its own runs; a gap past
  *   the threshold means something blocked the loop and recovered — logged with
- *   the stall duration.
+ *   the stall duration. The gap is MONOTONIC, not wall clock: a suspended
+ *   laptop advances the wall clock by hours while the loop is not blocked at
+ *   all, and this log had a dozen of those in it — `loop stalled for 1078.06s`
+ *   is the machine having slept, and it is the most alarming-looking line in a
+ *   file whose whole job is to name culprits. `hrtime()` does not advance while
+ *   the process is suspended, so a sleep leaves nothing behind.
  * - hard hang: an OS alarm (ext-pcntl, a hard requirement) re-armed by every
  *   heartbeat. If the loop blocks long enough for the alarm to fire, the
  *   async signal handler interrupts the blocked syscall and logs a backtrace
@@ -29,9 +34,19 @@ use Revolt\EventLoop;
 final class FreezeWatchdog
 {
     private ?string $timer = null;
-    private ?\DateTimeImmutable $lastBeat = null;
+    private ?float $lastBeat = null;
     private readonly DiagnosticLog $log;
 
+    /** @var \Closure(): float seconds on a clock that stops when the process does */
+    private readonly \Closure $monotonic;
+
+    /**
+     * @param (\Closure(): float)|null $monotonic the drift clock, in seconds; null uses `hrtime()`.
+     *                                            Injected rather than called directly so a test can
+     *                                            move the two clocks INDEPENDENTLY, which is the whole
+     *                                            distinction being drawn — the `ClockInterface` here
+     *                                            only ever stamps the log line.
+     */
     public function __construct(
         string $rootDir,
         private readonly ClockInterface $clock,
@@ -39,8 +54,10 @@ final class FreezeWatchdog
         private readonly float $driftThreshold = 3.0,
         private readonly int $alarmSeconds = 5,
         private readonly bool $signalsAvailable = true,
+        ?\Closure $monotonic = null,
     ) {
         $this->log = DiagnosticLog::forRoot($rootDir, 'freeze');
+        $this->monotonic = $monotonic ?? static fn (): float => hrtime(as_number: true) / 1_000_000_000;
     }
 
     public function start(): void
@@ -69,14 +86,14 @@ final class FreezeWatchdog
     /** Timer entry point — {@see start()}'s EventLoop::repeat fires this every `$interval` seconds. */
     public function heartbeat(): void
     {
-        $now = $this->clock->now();
+        $beat = ($this->monotonic)();
         if (null !== $this->lastBeat) {
-            $gap = $now->getTimestamp() - $this->lastBeat->getTimestamp() + (($now->getMicrosecond() - $this->lastBeat->getMicrosecond()) / 1_000_000.0);
+            $gap = $beat - $this->lastBeat;
             if ($gap > $this->driftThreshold) {
-                $this->log->append(\sprintf('%s loop stalled for %.2fs (recovered)', $now->format('Y-m-d H:i:s'), $gap));
+                $this->log->append(\sprintf('%s loop stalled for %.2fs (recovered)', $this->clock->now()->format('Y-m-d H:i:s'), $gap));
             }
         }
-        $this->lastBeat = $now;
+        $this->lastBeat = $beat;
         if ($this->signalsAvailable) {
             pcntl_alarm($this->alarmSeconds); // re-arm: a live loop never lets it fire
         }
