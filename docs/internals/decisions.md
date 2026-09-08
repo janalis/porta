@@ -1860,6 +1860,76 @@ bootstrap-sweep hypothesis was falsified earlier (the sweep contributes 0 files,
 and `PORTA_CONTAINER_CACHE=off` is what makes the merge correct), and the
 `pcov.directory` half is measured and declined.
 
+## Comparing two files, and the selection it needed (2026-09-08, `92892561`…`d150ef8b`)
+
+The last of the three long-open UI items. It needed two halves, and the first
+one is the reusable part.
+
+**The tree selects a set now.** `Ctrl+Click` adds, `Shift+Click` takes a range,
+`Shift+↑/↓` does it from the keyboard, and a modified click only SELECTS —
+opening a file on the way would replace the editor you are about to compare
+against. Three decisions carry it:
+
+- **Keyed by PATH, not index.** A tree rebuilds constantly — a directory
+  expands, a file is created — and every index below the change moves. An
+  index-keyed selection would silently point at different files after a
+  refresh, which is the worst failure available to a command that acts on "the
+  selected files". A path that leaves the tree leaves the selection with it.
+- **`MultiSelection` is its own object**, not a widening of `ListSelection`:
+  every other list in the IDE selects exactly one row, and putting a set on
+  `ListSelection` would put it on every picker in the app.
+- **The widget is told a `ClickIntent`**, never which modifier was held. A tree
+  does not care that Ctrl exists; `MouseRouter` reads the SGR bits and decides
+  whether this click opens, adds or ranges.
+
+Right-clicking inside the selection keeps it; outside, it collapses to the row
+under the pointer — a menu that silently acts on two files you are not pointing
+at is worse than one that acts on one.
+
+**The comparison is `git diff --no-index`, in a list panel, not the diff view.**
+The engine was never in question: nothing in Porta computes a diff, it parses
+one the binary produced, and `--no-index` is the two-path form the untracked
+diff already uses. The display was. The rich `DiffViewWidget` is bound to the
+repository's state machine — its poll reloads the pane, its keys stage lines
+into the index, and its mode is a binary `Changes | History` branched on at **23
+sites across 5 files**. A pair of arbitrary files is neither a change nor a
+commit, so a third mode would have to answer every one of those branches. A
+list panel is what `local-history` already uses to show exactly this kind of
+comparison, and the title carries what the rows cannot.
+
+*Re-opens on:* the diff view growing a state-free mode for its own reasons.
+
+**Two limits are pinned rather than worked around.** A comparison needs a
+repository, because this plugin's process runner answers every call with a
+failed run when there is no working tree — deliberately, as the one place that
+knows the availability rule. And the rows start at the first hunk: git's header
+names both files, so does the panel's title, and five lines of header is
+exactly enough to push the first real change out of a short panel.
+
+### What the screen said that the assertions did not
+
+Four traps, all caught by looking rather than reasoning:
+
+- **The first E2e compared the wrong pair.** Dot files sort first, so the tree
+  read `.porta.json`, `a.php`, `b.php` and the row arithmetic was off by one —
+  the panel was comparing `.porta.json` with `a.php`, and every assertion in
+  the test would have passed on the right pair too. Dumping the screen is what
+  said so.
+- **`$api->trans()` during `activate()` throws** — the runtime is wired later,
+  and `PluginManager::runtime()` says so in as many words. The plugin's fault
+  barrier reports it and moves on, so the symptom is EVERY git feature timing
+  out at once with no error in the test output. A git suite where marks,
+  annotations and the view all time out is one failed activation, not fifteen
+  bugs.
+- **The duplication gate caught a copied rig** the moment the second copy
+  appeared: a twenty-argument `PluginRuntime` helper, now
+  `plugins/git/tests/Support/GitPluginHarness`.
+- **A coverage line that flickered.** `WorkingTreeStatus`'s coalesced-rerun
+  branch was covered only by whichever E2e happened to overlap two refreshes,
+  and it dropped out of the union when the shard set changed. It has a
+  deterministic test now — two `refresh()` calls before the loop turns — and
+  dropping the rerun fails it.
+
 ## Parallelism: the box was 80% idle (2026-09-08, `bbc05bf8`…`88e82869`)
 
 The number nobody had looked at: at 16 processes the full suite burns **182s of
