@@ -384,6 +384,14 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->setKeybindings(new Keybindings(['goto_file' => ['f4']]));
         $rebound = AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 20))));
         $this->assertStringContainsString('press F4 to open a file', $rebound);
+
+        // And with the action unbound entirely it names the action instead of
+        // printing an empty chord — the state a keymap file can leave behind.
+        // An explicit empty list, which is what a keymap file naming the
+        // action with no keys leaves behind — the merge replaces per action.
+        $editor->setKeybindings(new Keybindings(['goto_file' => []]));
+        $unbound = AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 20))));
+        $this->assertStringContainsString('use Go to File to open one', $unbound);
         $joined = implode('', $rendered);
         $this->assertStringNotContainsString("\x1b_pi:c;", $joined, 'no cursor marker when no file is open');
 
