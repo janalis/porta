@@ -52,6 +52,31 @@ final class PaneRegistrarTest extends TestCase
         $this->manager->commit($api);
     }
 
+    /**
+     * A bad plugin's pane registered first, a good one second, both committed.
+     *
+     * The ORDER is the whole point of the cases that use it: whatever the first
+     * factory does wrong — throw, or answer with the wrong type — it must cost
+     * only its own pane, and the registrar must carry on to the next.
+     *
+     * @param \Closure(PaneServices): mixed $badFactory the factory that misbehaves; its return type varies by case, which is why it is not narrowed here
+     */
+    private function goodPaneBehind(\Closure $badFactory): TestPane
+    {
+        $settings = new PluginSettings('/p', []);
+        $this->manager = new PluginManager(new EventDispatcher(), $settings);
+        $bad = new PluginApi('bad-plugin', $this->manager, '/p', $settings);
+        $bad->registerPane('bad', $badFactory, static fn (string $path): string => '');
+        $this->manager->commit($bad);
+
+        $pane = new TestPane('good');
+        $good = new PluginApi('good-plugin', $this->manager, '/p', $settings);
+        $good->registerPane('good', static fn (PaneServices $services): EditorPaneWidget => $pane, static fn (string $path): string => '');
+        $this->manager->commit($good);
+
+        return $pane;
+    }
+
     public function testAFactoryBecomesARegisteredPaneWithItsLoader(): void
     {
         $pane = new TestPane('demo');
@@ -114,15 +139,7 @@ final class PaneRegistrarTest extends TestCase
         // registration after the first failure instead of only skipping it.
         // Committing a throwing plugin BEFORE a good one is what would
         // expose that: the second pane must still register.
-        $settings = new PluginSettings('/p', []);
-        $this->manager = new PluginManager(new EventDispatcher(), $settings);
-        $bad = new PluginApi('bad-plugin', $this->manager, '/p', $settings);
-        $bad->registerPane('bad', static fn (PaneServices $services): EditorPaneWidget => throw new \RuntimeException('no pane today'), static fn (string $path): string => '');
-        $this->manager->commit($bad);
-        $pane = new TestPane('good');
-        $good = new PluginApi('good-plugin', $this->manager, '/p', $settings);
-        $good->registerPane('good', static fn (PaneServices $services): EditorPaneWidget => $pane, static fn (string $path): string => '');
-        $this->manager->commit($good);
+        $pane = $this->goodPaneBehind(static fn (PaneServices $services): EditorPaneWidget => throw new \RuntimeException('no pane today'));
 
         $this->drain()->register();
 
@@ -209,15 +226,7 @@ final class PaneRegistrarTest extends TestCase
     {
         // Same `continue`/`break` risk, at the other refusal site: a factory
         // that returns the wrong type must only cost its own pane.
-        $settings = new PluginSettings('/p', []);
-        $this->manager = new PluginManager(new EventDispatcher(), $settings);
-        $bad = new PluginApi('bad-plugin', $this->manager, '/p', $settings);
-        $bad->registerPane('bad', static fn (PaneServices $services): string => 'not a pane', static fn (string $path): string => '');
-        $this->manager->commit($bad);
-        $pane = new TestPane('good');
-        $good = new PluginApi('good-plugin', $this->manager, '/p', $settings);
-        $good->registerPane('good', static fn (PaneServices $services): EditorPaneWidget => $pane, static fn (string $path): string => '');
-        $this->manager->commit($good);
+        $pane = $this->goodPaneBehind(static fn (PaneServices $services): string => 'not a pane');
 
         $this->drain()->register();
 

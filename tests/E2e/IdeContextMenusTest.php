@@ -40,6 +40,26 @@ final class IdeContextMenusTest extends TestCase
     use RunsIde;
     use ScreenReads;
 
+    /**
+     * Right-click the first tree entry — the `sub` folder in these fixtures.
+     *
+     * Returned as a step rather than performed, because it has to run inside
+     * runIde()'s numbered schedule. The forced frame is load-bearing: the
+     * widget rect it reads is a frame behind, so under a busy machine an
+     * unforced read clicks where the tree used to be.
+     */
+    private function rightClickTheFirstFolder(): \Closure
+    {
+        return static function ($tui, $terminal, $ide): void {
+            $tui->requestRender(force: true);
+            $tui->processRender();
+            $renderer = Services::resolve($ide, Renderer::class);
+            $rect = $renderer->getWidgetRect($tui->getById('tree'));
+            // Header is relative row 0; the first entry (the folder) is row 1.
+            $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 2));
+        };
+    }
+
     public function testContextMenuSpillingIntoEmptyEditorDoesNotBleedBackground(): void
     {
         // Right-clicking near the right of the sidebar anchors the menu so it
@@ -152,14 +172,7 @@ final class IdeContextMenusTest extends TestCase
             'Outside.php' => "<?php\n// scopedMarker at the root\n",
         ]);
 
-        $rightClickFolder = static function ($tui, $terminal, $ide): void {
-            $tui->requestRender(force: true); // force a frame so the tree rect is live under load
-            $tui->processRender();
-            $renderer = Services::resolve($ide, Renderer::class);
-            $rect = $renderer->getWidgetRect($tui->getById('tree'));
-            // Header is relative row 0; the first entry (the `sub` folder) is row 1.
-            $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 2));
-        };
+        $rightClickFolder = $this->rightClickTheFirstFolder();
         $screen = static fn ($tui, $terminal): string => AnsiUtils::stripAnsiCodes($terminal->getOutput());
 
         $this->runIde(
@@ -218,13 +231,7 @@ final class IdeContextMenusTest extends TestCase
             'Outside.php' => "<?php\n\$token = 2;\n",
         ]);
 
-        $rightClickFolder = static function ($tui, $terminal, $ide): void {
-            $tui->requestRender(force: true); // force a frame so the tree rect is live under load
-            $tui->processRender();
-            $renderer = Services::resolve($ide, Renderer::class);
-            $rect = $renderer->getWidgetRect($tui->getById('tree'));
-            $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 2));
-        };
+        $rightClickFolder = $this->rightClickTheFirstFolder();
         $screen = static fn ($tui, $terminal): string => AnsiUtils::stripAnsiCodes($terminal->getOutput());
 
         $this->runIde(

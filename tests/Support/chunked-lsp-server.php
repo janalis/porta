@@ -5,36 +5,25 @@ declare(strict_types=1);
 // Fault server: answers initialize with a frame split across two writes
 // separated by a pause, exercising the client's partial-frame buffering.
 
+require __DIR__.'/lsp-stub.php';
+
 $in = fopen('php://stdin', mode: 'rb');
 $out = fopen('php://stdout', mode: 'wb');
 
-$buffer = '';
-while (!feof($in)) {
-    $chunk = fread($in, length: 8192);
-    if (false === $chunk) {
-        break;
+foreach (readFrames($in) as $message) {
+    if ('initialize' === ($message['method'] ?? '')) {
+        // Hand-rolled on purpose, and the ONLY hand-rolled part: splitting the
+        // frame is the fault this stub exists to simulate, so it cannot go
+        // through sendMessage(). Reading is ordinary and uses the shared loop.
+        $json = json_encode(['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => ['capabilities' => []]]);
+        $frame = 'Content-Length: '.\strlen($json)."\r\n\r\n".$json;
+        fwrite($out, substr($frame, offset: 0, length: 25)); // header split mid-way
+        fflush($out);
+        usleep(120_000);
+        fwrite($out, substr($frame, offset: 25));
+        fflush($out);
     }
-    $buffer .= $chunk;
-
-    if (
-        false !== ($headerEnd = strpos($buffer, needle: "\r\n\r\n"))
-        && preg_match('/Content-Length:\s*(\d+)/i', substr($buffer, offset: 0, length: $headerEnd), $m)
-        && \strlen($buffer) >= ($headerEnd + 4 + (int) $m[1])
-    ) {
-        $message = json_decode(substr($buffer, $headerEnd + 4, (int) $m[1]), associative: true);
-        $buffer = substr($buffer, $headerEnd + 4 + (int) $m[1]);
-
-        if ('initialize' === ($message['method'] ?? '')) {
-            $json = json_encode(['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => ['capabilities' => []]]);
-            $frame = 'Content-Length: '.\strlen($json)."\r\n\r\n".$json;
-            fwrite($out, substr($frame, offset: 0, length: 25)); // header split mid-way
-            fflush($out);
-            usleep(120_000);
-            fwrite($out, substr($frame, offset: 25));
-            fflush($out);
-        }
-        if ('exit' === ($message['method'] ?? '')) {
-            exit(0);
-        }
+    if ('exit' === ($message['method'] ?? '')) {
+        exit(0);
     }
 }

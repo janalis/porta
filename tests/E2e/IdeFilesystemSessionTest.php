@@ -32,6 +32,38 @@ final class IdeFilesystemSessionTest extends TestCase
     use RunsIde;
     use ScreenReads;
 
+    /** Held so its destructor does not remove the project while the Ide still points at it. */
+    private TempProject $quitProject;
+
+    /**
+     * Boot on a file, press Ctrl+Q a fifth of a second in, and run to a stop.
+     *
+     * The watchdog is the point of doing this in one place: a quit that does
+     * NOT stop the app would otherwise hang the suite rather than fail it, so
+     * it stops the loop and throws, which turns a hang into a named failure.
+     *
+     * The terminal is the caller's because one case reads the escape sequences
+     * off it; the Tui comes back because the other asks whether it stopped.
+     */
+    private function runUntilCtrlQ(VirtualTerminal $terminal): Tui
+    {
+        putenv('PATH=/nonexistent');
+        $this->quitProject = new TempProject(['a.php' => "<?php\n"]);
+        new OnboardingState($this->quitProject->dir)->markWelcomeSeen();
+        $ide = new Ide($this->quitProject->dir, $this->quitProject->path('a.php'), $terminal);
+        $tui = Services::resolve($ide, Tui::class);
+
+        EventLoop::delay(0.2, static fn () => $tui->handleInput("\x11")); // Ctrl+Q
+        $watchdog = EventLoop::delay(3.0, static function () use ($tui): void {
+            $tui->stop();
+            throw new \RuntimeException('quit did not stop the app');
+        });
+        $ide->run();
+        EventLoop::cancel($watchdog);
+
+        return $tui;
+    }
+
     public function testStartupWithoutInitialFileFocusesTree(): void
     {
         putenv('PATH=/nonexistent');
@@ -291,40 +323,16 @@ final class IdeFilesystemSessionTest extends TestCase
 
     public function testQuitWithoutDirtyBuffersStopsImmediately(): void
     {
-        putenv('PATH=/nonexistent');
-        $project = new TempProject(['a.php' => "<?php\n"]);
         $terminal = new VirtualTerminal(columns: 80, rows: 20);
-        new OnboardingState($project->dir)->markWelcomeSeen();
-        $ide = new Ide($project->dir, $project->path('a.php'), $terminal);
-        $tui = Services::resolve($ide, Tui::class);
-
-        EventLoop::delay(0.2, static fn () => $tui->handleInput("\x11"));
-        $watchdog = EventLoop::delay(3.0, static function () use ($tui): void {
-            $tui->stop();
-            throw new \RuntimeException('quit did not stop the app');
-        });
-        $ide->run();
-        EventLoop::cancel($watchdog);
+        $tui = $this->runUntilCtrlQ($terminal);
 
         $this->assertFalse($tui->isRunning());
     }
 
     public function testQuitRestoresTerminalViaAlternateScreen(): void
     {
-        putenv('PATH=/nonexistent');
-        $project = new TempProject(['a.php' => "<?php\n"]);
         $terminal = new VirtualTerminal(columns: 80, rows: 20);
-        new OnboardingState($project->dir)->markWelcomeSeen();
-        $ide = new Ide($project->dir, $project->path('a.php'), $terminal);
-        $tui = Services::resolve($ide, Tui::class);
-
-        EventLoop::delay(0.2, static fn () => $tui->handleInput("\x11")); // Ctrl+Q
-        $watchdog = EventLoop::delay(3.0, static function () use ($tui): void {
-            $tui->stop();
-            throw new \RuntimeException('quit did not stop the app');
-        });
-        $ide->run();
-        EventLoop::cancel($watchdog);
+        $this->runUntilCtrlQ($terminal);
 
         $out = $terminal->getOutput();
         // Entered the alternate screen on start and left it on quit → the terminal

@@ -150,6 +150,39 @@ final class SettingsControllerTest extends TestCase
         );
     }
 
+    /**
+     * Held here rather than in the method that makes it: TempProject removes
+     * its directory in the destructor, and a local would take the writer's
+     * target with it the moment the helper returned.
+     */
+    private TempProject $descriptorTableProject;
+
+    /**
+     * A SettingsController with only the collaborators a descriptor-table case
+     * touches — no constructor, so the real table is never built.
+     *
+     * The table is readonly and assembled in the constructor, so a case about
+     * ONE descriptor's shape (a restart-only note, a key absent from settings)
+     * can only be written by standing a controller up around a hand-built one.
+     * The caller supplies the status bar because reading the flash back off it
+     * is what most of those cases assert.
+     */
+    private function controllerForAHandBuiltDescriptorTable(StatusBarWidget $status): SettingsController
+    {
+        $controller = new \ReflectionClass(SettingsController::class)->newInstanceWithoutConstructor();
+        Probe::set($controller, 'notifier', new Notifier($status, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24))));
+        Probe::set($controller, 'translator', new Translator('en'));
+        $this->descriptorTableProject = new TempProject();
+        Probe::set($controller, 'writer', new PortaJsonWriter(ConfigFiles::for($this->descriptorTableProject->dir)));
+        // Pinned to Project so the write lands in the temp project rather than
+        // the suite's shared fixture home, which the Global default names.
+        $scope = new SettingsScope(ConfigFiles::for($this->descriptorTableProject->dir));
+        $scope->set(ConfigScope::Project);
+        Probe::set($controller, 'scope', $scope);
+
+        return $controller;
+    }
+
     public function testFormRowsExposeOnlyTheGeneralGroup(): void
     {
         $project = new TempProject();
@@ -369,17 +402,8 @@ final class SettingsControllerTest extends TestCase
      */
     public function testARestartRequiredDescriptorAppendsTheExactRestartNote(): void
     {
-        $controller = new \ReflectionClass(SettingsController::class)->newInstanceWithoutConstructor();
         $status = new StatusBarWidget();
-        Probe::set($controller, 'notifier', new Notifier($status, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24))));
-        Probe::set($controller, 'translator', new Translator('en'));
-        $tempProject = new TempProject();
-        Probe::set($controller, 'writer', new PortaJsonWriter(ConfigFiles::for($tempProject->dir)));
-        // Pinned to Project so the write lands in the temp project rather than
-        // the suite's shared fixture home, which the Global default names.
-        $scope = new SettingsScope(ConfigFiles::for($tempProject->dir));
-        $scope->set(ConfigScope::Project);
-        Probe::set($controller, 'scope', $scope);
+        $controller = $this->controllerForAHandBuiltDescriptorTable($status);
         Probe::set($controller, 'settings', ['restartOnly' => false]);
         Probe::set($controller, 'descriptors', [
             'restartOnly' => ['label' => 'Restart only', 'kind' => SettingsRowKind::Bool, 'group' => 'general', 'restart' => true, 'apply' => null],
@@ -511,17 +535,8 @@ final class SettingsControllerTest extends TestCase
      */
     public function testTogglingAKeyAbsentFromSettingsTreatsItAsFalseAndFlipsToTrue(): void
     {
-        $controller = new \ReflectionClass(SettingsController::class)->newInstanceWithoutConstructor();
         $status = new StatusBarWidget();
-        Probe::set($controller, 'notifier', new Notifier($status, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24))));
-        Probe::set($controller, 'translator', new Translator('en'));
-        $tempProject = new TempProject();
-        Probe::set($controller, 'writer', new PortaJsonWriter(ConfigFiles::for($tempProject->dir)));
-        // Pinned to Project so the write lands in the temp project rather than
-        // the suite's shared fixture home, which the Global default names.
-        $scope = new SettingsScope(ConfigFiles::for($tempProject->dir));
-        $scope->set(ConfigScope::Project);
-        Probe::set($controller, 'scope', $scope);
+        $controller = $this->controllerForAHandBuiltDescriptorTable($status);
         Probe::set($controller, 'descriptors', [
             'missing' => ['label' => 'Missing', 'kind' => SettingsRowKind::Bool, 'group' => 'general', 'restart' => false, 'apply' => null],
         ]);
