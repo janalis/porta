@@ -218,6 +218,7 @@ final class ActionCatalog
         'git_branches' => ['label' => 'Git: Branches…', 'adoptable' => true],
         'git_stashes' => ['label' => 'Git: Stashes…', 'adoptable' => true],
         'git_file_history' => ['label' => 'Git: File History', 'adoptable' => true],
+        'git_compare_files' => ['label' => 'Git: Compare Selected Files', 'adoptable' => true],
         'git_fetch' => ['label' => 'Git: Fetch', 'adoptable' => true],
         'git_pull' => ['label' => 'Git: Pull', 'adoptable' => true],
         'git_push_upstream' => ['label' => 'Git: Push (Set Upstream)', 'adoptable' => true],

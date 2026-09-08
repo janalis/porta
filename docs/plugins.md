@@ -691,6 +691,7 @@ Actions (from handlers/hooks):
 | `pick(string $title, array $items, \Closure $onPick)` | Ask the user to choose from `value => label`, or from full rows (`['label' => …, 'hint' => …, 'value' => …]`) when the list needs a dimmed second column |
 | `prompt(string $label, string $initial, \Closure $onSubmit)` | Ask the user for one line of text |
 | `activeFile(): ?string` | Absolute path of the focused buffer |
+| `selectedFiles(): list<string>` | The files selected in the project tree, in tree order, directories left out. One is the ordinary case — the tree always has its cursor row selected — so a command that acts on a set checks the count and says what it wanted |
 | `documentText(): ?string` | Full text of the focused buffer |
 | `caretPosition(): ?array` | `['line' => …, 'column' => …]` (0-based) |
 | `insertAtCaret(string $text)` | Insert at the caret |

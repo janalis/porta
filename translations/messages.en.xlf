@@ -1090,6 +1090,18 @@
         <source>Toggle Block Comment</source>
         <target>Toggle Block Comment</target>
       </trans-unit>
+      <trans-unit id="824">
+        <source>Git: Compare Selected Files</source>
+        <target>Compare Selected Files</target>
+      </trans-unit>
+      <trans-unit id="825">
+        <source>Select two files in the project tree to compare</source>
+        <target>Select two files in the project tree to compare</target>
+      </trans-unit>
+      <trans-unit id="826">
+        <source>The two files are identical</source>
+        <target>The two files are identical</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>Tree: Collapse</target>

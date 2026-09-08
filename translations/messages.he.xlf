@@ -1090,6 +1090,18 @@
         <source>Toggle Block Comment</source>
         <target>החלף הערת בלוק</target>
       </trans-unit>
+      <trans-unit id="824">
+        <source>Git: Compare Selected Files</source>
+        <target>השוואת הקבצים שנבחרו</target>
+      </trans-unit>
+      <trans-unit id="825">
+        <source>Select two files in the project tree to compare</source>
+        <target>בחרו שני קבצים בעץ הפרויקט כדי להשוות</target>
+      </trans-unit>
+      <trans-unit id="826">
+        <source>The two files are identical</source>
+        <target>שני הקבצים זהים</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>עץ: כווץ</target>

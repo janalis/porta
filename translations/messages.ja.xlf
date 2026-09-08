@@ -1090,6 +1090,18 @@
         <source>Toggle Block Comment</source>
         <target>ブロックコメントの切り替え</target>
       </trans-unit>
+      <trans-unit id="824">
+        <source>Git: Compare Selected Files</source>
+        <target>選択したファイルを比較</target>
+      </trans-unit>
+      <trans-unit id="825">
+        <source>Select two files in the project tree to compare</source>
+        <target>比較する 2 つのファイルをプロジェクトツリーで選択してください</target>
+      </trans-unit>
+      <trans-unit id="826">
+        <source>The two files are identical</source>
+        <target>2 つのファイルは同一です</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>ツリー: 折りたたむ</target>

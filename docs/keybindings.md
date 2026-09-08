@@ -211,6 +211,10 @@ to add one and `Shift+Click` to take a range. A modified click only selects:
 it does not open the file, because the point of a pair is to act on both.
 Moving the cursor without a modifier drops back to one file.
 
+With exactly two selected, **Git › Compare Selected Files** diffs them into a
+**Compare** panel (`git diff --no-index`, so neither file has to be tracked —
+though the git plugin still wants a repository around it).
+
 ## Help viewer
 
 When the F1 documentation browser is active:

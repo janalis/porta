@@ -97,6 +97,7 @@ final class ActionCatalogTest extends TestCase
             'git_blame' => 'Git: Blame Current Line',
             'git_branches' => 'Git: Branches…',
             'git_commit' => 'Git: Commit…',
+            'git_compare_files' => 'Git: Compare Selected Files',
             'git_fetch' => 'Git: Fetch',
             'git_file_history' => 'Git: File History',
             'git_pull' => 'Git: Pull',
