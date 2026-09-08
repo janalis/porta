@@ -16,12 +16,29 @@ use Symfony\Component\Console\Tester\CommandTester;
  */
 final class CoverageCheckCommandTest extends TestCase
 {
-    /** A Clover report whose files carry the given [name => [covered, statements]]. */
-    private function clover(array $files, int $totalCovered, int $totalStatements): string
+    /**
+     * A Clover report whose files carry the given [name => [covered, statements]].
+     *
+     * @param array<string, array<int, int>> $lines       name => [line number => hit count], for the
+     *                                                     files whose `<line>` entries a test needs;
+     *                                                     a report merged with another is graded from
+     *                                                     these rather than from `<metrics>`
+     * @param array<string, array<int, int>> $methodLines   the same for `type="method"` entries, whose
+     *                                                     count is a MAX over the method's whole range
+     *                                                     and so is never one line's truth
+     */
+    private function clover(array $files, int $totalCovered, int $totalStatements, array $lines = [], array $methodLines = []): string
     {
         $xml = '<?xml version="1.0" encoding="UTF-8"?><coverage generated="1"><project timestamp="1">';
         foreach ($files as $name => [$covered, $statements]) {
-            $xml .= \sprintf('<file name="%s"><metrics statements="%d" coveredstatements="%d"/></file>', $name, $statements, $covered);
+            $xml .= \sprintf('<file name="%s">', $name);
+            foreach ($methodLines[$name] ?? [] as $number => $count) {
+                $xml .= \sprintf('<line num="%d" type="method" count="%d"/>', $number, $count);
+            }
+            foreach ($lines[$name] ?? [] as $number => $count) {
+                $xml .= \sprintf('<line num="%d" type="stmt" count="%d"/>', $number, $count);
+            }
+            $xml .= \sprintf('<metrics statements="%d" coveredstatements="%d"/></file>', $statements, $covered);
         }
         $xml .= \sprintf('<metrics statements="%d" coveredstatements="%d"/>', $totalStatements, $totalCovered);
 
@@ -478,5 +495,158 @@ final class CoverageCheckCommandTest extends TestCase
             $display,
             'the entry is indented exactly two spaces before the path, not concatenated on the wrong side',
         );
+    }
+
+    public function testTwoReportsAreGradedTogether(): void
+    {
+        // The sharded plugin pass: several serial runs, one report each, and
+        // nothing merges them until here.
+        $project = new TempProject([
+            'shards/a.xml' => $this->clover(['/p/plugins/git/src/Blame.php' => [6, 6]], totalCovered: 6, totalStatements: 6),
+            'shards/b.xml' => $this->clover(['/p/plugins/todo/src/Scan.php' => [4, 4]], totalCovered: 4, totalStatements: 4),
+        ]);
+
+        $tester = $this->tester();
+        $status = $tester->execute(['clover' => $project->path('shards'), 'threshold' => '100', '--only' => '/plugins/']);
+        $display = $tester->getDisplay();
+
+        $this->assertSame(Command::SUCCESS, $status, $display);
+        $this->assertStringContainsString('git/src/Blame.php', $display);
+        $this->assertStringContainsString('todo/src/Scan.php', $display);
+        $this->assertStringContainsString('TOTAL (/plugins/): 100.00% (10/10)', $display, 'both reports, summed once each');
+    }
+
+    public function testAFileTwoReportsBothCarryIsCountedOnceAtTheUnionOfItsLines(): void
+    {
+        // Booting an IDE loads every default-enabled plugin, so a shard's
+        // report holds files another shard also covered. Summing the two rows
+        // would grade this file 8/8 statements when it has 4; taking either
+        // row alone would grade it 2/4 and fail a file that IS fully covered.
+        $file = '/p/plugins/tempest/plugin.php';
+        $project = new TempProject([
+            // The method entry is noise the union must ignore: counting it would
+            // make this file's line map disagree with its own metrics.
+            'shards/a.xml' => $this->clover([$file => [2, 4]], totalCovered: 2, totalStatements: 4, lines: [$file => [10 => 1, 11 => 3, 12 => 0, 13 => 0]], methodLines: [$file => [9 => 3]]),
+            'shards/b.xml' => $this->clover([$file => [2, 4]], totalCovered: 2, totalStatements: 4, lines: [$file => [10 => 0, 11 => 0, 12 => 5, 13 => 1]]),
+        ]);
+
+        $tester = $this->tester();
+        $status = $tester->execute(['clover' => $project->path('shards'), 'threshold' => '100', '--only' => '/plugins/']);
+        $display = $tester->getDisplay();
+
+        $this->assertSame(Command::SUCCESS, $status, $display);
+        $this->assertStringContainsString('TOTAL (/plugins/): 100.00% (4/4)', $display, 'one file, four statements, covered by the two runs between them');
+        $this->assertStringContainsString('100.00% (4/4)', $display);
+    }
+
+    public function testAFileSplitAcrossReportsWhoseLinesCannotRebuildItsMetricsIsInvalid(): void
+    {
+        // Clover writes a method's declaration line as type="method" with a
+        // count that is the MAX over the method's range, and omits the stmt
+        // entry for it — so when that line is itself executable, neither the
+        // statement nor its count survives. Merging on such a file would grade
+        // a shrunken denominator, which is the one direction 100% cannot see.
+        $file = '/p/plugins/git/src/Blame.php';
+        $project = new TempProject([
+            'shards/a.xml' => $this->clover([$file => [3, 4]], totalCovered: 3, totalStatements: 4, lines: [$file => [10 => 1, 11 => 1, 12 => 1]]),
+            'shards/b.xml' => $this->clover([$file => [1, 4]], totalCovered: 1, totalStatements: 4, lines: [$file => [10 => 0, 11 => 0, 12 => 1]]),
+        ]);
+
+        $tester = $this->tester();
+        $status = $tester->execute(['clover' => $project->path('shards'), 'threshold' => '100', '--only' => '/plugins/']);
+        $display = $tester->getDisplay();
+
+        $this->assertSame(Command::INVALID, $status, $display);
+        $this->assertStringContainsString('cannot merge them losslessly', $display);
+        $this->assertStringContainsString($file, $display, 'the file is named, or nobody can act on it');
+    }
+
+    public function testADirectoryWithNoReportInItIsInvalidInput(): void
+    {
+        $project = new TempProject(['shards/README.md' => "not a report\n"]);
+
+        $tester = $this->tester();
+        $status = $tester->execute(['clover' => $project->path('shards'), 'threshold' => '100']);
+
+        $this->assertSame(Command::INVALID, $status);
+        $this->assertStringContainsString('holds no *.xml report', $tester->getDisplay(), 'an empty shard directory is not a green gate');
+    }
+
+    public function testADirectoryHoldingOneReportGradesExactlyLikeThatFile(): void
+    {
+        // The no-regression pin: the directory form must not be a second,
+        // subtly different gate.
+        $files = ['/p/plugins/git/src/Blame.php' => [3, 4], '/p/plugins/todo/src/Scan.php' => [4, 4]];
+        $report = $this->clover($files, totalCovered: 7, totalStatements: 8);
+        $project = new TempProject(['clover.xml' => $report, 'shards/only.xml' => $report]);
+
+        $direct = $this->tester();
+        $direct->execute(['clover' => $project->path('clover.xml'), 'threshold' => '80', '--only' => '/plugins/']);
+        $viaDirectory = $this->tester();
+        $viaDirectory->execute(['clover' => $project->path('shards'), 'threshold' => '80', '--only' => '/plugins/']);
+
+        $this->assertSame($direct->getDisplay(), $viaDirectory->getDisplay());
+    }
+
+    public function testRequireIsSatisfiedByAFilePresentInOnlyOneReport(): void
+    {
+        // --require asks whether ANY report loaded the file, so it reads the
+        // union unscoped: a shard that never touched a plugin says nothing
+        // about it, and the shard that did is the answer.
+        $project = new TempProject([
+            'plugins/demo/src/Graded.php' => "<?php\n",
+            'plugins/demo/src/Other.php' => "<?php\n",
+        ]);
+        $graded = (string) realpath($project->path('plugins/demo/src/Graded.php'));
+        $other = (string) realpath($project->path('plugins/demo/src/Other.php'));
+        $project->write('shards/a.xml', $this->clover([$graded => [5, 5]], totalCovered: 5, totalStatements: 5));
+        $project->write('shards/b.xml', $this->clover([$other => [2, 2]], totalCovered: 2, totalStatements: 2));
+
+        $tester = $this->tester();
+        $status = $tester->execute([
+            'clover' => $project->path('shards'),
+            'threshold' => '100',
+            '--only' => '/plugins/',
+            '--require' => $project->path('plugins'),
+        ]);
+        $display = $tester->getDisplay();
+
+        $this->assertSame(Command::SUCCESS, $status, $display);
+        $this->assertStringNotContainsString('absent from the report', $display, 'each file is in one report, and one is enough');
+    }
+
+    public function testAStatementNoReportExecutedStaysUncoveredInTheUnion(): void
+    {
+        $file = '/p/plugins/git/src/Blame.php';
+        $project = new TempProject([
+            'shards/a.xml' => $this->clover([$file => [1, 4]], totalCovered: 1, totalStatements: 4, lines: [$file => [10 => 2, 11 => 0, 12 => 0, 13 => 0]]),
+            'shards/b.xml' => $this->clover([$file => [2, 4]], totalCovered: 2, totalStatements: 4, lines: [$file => [10 => 0, 11 => 1, 12 => 4, 13 => 0]]),
+        ]);
+
+        $tester = $this->tester();
+        $status = $tester->execute(['clover' => $project->path('shards'), 'threshold' => '80', '--only' => '/plugins/']);
+        $display = $tester->getDisplay();
+
+        $this->assertSame(Command::FAILURE, $status, $display);
+        $this->assertStringContainsString('TOTAL (/plugins/): 75.00% (3/4)', $display, 'line 13 was executed by neither run, and a union of misses is still a miss');
+    }
+
+    public function testReportsThatDisagreeAboutWhichLinesAreStatementsAreInvalid(): void
+    {
+        // Same file, same statement COUNT, different line numbers — so the two
+        // maps are not the same file's map, and a union over them would report
+        // more covered lines than the file has statements.
+        $file = '/p/plugins/git/src/Blame.php';
+        $project = new TempProject([
+            'shards/a.xml' => $this->clover([$file => [2, 2]], totalCovered: 2, totalStatements: 2, lines: [$file => [10 => 1, 11 => 1]]),
+            'shards/b.xml' => $this->clover([$file => [2, 2]], totalCovered: 2, totalStatements: 2, lines: [$file => [20 => 1, 21 => 1]]),
+        ]);
+
+        $tester = $this->tester();
+        $status = $tester->execute(['clover' => $project->path('shards'), 'threshold' => '100', '--only' => '/plugins/']);
+        $display = $tester->getDisplay();
+
+        $this->assertSame(Command::INVALID, $status, $display);
+        $this->assertStringContainsString('cannot merge them losslessly', $display);
     }
 }
