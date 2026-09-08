@@ -1738,6 +1738,44 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## Two things that were fine, and one that was not (2026-09-08)
+
+Three checks against the real setup, reported together because the negative
+ones cost as much to establish as the positive one and are worth the same to
+whoever asks next.
+
+**`Alt+8` is dead for this user, and correctly explained.** Their `.porta.json`
+lists `enabledPlugins` explicitly and does not include `todo`, so `ide_todo` is
+registered by nobody. Booted a throwaway project with a copy of their config:
+the command is absent, the config raises NO warning — and pressing `Alt+8`
+flashes "Show TODOs comes from a bundled plugin that "enabledPlugins" does not
+list". Round 8's step 4 landed, at the key press rather than at boot, which is
+what stops it nagging every launch. **Nothing to fix.**
+
+**And I nearly reported a truncation that does not exist.** The first screen
+scrape showed only `Show TODOs comes from a bundled plugin` and I took the
+sentence for clipped — the filter was matching rows containing "TODO", and the
+wrapped continuation contains neither that word nor "bundled". Dumping the
+region raw shows the card wrapping correctly across two lines, which is what
+`ToastCard` says it does. **An observation is a claim too**; the discipline that
+applies to a docblock applies to a grep.
+
+**A reachability audit that did not pay, recorded so nobody rebuilds it.** The
+idea was to list every command with no key, no menu entry and no palette row —
+the shape that found `ide_notifications` in round 8. It reports `save`,
+`save_all` and `goto_file` as keyless, because `CommandRegistry`'s `keyBound`
+flag means "the GLOBAL dispatcher may run this" and the editor's verbs are
+dispatched by the widget keymap instead. A correct version needs all four
+binding channels, and `KeybindingsDocTest` already covers the half that matters.
+
+**The one that was not fine: "1 versions".** Found by RENDERING the Recent
+Changes panel and reading it. Every test around those rows asserted which file
+is on top and whether the location is real; none of them read the sentence. The
+catalogs have carried pipe plurals since the Symfony pass, and this string was
+written without one. **A row that six assertions pass over can still be wrong in
+the only way a user would notice** — and the fix for that is to print the thing
+and look at it, not to add a seventh assertion of the same kind.
+
 ## "A hash does not run backwards" was only half true (built 2026-09-08, `b3daad2c`)
 
 Checked what the new project-wide view would actually SHOW on this machine's
