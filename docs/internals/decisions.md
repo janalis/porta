@@ -1806,14 +1806,12 @@ obvious version cannot work.
 
 - **Process count, and it is free.** 170s at 4 processes, ~90s at 8 (which is
   already the script's default — a whole session was spent at 4 for no reason),
-  62s at 12, 52s at 12 without `--functional`, and **52s at `auto` (16) WITH
-  it**. The `--functional` split is deliberate and worth its 10s; four more
+  62s at 12, 52s at 12 without `--functional`, and 52s at `auto` (16) WITH
+  it — and **34s at 32**, because the suite waits rather than computes. The `--functional` split is deliberate and worth its 10s; four more
   cores buy that 10s back, so on an idle box the safe split is free. The
   throttle is what costs, unless the box is shared.
-- **The serial plugins pass costs 146s for 36s of work.** The 110s is the merge
-  bug's price. Parallel paratest is closed, but *six serial phpunit runs, one per
-  plugin, several at once* has no merge inside any single run — a different shape
-  from the one that was rejected, and unexplored.
+- ~~**The serial plugins pass costs 146s for 36s of work.**~~ Built: sixteen
+  shards, 151s → 34s, same totals. See below.
 - **E2e has no slow tests, it has a floor.** Median case 0.53s, the 15 slowest
   are 11% of the total; ~0.4s per test is `RunsIde`/`TempProject` setup, so
   ~144s of serial CPU sits in the boot path rather than in any test.
@@ -1861,6 +1859,123 @@ With this, the coverage-run experiment is closed in both halves: the
 bootstrap-sweep hypothesis was falsified earlier (the sweep contributes 0 files,
 and `PORTA_CONTAINER_CACHE=off` is what makes the merge correct), and the
 `pcov.directory` half is measured and declined.
+
+## Parallelism: the box was 80% idle (2026-09-08, `bbc05bf8`…`88e82869`)
+
+The number nobody had looked at: at 16 processes the full suite burns **182s of
+CPU over 51.7s of wall clock — 3.5 of 16 cores**. Under coverage at 8 it is 3.3.
+The suite is **wait-bound**, not CPU-bound: the Revolt loop runs in real time,
+~70 `sleep`/`usleep` sites sit in ~10 Unit classes, and E2e pays a ~0.4s boot
+floor per test. Everything below follows from that one measurement.
+
+### The process count does not stop at the core count
+
+52.5s at 16, **39.5s at 24, 34s at 32**, alternated, all green; utilisation at
+32 reaches 6.7 cores. The coverage pass goes 137s at the default 8 to 76s at 16
+and **64–72s at 24**.
+
+Both ceilings are measured too. **48 wedged** at `6588 / 6610 (99%)` with no
+worker process left alive and three dangling pipes on the parent. **32 under
+`composer coverage` failed two E2e tests** — a flash asserted as `Opened
+https://…` that never arrived — while passing without coverage: pcov makes each
+worker slower, so the same count buys more contention. 24 is green under both.
+
+And a diagnostic lesson that cost twenty minutes: **killing a wedged paratest
+parent leaves its workers alive, and the orphans wedge the NEXT run at exactly
+the same point.** It looked like a reproducible capacity limit at 32; it was my
+own debris. `pkill -9 -f vendor/bin/paratest`, check `ps`, then re-run — three
+clean runs followed immediately.
+
+### The plugins pass was paying for a merge it never does
+
+`tests/bootstrap.php` turned the container cache off whenever pcov was enabled.
+Both reasons that line exists — every worker compiling every `src` file so none
+is missed, and that compile collapsing each worker's `PathReducer` base so the
+merge resolves — are about the PARALLEL `src` run. The plugins pass is one
+serial process filtered to `plugins/`. It was paying ~348 container recompiles
+for a property it does not use: **151.0 / 151.4s off against 131.2 / 138.3s on**,
+alternated, and 64s → 38s of CPU. The wall-clock half is smaller than the CPU
+half because `ConfigCache::isFresh()` re-hashes ~480 tracked classes per warm
+boot in a checkout — but the CPU half is the one that mattered next.
+
+### Sixteen shards, because the dodge is per PROCESS
+
+The serial pass existed because a serial run never merges. That property belongs
+to a process, not to a pass — so N independent serial runs are N merge-free
+reports, and the only merge left is the gate's own, over whole documents.
+`bin/porta-dev coverage:plugins` derives the shards (one per immediate
+subdirectory of a plugin's `tests/`, plus one for the loose files), runs them
+several at a time, and writes one report each. **151s → 34.4 / 32.9 / 34.0s,
+with `100.00% (4284/4284)` and 127 plugin files every run.** `composer verify`
+end to end: **391s → 112s**.
+
+Three decisions inside it are load-bearing:
+
+- **The shard list is derived, never written down.** A list in a file is a
+  second place to add a plugin, and forgetting it stops running those tests
+  while the percentage stays green — the coverage gate catches a dropped shard
+  only when nothing else covers the same lines. (A completeness ratchet was
+  written and then deleted: with the list derived as loose-files-plus-every-
+  subdirectory it could not fail, and a guard that cannot fire is the thing
+  `claims-are-not-guards` is about.)
+- **Every shard keeps `--coverage-filter plugins`, the whole tree.** A
+  per-plugin filter reads tidier and breaks the gate: `plugins/tempest/plugin.php`
+  has no tests of its own, is loaded by every booted IDE, and is not in
+  `MAY_BE_ABSENT` — under per-plugin filters no report would carry it and
+  `--require` would fail a file that is fully covered.
+- **The pool is graded, not mocked.** The injected seam is a process FACTORY,
+  not a run-to-completion closure, so the tests drive the real pool with `php -r`
+  stand-ins — including an interleaving assertion that fails if the concurrency
+  limit is ignored. Symfony enforces a process timeout from `wait()`, and a pool
+  polls, so `checkTimeout()` has to be called by hand; the wedged branch is a
+  test, not a hope.
+
+### The gate grades a directory of reports, merged per LINE
+
+`coverage:check` takes a directory as well as a file. **A variadic argument was
+not available**: `InputDefinition` throws on ANY argument after an array one
+(the guard at `InputDefinition.php:103` says "required" and does not check), so
+`coverage:check <clover> <threshold>` could not survive it. The directory form
+leaves the argument definition — and the composer-script contract a test pins —
+untouched.
+
+The merge is per line because booting an IDE loads every default-enabled plugin:
+one shard's report holds files another shard also covered. Summing rows would
+count a file's statements once per shard; keeping the best row would fail a file
+that IS covered, by two runs between them. **A file only one report carries
+keeps that report's own metrics**, which is why all 19 existing tests passed
+unchanged.
+
+And a guard, because **Clover is lossy**: `Report/Clover.php` writes a method's
+declaration line as `type="method"` with a count that is the MAX over the
+method's whole range, and omits the `stmt` entry for it. Where that line is
+itself executable, neither the statement nor its true count survives. Measured
+on the real report: 8 files disagree with their own metrics, **all 8 under
+`src/`, none under `plugins/`**. So the union is exact today; the day a plugin
+grows a single-line method, the gate says INVALID and names the file instead of
+grading a shrunken denominator — the one direction a 100% gate cannot notice.
+
+### Measured while the data was there: plugin coverage ownership
+
+`CLAUDE.md` and `plugin-system.md` both say plugin code must be covered by that
+plugin's OWN tests, and the union gate has never checked it. One report per
+shard finally makes it answerable. Of the 127 plugin files, 18 have no
+executable statements; **of the 109 graded, every one is fully covered by its
+own plugin's tests except `plugins/tempest/plugin.php`** (11 statements),
+which has no tests of its own and is reached by every other plugin's Ide boots.
+
+So the rule is true in practice and unenforceable as written: making it a gate
+would fail on tempest immediately. Left as the union, recorded here.
+*Re-opens on:* a second file joining tempest, which would mean the convention
+is drifting rather than holding.
+
+### Not done, deliberately
+
+Two suite runners at once — in git worktrees, which would give each its own
+`.phpunit.cache`, `coverage/`, `vendor/` and fixture home — was designed and not
+tested. The recorded rule stands untested rather than re-measured, on the
+owner's call. The utilisation table says it would probably work; that is not the
+same as knowing, and this entry should not be read as saying it does.
 
 ## A duplication gate, and what it found (built 2026-09-08, `f2d1d519`)
 
