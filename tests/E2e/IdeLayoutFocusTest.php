@@ -66,11 +66,14 @@ final class IdeLayoutFocusTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui, $terminal, $ide): void {
+                200 => function ($tui, $terminal, $ide): void {
                     $tp = $tui->getById('terminal');
                     $tp->open('sh', new \Porta\Terminal\TerminalBuffer());
-                    $tui->requestRender();
-                    $tui->tick();
+                    // A FORCED frame, not requestRender+tick: a rect is always
+                    // a frame behind, and a bare tick paints only when
+                    // something already asked for one. Under the coverage run
+                    // it did not, and this read came back null.
+                    $this->frame($tui);
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tp);
                     $top = $rect->row + 1; // 1-based screen row of the panel's top edge
