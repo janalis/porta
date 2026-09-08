@@ -1039,8 +1039,8 @@
         <target>Nessuna cronologia locale</target>
       </trans-unit>
       <trans-unit id="238h1">
-        <source>%count% versions</source>
-        <target>%count% versioni</target>
+        <source>%count% version|%count% versions</source>
+        <target>%count% versione|%count% versioni</target>
       </trans-unit>
       <trans-unit id="238h2">
         <source>Recent Changes</source>

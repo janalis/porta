@@ -1039,8 +1039,8 @@
         <target>ローカル履歴はまだありません</target>
       </trans-unit>
       <trans-unit id="238h1">
-        <source>%count% versions</source>
-        <target>%count% 個のバージョン</target>
+        <source>%count% version|%count% versions</source>
+        <target>%count% 個のバージョン|%count% 個のバージョン</target>
       </trans-unit>
       <trans-unit id="238h2">
         <source>Recent Changes</source>

@@ -1039,8 +1039,8 @@
         <target>אין עדיין היסטוריה מקומית</target>
       </trans-unit>
       <trans-unit id="238h1">
-        <source>%count% versions</source>
-        <target>%count% גרסאות</target>
+        <source>%count% version|%count% versions</source>
+        <target>גרסה %count%|%count% גרסאות</target>
       </trans-unit>
       <trans-unit id="238h2">
         <source>Recent Changes</source>

@@ -1039,8 +1039,8 @@
         <target>Aún no hay historial local</target>
       </trans-unit>
       <trans-unit id="238h1">
-        <source>%count% versions</source>
-        <target>%count% versiones</target>
+        <source>%count% version|%count% versions</source>
+        <target>%count% versión|%count% versiones</target>
       </trans-unit>
       <trans-unit id="238h2">
         <source>Recent Changes</source>
