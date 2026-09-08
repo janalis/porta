@@ -126,6 +126,42 @@ final class IdeTabsBuffersTest extends TestCase
         $this->assertStringContainsString('open a file from the tree', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
     }
 
+    public function testCtrlUJumpsToTheSuperMethodAndSaysWhichOne(): void
+    {
+        // The binding reaching the action is its own fact: a command can be
+        // registered, adopted, menu-listed and covered, and still never answer
+        // the key — which is exactly how the last feature nearly shipped.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            'src/Base.php' => "<?php\nnamespace App;\nabstract class Base\n{\n    public function handle(): void\n    {\n    }\n}\n",
+            'src/Child.php' => "<?php\nnamespace App;\nfinal class Child extends Base\n{\n    public function handle(): void\n    {\n    }\n}\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('src/Child.php'),
+            [
+                300 => static function ($tui): void {
+                    $tui->getById('editor')->getDocument()->setCursor(4, 8);
+                    $tui->handleInput("\x15"); // ctrl+u
+                },
+                500 => function ($tui, $terminal): void {
+                    $editor = $tui->getById('editor');
+
+                    $this->assertStringEndsWith('Base.php', (string) $editor->getFilePath(), 'the parent file is open');
+                    $this->assertSame(4, $editor->getDocument()->getCursorLine(), 'on its declaration');
+                    $this->assertStringContainsString(
+                        'Super method: Base::handle',
+                        AnsiUtils::stripAnsiCodes($terminal->getOutput()),
+                        'and it names what it found, because the jump alone does not say why',
+                    );
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testRecentFilesSaysSoWhenThereIsNowhereToSwitch(): void
     {
         // One file, one session: the switcher has nothing to offer, and it used
