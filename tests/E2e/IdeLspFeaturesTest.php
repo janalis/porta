@@ -16,6 +16,7 @@ use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Sgr;
@@ -34,6 +35,7 @@ final class IdeLspFeaturesTest extends TestCase
     use ClearsPortaLsp;
     use PreservesPath;
     use RunsIde;
+    use ScreenReads;
 
     public function testNoLanguageServerMode(): void
     {
@@ -838,11 +840,15 @@ final class IdeLspFeaturesTest extends TestCase
                         static fn (): bool => EditorState::pickerOpen($editor),
                         what: 'the file-structure popup to open',
                     );
-                    $this->awaitPainted($tui, $terminal, 'greet');
-                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('File Structure', $screen);
-                    $this->assertStringContainsString('Demo', $screen);
-                    $this->assertStringContainsString('greet', $screen);
+                    $this->awaitPainted($tui, $terminal, 'File Structure');
+                    // The CARD, not the screen: `Demo` and `greet` are the
+                    // symbols in the buffer this popup is drawn over, so a
+                    // screen-wide assertion passes whether the popup lists them
+                    // or nothing at all. Measured — replacing every label with
+                    // `ZZZ0`, `ZZZ1`… left this test green.
+                    $card = $this->card($this->screenGrid($tui, $terminal), 'File Structure');
+                    $this->assertStringContainsString('Demo', $card);
+                    $this->assertStringContainsString('greet', $card);
                     $tui->handleInput("\x1b[B"); // -> greet
                     $tui->handleInput("\r");
                 },
@@ -857,7 +863,11 @@ final class IdeLspFeaturesTest extends TestCase
             ],
         );
 
-        $this->assertStringContainsString('File Structure', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+        // No trailing screen assertion: card() above already fails loudly when
+        // no card by that title is on screen, and it reads a FORCED frame
+        // rather than the accumulated output — which this line was reading, and
+        // which screenGrid() drains.
+        $this->addToAssertionCount(1);
     }
 
     public function testFileStructureEmptyResult(): void

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
+use Porta\Ui\Glyphs;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -15,6 +16,9 @@ use Symfony\Component\Tui\Tui;
  */
 trait ScreenReads
 {
+    /** Satisfied by the host TestCase (PHPUnit's Assert::fail). */
+    abstract public static function fail(string $message = ''): never;
+
     /**
      * Force a full frame and return the screen as stripped text rows. A forced
      * render resets the differential writer, so the output is the clear/home
@@ -51,6 +55,36 @@ trait ScreenReads
         }
 
         return null;
+    }
+
+    /**
+     * The framed card whose top border carries $title, as its own text.
+     *
+     * Assert against THIS rather than against the whole screen. A picker draws
+     * over the buffer, and its rows are usually drawn FROM the buffer — symbol
+     * names, file names, copied lines — so a screen-wide
+     * `assertStringContainsString('greet', ...)` passes whether the popup lists
+     * `greet` or nothing at all. Measured twice, by replacing every row's label
+     * and watching two suites stay green.
+     *
+     * @param list<string> $grid
+     */
+    private function card(array $grid, string $title): string
+    {
+        $top = $this->rowOf($grid, $title);
+        if (null === $top || !str_contains($grid[$top], Glyphs::MODAL_TOP_LEFT)) {
+            self::fail(\sprintf('no card titled "%s" is on screen', $title));
+        }
+
+        $card = [];
+        for ($row = $top; $row < \count($grid); ++$row) {
+            $card[] = $grid[$row];
+            if (str_contains($grid[$row], Glyphs::MODAL_BOTTOM_LEFT)) {
+                return implode("\n", $card);
+            }
+        }
+
+        self::fail(\sprintf('the card titled "%s" has no bottom border', $title));
     }
 
     /**

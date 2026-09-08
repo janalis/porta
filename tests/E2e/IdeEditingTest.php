@@ -16,6 +16,7 @@ use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
@@ -34,6 +35,7 @@ final class IdeEditingTest extends TestCase
     use ClearsPortaLsp;
     use PreservesPath;
     use RunsIde;
+    use ScreenReads;
 
     /**
      * The fold column is part of the gutter, so a click there must fold rather
@@ -292,41 +294,18 @@ final class IdeEditingTest extends TestCase
                     $tui->handleInput("\x1b[118;6u"); // ctrl+shift+v
                     $this->awaitPainted($tui, $terminal, 'Paste from History');
 
-                    // The BOX, not the screen: every string in this picker is
+                    // The CARD, not the screen: every string in this picker is
                     // also in the buffer behind it, so a screen-wide assertion
                     // passes on a picker that offers nothing at all — measured,
                     // by cutting the older entry and watching it still pass.
-                    $box = self::pickerBox(AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $this->assertStringContainsString('$beta = 2;⏎$gamma = 3;', $box, 'the two-line copy keeps its shape on one row');
-                    $this->assertStringContainsString('$alpha = 1;', $box, 'and the older copy is still offered');
+                    $card = $this->card($this->screenGrid($tui, $terminal), 'Paste from History');
+                    $this->assertStringContainsString('$beta = 2;⏎$gamma = 3;', $card, 'the two-line copy keeps its shape on one row');
+                    $this->assertStringContainsString('$alpha = 1;', $card, 'and the older copy is still offered');
                 },
             ],
         );
 
         $this->addToAssertionCount(1);
-    }
-
-    /** The last-painted picker card, from its title row to the frame's foot. */
-    private static function pickerBox(string $screen): string
-    {
-        $rows = explode("\n", $screen);
-        $start = null;
-        foreach ($rows as $index => $row) {
-            if (!str_contains($row, 'Paste from History')) {
-                continue;
-            }
-            $start = $index; // the LAST frame's card, not the first
-        }
-        self::assertNotNull($start, 'no picker card was painted at all');
-        $card = [];
-        for ($row = $start; $row < \count($rows); ++$row) {
-            $card[] = $rows[$row];
-            if (str_contains($rows[$row], Glyphs::MODAL_BOTTOM_LEFT)) {
-                break;
-            }
-        }
-
-        return implode("\n", $card);
     }
 
     public function testCopyPathAndCopyReferenceReachTheCLIPBOARDFromTheirChords(): void
