@@ -1877,6 +1877,59 @@ bootstrap-sweep hypothesis was falsified earlier (the sweep contributes 0 files,
 and `PORTA_CONTAINER_CACHE=off` is what makes the merge correct), and the
 `pcov.directory` half is measured and declined.
 
+## Round 8: render the surface, then read it (2026-09-08, `0e68d5d4`…`9f83f35b`)
+
+Six defects, every one found by booting the IDE into a `VirtualTerminal` and
+looking at the screen — not by reading code, and not by surveying features. The
+method is cheap: a throwaway E2e that dumps `screenGrid()` at a few timestamps,
+then read the dump like a screenshot. Every one of these had passed every gate
+for months.
+
+- **The indent guides doubled every block's depth.** A four-space PHP file drew
+  a guide every TWO columns, and Tab inserted half an indent, because `auto`
+  meant "the `.editorconfig`, else unix-style two spaces" whatever the file did.
+  `IndentModel::detect()` reads the file now — tabs vs spaces from the first
+  line that starts with either, size from the most common STEP between
+  consecutive indents, ties to the smaller step. Two test fixtures moved rather
+  than the heuristic: a ladder of 8/2/0 and a lone 8-space jump are genuinely
+  ambiguous, and both tests were pinning a constant default rather than a read.
+- **Two keystrokes did nothing at all.** `Ctrl+E` with one file open and
+  `Ctrl+Shift+V` with an empty clipboard ring both returned in silence — on the
+  first file of a session, which is exactly when someone is finding out whether
+  the shortcut works. `RunController` already flashed "Nothing to run…"; these
+  two were the outliers. `EditorActions` takes the Support-owned `FlashSink`,
+  so `Editor` still holds no Ui service.
+- **Find Action never showed a key.** The palette is where a shortcut is
+  learned, and `ShortcutFormatter`'s docblock has named "the menu bar and the
+  command palette" since before the palette printed one — a claim in prose that
+  nothing enforced. Resolved through the same two maps the menu bar consults,
+  asked by ID and never by label.
+- **187 keybindings with no search.** The E2e that rebinds `save_all` walks up
+  to 200 rows to reach it, which is the measure of the problem. `Ctrl+F` filters
+  in place now — that key was DEAD on this pane, which the settings nav's own
+  keymap comment warns about in as many words — and the query matches the label
+  AND the key, because "what is Ctrl+Shift+N bound to" is the other half of what
+  the page is opened for.
+- **The empty state spelled out a chord.** `goto_file` is bound to
+  `ctrl+shift+n` and `ctrl+p`; the one hint a new user reads named the second
+  while the menu and the keymap page named the first, and a rebind left it
+  pointing at nothing. It resolves the live binding now.
+- **A Welcome step contradicted its own checkbox**: "Colours your code; off
+  until enabled" beside `[x]`. A description that claims its own state goes
+  stale the moment the step is done. Its three neighbours describe the feature
+  and let the box say the rest.
+
+**What the method costs and what it catches.** Five of the six are one-line
+defects that no unit test would ever have failed on, because each test asserted
+what the code computes rather than what a person sees. The sixth (the missing
+filter) is not a defect at all in that sense — nothing was wrong, something was
+missing, and only looking at the page shows that.
+
+*Worth re-reading before the next round:* the tree still has no file-type
+icons and the editor pads its empty area with vim-style `~`. Both were seen and
+left: they are deliberate style, not defects, and changing either is the
+owner's call rather than a fix.
+
 ## Comparing two files, and the selection it needed (2026-09-08, `92892561`…`d150ef8b`)
 
 The last of the three long-open UI items. It needed two halves, and the first
