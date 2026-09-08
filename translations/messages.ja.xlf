@@ -1118,6 +1118,18 @@
         <source>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter</source>
         <target>キーバインド — %count% 件のアクション · ⏎ で再割り当て · Ctrl+F で絞り込み</target>
       </trans-unit>
+      <trans-unit id="831">
+        <source>No file open · press %key% to open a file</source>
+        <target>ファイルが開かれていません · %key% で開きます</target>
+      </trans-unit>
+      <trans-unit id="832">
+        <source>No file open · use Go to File to open one</source>
+        <target>ファイルが開かれていません · 「ファイルへ移動」で開きます</target>
+      </trans-unit>
+      <trans-unit id="833">
+        <source>Colours your code</source>
+        <target>コードに色を付けます</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>ツリー: 折りたたむ</target>

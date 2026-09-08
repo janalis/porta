@@ -24,6 +24,7 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorCallbacks;
 use Porta\Widget\Render\LineDecorator;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class CodeEditorWidgetTest extends TestCase
@@ -376,7 +377,13 @@ final class CodeEditorWidgetTest extends TestCase
 
         $plain = AnsiUtils::stripAnsiCodes(implode("\n", $rendered));
         $this->assertStringContainsString('No file open', $plain, 'placeholder hint is shown');
-        $this->assertStringContainsString('Ctrl+P', $plain);
+        $this->assertStringContainsString('Ctrl+Shift+N', $plain, 'the primary Go to File chord, as the menu and the keymap page print it');
+
+        // And it FOLLOWS the map rather than spelling a chord out: the one hint
+        // a new user reads must not point at a key they have rebound.
+        $editor->setKeybindings(new Keybindings(['goto_file' => ['f4']]));
+        $rebound = AnsiUtils::stripAnsiCodes(implode("\n", $editor->render(new RenderContext(80, 20))));
+        $this->assertStringContainsString('press F4 to open a file', $rebound);
         $joined = implode('', $rendered);
         $this->assertStringNotContainsString("\x1b_pi:c;", $joined, 'no cursor marker when no file is open');
 

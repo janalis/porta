@@ -1118,6 +1118,18 @@
         <source>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter</source>
         <target>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter</target>
       </trans-unit>
+      <trans-unit id="831">
+        <source>No file open · press %key% to open a file</source>
+        <target>No file open · press %key% to open a file</target>
+      </trans-unit>
+      <trans-unit id="832">
+        <source>No file open · use Go to File to open one</source>
+        <target>No file open · use Go to File to open one</target>
+      </trans-unit>
+      <trans-unit id="833">
+        <source>Colours your code</source>
+        <target>Colours your code</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>Tree: Collapse</target>

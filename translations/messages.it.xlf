@@ -1118,6 +1118,18 @@
         <source>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter</source>
         <target>Scorciatoie — %count% azioni · ⏎ per riassegnare · Ctrl+F per filtrare</target>
       </trans-unit>
+      <trans-unit id="831">
+        <source>No file open · press %key% to open a file</source>
+        <target>Nessun file aperto · premi %key% per aprirne uno</target>
+      </trans-unit>
+      <trans-unit id="832">
+        <source>No file open · use Go to File to open one</source>
+        <target>Nessun file aperto · usa Vai al file</target>
+      </trans-unit>
+      <trans-unit id="833">
+        <source>Colours your code</source>
+        <target>Colora il tuo codice</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>Albero: comprimi</target>

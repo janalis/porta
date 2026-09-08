@@ -1118,6 +1118,18 @@
         <source>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter</source>
         <target>קיצורי מקשים — %count% פעולות · ⏎ לשינוי · Ctrl+F לסינון</target>
       </trans-unit>
+      <trans-unit id="831">
+        <source>No file open · press %key% to open a file</source>
+        <target>לא נפתח קובץ · הקישו %key% כדי לפתוח</target>
+      </trans-unit>
+      <trans-unit id="832">
+        <source>No file open · use Go to File to open one</source>
+        <target>לא נפתח קובץ · השתמשו ב״מעבר לקובץ״</target>
+      </trans-unit>
+      <trans-unit id="833">
+        <source>Colours your code</source>
+        <target>צובע את הקוד</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>עץ: כווץ</target>

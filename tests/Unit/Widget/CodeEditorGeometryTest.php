@@ -494,7 +494,7 @@ final class CodeEditorGeometryTest extends TestCase
     {
         $editor = new CodeEditorWidget();
         $translator = new \Porta\I18n\Translator('en');
-        $hint = $translator->trans('No file open · press Ctrl+P to open a file');
+        $hint = $translator->trans('No file open · press %key% to open a file', ['%key%' => 'Ctrl+Shift+N']);
         $text = AnsiText::truncate($hint, 200);
         $textWidth = AnsiUtils::visibleWidth($text);
         $expectedLeft = max(0, intdiv(200 - $textWidth, num2: 2));

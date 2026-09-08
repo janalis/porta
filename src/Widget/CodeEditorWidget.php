@@ -62,6 +62,7 @@ use Porta\Support\Scheduler;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
+use Porta\Ui\ShortcutFormatter;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\EditorDecorations;
 use Porta\Widget\Render\EditorGeometry;
@@ -1398,7 +1399,14 @@ final class CodeEditorWidget extends AbstractWidget implements
      */
     private function renderEmptyState(int $columns, int $rows): array
     {
-        $hint = $this->translator->trans('No file open · press Ctrl+P to open a file');
+        // The LIVE binding, not a spelled-out key: this widget owns the map
+        // that answers `goto_file`, and a rebind used to leave the one hint a
+        // new user reads pointing at the old chord. Falls back to naming the
+        // action when nothing is bound to it at all.
+        $binding = ShortcutFormatter::format($this->getKeybindings()->getBindings('goto_file')[0] ?? '');
+        $hint = '' === $binding
+            ? $this->translator->trans('No file open · use Go to File to open one')
+            : $this->translator->trans('No file open · press %key% to open a file', ['%key%' => $binding]);
         $text = AnsiText::truncate($hint, $columns);
         $textWidth = AnsiUtils::visibleWidth($text);
         $left = max(0, intdiv($columns - $textWidth, num2: 2));
