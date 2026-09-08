@@ -143,7 +143,7 @@ final class CoveragePluginsCommandTest extends TestCase
         $spawn = static fn (array $paths, string $cloverPath): Process => new Process([
             \PHP_BINARY,
             '-r',
-            'file_put_contents($argv[1], "+", FILE_APPEND); usleep(300000); file_put_contents($argv[1], "-", FILE_APPEND); exit(0);',
+            'file_put_contents($argv[1], "+", FILE_APPEND); usleep(200000); file_put_contents($argv[1], "-", FILE_APPEND); exit(0);',
             $log,
         ]);
 
@@ -187,7 +187,7 @@ final class CoveragePluginsCommandTest extends TestCase
         $spawn = static fn (array $paths, string $cloverPath): Process => new Process([
             \PHP_BINARY,
             '-r',
-            'usleep(str_contains($argv[1], "beta") ? 400000 : 10000); exit(0);',
+            'usleep(str_contains($argv[1], "beta") ? 200000 : 10000); exit(0);',
             $cloverPath,
         ]);
 
