@@ -579,6 +579,30 @@ final class IdeTabsBuffersTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    /**
+     * A, B and C open in that order — where every tab-ORDERING case starts,
+     * because a reorder can only be read against a known starting order.
+     *
+     * Opened by clicking the tree rather than by argument: the tab strip's
+     * order is the order files were opened in, and passing three paths to
+     * runIde() would only open the first.
+     *
+     * @return array<int, \Closure>
+     */
+    private function openThreeTabsInOrder(): array
+    {
+        return [
+            150 => static function ($tui): void {
+                $tui->tick();
+                $tui->handleInput("\x1b[<0;3;4M"); // open B (row 2)
+            },
+            250 => static function ($tui): void {
+                $tui->tick();
+                $tui->handleInput("\x1b[<0;3;5M"); // open C (row 3) → active = C
+            },
+        ];
+    }
+
     public function testTabDragReorders(): void
     {
         putenv('PATH=/nonexistent');
@@ -588,14 +612,7 @@ final class IdeTabsBuffersTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                150 => static function ($tui): void {
-                    $tui->tick();
-                    $tui->handleInput("\x1b[<0;3;4M"); // open B (row 2)
-                },
-                250 => static function ($tui): void {
-                    $tui->tick();
-                    $tui->handleInput("\x1b[<0;3;5M"); // open C (row 3)
-                },
+                ...$this->openThreeTabsInOrder(),
                 350 => function ($tui): void {
                     $tui->tick();
                     $this->assertSame(['A.php', 'B.php', 'C.php'], $this->tabNames($tui));
@@ -622,14 +639,7 @@ final class IdeTabsBuffersTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                150 => static function ($tui): void {
-                    $tui->tick();
-                    $tui->handleInput("\x1b[<0;3;4M"); // open B (row 2)
-                },
-                250 => static function ($tui): void {
-                    $tui->tick();
-                    $tui->handleInput("\x1b[<0;3;5M"); // open C (row 3) → active = C
-                },
+                ...$this->openThreeTabsInOrder(),
                 350 => function ($tui): void {
                     $tui->tick();
                     $this->assertSame(['A.php', 'B.php', 'C.php'], $this->tabNames($tui));

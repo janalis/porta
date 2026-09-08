@@ -15,8 +15,6 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
-use Porta\Widget\Settings\SettingsFormWidget;
-use Porta\Widget\Settings\SettingsNavWidget;
 use Symfony\Component\Tui\Render\RenderContext;
 
 /**
@@ -57,14 +55,12 @@ final class SettingsFormBehaviourTest extends TestCase
             [
                 300 => function ($tui, $terminal, $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $nav = $tui->getById('settings-nav');
-                    \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav sidebar');
+                    $nav = $this->settingsNav($tui);
                     $this->selectSettingsSection($nav, 'interface');
                     $this->frame($tui);
                 },
                 500 => function ($tui, $terminal): void {
-                    $form = $tui->getById('settings-form');
-                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
+                    $form = $this->settingsForm($tui);
                     $tui->setFocus($form);
 
                     $grid = $this->screenGrid($tui, $terminal);
@@ -119,8 +115,7 @@ final class SettingsFormBehaviourTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;40;%dm", $row + 1));
                     $this->frame($tui);
 
-                    $form = $tui->getById('settings-form');
-                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
+                    $form = $this->settingsForm($tui);
                     $this->assertStringContainsString(
                         'Inline diagnostics',
                         $this->selectedSettingRow($form),
@@ -157,14 +152,12 @@ final class SettingsFormBehaviourTest extends TestCase
             [
                 300 => function ($tui, $terminal, $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $nav = $tui->getById('settings-nav');
-                    \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav sidebar');
+                    $nav = $this->settingsNav($tui);
                     $this->selectSettingsSection($nav, 'lang:php');
                     $this->frame($tui);
                 },
                 500 => function ($tui, $terminal): void {
-                    $form = $tui->getById('settings-form');
-                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
+                    $form = $this->settingsForm($tui);
                     $tui->setFocus($form);
                     $this->selectSettingRow($form, 'Launch config');
 
@@ -201,14 +194,12 @@ final class SettingsFormBehaviourTest extends TestCase
             [
                 300 => function ($tui, $terminal, $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $nav = $tui->getById('settings-nav');
-                    \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav sidebar');
+                    $nav = $this->settingsNav($tui);
                     $this->selectSettingsSection($nav, 'interface');
                     $this->frame($tui);
                 },
                 500 => function ($tui, $terminal): void {
-                    $form = $tui->getById('settings-form');
-                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
+                    $form = $this->settingsForm($tui);
                     $tui->setFocus($form);
 
                     // The FORM's own render, not the screen: a toast saying

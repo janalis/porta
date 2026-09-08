@@ -16,7 +16,6 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
-use Porta\Widget\Settings\SettingsFormWidget;
 
 /**
  * "Find Setting", end to end: Ctrl+F inside the settings view opens the
@@ -76,8 +75,7 @@ final class SettingsSearchTest extends TestCase
                     $this->assertNull($this->rowOf($grid, 'Find Setting'), 'the picker closed');
                     $this->assertNotNull($this->rowOf($grid, 'Sticky scroll'), 'the Interface page is showing');
 
-                    $form = $tui->getById('settings-form');
-                    \assert($form instanceof SettingsFormWidget, description: 'the settings form is the content pane while the view is open');
+                    $form = $this->settingsForm($tui);
                     $this->assertStringContainsString(
                         'Sticky scroll',
                         $this->selectedSettingRow($form),
@@ -127,8 +125,7 @@ final class SettingsSearchTest extends TestCase
                     $this->assertNotNull($this->rowOf($grid, 'Sticky scroll'), 'the settings view opened on Interface');
                     $this->assertNull($this->rowOf($grid, 'Inline diagnostics'), 'NOT on General, which is where open() resets to');
 
-                    $form = $tui->getById('settings-form');
-                    \assert($form instanceof SettingsFormWidget, description: 'the settings form is the content pane while the view is open');
+                    $form = $this->settingsForm($tui);
                     $this->assertStringContainsString('Sticky scroll', $this->selectedSettingRow($form), 'landed on the row');
                 },
             ],
@@ -173,8 +170,7 @@ final class SettingsSearchTest extends TestCase
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertNotNull($this->rowOf($grid, 'Sticky scroll'), 'picking it opened the settings view on Interface');
 
-                    $form = $tui->getById('settings-form');
-                    \assert($form instanceof SettingsFormWidget, description: 'the settings form is the content pane while the view is open');
+                    $form = $this->settingsForm($tui);
                     $this->assertStringContainsString('Sticky scroll', $this->selectedSettingRow($form), 'landed on the row');
                 },
             ],
@@ -264,8 +260,7 @@ final class SettingsSearchTest extends TestCase
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertNotNull($this->rowOf($grid, 'Klaxon volume'), "the plugin's own page is showing");
 
-                    $form = $tui->getById('settings-form');
-                    \assert($form instanceof SettingsFormWidget, description: 'the settings form is the content pane');
+                    $form = $this->settingsForm($tui);
                     $this->assertStringContainsString(
                         'Klaxon volume',
                         $this->selectedSettingRow($form),

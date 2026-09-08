@@ -22,8 +22,6 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
 use Porta\Widget\Settings\KeybindingsListWidget;
-use Porta\Widget\Settings\SettingsFormWidget;
-use Porta\Widget\Settings\SettingsNavWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -56,6 +54,37 @@ final class SettingsGlobalScopeTest extends TestCase
 
     private TempProject $project;
 
+    /**
+     * The two steps both global-scope sticky-scroll cases share: open Settings
+     * in Global scope on the Interface section, focus the form, land on the
+     * Sticky scroll row, and press $key on it.
+     *
+     * Spread into the caller's step list rather than merged, so each test still
+     * reads as one array of numbered steps and its own 700 stays where the eye
+     * expects it.
+     *
+     * @return array<int, \Closure>
+     */
+    private function reachTheStickyScrollRow(string $key): array
+    {
+        return [
+            300 => function ($tui, $terminal, $ide): void {
+                Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Global);
+                Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                $nav = $this->settingsNav($tui);
+                $this->selectSettingsSection($nav, 'interface');
+                $this->frame($tui);
+            },
+            500 => function ($tui, $terminal) use ($key): void {
+                $form = $this->settingsForm($tui);
+                $tui->setFocus($form);
+                $this->selectSettingRow($form, 'Sticky scroll');
+                $tui->handleInput($key);
+                $this->frame($tui);
+            },
+        ];
+    }
+
     public function testAGlobalWriteLandsInTheUsersFileAndLeavesTheProjectAlone(): void
     {
         putenv('PATH=/nonexistent');
@@ -70,14 +99,12 @@ final class SettingsGlobalScopeTest extends TestCase
                 300 => function ($tui, $terminal, $ide): void {
                     Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Global);
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $nav = $tui->getById('settings-nav');
-                    \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav sidebar');
+                    $nav = $this->settingsNav($tui);
                     $this->selectSettingsSection($nav, 'interface');
                     $this->frame($tui);
                 },
                 500 => function ($tui, $terminal): void {
-                    $form = $tui->getById('settings-form');
-                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
+                    $form = $this->settingsForm($tui);
                     $tui->setFocus($form);
 
                     $this->assertStringContainsString(
@@ -147,22 +174,7 @@ final class SettingsGlobalScopeTest extends TestCase
             $this->project,
             $this->project->path('A.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
-                    Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Global);
-                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $nav = $tui->getById('settings-nav');
-                    \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav sidebar');
-                    $this->selectSettingsSection($nav, 'interface');
-                    $this->frame($tui);
-                },
-                500 => function ($tui, $terminal): void {
-                    $form = $tui->getById('settings-form');
-                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
-                    $tui->setFocus($form);
-                    $this->selectSettingRow($form, 'Sticky scroll');
-                    $tui->handleInput("\r");
-                    $this->frame($tui);
-                },
+                ...$this->reachTheStickyScrollRow("\r"),
                 700 => function ($tui, $terminal, $ide): void {
                     $global = $this->home->path('.porta/config.json');
                     $written = json_decode((string) file_get_contents($global), associative: true);
@@ -179,8 +191,7 @@ final class SettingsGlobalScopeTest extends TestCase
                     // floating surfaces — so a label-addressed read can land on
                     // the notification instead of the setting. The checkbox is
                     // what tells them apart.
-                    $form = $tui->getById('settings-form');
-                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
+                    $form = $this->settingsForm($tui);
                     $rows = array_values(array_filter(
                         $form->render(new \Symfony\Component\Tui\Render\RenderContext(110, 22)),
                         static fn (string $line): bool => str_contains(AnsiUtils::stripAnsiCodes($line), '['),
@@ -231,14 +242,12 @@ final class SettingsGlobalScopeTest extends TestCase
                 // No scope change: RunsIde pins every scenario to the project.
                 300 => function ($tui, $terminal, $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $nav = $tui->getById('settings-nav');
-                    \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav sidebar');
+                    $nav = $this->settingsNav($tui);
                     $this->selectSettingsSection($nav, 'interface');
                     $this->frame($tui);
                 },
                 500 => function ($tui, $terminal): void {
-                    $form = $tui->getById('settings-form');
-                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
+                    $form = $this->settingsForm($tui);
                     $tui->setFocus($form);
                     $this->selectSettingRow($form, 'Sticky scroll');
                     $tui->handleInput("\r");
@@ -284,22 +293,8 @@ final class SettingsGlobalScopeTest extends TestCase
             $this->project,
             $this->project->path('A.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
-                    Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Global);
-                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $nav = $tui->getById('settings-nav');
-                    \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav sidebar');
-                    $this->selectSettingsSection($nav, 'interface');
-                    $this->frame($tui);
-                },
-                500 => function ($tui, $terminal): void {
-                    $form = $tui->getById('settings-form');
-                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
-                    $tui->setFocus($form);
-                    $this->selectSettingRow($form, 'Sticky scroll');
-                    $tui->handleInput('r'); // put it back to its default
-                    $this->frame($tui);
-                },
+                // 'r' resets the row to its default rather than toggling it.
+                ...$this->reachTheStickyScrollRow('r'),
                 700 => function ($tui, $terminal, $ide): void {
                     $written = json_decode((string) file_get_contents($this->home->path('.porta/config.json')), associative: true);
                     $this->assertIsArray($written);
@@ -420,14 +415,12 @@ final class SettingsGlobalScopeTest extends TestCase
             [
                 300 => function ($tui, $terminal, $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $nav = $tui->getById('settings-nav');
-                    \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav sidebar');
+                    $nav = $this->settingsNav($tui);
                     $this->selectSettingsSection($nav, 'lang:php');
                     $this->frame($tui);
                 },
                 500 => function ($tui, $terminal): void {
-                    $form = $tui->getById('settings-form');
-                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
+                    $form = $this->settingsForm($tui);
                     $rows = $form->render(new \Symfony\Component\Tui\Render\RenderContext(120, 22));
 
                     $this->assertStringContainsString('from global', $this->settingRow($rows, 'LSP server'));
@@ -467,8 +460,7 @@ final class SettingsGlobalScopeTest extends TestCase
                 300 => function ($tui, $terminal, $ide): void {
                     Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Global);
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $nav = $tui->getById('settings-nav');
-                    \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav sidebar');
+                    $nav = $this->settingsNav($tui);
                     $this->selectSettingsSection($nav, 'keybindings');
                     $this->frame($tui);
                 },
@@ -552,14 +544,12 @@ final class SettingsGlobalScopeTest extends TestCase
                 300 => function ($tui, $terminal, $ide): void {
                     Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Global);
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $nav = $tui->getById('settings-nav');
-                    \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav sidebar');
+                    $nav = $this->settingsNav($tui);
                     $this->selectSettingsSection($nav, 'plugin:noisy');
                     $this->frame($tui);
                 },
                 500 => function ($tui, $terminal): void {
-                    $form = $tui->getById('settings-form');
-                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
+                    $form = $this->settingsForm($tui);
                     $tui->setFocus($form);
                     $this->selectSettingRow($form, 'Klaxon volume');
                     $tui->handleInput("\x1b[C"); // step it up

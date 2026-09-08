@@ -10,12 +10,12 @@ use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PreservesPortaHome;
+use Porta\Tests\Support\ReadsSettingsForm;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\Settings\SettingsFormWidget;
-use Porta\Widget\Settings\SettingsNavWidget;
 use Symfony\Component\Tui\Render\RenderContext;
 
 /**
@@ -47,6 +47,7 @@ final class SettingsPagesGoldenTest extends TestCase
     use ClearsPortaLsp;
     use NavigatesSettings;
     use PreservesPath;
+    use ReadsSettingsForm;
     use PreservesPortaHome;
     use RunsIde;
     use ScreenReads;
@@ -125,10 +126,8 @@ final class SettingsPagesGoldenTest extends TestCase
             [
                 300 => function ($tui, $terminal, $ide) use (&$pages): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $nav = $tui->getById('settings-nav');
-                    \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav sidebar');
-                    $form = $tui->getById('settings-form');
-                    \assert($form instanceof SettingsFormWidget, description: 'the form is the content pane');
+                    $nav = $this->settingsNav($tui);
+                    $form = $this->settingsForm($tui);
 
                     foreach (self::PAGES as $page) {
                         $this->selectSettingsSection($nav, $page);

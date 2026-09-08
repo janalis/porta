@@ -7,6 +7,7 @@ namespace Porta\Tests\Support;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Tui;
 
 /**
  * Read and drive the settings form by LABEL rather than by row index.
@@ -26,6 +27,23 @@ trait ReadsSettingsForm
 {
     /** Satisfied by the host TestCase (PHPUnit's Assert::fail). */
     abstract public static function fail(string $message = ''): never;
+
+    /**
+     * The settings view's content pane.
+     *
+     * The sibling of {@see NavigatesSettings::settingsNav()}, and for the same
+     * reason: the form is minted by the view, so every caller repeated the same
+     * getById-and-assert pair.
+     */
+    private function settingsForm(Tui $tui): SettingsFormWidget
+    {
+        $form = $tui->getById('settings-form');
+        if (!$form instanceof SettingsFormWidget) {
+            self::fail('the form is the content pane');
+        }
+
+        return $form;
+    }
 
     /**
      * The rendered line carrying $label, ANSI stripped and right-trimmed.

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Support;
 
 use Porta\Widget\Settings\SettingsNavWidget;
+use Symfony\Component\Tui\Tui;
 
 /**
  * Select a Settings section by id instead of counting arrow keys.
@@ -23,6 +24,23 @@ trait NavigatesSettings
 {
     /** Satisfied by the host TestCase (PHPUnit's Assert::fail). */
     abstract public static function fail(string $message = ''): never;
+
+    /**
+     * The settings view's nav sidebar.
+     *
+     * By id, because the nav is minted by the view rather than injected, so a
+     * test cannot hold a reference to it — and every caller was writing the
+     * same getById-and-assert pair around the same string.
+     */
+    private function settingsNav(Tui $tui): SettingsNavWidget
+    {
+        $nav = $tui->getById('settings-nav');
+        if (!$nav instanceof SettingsNavWidget) {
+            self::fail('the settings view owns the nav sidebar');
+        }
+
+        return $nav;
+    }
 
     private function selectSettingsSection(SettingsNavWidget $nav, string $id): void
     {

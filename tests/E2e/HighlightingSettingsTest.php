@@ -13,7 +13,6 @@ use Porta\Tests\Support\ReadsSettingsForm;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
-use Porta\Widget\Settings\SettingsFormWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -90,8 +89,7 @@ final class HighlightingSettingsTest extends TestCase
                 // the offer row BY NAME. It is no longer the row the selection
                 // starts on: every page that writes a file leads with the
                 // scope chooser now.
-                $form = $tui->getById('settings-form');
-                \assert($form instanceof SettingsFormWidget, description: 'the settings form is the content pane on the Highlighting page');
+                $form = $this->settingsForm($tui);
                 $tui->setFocus($form);
                 $this->selectSettingRow($form, 'Enable '.RecommendedPlugins::HIGHLIGHTER);
                 $tui->handleInput("\r"); // actuate the button
