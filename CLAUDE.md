@@ -14,7 +14,7 @@ routed below — read the page before working in that area, not after.
 ```bash
 composer dev      composer test      composer test:serial
 composer analyze  composer lint      composer arch
-composer format   composer format:check
+composer format   composer format:check                composer duplication
 composer coverage:check              composer container
 ```
 
@@ -26,17 +26,18 @@ with runners or another agent (CI sets `PORTA_TEST_PROCESSES: auto` explicitly).
 it down further with `PORTA_TEST_PROCESSES=4 nice -n 10 composer test`, or up with
 `auto`; `contributing.md` has the numbers.
 
-## Definition of done — every commit passes all six
+## Definition of done — every commit passes all seven
 
 - `composer test` — green.
 - `composer coverage:check` — **100% line coverage**, over `src/` AND every plugin's own
   `src/`. Plugin code must be covered by that plugin's OWN tests.
 - `composer analyze` and `composer lint` — **zero findings each**. Both exit 0 while
   reporting issues, so read the output, not the exit code. Fix, or suppress in place with
-  a reasoned `// @mago-expect lint:<rule> -- why` / `analysis:<rule>`. Never run
-  `lint --fix` unattended (see `contributing.md`).
+  a reasoned `// @mago-expect lint:<rule> -- why` / `analysis:<rule>`.
 - `composer arch` — fails on drift in EITHER direction. A new edge is added to the
   allowlist in the same commit; a vanished edge is removed from it.
+- `composer duplication` — **zero clones**, over everything. Share it, or say in the
+  code why the copy is the honest shape. There is no allowlist.
 - `composer format:check` — clean.
 
 ## Hard rules

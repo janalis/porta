@@ -12,6 +12,7 @@ composer analyze        # mago static analysis
 composer coverage:check # the suite with coverage, 100% enforced
 composer lint           # mago lint
 composer arch           # the architecture ratchet
+composer duplication    # phpcpd — zero copy-paste clones, tree-wide
 composer format         # mago format (apply)
 composer format:check   # mago format --check
 composer container      # kernel-less debug:container
@@ -64,7 +65,7 @@ composer analyze > /tmp/x.log 2>&1; echo "exit=$?"
 
 ## Definition of done
 
-Every commit passes all six. CI (`.github/workflows/ci.yml`) runs them.
+Every commit passes all seven. CI (`.github/workflows/ci.yml`) runs them.
 
 **`composer test`** — green. Two tests drive real git and opener subprocesses
 and were hardened against timing: the git plugin's
@@ -151,6 +152,27 @@ missing-dir case instead; hold the project in a variable). **It fails on
 drift in either direction** — a new edge must be added to the embedded
 allowlist in the same commit, and a vanished edge must be removed from it. A
 stale allowlist is not a gate.
+
+**`composer duplication`** — **zero clones**, from `systemsdk/phpcpd` (the
+maintained fork of the abandoned `sebastian/phpcpd`; it needs no package the
+lock did not already carry). It reads `src`, `plugins`, `tests`, `bin` and
+`config` at the tool's defaults — five identical lines and seventy identical
+tokens — with one exclusion, `vendor`, because a plugin's vendored
+dependencies and the committed composer-map fixtures are not ours to
+deduplicate.
+
+**There is no allowlist, deliberately.** The arch gate has one because a
+namespace edge can be correct and still needs recording; a clone cannot be
+correct and unrecorded — either it is worth sharing, or the copy is the honest
+shape and the code should say why, in which case rewording one side ends the
+match. Every clone the tool found on its first run was worth fixing, and three
+of them were rigs `tests/Support` already provided, so the rule "never
+hand-roll a rig" now has something that looks.
+
+What it does NOT find is worth knowing before reaching for it: it compares
+token streams, so the theme tables, the per-grammar `match` tables and the
+four analyzer plugin files — the structures people expect it to flag — are
+invisible to it, because their literals differ. It finds copied CODE.
 
 **`composer format:check`** — clean.
 

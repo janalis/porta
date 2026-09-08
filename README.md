@@ -323,6 +323,7 @@ composer install
 composer test              # PHPUnit: Unit + Integration + E2e suites
 composer coverage          # coverage report (needs the pcov extension)
 composer coverage:check    # enforces 100% line coverage of src/
+composer duplication       # copy/paste detector — zero clones
 ```
 
 The suite covers **100% of the lines in `src/`**: unit tests per class,

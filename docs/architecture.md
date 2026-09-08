@@ -163,6 +163,7 @@ composer coverage:check    # 100% line coverage of src/ AND of every plugin's sr
 composer analyze           # mago static analysis — zero issues
 composer lint              # mago linter — zero findings
 composer arch              # the namespace/acyclicity ratchet, src/ + plugin src/
+composer duplication       # phpcpd — zero copy-paste clones, tree-wide
 composer format            # mago formatter
 ```
 

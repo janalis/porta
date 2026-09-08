@@ -66,6 +66,7 @@
             "@php bin/porta-dev coverage:check coverage/plugins-clover.xml 100 --only=/plugins/ --require=plugins"
         ],
         "arch": "@php bin/porta-dev arch",
+        "duplication": "@php vendor/bin/phpcpd --exclude vendor src plugins tests bin config",
         "container": "@php bin/porta-dev container",
         "mutate": [
             "@php -d pcov.enabled=1 vendor/bin/phpunit --testsuite=Unit --order-by=default --coverage-xml=coverage/infection/coverage-xml --log-junit=coverage/infection/junit.xml",

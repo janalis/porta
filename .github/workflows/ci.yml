@@ -73,6 +73,8 @@ jobs:
         run: composer analyze
       - name: Architecture gate
         run: composer arch
+      - name: Duplication gate
+        run: composer duplication
 
   tests:
     if: github.event_name != 'schedule'
