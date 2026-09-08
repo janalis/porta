@@ -1738,6 +1738,45 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## Rendering the new hint found an old defect (built 2026-09-08, `622aa179`)
+
+Adding `/ find` made the graph pane's key hint seven columns longer, so the
+question was what that costs at a narrow width — the check a new hint deserves
+and one I had not made. Rendering it at 160, 100, 80, 70, 60 and 50 columns
+answered more than was asked.
+
+**At 80 the file name drops out of the status bar, and that is the design
+working.** Only the left side yields, the tab strip still carries the name, and
+a key nobody can otherwise discover is worth more than a duplicated filename.
+Controlled by rendering with the OLD hint text: at 80 the name survives, so the
+cost is real and it is the right trade.
+
+**At 70 and below the legend itself was chopped mid-word** — `n/p select  /
+find  C` — with no ellipsis. The mechanism: the right side is only truncated
+when a flash is present, so in the steady state an over-wide legend reaches the
+end of `render()` still too long and is cut there by the whole-row truncate,
+which passes an EMPTY ellipsis on purpose, because by then the row is supposed
+to be exactly the width already. The assumption held for every case anyone had
+looked at and not for a viewer's legend, which is 78 columns on its own.
+
+Cutting the right side before the row is composed fixes both halves at once:
+the cut carries an ellipsis, and the clipped click spans fall out of the map
+without a second guard, because that filter reads the width computed from the
+truncated string. Priority is unchanged.
+
+**Two things worth keeping.**
+
+1. **A deliberate "never mark this" is a claim about the input.** `ellipsis: ''`
+   was correct given "the row is already exactly the width", and that premise
+   was never true for an over-wide right side. When a call site suppresses a
+   safety marker, the question is which inputs make its reason false.
+2. **The defect predates the change that found it, and the change is what made
+   it findable.** Seven columns moved the cut into a width worth rendering at.
+   Neither the hint nor the status bar was wrong on its own; asking what the
+   new one COSTS is what crossed them.
+
+Infection ran for once — the diff touches `src/` — and killed all five mutants.
+
 ## Two things that were fine, and one that was not (2026-09-08)
 
 Three checks against the real setup, reported together because the negative
