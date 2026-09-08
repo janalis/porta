@@ -543,4 +543,79 @@ final class IdeEditingTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    /**
+     * The clipboard history picker, SEEN.
+     *
+     * Its behaviour has unit tests — the ring, the promotion, the pick — but
+     * the surface itself had never been rendered by anything: it is composited
+     * by the app-level overlay host, so neither the widget rig nor a probe
+     * driving keys reaches it, and every assertion about it read a data
+     * structure. What a person looks at is the entries, and the thing that
+     * makes them readable is that a multi-line copy is ONE row with its
+     * newlines shown — otherwise the list is a column of identical stumps.
+     */
+    public function testTheClipboardHistoryPickerShowsEveryCopyOnItsOwnRow(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n\$alpha = 1;\n\$beta = 2;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => static function ($tui): void {
+                    $document = $tui->getById('editor')->getDocument();
+                    // Two lines first, then one — so the NEWEST entry is the
+                    // single-line copy and the multi-line one is below it.
+                    $document->setCursor(1, 0);
+                    $document->beginSelect();
+                    $document->setCursor(2, \strlen($document->getLine(2)), SelectionMode::Keep);
+                    $tui->handleInput("\x03"); // ctrl+c
+                    $document->setCursor(2, 0);
+                    $document->beginSelect();
+                    $document->setCursor(2, \strlen($document->getLine(2)), SelectionMode::Keep);
+                    $tui->handleInput("\x03");
+                    $document->setCursor(0, 5); // caret after `<?php`, where the paste lands
+                },
+                400 => static function ($tui, $terminal): void {
+                    $terminal->clearOutput();
+                    $tui->handleInput("\x1b[118;6u"); // ctrl+shift+v
+                },
+                600 => function ($tui, $terminal): void {
+                    $this->assertTrue(EditorState::pickerOpen($tui->getById('editor')), 'the history opened');
+                    $rows = explode("\n", $this->card($this->screenGrid($tui, $terminal), 'Paste from History'));
+                    $offering = array_values(array_filter($rows, static fn (string $row): bool => str_contains($row, '$beta = 2;')));
+
+                    // Both copies END in the same text, so a card-wide
+                    // assertion is satisfied by either one alone — the rows
+                    // have to be told apart, which is the whole point of the
+                    // surface.
+                    $this->assertNotEmpty(array_filter($offering, static fn (string $row): bool => !str_contains($row, '⏎')), 'the single-line copy is a row of its own');
+                    $this->assertNotEmpty(
+                        array_filter($offering, static fn (string $row): bool => str_contains($row, '$alpha = 1;⏎$beta = 2;')),
+                        'the multi-line copy is ONE row with its newline shown',
+                    );
+
+                    // Newest first, so one Down reaches the multi-line entry.
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\r");
+                },
+                800 => function ($tui, $terminal): void {
+                    $document = $tui->getById('editor')->getDocument();
+                    $this->assertSame('<?php$alpha = 1;', $document->getLine(0), 'the multi-line entry pasted its first line at the caret');
+                    $this->assertSame('$beta = 2;', $document->getLine(1), 'and its second line below — the single-line entry would have pasted neither');
+                    // The SCREEN, not the accumulated output: nothing has been
+                    // written to the terminal since the clear above, so a
+                    // negative assertion on getOutput() would pass against an
+                    // empty string — measured, it does.
+                    $this->assertStringNotContainsString(
+                        'Paste from History',
+                        implode("\n", $this->screenGrid($tui, $terminal)),
+                        'the picker closes behind the pick',
+                    );
+                },
+            ],
+        );
+    }
 }
