@@ -1789,10 +1789,21 @@ disappear is not a gate, and the first run's fifteen were the work, not noise.
 **Three method notes.** The `--exclude` match is path-segment aware rather than
 a substring: measured, `--exclude vendor` drops the six files under `vendor/`
 directories and keeps the six in `acme-vendored/` that are not, so the literal-
-paths-only caution `mago.toml` records does not apply here. The gate was proven
-red as well as green, on a planted clone. And four times the tool flagged two
-files while the real duplication spanned four or five — the clone is a symptom
-with a threshold, so after fixing one, grep for the shape.
+paths-only caution `mago.toml` records does not apply here. And four times the
+tool flagged two files while the real duplication spanned four or five — the
+clone is a symptom with a threshold, so after fixing one, grep for the shape.
+
+**Proven red three ways, not just green.** Against the tree as it stood before
+any of this (`git checkout <pre-dedup> -- tests/`, exit 1, largest clone 100
+lines), against a clone planted in `tests/`, and against one planted in `src/`
+— the last because every finding was in tests, and a gate whose only evidence
+comes from one directory has not been shown to watch the others.
+
+`composer mutate` reports no mutants over this work, which is correct rather
+than a gap: the diff is tests, docs and `composer.json`, and Infection's
+`source.directories` is `src` only. The two changes that DO guard `src`
+behaviour — the keymap and capabilities goldens — were killed by hand instead,
+with a dropped alternate binding and a flipped capability.
 
 ## Placeholder parity: six mismatches, no defects, one trap (built 2026-09-08, `85efe632`)
 
