@@ -1738,6 +1738,90 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## The verify loop, measured — and one hypothesis killed (2026-09-08, `883ef5a9`)
+
+A session's 25 verification cycles cost **233 minutes of test execution**, and
+the suite ran three times in each: `composer test`, then `coverage` (the same
+suite under pcov), then the serial `coverage:plugins`. Measured on the 16-core
+box at four processes, one command at a time:
+
+| | seconds |
+| --- | --- |
+| the five static gates together | **4.1** |
+| `composer test` | 170 |
+| `composer coverage` | 241 |
+| `composer coverage:plugins` (serial) | 146 |
+| `coverage:check` end to end | **387** |
+
+**`composer lint` was not a gate.** mago's `--minimum-fail-level` defaults to
+`error`, so lint exited 0 while reporting warnings — 11 of 11 runs with findings
+in one session — while analyze exited non-zero every time. CI's Lint step was
+green on warnings. Both scripts pass `--minimum-fail-level=note` now, and the
+tree is clean at the lowest level there is. **CLAUDE.md's "Both exit 0 while
+reporting issues" was half wrong, and the wrong half was the one that worked** —
+which is worse than being wrong about both, because it teaches you to distrust a
+signal that is fine.
+
+**`composer verify` is two script arrays, not a runner.** Composer aborts a
+chain at the first non-zero step. A `src/Console/VerifyCommand` was designed and
+rejected on cost: it would have needed a subprocess seam to be testable, its own
+100%-covered test, an arch-allowlist edge, and a gate list that could disagree
+with the scripts it wrapped. **A script array is the scripts**, so it cannot
+drift from them — only from CI, and that is what the ratchet is for.
+
+### The hypothesis that was wrong, and why it is worth writing down
+
+The plan proposed keeping the container cache ON under coverage and instead
+autoloading every `src` file once per worker in `tests/bootstrap.php` — same
+completeness, four sweeps instead of 458 container compiles, ~57s of CPU back.
+
+**Measured against pcov directly, it contributes nothing.** A sweep before
+`pcov\start()` leaves `pcov\waiting()` at 0; the same sweep after it reports all
+707 files. `PcovDriver::stop()` collects `waiting()`, and pcov only enters a file
+there if it was compiled while collection was started — and the bootstrap runs
+long before PHPUnit's first `CodeCoverage::start()`. The totals would have
+collapsed on the first run.
+
+**And `PORTA_CONTAINER_CACHE=off` turns out to do a second job nobody wrote
+down.** Because every worker compiles all of `src`, every worker's PathReducer
+base collapses to `<repo>/src`, so the Merger — which keeps only the FIRST
+worker's base path — resolves everyone's paths correctly. Remove the per-boot
+compile and a worker whose tests touch only `src/Editor/**` reduces to that
+directory instead; on merge its paths resolve wrong and **its entire data is
+dropped silently**. That is the 86–95% flapping documented for the plugins pass,
+arriving in the `src` pass where it has never been seen.
+
+So the line is load-bearing twice over, and only one of the two reasons was
+recorded. **A comment that gives one true reason for a line is not the same as a
+comment that gives all of them** — the missing one is what a later reader
+removes the line for.
+
+A design that survives both facts exists (a PHPUnit extension sweeping once per
+worker on the first `Test\PreparationStarted`, gated on an env flag so
+`composer mutate`'s per-test map is not poisoned into running the whole suite per
+mutant). It is not built. What is recorded here is the measurement that says the
+obvious version cannot work.
+
+### What the numbers point at next, unbuilt
+
+- **Process count, and it is free.** 170s at 4 processes, ~90s at 8 (which is
+  already the script's default — a whole session was spent at 4 for no reason),
+  62s at 12, **52s at 12 without `--functional`**. The `--functional` split is
+  deliberate and worth its 10s; the throttle is not, unless the box is shared.
+- **The serial plugins pass costs 146s for 36s of work.** The 110s is the merge
+  bug's price. Parallel paratest is closed, but *six serial phpunit runs, one per
+  plugin, several at once* has no merge inside any single run — a different shape
+  from the one that was rejected, and unexplored.
+- **E2e has no slow tests, it has a floor.** Median case 0.53s, the 15 slowest
+  are 11% of the total; ~0.4s per test is `RunsIde`/`TempProject` setup, so
+  ~144s of serial CPU sits in the boot path rather than in any test.
+- **Unit is the mirror image**: 157 cases (2.9%) are 67% of its time, clustered
+  in ~10 classes that really sleep — 70 `sleep`/`usleep` call sites.
+- **`opcache.enable_cli` is Off**, and contributing.md measures 4.7× on
+  compilation. Worth trying for `composer test` only: opcache serving a cached
+  op_array bypasses pcov's compile-time instrumentation, so under coverage it
+  would be a silent loss, not a win.
+
 ## A duplication gate, and what it found (built 2026-09-08, `f2d1d519`)
 
 `composer duplication` is the seventh gate: `systemsdk/phpcpd` over `src`,
