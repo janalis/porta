@@ -25,7 +25,7 @@ Kitty keyboard protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).
 | `F1` | Open the documentation browser (these guides, fully rendered; see the Help viewer table below) |
 | `Ctrl+Shift+A` | Find Action (command palette) |
 | `Ctrl+Shift+E` | Search Everywhere |
-| `Ctrl+,` | Settings (inside: `Ctrl+F` finds a setting, `R` resets the selected row, `2` jumps to Keybindings, `[`/`]` change a value, `Tab` switches pane) |
+| `Ctrl+,` | Settings (inside: `Ctrl+F` finds a setting — or filters the Keybindings list in place, `R` resets the selected row, `2` jumps to Keybindings, `[`/`]` change a value, `Tab` switches pane) |
 | `Ctrl+Alt+D` | Git view (changes, staging, history) |
 | `Ctrl+\`` / `Alt+F12` | Toggle the integrated terminal |
 | `Ctrl+Shift+\`` / `Alt+F11` | Open a new terminal session |

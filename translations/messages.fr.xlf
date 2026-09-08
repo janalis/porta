@@ -1110,6 +1110,14 @@
         <source>Nothing copied yet</source>
         <target>Rien n’a encore été copié</target>
       </trans-unit>
+      <trans-unit id="829">
+        <source>Keybindings — %shown% of %count% · ⏎ to rebind</source>
+        <target>Raccourcis — %shown% sur %count% · ⏎ pour réattribuer</target>
+      </trans-unit>
+      <trans-unit id="830">
+        <source>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter</source>
+        <target>Raccourcis — %count% actions · ⏎ pour réattribuer · Ctrl+F pour filtrer</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>Arborescence : replier</target>

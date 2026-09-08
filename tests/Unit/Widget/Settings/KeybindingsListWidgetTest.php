@@ -328,4 +328,61 @@ final class KeybindingsListWidgetTest extends TestCase
     {
         return (Probe::get($widget, 'rows')[Probe::get($widget, 'list')->selected()] ?? null)?->action;
     }
+
+    public function testTheFilterNarrowsTheListByLabelAndByKey(): void
+    {
+        // 187 actions in the real page: without this, finding one means
+        // scrolling past every caret movement in the editor.
+        $widget = $this->widget();
+
+        $widget->handleInput('/');
+        $widget->handleInput('dup');
+        $screen = $this->plain($widget->render(new RenderContext(60, 8)));
+
+        $this->assertStringContainsString('Duplicate Line', $screen);
+        $this->assertStringNotContainsString('Save', $screen, 'the rest is filtered out');
+        $this->assertStringContainsString('1 of 3', $screen, 'and the header says how much is hidden');
+
+        // The KEY is searchable too: "what is Ctrl+S" is the other half of what
+        // this page is opened for.
+        foreach (str_split('xxx') as $ignored) {
+            $widget->handleInput("\x7f"); // backspace, one key at a time
+        }
+        $widget->handleInput('ctrl+s');
+        $screen = $this->plain($widget->render(new RenderContext(60, 8)));
+
+        $this->assertStringContainsString('Save', $screen);
+        $this->assertStringNotContainsString('Duplicate Line', $screen);
+    }
+
+    public function testEscapeLeavesTheFilterAndBringsEveryActionBack(): void
+    {
+        $widget = $this->widget();
+
+        $widget->handleInput('/');
+        $widget->handleInput('quit');
+        $this->assertStringNotContainsString('Save', $this->plain($widget->render(new RenderContext(60, 8))));
+
+        $widget->handleInput("\x1b");
+        $screen = $this->plain($widget->render(new RenderContext(60, 8)));
+
+        $this->assertStringContainsString('Save', $screen);
+        $this->assertStringContainsString('Duplicate Line', $screen);
+        $this->assertStringContainsString('Ctrl+F to filter', $screen, 'and the hint is back');
+    }
+
+    public function testRebindingActsOnTheFilteredRowNotTheOneUnderneath(): void
+    {
+        // The selection indexes the SHOWN rows: filter to one action, press
+        // Enter, and the capture must arm on that action — not on whatever sat
+        // at that index before the filter narrowed the list.
+        $widget = $this->widget($rebinds);
+
+        $widget->handleInput('/');
+        $widget->handleInput('quit');
+        $widget->handleInput("\r"); // arm capture on the only row left
+        $widget->handleInput("\x0c"); // ctrl+l, captured raw
+
+        $this->assertSame([['quit', "\x0c"]], $rebinds);
+    }
 }

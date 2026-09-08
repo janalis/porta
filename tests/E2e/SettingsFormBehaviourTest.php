@@ -44,6 +44,44 @@ final class SettingsFormBehaviourTest extends TestCase
      * Interface page is long — at sixteen the whole page still fits, which is
      * worth knowing before someone "tidies" this number upward.
      */
+    public function testTheKeybindingsPageCanBeFiltered(): void
+    {
+        // 187 actions, and finding one used to mean scrolling past every caret
+        // movement in the editor — the E2e that rebinds `save_all` walks up to
+        // 200 rows to reach it.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                    $this->selectSettingsSection($this->settingsNav($tui), 'keybindings');
+                    $this->frame($tui);
+                },
+                500 => function ($tui, $terminal): void {
+                    $list = $tui->getById('settings-keys');
+                    $tui->setFocus($list);
+                    $list->handleInput('/');
+                    foreach (str_split('duplicate') as $character) {
+                        $list->handleInput($character);
+                    }
+                    $this->frame($tui);
+
+                    $screen = implode("\n", $this->screenGrid($tui, $terminal));
+                    $this->assertStringContainsString('Filter: duplicate', $screen);
+                    $this->assertStringContainsString('Duplicate Line', $screen, 'the action it was typed for');
+                    $this->assertStringNotContainsString('Move Caret Up', $screen, 'and not the 186 it was not');
+                    $this->assertMatchesRegularExpression('/Keybindings — \d+ of \d+/', $screen, 'the header counts what is left');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testAPageTallerThanThePaneScrollsToItsLastRow(): void
     {
         putenv('PATH=/nonexistent');

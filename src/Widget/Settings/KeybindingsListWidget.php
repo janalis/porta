@@ -9,10 +9,12 @@ use Porta\Container\AsWidget;
 use Porta\Event\SettingsSectionRequested;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
+use Porta\Ui\CaretVisibility;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
 use Porta\Ui\ShortcutFormatter;
+use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\HoverableList;
 use Porta\Widget\PaneNavigationCallbacks;
@@ -27,6 +29,7 @@ use Porta\Widget\Support\PanelRowStyle;
 use Porta\Widget\Support\WheelScrollable;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Input\Key;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -56,6 +59,11 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
 
     /** @var list<KeybindingRow> */
     private array $rows = [];
+    /** @var list<KeybindingRow> the rows the filter leaves, which is what the list shows and acts on */
+    private array $shown = [];
+    private readonly TextField $filter;
+    /** True while typing edits the filter rather than driving the list. */
+    private bool $filtering = false;
     private readonly ListSelection $list;
     private int $lastRows = 10;
     /** The row index awaiting a keypress to rebind, or null when not capturing. */
@@ -70,6 +78,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->initStyles($styles);
+        $this->filter = new TextField();
         $this->list = new ListSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
     }
@@ -90,10 +99,26 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     public function setRows(array $rows): void
     {
         $this->rows = $rows;
-        $this->list->clamp(\count($rows));
+        $this->applyFilter();
         $this->capturingIndex = null;
         $this->hoveredIndex = null;
         $this->invalidate();
+    }
+
+    /** The rows the filter leaves — what the list shows, selects and rebinds. */
+    private function applyFilter(): void
+    {
+        $needle = mb_strtolower(trim($this->filter->value()));
+        $this->shown = '' === $needle
+            ? $this->rows
+            : array_values(array_filter(
+                $this->rows,
+                // The KEY as well as the label: "what is Ctrl+Shift+N bound to" is
+                // the other half of what anyone opens this page to find out, and
+                // PhpStorm gives it a mode of its own. One field answers both.
+                static fn (KeybindingRow $row): bool => str_contains(mb_strtolower($row->label), $needle) || str_contains(mb_strtolower(ShortcutFormatter::format($row->binding)), $needle),
+            ));
+        $this->list->clamp(\count($this->shown));
     }
 
     #[\Override]
@@ -107,7 +132,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         // Capture mode consumes exactly the next key: Esc cancels, anything
         // else is handed raw to the controller to parse/validate/persist.
         if (null !== $this->capturingIndex) {
-            $row = $this->rows[$this->capturingIndex] ?? null;
+            $row = $this->shown[$this->capturingIndex] ?? null;
             $this->capturingIndex = null;
             if (!$kb->matches($data, 'exit_view') && null !== $row && null !== $this->onRebind) {
                 ($this->onRebind)($row->action, $data);
@@ -117,6 +142,15 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             return;
         }
 
+        if ($this->filtering && $this->editFilter($data, $kb)) {
+            return;
+        }
+        if ($kb->matches($data, 'filter')) {
+            $this->filtering = true;
+            $this->invalidate();
+
+            return;
+        }
         if ($kb->matches($data, 'exit_view')) {
             $this->fire($this->onExit);
 
@@ -137,7 +171,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
 
             return;
         }
-        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->rows), page: $this->lastRows)) {
+        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->shown), page: $this->lastRows)) {
             $this->invalidate();
         }
     }
@@ -165,9 +199,49 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         return $this->setHovered($this->rowIndexAt($relRow));
     }
 
+    /**
+     * While filtering, the keys belong to the field: printable characters
+     * narrow the list, Backspace widens it, Escape leaves the query behind.
+     * Everything else — the arrows, Enter to rebind — still drives the list, so
+     * you can type two letters and press Enter without a mode change.
+     */
+    private function editFilter(string $data, Keybindings $kb): bool
+    {
+        if ($kb->matches($data, 'exit_view')) {
+            $this->filtering = false;
+            $this->filter->clear();
+            $this->applyFilter();
+            $this->invalidate();
+
+            return true;
+        }
+        if ($kb->matches($data, 'delete_char_backward')) {
+            if ($this->filter->backspace()) {
+                $this->applyFilter();
+                $this->invalidate();
+            }
+
+            return true;
+        }
+        if ($this->filter->insert($data)) {
+            $this->applyFilter();
+            $this->invalidate();
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /** The filter row is a header row while it is showing. */
+    private function headerRows(): int
+    {
+        return $this->filtering ? 2 : 1;
+    }
+
     private function armCapture(): void
     {
-        if ([] !== $this->rows) {
+        if ([] !== $this->shown) {
             $this->capturingIndex = $this->list->selected();
             $this->invalidate();
         }
@@ -175,7 +249,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
 
     private function rowIndexAt(int $relRow): ?int
     {
-        return $this->list->rowIndexAt($relRow, \count($this->rows));
+        return $this->list->rowIndexAt($relRow, \count($this->shown), headerRows: $this->headerRows());
     }
 
     #[\Override]
@@ -185,13 +259,24 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         $rows = max(1, $context->getRows() > 0 ? $context->getRows() : 12);
         $this->lastRows = $rows;
 
-        $title = ' '.$this->translator->trans('Keybindings — %count% actions · ⏎ to rebind', ['%count%' => \count($this->rows)]);
+        $title =
+            ' '
+            .(
+                $this->filtering
+                    ? $this->translator->trans('Keybindings — %shown% of %count% · ⏎ to rebind', ['%shown%' => \count($this->shown), '%count%' => \count($this->rows)])
+                    : $this->translator->trans('Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter', ['%count%' => \count($this->rows)])
+            );
         $lines = [HeaderRenderer::title($title, $width, $this->styles)];
+        if ($this->filtering) {
+            $caret = $this->isFocused() ? CaretVisibility::Shown : CaretVisibility::Hidden;
+            $lines[] = AnsiText::truncate(' '.$this->translator->trans('Filter').': '.$this->filter->render($caret), $width, pad: true);
+        }
 
-        $scroll = $this->list->follow($rows - 1);
-        for ($row = 1; $row < $rows; ++$row) {
-            $index = $scroll + $row - 1;
-            $entry = $this->rows[$index] ?? null;
+        $headerRows = $this->headerRows();
+        $scroll = $this->list->follow(max(1, $rows - $headerRows));
+        for ($row = $headerRows; $row < $rows; ++$row) {
+            $index = $scroll + $row - $headerRows;
+            $entry = $this->shown[$index] ?? null;
             if (null === $entry) {
                 $lines[] = AnsiText::blank($width);
                 continue;
@@ -224,6 +309,12 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             'page_up' => [Key::PAGE_UP],
             'page_down' => [Key::PAGE_DOWN],
             'rebind' => [Key::ENTER],
+            // Ctrl+F is the settings view's find key on its other two panes,
+            // and it was DEAD here — the exact shape the nav's own comment
+            // warns about. `/` is the type-to-filter idiom the rest of the app
+            // uses, and both mean "find inside this list".
+            'filter' => ['ctrl+f', '/'],
+            'delete_char_backward' => [Key::BACKSPACE],
             'show_settings' => ['1'],
             'focus_next_pane' => [Key::TAB],
             'exit_view' => [Key::ESCAPE],

@@ -1110,6 +1110,14 @@
         <source>Nothing copied yet</source>
         <target>まだ何もコピーしていません</target>
       </trans-unit>
+      <trans-unit id="829">
+        <source>Keybindings — %shown% of %count% · ⏎ to rebind</source>
+        <target>キーバインド — %count% 件中 %shown% 件 · ⏎ で再割り当て</target>
+      </trans-unit>
+      <trans-unit id="830">
+        <source>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter</source>
+        <target>キーバインド — %count% 件のアクション · ⏎ で再割り当て · Ctrl+F で絞り込み</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>ツリー: 折りたたむ</target>

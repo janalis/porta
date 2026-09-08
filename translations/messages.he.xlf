@@ -1110,6 +1110,14 @@
         <source>Nothing copied yet</source>
         <target>עדיין לא הועתק דבר</target>
       </trans-unit>
+      <trans-unit id="829">
+        <source>Keybindings — %shown% of %count% · ⏎ to rebind</source>
+        <target>קיצורי מקשים — %shown% מתוך %count% · ⏎ לשינוי</target>
+      </trans-unit>
+      <trans-unit id="830">
+        <source>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter</source>
+        <target>קיצורי מקשים — %count% פעולות · ⏎ לשינוי · Ctrl+F לסינון</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>עץ: כווץ</target>
