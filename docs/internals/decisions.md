@@ -1738,6 +1738,32 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## Swept for the rest of them; there are none (2026-09-08)
+
+The check the entry below ends on — "for any field in a mapped row shape, ask
+which line READS it" — run over the whole tree rather than left as advice.
+
+Extracted every field name declared in an `array{…}` docblock shape (204 in
+`src/`, 51 in `plugins/`) and looked for a reader anywhere in `src/`,
+`plugins/` or `tests/`, counting all three spellings: `['field']`,
+`'field' => $var` destructuring, and `->field` property access. **Eight
+candidates in `src/`, and every one is a false positive** — three are the type
+names in positional shapes (`array{int, int}`), and the other five
+(`anchorLine`, `depth`, `isDir`, `dumpsAutoload`, `platform`) describe object
+properties and are read 1–17 times each as `->field`. `plugins/` is clean
+outright.
+
+So the `label` removed above was the only one, and the codebase does not have a
+systemic version of this problem. **Recorded because a negative result is worth
+exactly as much as the search that produced it and costs nothing to reuse:**
+the next person to wonder can read this instead of writing the script.
+
+Two notes for whoever does rerun it. A naive version keyed on `'field' =>`
+writes rather than on declared shapes drowns in `ActionCatalog::ACTIONS` —
+286 "unread" keys, all of them action ids looked up dynamically. And property
+access is the reader spelling that matters most here: four of the five real
+candidates would have looked dead without it.
+
 ## The field that caused the wrong conclusion (built 2026-09-08, `9bc6acdc`)
 
 Chased the previous entry's mistake to its cause instead of leaving it as a
