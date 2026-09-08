@@ -226,6 +226,12 @@ abstract class AbstractToolPlugin extends AbstractPlugin
      */
     protected function flashCount(PluginApi $api, int $count, string $noun, string $file): void
     {
+        // BOTH nouns go to both sentences, and that is load-bearing rather
+        // than lazy: five of the six translations of the zero-count string use
+        // `%noun%` where the English uses `%nouns%`, because "aucun problème"
+        // and its equivalents are singular and Japanese and Hebrew do not mark
+        // plurals here at all. Trimming this array to the placeholders the
+        // ENGLISH source happens to name would render those five literally.
         $params = [
             '%tool%' => $this->name(),
             '%count%' => $count,

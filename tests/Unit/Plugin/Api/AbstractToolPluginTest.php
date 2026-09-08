@@ -134,7 +134,7 @@ final class AbstractToolPluginTest extends TestCase
     }
 
     /** A live api over a temp project, with the runtime wired so action methods work. */
-    private function api(string $pluginName = 'demo'): PluginApi
+    private function api(string $pluginName = 'demo', string $locale = 'en'): PluginApi
     {
         $this->project ??= new TempProject();
         // ONE settings instance, like PluginLoader wires it — two would read
@@ -148,7 +148,7 @@ final class AbstractToolPluginTest extends TestCase
         $tui = TestTui::create(100, 24);
         $manager->wireRuntime(new PluginRuntime(
             new Notifier($this->status, $tui),
-            new Translator('en'),
+            new Translator($locale),
             $this->editor,
             new RecordingFileOpener(),
             $tui,
@@ -341,6 +341,28 @@ final class AbstractToolPluginTest extends TestCase
         $this->assertStringContainsString('demo: 1 error in a.php', $this->flashText($this->status));
         $plugin->callFlashCount($api, 4, 'error', '/p/a.php');
         $this->assertStringContainsString('demo: 4 errors in a.php', $this->flashText($this->status));
+    }
+
+    /**
+     * Both nouns reach both sentences, and that is load-bearing.
+     *
+     * Five of the six translations of the ZERO-count string use `%noun%` where
+     * the English source uses `%nouns%` — "aucun problème" is singular, and
+     * Japanese and Hebrew do not mark a plural here at all. Trimming the params
+     * to the placeholders the English happens to name would render those five
+     * with a literal `%noun%` on screen, and no gate would see it: the catalogs
+     * are complete, the string is translated, and `en` looks perfect.
+     */
+    public function testTheZeroCountSentenceSubstitutesInALocaleThatUsesTheOtherNoun(): void
+    {
+        $api = $this->api(locale: 'fr');
+        $plugin = $this->plugin();
+
+        $plugin->callFlashCount($api, 0, 'issue', '/p/a.php');
+
+        $flash = $this->flashText($this->status);
+        $this->assertStringNotContainsString('%', $flash, 'no placeholder survived into the sentence');
+        $this->assertStringContainsString('aucun issue', $flash, 'the French target names %noun%, not %nouns%');
     }
 
     public function testTheSharedPluginBaseHelpers(): void
