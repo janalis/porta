@@ -1,0 +1,151 @@
+{
+    "textDocument": {
+        "synchronization": {
+            "didSave": true
+        },
+        "completion": {
+            "completionItem": {
+                "snippetSupport": true,
+                "documentationFormat": [
+                    "plaintext",
+                    "markdown"
+                ]
+            }
+        },
+        "publishDiagnostics": {
+            "relatedInformation": false,
+            "tagSupport": {
+                "valueSet": [
+                    1,
+                    2
+                ]
+            }
+        },
+        "hover": {
+            "contentFormat": [
+                "plaintext",
+                "markdown"
+            ]
+        },
+        "definition": {
+            "linkSupport": false
+        },
+        "references": {
+            "dynamicRegistration": false
+        },
+        "rename": {
+            "prepareSupport": true
+        },
+        "signatureHelp": {
+            "signatureInformation": {
+                "documentationFormat": [
+                    "plaintext"
+                ]
+            }
+        },
+        "codeAction": {
+            "codeActionLiteralSupport": {
+                "codeActionKind": {
+                    "valueSet": [
+                        "quickfix",
+                        "refactor",
+                        "refactor.extract",
+                        "refactor.inline",
+                        "refactor.rewrite",
+                        "source",
+                        "source.organizeImports",
+                        "source.fixAll"
+                    ]
+                }
+            },
+            "resolveSupport": {
+                "properties": [
+                    "edit"
+                ]
+            },
+            "dataSupport": true,
+            "isPreferredSupport": true
+        },
+        "semanticTokens": {
+            "requests": {
+                "full": true,
+                "range": false
+            },
+            "tokenTypes": [
+                "namespace",
+                "type",
+                "class",
+                "enum",
+                "interface",
+                "struct",
+                "typeParameter",
+                "parameter",
+                "variable",
+                "property",
+                "enumMember",
+                "event",
+                "function",
+                "method",
+                "macro",
+                "keyword",
+                "modifier",
+                "comment",
+                "string",
+                "number",
+                "regexp",
+                "operator",
+                "decorator"
+            ],
+            "tokenModifiers": [
+                "declaration",
+                "definition",
+                "readonly",
+                "static",
+                "deprecated",
+                "abstract",
+                "async",
+                "modification",
+                "documentation",
+                "defaultLibrary"
+            ],
+            "formats": [
+                "relative"
+            ]
+        },
+        "documentSymbol": {
+            "hierarchicalDocumentSymbolSupport": true
+        },
+        "foldingRange": {
+            "lineFoldingOnly": true
+        },
+        "callHierarchy": {
+            "dynamicRegistration": false
+        },
+        "formatting": {
+            "dynamicRegistration": false
+        },
+        "rangeFormatting": {
+            "dynamicRegistration": false
+        }
+    },
+    "window": {
+        "workDoneProgress": true
+    },
+    "workspace": {
+        "configuration": false,
+        "workspaceFolders": true,
+        "symbol": {
+            "dynamicRegistration": false
+        },
+        "applyEdit": true,
+        "workspaceEdit": {
+            "documentChanges": true,
+            "resourceOperations": [
+                "create",
+                "rename",
+                "delete"
+            ],
+            "failureHandling": "abort"
+        }
+    }
+}

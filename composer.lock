@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "bba774a9bb48c0ded4dc83a2fadec160",
+    "content-hash": "c64dd4f264c18061bccd7ecfd53ba653",
     "packages": [
         {
             "name": "composer/semver",
@@ -5450,6 +5450,100 @@
                 }
             ],
             "time": "2024-10-20T05:08:20+00:00"
+        },
+        {
+            "name": "systemsdk/phpcpd",
+            "version": "v9.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/systemsdk/phpcpd.git",
+                "reference": "4a54c220fe148f97a338fc7004084cd686a050a3"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/systemsdk/phpcpd/zipball/4a54c220fe148f97a338fc7004084cd686a050a3",
+                "reference": "4a54c220fe148f97a338fc7004084cd686a050a3",
+                "shasum": ""
+            },
+            "require": {
+                "ext-dom": "*",
+                "ext-mbstring": "*",
+                "php": ">=8.4",
+                "phpunit/php-file-iterator": "^7.0",
+                "phpunit/php-timer": "^9.0",
+                "sebastian/cli-parser": "^5.0",
+                "sebastian/version": "^7.0"
+            },
+            "require-dev": {
+                "bamarni/composer-bin-plugin": "^1.9",
+                "roave/security-advisories": "dev-latest"
+            },
+            "bin": [
+                "phpcpd"
+            ],
+            "type": "library",
+            "extra": {
+                "bamarni-bin": {
+                    "bin-links": true,
+                    "forward-command": true,
+                    "target-directory": "tools"
+                },
+                "projectTitle": "phpcpd",
+                "allow-contrib": "true"
+            },
+            "autoload": {
+                "psr-4": {
+                    "Systemsdk\\PhpCPD\\": "src/"
+                },
+                "classmap": [
+                    "src/"
+                ],
+                "exclude-from-classmap": []
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "BSD-3-Clause"
+            ],
+            "authors": [
+                {
+                    "name": "Dmitry Kravtsov",
+                    "email": "dmitry.kravtsov@systemsdk.com",
+                    "homepage": "https://github.com/systemsdk",
+                    "role": "Project Lead"
+                },
+                {
+                    "name": "Sebastian Bergmann",
+                    "email": "sebastian@phpunit.de",
+                    "role": "Original Author"
+                }
+            ],
+            "description": "Copy/Paste Detector for PHP code",
+            "homepage": "https://github.com/systemsdk/phpcpd",
+            "keywords": [
+                "Copy paste detector",
+                "Php code quality tool",
+                "php",
+                "phpcpd"
+            ],
+            "support": {
+                "issues": "https://github.com/systemsdk/phpcpd/issues",
+                "source": "https://github.com/systemsdk/phpcpd/tree/v9.1.0"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/sponsors/systemsdk",
+                    "type": "github"
+                },
+                {
+                    "url": "https://opencollective.com/systemsdk-engineering",
+                    "type": "open_collective"
+                },
+                {
+                    "url": "https://secure.wayforpay.com/button/b0b1af16db515",
+                    "type": "wayforpay"
+                }
+            ],
+            "time": "2026-09-02T16:44:35+00:00"
         },
         {
             "name": "thecodingmachine/safe",

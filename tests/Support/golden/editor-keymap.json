@@ -1,0 +1,285 @@
+{
+    "cursor_up": [
+        "up"
+    ],
+    "cursor_down": [
+        "down"
+    ],
+    "cursor_left": [
+        "left"
+    ],
+    "cursor_right": [
+        "right"
+    ],
+    "cursor_word_left": [
+        "alt+left",
+        "alt+b"
+    ],
+    "cursor_word_right": [
+        "alt+right",
+        "alt+f"
+    ],
+    "cursor_line_start": [
+        "home"
+    ],
+    "cursor_line_end": [
+        "end"
+    ],
+    "document_start": [
+        "ctrl+home",
+        "alt+<"
+    ],
+    "document_end": [
+        "ctrl+end",
+        "alt+>"
+    ],
+    "page_up": [
+        "page_up"
+    ],
+    "page_down": [
+        "page_down"
+    ],
+    "select_up": [
+        "shift+up"
+    ],
+    "select_down": [
+        "shift+down"
+    ],
+    "select_left": [
+        "shift+left"
+    ],
+    "select_right": [
+        "shift+right"
+    ],
+    "select_word_left": [
+        "alt+shift+left"
+    ],
+    "select_word_right": [
+        "alt+shift+right"
+    ],
+    "select_line_start": [
+        "shift+home"
+    ],
+    "select_line_end": [
+        "shift+end"
+    ],
+    "select_all": [
+        "ctrl+a"
+    ],
+    "copy": [
+        "ctrl+c"
+    ],
+    "cut": [
+        "ctrl+x"
+    ],
+    "paste": [
+        "ctrl+v"
+    ],
+    "delete_char_backward": [
+        "backspace",
+        "shift+backspace"
+    ],
+    "delete_char_forward": [
+        "delete"
+    ],
+    "delete_word_backward": [
+        "alt+backspace"
+    ],
+    "delete_to_line_end": [
+        "ctrl+k"
+    ],
+    "delete_line": [
+        "ctrl+y",
+        "ctrl+shift+k"
+    ],
+    "duplicate_line": [
+        "ctrl+d"
+    ],
+    "move_line_up": [
+        "alt+shift+up"
+    ],
+    "move_line_down": [
+        "alt+shift+down"
+    ],
+    "move_statement_up": [
+        "ctrl+shift+up"
+    ],
+    "move_statement_down": [
+        "ctrl+shift+down"
+    ],
+    "sort_lines": [
+        "ctrl+shift+s"
+    ],
+    "join_lines": [
+        "ctrl+shift+j"
+    ],
+    "toggle_case": [
+        "ctrl+shift+u"
+    ],
+    "expand_selection": [
+        "ctrl+w"
+    ],
+    "shrink_selection": [
+        "ctrl+shift+w"
+    ],
+    "surround_with": [
+        "ctrl+alt+t"
+    ],
+    "next_conflict": [
+        "f7"
+    ],
+    "prev_conflict": [
+        "shift+f7"
+    ],
+    "resolve_conflict": [
+        "alt+m"
+    ],
+    "toggle_comment": [
+        "ctrl+/",
+        "ctrl+-"
+    ],
+    "toggle_block_comment": [
+        "ctrl+shift+/"
+    ],
+    "toggle_fold": [
+        "ctrl+."
+    ],
+    "goto_matching_bracket": [
+        "ctrl+shift+m"
+    ],
+    "new_line": [
+        "enter"
+    ],
+    "paste_history": [
+        "ctrl+shift+v"
+    ],
+    "insert_line_below": [
+        "shift+enter"
+    ],
+    "insert_line_above": [
+        "ctrl+alt+enter"
+    ],
+    "complete_statement": [
+        "ctrl+shift+enter"
+    ],
+    "indent": [
+        "tab"
+    ],
+    "prev_tab_stop": [
+        "shift+tab"
+    ],
+    "accept_completion": [
+        "enter"
+    ],
+    "trigger_completion": [
+        "ctrl+space"
+    ],
+    "parameter_info": [
+        "ctrl+shift+p"
+    ],
+    "select_cancel": [
+        "escape"
+    ],
+    "save": [
+        "ctrl+s"
+    ],
+    "save_all": [
+        "ctrl+alt+s"
+    ],
+    "undo": [
+        "ctrl+z"
+    ],
+    "redo": [
+        "ctrl+shift+z"
+    ],
+    "goto_definition": [
+        "ctrl+b",
+        "f12"
+    ],
+    "goto_implementation": [
+        "ctrl+alt+b"
+    ],
+    "goto_type_definition": [
+        "ctrl+shift+b"
+    ],
+    "navigate_back": [
+        "ctrl+alt+left"
+    ],
+    "add_caret_above": [
+        "ctrl+alt+up"
+    ],
+    "add_caret_below": [
+        "ctrl+alt+down"
+    ],
+    "add_next_occurrence": [
+        "alt+j"
+    ],
+    "select_all_occurrences": [
+        "ctrl+alt+shift+j"
+    ],
+    "toggle_column_mode": [
+        "alt+c"
+    ],
+    "next_buffer": [
+        "ctrl+right"
+    ],
+    "prev_buffer": [
+        "ctrl+left"
+    ],
+    "recent_files": [
+        "ctrl+e"
+    ],
+    "close_buffer": [
+        "ctrl+f4",
+        "alt+w"
+    ],
+    "find": [
+        "ctrl+f"
+    ],
+    "replace": [
+        "ctrl+r"
+    ],
+    "goto_file": [
+        "ctrl+shift+n",
+        "ctrl+p"
+    ],
+    "quick_doc": [
+        "shift+f1"
+    ],
+    "code_action": [
+        "alt+enter"
+    ],
+    "refactor_this": [
+        "ctrl+alt+shift+t"
+    ],
+    "inline_refactoring": [
+        "ctrl+alt+n"
+    ],
+    "organize_imports": [
+        "ctrl+alt+o"
+    ],
+    "file_structure": [
+        "ctrl+f12"
+    ],
+    "peek_definition": [
+        "ctrl+shift+i"
+    ],
+    "reformat": [
+        "ctrl+alt+l"
+    ],
+    "goto_line": [
+        "ctrl+g"
+    ],
+    "rename_symbol": [
+        "shift+f6"
+    ],
+    "find_usages": [
+        "alt+f7"
+    ],
+    "call_hierarchy": [
+        "ctrl+shift+h"
+    ],
+    "outgoing_calls": [
+        "ctrl+alt+shift+h"
+    ]
+}

@@ -35,6 +35,8 @@ final class LspClientTest extends TestCase
         );
     }
 
+    private const string CAPABILITIES_GOLDEN = __DIR__.'/../Support/golden/lsp-client-capabilities.json';
+
     public function testInitializeParamsAdvertiseTheFullClientCapabilitySet(): void
     {
         // No process spawned: initializeParams()/clientCapabilities() are pure,
@@ -47,92 +49,18 @@ final class LspClientTest extends TestCase
         $this->assertSame('file:///tmp/proj', $params['rootUri']);
         $this->assertSame([['uri' => 'file:///tmp/proj', 'name' => 'proj']], $params['workspaceFolders']);
         $this->assertSame(['name' => 'porta', 'version' => '0.1.0'], $params['clientInfo']);
+        // The capability set is pinned by a GOLDEN FILE, not by a copy of
+        // itself. It used to be restated here in full — seventy lines the
+        // duplication gate found, and the copy carried a justification the
+        // source did not, so the reason for `tagSupport` lived only in the
+        // test that echoed it. The reasons live beside the values now.
+        $this->assertFileExists(self::CAPABILITIES_GOLDEN, 'run once with UPDATE_LSP_CAPABILITIES_GOLDEN=1 to seed');
+        if (getenv('UPDATE_LSP_CAPABILITIES_GOLDEN')) {
+            file_put_contents(self::CAPABILITIES_GOLDEN, json_encode($params['capabilities'], \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
+            $this->markTestSkipped('Golden regenerated.');
+        }
         $this->assertSame(
-            [
-                'textDocument' => [
-                    'synchronization' => ['didSave' => true],
-                    'completion' => [
-                        'completionItem' => ['snippetSupport' => true, 'documentationFormat' => ['plaintext', 'markdown']],
-                    ],
-                    'publishDiagnostics' => [
-                        'relatedInformation' => false,
-                        // Declared even though phpactor sends the tags unasked:
-                        // a server that gates on the declaration sends none.
-                        'tagSupport' => ['valueSet' => [1, 2]],
-                    ],
-                    'hover' => ['contentFormat' => ['plaintext', 'markdown']],
-                    'definition' => ['linkSupport' => false],
-                    'references' => ['dynamicRegistration' => false],
-                    'rename' => ['prepareSupport' => true],
-                    'signatureHelp' => ['signatureInformation' => ['documentationFormat' => ['plaintext']]],
-                    'codeAction' => [
-                        'codeActionLiteralSupport' => [
-                            'codeActionKind' => ['valueSet' => [
-                                'quickfix',
-                                'refactor',
-                                'refactor.extract',
-                                'refactor.inline',
-                                'refactor.rewrite',
-                                'source',
-                                'source.organizeImports',
-                                'source.fixAll',
-                            ]],
-                        ],
-                        'resolveSupport' => ['properties' => ['edit']],
-                        'dataSupport' => true,
-                        'isPreferredSupport' => true,
-                    ],
-                    'semanticTokens' => [
-                        'requests' => ['full' => true, 'range' => false],
-                        'tokenTypes' => [
-                            'namespace',
-                            'type',
-                            'class',
-                            'enum',
-                            'interface',
-                            'struct',
-                            'typeParameter',
-                            'parameter',
-                            'variable',
-                            'property',
-                            'enumMember',
-                            'event',
-                            'function',
-                            'method',
-                            'macro',
-                            'keyword',
-                            'modifier',
-                            'comment',
-                            'string',
-                            'number',
-                            'regexp',
-                            'operator',
-                            'decorator',
-                        ],
-                        'tokenModifiers' => ['declaration', 'definition', 'readonly', 'static', 'deprecated', 'abstract', 'async', 'modification', 'documentation', 'defaultLibrary'],
-                        'formats' => ['relative'],
-                    ],
-                    'documentSymbol' => ['hierarchicalDocumentSymbolSupport' => true],
-                    'foldingRange' => ['lineFoldingOnly' => true],
-                    'callHierarchy' => ['dynamicRegistration' => false],
-                    'formatting' => ['dynamicRegistration' => false],
-                    'rangeFormatting' => ['dynamicRegistration' => false],
-                ],
-                'window' => [
-                    'workDoneProgress' => true,
-                ],
-                'workspace' => [
-                    'configuration' => false,
-                    'workspaceFolders' => true,
-                    'symbol' => ['dynamicRegistration' => false],
-                    'applyEdit' => true,
-                    'workspaceEdit' => [
-                        'documentChanges' => true,
-                        'resourceOperations' => ['create', 'rename', 'delete'],
-                        'failureHandling' => 'abort',
-                    ],
-                ],
-            ],
+            json_decode((string) file_get_contents(self::CAPABILITIES_GOLDEN), associative: true),
             $params['capabilities'],
         );
         $this->assertArrayNotHasKey('initializationOptions', $params, 'no options configured, none sent');

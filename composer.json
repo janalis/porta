@@ -43,7 +43,8 @@
         "brianium/paratest": "^7.23",
         "carthage-software/mago": "1.46.*",
         "infection/infection": "^0.34.2",
-        "phpunit/phpunit": "^13.2"
+        "phpunit/phpunit": "^13.2",
+        "systemsdk/phpcpd": "^9.1"
     },
     "suggest": {
         "ext-gd": "Lets the bundled image-viewer (and graph-viewer) plugins decode images"
