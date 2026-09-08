@@ -49,12 +49,31 @@ final class CodeEditorIndentStyleTest extends TestCase
         $this->assertSame(4, $editor->getDocument()->indentSize());
     }
 
-    public function testAutoWithoutEditorConfigFallsBackToTwoSpaces(): void
+    public function testAutoWithoutEditorConfigReadsTheFileItself(): void
     {
+        // It used to mean "unix defaults, two spaces", whatever the file did —
+        // so a four-space PHP file with no .editorconfig drew an indent guide
+        // every two columns and Tab inserted half an indent. Auto means the
+        // file now, which is what "detect existing indents" means everywhere
+        // else.
         $editor = $this->editor(['php' => new LanguageIndent()]); // auto/auto
-        $editor->openFile('x.php', "\ttabbed\n"); // content would detect tabs
-        $this->assertFalse($editor->getDocument()->usesTabs(), 'auto ignores detection → spaces');
-        $this->assertSame(2, $editor->getDocument()->indentSize(), 'unix fallback size 2');
+        $editor->openFile('x.php', "\ttabbed\n");
+        $this->assertTrue($editor->getDocument()->usesTabs(), 'auto follows the file');
+
+        $editor->openFile('y.php', "<?php\nclass A\n{\n    public function b(): void\n    {\n    }\n}\n");
+        $this->assertFalse($editor->getDocument()->usesTabs());
+        $this->assertSame(4, $editor->getDocument()->indentSize(), 'four-space file, four-space indent');
+
+        $editor->openFile('z.php', "<?php\nclass A\n{\n  public function b(): void\n  {\n  }\n}\n");
+        $this->assertSame(2, $editor->getDocument()->indentSize(), 'and a two-space file keeps two');
+    }
+
+    public function testAFileThatIndentsNothingKeepsTheDefault(): void
+    {
+        $editor = $this->editor(['php' => new LanguageIndent()]);
+        $editor->openFile('x.php', "<?php\necho 1;\n");
+
+        $this->assertSame(4, $editor->getDocument()->indentSize(), 'there is nothing to read, so PHP\'s own default stands');
     }
 
     public function testAutoTakesEditorConfigValues(): void

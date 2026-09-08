@@ -444,9 +444,9 @@ final class CodeEditorWidget extends AbstractWidget implements
     /**
      * Apply the effective indent for the current file's language: an explicit
      * per-language style/size wins; 'auto' takes the file's `.editorconfig`
-     * value, falling back to unix-style 2 spaces. A file whose language has no
-     * entry in the map (e.g. plaintext, or a bare editor with no config) keeps
-     * the document's own auto-detected/`.editorconfig` indent.
+     * value, and failing that what the file itself does. A file whose language
+     * has no entry in the map (e.g. plaintext, or a bare editor with no config)
+     * keeps the document's own auto-detected/`.editorconfig` indent.
      */
     private function applyEffectiveIndent(): void
     {
@@ -455,13 +455,18 @@ final class CodeEditorWidget extends AbstractWidget implements
             return;
         }
 
+        // 'auto' asks the file, then the config, then the file again — which is
+        // what a person means by auto, and what PhpStorm's "detect existing
+        // file indents" does. It used to mean "unix defaults, size 2", so a
+        // four-space PHP file with no .editorconfig drew an indent guide every
+        // two columns and inserted half an indent on Tab.
         $usesTabs = match ($config->indentStyle) {
             'spaces' => false,
             'tabs' => true,
-            default => $this->currentEditorConfig->usesTabs ?? false,
+            default => $this->currentEditorConfig->usesTabs ?? $this->document->usesTabs(),
         };
         $size = 'auto' === $config->indentSize
-            ? $this->currentEditorConfig->indentSize ?? 2
+            ? $this->currentEditorConfig->indentSize ?? $this->document->indentSize()
             : (int) $config->indentSize;
 
         $this->document->setIndent($usesTabs ? IndentKind::Tabs : IndentKind::Spaces, $size);

@@ -784,12 +784,14 @@ final class CodeEditorWidgetTest extends TestCase
 
     public function testIndentGuidesDrawnAtEachLevel(): void
     {
-        // 8-space (two-level) indentation gets guides at columns 0 and 4.
-        $editor = $this->editor("<?php\nif (true) {\n        deep();\n");
+        // 8-space (two-level) indentation gets guides at columns 0 and 4. The
+        // 4-space line is what makes the file's step readable as 4: a lone
+        // 8-space jump is one level of eight as far as any reader can tell.
+        $editor = $this->editor("<?php\nif (true) {\n    mid();\n    if (x) {\n        deep();\n");
         $rendered = $editor->render(new RenderContext(80, 10));
 
         $line1 = AnsiUtils::stripAnsiCodes($rendered[1]); // "if (true) {" — no indent
-        $line2 = AnsiUtils::stripAnsiCodes($rendered[2]); // "        deep();" — 2 levels
+        $line2 = AnsiUtils::stripAnsiCodes($rendered[4]); // "        deep();" — 2 levels
 
         $this->assertStringNotContainsString('│', $line1, 'unindented line has no guide');
         $this->assertSame(2, substr_count($line2, needle: '│'), 'a guide per indent level');

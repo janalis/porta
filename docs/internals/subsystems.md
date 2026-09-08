@@ -99,7 +99,16 @@ crosses.
 ## Editor core
 
 `Editor/Document` is the text buffer: a byte-offset cursor kept on UTF-8
-boundaries, undo/redo, change tracking, per-file indent via `.editorconfig`. The
+boundaries, undo/redo, change tracking, per-file indent via `.editorconfig`.
+
+**Indentation is read from the file** (`Editor/IndentModel::detect()`): tabs vs
+spaces from the first line that starts with either, and the SIZE from the most
+common step between consecutive lines' indents — `    public function` under
+`{` says four. Ties take the smaller step, and a file that indents nothing
+keeps `Document::TAB_SIZE`. `.editorconfig` overrides it, and an explicit
+per-language setting overrides that; `auto` on both means the file. A constant
+default is what made the guides lie — one per two columns down a four-space
+file, so every block looked twice as deep as it was. The
 whole-line verbs keep their mutation, cursor clamping and undo here but delegate
 the algorithm to the pure statics in `Editor/LineOperations` — except
 `indentSelection` and `dedentSelection`, which track cursor and anchor deltas

@@ -91,7 +91,7 @@ final class Document
         // The normalized $text IS what implode would rebuild — digest it
         // directly instead of re-joining a copy of the file.
         $this->savedDigest = hash('xxh128', $text);
-        $this->indent = new IndentModel($this->detectTabIndentation(), self::TAB_SIZE, self::TAB_SIZE);
+        $this->indent = IndentModel::detect($this->lines, self::TAB_SIZE);
         $this->selection = new SelectionModel();
         $this->history = new UndoHistory();
         $this->positionMapper = new PositionMapper($this);
@@ -127,24 +127,6 @@ final class Document
     public function setEditHook(?\Closure $onEdit): void
     {
         $this->onEdit = $onEdit;
-    }
-
-    /**
-     * A file is "tab-indented" when the first line that begins with whitespace
-     * begins with a tab. Used to pick the unit inserted by Tab and auto-indent.
-     */
-    private function detectTabIndentation(): bool
-    {
-        foreach ($this->lines as $line) {
-            if (str_starts_with($line, "\t")) {
-                return true;
-            }
-            if (str_starts_with($line, ' ')) {
-                return false;
-            }
-        }
-
-        return false;
     }
 
     public function usesTabs(): bool

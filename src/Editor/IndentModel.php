@@ -22,6 +22,63 @@ final class IndentModel
         private int $tabWidth,
     ) {}
 
+    /**
+     * Read a file's own indentation off its lines.
+     *
+     * Tabs vs spaces is the first line that starts with either. The SIZE is the
+     * most common STEP between the indents of consecutive non-blank lines,
+     * which is what an indent level is: `    public function` under `{` says
+     * four, whatever any default says. Ties go to the smaller step, and a file
+     * that indents nothing keeps $default — there is nothing to read.
+     *
+     * A constant default is what made the guides lie: it drew one per two
+     * columns down a four-space file, so every block looked twice as deep as it
+     * was, and Tab inserted half an indent.
+     *
+     * @param list<string> $lines
+     */
+    public static function detect(array $lines, int $default): self
+    {
+        $steps = [];
+        $previous = null;
+        $usesTabs = null;
+        foreach ($lines as $line) {
+            $usesTabs ??= match (true) {
+                str_starts_with($line, "\t") => true,
+                str_starts_with($line, ' ') => false,
+                default => null,
+            };
+            if ('' === trim($line)) {
+                continue; // a blank line indents nothing and says nothing
+            }
+            $width = strspn($line, characters: ' ');
+            $step = null === $previous ? 0 : abs($width - $previous);
+            $previous = $width;
+            if ($step > 0 && $step <= 8) {
+                $steps[$step] = ($steps[$step] ?? 0) + 1;
+            }
+        }
+        $size = self::commonest($steps) ?? $default;
+
+        return new self($usesTabs ?? false, $size, $size);
+    }
+
+    /**
+     * The most frequent step, smaller first on a tie.
+     *
+     * @param array<int, int> $steps step => how many lines took it
+     */
+    private static function commonest(array $steps): ?int
+    {
+        if ([] === $steps) {
+            return null;
+        }
+        ksort($steps);
+        arsort($steps, flags: \SORT_NUMERIC);
+
+        return array_key_first($steps);
+    }
+
     public function usesTabs(): bool
     {
         return $this->usesTabs;

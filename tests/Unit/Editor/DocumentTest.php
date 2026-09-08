@@ -452,9 +452,26 @@ final class DocumentTest extends TestCase
         $this->assertSame("a\nb\n\nc\n", $doc->getText());
     }
 
+    public function testTheIndentUnitIsReadFromTheFileAndATieTakesTheSmallerStep(): void
+    {
+        // Four-space blocks say four, whatever any default says.
+        $this->assertSame(4, new Document("<?php\nclass A\n{\n    public function b(): void\n    {\n    }\n}\n")->indentSize());
+        $this->assertSame(2, new Document("<?php\nclass A\n{\n  public function b(): void\n  {\n  }\n}\n")->indentSize());
+
+        // A ladder of 8 / 2 / 0 is one step of 6 and one of 2 — a tie, and the
+        // smaller wins: a big step is usually several levels at once (a wrapped
+        // condition, a nested array), while a small one is rarely half a level.
+        $this->assertSame(2, new Document("        deep\n  shallow\nnone\n")->indentSize());
+
+        // Nothing indented, nothing to read.
+        $this->assertSame(Document::TAB_SIZE, new Document("<?php\necho 1;\n")->indentSize());
+    }
+
     public function testDedentSelectionRemovesOneLevelAndStopsAtMargin(): void
     {
-        $doc = new Document("        deep\n  shallow\nnone\n"); // 8 / 2 / 0 leading spaces
+        // 8 / 4 / 0: the file's own step is 4, which is what one level means
+        // here — a ladder of 8/2/0 would read as a two-space file.
+        $doc = new Document("        deep\n    shallow\nnone\n");
         $doc->setCursor(0, 0);
         $doc->beginSelect();
         $doc->setCursor(2, 4, selection: SelectionMode::Keep);
