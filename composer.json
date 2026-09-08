@@ -59,14 +59,16 @@
         "test:serial": "@php vendor/bin/phpunit --order-by=default",
         "coverage": "@php -d pcov.enabled=1 -d pcov.directory=. -d pcov.exclude='#/(vendor|tests)/#' vendor/bin/paratest --processes=${PORTA_TEST_PROCESSES:-$(( ($(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) + 1) / 2 ))} --functional --passthru-php=\"'-d' 'pcov.enabled=1' '-d' 'pcov.directory=.' '-d' 'pcov.exclude=#/(vendor|tests)/#'\" --coverage-clover coverage/clover.xml",
         "coverage:plugins": [
-            "@putenv PORTA_CONTAINER_CACHE=on",
-            "@php -d pcov.enabled=1 -d pcov.directory=. -d pcov.exclude='#/(vendor|tests)/#' vendor/bin/phpunit --testsuite Plugins --coverage-filter plugins --coverage-clover coverage/plugins-clover.xml"
+            "@php bin/porta-dev coverage:plugins --processes=${PORTA_SHARD_PROCESSES:-$(( ($(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) + 1) / 2 ))}",
+            "@php bin/porta-dev coverage:check coverage/plugins 100 --only=/plugins/ --require=plugins"
+        ],
+        "coverage:src": [
+            "@coverage",
+            "@php bin/porta-dev coverage:check coverage/clover.xml 100"
         ],
         "coverage:check": [
-            "@coverage",
-            "@php bin/porta-dev coverage:check coverage/clover.xml 100",
-            "@coverage:plugins",
-            "@php bin/porta-dev coverage:check coverage/plugins-clover.xml 100 --only=/plugins/ --require=plugins"
+            "@coverage:src",
+            "@coverage:plugins"
         ],
         "arch": "@php bin/porta-dev arch",
         "flake:scan": "@php bin/porta-dev flake:scan",

@@ -346,11 +346,13 @@ at one caller.
 Third-party plugins may extend these or implement `PortaPlugin` directly;
 `PluginLoader` only ever checks `instanceof PortaPlugin`.
 
-## Coverage runs a second, serial pass
+## Coverage runs a second pass, sharded
 
-`composer coverage:check` is the parallel run over `src` **plus**
-`composer coverage:plugins` — serial phpunit over the `Plugins` testsuite,
-graded with `--only=/plugins/`.
+`composer coverage:check` is the parallel run over `src` (`coverage:src`)
+**plus** `composer coverage:plugins` — which is now `bin/porta-dev
+coverage:plugins`, a fan-out of independent **serial** phpunit runs, one per
+plugin test directory, several at a time, each writing its own report into
+`coverage/plugins/`. `coverage:check` grades that directory as one report.
 
 Putting `plugins/*/src` into phpunit's `<source>` for the parallel run collapses
 the total to 86–95%, differently every run. Each paratest worker serialises
@@ -359,6 +361,25 @@ merger keeps only the first worker's base path — so a worker that covered a
 plugin file reduces to the repo root instead of `src`, every path it reports
 resolves wrong, and that whole worker's data is dropped silently. No
 project-side configuration prevents it. A serial run never merges.
+
+**That property is per PROCESS, not per pass**, which is what makes the fan-out
+legal where parallel paratest is not: sixteen shards are sixteen merge-free
+reports, and the merge that does happen is `coverage:check`'s own, per LINE,
+over documents it reads whole. Measured: **151s serial → 34s**, same total
+(`100.00% (4284/4284)`, 127 files). The floor is the slowest shard, printed
+after every run — today `git`'s loose E2e files at 34s, which is where the next
+split would go.
+
+The shard list is derived, never written down: one shard per immediate
+subdirectory of a plugin's `tests/`, plus one for the files directly in it. A
+list in a file is a second place to add a plugin, and forgetting it stops
+running those tests while the percentage stays green — the coverage gate only
+catches a dropped shard when nothing else covers the same lines.
+
+Every shard keeps `--coverage-filter plugins`, the whole tree, not its own
+plugin: `plugins/tempest/plugin.php` has no tests of its own and is loaded by
+every booted IDE, so a per-plugin filter would drop it from every report and
+`--require=plugins` would fail a file that is fully covered.
 
 `composer coverage` also sets `pcov.directory` and `pcov.exclude` itself,
 because pcov has its own instrumentation window with a machine-level default,

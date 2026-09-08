@@ -118,6 +118,9 @@ jobs:
           PORTA_TEST_PROCESSES: auto
         run: composer test
 
+  # Two jobs, not one: the src pass and the plugin shards share no state and
+  # produce separate reports, so the long pole is now the longer of the two
+  # rather than their sum. `coverage:check` still chains both locally.
   coverage:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
@@ -137,15 +140,46 @@ jobs:
       - run: composer install --no-interaction --no-progress --classmap-authoritative
       # Kept as its own run beside `tests`, not instead of it — testing.md's
       # flake doctrine reads their divergence as the machine-load tell.
-      - name: Coverage gate (100% lines)
+      - name: Coverage gate, src (100% lines)
         env:
           PORTA_TEST_PROCESSES: auto
-        run: composer coverage:check
+        run: composer coverage:src
       - name: Coverage report artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-clover
           path: coverage/*.xml
+          if-no-files-found: ignore
+          retention-days: 14
+
+  coverage-plugins:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: pcov
+          extensions: ${{ env.PHP_EXTENSIONS }}, intl
+      - uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+      - run: composer install --no-interaction --no-progress --classmap-authoritative
+      # Each shard is its own serial phpunit run, so no merge happens inside
+      # one — the property the serial pass existed for, kept while the shards
+      # run several at a time.
+      - name: Coverage gate, plugins (100% lines)
+        run: composer coverage:plugins
+      - name: Shard reports artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-plugins-clover
+          path: coverage/plugins/*.xml
           if-no-files-found: ignore
           retention-days: 14

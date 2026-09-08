@@ -11,11 +11,11 @@ use PHPUnit\Framework\TestCase;
  *
  * The chain cannot drift from the gates themselves — it is a composer script
  * array, so it IS the scripts it names — but it can drift from CI, which calls
- * them one by one across five jobs. That split is deliberate: the `tests` job
- * runs twice over an intl matrix, `coverage` needs a pcov runner where `static`
- * needs none, and folding them into one `verify` job would serialise what CI
- * runs in parallel. `testing.md`'s flake doctrine also reads the divergence
- * between the `tests` and `coverage` jobs as its machine-load tell.
+ * them one by one across its jobs. That split is deliberate: the `tests` job
+ * runs twice over an intl matrix, the coverage jobs need a pcov runner where
+ * `static` needs none, and folding them into one `verify` job would serialise
+ * what CI runs in parallel. `testing.md`'s flake doctrine also reads the
+ * divergence between the `tests` and coverage jobs as its machine-load tell.
  *
  * So the two lists are kept identical by a ratchet rather than by a promise,
  * in the arch gate's doctrine: it fails in EITHER direction. A gate wired into
@@ -27,9 +27,9 @@ final class VerifyGatesMatchCiTest extends TestCase
     /**
      * Run by CI on purpose and NOT by `composer verify`.
      *
-     * `test` is subsumed — `coverage:check` runs the same suite under pcov, so
+     * `test` is subsumed — the coverage pass runs the same suite under pcov, so
      * running both locally ran it twice. CI keeps its own `tests` job because
-     * comparing it against `coverage` is how the flake doctrine tells a
+     * comparing it against the coverage job is how the flake doctrine tells a
      * machine-load failure from a real one, and because it is the leg that runs
      * over the intl matrix.
      *
@@ -45,41 +45,68 @@ final class VerifyGatesMatchCiTest extends TestCase
 
         /** @var array{scripts: array<string, list<string>|string>} $composer */
         $composer = json_decode((string) file_get_contents($root.'/composer.json'), associative: true);
-        $verify = self::flatten($composer['scripts'], 'verify');
+        $scripts = $composer['scripts'];
 
         preg_match_all('/^\s*(?:- )?run: composer ([a-z:]+)/m', (string) file_get_contents($root.'/.github/workflows/ci.yml'), $matches);
         $ci = array_values(array_unique(array_diff($matches[1], self::NOT_IN_VERIFY)));
 
-        sort($verify);
-        sort($ci);
-        $this->assertSame($ci, $verify, 'composer verify and CI must run the same gates — add the new one to both, or say here why not');
+        $reachedByVerify = self::reach($scripts, 'verify');
+        $reachedByCi = [];
+        foreach ($ci as $script) {
+            $reachedByCi = [...$reachedByCi, ...self::reach($scripts, $script)];
+        }
+        $reachedByCi = array_values(array_unique($reachedByCi));
+
+        $ciOnly = array_values(array_diff($reachedByCi, $reachedByVerify));
+        sort($ciOnly);
+        $this->assertSame([], $ciOnly, 'CI runs a gate `composer verify` never reaches — add it to the chain, or list it in NOT_IN_VERIFY and say why');
+
+        // What `verify` reaches and CI does not may only be a CHAIN: a script
+        // whose every step is a reference to another script runs no gate of its
+        // own, and CI naming its parts instead is how the coverage passes get
+        // their own runners. Anything else is a gate CI would never run.
+        $verifyOnly = array_values(array_filter(
+            array_diff($reachedByVerify, $reachedByCi),
+            static fn (string $name): bool => !self::isChain($scripts, $name),
+        ));
+        sort($verifyOnly);
+        $this->assertSame([], $verifyOnly, '`composer verify` runs a gate CI does not — wire it into a CI job, or it only blocks the person who remembered');
     }
 
     /**
-     * The gates a chain names, following `@verify…` references into the nested
-     * chain and stopping at everything else.
-     *
-     * Stopping matters: `coverage:check` is itself a four-step chain, and
-     * recursing into it would report its internals — `@coverage`, two
-     * `bin/porta-dev` calls — as gates. CI invokes `composer coverage:check`,
-     * so that name is the leaf on both sides.
+     * $name and every script it reaches through `@` references.
      *
      * @param array<string, list<string>|string> $scripts
      *
      * @return list<string>
      */
-    private static function flatten(array $scripts, string $name): array
+    private static function reach(array $scripts, string $name): array
     {
         $steps = $scripts[$name] ?? [];
-        $out = [];
+        $out = [$name];
         foreach (\is_array($steps) ? $steps : [$steps] as $step) {
-            if (!str_starts_with($step, '@')) {
-                continue; // a shell command, not a reference to another gate
-            }
             $referenced = substr($step, offset: 1);
-            $out = [...$out, ...(str_starts_with($referenced, 'verify') ? self::flatten($scripts, $referenced) : [$referenced])];
+            if (!str_starts_with($step, '@') || !\array_key_exists($referenced, $scripts)) {
+                continue; // a shell command, or `@php`/`@putenv` — not another gate
+            }
+            $out = [...$out, ...self::reach($scripts, $referenced)];
         }
 
         return $out;
+    }
+
+    /**
+     * Whether a script is nothing but a list of other scripts.
+     *
+     * @param array<string, list<string>|string> $scripts
+     */
+    private static function isChain(array $scripts, string $name): bool
+    {
+        $steps = $scripts[$name] ?? [];
+        if (!\is_array($steps) || [] === $steps) {
+            return false;
+        }
+
+        return [] === array_filter($steps, static fn (string $step): bool => !\array_key_exists(substr($step, offset: 1), $scripts));
     }
 }

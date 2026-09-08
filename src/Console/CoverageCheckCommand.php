@@ -40,11 +40,11 @@ use Symfony\Component\Finder\Finder;
         when the report is missing or unusable.
 
           <info>coverage:check</info>                              coverage/clover.xml against 100%
-          <info>coverage:check coverage/plugins-clover.xml 100 --only=/plugins/</info>
-                                                          grade only plugin files
-          <info>coverage:check --require=plugins</info>  fail if a .php file under plugins/ is absent from the report
           <info>coverage:check coverage/plugins 100 --only=/plugins/</info>
-                                                          grade every *.xml in that directory as one report
+                                                          grade only plugin files, every shard's report merged
+          <info>coverage:check --require=plugins</info>  fail if a .php file under plugins/ is absent from the report
+
+        A directory argument grades every *.xml in it as ONE report, merged per line.
         HELP,
     usages: ['coverage/clover.xml 100', '--only=/plugins/ --require=plugins', 'coverage/plugins 100 --only=/plugins/'],
 )]
