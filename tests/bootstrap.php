@@ -66,8 +66,16 @@ $_ENV['PORTA_CACHE_DIR'] = $portaCacheDir;
 // other half of this fix is `includeUncoveredFiles="false"` in
 // phpunit.xml.dist, which keeps php-code-coverage's static analyser (whose
 // executable-line map disagrees with pcov's on match expressions) out of the
-// paratest merge entirely.
-if ('1' === ini_get('pcov.enabled')) {
+// paratest merge entirely. It is also what collapses every worker's PathReducer
+// base to `<repo>/src` so the coverage merge resolves at all (decisions.md).
+//
+// Both reasons are about the PARALLEL `src` run. A caller that knows it is
+// neither parallel nor grading `src` — `composer coverage:plugins`, one serial
+// process filtered to `plugins/` — says so by setting the variable itself, and
+// then pays the container compile once instead of once per Ide boot. An
+// explicit value always wins; the pcov sniff is only the default for a run that
+// did not say.
+if (false === getenv('PORTA_CONTAINER_CACHE') && '1' === ini_get('pcov.enabled')) {
     putenv('PORTA_CONTAINER_CACHE=off');
 }
 

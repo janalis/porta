@@ -273,6 +273,19 @@ deterministic output.
 `tests/bootstrap.php` turning the container cache off under pcov, so each of the
 suite's ~458 Ide boots recompiles instead of loading the shared dump.
 
+**The plugins pass no longer pays that**, because it never needed it. Both
+reasons the flag exists — every worker compiling every `src` file so no file is
+missed, and that compile collapsing each worker's PathReducer base so the merge
+resolves — are about the parallel `src` run. `composer coverage:plugins` is one
+serial process filtered to `plugins/`, so it sets `PORTA_CONTAINER_CACHE=on`
+itself and the bootstrap's pcov sniff now only applies to a run that did not
+say. Measured, alternated: **151.0 / 151.4s off, 131.2 / 138.3s on**, with
+`TOTAL (/plugins/) 100.00% (4284/4284)` and 127 plugin files in every run. The
+wall-clock win is 13% and the CPU win is 40% (64s → 38s of user time) — the
+gap is `ConfigCache::isFresh()`, which in a git checkout re-hashes ~480 tracked
+classes per warm boot. The CPU half is what matters if this pass is ever run
+several ways at once.
+
 **opcache is not a test-loop lever.** It is worth setting for `bin/porta`
 (see below), and the loop does not feel it: `composer test` at eight processes
 ran 92.0s and 89.4s without it, 90.4s / 87.8s / 89.2s with — inside the noise.
