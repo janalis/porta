@@ -1821,6 +1821,23 @@ obvious version cannot work.
   compilation.~~ Measured and closed — see below. It is 1.5×, it does not reach
   the suite, and under pcov it inflates the percentage rather than deflating it.
 
+### The wall clock, swept (2026-09-08)
+
+`.porta/freeze.log` had a dozen entries reading `loop stalled for 1078.06s
+(recovered)`. None was a freeze: the drift detector measured the gap between
+heartbeats on the WALL clock, which jumps while a suspended process is not
+running at all. It is monotonic now, and the injected `ClockInterface` only
+stamps the line.
+
+**Every defect has a second site, so the class was swept.** In the running IDE
+there is none: every budget goes through `EventLoop::delay`, and Revolt's timers
+are monotonic — 16 call sites, no manual deadline among them. The two that did
+exist were maintainer tools measuring their own runs (`flake:scan`'s wait loop
+and the shard pool's per-shard seconds), and both moved to `hrtime()` for the
+same reason: a laptop that sleeps mid-run would report the run as wedged, or as
+having taken twenty minutes. `FileTreeWidget`'s poll grace stays on the wall
+clock deliberately — it compares against file mtimes, which are wall clock too.
+
 ### Two levers measured, neither taken (2026-09-08)
 
 **opcache is not a test-loop lever, and the 4.7× this repo quoted is stale.**

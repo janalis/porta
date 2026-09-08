@@ -197,11 +197,11 @@ final class CoveragePluginsCommand extends Command
         }
 
         $queue = $shards;
-        /** @var array<string, array{process: Process, started: float}> $running */
+        /** @var array<string, array{process: Process, started: int}> $running */
         $running = [];
         /** @var array<string, array{seconds: float, exit: int}> $results */
         $results = [];
-        $wall = microtime(as_float: true);
+        $wall = hrtime(as_number: true);
         while ([] !== $queue || [] !== $running) {
             while (\count($running) < $concurrency && [] !== $queue) {
                 $name = array_key_first($queue);
@@ -213,7 +213,7 @@ final class CoveragePluginsCommand extends Command
                 // has no business knowing what a reasonable one is.
                 $process->setTimeout((float) $timeout);
                 $process->start();
-                $running[$name] = ['process' => $process, 'started' => microtime(as_float: true)];
+                $running[$name] = ['process' => $process, 'started' => hrtime(as_number: true)];
             }
             usleep(50_000);
             foreach ($running as $name => $shard) {
@@ -221,12 +221,12 @@ final class CoveragePluginsCommand extends Command
                 if (null === $exit) {
                     continue;
                 }
-                $results[$name] = ['seconds' => microtime(as_float: true) - $shard['started'], 'exit' => $exit];
+                $results[$name] = ['seconds' => (hrtime(as_number: true) - $shard['started']) / 1_000_000_000, 'exit' => $exit];
                 unset($running[$name]);
             }
         }
 
-        return $this->report($io, $errors, $results, microtime(as_float: true) - $wall);
+        return $this->report($io, $errors, $results, (hrtime(as_number: true) - $wall) / 1_000_000_000);
     }
 
     /**

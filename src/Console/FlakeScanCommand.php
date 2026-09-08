@@ -113,9 +113,9 @@ final class FlakeScanCommand extends Command
         for ($run = 1; $run <= $runs; ++$run) {
             $log = (string) tempnam(sys_get_temp_dir(), prefix: 'porta-flake-').'.xml';
             $leaksBefore = is_file($leakLog) ? (int) filesize($leakLog) : 0;
-            $started = microtime(as_float: true);
+            $started = hrtime(as_number: true);
             $exit = ($this->runner)($log, $processes, $testsuite, $timeout);
-            $durations[] = microtime(as_float: true) - $started;
+            $durations[] = (hrtime(as_number: true) - $started) / 1_000_000_000;
 
             $failed = $this->failedTests($log);
             $leaks += $this->leaksSince($leakLog, $leaksBefore);
@@ -210,8 +210,11 @@ final class FlakeScanCommand extends Command
      */
     private function awaitExit($process, int $timeout): ?int
     {
-        $deadline = microtime(as_float: true) + $timeout;
-        while (microtime(as_float: true) < $deadline) {
+        // Monotonic, like every other budget in this tree: a suspended laptop
+        // advances the wall clock while the child was not running at all, and
+        // the run would come back "wedged" for having been asleep.
+        $deadline = hrtime(as_number: true) + ($timeout * 1_000_000_000);
+        while (hrtime(as_number: true) < $deadline) {
             $status = proc_get_status($process);
             if (!$status['running']) {
                 proc_close($process);
