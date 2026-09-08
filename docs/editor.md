@@ -545,7 +545,10 @@ when no debug session is running) and resolve the one under the caret
 
 Every save snapshots the file under `.porta/history/` (25 snapshots per
 file, oldest pruned) independently of git. `Ctrl+Alt+H` lists the active
-file's snapshots; `Enter` restores one as a single undoable edit.
+file's snapshots; `Enter` restores one as a single undoable edit. Each row
+names its file, because the list is not always about the tab you are looking
+at — a right-click in the tree opens the history of THAT file, and a file that
+has been deleted has no tab at all.
 
 **Compare with Local History** (the command palette, or a right-click on the
 editor or on a file) shows what a snapshot would change before you restore it:
