@@ -1738,6 +1738,39 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## The snapshot list did not say whose (built 2026-09-08, `d14e3735`)
+
+Rendered the panel the deleted-file path opens, and read it:
+
+```
+ 2026-09-08 09:21:42  (latest)
+```
+
+One row, and **nothing anywhere saying which file**. Enter on that row offers to
+write a file back to disk.
+
+The rows carry no LOCATION deliberately — a snapshot index is not a line number,
+and rendering one as though it were is the defect that shaped them — so the file
+was only ever implied by the tab you happened to be looking at. **That
+implication was already false before this session**: `show()` reads
+`contextFile()`, which is the right-clicked path from the tree when there is
+one, so right-clicking another file has always opened an anonymous list.
+Reaching the same panel for a file that has been DELETED is what made it plain,
+because then there is no tab, no buffer and no other cue at all.
+
+**The first draft conditioned the name on "is this the active file", and that is
+wrong for exactly the reason the old implication was wrong.** The answer changes
+the moment the user switches tabs; the rows do not. A label that is only true
+at the instant it was rendered is the same bug one layer up, so the name is on
+every row, always.
+
+**This is the third defect in a row found by printing a surface and reading it**
+— after "1 versions" and the chopped key legend — and all three were invisible
+to tests that assert on the same surface. The reason is consistent: an
+assertion checks the thing you thought of, and what these three had in common
+is that nobody had thought of the sentence at all. The cheap habit is to render
+each new surface once and look, before writing the assertions.
+
 ## Rendering the new hint found an old defect (built 2026-09-08, `622aa179`)
 
 Adding `/ find` made the graph pane's key hint seven columns longer, so the
