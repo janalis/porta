@@ -5,32 +5,11 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Layout;
 
 use PHPUnit\Framework\TestCase;
-use Porta\Config\LayoutStore;
-use Porta\GitPlugin\View\GitSidebar;
-use Porta\GitPlugin\Widget\ChangesListWidget;
-use Porta\GitPlugin\Widget\CommitBoxWidget;
-use Porta\GitPlugin\Widget\GitTabsWidget;
-use Porta\GitPlugin\Widget\HistoryListWidget;
-use Porta\I18n\Translator;
 use Porta\Input\MouseEvent;
-use Porta\Layout\LayoutController;
-use Porta\Layout\ResizableSidebar;
-use Porta\Layout\ViewRegions;
+use Porta\Tests\Support\BuildsLayoutController;
 use Porta\Tests\Support\Probe;
-use Porta\Tests\Support\TempProject;
-use Porta\Tests\Support\TestBottomDock;
-use Porta\Ui\Theme\Styles;
-use Porta\Widget\DebugPanelWidget;
-use Porta\Widget\FileTreeWidget;
-use Porta\Widget\ResultsPanelWidget;
-use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\TerminalPanelWidget;
-use Symfony\Component\Tui\Input\Keybindings;
-use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
-use Symfony\Component\Tui\Style\StyleSheet;
-use Symfony\Component\Tui\Terminal\VirtualTerminal;
-use Symfony\Component\Tui\Tui;
 
 /**
  * The sidebar resize drags, in both writing directions. RTL mirrors the pane
@@ -40,52 +19,7 @@ use Symfony\Component\Tui\Tui;
  */
 final class LayoutControllerResizeTest extends TestCase
 {
-    private TempProject $project;
-    private FileTreeWidget $tree;
-    private GitSidebar $gitSidebar;
-    private SettingsNavWidget $settingsSidebar;
-    private Tui $tui;
-    private Renderer $renderer;
-    private ViewRegions $regions;
-
-    private function controller(string $locale = 'en', int $columns = 100): LayoutController
-    {
-        $this->project = new TempProject(['a.php' => "<?php\n"]);
-        $this->renderer = new Renderer(new StyleSheet());
-        $this->tui = new Tui(terminal: new VirtualTerminal(columns: $columns, rows: 30), keybindings: new Keybindings([]), renderer: $this->renderer);
-        $this->tree = new FileTreeWidget($this->project->dir);
-        $this->gitSidebar = new GitSidebar(
-            new GitTabsWidget(new Translator('en')),
-            new ChangesListWidget(new Translator('en')),
-            new CommitBoxWidget(new Translator('en')),
-            new HistoryListWidget(new Translator('en')),
-        );
-        $this->settingsSidebar = new SettingsNavWidget(new Translator('en'));
-        $this->regions = self::regionsWith($this->gitSidebar, $this->settingsSidebar);
-
-        return new LayoutController(
-            new LayoutStore($this->project->dir),
-            $this->tui,
-            $this->renderer,
-            $this->tree,
-            TestBottomDock::create($this->tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
-            $this->regions,
-            new Translator($locale),
-        );
-    }
-
-    /**
-     * The two regions, each already told how its sidebar resizes — which is
-     * what each view does when it mints its own.
-     */
-    private static function regionsWith(ResizableSidebar $git, ResizableSidebar $settings): ViewRegions
-    {
-        $regions = new ViewRegions(Styles::dark());
-        $regions->mint('git')->setSidebarPanes($git);
-        $regions->mint('settings')->setSidebarPanes($settings);
-
-        return $regions;
-    }
+    use BuildsLayoutController;
 
     private function press(int $col): MouseEvent
     {

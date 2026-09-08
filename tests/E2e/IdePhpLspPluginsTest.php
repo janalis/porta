@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferService;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\IsolatesPluginDiscovery;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
@@ -30,49 +31,12 @@ final class IdePhpLspPluginsTest extends TestCase
     use NavigatesSettings;
     use PreservesPath;
 
-    /** The suite-wide PORTA_HOME (the `tempest` highlighting fixture), to restore. */
-    private ?string $savedPortaHome = null;
-
-    /**
-     * Opt out of the suite-wide `tempest` highlighting fixture installed via
-     * PORTA_HOME. This class exercises plugin *machinery* — discovery, listings,
-     * the Settings nav — and a permanently present plugin appears in every
-     * listing and shifts the index-based navigation.
-     *
-     * Restored in tearDown: paratest reuses the process, so a leaked PORTA_HOME
-     * would silently uncolour later tests in the same worker.
-     */
-    private function withoutTheHighlightingFixture(): void
-    {
-        $home = getenv('PORTA_HOME');
-        $this->savedPortaHome = false === $home ? null : $home;
-        putenv('PORTA_HOME=/nonexistent');
-    }
-
-    private function restoreTheHighlightingFixture(): void
-    {
-        if (null === $this->savedPortaHome) {
-            return;
-        }
-        putenv('PORTA_HOME='.$this->savedPortaHome);
-        $this->savedPortaHome = null;
-    }
-
+    use IsolatesPluginDiscovery;
     use RunsIde;
-
-    private string $originalEmbedded;
 
     protected function setUp(): void
     {
-        $this->withoutTheHighlightingFixture();
-        $this->originalEmbedded = (string) getenv('PORTA_EMBEDDED_PLUGINS');
         putenv('PATH=/nonexistent');
-    }
-
-    protected function tearDown(): void
-    {
-        $this->restoreTheHighlightingFixture();
-        putenv('PORTA_EMBEDDED_PLUGINS='.$this->originalEmbedded);
     }
 
     /** An embedded dir holding only the real phpantom plugin (loads its actual code). */
