@@ -16,6 +16,7 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\TabBarWidget;
@@ -34,6 +35,7 @@ final class IdeTabsBuffersTest extends TestCase
     use PreservesPath;
     use PreservesPortaHome;
     use RunsIde;
+    use ScreenReads;
 
     public function testDoubleClickingATabRevealsTheFileInTheTree(): void
     {
@@ -151,10 +153,14 @@ final class IdeTabsBuffersTest extends TestCase
                     $tui->handleInput("\x05"); // ctrl+e
                 },
                 500 => function ($tui, $terminal): void {
-                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertTrue(EditorState::pickerOpen($tui->getById('editor')));
-                    $this->assertStringContainsString('Recent Files', $screen);
-                    $this->assertStringContainsString('b.php', $screen, 'the closed file is still on offer');
+                    // The CARD, not the screen: `b.php` is in the file tree
+                    // beside the picker, so a screen-wide assertion passes
+                    // whether the switcher offers it or nothing at all —
+                    // measured, by replacing every label and watching this
+                    // stay green.
+                    $card = $this->card($this->screenGrid($tui, $terminal), 'Recent Files');
+                    $this->assertStringContainsString('b.php', $card, 'the closed file is still on offer');
                     // Pre-selected, exactly as the previously-open file would be.
                     $tui->handleInput("\r");
                 },

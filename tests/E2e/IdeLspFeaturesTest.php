@@ -925,9 +925,12 @@ final class IdeLspFeaturesTest extends TestCase
                     // The workspace-symbol query is an LSP round trip: await it
                     // landing instead of a fixed gap.
                     $this->awaitPainted($tui, $terminal, 'Greeter');
-                    $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Go to Symbol', $screen);
-                    $this->assertStringContainsString('Greeter', $screen);
+                    // The CARD, not the screen: `Greeter` is also the tree's
+                    // file name and the buffer's own text, so a screen-wide
+                    // assertion passes whether the modal lists the symbol or
+                    // `ZZZ` — measured.
+                    $card = $this->card($this->screenGrid($tui, $terminal), 'Go to Symbol');
+                    $this->assertStringContainsString('Greeter', $card);
                     $tui->handleInput("\r"); // jump
                 },
                 300 => function ($tui): void {
