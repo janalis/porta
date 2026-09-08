@@ -302,6 +302,31 @@ at a time, each writing its own report. `coverage:check` grades the directory as
 one report, merged per line. See `plugin-system.md` for why that is legal where
 parallel paratest is not.
 
+## Working with several agents
+
+The parallelism that pays here is **read-only fan-out**: sweeps, audits, "find
+every other site of this", checking a doc against the code. Three of those run
+in about the wall clock of one. `.claude/agents/porta-explorer.md` is that
+shape, committed — read-only tools, told what this project counts as evidence,
+and told to report `file:line`.
+
+Two things never fan out, both measured rather than assumed:
+
+- **One suite runner at a time on a checkout.** Two paratest runs share
+  `.phpunit.cache` (65MB of container dumps, result cache, coverage cache) and
+  thrash; the two coverage passes overwrite each other's reports; and the box's
+  E2e barriers fail for load rather than for cause. `decisions.md` records the
+  measurement — a paratest run and a mutation run at once, load average 38,
+  three E2e failures that all passed when run alone.
+- **No edits while a suite runs.** paratest loads test files in workers as it
+  goes, so rewriting one under a running suite is editing the thing being read.
+  This applies to a subagent's edits exactly as it applies to yours; it is the
+  reason an agent that needs a suite asks for it rather than starting one.
+
+The sharded plugin pass is what parallelism inside a gate looks like when it is
+safe: each shard is a whole process with its own report, and the state they
+would otherwise fight over is given to them one each.
+
 ## The inner loop
 
 `composer verify` is the definition of done, not the thing to run after every

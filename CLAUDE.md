@@ -12,10 +12,9 @@ routed below — read the page before working in that area, not after.
 ## Commands
 
 ```bash
-composer verify   composer verify:quick   composer dev    composer test
-composer analyze  composer lint      composer arch       composer test:serial
-composer format   composer format:check                  composer duplication
-composer coverage:check              composer container
+composer verify   composer verify:quick  composer dev   composer test  composer arch
+composer analyze  composer lint   composer format  composer format:check  composer container
+composer coverage:check   composer coverage:src   composer coverage:plugins   composer duplication
 ```
 
 Always invoke the gates through the composer scripts. Capture their output rather than
@@ -58,6 +57,7 @@ All seven, cheapest first, stopping at the first failure; `verify:quick` skips t
 - **An invariant assertion is not a guard until a mutation kills it.** Coverage says a line
   ran, not that anything would notice its absence. Mutation-check the fix too.
 - **Never hand-roll a test rig `tests/Support` already provides.**
+- **One suite at a time, and never edit while one runs** — paratest reads as it goes.
 - **No fixed-gap asserts in E2e**: await the effect in the SAME step. A bare `tick()` is
   not a frame.
 - `await()`'s condition must re-evaluate — `static function () use (&$x)`, never an arrow
