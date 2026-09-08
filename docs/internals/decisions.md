@@ -1936,6 +1936,12 @@ Names come from the path inside `tests/`, not the basename: two `FooTest.php` in
 different subdirectories would otherwise share a report, and the second would
 overwrite the first while its tests quietly stopped counting.
 
+The split puts plugin E2e tests in a load profile they had never seen — dozens
+of processes spawning real `git` at once — so it was graded the way
+`testing.md` asks: **five consecutive passes, zero failures**, with the load
+average climbing from 9 to 31 across the burst, plus ~15 more green runs during
+the measurements above.
+
 Three decisions inside it are load-bearing:
 
 - **The shard list is derived, never written down.** (One shard per test file.) A list in a file is a
