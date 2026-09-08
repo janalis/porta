@@ -509,4 +509,50 @@ final class IdeMousePrimitivesTest extends TestCase
             ],
         );
     }
+
+    /**
+     * A modified click in the tree builds a SELECTION, and the router is the
+     * only place that knows a modifier was held: the widget is told an intent.
+     */
+    public function testCtrlAndShiftClickSelectTreeFilesWithoutOpeningThem(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php // a\n", 'b.php' => "<?php // b\n", 'c.php' => "<?php // c\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => static function ($tui, $terminal, $ide): void {
+                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('tree'));
+                    // Button 0 + 16 is Ctrl held, per the SGR modifier bits;
+                    // +4 lands on c.php, two rows below the opened a.php.
+                    $tui->handleInput(\sprintf("\x1b[<16;%d;%dM", $rect->col + 3, $rect->row + 4));
+                },
+                300 => function ($tui): void {
+                    $tree = $tui->getById('tree');
+                    $this->assertSame(
+                        ['a.php', 'c.php'],
+                        array_map(basename(...), $tree->selectedPaths()),
+                        'the ctrl-click added the third row to the file the tree opened with',
+                    );
+                    $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath(), 'and did not open it — the editor is what you compare against');
+                },
+                400 => static function ($tui, $terminal, $ide): void {
+                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('tree'));
+                    // Button 0 + 4 is Shift: the range from the last click.
+                    $tui->handleInput(\sprintf("\x1b[<4;%d;%dM", $rect->col + 3, $rect->row + 3));
+                },
+                500 => function ($tui): void {
+                    $this->assertSame(
+                        ['b.php', 'c.php'],
+                        array_map(basename(...), $tui->getById('tree')->selectedPaths()),
+                        'the shift-click took the range from the ctrl-clicked row, dropping the one outside it',
+                    );
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
 }

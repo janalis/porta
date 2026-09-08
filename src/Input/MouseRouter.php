@@ -14,6 +14,7 @@ use Porta\Overlay\State\MenuOverlayController;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Support\IntMath;
 use Porta\Ui\BidiTui;
+use Porta\Ui\ClickIntent;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\MenuBarWidget;
@@ -662,11 +663,16 @@ final class MouseRouter
             return true;
         }
 
-        // Tree click: select + open/toggle.
+        // Tree click: select + open/toggle, or — with Ctrl or Shift — build a
+        // selection of several files without opening any of them.
         if (null !== $treeRect && $treeRect->contains($mouse->row, $mouse->col)) {
             $rel = $treeRect->toRelative($mouse->row, $mouse->col);
             $this->tui->setFocus($this->panes->tree());
-            $this->panes->tree()->clickRow($rel['row']);
+            $this->panes->tree()->clickRow($rel['row'], match (true) {
+                $mouse->ctrl => ClickIntent::Add,
+                $mouse->shift => ClickIntent::Range,
+                default => ClickIntent::Open,
+            });
             $this->tui->requestRender();
 
             return true;

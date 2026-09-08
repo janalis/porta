@@ -201,9 +201,15 @@ keys.
 | Key | Action |
 | --- | --- |
 | `↑` / `↓`, `PageUp` / `PageDown` | Move the selection |
+| `Shift+↑` / `Shift+↓` | Extend the selection to more than one file |
 | `←` / `→` | Collapse / expand a directory |
 | `Enter` | Open file / toggle directory |
 | `r` | Reload the tree |
+
+Several files can be selected at once — `Shift+↑`/`Shift+↓`, or `Ctrl+Click`
+to add one and `Shift+Click` to take a range. A modified click only selects:
+it does not open the file, because the point of a pair is to act on both.
+Moving the cursor without a modifier drops back to one file.
 
 ## Help viewer
 
@@ -286,7 +292,8 @@ SGR mouse reporting (modes 1000/1003/1006) is enabled: click to place the
 cursor, drag to select (double-click a word, triple-click a line,
 `Shift+Click` extends), wheel to scroll, hover highlights, click tree
 entries / tabs / menu items / panel rows, drag pane separators to resize,
-and right-click for a context menu.
+and right-click for a context menu. In the file tree, `Ctrl+Click` adds an
+entry to the selection and `Shift+Click` takes the range from the last one.
 
 The status bar's right-hand cells are clickable too: the error/warning counts
 open **Problems**, the `line:col` position opens **Go to Line**, and the

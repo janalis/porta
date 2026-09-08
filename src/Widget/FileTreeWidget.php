@@ -12,9 +12,11 @@ use Porta\Layout\ResizableSidebar;
 use Porta\Support\AnsiText;
 use Porta\Tree\FileDecorations;
 use Porta\Tree\FileTreeNode;
+use Porta\Ui\ClickIntent;
 use Porta\Ui\Glyphs;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
+use Porta\Ui\MultiSelection;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\HeaderRenderer;
@@ -63,6 +65,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     /** @var array<string, bool> expanded state by path */
     private array $expanded = [];
     private readonly ListSelection $list;
+    private readonly MultiSelection $selection;
     private int $lastRows = 24;
 
     /** @var list<FileTreeNode> */
@@ -129,6 +132,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $this->initStyles($styles);
         $this->realRoot = ($resolved = realpath($rootDir)) ? $resolved : $rootDir;
         $this->list = new ListSelection();
+        $this->selection = new MultiSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection
         $this->rebuild();
     }
@@ -148,6 +152,29 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     public function selectedRow(): int
     {
         return $this->list->selected() - $this->list->scroll() + 1;
+    }
+
+    /**
+     * Every selected FILE, in the order the tree shows them.
+     *
+     * Tree order, not click order, because the commands that read this compare
+     * or act on a pair and "the first one" has to mean the same thing however
+     * it was picked. Directories are left out: nothing selects a directory to
+     * act on it, and a caller that wanted one would have to filter anyway.
+     *
+     * @return list<string>
+     */
+    public function selectedPaths(): array
+    {
+        $paths = [];
+        foreach ($this->visible as $node) {
+            if ($node->isDir || !$this->selection->has($node->path)) {
+                continue;
+            }
+            $paths[] = $node->path;
+        }
+
+        return $paths;
     }
 
     #[\Override]
@@ -235,7 +262,21 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             return;
         }
 
+        if ($kb->matches($data, 'select_up') || $kb->matches($data, 'select_down')) {
+            $step = $kb->matches($data, 'select_up') ? -1 : 1;
+            $index = max(0, min($count - 1, $this->list->selected() + $step));
+            $this->list->select($index);
+            $this->extendSelection($index, ClickIntent::Range);
+            $this->invalidate();
+
+            return;
+        }
         if (ListNavigation::handleKey($data, $kb, $this->list, $count, page: $this->lastRows)) {
+            // Moving the cursor with no modifier collapses the selection to the
+            // row under it: a pair is built deliberately, and a stale second
+            // file surviving a walk through the tree is how a compare ends up
+            // diffing something nobody meant.
+            $this->selection->only($this->visible[$this->list->selected()]->path);
             $this->invalidate();
 
             return;
@@ -293,16 +334,64 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     }
 
     /**
+     * Add row $index to the selection: as one more row (Ctrl), or as the range
+     * from the anchor (Shift).
+     *
+     * A Shift with no anchor behaves like a Ctrl — there is no range without a
+     * start, and refusing to select anything would read as the key not working.
+     */
+    private function extendSelection(int $index, ClickIntent $intent): void
+    {
+        $path = $this->visible[$index]->path;
+        $anchor = $this->selection->anchor();
+        if (ClickIntent::Add === $intent || null === $anchor) {
+            $this->selection->toggle($path);
+
+            return;
+        }
+
+        // The anchor is always a visible row — {@see MultiSelection::keepOnly()}
+        // drops it with the file it named — so the fallback is this row alone,
+        // which degrades a range into a plain selection rather than throwing.
+        $from = $this->rowOf($anchor) ?? $index;
+        $range = [];
+        foreach (range($from, $index) as $row) {
+            $range[] = $this->visible[$row]->path;
+        }
+        $this->selection->replaceRange($range);
+    }
+
+    /** Where $path sits in the visible rows, or null when it is not there. */
+    private function rowOf(string $path): ?int
+    {
+        $rows = array_keys(array_filter($this->visible, static fn (FileTreeNode $node): bool => $node->path === $path));
+
+        return $rows[0] ?? null;
+    }
+
+    /**
      * Handle a click at row $relRow of the tree (0 = header). Selects the
      * entry and opens the file / toggles the directory, mirroring Enter.
+     *
+     * Any intent but {@see ClickIntent::Open} only SELECTS: a modified click is
+     * how a pair is built, and opening a file on the way would replace the
+     * editor the user is about to compare against.
      */
-    public function clickRow(int $relRow): void
+    public function clickRow(int $relRow, ClickIntent $intent = ClickIntent::Open): void
     {
         $index = $this->list->rowIndexAt($relRow, \count($this->visible));
         if (null === $index) {
             return;
         }
+        if (ClickIntent::Open !== $intent) {
+            $this->list->select($index);
+            $this->extendSelection($index, $intent);
+            $this->invalidate();
+
+            return;
+        }
         $this->list->select($index);
+        $this->selection->only($this->visible[$index]->path);
         $node = $this->visible[$index];
         if ($node->isDir) {
             $this->expanded[$node->path] = !($this->expanded[$node->path] ?? false);
@@ -386,6 +475,10 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             // Subtle hover background beneath the pointer keeps the dir/file foreground.
             $lines[] = match (true) {
                 $index === $this->list->selected() => $this->applyElement('selected', $text),
+                // A row selected but not under the cursor — the second file of
+                // a pair. The cursor keeps its own style above; without this
+                // the selection is invisible and the pair is a guess.
+                $this->selection->has($node->path) => $this->styles->of(Role::SelectedRowUnfocused)->apply($text),
                 $index === $this->hoveredIndex => ($node->isDir ? $this->styles->merge(Role::RowHighlightBg, Role::TabAccent) : $this->styles->of(Role::RowHighlightBg))->apply($text),
                 $node->isDir => $this->styles->of(Role::TabAccent)->apply($text),
                 default => $text,
@@ -451,6 +544,20 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $this->visible = [];
         $this->scannedSigs = [];
         $this->walk($this->rootDir, 0);
+        // A path that has left the tree leaves the selection with it: a
+        // collapsed directory or a deleted file must not stay in a pair the
+        // user can no longer see.
+        $this->selection->keepOnly(array_map(static fn (FileTreeNode $node): string => $node->path, $this->visible));
+        // An EMPTY selection takes the cursor row, so a Shift+arrow has an
+        // anchor on the first keystroke of a session. Only when it is empty:
+        // seeding unconditionally would let a rebuild — a directory expanding,
+        // a file deleted — replace what the user had selected with whatever
+        // row the cursor index now lands on, which is how a pair silently
+        // becomes a different pair.
+        $cursor = $this->visible[$this->list->selected()] ?? null;
+        if (null !== $cursor && 0 === $this->selection->count()) {
+            $this->selection->only($cursor->path);
+        }
     }
 
     /**
@@ -577,6 +684,8 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             'move_down' => [Key::DOWN],
             'page_up' => [Key::PAGE_UP],
             'page_down' => [Key::PAGE_DOWN],
+            'select_up' => [Key::shift(Key::UP)],
+            'select_down' => [Key::shift(Key::DOWN)],
             'collapse' => [Key::LEFT],
             'expand' => [Key::RIGHT],
             'open' => [Key::ENTER],
