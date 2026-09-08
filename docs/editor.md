@@ -569,11 +569,14 @@ everywhere else `Enter` replaces the buffer and saving stays yours, because a
 file that exists is yours to keep; here there is nothing to keep and nothing to
 overwrite.
 
-A file is listed once it has been saved at least once since this version: the
-history directory is named after a HASH of the path, and a hash does not run
-backwards, so each one records its own path now. Directories written before that
-are skipped rather than shown as a hash, and the next save on that file adds it
-back.
+A history directory is named after a HASH of the path, so each one records its
+own path in a small sidecar file. Directories written before that existed are
+recovered the first time you open this view: a hash cannot be inverted, but it
+can be *recognised*, and the paths worth trying are the files in your project —
+so the view hashes them and matches. That walk happens **once** (it skips
+`.git`, `vendor`, `node_modules`, `.idea` and `.phpunit.cache`, and stops at
+20,000 files), and whatever it cannot name is marked so it is not walked for
+again. A file it skipped or could not find gets its name on the next save.
 
 That comparison is the one part that needs `git` on your `PATH` — it runs
 `git diff --no-index`, which takes two arbitrary paths and so works in a
