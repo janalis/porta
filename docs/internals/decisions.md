@@ -1738,6 +1738,39 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## The same hole in a test I did not write (built 2026-09-08, `91bbf157`)
+
+Having found that my own picker test passed against the whole screen, the
+obvious next question was who else does that — and the answer was the File
+Structure popup. `testFileStructurePopupJumpsToSymbol` asserts the popup lists
+`Demo` and `greet`; both are the symbols in the buffer it is drawn OVER.
+**Measured, not reasoned: replacing every label with `ZZZ0`, `ZZZ1`… left it
+green.** The popup could list garbage and the test would pass.
+
+It was not vacuous — the following step asserts the caret moved to line 4 after
+Down+Enter, which needs two real rows — so the test proved the popup WORKED
+while proving nothing about what it SAID. That is the more common shape of this
+defect and the harder one to see: a test with a real assertion beside a decorative
+one reads as covered.
+
+`ScreenReads::card()` is the fix, beside `screenGrid()` and `rowOf()` in the rig
+that already owns screen reading. It reads a FORCED frame rather than the
+accumulated output, which also removes the "which frame is this" question my
+private version had answered by taking the last match — a subtlety a shared
+helper should not make every caller rediscover.
+
+**Two things this cost that are worth knowing.** `screenGrid()` DRAINS the
+terminal, so a later assertion against `getOutput()` sees nothing — one
+trailing assertion had to go, and it was redundant anyway once `card()` fails
+loudly on a missing card. And a `tests/Support` trait cannot call PHPUnit
+assertions unless it declares them: `abstract public static function fail()`,
+the pattern `ReadsSettingsForm` already uses.
+
+**The generalisable move is the one that found this at all.** After fixing a
+defect in your own work, run the same mutation against every test that could
+have the same shape. Both of these were found by cutting the thing the
+assertion is about and watching the assertion stay green — never by reading it.
+
 ## The picker, looked at (built 2026-09-08, `ce808022`)
 
 The debt the entry below names, paid. Every existing test of the clipboard
