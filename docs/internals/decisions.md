@@ -1738,6 +1738,62 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## A duplication gate, and what it found (built 2026-09-08, `f2d1d519`)
+
+`composer duplication` is the seventh gate: `systemsdk/phpcpd` over `src`,
+`plugins`, `tests`, `bin` and `config`, at the tool's defaults, zero clones, in
+CI's static job. The fork is the maintained successor to the abandoned
+`sebastian/phpcpd`; its CI matrix is PHP 8.4 and 8.5, and its four dependencies
+were already in the lock at exactly the required majors — `1 install, 0
+updates, 0 removals`. jscpd would have put npm in CI for the first time.
+
+**The headline is where the clones were not.** `src/` and `plugins/` — 911
+files — report none, and every structure this repo expected to trip a detector
+is invisible to it: the three 56-line theme tables, the two per-grammar `match`
+tables, the four analyzer plugin files. They are data with differing literals,
+so their token streams diverge. **The extraction audit's conclusion holds up
+under a tool that never read it**, which is a stronger result than the audit
+itself and cost an afternoon rather than six rounds.
+
+**All fifteen were in tests, and three of them were rigs `tests/Support`
+already provided.** `IdeFindInProjectTest` had hand-rolled five methods from
+`FindModalReads`, docblocks included, in a file that did not use the trait. The
+chunked and garbage LSP stubs hand-rolled the read loop that `lsp-stub.php`
+provides — and its docblock already named exactly which part of each stub is
+entitled to be hand-rolled (the split write, the corrupt header), which is not
+the read loop. Eleven sites repeated a `getById`-and-assert pair that
+`NavigatesSettings` and `ReadsSettingsForm` should have owned. **"Never
+hand-roll a rig `tests/Support` already provides" turns out to need something
+that looks.**
+
+**Two tests pinned a table by restating it**, which is the weakest kind of pin:
+it asserts that the table equals a transcription of itself, so a wrong edit made
+twice passes. Both moved to `tests/Support/golden/`, and the keymap one got
+STRONGER on the way — the copy spelled its values as `Key::UP`, the same
+constants the source uses, so a change to what `Key::UP` is could never fail it.
+The LSP capabilities copy carried a justification the source did not, so
+deleting it blind would have deleted the reason.
+
+**No allowlist, and that is the difference from the arch gate rather than an
+omission.** A namespace edge can be correct and still needs recording; a clone
+cannot be correct and unrecorded — either it is worth sharing, or the copy is
+the honest shape and the code should say why, which rewords one side and ends
+the match. Every clone found was worth fixing, so the question never arose in
+practice.
+
+**What it does not find is worth knowing before reaching for it.** It compares
+token streams: it finds copied CODE, not parallel structure. And the threshold
+was left at the defaults deliberately — a threshold tuned until the findings
+disappear is not a gate, and the first run's fifteen were the work, not noise.
+
+**Three method notes.** The `--exclude` match is path-segment aware rather than
+a substring: measured, `--exclude vendor` drops the six files under `vendor/`
+directories and keeps the six in `acme-vendored/` that are not, so the literal-
+paths-only caution `mago.toml` records does not apply here. The gate was proven
+red as well as green, on a planted clone. And four times the tool flagged two
+files while the real duplication spanned four or five — the clone is a symptom
+with a threshold, so after fixing one, grep for the shape.
+
 ## Placeholder parity: six mismatches, no defects, one trap (built 2026-09-08, `85efe632`)
 
 Checked every `%name%` in every source string against its target, across all
