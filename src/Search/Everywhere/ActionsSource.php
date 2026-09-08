@@ -10,11 +10,23 @@ use Porta\Support\FuzzyMatcher;
 /**
  * Actions source: fuzzy-matches IDE command labels (the Find-Action set), best
  * score first. Activating a hit runs the command.
+ *
+ * Each hit carries its KEY as the hint, which is how anyone learns a shortcut:
+ * beside the thing they just searched for, in the same dialect the menus and
+ * the hint strips use ({@see \Porta\Ui\ShortcutFormatter}, whose docblock has
+ * said "the menu bar and the command palette" since before the palette showed
+ * one).
  */
 final class ActionsSource implements SearchSource
 {
+    /**
+     * @param (\Closure(string): string)|null $shortcutOf action id => its formatted key, '' when unbound;
+     *                                                    null leaves every hint blank, which is what a
+     *                                                    bare source outside a running IDE can honestly say
+     */
     public function __construct(
         private readonly CommandRegistry $commands,
+        private readonly ?\Closure $shortcutOf = null,
     ) {}
 
     #[\Override]
@@ -34,7 +46,8 @@ final class ActionsSource implements SearchSource
                 continue;
             }
             $run = $command['run'];
-            $scored[] = [$score, new SearchHit(SearchCategory::Actions, $command['label'], '', static function () use ($run): void {
+            $hint = null === $this->shortcutOf ? '' : ($this->shortcutOf)($command['id']);
+            $scored[] = [$score, new SearchHit(SearchCategory::Actions, $command['label'], $hint, static function () use ($run): void {
                     $run();
                 })];
         }

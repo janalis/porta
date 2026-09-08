@@ -383,6 +383,36 @@ final class IdeAppMenuTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testTheCommandPaletteShowsEachActionsKey(): void
+    {
+        // Where a shortcut is learned: beside the action you just searched for.
+        // ShortcutFormatter's own docblock has named "the menu bar and the
+        // command palette" since before the palette printed one.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\necho 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b[97;6u"); // ctrl+shift+a
+                    foreach (str_split('save file') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                },
+                500 => function ($tui, $terminal): void {
+                    $this->awaitPainted($tui, $terminal, 'Save File');
+                    $card = $this->card($this->screenGrid($tui, $terminal), 'Find Action');
+
+                    $this->assertMatchesRegularExpression('/Save File\s+Ctrl\+S/', $card, 'the key rides beside its action');
+                },
+            ],
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testCommandPaletteTogglesSettingAndPersists(): void
     {
         putenv('PATH=/nonexistent');

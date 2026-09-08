@@ -17,7 +17,10 @@ use Porta\Search\FileIndex;
 use Porta\Search\ProjectSearch;
 use Porta\Support\ProjectPaths;
 use Porta\Support\Scheduler;
+use Porta\Ui\ShortcutFormatter;
+use Porta\Workbench\Menu\EditorCommandTarget;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -52,7 +55,20 @@ final class SearchEverywhereFactory
         // mutually dependent for the sake of one constructor line.
         #[Autowire(service: 'porta.settings_search_source')]
         private readonly SearchSource $settings,
+        // The two keymaps a palette hint has to consult, in the menu bar's own
+        // order: an editor action is bound on the editor, an ide_* one on the
+        // application map.
+        private readonly EditorCommandTarget $editor,
+        private readonly Keybindings $ideKeys,
     ) {}
+
+    /** An action's primary key, formatted as everywhere else, or '' when it has none. */
+    private function shortcutOf(string $id): string
+    {
+        return ShortcutFormatter::format(
+            $this->editor->getKeybindings()->getBindings($id)[0] ?? $this->ideKeys->getBindings($id)[0] ?? '',
+        );
+    }
 
     /**
      * The files-only picker behind Ctrl+P: the same centered overlay as Search
@@ -119,7 +135,7 @@ final class SearchEverywhereFactory
     {
         return new SearchEverywhereController(
             $this->overlay,
-            [new ActionsSource($this->commands)],
+            [new ActionsSource($this->commands, $this->shortcutOf(...))],
             [],
             $this->buffers,
             $this->tui,
@@ -169,7 +185,7 @@ final class SearchEverywhereFactory
             $this->overlay,
             [
                 new FilesSource($this->files, $this->paths, $openFile),
-                new ActionsSource($this->commands),
+                new ActionsSource($this->commands, $this->shortcutOf(...)),
                 // Last of the categories (SearchCategory::Settings orders 5th):
                 // a setting is never what you meant when you typed a filename,
                 // and this is the one source that answers a query about the IDE

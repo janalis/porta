@@ -107,6 +107,26 @@ final class SourcesTest extends TestCase
         $this->assertSame(['Bravo', 'Alpha Beta'], array_map(static fn (SearchHit $h): string => $h->label, $hits));
     }
 
+    public function testAnActionCarriesItsKeyAsTheHint(): void
+    {
+        // How anyone learns a shortcut: beside the thing they just searched
+        // for. The resolver is asked by ID, not by label — two commands can
+        // read alike and only one of them is bound.
+        $registry = new CommandRegistry();
+        $registry->add('save_file', static function (): void {}, label: 'Save File');
+        $registry->add('toggle_format', static function (): void {}, label: 'Save Formatting Toggle');
+        $source = new ActionsSource($registry, static fn (string $id): string => 'save_file' === $id ? 'Ctrl+S' : '');
+
+        $hits = $this->collect(static fn (\Closure $emit) => $source->query('save f', $emit));
+        $hints = [];
+        foreach ($hits as $hit) {
+            $hints[$hit->label] = $hit->detail;
+        }
+
+        $this->assertSame('Ctrl+S', $hints['Save File'] ?? null);
+        $this->assertSame('', $hints['Save Formatting Toggle'] ?? null, 'an unbound action shows no key rather than someone else\'s');
+    }
+
     public function testWorkspaceSymbolSourceFiltersByKindAndJumps(): void
     {
         $canned = [

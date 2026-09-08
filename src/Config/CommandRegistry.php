@@ -111,7 +111,11 @@ final class CommandRegistry
     /**
      * The palette-visible commands, in registration order.
      *
-     * @return list<array{label: string, run: callable(): void}>
+     * The id travels with the label because the palette prints each action's
+     * KEY beside it — the way anyone learns a shortcut is seeing it next to the
+     * thing they just searched for — and only the id can be asked for that.
+     *
+     * @return list<array{id: string, label: string, run: callable(): void}>
      */
     public function paletteCommands(): array
     {
@@ -121,7 +125,7 @@ final class CommandRegistry
                 continue;
             }
 
-            $out[] = ['label' => $command['label'], 'run' => $command['handler']];
+            $out[] = ['id' => $command['id'], 'label' => $command['label'], 'run' => $command['handler']];
         }
 
         return $out;
