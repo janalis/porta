@@ -351,7 +351,7 @@ Third-party plugins may extend these or implement `PortaPlugin` directly;
 `composer coverage:check` is the parallel run over `src` (`coverage:src`)
 **plus** `composer coverage:plugins` — which is now `bin/porta-dev
 coverage:plugins`, a fan-out of independent **serial** phpunit runs, one per
-plugin test directory, several at a time, each writing its own report into
+plugin test FILE, several at a time, each writing its own report into
 `coverage/plugins/`. `coverage:check` grades that directory as one report.
 
 Putting `plugins/*/src` into phpunit's `<source>` for the parallel run collapses
@@ -363,18 +363,40 @@ resolves wrong, and that whole worker's data is dropped silently. No
 project-side configuration prevents it. A serial run never merges.
 
 **That property is per PROCESS, not per pass**, which is what makes the fan-out
-legal where parallel paratest is not: sixteen shards are sixteen merge-free
-reports, and the merge that does happen is `coverage:check`'s own, per LINE,
-over documents it reads whole. Measured: **151s serial → 34s**, same total
-(`100.00% (4284/4284)`, 127 files). The floor is the slowest shard, printed
-after every run — today `git`'s loose E2e files at 34s, which is where the next
-split would go.
+legal where parallel paratest is not: 68 shards are 68 merge-free reports, and
+the merge that does happen is `coverage:check`'s own, per LINE, over documents
+it reads whole. Measured: **151s serial → 20.0 / 20.3s**, same total every run
+(`100.00% (4284/4284)`, 127 files).
 
-The shard list is derived, never written down: one shard per immediate
-subdirectory of a plugin's `tests/`, plus one for the files directly in it. A
-list in a file is a second place to add a plugin, and forgetting it stops
-running those tests while the percentage stays green — the coverage gate only
-catches a dropped shard when nothing else covers the same lines.
+**One shard per FILE, not per directory, and three quarters of the cores.**
+Those two go together, and either alone is worse than the pair. Interleaved,
+same box, same run:
+
+| lanes | per directory (16 shards) | per file (68 shards) |
+| --- | --- | --- |
+| 8 | 33.2 / 33.5s | 35.9 / 36.2s |
+| 12 | 46.7 / 35.4s | **23.6 / 22.2s** |
+
+A directory shard cannot finish before its biggest FILE — `git`'s loose shard is
+33s on its own — so more lanes buy it nothing and cost it contention. File
+shards pay a phpunit boot each (~1.5s × 68) and need lanes to hide it, and then
+the floor is one file: `git/tests/View/GitViewControllerTest.php`, ~16s, named
+in the run's own report because that is what the next split would have to
+attack.
+
+The shard list is derived, never written down: every `*Test.php` under a
+plugin's `tests/`, named by its path INSIDE `tests/` — the path and not the
+basename, or two `FooTest.php` in different subdirectories would share a report
+and one of them would quietly stop counting. A list in a file is a second place
+to add a plugin, and forgetting it stops running those tests while the
+percentage stays green: the coverage gate only catches a dropped shard when
+nothing else covers the same lines.
+
+One thing the split gives up: `executionOrder="random"` no longer mixes two
+plugin test files in one process, so order coupling between files is not
+exercised HERE. It still is by `composer test`, whose paratest run has all four
+suites and distributes by method — which is the run CI's `tests` job repeats
+over the intl matrix.
 
 Every shard keeps `--coverage-filter plugins`, the whole tree, not its own
 plugin: `plugins/tempest/plugin.php` has no tests of its own and is loaded by

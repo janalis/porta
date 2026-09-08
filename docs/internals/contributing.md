@@ -294,11 +294,15 @@ The arithmetic says why before the stopwatch does. A paratest worker compiles
 18ms, not eight times a minute. Do not spend a round on it, and keep it off for
 `composer coverage`.
 
-**The plugins pass was 146s for 36s of work; it is 34s now.** That gap was the
+**The plugins pass was 146s for 36s of work; it is 20s now.** That gap was the
 price of the php-code-coverage merge bug the pass exists to dodge — and the
 dodge is per PROCESS, so the pass is a fan-out of independent serial phpunit
-runs (`bin/porta-dev coverage:plugins`), one per plugin test directory, several
-at a time, each writing its own report. `coverage:check` grades the directory as
+runs (`bin/porta-dev coverage:plugins`), one per plugin test FILE, several at a
+time, each writing its own report. `PORTA_SHARD_PROCESSES` sets how many at
+once, defaulting to **three quarters of the cores** rather than half — a shard
+is one wait-bound process, and the file-level split only pays when there are
+lanes to hide 68 phpunit boots in (`plugin-system.md` has the table). The run
+names its slowest shard, because that is the floor. `coverage:check` grades the directory as
 one report, merged per line. See `plugin-system.md` for why that is legal where
 parallel paratest is not.
 

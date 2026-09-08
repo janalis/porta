@@ -64,10 +64,10 @@ final class CoveragePluginsCommandTest extends TestCase
         $display = $tester->getDisplay();
 
         $this->assertSame(Command::SUCCESS, $status, $display);
-        $this->assertSame(['alpha.xml', 'alpha-sub.xml', 'beta.xml'], array_keys($seen), 'one shard per subdirectory that holds tests, plus the loose files');
-        $this->assertSame([$project->path('plugins/alpha/tests/FooTest.php')], $seen['alpha.xml'], 'the loose shard names its files, not the directory, or it would run the subdirectory again');
-        $this->assertSame([$project->path('plugins/alpha/tests/Sub')], $seen['alpha-sub.xml']);
-        $this->assertArrayNotHasKey('beta-doubles.xml', $seen, 'a directory with no test file is not a shard');
+        $this->assertSame(['alpha-foo.xml', 'alpha-sub-bar.xml', 'beta-baz.xml'], array_keys($seen), 'one shard per test file, named from its path inside tests/');
+        $this->assertSame([$project->path('plugins/alpha/tests/FooTest.php')], $seen['alpha-foo.xml'], 'a shard is one file, so the pass is only as slow as its slowest FILE');
+        $this->assertSame([$project->path('plugins/alpha/tests/Sub/BarTest.php')], $seen['alpha-sub-bar.xml']);
+        $this->assertArrayNotHasKey('beta-doubles.xml', $seen, 'a file that is not a *Test.php is not a shard');
         $this->assertStringContainsString('3 shards', $display);
         $this->assertStringContainsString('coverage:plugins: OK', $display);
     }
@@ -87,7 +87,7 @@ final class CoveragePluginsCommandTest extends TestCase
 
         $written = glob($project->path('out').'/*.xml');
         $this->assertSame(
-            ['alpha-sub.xml', 'alpha.xml', 'beta.xml'],
+            ['alpha-foo.xml', 'alpha-sub-bar.xml', 'beta-baz.xml'],
             array_map(basename(...), \is_array($written) ? $written : []),
             'one report per shard, in one directory — which is what coverage:check grades as a union',
         );
@@ -115,7 +115,7 @@ final class CoveragePluginsCommandTest extends TestCase
 
         $this->assertSame(Command::FAILURE, $status);
         $this->assertStringContainsString('coverage:plugins: FAILED', $display);
-        $this->assertStringContainsString('alpha (exit 2)', $display, 'the shard is named, or nobody knows which suite to run by hand');
+        $this->assertStringContainsString('alpha-foo (exit 2)', $display, 'the shard is named, or nobody knows which file to run by hand');
     }
 
     public function testAShardThatOutlivesItsBudgetIsKilledAndReportedAsWedged(): void
@@ -195,7 +195,7 @@ final class CoveragePluginsCommandTest extends TestCase
         $tester->execute(['--output-dir' => $project->path('out'), '--processes' => 3]);
         $display = $tester->getDisplay();
 
-        $this->assertStringContainsString('the slowest was beta at', $display, 'a fan-out is only as fast as its longest shard, so the report says which one that is');
+        $this->assertStringContainsString('the slowest was beta-baz at', $display, 'a fan-out is only as fast as its longest shard, so the report says which one that is');
     }
 
     public function testTheRealShardRunsPhpunitUnderPcovWithTheContainerCacheOn(): void
@@ -219,5 +219,21 @@ final class CoveragePluginsCommandTest extends TestCase
         $this->assertStringContainsString('plugins/git/tests', $line);
         $this->assertStringContainsString($clover, $line);
         $this->assertSame('on', $process->getEnv()['PORTA_CONTAINER_CACHE'] ?? null);
+    }
+
+    public function testTwoTestFilesWithTheSameNameGetTwoShards(): void
+    {
+        // The shard name comes from the path inside tests/, not the basename:
+        // two FooTest.php would otherwise share a report, and the second run
+        // would overwrite the first while its tests quietly stopped counting.
+        $project = new TempProject([
+            'plugins/alpha/tests/View/FooTest.php' => "<?php\n",
+            'plugins/alpha/tests/Widget/FooTest.php' => "<?php\n",
+        ]);
+        $seen = [];
+
+        $this->tester($project, $this->spawning($seen))->execute(['--output-dir' => $project->path('out')]);
+
+        $this->assertSame(['alpha-view-foo.xml', 'alpha-widget-foo.xml'], array_keys($seen));
     }
 }

@@ -1903,15 +1903,42 @@ boot in a checkout — but the CPU half is the one that mattered next.
 The serial pass existed because a serial run never merges. That property belongs
 to a process, not to a pass — so N independent serial runs are N merge-free
 reports, and the only merge left is the gate's own, over whole documents.
-`bin/porta-dev coverage:plugins` derives the shards (one per immediate
-subdirectory of a plugin's `tests/`, plus one for the loose files), runs them
-several at a time, and writes one report each. **151s → 34.4 / 32.9 / 34.0s,
-with `100.00% (4284/4284)` and 127 plugin files every run.** `composer verify`
-end to end: **391s → 112s**.
+`bin/porta-dev coverage:plugins` derives the shards, runs them several at a
+time, and writes one report each. **151s → 20.0 / 20.3s**, with
+`100.00% (4284/4284)` and 127 plugin files every run. `composer verify` end to
+end: **391s → ~100s**.
+
+The second iteration is the interesting one, and the tool asked for it: the run
+prints its slowest shard because that is the floor, and the first version's
+floor was the whole `git` loose-file shard at 33s — the pass could not beat it
+however many lanes it had. Splitting per FILE puts the floor on one file
+(`git/tests/View/GitViewControllerTest.php`, ~16s).
+
+**But the split alone is a regression, and that is the lesson.** Interleaved,
+same box, same run:
+
+| lanes | per directory (16 shards) | per file (68 shards) |
+| --- | --- | --- |
+| 8 | 33.2 / 33.5s | 35.9 / 36.2s |
+| 12 | 46.7 / 35.4s | **23.6 / 22.2s** |
+
+At the old half-the-cores default the finer split LOSES by 8%: 68 phpunit boots
+(~1.5s each) need lanes to hide in. At 12 it wins by a third, while the coarse
+split gets *worse* with more lanes — bounded by one 33s chunk, so the extra
+processes are pure contention. **Granularity and concurrency are one decision,
+not two**, and measuring either alone would have picked the wrong answer; the
+first standalone numbers (25s per file, 34s per directory) flattered the split
+because the two configs ran at different times on a differently-loaded box.
+Hence the default moves to three quarters of the cores for this pass — a shard
+is one wait-bound process, not a paratest fleet.
+
+Names come from the path inside `tests/`, not the basename: two `FooTest.php` in
+different subdirectories would otherwise share a report, and the second would
+overwrite the first while its tests quietly stopped counting.
 
 Three decisions inside it are load-bearing:
 
-- **The shard list is derived, never written down.** A list in a file is a
+- **The shard list is derived, never written down.** (One shard per test file.) A list in a file is a
   second place to add a plugin, and forgetting it stops running those tests
   while the percentage stays green — the coverage gate catches a dropped shard
   only when nothing else covers the same lines. (A completeness ratchet was
