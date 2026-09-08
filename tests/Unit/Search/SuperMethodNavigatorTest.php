@@ -179,4 +179,49 @@ final class SuperMethodNavigatorTest extends TestCase
         // The caret is in Second, whose chain is Mid → Top.
         $this->assertSame('Top::deep', $navigator->locate($source, caretLine: 8)['label'] ?? null);
     }
+
+    public function testTheCaretOnTheDeclarationLineCounts(): void
+    {
+        // The likeliest place to press Ctrl+U: on the signature you are
+        // reading, not in the body. Off by one here and the feature answers
+        // "nothing" from the one line people use it from.
+        $hit = $this->navigator()->locate($this->subject(), caretLine: 6);
+
+        $this->assertSame('Runs::run', $hit['label'] ?? null, 'the `public function run()` line itself');
+    }
+
+    public function testTheCaretOnTheClosingBraceStillCounts(): void
+    {
+        // The other boundary: a method's last line is still inside it.
+        $hit = $this->navigator()->locate($this->subject(), caretLine: 8);
+
+        $this->assertSame('Runs::run', $hit['label'] ?? null);
+    }
+
+    public function testTheLineAfterAMethodBelongsToTheTypeAndNotToIt(): void
+    {
+        // One past the closing brace is between methods: there is a type but no
+        // method, and answering with the previous one would be a jump nobody
+        // asked for.
+        $this->assertNull($this->navigator()->locate($this->subject(), caretLine: 9));
+    }
+
+    public function testItStopsClimbingAtTheDepthLimit(): void
+    {
+        // Ten links, the method declared on the last: from the third the walk
+        // reaches it, from the first it gives up rather than paying for a
+        // hierarchy nobody reads by hand.
+        $navigator = $this->navigator();
+        foreach (range(start: 1, end: 10) as $level) {
+            $extends = 10 === $level ? '' : ' extends Deep'.($level + 1);
+            $tail = 10 === $level ? "    public function far(): void\n    {\n    }\n" : '';
+            $this->project->write("src/Deep{$level}.php", "<?php\nnamespace App;\nabstract class Deep{$level}{$extends}\n{\n{$tail}}\n");
+        }
+
+        $near = "<?php\nnamespace App;\nfinal class Near extends Deep3\n{\n    public function far(): void\n    {\n    }\n}\n";
+        $this->assertSame('Deep10::far', $navigator->locate($near, caretLine: 4)['label'] ?? null, 'eight links is within reach');
+
+        $far = "<?php\nnamespace App;\nfinal class Far extends Deep1\n{\n    public function far(): void\n    {\n    }\n}\n";
+        $this->assertNull($navigator->locate($far, caretLine: 4), 'ten is not');
+    }
 }
