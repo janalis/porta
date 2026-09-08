@@ -1982,6 +1982,54 @@ on the real report: 8 files disagree with their own metrics, **all 8 under
 grows a single-line method, the gate says INVALID and names the file instead of
 grading a shrunken denominator — the one direction a 100% gate cannot notice.
 
+### Sharding the `src` pass too — measured, and closed by Clover itself
+
+The plugins pass got 7.5× faster by becoming serial shards, and the same shape
+applies to `coverage:src` on paper: 78 shards (one per `tests/Unit`
+subdirectory, one per E2e file, plus Integration), run 12 at a time. Measured on
+the same box, same lanes:
+
+| | wall |
+| --- | --- |
+| 78 serial shards, container cache ON | **45s** |
+| the same shards, cache OFF | 77s |
+| `composer coverage` (paratest) at 12 | 99s |
+
+Two thirds of that is the container cache, which only a merge-free run may keep
+— so the prize was real and roughly 30s off `composer verify`.
+
+**It cannot be graded.** `coverage:check --require=src` over those 78 reports
+fails INVALID on **8 files**, and the guard is right: `Report/Clover.php` writes
+a method's declaration line as a `type="method"` entry whose count is the MAX
+over the method's whole range, and drops the `stmt` entry for it. Where that
+line is itself executable — a default-value expression, evaluated on call — both
+the statement and its true count are gone from the report. A union over those
+files grades a denominator that is 1–7 statements short of the truth.
+
+Every escape was tried and measured, not argued:
+
+- **Treat every method entry as the dropped statement.** Inflates the total to
+  115.73% (24341/21033): most method entries are ordinary declaration lines that
+  were never statements at all.
+- **Fall back to the best single report for a lossy file.** Under-counts rather
+  than over-counts, so it is safe in the direction that matters — and **5 of the
+  8 are not fully covered by ANY single shard** (`TerminalPanelWidget` 68/72,
+  `SettingsMouseRouter` 29/32). It would fail the gate on files that are
+  genuinely 100%, which is a false red nobody can fix from the code.
+
+So the `src` pass stays one paratest run, and `PORTA_CONTAINER_CACHE=off` stays
+with it. The 8 files also make the point the guard was built for: without it the
+sharded pass would have run green on a denominator quietly short of the truth,
+which on a 100% gate is invisible.
+
+*Re-opens on:* a per-shard report format that carries exact per-line data.
+`--coverage-php` does — its `Serializer` reduces paths and its `Merger` keeps
+only the FIRST file's `basePath`, which is the bug that closed parallel
+paratest, but a reader that applies **each file's own** basePath before merging
+sidesteps it. That means depending on php-code-coverage's serialization
+internals from our own command, which is why it is written down rather than
+built.
+
 ### Measured while the data was there: plugin coverage ownership
 
 `CLAUDE.md` and `plugin-system.md` both say plugin code must be covered by that

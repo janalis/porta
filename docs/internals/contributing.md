@@ -286,6 +286,13 @@ gap is `ConfigCache::isFresh()`, which in a git checkout re-hashes ~480 tracked
 classes per warm boot. The CPU half is what matters if this pass is ever run
 several ways at once.
 
+**Sharding the `src` pass the same way is closed, on evidence.** It measured 45s
+against paratest's 99s at the same lanes — and `coverage:check` refuses the
+result: 8 files cannot be merged from Clover, because a method declaration line
+that is itself executable is written as a `type="method"` entry whose count is a
+MAX over the method, with its `stmt` entry dropped. `decisions.md` has the
+numbers and the two escapes that were tried.
+
 **opcache is not a test-loop lever.** It is worth setting for `bin/porta`
 (see below), and the loop does not feel it: `composer test` at eight processes
 ran 92.0s and 89.4s without it, 90.4s / 87.8s / 89.2s with — inside the noise.
