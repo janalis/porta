@@ -176,6 +176,16 @@ final class StatusBarWidget extends AbstractWidget
             $right = AnsiText::truncate($right, $rightMax);
         }
 
+        // The right side is the pane's own facts plus the key legend, and it can
+        // be wider than the terminal ON ITS OWN — the graph pane's runs to 78
+        // columns, so a vertical split at 70 is enough. Cutting it here rather
+        // than letting the composed row overflow is what makes the cut legible:
+        // the whole-row truncate below passes an EMPTY ellipsis, because by
+        // then the row is meant to be exactly the width already, so an over-wide
+        // legend used to come out chopped mid-word with nothing to mark it.
+        // Clipped click spans fall out of the map below on their own, since
+        // that filter reads the width computed from the truncated string.
+        $right = AnsiText::truncate($right, max(0, $columns - 3));
         $rightWidth = AnsiUtils::visibleWidth($right);
         $leftMax = max(0, $columns - $rightWidth - 3);
         $left = AnsiText::truncate($left, $leftMax);

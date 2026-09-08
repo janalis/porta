@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ui\Glyphs;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\StatusMenuSpan;
@@ -76,6 +77,28 @@ final class StatusBarWidgetTest extends TestCase
         $line = $status->render(new RenderContext(50, 1))[0];
         $this->assertSame(50, AnsiUtils::visibleWidth($line));
         $this->assertStringContainsString('RIGHT', $line, 'right side survives truncation');
+    }
+
+    /**
+     * The right side is the pane's own facts plus the key legend, and it can be
+     * wider than the terminal on its own — the graph pane's is 78 columns, so a
+     * vertical split at 70 is enough. It used to reach the end of render() over
+     * width and be chopped there by the whole-row truncate, which passes an
+     * EMPTY ellipsis because by then the row is meant to be exactly the width
+     * already: the legend came out cut mid-word with nothing to say it was cut.
+     */
+    public function testAnOverWideRightSideIsCutLegiblyRatherThanChoppedOffTheEnd(): void
+    {
+        $legend = '3 nodes · 2 edges  Fit (22%)  +/- zoom  0 fit  n/p select  / find  Ctrl+Q quit';
+        $status = new StatusBarWidget();
+        $status->setProvider(static fn (): array => ['left' => 'g.dot', 'right' => $legend]);
+        $status->beforeRender();
+
+        $line = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(70, 1))[0]);
+
+        $this->assertSame(70, AnsiUtils::visibleWidth($line));
+        $this->assertStringContainsString(Glyphs::ELLIPSIS, $line, 'the cut says it is one');
+        $this->assertStringNotContainsString('Ctrl+Q quit', $line, 'and the part that did not fit is gone, not half-drawn');
     }
 
     public function testWithoutProviderRendersEmptyBar(): void
