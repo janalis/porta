@@ -1738,6 +1738,33 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## The field that caused the wrong conclusion (built 2026-09-08, `9bc6acdc`)
+
+Chased the previous entry's mistake to its cause instead of leaving it as a
+lesson. `WorkspaceSymbolClient::map()` built a `label` — `"[class] Greeter"` —
+and **nothing reads it**: its only consumer,
+`Search\Everywhere\WorkspaceSymbolSource`, renders `name` and puts the path in
+the hint. `26f34e38` says why it exists — the extraction that created the client
+kept the row shape `NavigationController`'s own list displayed, and the Search
+Everywhere sources replaced that list without the label following.
+
+**It survived because it was covered and asserted**, which is exactly what dead
+data that looks like display data does: 100% coverage, a unit test pinning its
+formatting, and no effect on anything a user sees. That is why the round's
+mutation habit mistook it for the live field and blamed a sound test.
+
+**Deleting beats wiring it up, and the reason is not laziness.** The kind is not
+missing from the modal by oversight: File Structure carries the kind in the
+HINT, and Go to Symbol's hint is already the path, so a kind there would have to
+prefix the name and push every symbol right — a taste call with no evidence
+behind it. Recomputing it is two lines if it is ever wanted; a row shape that
+promises a field nobody renders is a trap that has now sprung once.
+
+**The generalisable check:** for any field in a mapped row shape, ask which line
+of code READS it. Coverage answers "did this run", never "did this matter", and
+a test asserting a field's format is not evidence that anything consumes it.
+Infection: 9 mutants over the diff, 9 killed.
+
 ## The sweep, and a wrong conclusion inside it (built 2026-09-08, `5816e431`)
 
 Swept every picker in the suite with a content assertion, by replacing its
