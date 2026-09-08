@@ -834,6 +834,10 @@
         <source>Peek Definition</source>
         <target>הצץ בהגדרה</target>
       </trans-unit>
+      <trans-unit id="823">
+        <source>Peek: %location%</source>
+        <target>הצצה: %location%</target>
+      </trans-unit>
       <trans-unit id="214">
         <source>Previous Conflict</source>
         <target>הקונפליקט הקודם</target>

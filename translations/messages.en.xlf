@@ -834,6 +834,10 @@
         <source>Peek Definition</source>
         <target>Peek Definition</target>
       </trans-unit>
+      <trans-unit id="823">
+        <source>Peek: %location%</source>
+        <target>Peek: %location%</target>
+      </trans-unit>
       <trans-unit id="214">
         <source>Previous Conflict</source>
         <target>Previous Conflict</target>

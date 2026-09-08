@@ -526,7 +526,7 @@ final class NavigationController extends AbstractLspController implements Editor
                 }
                 // The target line is always in range, so $items is never empty.
 
-                $title = 'Peek: '.$this->paths->relative($target).':'.($targetLine + 1);
+                $title = $this->trans('Peek: %location%', ['%location%' => $this->paths->relative($target).':'.($targetLine + 1)]);
                 $this->editor->openListOverlay($title, $items, function (string $value): void {
                     [$file, $lineNo] = [substr($value, offset: 0, length: (int) strrpos($value, needle: ':')), (int) substr($value, (int) strrpos($value, needle: ':') + 1)];
                     $this->files->openFile($file, focus: OpenFocus::Editor);

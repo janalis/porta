@@ -284,7 +284,7 @@ final class CodeEditorWidget extends AbstractWidget implements
 
     private function newEditorActions(Document $document, ClipboardRing $clipboard): EditorActions
     {
-        return new EditorActions($document, $this->multiCaret, $this->completion, $this->structural, $this->foldModel, $this->autoPair, $this, $clipboard);
+        return new EditorActions($document, $this->multiCaret, $this->completion, $this->structural, $this->foldModel, $this->autoPair, $this, $clipboard, $this->translator);
     }
 
     // --- Public API --------------------------------------------------------

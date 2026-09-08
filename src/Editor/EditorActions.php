@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use Porta\I18n\Translator;
 use Porta\Widget\Render\EditorRenderer;
 use Symfony\Component\Tui\Input\Keybindings;
 
@@ -31,6 +32,11 @@ final class EditorActions
         private readonly AutoPairService $autoPair,
         private readonly EditorHost $host,
         private readonly ClipboardRing $clipboard = new ClipboardRing(),
+        // Defaulted exactly as {@see \Porta\Widget\CodeEditorWidget}'s is, and
+        // for the same reason: the widget-tree tests need not thread one, and
+        // the one string this class shows the user is a modal TITLE, which
+        // every other overlay in `src/` translates at its call site.
+        private readonly Translator $translator = new Translator('en'),
     ) {
         $this->column = new ColumnSelection();
     }
@@ -616,7 +622,7 @@ final class EditorActions
             $items[] = ['label' => str_replace(search: "\n", replace: '⏎', subject: $text), 'hint' => '', 'value' => (string) $index];
         }
 
-        $this->host->openListOverlay('Paste from History', $items, function (string $index) use ($entries): void {
+        $this->host->openListOverlay($this->translator->trans('Paste from History'), $items, function (string $index) use ($entries): void {
             // Cast for the same reason array_values() is there in the ring:
             // the overlay's value is a string and the list is keyed by int.
             $text = $entries[(int) $index] ?? '';

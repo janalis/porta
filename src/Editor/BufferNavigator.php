@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Editor;
 
 use Porta\History\RecentFilesStore;
+use Porta\I18n\Translator;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
@@ -41,6 +42,7 @@ final class BufferNavigator implements BufferNavigationHandler, ViewerTabHandler
         private readonly Tui $tui,
         private readonly ProjectPaths $paths,
         private readonly RecentFilesStore $recentFiles,
+        private readonly Translator $translator,
     ) {}
 
     /** Switch to the previous/next tab (+1 / -1) and focus its content. */
@@ -125,7 +127,7 @@ final class BufferNavigator implements BufferNavigationHandler, ViewerTabHandler
         $items[] = $items[0];
         array_shift($items);
 
-        $this->editor->openListOverlay('Recent Files', $items, function (string $path): void {
+        $this->editor->openListOverlay($this->translator->trans('Recent Files'), $items, function (string $path): void {
             if (null !== ($buffer = $this->buffers->setActive($path))) {
                 $this->bufferService->showBuffer($buffer);
 

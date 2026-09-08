@@ -17,6 +17,7 @@ use Porta\Editor\FoldModel;
 use Porta\Editor\MultiCaret;
 use Porta\Editor\SelectionMode;
 use Porta\Editor\StatementSyntax;
+use Porta\I18n\Translator;
 use Porta\Input\TextInput;
 use Porta\Tests\Support\FakeEditorHost;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -42,7 +43,7 @@ final class EditorActionsTest extends TestCase
         };
     }
 
-    private function actions(string $text = "alpha beta\ngamma\n", string $clipboard = ''): EditorActions
+    private function actions(string $text = "alpha beta\ngamma\n", string $clipboard = '', string $locale = 'en'): EditorActions
     {
         $this->calls = [];
         $this->doc = new Document($text);
@@ -69,7 +70,7 @@ final class EditorActionsTest extends TestCase
         $ring = new ClipboardRing();
         $ring->push($clipboard);
 
-        return new EditorActions($this->doc, $this->multiCaret, $completion, $structural, $this->foldModel, $autoPair, $host, $ring);
+        return new EditorActions($this->doc, $this->multiCaret, $completion, $structural, $this->foldModel, $autoPair, $host, $ring, new Translator($locale));
     }
 
     private function count_(string $name): int
@@ -119,6 +120,25 @@ final class EditorActionsTest extends TestCase
             $items,
             'newest first, newlines shown, index as the value',
         );
+    }
+
+    /**
+     * A modal TITLE is the one string this class shows the user, and it was
+     * handed to the overlay as a bare English literal. Nothing could catch
+     * that, because the catalogs DO carry "Paste from History" — as the
+     * ACTION's palette label, translated somewhere else entirely. A gate
+     * satisfied by a different consumer of the same string is no gate; every
+     * other overlay in `src/` translates its title at the call site.
+     */
+    public function testThePasteHistoryPickerTitleIsTranslated(): void
+    {
+        $actions = $this->actions("alpha\n", locale: 'fr');
+        $actions->clipboardRing()->push('one');
+
+        $actions->run('paste_history');
+
+        [$title] = $this->calls['openListOverlay'][0];
+        $this->assertSame('Coller depuis l’historique', $title);
     }
 
     /** Nothing copied yet: the verb opens nothing rather than an empty box. */
