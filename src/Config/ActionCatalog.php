@@ -167,6 +167,9 @@ final class ActionCatalog
         'ide_find_in_project' => ['label' => 'Find in Project', 'keys' => ['ctrl+shift+f']],
         'ide_goto_symbol' => ['label' => 'Go to Symbol in Project', 'keys' => ['ctrl+alt+shift+n']],
         'ide_goto_test' => ['label' => 'Go to Test', 'keys' => ['ctrl+shift+t']],
+        // Ctrl+U is PhpStorm's, and no PHP language server answers the request
+        // it stands for — this one is resolved from the project's own files.
+        'ide_goto_super' => ['label' => 'Go to Super Method', 'keys' => ['ctrl+u']],
         'ide_problems' => ['label' => 'Show Problems', 'keys' => ['alt+6']],
         'next_problem' => ['label' => 'Next Problem', 'keys' => ['f2']],
         'prev_problem' => ['label' => 'Previous Problem', 'keys' => ['shift+f2']],

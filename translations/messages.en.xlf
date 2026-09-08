@@ -1130,6 +1130,18 @@
         <source>Colours your code</source>
         <target>Colours your code</target>
       </trans-unit>
+      <trans-unit id="834">
+        <source>Go to Super Method</source>
+        <target>Go to Super Method</target>
+      </trans-unit>
+      <trans-unit id="835">
+        <source>No super method — this one overrides nothing</source>
+        <target>No super method — this one overrides nothing</target>
+      </trans-unit>
+      <trans-unit id="836">
+        <source>Super method: %label%</source>
+        <target>Super method: %label%</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>Tree: Collapse</target>

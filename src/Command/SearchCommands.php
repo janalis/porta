@@ -49,6 +49,7 @@ final class SearchCommands implements CommandProvider
                 },
                 keyBound: KeyDispatch::Bound,
             )
-            ->add('ide_goto_test', fn () => $this->searchActions->goToTest(), keyBound: KeyDispatch::Bound);
+            ->add('ide_goto_test', fn () => $this->searchActions->goToTest(), keyBound: KeyDispatch::Bound)
+            ->add('ide_goto_super', fn () => $this->searchActions->goToSuperMethod(), keyBound: KeyDispatch::Bound);
     }
 }

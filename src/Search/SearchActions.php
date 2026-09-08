@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Porta\Search;
 
 use Porta\Container\AsIdeService;
-use Porta\Editor\ActiveFileProvider;
+use Porta\Editor\ActiveDocumentProvider;
 use Porta\Editor\BufferService;
+use Porta\Editor\EditorTextAccess;
 use Porta\Editor\OpenFocus;
 use Porta\I18n\Translator;
 use Porta\Support\ProjectPaths;
@@ -31,8 +32,10 @@ final class SearchActions
         private readonly BufferService $bufferService,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
-        private readonly ActiveFileProvider $editor,
+        private readonly ActiveDocumentProvider $editor,
         private readonly ProjectPaths $paths,
+        private readonly SuperMethodNavigator $superMethods,
+        private readonly EditorTextAccess $jump,
     ) {}
 
     public function openProjectSearch(): void
@@ -87,5 +90,29 @@ final class SearchActions
         }
         $rows = array_map(static fn (string $rel): array => ['path' => $rel, 'line' => 0, 'text' => $rel], $candidates);
         $this->panels->showList(ResultsPanelMode::Search, $this->translator->trans('Choose target'), $rows);
+    }
+
+    /**
+     * PhpStorm-style Ctrl+U: jump from a method to the declaration it
+     * overrides — a parent class's, an interface's, or a trait's.
+     *
+     * No language server answers this ({@see SuperMethodNavigator}), so a
+     * failure has to say WHICH failure it is: outside a method at all, or
+     * inside one that overrides nothing.
+     */
+    public function goToSuperMethod(): void
+    {
+        $document = $this->editor->getDocument();
+        $path = $this->editor->getFilePath();
+        $target = null === $path ? null : $this->superMethods->locate($document->getText(), $document->getCursorLine());
+        if (null === $target) {
+            $this->notifier->flash($this->translator->trans('No super method — this one overrides nothing'));
+
+            return;
+        }
+
+        $this->bufferService->openFile($this->paths->absolute($target['path']), focus: OpenFocus::Editor);
+        $this->jump->jumpTo($target['line'], 0);
+        $this->notifier->flash($this->translator->trans('Super method: %label%', ['%label%' => $target['label']]));
     }
 }

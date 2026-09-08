@@ -1130,6 +1130,18 @@
         <source>Colours your code</source>
         <target>צובע את הקוד</target>
       </trans-unit>
+      <trans-unit id="834">
+        <source>Go to Super Method</source>
+        <target>מעבר למתודת־העל</target>
+      </trans-unit>
+      <trans-unit id="835">
+        <source>No super method — this one overrides nothing</source>
+        <target>אין מתודת־על — זו אינה דורסת דבר</target>
+      </trans-unit>
+      <trans-unit id="836">
+        <source>Super method: %label%</source>
+        <target>מתודת־על: %label%</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>עץ: כווץ</target>

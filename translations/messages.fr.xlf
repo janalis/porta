@@ -1130,6 +1130,18 @@
         <source>Colours your code</source>
         <target>Colore votre code</target>
       </trans-unit>
+      <trans-unit id="834">
+        <source>Go to Super Method</source>
+        <target>Aller à la méthode parente</target>
+      </trans-unit>
+      <trans-unit id="835">
+        <source>No super method — this one overrides nothing</source>
+        <target>Aucune méthode parente — celle-ci ne redéfinit rien</target>
+      </trans-unit>
+      <trans-unit id="836">
+        <source>Super method: %label%</source>
+        <target>Méthode parente : %label%</target>
+      </trans-unit>
       <trans-unit id="239">
         <source>Tree: Collapse</source>
         <target>Arborescence : replier</target>

@@ -82,6 +82,7 @@ final class MenuModel
             'e:goto_line',
             'i:ide_goto_symbol',
             'i:ide_goto_test',
+            'i:ide_goto_super',
             'e:file_structure',
             self::SEP,
             'e:rename_symbol',

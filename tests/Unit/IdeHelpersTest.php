@@ -697,6 +697,39 @@ final class IdeHelpersTest extends TestCase
         $this->assertStringContainsString('tests/Unit/BarTest.php', $rendered);
     }
 
+    public function testGoToSuperMethodJumpsToTheParentDeclaration(): void
+    {
+        // Through the booted IDE, because the verb is three pieces meeting: the
+        // navigator finds the file, the buffer service opens it, and the jump
+        // lands the caret — each of which passes its own tests with the feature
+        // still not working.
+        $buffers = Services::resolve($this->ide, BufferService::class);
+        $this->project->write('src/ParentClass.php', "<?php\nnamespace App;\nabstract class ParentClass\n{\n    public function handle(): void\n    {\n    }\n}\n");
+        $child = $this->project->write('src/Child.php', "<?php\nnamespace App;\nfinal class Child extends ParentClass\n{\n    public function handle(): void\n    {\n    }\n}\n");
+        $buffers->openFile($child, focus: OpenFocus::Editor);
+        $editor = Services::resolve($this->ide, Tui::class)->getById('editor');
+        $editor->getDocument()->setCursor(4, 0);
+
+        Services::resolve($this->ide, SearchActions::class)->goToSuperMethod();
+
+        $this->assertStringEndsWith('ParentClass.php', (string) $editor->getFilePath(), 'the parent file is open — found by its class name, which in a PSR-4 project IS its file name');
+        $this->assertSame(4, $editor->getDocument()->getCursorLine(), 'and the caret is on its declaration');
+        $this->assertStringContainsString('ParentClass::handle', \Porta\Tests\Support\Toasts::last($this->ide));
+    }
+
+    public function testGoToSuperMethodFromAMethodThatOverridesNothingSaysSo(): void
+    {
+        $buffers = Services::resolve($this->ide, BufferService::class);
+        $solo = $this->project->write('src/Solo.php', "<?php\nnamespace App;\nfinal class Solo\n{\n    public function only(): void\n    {\n    }\n}\n");
+        $buffers->openFile($solo, focus: OpenFocus::Editor);
+        Services::resolve($this->ide, Tui::class)->getById('editor')->getDocument()->setCursor(4, 0);
+
+        Services::resolve($this->ide, SearchActions::class)->goToSuperMethod();
+
+        $this->assertStringContainsString('overrides nothing', \Porta\Tests\Support\Toasts::last($this->ide));
+        $this->assertStringEndsWith('Solo.php', (string) Services::resolve($this->ide, Tui::class)->getById('editor')->getFilePath(), 'and nothing moved');
+    }
+
     public function testRequestReformatWithoutLspIsNoOp(): void
     {
         $this->refactor()->requestReformat();

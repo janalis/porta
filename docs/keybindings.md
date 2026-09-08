@@ -158,6 +158,7 @@ replaces in the bar, and neither surface can have both.
 | `Alt+A` | Replace across the project (every match still included) |
 | `Ctrl+G` | Go to line |
 | `Ctrl+Shift+T` | Go to test / go to tested class |
+| `Ctrl+U` | Go to the super method — the parent class, interface or trait that declares the one under the caret (resolved from the project's own files; no language server answers this) |
 
 ## Run, debug, git
 
