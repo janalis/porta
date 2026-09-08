@@ -1738,6 +1738,38 @@ Corrected above. The lesson is narrower and more useful than "audit the docs":
 that costs work rather than accuracy.** Those are worth re-reading when a round
 closes something nearby.
 
+## The picker, looked at (built 2026-09-08, `ce808022`)
+
+The debt the entry below names, paid. Every existing test of the clipboard
+picker reads STATE — `pickerOpen`, then Down and Enter — and would pass on a
+picker that draws nothing at all, because it is composited by the app-level
+overlay host rather than by the editor widget. Neither the widget rig nor a
+probe driving keys reaches it; the running app does.
+
+It draws, and the row shape survives to the terminal:
+
+```
+╭ Paste from History ──── Esc ×╮
+│  $beta = 2;⏎$gamma = 3;      │
+│  $alpha = 1;                 │
+╰──────────────────────────────╯
+```
+
+**And the first version of the test was wrong in the round's signature way.**
+Asserting against the whole screen, it passed when the picker offered only ONE
+entry — because every string in this picker is also in the buffer behind it.
+That was measured rather than reasoned: the mutation that cuts the older entry
+left the test green. It reads the CARD now, sliced out of the frame from its
+title row to the foot, and three mutations fail it.
+
+**Fourth instance this round of a gate satisfied by something that merely looks
+like the thing** — after the graph keys passing on the image viewer's rows, the
+`Alt+↑` recall matching a different doc section, and the overlay title being
+"in the catalogs" as an action label. The tell is the same every time: the
+assertion's SCOPE is wider than the thing it is about. A screen contains the
+buffer, a file contains other sections, a catalog contains other consumers.
+**Cut the scope down to the surface you mean before asserting on it.**
+
 ## Three modal titles were English in every locale (built 2026-09-08, `130bd4db`)
 
 Went to RENDER the clipboard picker, could not get the overlay to composite in
