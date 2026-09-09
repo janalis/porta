@@ -4013,3 +4013,38 @@ quoted the dead strings verbatim as examples, and the test file is itself in the
 corpus — so documenting a dead string is enough to make it used. The examples
 are paraphrased now, and the same restraint applies to this entry: none of the
 fourteen is quoted here either.
+
+## The one-way-gate sweep, and where it ended (2026-09-09)
+
+Two defects today came from a gate that graded only one direction, so the rest
+of the gates were swept for the same shape. The result is worth recording
+mostly for what it does NOT contain.
+
+| gate | reverse direction | found |
+| --- | --- | --- |
+| `KeybindingsDocTest` | doc row → a key something binds | **3 stray rows** (fixed) |
+| `CatalogCoverageTest` | catalogue entry → used anywhere | **14 dead strings, 98 units** (fixed) |
+| `DocsIndexTest` | index link → a file that exists | 60 links, all live |
+| `PluginObservableContractTest` | `docs/events.md` → a class | 13 named, all real |
+| `VerifyGatesMatchCiTest` | — | already both ways |
+
+The last three are clean, so only `DocsIndexTest` gained a gate — its direction
+guards the F1 browser, which would otherwise offer a page it cannot open, and
+the check is one `file_exists` per link. The other two were left alone: a gate
+with nothing to catch and no way to be sure of its false-positive rate is a
+liability, and `escalating [loop-leak] to a failure` is already on the settled
+list for that reason.
+
+**A whole-doc version of the keybindings reverse check was attempted and
+abandoned.** Extending it past the one table means enumerating every binding
+channel — the action catalog, the editor keymap, both find surfaces, and every
+widget with its own `getDefaultKeybindings()`. A first pass over four channels
+reported 31 undocumented-but-bound chords; every one was a blind spot, not a
+defect: `Key::F5` rather than `'f5'`, `ctrl+page_down` in `TerminalPanelWidget`,
+mouse gestures, and backticked `` Ctrl+` `` read as a backslash. The subsection
+gate works because that modal keeps its keys in one explicit const; the general
+case does not have one place to read, and a gate whose false-positive rate you
+cannot state is worse than none.
+
+That is the same conclusion the catalog gate reached from the other side: in
+the reverse direction, prefer the check you can be sure of over the precise one.
