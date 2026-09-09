@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Help;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Help\MarkdownRenderer;
 use Porta\Help\RenderedDoc;
@@ -129,6 +130,93 @@ final class MarkdownTableTest extends TestCase
         // instead of collapsing to nothing.
         $doc = $this->render('|  |');
         $this->assertSame('', rtrim($this->rows($doc->lines)[0]));
+    }
+
+    /**
+     * Every row starts its columns where the rule says they start.
+     *
+     * The geometry is summed three ways — once to budget the widths, once for
+     * the separator rule, once per physical row — and they have to agree. The
+     * rule row is the oracle: its runs of `─` ARE the columns, so a content row
+     * is right exactly when nothing crosses into the padding before a run.
+     * That holds whatever the widths turn out to be, so it does not go stale
+     * when a glyph or a floor changes.
+     *
+     * Written for a mutant that nothing else here catches: the empty-fragment
+     * fallback a SHORT cell gets on a tall row carries `width => 0`, and at
+     * `-1` every later column on that continuation row shifts one place right.
+     * The text is all still present, so every content-shaped assertion in this
+     * class passes while the table is visibly crooked.
+     *
+     * @param non-empty-string $markdown
+     */
+    #[DataProvider('alignmentTables')]
+    public function testEveryRowStartsItsColumnsWhereTheRuleSaysTheyStart(string $markdown, int $width): void
+    {
+        $rows = $this->rows($this->render($markdown, $width)->lines);
+
+        $ruleRow = '';
+        foreach ($rows as $row) {
+            if (!str_contains($row, '─')) {
+                continue;
+            }
+            $ruleRow = $row;
+            break;
+        }
+        $this->assertNotSame('', $ruleRow, 'the table drew its separator rule');
+
+        $rule = mb_str_split($ruleRow);
+        $starts = [];
+        foreach ($rule as $index => $character) {
+            if ('─' !== $character || '─' === ($rule[$index - 1] ?? ' ')) {
+                continue;
+            }
+            $starts[] = $index;
+        }
+        $this->assertGreaterThan(1, \count($starts), 'a multi-column table, or this proves nothing');
+
+        $begun = [];
+        foreach ($rows as $index => $row) {
+            $this->assertLessThanOrEqual($width, mb_strwidth($row), "row {$index} overflows the pane");
+            if ($row === $ruleRow || '' === trim($row)) {
+                continue;
+            }
+            $characters = mb_str_split($row);
+            foreach ($starts as $column => $start) {
+                // A cell is left-aligned in its column, so within the span this
+                // column owns, the first non-space must be the column's own
+                // first cell — one place late is a cell pushed right by a
+                // padding error, one place early is a cell bleeding out of the
+                // column before it.
+                $span = \array_slice($characters, $start, ($starts[$column + 1] ?? (\count($characters) + 2)) - $start - 2);
+                $text = implode('', $span);
+                if ('' === trim($text)) {
+                    continue; // this row leaves the column empty
+                }
+                $this->assertSame($start, $start + \strlen($text) - \strlen(ltrim($text)), "row {$index} does not start column {$column} at the rule");
+                if (0 !== $column) {
+                    $this->assertSame(' ', $characters[$start - 1] ?? ' ', "row {$index} runs into column {$column}");
+                }
+                $begun[$column] = true;
+            }
+        }
+
+        // Alignment is only proven if cells actually START at each boundary —
+        // a table of blank rows satisfies every assertion above.
+        $this->assertSame(range(start: 0, end: \count($starts) - 1), array_keys($begun), 'every column has a row whose cell begins at the rule');
+    }
+
+    /**
+     * Cells of DIFFERING heights in one row, which is what puts a short cell on
+     * the empty-fragment fallback the mutant above targets.
+     *
+     * @return iterable<string, array{string, int}>
+     */
+    public static function alignmentTables(): iterable
+    {
+        yield 'wrapping beside short' => ["| Key | Guide |\n| --- | --- |\n| `F1` | some long leading words then more after it |\n| `F2` | short |", 46];
+        yield 'three columns' => ["| A | B | C |\n| --- | --- | --- |\n| one | a longer middle cell that must wrap | three |", 40];
+        yield 'wide pane, no wrapping' => ["| A | B |\n| --- | --- |\n| one | two |", 80];
     }
 
     /**

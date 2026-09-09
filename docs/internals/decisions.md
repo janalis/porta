@@ -4313,3 +4313,67 @@ container is at hand — stamp from the wall clock. A time-frozen test sees the
 two disagree. Nothing asserts on a crash stamp, and `Ide` cannot reach the clock
 without widening the `porta.ide` locator for one caller, which its own
 membership gate refuses. Recorded in the class docblock rather than fixed.
+
+## The dependency upgrade, four commits (2026-09-09)
+
+Thirteen direct packages were behind. Done one package group per commit, each
+green before the next, because the history said all three risky shapes had bitten
+here before — a tui bump that moved a golden (`afa6e6c1`), a mago bump that
+raised a false positive (`05793753`), and `mago.toml`'s own warning that an
+upgrade recounts metrics.
+
+**What actually happened, against what was expected:**
+
+| expected | actual |
+| --- | --- |
+| a golden diff from `symfony/tui` | none — both byte-exact goldens unmoved |
+| the `BidiTui` private-property mirror breaking | intact: `Tui.php` has ONE change, in teardown cursor math |
+| mago finding new things | yes, 7 — 5 redundant docblocks, 1 false positive |
+| thresholds recounted by mago 1.47 | no — the one that moved, moved because the CODE did |
+| infection 0.35 breaking its config | no — all five keys survive the schema |
+
+**The pre-flight was worth it and would have been worth it even at zero
+findings.** `src/Ui/BidiTui.php` reflects four private `Tui` properties and
+mirrors a private method body, and nothing in the suite checks that mirror is
+faithful — so it is checked by reading the vendor diff, not by running tests.
+All four names survive and `processRender()` is byte-identical.
+`TerminalInterface` is unchanged, so `NonBlockingTerminal` misses no method, and
+`Terminal::getColumns()` moved `?? 80` to `?: 80` — a cached ZERO now falls back
+to 80×24, which we inherit because we delegate.
+
+**`AnsiUtils` gained real width fixes** that could have moved everything and did
+not: `visibleWidth()` now walks graphemes when combining marks or ZWJ are
+present, and tabs measure as `TAB_WIDTH` in the slicers where `mb_strwidth`
+counted them as one. The cursor-marker format is unchanged, so the hard-coded
+regexes in `OverlayCompositor` and `SpanSlicer` still match.
+
+**The one threshold that moved is a lesson about attribution.**
+`too-many-methods` went 87 → 86 — and NOT because 1.47 recounts it. Splitting
+`MarkdownRendererTest` earlier the same day dropped the top class, so
+`ResultsPanelWidgetTest` at 85 is the pin now. Had the two changes ridden in one
+commit, the drift would have looked like the metric change `mago.toml` warns
+about. Probing each of the nine at one below its pin is what separated them.
+Also corrected: the `too-many-properties` inventory line read 32 against a pin
+of 31 with no correction note — 31 is right, and the prose was the stale half.
+
+**Infection 0.35 changes the denominator, not the quality.** The same reference
+diff went 118 mutants / MSI 81% to 126 / 75%: more variants per line, same
+lines, same equivalent class.
+
+### And it found a test I had deleted too early
+
+One escape at line 330 was NOT the usual defensive-fallback shape. The
+empty-fragment fallback a SHORT cell receives on a tall row carries
+`width => 0`; at `-1` every later column on that continuation row shifts one
+place right. The table is visibly crooked and the whole suite passes, because
+every assertion in that class asks whether text is PRESENT.
+
+That is the column-alignment invariant deleted earlier the same day as
+"redundant" — a judgement made by testing it against three mutations and
+generalising. This is a fourth it catches and nothing else does. Restored, and
+tightened: the first version only caught text crossing LEFT into the padding,
+so `width => -1` (which shifts everything RIGHT) still escaped it. It now
+asserts where each cell BEGINS, and both directions die.
+
+The rule this leaves: "I verified it against the mutations I thought of" is not
+"it is redundant". The mutation tool enumerates; I do not.
