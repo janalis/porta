@@ -45,18 +45,20 @@ final class FreezeWatchdog
      *                                            Injected rather than called directly so a test can
      *                                            move the two clocks INDEPENDENTLY, which is the whole
      *                                            distinction being drawn — the `ClockInterface` here
-     *                                            only ever stamps the log line.
+     *                                            is only ever the log's stamp clock, handed
+     *                                            straight to {@see DiagnosticLog}, which dates
+     *                                            every entry it writes.
      */
     public function __construct(
         string $rootDir,
-        private readonly ClockInterface $clock,
+        ClockInterface $clock,
         private readonly float $interval = 1.0,
         private readonly float $driftThreshold = 3.0,
         private readonly int $alarmSeconds = 5,
         private readonly bool $signalsAvailable = true,
         ?\Closure $monotonic = null,
     ) {
-        $this->log = DiagnosticLog::forRoot($rootDir, 'freeze');
+        $this->log = DiagnosticLog::forRoot($rootDir, 'freeze', $clock);
         $this->monotonic = $monotonic ?? static fn (): float => hrtime(as_number: true) / 1_000_000_000;
     }
 
@@ -90,7 +92,7 @@ final class FreezeWatchdog
         if (null !== $this->lastBeat) {
             $gap = $beat - $this->lastBeat;
             if ($gap > $this->driftThreshold) {
-                $this->log->append(\sprintf('%s loop stalled for %.2fs (recovered)', $this->clock->now()->format('Y-m-d H:i:s'), $gap));
+                $this->log->append(\sprintf('loop stalled for %.2fs (recovered)', $gap));
             }
         }
         $this->lastBeat = $beat;
@@ -105,7 +107,7 @@ final class FreezeWatchdog
         // The loop missed $alarmSeconds of heartbeats: it is blocked right now.
         // The async signal interrupted the blocked call — capture where.
         $trace = new \Exception()->getTraceAsString();
-        $this->log->append(\sprintf("%s loop blocked \u{2265} %ds, backtrace:\n%s", $this->clock->now()->format('Y-m-d H:i:s'), $this->alarmSeconds, $trace));
+        $this->log->append(\sprintf("loop blocked \u{2265} %ds, backtrace:\n%s", $this->alarmSeconds, $trace));
         if ($this->signalsAvailable) {
             pcntl_alarm($this->alarmSeconds);
         }

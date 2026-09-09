@@ -1,5 +1,24 @@
 # Troubleshooting
 
+## The app crashed, or flashed "Internal error"
+
+Porta writes the trace to **`.porta/error.log`** in the project root and keeps
+running: one throwing loop callback must not take the session's unsaved buffers
+with it. A crash that kills the process before the loop starts is appended
+there too, by `porta` itself.
+
+**Every entry begins with its date**, `YYYY-MM-DD HH:MM:SS`, followed by the
+exception class and message; the stack frames after it are unstamped, so one
+entry is one stamped line plus its trace. Count crashes with `grep -c '^20'`
+and read the newest with `tail`. The stamp matters more than it looks: a
+repeating fault writes byte-identical entries every time, and the file's mtime
+dates only the newest of them — without a date there is no way to tell a crash
+from this morning apart from one a fix closed weeks ago.
+
+The file is capped (256 KB) and starts over rather than growing without end, so
+a fault that fires every frame cannot fill the disk. `freeze.log`, `perf.log`
+and `dap.log` share the sink and the convention.
+
 ## The app appears frozen (no input, screen stuck)
 
 Porta runs everything — UI, LSP, git, terminals — on one event loop. A frozen

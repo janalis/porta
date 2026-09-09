@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Support;
 
+use Psr\Clock\ClockInterface;
+use Symfony\Component\Clock\NativeClock;
+
 /**
  * Best-effort append-only diagnostic file with a size cap: the shared sink
  * for evidence that must survive a session (freeze.log, error.log, dap.log).
@@ -11,6 +14,19 @@ namespace Porta\Support;
  * diagnosing — and starts the file over once it outgrows the cap, so a
  * repeating fault (a permanently hung loop re-alarming every few seconds)
  * cannot grow it until the disk ends.
+ *
+ * Every entry is stamped here rather than by its channel. The stamp is what
+ * makes an entry EVIDENCE: without one there is no way to tell a crash from
+ * this morning apart from one a fix already closed weeks ago, and the file
+ * offers no other clue — a repeating fault writes the same bytes every time,
+ * and the file's mtime dates only the newest of them. That is not
+ * hypothetical. `error.log` here held twenty-one identical traces and no
+ * dates; the only thing that eventually placed them in time was a test
+ * docblock that happened to quote their count.
+ *
+ * Stamping the FIRST line only, so a multi-line trace stays one entry: the
+ * lines after it are the trace's own, and prefixing those would corrupt the
+ * shape a reader (or `grep '^2'`) uses to count entries.
  */
 final class DiagnosticLog
 {
@@ -20,12 +36,13 @@ final class DiagnosticLog
     public function __construct(
         private readonly string $path,
         private readonly int $maxBytes = self::MAX_BYTES,
+        private readonly ClockInterface $clock = new NativeClock(),
     ) {}
 
     /** The channel's log under $rootDir's `.porta/` directory — the shared naming convention for error/dap/freeze logs. */
-    public static function forRoot(string $rootDir, string $channel): self
+    public static function forRoot(string $rootDir, string $channel, ClockInterface $clock = new NativeClock()): self
     {
-        return new self($rootDir.'/.porta/'.$channel.'.log');
+        return new self($rootDir.'/.porta/'.$channel.'.log', clock: $clock);
     }
 
     public function path(): string
@@ -33,9 +50,10 @@ final class DiagnosticLog
         return $this->path;
     }
 
-    /** Append one entry, creating the parent directory on first use. */
+    /** Append one entry under the current time, creating the parent directory on first use. */
     public function append(string $entry): void
     {
+        $entry = $this->clock->now()->format('Y-m-d H:i:s').' '.$entry;
         set_error_handler(static fn (): bool => true);
         try {
             $dir = \dirname($this->path);

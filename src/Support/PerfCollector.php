@@ -87,7 +87,7 @@ final class PerfCollector
         ?\Closure $loadAvg = null,
         private readonly ?BootTrace $bootTrace = null,
     ) {
-        $this->log = DiagnosticLog::forRoot($rootDir, 'perf');
+        $this->log = DiagnosticLog::forRoot($rootDir, 'perf', $clock);
         // mago's sys_getloadavg() stub returns an untyped array, so its element
         // is `mixed`. Narrowed rather than cast: is_numeric() is a branch the
         // analyzer can follow, where `(float) $mixed` is not.
@@ -154,11 +154,7 @@ final class PerfCollector
             // because only the paint path knows when the first frame landed.
             $this->bootLogged = true;
             $this->bootTrace->mark('firstPaint');
-            $this->log->append(\sprintf(
-                '%s %s',
-                $this->clock->now()->format('Y-m-d H:i:s'),
-                $this->bootTrace->line(),
-            ));
+            $this->log->append($this->bootTrace->line());
         }
         ++$this->paints;
         $total = $renderSeconds + $writeSeconds;
@@ -172,8 +168,7 @@ final class PerfCollector
             // render-heavy = the widget tree, write-heavy = the tty, both tiny
             // while the wall clock stalled = the machine's scheduler.
             $this->log->append(\sprintf(
-                '%s slow-paint render=%.0fms write=%.0fms pendingBytes=%d load=%.1f',
-                $this->clock->now()->format('Y-m-d H:i:s'),
+                'slow-paint render=%.0fms write=%.0fms pendingBytes=%d load=%.1f',
                 1000 * $renderSeconds,
                 1000 * $writeSeconds,
                 null !== $this->pendingBytes ? (int) ($this->pendingBytes)() : 0,
@@ -233,8 +228,7 @@ final class PerfCollector
             return;
         }
         $this->log->append(\sprintf(
-            '%s in=%d wheel=%d passes=%d paints=%d paceSkip=%d capSkip=%d coalesced=%d gapMs p50=%s p95=%s max=%s paintMs p50=%s p95=%s busy=%d renderMs p50=%s p95=%s writeMs p50=%s p95=%s edMs p50=%s p95=%s hlFull=%d hlSplice=%d pend=%d load=%.1f',
-            $this->clock->now()->format('Y-m-d H:i:s'),
+            'in=%d wheel=%d passes=%d paints=%d paceSkip=%d capSkip=%d coalesced=%d gapMs p50=%s p95=%s max=%s paintMs p50=%s p95=%s busy=%d renderMs p50=%s p95=%s writeMs p50=%s p95=%s edMs p50=%s p95=%s hlFull=%d hlSplice=%d pend=%d load=%.1f',
             $this->inputs,
             $this->wheels,
             $this->passes,

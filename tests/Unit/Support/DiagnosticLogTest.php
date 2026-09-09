@@ -7,9 +7,18 @@ namespace Porta\Tests\Unit\Support;
 use PHPUnit\Framework\TestCase;
 use Porta\Support\DiagnosticLog;
 use Porta\Tests\Support\TempProject;
+use Symfony\Component\Clock\MockClock;
 
 final class DiagnosticLogTest extends TestCase
 {
+    /** Every entry carries one, so every test needs a clock it can predict. */
+    private const string STAMP = '2026-09-09 08:07:00';
+
+    private function log(string $path, int $maxBytes = DiagnosticLog::MAX_BYTES): DiagnosticLog
+    {
+        return new DiagnosticLog($path, $maxBytes, new MockClock(self::STAMP));
+    }
+
     public function testForRootBuildsThePortaChannelPath(): void
     {
         $log = DiagnosticLog::forRoot('/tmp/proj', 'error');
@@ -20,40 +29,84 @@ final class DiagnosticLogTest extends TestCase
     public function testAppendCreatesTheDirectoryAndAppendsLines(): void
     {
         $project = new TempProject();
-        $log = new DiagnosticLog($project->dir.'/.porta/diag.log');
+        $log = $this->log($project->dir.'/.porta/diag.log');
 
         $log->append('first');
         $log->append('second');
 
-        $this->assertSame("first\nsecond\n", file_get_contents($log->path()));
+        $this->assertSame(self::STAMP." first\n".self::STAMP." second\n", file_get_contents($log->path()));
+    }
+
+    /**
+     * The reason the stamp exists at all.
+     *
+     * A repeating fault writes identical bytes every time, so an unstamped log
+     * cannot say whether its entries are from this morning or from before the
+     * fix that closed them — and the file's mtime dates only the newest. This
+     * repo's `error.log` held twenty-one byte-identical traces and nothing that
+     * placed any of them in time.
+     */
+    public function testEachEntryIsDated(): void
+    {
+        $project = new TempProject();
+        $clock = new MockClock('2026-09-05 15:39:00');
+        $log = new DiagnosticLog($project->dir.'/.porta/diag.log', clock: $clock);
+
+        $log->append('RenderException: the same crash');
+        $clock->modify('+3 days');
+        $log->append('RenderException: the same crash');
+
+        $this->assertSame(
+            "2026-09-05 15:39:00 RenderException: the same crash\n2026-09-08 15:39:00 RenderException: the same crash\n",
+            file_get_contents($log->path()),
+            'two identical faults, told apart by nothing but their stamps',
+        );
+    }
+
+    /**
+     * A stack trace is ONE entry, however many lines it spans: stamping its
+     * continuation lines would prefix the trace's own frames, and a reader
+     * counting entries with `grep '^2'` would count frames instead.
+     */
+    public function testAMultiLineTraceIsStampedOnceOnItsFirstLine(): void
+    {
+        $project = new TempProject();
+        $log = $this->log($project->dir.'/.porta/diag.log');
+
+        $log->append("RuntimeException: boom\n#0 /app/src/A.php(1)\n#1 {main}");
+
+        $this->assertSame(
+            self::STAMP." RuntimeException: boom\n#0 /app/src/A.php(1)\n#1 {main}\n",
+            file_get_contents($log->path()),
+        );
     }
 
     public function testAnOversizedFileStartsOverInsteadOfGrowing(): void
     {
         $project = new TempProject();
-        $log = new DiagnosticLog($project->dir.'/.porta/diag.log', maxBytes: 8);
+        $log = $this->log($project->dir.'/.porta/diag.log', maxBytes: 8);
 
-        $log->append('0123456789'); // 11 bytes on disk — past the cap
+        $log->append('0123456789'); // stamp + 11 bytes on disk — past the cap
         $log->append('fresh');
 
-        $this->assertSame("fresh\n", file_get_contents($log->path()), 'the oversized file was started over, not appended to');
+        $this->assertSame(self::STAMP." fresh\n", file_get_contents($log->path()), 'the oversized file was started over, not appended to');
     }
 
     public function testAtTheCapItStillAppends(): void
     {
         $project = new TempProject();
-        $log = new DiagnosticLog($project->dir.'/.porta/diag.log', maxBytes: 5);
+        $log = $this->log($project->dir.'/.porta/diag.log', maxBytes: 25);
 
-        $log->append('0123'); // exactly 5 bytes on disk — at the cap, not past it
+        $log->append('0123'); // stamp + space + 4 + newline = exactly 25 bytes — at the cap, not past it
         $log->append('456');
 
-        $this->assertSame("0123\n456\n", file_get_contents($log->path()));
+        $this->assertSame(self::STAMP." 0123\n".self::STAMP." 456\n", file_get_contents($log->path()));
     }
 
     public function testAnUnwritableLocationStaysSilent(): void
     {
         $project = new TempProject(['blocker' => 'a regular file where the log dir should go']);
-        $log = new DiagnosticLog($project->path('blocker').'/.porta/diag.log');
+        $log = $this->log($project->path('blocker').'/.porta/diag.log');
 
         $log->append('lost'); // the parent is a file: nothing to create, nothing thrown
 
@@ -70,7 +123,7 @@ final class DiagnosticLogTest extends TestCase
     {
         $project = new TempProject();
         chmod($project->dir, permissions: 0o555); // exists, but mkdir() inside it fails
-        $log = new DiagnosticLog($project->dir.'/.porta/diag.log');
+        $log = $this->log($project->dir.'/.porta/diag.log');
 
         try {
             $log->append('lost');
@@ -87,7 +140,7 @@ final class DiagnosticLogTest extends TestCase
         $project = new TempProject();
         mkdir($project->dir.'/.porta', permissions: 0o777, recursive: true);
         chmod($project->dir.'/.porta', permissions: 0o555); // exists, but is not writable
-        $log = new DiagnosticLog($project->dir.'/.porta/diag.log');
+        $log = $this->log($project->dir.'/.porta/diag.log');
 
         try {
             $log->append('lost');
