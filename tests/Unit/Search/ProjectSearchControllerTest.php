@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Search;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
+use Porta\Editor\Document;
 use Porta\Search\ProjectSearch;
 use Porta\Search\ProjectSearchController;
 use Porta\Search\SearchOptions;
@@ -103,6 +104,99 @@ final class ProjectSearchControllerTest extends TestCase
         $modal = $this->modal();
         $this->assertStringContainsString('Find in Files', $modal);
         $this->assertStringContainsString('Scope: Whole Project', $modal);
+    }
+
+    /**
+     * `Module` means a different search from one buffer to the next, and has a
+     * fallback that means the OPPOSITE of what it promises: with no
+     * composer.json above the file it is the whole project. In a repo whose
+     * packages live under `plugins/`, editing anything in `src/` gets that
+     * fallback — and the selector said `Module` either way.
+     */
+    public function testTheModuleScopeSaysWhichModuleItLandedOn(): void
+    {
+        $project = new TempProject([
+            'composer.json' => '{}',
+            'plugins/git/composer.json' => '{}',
+            'plugins/git/src/B.php' => "<?php\n",
+        ]);
+        $controller = $this->controller($project->dir);
+        $this->showFile($project, 'plugins/git/src/B.php');
+
+        $controller->open();
+
+        $this->assertSame('Module (plugins/git)', $this->scopeLabel(4));
+    }
+
+    /** The fallback, said out loud: nothing above this file is a package, so this is everything. */
+    public function testTheModuleScopeAdmitsWhenItIsTheWholeProject(): void
+    {
+        $project = new TempProject(['composer.json' => '{}', 'src/A.php' => "<?php\n"]);
+        $controller = $this->controller($project->dir);
+        $this->showFile($project, 'src/A.php');
+
+        $controller->open();
+
+        $this->assertSame('Module (Whole Project)', $this->scopeLabel(4));
+    }
+
+    /** Directory is relative to the buffer too, and never said which one. */
+    public function testTheDirectoryScopeNamesTheDirectory(): void
+    {
+        $project = new TempProject(['src/Deep/A.php' => "<?php\n"]);
+        $controller = $this->controller($project->dir);
+        $this->showFile($project, 'src/Deep/A.php');
+
+        $controller->open();
+
+        $this->assertSame('Directory (src/Deep)', $this->scopeLabel(1));
+    }
+
+    /**
+     * With nothing open, Open Files matches nothing at all — and a search that
+     * returns no results because its scope was empty looks exactly like one
+     * that searched properly and found none.
+     */
+    public function testOpenFilesCarriesItsCountIncludingZero(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $controller = $this->controller($project->dir);
+
+        $controller->open();
+        $this->assertSame('Open Files (0)', $this->scopeLabel(3), 'empty, and it says so');
+
+        $this->buffers->open($project->path('src/A.php'), "<?php\n");
+        $controller->open();
+
+        $this->assertSame('Open Files (1)', $this->scopeLabel(3));
+    }
+
+    /** Whole Project and Current File name themselves; repeating the path back would be noise. */
+    public function testTheScopesThatNameThemselvesAreLeftAlone(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $controller = $this->controller($project->dir);
+        $this->showFile($project, 'src/A.php');
+
+        $controller->open();
+
+        $this->assertSame('Whole Project', $this->scopeLabel(0));
+        $this->assertSame('Current File', $this->scopeLabel(2));
+    }
+
+    /** Make $relative the editor's active file, which is what Module and Directory resolve against. */
+    private function showFile(TempProject $project, string $relative): void
+    {
+        $this->editor->showDocument($project->path($relative), new Document("<?php\n"));
+    }
+
+    /** The Alt+S choice label the controller handed the modal at index $index. */
+    private function scopeLabel(int $index): string
+    {
+        /** @var list<string> $labels */
+        $labels = Probe::get($this->editor->findModal(), 'scopeLabels');
+
+        return $labels[$index] ?? '';
     }
 
     public function testOpenInFolderPreselectsTheFolderScope(): void

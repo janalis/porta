@@ -170,7 +170,37 @@ final class ProjectSearchController
     /** @return list<string> the choice labels shown in the panel's Alt+S selector */
     private function scopeLabels(): array
     {
-        return array_map(fn (ScopeChoice $choice): string => null !== $choice->kind ? $this->translator->trans($choice->label) : $choice->label, $this->scopeChoices);
+        return array_map(fn (ScopeChoice $choice): string => null !== $choice->kind ? $this->qualified($choice->kind) : $choice->label, $this->scopeChoices);
+    }
+
+    /**
+     * A built-in kind's label, saying where it actually lands right now.
+     *
+     * `Module` and `Directory` are relative to the file you happen to be in,
+     * so the same word means a different search from one buffer to the next —
+     * and `Module` has a fallback that means the OPPOSITE of what it promises:
+     * with no composer.json above the file it is the whole project. In a repo
+     * whose packages live under `plugins/`, editing anything in `src/` gets
+     * that fallback, and nothing on screen said so.
+     *
+     * `Open Files` gets its count for the same reason in reverse: with nothing
+     * open it matches nothing at all, and a search that returns no results
+     * because its scope was empty looks exactly like one that found none.
+     */
+    private function qualified(ScopeKind $kind): string
+    {
+        $label = $this->translator->trans($kind->label());
+        // Project and Current File name themselves exactly; anything more
+        // would be repeating the label back at the user.
+        if (ScopeKind::Project === $kind || ScopeKind::CurrentFile === $kind) {
+            return $label;
+        }
+        $paths = $this->scopes->resolve($kind);
+        if (ScopeKind::OpenFiles === $kind) {
+            return $label.' ('.\count($paths).')';
+        }
+
+        return $label.' ('.(['.'] === $paths ? $this->translator->trans('Whole Project') : implode(', ', $paths)).')';
     }
 
     /**

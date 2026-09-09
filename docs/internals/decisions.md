@@ -4765,3 +4765,38 @@ reorders a catalog TARGET, and the gate does catch that.
 Japanese needed one real change to pass at 60: `%count% 件のアクション` became
 `%count% 件`, which is idiomatic and fourteen columns shorter. Every locale now
 closes `Ctrl+F` by column 55, comfortably inside the narrowest supported width.
+
+## "Module" that quietly means everything (2026-09-09)
+
+`search-prefs.json` on this machine says `"scope": "module"` — the user's
+standing Find-in-Files scope. What `Module` resolves to is the nearest ancestor
+of the current file holding a `composer.json`, **or the whole project when
+there is none**, and the selector said `Module` either way.
+
+In this repository that fallback is the common case, not the edge one. The
+packages live under `plugins/`, so editing anything in `src/` gets it: the
+scope reads `Module` and searches everything. Editing
+`plugins/git/src/Widget/…` gets `plugins/git`. Same word, two completely
+different searches, and no way to tell which one is about to run.
+
+The built-in labels say where they land now:
+
+    Module (plugins/git)      Module (Whole Project)      Directory (src/Deep)
+    Open Files (3)            Open Files (0)
+
+`Whole Project` and `Current File` are left alone — they name themselves
+exactly, and appending the path would be repeating the label back.
+
+`Open Files (0)` is the same defect from the other side: with nothing open that
+scope matches nothing at all, and a search returning no results because its
+scope was empty looks exactly like one that searched properly and found none.
+
+Reusing the existing `Whole Project` id rather than minting a new "whole
+project" string: it is already in all seven catalogs, and one more literal
+would need `en` plus six targets in the same commit for a parenthetical.
+
+Safe by construction on the persistence side — `search-prefs.json` stores the
+KIND and the selector index comes from `array_search($kind, BUILT_INS)`, so the
+label text is display-only and could not shift a saved choice. The modal's box
+clamps at 80 columns and the label elides inside it, so a deep package path
+widens the modal at most to that.
