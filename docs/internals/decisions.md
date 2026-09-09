@@ -4712,3 +4712,56 @@ and a middle cut moves every column after it while leaving the width the old
 filter compared still plausible — a hit region that answers for the wrong cell
 is worse than none. Mutation-checked, along with the floor, the half-row cap
 and the elision itself.
+
+## The sweep, and what it found on its first run (2026-09-09)
+
+Three defects in one session shared a shape: a width chosen against the English
+screen, and content that later grew past it. The nav's floor was 14 while
+French spells Keybindings `Raccourcis clavier` (19). The keybindings header
+lost `Ctrl+F to filter` when a fourth hint went in. The status bar dropped the
+FILE NAME at 100 columns in English and 140 in German. Each was found by
+rendering a screen and looking at it, which is not a thing that happens on
+every commit.
+
+`ChromeSurvivesEveryLocaleTest` does the looking: four chrome surfaces, all
+seven shipped locales, six widths from 60 (below `COLLAPSE_BELOW`, where the
+sidebar folds and the IDE is still meant to work) to 140. 422 assertions in
+5.4 seconds.
+
+**The assertions are locale-INDEPENDENT on purpose.** Comparing against an
+English string is the assumption under test, so they ask structural questions
+instead — is the element still there, and if it did not fit, does the row say
+so. Menu titles are read off the widget itself. `Ctrl+F` is Latin in every
+catalog. The fixture file is named so its tail is unmistakable.
+
+The rule the whole thing encodes: **a surface may truncate; it may not silently
+drop.**
+
+### It found a fourth on its first run
+
+At 60 columns the German and French menu bars end at Ansicht / Affichage, and
+the row read as though Hilfe / Aide did not exist. They were never
+unreachable — `menu_left`/`menu_right` cycle the whole list, not the drawn part
+— so what was missing was any sign the row had been cut. It carries the
+ellipsis now, and the mark is paid for out of the TITLES: a row filled to its
+own edge has nowhere left to say it was cut, and taking the column from the row
+instead renders 13 columns into a 12-column pane, which is the over-wide line
+that garbles whatever sits beneath it.
+
+### And two things the sweep corrected about itself
+
+The first version rendered the settings nav through a narrow `RenderContext`
+and asserted no row was elided. It passed for the wrong reason: the widget
+renders at `min(its own width, the context)`, so a bare context measures the
+default 22 and says nothing about the floor. It calls `setWidth()` now, and
+asserts the width took.
+
+The first attempt to prove the header assertion could fail mutated the English
+source string in the widget — which changed the trans ID, missed the catalog
+entirely, and made every locale render the English header. A mutation that
+breaks the lookup is not a mutation of the thing under test. The honest one
+reorders a catalog TARGET, and the gate does catch that.
+
+Japanese needed one real change to pass at 60: `%count% 件のアクション` became
+`%count% 件`, which is idiomatic and fourteen columns shorter. Every locale now
+closes `Ctrl+F` by column 55, comfortably inside the narrowest supported width.

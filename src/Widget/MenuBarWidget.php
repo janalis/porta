@@ -8,6 +8,7 @@ use Porta\Container\AsChromeRoot;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Support\IntMath;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\BarChromeStyle;
@@ -131,15 +132,26 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
 
     private function renderTitleRow(int $columns): string
     {
+        // Titles that do not fit are dropped, and a dropped title used to
+        // leave nothing behind: at 60 columns the German and French bars end
+        // at Ansicht / Affichage, and the row reads as though Hilfe / Aide do
+        // not exist. They are still reachable — menu_left/menu_right cycle the
+        // whole list, not the drawn part — so what was missing is the row
+        // saying it was cut, the way every other cut in this UI does.
+        $shown = $this->fittingTitles($columns);
+        $mark = '';
+        if ($shown < \count($this->menus)) {
+            // A column held back for the mark, which may cost one more title:
+            // a row filled to its edge cannot say that it was cut.
+            $mark = Glyphs::ELLIPSIS;
+            $shown = $this->fittingTitles($columns - mb_strwidth($mark));
+        }
+
         $line = '';
         $used = 0;
         $this->titleLayout = [];
-        foreach ($this->menus as $i => $menu) {
+        foreach (\array_slice($this->menus, offset: 0, length: $shown, preserve_keys: true) as $i => $menu) {
             $label = ' '.$menu->title.' ';
-            $width = mb_strwidth($label);
-            if (($used + $width) > $columns) {
-                break; // narrow pane: drop titles that would overflow the row
-            }
             $active = $this->open && $i === $this->openIndex;
             $hovered = !$this->open && $i === $this->hoveredIndex;
             // Menu titles are chrome-bar items: open = active, else hovered, else
@@ -147,11 +159,28 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             // like a tab. Only the rest background differs: titles sit on the
             // HeaderBar strip, not the tabs' Toolbar.
             $line .= BarChromeStyle::of($this->styles, TabState::of($active, $hovered), Role::HeaderBar)->apply($label);
-            $this->titleLayout[] = ['index' => $i, 'start' => $used, 'width' => $width];
-            $used += $width;
+            $this->titleLayout[] = ['index' => $i, 'start' => $used, 'width' => mb_strwidth($label)];
+            $used += mb_strwidth($label);
+        }
+        $pad = max(0, $columns - $used - mb_strwidth($mark));
+
+        return $line.$this->styles->of(Role::HeaderBar)->apply(str_repeat(' ', $pad).$mark);
+    }
+
+    /** How many titles fit in $columns, in order. */
+    private function fittingTitles(int $columns): int
+    {
+        $used = 0;
+        $count = 0;
+        foreach ($this->menus as $menu) {
+            $used += mb_strwidth(' '.$menu->title.' ');
+            if ($used > $columns) {
+                break;
+            }
+            ++$count;
         }
 
-        return $line.$this->styles->of(Role::HeaderBar)->apply(str_repeat(' ', max(0, $columns - $used)));
+        return $count;
     }
 
     /** Natural width of the open menu's dropdown panel (unclamped; caller clamps to fit). */

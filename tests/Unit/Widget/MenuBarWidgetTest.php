@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget;
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\RendersExactWidth;
 use Porta\Tests\Support\RendersWidget;
+use Porta\Ui\Glyphs;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\Menu\MenuItem;
@@ -58,6 +59,70 @@ final class MenuBarWidgetTest extends TestCase
         $plain = $this->plain($rows);
         $this->assertStringContainsString('File', $plain);
         $this->assertStringContainsString('Edit', $plain);
+    }
+
+    /**
+     * A title that does not fit is dropped — the row is one line — but the row
+     * has to say so. At 60 columns the German bar ends at Ansicht and used to
+     * read as though Hilfe did not exist; the keyboard still reached it
+     * (menu_left/menu_right cycle the whole list), so what was missing was any
+     * sign that the row had been cut.
+     */
+    public function testANarrowRowSaysThatItDroppedTitles(): void
+    {
+        $bar = $this->bar();
+
+        $wide = $this->plain($bar->render(new RenderContext(60, 24)));
+        $this->assertStringNotContainsString(Glyphs::ELLIPSIS, $wide, 'nothing was cut, so nothing is marked');
+
+        $rows = $bar->render(new RenderContext(9, 24));
+        $narrow = $this->plain($rows);
+
+        $this->assertExactWidth($rows, 9, 'the mark is inside the row, not beyond it');
+        $this->assertStringContainsString('File', $narrow);
+        $this->assertStringNotContainsString('Edit', $narrow);
+        $this->assertStringEndsWith(Glyphs::ELLIPSIS, rtrim($narrow));
+    }
+
+    /**
+     * The mark costs a column, and that column may cost a title: a row filled
+     * to its own edge has nowhere left to say it was cut.
+     */
+    /**
+     * The mark costs a column, and that column comes out of the TITLES.
+     *
+     * Three six-column titles: at 12 exactly two fit, and because a third is
+     * waiting the row also needs somewhere to say so — which only one of them
+     * can now afford. Take the column from the row instead and the strip
+     * renders 13 wide into a 12-column pane, which is the over-wide line that
+     * garbles whatever is drawn beneath it.
+     */
+    public function testTheMarkTakesItsColumnFromTheTitlesNotFromTheRow(): void
+    {
+        $bar = new MenuBarWidget();
+        $bar->setMenus([new Menu('File', []), new Menu('Edit', []), new Menu('View', [])]);
+
+        $rows = $bar->render(new RenderContext(12, 24));
+        $plain = $this->plain($rows);
+
+        $this->assertExactWidth($rows, 12, 'the mark is inside the row, never beyond it');
+        $this->assertStringContainsString('File', $plain);
+        $this->assertStringNotContainsString('Edit', $plain, 'the second title paid for the mark');
+        $this->assertStringEndsWith(Glyphs::ELLIPSIS, rtrim($plain));
+        $this->assertNull($bar->titleAtColumn(11), 'and the mark is not a click target for the menu it stands for');
+    }
+
+    /** Nothing dropped, nothing marked — and every title still hit-tests. */
+    public function testARowThatFitsExactlyIsNotMarked(): void
+    {
+        $bar = new MenuBarWidget();
+        $bar->setMenus([new Menu('File', []), new Menu('Edit', [])]);
+
+        // ' File ' + ' Edit ' is exactly 12.
+        $rows = $bar->render(new RenderContext(12, 24));
+
+        $this->assertStringNotContainsString(Glyphs::ELLIPSIS, $this->plain($rows));
+        $this->assertSame(1, $bar->titleAtColumn(6), 'the last title is whole and clickable');
     }
 
     public function testOpenStillRendersOnlyTheTitleRow(): void
