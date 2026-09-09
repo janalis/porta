@@ -43,7 +43,7 @@ final class ProjectSearchController
     private array $scope = ['.'];
     /** file mask (e.g. `*.php`, `*.{php,js}`); empty searches all files. */
     private string $mask = '';
-    /** @var list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> */
+    /** @var list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> */
     private array $lastSearchResults = [];
 
     /** True while showResultsPane binds its own tab — suppresses the adopt-on-bind hook. */

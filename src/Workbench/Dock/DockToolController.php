@@ -92,7 +92,7 @@ final class DockToolController
      * the panel prints what it is given.
      *
      * @param  list<mixed>                                                                                      $rows
-     * @return list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}>
+     * @return list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}>
      */
     private function normalize(array $rows): array
     {

@@ -334,7 +334,7 @@ final class BottomDock
      * Open (or reuse-and-refresh, keyed by mode+title) a list tool's tab,
      * bind it into the panel and focus it.
      *
-     * @param list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $rows
+     * @param list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $rows
      */
     public function showList(ResultsPanelMode $mode, string $title, array $rows, ?ResultsPanelFields $fields = null): DockToolTab
     {
@@ -351,7 +351,7 @@ final class BottomDock
      * and focus it. The title is the tool's own and is only used when the tab
      * is created — the id is what identifies it.
      *
-     * @param list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $rows
+     * @param list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $rows
      */
     public function showTool(DockToolHandlers $handlers, string $title, array $rows): DockToolTab
     {
@@ -402,7 +402,7 @@ final class BottomDock
      * no-op when the tab is gone, which is also why $rows is a callable: rows
      * nobody can see are not worth building.
      *
-     * @param callable(): list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $rows
+     * @param callable(): list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $rows
      */
     public function refreshList(ResultsPanelMode $mode, callable $rows): void
     {
@@ -419,7 +419,7 @@ final class BottomDock
      * [] otherwise. The display condition is the point: it is what makes a
      * per-frame reader cost nothing for a tool nobody is looking at.
      *
-     * @return list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}>
+     * @return list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}>
      */
     public function displayedRows(ResultsPanelMode $mode): array
     {

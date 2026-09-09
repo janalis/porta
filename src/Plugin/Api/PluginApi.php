@@ -956,7 +956,7 @@ final class PluginApi
     /**
      * Open (or reuse) this tool's dock tab, show $rows and focus it.
      *
-     * @param list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $rows
+     * @param list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $rows
      * @param ToolRun                                                                                          $run     whether more rows may follow (the tab shows 'searching…')
      */
     public function showList(string $id, array $rows = [], ToolRun $run = ToolRun::Finished): void
@@ -970,7 +970,7 @@ final class PluginApi
      * selection and collapse preserved. A silent no-op once the user has ×'d
      * the tab, which is why an async tool publishes by id and never holds one.
      *
-     * @param list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $rows
+     * @param list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $rows
      */
     public function updateList(string $id, array $rows, ToolRun $run = ToolRun::Finished): void
     {

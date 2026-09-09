@@ -32,11 +32,11 @@ final class ProblemRowsTest extends TestCase
 
         $this->assertSame(
             [
-                ['path' => 'src/A.php', 'line' => 0, 'text' => '✗ top error'],
-                ['path' => 'src/A.php', 'line' => 2, 'text' => '✗ later error'],
-                ['path' => 'src/B.php', 'line' => 0, 'text' => '▲ warn here'],
-                ['path' => 'src/B.php', 'line' => 0, 'text' => '◦ info here'],
-                ['path' => 'src/B.php', 'line' => 0, 'text' => '· hint here'],
+                ['path' => 'src/A.php', 'line' => 0, 'text' => '✗ top error', 'tail' => ''],
+                ['path' => 'src/A.php', 'line' => 2, 'text' => '✗ later error', 'tail' => ''],
+                ['path' => 'src/B.php', 'line' => 0, 'text' => '▲ warn here', 'tail' => ''],
+                ['path' => 'src/B.php', 'line' => 0, 'text' => '◦ info here', 'tail' => ''],
+                ['path' => 'src/B.php', 'line' => 0, 'text' => '· hint here', 'tail' => ''],
             ],
             $rows,
             'sorted by path then line, every severity keeps its own glyph',
@@ -64,8 +64,13 @@ final class ProblemRowsTest extends TestCase
 
         $rows = new ProblemRows($buffers, new ProjectPaths('/p'))->build();
 
-        $this->assertSame('▲ Name "Other" is imported but not used  worse.unused_import', $rows[0]['text']);
-        $this->assertSame('✗ no rule given', $rows[1]['text'], 'and nothing is appended when the source named no rule');
+        // Its own field, not concatenated: the end of a row is the first thing
+        // a narrow panel throws away, and the panel can only protect what it
+        // can see separately from the sentence.
+        $this->assertSame('▲ Name "Other" is imported but not used', $rows[0]['text']);
+        $this->assertSame('worse.unused_import', $rows[0]['tail']);
+        $this->assertSame('✗ no rule given', $rows[1]['text'], 'and nothing rides along when the source named no rule');
+        $this->assertSame('', $rows[1]['tail']);
     }
 
     public function testANUMERICRuleIsShownToo(): void
@@ -76,6 +81,8 @@ final class ProblemRowsTest extends TestCase
         $buffer = $buffers->open('/p/src/A.php', "<?php\n");
         $buffer->diagnostics = [0 => [['severity' => 1, 'message' => 'boom', 'col' => 0, 'endCol' => 1, 'code' => 1005]]];
 
-        $this->assertSame('✗ boom  1005', new ProblemRows($buffers, new ProjectPaths('/p'))->build()[0]['text']);
+        // Cast where it is now observable: the field is a string, so a
+        // numeric code has to arrive as text rather than as an int.
+        $this->assertSame('1005', new ProblemRows($buffers, new ProjectPaths('/p'))->build()[0]['tail']);
     }
 }

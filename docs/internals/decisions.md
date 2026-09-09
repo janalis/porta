@@ -4800,3 +4800,39 @@ KIND and the selector index comes from `array_search($kind, BUILT_INS)`, so the
 label text is display-only and could not shift a saved choice. The modal's box
 clamps at 80 columns and the label elides inside it, so a deep package path
 widens the modal at most to that.
+
+## The rule column was the first thing cut (2026-09-10)
+
+`483b8999` put the rule that fired at the END of a Problems row, and
+`d24e1135` wrote down why: *"At the end rather than in front, because the rule
+is what you search for to suppress it or to tell two identically-worded
+findings apart; the sentence is what you read the row for."*
+
+Both true. But the end of a row is the first thing a narrow panel throws away,
+and the row is `path:line  message  rule` — so a realistic mago finding loses
+it at 100 columns:
+
+    ● Unused import: this `use` statement imports a symbol that is never refe…
+
+The rule fails exactly where the docs say it earns its keep: **long messages
+are the ones where a rule name is the only thing telling two findings apart.**
+
+The placement was never the problem, so it has not changed. The rule travels as
+its own `tail` field instead of concatenated onto the message, and the panel
+reserves its width and elides the SENTENCE. Below a 24-column floor for the
+message the row goes back to the ordinary whole-row cut — a rule name with no
+sentence beside it names nothing anyone could act on.
+
+### The shape this exposed
+
+`array{path: string, line: int, text: string, ranges?: …}` is written out by
+hand in **eighteen files**. Adding one optional key meant editing fourteen
+declarations across eight of them before the analyzer went quiet, and the only
+thing keeping them in agreement is that somebody notices.
+
+Every other row in this codebase that travels between subsystems is an object —
+`DisplayRow`, `SearchHit`, `KeybindingRow`. This one is a raw array because it
+started as a grep result and grew consumers. Not refactored here: it is a
+mechanical change across eighteen files and a defect fix should not carry one.
+Recorded so the next person to widen this shape knows it is the third time, and
+that the fix is a small readonly class, not a nineteenth copy of the docblock.

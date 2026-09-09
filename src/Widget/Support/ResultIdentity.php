@@ -12,7 +12,7 @@ namespace Porta\Widget\Support;
  */
 final class ResultIdentity
 {
-    /** @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result */
+    /** @param array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>} $result */
     public static function key(array $result): string
     {
         return $result['path']."\0".$result['line'];
@@ -22,7 +22,7 @@ final class ResultIdentity
      * Re-key positional (matchIndex) context state by identity, dropping
      * entries whose index no longer resolves to a result.
      *
-     * @param list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $results
+     * @param list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $results
      * @param array<int, bool>                                     $expanded
      * @param array<int, list<array{line: int, text: string}>>     $cache
      *
@@ -54,7 +54,7 @@ final class ResultIdentity
      * Map identity-keyed context state back to positions in $results,
      * dropping identities that no longer match any result.
      *
-     * @param list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $results
+     * @param list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $results
      * @param array<string, bool>                                  $expanded
      * @param array<string, list<array{line: int, text: string}>>  $cache
      *
@@ -91,7 +91,7 @@ final class ResultIdentity
      * (empty paths are location-less — the logs — and stay null so a refresh
      * re-selects newest), the group key for a header, nulls otherwise.
      *
-     * @param list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $results
+     * @param list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $results
      *
      * @return array{?string, ?int, ?string} [path, line, groupKey]
      */

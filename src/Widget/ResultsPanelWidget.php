@@ -64,7 +64,14 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     private readonly ListSelection $list;
     private bool $searching = false;
 
-    /** @var list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> ranges (search mode only) are display-column match spans */
+    /**
+     * The least room a message keeps before the rule name stops being
+     * protected. Below this the row would be mostly rule and no sentence,
+     * which reads as a row about nothing.
+     */
+    private const int MESSAGE_FLOOR = 24;
+
+    /** @var list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> ranges (search mode only) are display-column match spans */
     private array $results = [];
     private bool $grouped = false;
     private ResultGrouping $grouping = ResultGrouping::File;
@@ -128,7 +135,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         $this->invalidate();
     }
 
-    /** @param list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $results */
+    /** @param list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $results */
     public function setResults(array $results): void
     {
         $this->results = $results;
@@ -165,7 +172,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
      * the first match — for the newest-first logs that IS the contract: the
      * latest line stays visible on every append.
      *
-     * @param list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> $rows
+     * @param list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $rows
      */
     public function refreshResults(array $rows): void
     {
@@ -625,7 +632,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
      * by file), or `basename:line` (grouped by directory, so files within a
      * directory stay distinguishable).
      *
-     * @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result
+     * @param array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>} $result
      */
     private function groupedLabel(array $result): string
     {
@@ -638,7 +645,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
      * One match row — `path:line  text` when flat, or an indented `line  text`
      * under its file header when grouped — with the match spans highlighted.
      *
-     * @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result
+     * @param array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>} $result
      */
     private function matchLine(array $result, string $bg, int $columns): string
     {
@@ -646,26 +653,59 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
             $indent = $this->matchIndent();
             $label = $this->groupedLabel($result);
             $prefixWidth = mb_strwidth($indent) + mb_strwidth($label) + 2; // indent + label + `  `
-            $text = $indent.$this->styles->of(Role::TabAccent)->apply($label).'  '.$result['text'];
+            $text = $indent.$this->styles->of(Role::TabAccent)->apply($label).'  '.$this->body($result, $prefixWidth, $columns);
 
             return $this->highlightMatch($text, $prefixWidth, $result, $bg, $columns);
         }
         if ('' === $result['path']) {
             // Location-less rows (the log tools): plain text, no path accent.
-            return $this->highlightMatch(' '.$result['text'], 1, $result, $bg, $columns);
+            return $this->highlightMatch(' '.$this->body($result, 1, $columns), 1, $result, $bg, $columns);
         }
         $location = $result['path'].':'.($result['line'] + 1);
         $prefixWidth = 1 + mb_strwidth($location) + 2; // ` ` + `path:line` + `  `
-        $text = ' '.$this->styles->of(Role::TabAccent)->apply($location).'  '.$result['text'];
+        $text = ' '.$this->styles->of(Role::TabAccent)->apply($location).'  '.$this->body($result, $prefixWidth, $columns);
 
         return $this->highlightMatch($text, $prefixWidth, $result, $bg, $columns);
+    }
+
+    /**
+     * A row's text, with any `tail` it declares kept whole.
+     *
+     * The Problems rows carry the rule that fired — `worse.unused_import` —
+     * and it belongs at the END, after the sentence you read the row for.
+     * That put it first in line to be cut: at 100 columns, on exactly the long
+     * messages where a rule name is the only thing telling two findings apart,
+     * it was simply gone. Reserving its width and eliding the SENTENCE keeps
+     * the documented order and the fact.
+     *
+     * Rows with no tail (every search result) come back untouched, so the
+     * highlight spans they carry still line up with the string.
+     *
+     * @param array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>} $result
+     */
+    private function body(array $result, int $prefixWidth, int $columns): string
+    {
+        $tail = $result['tail'] ?? '';
+        if ('' === $tail) {
+            return $result['text'];
+        }
+        // Two columns for the gap the rule already sat behind.
+        $room = $columns - $prefixWidth - mb_strwidth($tail) - 2;
+        // Too narrow to hold both: the sentence wins, and the ordinary
+        // whole-row cut takes the tail as it always did. A rule name alone,
+        // with no message beside it, names nothing you could act on.
+        if ($room < self::MESSAGE_FLOOR) {
+            return $result['text'].'  '.$tail;
+        }
+
+        return AnsiText::truncate($result['text'], $room).'  '.$tail;
     }
 
     /**
      * Truncate a match row to width and highlight each match span, closing with
      * the row bg so the tail keeps its colour.
      *
-     * @param array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>} $result
+     * @param array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>} $result
      */
     private function highlightMatch(string $text, int $prefixWidth, array $result, string $bg, int $columns): string
     {

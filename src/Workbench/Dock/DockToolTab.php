@@ -24,7 +24,7 @@ use Porta\Widget\Support\ResultsViewState;
  */
 final class DockToolTab
 {
-    /** @var list<array{path: string, line: int, text: string, ranges?: list<array{start: int, length: int}>}> */
+    /** @var list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> */
     public array $rows = [];
 
     /** Async work (grep/scan) still in flight for this tab. */

@@ -32,7 +32,13 @@ final readonly class ProblemRows
      * three bundled analyser plugins used to prefix it there by hand, which put
      * it in front of the sentence you were trying to read.
      *
-     * @return list<array{path: string, line: int, text: string}>
+     * It travels as its OWN field rather than concatenated onto the message,
+     * because the end of a row is the first thing a narrow panel throws away —
+     * and at 100 columns it always did, on exactly the long messages where a
+     * rule name is the only thing telling two findings apart. The panel
+     * reserves its width and elides the sentence instead.
+     *
+     * @return list<array{path: string, line: int, text: string, tail: string}>
      */
     public function build(): array
     {
@@ -42,14 +48,16 @@ final readonly class ProblemRows
             foreach ($buffer->diagnostics as $line => $list) {
                 foreach ($list as $diag) {
                     $marker = DiagnosticStyle::glyph($diag['severity']);
-                    // Not cast: the shape says `int|string`, and both compare
-                    // false against '' and concatenate the same. A cast here
-                    // would be a step nothing could observe.
-                    $code = $diag['code'] ?? '';
+                    // Cast now, where it IS observable: the shape says
+                    // `int|string` and the field is a string, so a numeric
+                    // code from a server that sends one has to arrive as text
+                    // rather than as an int the renderer would have to widen.
+                    $code = (string) ($diag['code'] ?? '');
                     $results[] = [
                         'path' => $rel,
                         'line' => $line,
-                        'text' => $marker.' '.$diag['message'].('' === $code ? '' : '  '.$code),
+                        'text' => $marker.' '.$diag['message'],
+                        'tail' => $code,
                     ];
                 }
             }
