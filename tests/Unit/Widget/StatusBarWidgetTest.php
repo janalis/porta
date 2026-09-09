@@ -269,10 +269,90 @@ final class StatusBarWidgetTest extends TestCase
         $status->setProvider(static fn () => ['left' => str_repeat('L', times: 30), 'right' => 'RR']);
         $status->beforeRender();
 
-        // leftMax = max(0, 20 - 2 - 3) = 15 → 14 'L's + the ellipsis.
+        // leftMax = max(0, 20 - 2 - 3) = 15, spent from both ends now: 7 + the
+        // ellipsis + 7. The arithmetic is what this pins; the shape it is spent
+        // in belongs to the elision test below.
         $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(20, 1))[0]);
-        $this->assertStringContainsString(str_repeat('L', times: 14).'…', $plain);
-        $this->assertStringNotContainsString(str_repeat('L', times: 15), $plain);
+        $this->assertStringContainsString(str_repeat('L', times: 7).'…'.str_repeat('L', times: 7), $plain);
+        $this->assertStringNotContainsString(str_repeat('L', times: 8).'…', $plain);
+    }
+
+    /**
+     * The file being edited outranks a legend of keys.
+     *
+     * The right side used to be handed `columns - 3` and the left whatever was
+     * left, so the LEFT was the first thing sacrificed and a static cheat
+     * sheet the last. At 100 columns the file name was gone in English; in
+     * German, where the LSP hint is half again as long, it was gone at 140 —
+     * an ordinary terminal, showing which keys exist instead of which file you
+     * are in.
+     */
+    public function testTheFileNameOutlivesTheKeyLegend(): void
+    {
+        $status = new StatusBarWidget();
+        $legend = '1:1  LSP:keiner (einen PHP-Server in den Einstellungen aktivieren)  Ctrl+S speichern  Ctrl+T Panel  Ctrl+Space vervollständigen  Ctrl+Q beenden';
+        $status->setProvider(static fn (): array => ['left' => 'src/Some/Deep/Namespace/ExampleClass.php', 'right' => $legend]);
+        $status->beforeRender();
+
+        $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(140, 1))[0]);
+
+        // Not the whole path — the floor is 24 columns — but the end of it,
+        // which is the half that says WHICH file. Before, none of it was here.
+        $this->assertStringContainsString('pleClass.php', $plain, 'the file survives');
+        $this->assertStringContainsString('1:1', $plain, 'and so do the facts beside it');
+        $this->assertStringNotContainsString('Ctrl+Q beenden', $plain, 'the legend tail is what yielded');
+        $this->assertSame(140, AnsiUtils::visibleWidth($plain));
+    }
+
+    /**
+     * A path cut from the right names nothing: `src/Some/Deep/…` is every file
+     * in the directory. The budget is spent on both ends instead, so the one
+     * word that identifies the buffer survives the squeeze.
+     */
+    public function testASqueezedPathKeepsItsFileNameNotJustItsPrefix(): void
+    {
+        $status = new StatusBarWidget();
+        $status->setProvider(static fn (): array => ['left' => 'src/Some/Deep/Namespace/ExampleClass.php', 'right' => str_repeat('R', times: 60)]);
+        $status->beforeRender();
+
+        $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(90, 1))[0]);
+
+        $this->assertStringContainsString('Class.php', $plain);
+        $this->assertStringContainsString('src/', $plain, 'and enough of the head to place it');
+    }
+
+    /**
+     * The floor is a floor, not a claim: on a narrow split, spelling the path
+     * in full at the cost of the caret position trades one missing fact for
+     * another, so it never takes more than half the row.
+     */
+    public function testTheLeftFloorNeverTakesMoreThanHalfTheRow(): void
+    {
+        $status = new StatusBarWidget();
+        $status->setProvider(static fn (): array => ['left' => str_repeat('L', times: 40), 'right' => str_repeat('R', times: 40)]);
+        $status->beforeRender();
+
+        $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(30, 1))[0]);
+
+        $this->assertSame(30, AnsiUtils::visibleWidth($plain));
+        $this->assertGreaterThanOrEqual(10, substr_count($plain, needle: 'R'), 'the right keeps its half');
+    }
+
+    /**
+     * A span is an offset into the UNCUT left, and a middle cut moves every
+     * column after it — while leaving the width the old filter compared still
+     * plausible, which is the shape of a hit region that answers for the wrong
+     * cell. None are offered once anything was elided.
+     */
+    public function testNoCellIsClickableOnceTheLeftWasElided(): void
+    {
+        $status = new StatusBarWidget();
+        $span = new StatusMenuSpan(0, 6, static fn (): array => [new MenuItem('Switch', '', static fn () => null)]);
+        $status->setProvider(static fn (): array => ['left' => "\u{e0a0} main  src/Some/Deep/Namespace/ExampleClass.php", 'right' => str_repeat('R', times: 40), 'menus' => [$span]]);
+        $status->beforeRender();
+        $status->render(new RenderContext(60, 1));
+
+        $this->assertNull($status->menuAt(1), 'the branch cell is not offered on a row it can no longer place');
     }
 
     public function testMenuSpanEndingExactlyAtTheLeftWidthBoundaryStillHitTests(): void

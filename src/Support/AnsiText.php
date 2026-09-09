@@ -35,6 +35,38 @@ final class AnsiText
     }
 
     /**
+     * Truncate to $width by cutting the MIDDLE out, keeping both ends.
+     *
+     * For a path, the tail is the part that identifies it: cutting from the
+     * right turns `src/Some/Deep/Namespace/ExampleClass.php` into
+     * `src/Some…`, which names nothing. This gives `src/So…leClass.php`
+     * instead — the same budget spent on both ends.
+     *
+     * Slicing by COLUMN on both sides rather than by character, so a
+     * double-width grapheme cannot make the result one column wider than
+     * asked; and text already inside $width comes back byte-identical, so a
+     * caller can compare the two to learn whether anything was cut.
+     */
+    public static function elideMiddle(string $text, int $width, string $ellipsis = Glyphs::ELLIPSIS): string
+    {
+        $visible = AnsiUtils::visibleWidth($text);
+        $mark = AnsiUtils::visibleWidth($ellipsis);
+        if ($visible <= $width) {
+            return $text;
+        }
+        if ($width <= $mark) {
+            // No room for two ends and a mark between them; the ordinary
+            // tail cut is the only thing that fits, and it says the same.
+            return self::truncate($text, $width, ellipsis: $ellipsis);
+        }
+        // The tail gets the larger half: it carries the filename.
+        $room = $width - $mark;
+        $head = intdiv($room, num2: 2);
+
+        return AnsiUtils::sliceByColumn($text, startCol: 0, length: $head).$ellipsis.AnsiUtils::sliceByColumn($text, startCol: $visible - ($room - $head), length: $room - $head);
+    }
+
+    /**
      * Render a whole line faint: SGR 2 up front, re-armed after every reset
      * that would cancel it (`0`, or intensity's own `22` — checked as whole
      * params, so `1;2`-style lists pass untouched), closed at the end. The

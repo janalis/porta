@@ -4668,3 +4668,47 @@ thirteen. That one is a typo and was fixed with it.
 Not gated: a duplicate SOURCE is legal XLIFF and the loader's last-one-wins is
 sane behaviour, so a test would be asserting a house style rather than a defect.
 Worth knowing it can happen, which is what this paragraph is for.
+
+## The status bar dropped the file, and kept the cheat sheet (2026-09-09)
+
+Rendered the real bar at four widths in three locales and looked at it. In
+English at 100 columns, and in **German at 140**, the row begins:
+
+    |  1:1  LSP:keiner (einen PHP-Server in den Einstellungen aktivieren)  Ctrl+S …|
+
+The file name is not truncated there. It is **gone**. 140 columns is an
+ordinary terminal, and the row is spending its width telling the user which
+keys exist instead of which file they are in.
+
+The cause is an ordering that was right when it was written and is not now:
+
+    $right = AnsiText::truncate($right, max(0, $columns - 3));
+    $leftMax = max(0, $columns - $rightWidth - 3);
+
+The right side takes what it wants and the left gets the remainder — down to
+zero. The comment above it even says so ("the steady-state left (the file path)
+yields as before"). That was fine while `$right` was short; `$right` is now
+pane facts plus a five-item key legend, and translated it is the whole row.
+
+The right's TAIL is that legend, so reserving a floor for the left before
+cutting the right spends the difference on hints nobody needs twice. The floor
+is 24 columns, never more than the left actually has, and never more than half
+the row — on a 40-column split, spelling a path in full at the cost of the
+caret position trades one missing fact for another.
+
+### And the path was cut from the wrong end
+
+Fixing the floor alone would have bought `src/Some…`, which is every file in
+that directory. The left is elided in the MIDDLE now — `src/Some/De…pleClass.php`
+— because it ends with the file's name and begins with the contributed cells,
+so both ends carry and only the directories in between are spare.
+`AnsiText::elideMiddle()` slices by COLUMN on both sides: a double-width
+grapheme landing on either cut must not hand back a row one column wider than
+asked, which is the classic way chrome overflows and garbles the line beneath.
+
+One consequence, taken deliberately: the clickable status cells are withdrawn
+once the left is elided at all. Their spans are offsets into the UNCUT string,
+and a middle cut moves every column after it while leaving the width the old
+filter compared still plausible — a hit region that answers for the wrong cell
+is worse than none. Mutation-checked, along with the floor, the half-row cap
+and the elision itself.

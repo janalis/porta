@@ -35,6 +35,14 @@ final class StatusBarWidget extends AbstractWidget
     /** @var (callable(): array{left: string, right: string, menus?: list<StatusMenuSpan>, rightClicks?: list<StatusClickSpan>})|null */
     private $provider = null;
 
+    /**
+     * The narrowest the left may be squeezed while it still has something to
+     * say — enough for an elided path to keep a directory AND the filename
+     * (`src/Some/De…pleClass.php` is 24). Below this the row is telling the
+     * user which keys exist instead of which file they are in.
+     */
+    private const int LEFT_FLOOR = 24;
+
     private string $lastLeft = '';
     private string $lastRight = '';
     /**
@@ -161,6 +169,18 @@ final class StatusBarWidget extends AbstractWidget
         }
     }
 
+    /**
+     * Columns held back for the left side before the right may take the rest.
+     *
+     * Never more than the left actually has to show, and never more than half
+     * the row — on a 40-column split, starving the caret position to spell a
+     * path in full would trade one missing fact for another.
+     */
+    private function leftFloor(string $left, int $columns): int
+    {
+        return min(AnsiUtils::visibleWidth($left), self::LEFT_FLOOR, intdiv($columns, num2: 2));
+    }
+
     #[\Override]
     public function render(RenderContext $context): array
     {
@@ -185,21 +205,36 @@ final class StatusBarWidget extends AbstractWidget
         // legend used to come out chopped mid-word with nothing to mark it.
         // Clipped click spans fall out of the map below on their own, since
         // that filter reads the width computed from the truncated string.
-        $right = AnsiText::truncate($right, max(0, $columns - 3));
+        //
+        // It yields to the left's floor FIRST, which it did not use to. Giving
+        // it `columns - 3` and handing the left the remainder meant the file
+        // being edited was the first thing sacrificed and a static key legend
+        // the last: at 100 columns the name was gone in English, at 140 in
+        // German. The right's tail IS that legend, so cutting it here spends
+        // the difference on hints nobody needs twice.
+        $right = AnsiText::truncate($right, max(0, $columns - 3 - $this->leftFloor($left, $columns)));
         $rightWidth = AnsiUtils::visibleWidth($right);
         $leftMax = max(0, $columns - $rightWidth - 3);
-        $left = AnsiText::truncate($left, $leftMax);
+        // Elided in the MIDDLE, because the left ends with the file's name and
+        // begins with the contributed cells: a tail cut kept `src/Some…` and
+        // threw away the one word that says which file this is.
+        $whole = $left;
+        $left = AnsiText::elideMiddle($left, $leftMax);
         $leftWidth = AnsiUtils::visibleWidth($left);
 
         // Cells are offset by the one leading space in the row. Only offer a
         // hit region when the whole label is on screen — not while a flash
-        // replaced `left`, nor when truncation clipped it.
-        $this->renderedMenus = null !== $this->flash
-            ? []
-            : array_values(array_map(
-                static fn (StatusMenuSpan $span): StatusMenuSpan => $span->shifted(1),
-                array_filter($this->cellMenus, static fn (StatusMenuSpan $span): bool => $span->to <= $leftWidth),
-            ));
+        // replaced `left`, and not once anything was elided out of it: the
+        // spans are offsets into the UNCUT string, and a middle cut moves
+        // every column after it while leaving the widths that filter would
+        // compare still plausible.
+        $this->renderedMenus =
+            null !== $this->flash || $left !== $whole
+                ? []
+                : array_values(array_map(
+                    static fn (StatusMenuSpan $span): StatusMenuSpan => $span->shifted(1),
+                    array_filter($this->cellMenus, static fn (StatusMenuSpan $span): bool => $span->to <= $leftWidth),
+                ));
 
         $gap = max(1, $columns - $leftWidth - $rightWidth - 2);
         // The right segment starts after the leading space, the left, and the

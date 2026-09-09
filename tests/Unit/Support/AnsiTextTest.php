@@ -11,6 +11,39 @@ use Symfony\Component\Tui\Style\CursorShape;
 
 final class AnsiTextTest extends TestCase
 {
+    /**
+     * A path cut from the right names nothing — `src/Some/Deep/…` is every
+     * file in that directory — so the budget is spent on both ends.
+     */
+    public function testElideMiddleKeepsBothEndsOfAPath(): void
+    {
+        $path = 'src/Some/Deep/Namespace/ExampleClass.php';
+
+        $this->assertSame($path, AnsiText::elideMiddle($path, 40), 'nothing to cut, byte-identical');
+        $this->assertSame('src/Some/De…pleClass.php', AnsiText::elideMiddle($path, 24));
+        $this->assertSame(24, AnsiUtils::visibleWidth(AnsiText::elideMiddle($path, 24)));
+    }
+
+    /** Below the mark's own width there are no two ends to keep, so it degrades to the ordinary cut. */
+    public function testElideMiddleFallsBackWhenThereIsNoRoomForTwoEnds(): void
+    {
+        $this->assertSame('…', AnsiText::elideMiddle('abcdef', 1));
+        $this->assertSame(1, AnsiUtils::visibleWidth(AnsiText::elideMiddle('abcdef', 1)));
+    }
+
+    /**
+     * Sliced by COLUMN on both sides, so a double-width grapheme landing on
+     * either cut cannot hand back a string one column wider than asked — the
+     * classic way a chrome row overflows and garbles the line beneath it.
+     */
+    public function testElideMiddleNeverExceedsTheAskedWidthAcrossWideGraphemes(): void
+    {
+        $wide = str_repeat('漢', times: 12).'end.php';
+        foreach (range(start: 2, end: 30) as $width) {
+            $this->assertLessThanOrEqual($width, AnsiUtils::visibleWidth(AnsiText::elideMiddle($wide, $width)), "width {$width}");
+        }
+    }
+
     public function testTruncateMarksTheCutWithTheVocabularysEllipsis(): void
     {
         // The point of the wrapper: the vendor's own default is '...', so a
