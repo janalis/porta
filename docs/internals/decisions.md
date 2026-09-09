@@ -4085,3 +4085,38 @@ real maximum and must not be raised to fit new code. Split by subject instead �
 the modal says — with the four-helper rig extracted to
 `tests/Support/ComposesFindModal`, because the duplication gate is tree-wide and
 copying `compose()` into the new class is exactly the clone it exists to refuse.
+
+## The filler row nothing measured (2026-09-09)
+
+Third instance of the same shape in one day, found by applying it as a lens
+rather than by reading a screen: **a fixed row in a box sized from something
+else**.
+
+Both picker layouts size themselves from what VARIES — the title, the query,
+the item labels — and both then draw a filler row when there is nothing to
+list, which varies with none of it. `PickerLayout::layoutList` has no minimum
+width at all (`layoutSearch`'s 24 columns is what has been hiding this on the
+other side), so a Run or Branches overlay — three-letter title, short rows —
+sizes to about fifteen columns and the filler is cut to fit:
+
+| locale | message | drawn |
+| --- | --- | --- |
+| en | `no matches` | `no matches` |
+| de | `keine Treffer` | `keine Tref` |
+| fr | `aucune correspondance` | `aucune cor` |
+
+Worse than the `(Al…` case that started the day, because these are truncated
+with `ellipsis: ''`: a German reader sees `keine Tref` with **nothing** saying
+it was cut. Both layouts count the filler now, and only when it will be drawn —
+measuring it always would widen every populated list for a row it is not going
+to show.
+
+`layoutSearch`'s floor seats every translation of `no results` today at 24
+columns. That is luck, not a rule, and the test uses a longer message on
+purpose so the guard does not depend on it staying lucky.
+
+**Left as equivalent:** the `+ 2` in each addition mutated to `+ 1` and
+survived. The row is `' '.$message`, so one column is the leading space and the
+second is the trailing one that matches it — cosmetic symmetry with the item
+rows above, not correctness. Asserting it would pin padding, which
+`infection.json5` warns against in as many words.
