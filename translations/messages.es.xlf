@@ -226,10 +226,6 @@
         <source>Git not available</source>
         <target>Git no disponible</target>
       </trans-unit>
-      <trans-unit id="64">
-        <source>Go to File:</source>
-        <target>Ir al archivo:</target>
-      </trans-unit>
       <trans-unit id="65">
         <source>Indent size</source>
         <target>Tamaño de sangría</target>
@@ -573,14 +569,6 @@
       <trans-unit id="148">
         <source>starting…</source>
         <target>iniciando…</target>
-      </trans-unit>
-      <trans-unit id="149">
-        <source>⏎/F3 next  Shift+F3 prev  Esc</source>
-        <target>⏎/F3 siguiente  Shift+F3 anterior  Esc</target>
-      </trans-unit>
-      <trans-unit id="150">
-        <source>⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Esc</source>
-        <target>⏎/F3 siguiente  Shift+F3 anterior  Tab campo  Alt+R reemplazar  Alt+A todo  Esc</target>
       </trans-unit>
       <trans-unit id="151">
         <source>Accept Completion</source>
@@ -1346,17 +1334,9 @@
         <source>Find in Files…</source>
         <target>Buscar en archivos…</target>
       </trans-unit>
-      <trans-unit id="289">
-        <source>Find in %dir%</source>
-        <target>Buscar en %dir%</target>
-      </trans-unit>
       <trans-unit id="290">
         <source>Replace in Files…</source>
         <target>Reemplazar en archivos…</target>
-      </trans-unit>
-      <trans-unit id="291">
-        <source>Replace in %dir%</source>
-        <target>Reemplazar en %dir%</target>
       </trans-unit>
       <trans-unit id="292">
         <source>Go to Test</source>
@@ -1482,10 +1462,6 @@
         <source>This project</source>
         <target>Este proyecto</target>
       </trans-unit>
-      <trans-unit id="323">
-        <source>Global (all projects)</source>
-        <target>Global (todos los proyectos)</target>
-      </trans-unit>
       <trans-unit id="324">
         <source>Install plugin</source>
         <target>Instalar complemento</target>
@@ -1554,10 +1530,6 @@
         <source>Cannot remove "%name%"</source>
         <target>No se puede quitar «%name%»</target>
       </trans-unit>
-      <trans-unit id="341">
-        <source>Cannot install into %dest%</source>
-        <target>No se puede instalar en %dest%</target>
-      </trans-unit>
       <trans-unit id="344">
         <source>Built-in plugins cannot be removed</source>
         <target>Los complementos integrados no se pueden quitar</target>
@@ -1569,10 +1541,6 @@
       <trans-unit id="346">
         <source>Built-in</source>
         <target>Integrado</target>
-      </trans-unit>
-      <trans-unit id="347">
-        <source>"%name%" has no settings</source>
-        <target>«%name%» no tiene ajustes</target>
       </trans-unit>
       <trans-unit id="348">
         <source>Enabled</source>
@@ -1610,10 +1578,6 @@
         <source>Notifications</source>
         <target>Notificaciones</target>
       </trans-unit>
-      <trans-unit id="357">
-        <source>No notifications yet</source>
-        <target>Aún no hay notificaciones</target>
-      </trans-unit>
       <trans-unit id="358">
         <source>Tab bar position</source>
         <target>Posición de la barra de pestañas</target>
@@ -1621,10 +1585,6 @@
       <trans-unit id="359">
         <source>LSP Server Log</source>
         <target>Registro del servidor LSP</target>
-      </trans-unit>
-      <trans-unit id="360">
-        <source>No LSP server output yet</source>
-        <target>Aún no hay salida del servidor LSP</target>
       </trans-unit>
       <trans-unit id="361">
         <source>Format on save (LSP)</source>
@@ -2126,10 +2086,6 @@
         <source>File History</source>
         <target>Historial del archivo</target>
       </trans-unit>
-      <trans-unit id="486">
-        <source>No file open · press Ctrl+P to open a file</source>
-        <target>Ningún archivo abierto · pulsa Ctrl+P para abrir un archivo</target>
-      </trans-unit>
       <trans-unit id="487">
         <source>(Del exclude · Alt+A replace %count%)</source>
         <target>(Del excluir · Alt+A reemplazar %count%)</target>
@@ -2173,10 +2129,6 @@
       <trans-unit id="497">
         <source>bundled php</source>
         <target>php incluido</target>
-      </trans-unit>
-      <trans-unit id="498">
-        <source>Colours your code; off until enabled</source>
-        <target>Colorea tu código; desactivado hasta habilitarlo</target>
       </trans-unit>
       <trans-unit id="499">
         <source>Completion, go-to-definition and diagnostics</source>
@@ -2345,10 +2297,6 @@
       <trans-unit id="536">
         <source>+/- zoom  0 fit  n/p select  / find  Ctrl+Q quit</source>
         <target>+/- zoom  0 ajustar  n/p seleccionar  Ctrl+Q salir</target>
-      </trans-unit>
-      <trans-unit id="537">
-        <source>Architecture command failed: %error%</source>
-        <target>Falló el comando de arquitectura: %error%</target>
       </trans-unit>
       <trans-unit id="538">
         <source>Architecture command produced no output</source>
@@ -2869,10 +2817,6 @@
       <trans-unit id="668">
         <source>%count% setting|%count% settings</source>
         <target>%count% ajuste|%count% ajustes</target>
-      </trans-unit>
-      <trans-unit id="669">
-        <source>⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings</source>
-        <target>⏎ editar · ←/→ cambiar · r restablecer · Tab paneles · 2 atajos</target>
       </trans-unit>
       <trans-unit id="670">
         <source>⏎ save · Esc cancel</source>

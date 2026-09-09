@@ -226,10 +226,6 @@
         <source>Git not available</source>
         <target>git を利用できません</target>
       </trans-unit>
-      <trans-unit id="64">
-        <source>Go to File:</source>
-        <target>ファイルへ移動:</target>
-      </trans-unit>
       <trans-unit id="65">
         <source>Indent size</source>
         <target>インデント幅</target>
@@ -573,14 +569,6 @@
       <trans-unit id="148">
         <source>starting…</source>
         <target>起動中…</target>
-      </trans-unit>
-      <trans-unit id="149">
-        <source>⏎/F3 next  Shift+F3 prev  Esc</source>
-        <target>⏎/F3 次へ  Shift+F3 前へ  Esc</target>
-      </trans-unit>
-      <trans-unit id="150">
-        <source>⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Esc</source>
-        <target>⏎/F3 次へ  Shift+F3 前へ  Tab フィールド  Alt+R 置換  Alt+A すべて  Esc</target>
       </trans-unit>
       <trans-unit id="151">
         <source>Accept Completion</source>
@@ -1346,17 +1334,9 @@
         <source>Find in Files…</source>
         <target>ファイル内を検索…</target>
       </trans-unit>
-      <trans-unit id="289">
-        <source>Find in %dir%</source>
-        <target>%dir% 内を検索</target>
-      </trans-unit>
       <trans-unit id="290">
         <source>Replace in Files…</source>
         <target>ファイル内を置換…</target>
-      </trans-unit>
-      <trans-unit id="291">
-        <source>Replace in %dir%</source>
-        <target>%dir% 内を置換</target>
       </trans-unit>
       <trans-unit id="292">
         <source>Go to Test</source>
@@ -1482,10 +1462,6 @@
         <source>This project</source>
         <target>このプロジェクト</target>
       </trans-unit>
-      <trans-unit id="323">
-        <source>Global (all projects)</source>
-        <target>グローバル（すべてのプロジェクト）</target>
-      </trans-unit>
       <trans-unit id="324">
         <source>Install plugin</source>
         <target>プラグインをインストール</target>
@@ -1554,10 +1530,6 @@
         <source>Cannot remove "%name%"</source>
         <target>「%name%」を削除できません</target>
       </trans-unit>
-      <trans-unit id="341">
-        <source>Cannot install into %dest%</source>
-        <target>%dest% にインストールできません</target>
-      </trans-unit>
       <trans-unit id="344">
         <source>Built-in plugins cannot be removed</source>
         <target>組み込みプラグインは削除できません</target>
@@ -1569,10 +1541,6 @@
       <trans-unit id="346">
         <source>Built-in</source>
         <target>組み込み</target>
-      </trans-unit>
-      <trans-unit id="347">
-        <source>"%name%" has no settings</source>
-        <target>「%name%」には設定がありません</target>
       </trans-unit>
       <trans-unit id="348">
         <source>Enabled</source>
@@ -1610,10 +1578,6 @@
         <source>Notifications</source>
         <target>通知</target>
       </trans-unit>
-      <trans-unit id="357">
-        <source>No notifications yet</source>
-        <target>通知はまだありません</target>
-      </trans-unit>
       <trans-unit id="358">
         <source>Tab bar position</source>
         <target>タブバーの位置</target>
@@ -1621,10 +1585,6 @@
       <trans-unit id="359">
         <source>LSP Server Log</source>
         <target>LSP サーバーログ</target>
-      </trans-unit>
-      <trans-unit id="360">
-        <source>No LSP server output yet</source>
-        <target>LSP サーバーの出力はまだありません</target>
       </trans-unit>
       <trans-unit id="361">
         <source>Format on save (LSP)</source>
@@ -2126,10 +2086,6 @@
         <source>File History</source>
         <target>ファイル履歴</target>
       </trans-unit>
-      <trans-unit id="486">
-        <source>No file open · press Ctrl+P to open a file</source>
-        <target>ファイルが開いていません · Ctrl+P でファイルを開く</target>
-      </trans-unit>
       <trans-unit id="487">
         <source>(Del exclude · Alt+A replace %count%)</source>
         <target>(Del 除外 · Alt+A 置換 %count%)</target>
@@ -2173,10 +2129,6 @@
       <trans-unit id="497">
         <source>bundled php</source>
         <target>同梱の php</target>
-      </trans-unit>
-      <trans-unit id="498">
-        <source>Colours your code; off until enabled</source>
-        <target>コードに色を付けます。有効にするまでオフです</target>
       </trans-unit>
       <trans-unit id="499">
         <source>Completion, go-to-definition and diagnostics</source>
@@ -2345,10 +2297,6 @@
       <trans-unit id="536">
         <source>+/- zoom  0 fit  n/p select  / find  Ctrl+Q quit</source>
         <target>+/- ズーム  0 フィット  n/p 選択  Ctrl+Q 終了</target>
-      </trans-unit>
-      <trans-unit id="537">
-        <source>Architecture command failed: %error%</source>
-        <target>アーキテクチャコマンドが失敗しました: %error%</target>
       </trans-unit>
       <trans-unit id="538">
         <source>Architecture command produced no output</source>
@@ -2869,10 +2817,6 @@
       <trans-unit id="668">
         <source>%count% setting|%count% settings</source>
         <target>%count% 件の設定|%count% 件の設定</target>
-      </trans-unit>
-      <trans-unit id="669">
-        <source>⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings</source>
-        <target>⏎ 編集 · ←/→ 変更 · r 既定に戻す · Tab ペイン · 2 キー割り当て</target>
       </trans-unit>
       <trans-unit id="670">
         <source>⏎ save · Esc cancel</source>

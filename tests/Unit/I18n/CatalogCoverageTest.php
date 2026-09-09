@@ -49,6 +49,79 @@ final class CatalogCoverageTest extends TestCase
     }
 
     /**
+     * And the other direction: every catalogued string must appear SOMEWHERE
+     * in the tree.
+     *
+     * The gate above asks whether each used literal is catalogued, which
+     * cannot see an entry nothing uses. Reword a string and the old unit stays
+     * behind — in all SEVEN files, translated, looking to a translator exactly
+     * like a live one. Fourteen had accumulated that way, 98 units in total:
+     * the editor's empty-state hint from before it read the keymap, both
+     * find-bar hints from before they listed the regex and whole-word chords,
+     * the settings footer from before it gained its find chord, and the Go to
+     * File picker's title from when it carried a trailing colon.
+     *
+     * None of those is quoted here on purpose. This file is IN the corpus, so
+     * a docblock naming a dead string verbatim makes it used again and the
+     * gate green — which is exactly how the first version of this test passed
+     * with the string it was written to catch planted back in the catalog.
+     *
+     * Deliberately a SUBSTRING search over the whole tree — tests and docs
+     * included — rather than the precise scanner below. Precision is the wrong
+     * instinct here: this direction only has to prove a string is used at all,
+     * and a false positive DELETES a live translation. The loose read has no
+     * false positives; the strict scanner has 143, because it cannot see menu
+     * labels, action-catalog entries or plugin verbs.
+     *
+     * PHP escapes are decoded first. Without that, the plugin-loader warning
+     * about a vendored package reads as dead: the source writes `Porta\\'s` and
+     * the catalog stores `Porta\'s`. It was the one live string in the first
+     * run\'s list, and it would have been deleted from seven files.
+     */
+    public function testEveryCataloguedStringIsUsedSomewhereInTheTree(): void
+    {
+        $corpus = $this->corpus();
+
+        $unused = [];
+        foreach ($this->englishSources() as $source) {
+            // A pipe plural is one unit; either half is a legitimate spelling
+            // for code to carry, and the catalog stores them joined.
+            foreach ([$source, ...explode('|', $source)] as $needle) {
+                if ('' !== $needle && str_contains($corpus, $needle)) {
+                    continue 2;
+                }
+            }
+            $unused[] = $source;
+        }
+        sort($unused);
+
+        $this->assertSame([], $unused, "messages.en.xlf carries strings that appear nowhere in the tree — a reword left the old unit behind in all seven catalogs:\n  ".implode("\n  ", $unused));
+    }
+
+    /**
+     * Every file a UI string could be written in, concatenated, with PHP\'s
+     * string escapes decoded so the text compares against what the catalog
+     * stores.
+     */
+    private function corpus(): string
+    {
+        $tree = new Finder()
+            ->files()
+            ->in(self::ROOT)
+            ->name('/\\.(php|json|md)$/')
+            ->exclude(['vendor', 'translations', 'coverage', 'node_modules'])
+            ->ignoreDotFiles(false)
+            ->ignoreVCS(true);
+
+        $corpus = '';
+        foreach ($tree as $file) {
+            $corpus .= str_replace(["\\'", '\\"', '\\\\'], ["'", '"', '\\'], (string) file_get_contents($file->getPathname()))."\n";
+        }
+
+        return $corpus;
+    }
+
+    /**
      * Every literal-string first argument of a ->trans() call in src/ and the
      * bundled plugins' src/. Dynamic ids cannot be collected statically; the
      * two big dynamic-id tables are covered by {@see labelLiterals()}.

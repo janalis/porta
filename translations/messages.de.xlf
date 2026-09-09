@@ -226,10 +226,6 @@
         <source>Git not available</source>
         <target>Git nicht verfügbar</target>
       </trans-unit>
-      <trans-unit id="64">
-        <source>Go to File:</source>
-        <target>Gehe zu Datei:</target>
-      </trans-unit>
       <trans-unit id="65">
         <source>Indent size</source>
         <target>Einrückungsbreite</target>
@@ -573,14 +569,6 @@
       <trans-unit id="148">
         <source>starting…</source>
         <target>wird gestartet…</target>
-      </trans-unit>
-      <trans-unit id="149">
-        <source>⏎/F3 next  Shift+F3 prev  Esc</source>
-        <target>⏎/F3 weiter  Shift+F3 zurück  Esc</target>
-      </trans-unit>
-      <trans-unit id="150">
-        <source>⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Esc</source>
-        <target>⏎/F3 weiter  Shift+F3 zurück  Tab Feld  Alt+R ersetzen  Alt+A alle  Esc</target>
       </trans-unit>
       <trans-unit id="151">
         <source>Accept Completion</source>
@@ -1346,17 +1334,9 @@
         <source>Find in Files…</source>
         <target>In Dateien suchen…</target>
       </trans-unit>
-      <trans-unit id="289">
-        <source>Find in %dir%</source>
-        <target>Suchen in %dir%</target>
-      </trans-unit>
       <trans-unit id="290">
         <source>Replace in Files…</source>
         <target>In Dateien ersetzen…</target>
-      </trans-unit>
-      <trans-unit id="291">
-        <source>Replace in %dir%</source>
-        <target>In %dir% ersetzen</target>
       </trans-unit>
       <trans-unit id="292">
         <source>Go to Test</source>
@@ -1482,10 +1462,6 @@
         <source>This project</source>
         <target>Dieses Projekt</target>
       </trans-unit>
-      <trans-unit id="323">
-        <source>Global (all projects)</source>
-        <target>Global (alle Projekte)</target>
-      </trans-unit>
       <trans-unit id="324">
         <source>Install plugin</source>
         <target>Plugin installieren</target>
@@ -1554,10 +1530,6 @@
         <source>Cannot remove "%name%"</source>
         <target>„%name%“ kann nicht entfernt werden</target>
       </trans-unit>
-      <trans-unit id="341">
-        <source>Cannot install into %dest%</source>
-        <target>Installation nach %dest% nicht möglich</target>
-      </trans-unit>
       <trans-unit id="344">
         <source>Built-in plugins cannot be removed</source>
         <target>Integrierte Plugins können nicht entfernt werden</target>
@@ -1569,10 +1541,6 @@
       <trans-unit id="346">
         <source>Built-in</source>
         <target>Integriert</target>
-      </trans-unit>
-      <trans-unit id="347">
-        <source>"%name%" has no settings</source>
-        <target>„%name%“ hat keine Einstellungen</target>
       </trans-unit>
       <trans-unit id="348">
         <source>Enabled</source>
@@ -1610,10 +1578,6 @@
         <source>Notifications</source>
         <target>Benachrichtigungen</target>
       </trans-unit>
-      <trans-unit id="357">
-        <source>No notifications yet</source>
-        <target>Noch keine Benachrichtigungen</target>
-      </trans-unit>
       <trans-unit id="358">
         <source>Tab bar position</source>
         <target>Position der Tab-Leiste</target>
@@ -1621,10 +1585,6 @@
       <trans-unit id="359">
         <source>LSP Server Log</source>
         <target>LSP-Server-Protokoll</target>
-      </trans-unit>
-      <trans-unit id="360">
-        <source>No LSP server output yet</source>
-        <target>Noch keine LSP-Server-Ausgabe</target>
       </trans-unit>
       <trans-unit id="361">
         <source>Format on save (LSP)</source>
@@ -2126,10 +2086,6 @@
         <source>File History</source>
         <target>Dateiverlauf</target>
       </trans-unit>
-      <trans-unit id="486">
-        <source>No file open · press Ctrl+P to open a file</source>
-        <target>Keine Datei geöffnet · Ctrl+P zum Öffnen einer Datei drücken</target>
-      </trans-unit>
       <trans-unit id="487">
         <source>(Del exclude · Alt+A replace %count%)</source>
         <target>(Del ausschließen · Alt+A ersetzen %count%)</target>
@@ -2173,10 +2129,6 @@
       <trans-unit id="497">
         <source>bundled php</source>
         <target>mitgeliefertes php</target>
-      </trans-unit>
-      <trans-unit id="498">
-        <source>Colours your code; off until enabled</source>
-        <target>Färbt Ihren Code; bis zur Aktivierung aus</target>
       </trans-unit>
       <trans-unit id="499">
         <source>Completion, go-to-definition and diagnostics</source>
@@ -2345,10 +2297,6 @@
       <trans-unit id="536">
         <source>+/- zoom  0 fit  n/p select  / find  Ctrl+Q quit</source>
         <target>+/- Zoom  0 Anpassen  n/p Auswahl  Ctrl+Q Beenden</target>
-      </trans-unit>
-      <trans-unit id="537">
-        <source>Architecture command failed: %error%</source>
-        <target>Architekturbefehl fehlgeschlagen: %error%</target>
       </trans-unit>
       <trans-unit id="538">
         <source>Architecture command produced no output</source>
@@ -2869,10 +2817,6 @@
       <trans-unit id="668">
         <source>%count% setting|%count% settings</source>
         <target>%count% Einstellung|%count% Einstellungen</target>
-      </trans-unit>
-      <trans-unit id="669">
-        <source>⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings</source>
-        <target>⏎ bearbeiten · ←/→ ändern · r zurücksetzen · Tab Bereiche · 2 Tastenkürzel</target>
       </trans-unit>
       <trans-unit id="670">
         <source>⏎ save · Esc cancel</source>

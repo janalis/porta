@@ -3975,3 +3975,41 @@ keys on screen, which is the same gap the footer's `Alt+Enter` had. Every one of
 them is documented in the table above, which is what `F1` renders — so the keys
 are discoverable, the row has no room for five more hints, and adding chrome
 there would be design rather than repair.
+
+## Ninety-eight dead translations (2026-09-09)
+
+Applying the previous entry's lesson — a doc gate that ran one way — to its
+sibling. `CatalogCoverageTest` asked whether every used literal is catalogued.
+`CatalogCompletenessTest` asked whether every English source has six targets.
+Neither asked whether a catalogued string is used at all.
+
+Fourteen were not, and each is carried in seven files: **98 dead trans-units**,
+most of them translated into six languages by hand. Every one is a REWORD whose
+old unit stayed behind — the editor's empty-state hint from before it read the
+keymap, both find-bar hints from before they listed the regex and whole-word
+chords, the settings footer from before it gained its find chord, the Go to File
+title from when it carried a colon. A translator opening `messages.fr.xlf` today
+would still be maintaining them.
+
+**The gate is deliberately loose, and that is the whole design.** It substring-
+searches the entire tree, tests and docs included, rather than reusing the
+precise `->trans()` scanner beside it. Precision is the wrong instinct in this
+direction: a false negative leaves one stale row, while a false positive DELETES
+a live translation from seven files. Measured on the same data, the loose read
+found 14 with no false positives; the strict scanner reports 143, because it
+cannot see menu labels, action-catalog entries or plugin verbs.
+
+**Two traps, both hit before the gate was trusted.**
+
+The first run called the plugin-loader's vendored-package warning dead. It is
+live — the PHP source escapes an apostrophe inside the literal and the catalog
+stores it decoded, so the texts differ by a backslash. Had the list been acted
+on unread, a live string would have been deleted from seven files. The corpus
+decodes PHP escapes now, and dropping that decode fails the gate.
+
+The second is stranger and worth remembering: the first version of the test
+PASSED with its own target string planted back in the catalog. The docblock
+quoted the dead strings verbatim as examples, and the test file is itself in the
+corpus — so documenting a dead string is enough to make it used. The examples
+are paraphrased now, and the same restraint applies to this entry: none of the
+fourteen is quoted here either.

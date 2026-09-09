@@ -226,10 +226,6 @@
         <source>Git not available</source>
         <target>Git not available</target>
       </trans-unit>
-      <trans-unit id="64">
-        <source>Go to File:</source>
-        <target>Go to File:</target>
-      </trans-unit>
       <trans-unit id="65">
         <source>Indent size</source>
         <target>Indent size</target>
@@ -573,14 +569,6 @@
       <trans-unit id="148">
         <source>starting…</source>
         <target>starting…</target>
-      </trans-unit>
-      <trans-unit id="149">
-        <source>⏎/F3 next  Shift+F3 prev  Esc</source>
-        <target>⏎/F3 next  Shift+F3 prev  Esc</target>
-      </trans-unit>
-      <trans-unit id="150">
-        <source>⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Esc</source>
-        <target>⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Esc</target>
       </trans-unit>
       <trans-unit id="151">
         <source>Accept Completion</source>
@@ -1346,17 +1334,9 @@
         <source>Find in Files…</source>
         <target>Find in Files…</target>
       </trans-unit>
-      <trans-unit id="289">
-        <source>Find in %dir%</source>
-        <target>Find in %dir%</target>
-      </trans-unit>
       <trans-unit id="290">
         <source>Replace in Files…</source>
         <target>Replace in Files…</target>
-      </trans-unit>
-      <trans-unit id="291">
-        <source>Replace in %dir%</source>
-        <target>Replace in %dir%</target>
       </trans-unit>
       <trans-unit id="292">
         <source>Go to Test</source>
@@ -1482,10 +1462,6 @@
         <source>This project</source>
         <target>This project</target>
       </trans-unit>
-      <trans-unit id="323">
-        <source>Global (all projects)</source>
-        <target>Global (all projects)</target>
-      </trans-unit>
       <trans-unit id="324">
         <source>Install plugin</source>
         <target>Install plugin</target>
@@ -1554,10 +1530,6 @@
         <source>Cannot remove "%name%"</source>
         <target>Cannot remove "%name%"</target>
       </trans-unit>
-      <trans-unit id="341">
-        <source>Cannot install into %dest%</source>
-        <target>Cannot install into %dest%</target>
-      </trans-unit>
       <trans-unit id="344">
         <source>Built-in plugins cannot be removed</source>
         <target>Built-in plugins cannot be removed</target>
@@ -1569,10 +1541,6 @@
       <trans-unit id="346">
         <source>Built-in</source>
         <target>Built-in</target>
-      </trans-unit>
-      <trans-unit id="347">
-        <source>"%name%" has no settings</source>
-        <target>"%name%" has no settings</target>
       </trans-unit>
       <trans-unit id="348">
         <source>Enabled</source>
@@ -1610,10 +1578,6 @@
         <source>Notifications</source>
         <target>Notifications</target>
       </trans-unit>
-      <trans-unit id="357">
-        <source>No notifications yet</source>
-        <target>No notifications yet</target>
-      </trans-unit>
       <trans-unit id="358">
         <source>Tab bar position</source>
         <target>Tab bar position</target>
@@ -1621,10 +1585,6 @@
       <trans-unit id="359">
         <source>LSP Server Log</source>
         <target>LSP Server Log</target>
-      </trans-unit>
-      <trans-unit id="360">
-        <source>No LSP server output yet</source>
-        <target>No LSP server output yet</target>
       </trans-unit>
       <trans-unit id="361">
         <source>Format on save (LSP)</source>
@@ -2126,10 +2086,6 @@
         <source>File History</source>
         <target>File History</target>
       </trans-unit>
-      <trans-unit id="486">
-        <source>No file open · press Ctrl+P to open a file</source>
-        <target>No file open · press Ctrl+P to open a file</target>
-      </trans-unit>
       <trans-unit id="487">
         <source>(Del exclude · Alt+A replace %count%)</source>
         <target>(Del exclude · Alt+A replace %count%)</target>
@@ -2173,10 +2129,6 @@
       <trans-unit id="497">
         <source>bundled php</source>
         <target>bundled php</target>
-      </trans-unit>
-      <trans-unit id="498">
-        <source>Colours your code; off until enabled</source>
-        <target>Colours your code; off until enabled</target>
       </trans-unit>
       <trans-unit id="499">
         <source>Completion, go-to-definition and diagnostics</source>
@@ -2345,10 +2297,6 @@
       <trans-unit id="536">
         <source>+/- zoom  0 fit  n/p select  / find  Ctrl+Q quit</source>
         <target>+/- zoom  0 fit  n/p select  / find  Ctrl+Q quit</target>
-      </trans-unit>
-      <trans-unit id="537">
-        <source>Architecture command failed: %error%</source>
-        <target>Architecture command failed: %error%</target>
       </trans-unit>
       <trans-unit id="538">
         <source>Architecture command produced no output</source>
@@ -2869,10 +2817,6 @@
       <trans-unit id="668">
         <source>%count% setting|%count% settings</source>
         <target>%count% setting|%count% settings</target>
-      </trans-unit>
-      <trans-unit id="669">
-        <source>⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings</source>
-        <target>⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings</target>
       </trans-unit>
       <trans-unit id="670">
         <source>⏎ save · Esc cancel</source>

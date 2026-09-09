@@ -226,10 +226,6 @@
         <source>Git not available</source>
         <target>git אינו זמין</target>
       </trans-unit>
-      <trans-unit id="64">
-        <source>Go to File:</source>
-        <target>עבור לקובץ:</target>
-      </trans-unit>
       <trans-unit id="65">
         <source>Indent size</source>
         <target>גודל הזחה</target>
@@ -573,14 +569,6 @@
       <trans-unit id="148">
         <source>starting…</source>
         <target>מתחיל…</target>
-      </trans-unit>
-      <trans-unit id="149">
-        <source>⏎/F3 next  Shift+F3 prev  Esc</source>
-        <target>⏎/F3 הבא  Shift+F3 הקודם  Esc</target>
-      </trans-unit>
-      <trans-unit id="150">
-        <source>⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Esc</source>
-        <target>⏎/F3 הבא  Shift+F3 הקודם  Tab שדה  Alt+R החלף  Alt+A הכול  Esc</target>
       </trans-unit>
       <trans-unit id="151">
         <source>Accept Completion</source>
@@ -1346,17 +1334,9 @@
         <source>Find in Files…</source>
         <target>חיפוש בקבצים…</target>
       </trans-unit>
-      <trans-unit id="289">
-        <source>Find in %dir%</source>
-        <target>חיפוש ב-%dir%</target>
-      </trans-unit>
       <trans-unit id="290">
         <source>Replace in Files…</source>
         <target>החלפה בקבצים…</target>
-      </trans-unit>
-      <trans-unit id="291">
-        <source>Replace in %dir%</source>
-        <target>החלפה ב-%dir%</target>
       </trans-unit>
       <trans-unit id="292">
         <source>Go to Test</source>
@@ -1482,10 +1462,6 @@
         <source>This project</source>
         <target>הפרויקט הזה</target>
       </trans-unit>
-      <trans-unit id="323">
-        <source>Global (all projects)</source>
-        <target>גלובלי (כל הפרויקטים)</target>
-      </trans-unit>
       <trans-unit id="324">
         <source>Install plugin</source>
         <target>התקנת תוסף</target>
@@ -1554,10 +1530,6 @@
         <source>Cannot remove "%name%"</source>
         <target>לא ניתן להסיר את „%name%”</target>
       </trans-unit>
-      <trans-unit id="341">
-        <source>Cannot install into %dest%</source>
-        <target>לא ניתן להתקין אל %dest%</target>
-      </trans-unit>
       <trans-unit id="344">
         <source>Built-in plugins cannot be removed</source>
         <target>לא ניתן להסיר תוספים מובנים</target>
@@ -1569,10 +1541,6 @@
       <trans-unit id="346">
         <source>Built-in</source>
         <target>מובנה</target>
-      </trans-unit>
-      <trans-unit id="347">
-        <source>"%name%" has no settings</source>
-        <target>ל־„%name%” אין הגדרות</target>
       </trans-unit>
       <trans-unit id="348">
         <source>Enabled</source>
@@ -1610,10 +1578,6 @@
         <source>Notifications</source>
         <target>התראות</target>
       </trans-unit>
-      <trans-unit id="357">
-        <source>No notifications yet</source>
-        <target>אין התראות עדיין</target>
-      </trans-unit>
       <trans-unit id="358">
         <source>Tab bar position</source>
         <target>מיקום שורת הכרטיסיות</target>
@@ -1621,10 +1585,6 @@
       <trans-unit id="359">
         <source>LSP Server Log</source>
         <target>יומן שרת LSP</target>
-      </trans-unit>
-      <trans-unit id="360">
-        <source>No LSP server output yet</source>
-        <target>אין עדיין פלט משרת ה-LSP</target>
       </trans-unit>
       <trans-unit id="361">
         <source>Format on save (LSP)</source>
@@ -2126,10 +2086,6 @@
         <source>File History</source>
         <target>היסטוריית קובץ</target>
       </trans-unit>
-      <trans-unit id="486">
-        <source>No file open · press Ctrl+P to open a file</source>
-        <target>אין קובץ פתוח · לחץ Ctrl+P לפתיחת קובץ</target>
-      </trans-unit>
       <trans-unit id="487">
         <source>(Del exclude · Alt+A replace %count%)</source>
         <target>(Del להחריג · Alt+A להחליף %count%)</target>
@@ -2173,10 +2129,6 @@
       <trans-unit id="497">
         <source>bundled php</source>
         <target>php המצורף</target>
-      </trans-unit>
-      <trans-unit id="498">
-        <source>Colours your code; off until enabled</source>
-        <target>צובע את הקוד; כבוי עד להפעלה</target>
       </trans-unit>
       <trans-unit id="499">
         <source>Completion, go-to-definition and diagnostics</source>
@@ -2345,10 +2297,6 @@
       <trans-unit id="536">
         <source>+/- zoom  0 fit  n/p select  / find  Ctrl+Q quit</source>
         <target>+/- זום  0 התאמה  n/p בחירה  Ctrl+Q יציאה</target>
-      </trans-unit>
-      <trans-unit id="537">
-        <source>Architecture command failed: %error%</source>
-        <target>פקודת הארכיטקטורה נכשלה: %error%</target>
       </trans-unit>
       <trans-unit id="538">
         <source>Architecture command produced no output</source>
@@ -2869,10 +2817,6 @@
       <trans-unit id="668">
         <source>%count% setting|%count% settings</source>
         <target>הגדרה %count%|%count% הגדרות</target>
-      </trans-unit>
-      <trans-unit id="669">
-        <source>⏎ edit · ←/→ change · r reset · Tab panes · 2 keybindings</source>
-        <target>⏎ עריכה · ←/→ שינוי · r איפוס · Tab חלוניות · 2 קיצורי מקשים</target>
       </trans-unit>
       <trans-unit id="670">
         <source>⏎ save · Esc cancel</source>
