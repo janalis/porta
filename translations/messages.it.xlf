@@ -1103,8 +1103,8 @@
         <target>Scorciatoie — %shown% di %count% · ⏎ per riassegnare</target>
       </trans-unit>
       <trans-unit id="830">
-        <source>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter</source>
-        <target>Scorciatoie — %count% azioni · ⏎ per riassegnare · Ctrl+F per filtrare</target>
+        <source>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · Del to reset</source>
+        <target>Scorciatoie — %count% azioni · ⏎ per riassegnare · Ctrl+F per filtrare · Canc per ripristinare</target>
       </trans-unit>
       <trans-unit id="831">
         <source>No file open · press %key% to open a file</source>
@@ -2989,6 +2989,14 @@
       <trans-unit id="815">
         <source>Notification Log</source>
         <target>Registro notifiche</target>
+      </trans-unit>
+      <trans-unit id="839">
+        <source>Reset %action% to %key%</source>
+        <target>%action% ripristinato a %key%</target>
+      </trans-unit>
+      <trans-unit id="840">
+        <source>%action% is not bound in %file%</source>
+        <target>%action% non è assegnato in %file%</target>
       </trans-unit>
     </body>
   </file>

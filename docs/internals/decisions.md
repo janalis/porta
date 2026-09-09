@@ -4582,3 +4582,69 @@ their own field beside the name — `FilesSource` and
 `SearchEverywhereController` each pass `dirname()` as the hit's secondary text,
 so Search Everywhere and Go to File never showed a bare basename. The tab strip
 was the one surface where the basename stood alone.
+
+## A rebind you could make and never unmake (2026-09-09)
+
+The user's `.porta.json` carries `keymap: {"cursor_left": ["left"]}` — an
+override that binds the action to the key it already had. That is what pressing
+Enter on the Keybindings page and then pressing a key does, and there was no
+way back: the page had `rebind` and nothing else, so undoing it meant editing
+the file by hand.
+
+**An override is not only a binding — it is a PIN.** Whatever the file says
+survives every future change to the shipped default, silently and forever. A
+line that looks like a no-op today is a divergence tomorrow, and this one is
+already in a file that travels with the project.
+
+Two halves, and neither works alone:
+
+- **`Del` resets the selected action**, dropping its line from the current
+  scope's file — and dropping the whole `keymap` block once its last line goes,
+  because a file left saying `{}` reads like a decision nobody made.
+- **Overridden rows are marked** (the modified colour on the shortcut). Until
+  now the one row with something to reset looked exactly like the two hundred
+  showing a default. A colour, not a glyph: this row budgets its width to the
+  column, and a marker column would come out of the label.
+
+The flash names the default it went back to (`Reset Copy Path to Ctrl+Shift+C`),
+and when the OTHER config file also binds the action it warns instead, reusing
+the string `rebind()` already had for the same situation.
+
+### This is not the provenance the page turned down
+
+That settled item is "where did this binding come from", which would mean
+re-deriving the merge of three *widget* keymaps outside the merge. This asks
+something else entirely: does `keymap` name this action in `.porta.json`? The
+config layer knows that exactly, and `layerOverruling()` was already asking it.
+
+### The header hint, measured
+
+`· Del to reset` went in LAST rather than after `⏎ to rebind`, and that is not
+a style choice. The settings pane renders as narrow as 60 columns, where the
+header truncates — putting the new clause in the middle pushed `Ctrl+F to
+filter` off the screen, and an existing test at exactly that width caught it.
+Last, the new hint is the one that truncates.
+
+## The catalog that loaded as nothing (2026-09-09)
+
+Found by tripping it. The two new strings above were appended with
+`trans-unit` ids that already existed elsewhere in the file, and the result was
+not an error — it was **every French string silently reverting to English**.
+
+The chain: duplicate ids are well-formed XML but violate the XLIFF schema;
+Symfony's loader validates against that schema and throws
+`InvalidResourceException`; and {@see LenientXliffLoader} deliberately catches
+it and returns an EMPTY catalogue, because English is the right thing to show
+when a translation file is broken. All correct individually, and together they
+make a whole locale disappear with nothing logged.
+
+Every gate passed while that was true. `CatalogCompletenessTest` parses the
+files with `simplexml` — which answers "is this well-formed XML", a question
+the defect passes. What caught it was a widget test that happened to measure a
+French label's width, three steps later and for an unrelated reason.
+
+`testEveryCatalogSurvivesTheLoaderThatShipsIt()` now loads all seven through
+the real loader and asserts the unit COUNT matches English — not merely that
+the load returned, because an empty catalogue is exactly what the defect
+produces and "it loaded" is satisfied by it. Reintroducing the duplicate id
+fails it with `messages.fr.xlf loads 0 of 748 units`.

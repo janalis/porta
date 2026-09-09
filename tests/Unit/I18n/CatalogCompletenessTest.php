@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\I18n;
 
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\LenientXliffLoader;
 use Porta\I18n\Translator;
 
 /**
  * Guards the shipped XLIFF catalogs: every English source id must exist in all
  * six target catalogs (no missing keys), each file must be well-formed XLIFF with
- * a source and target per unit, and the target-language attribute must match.
+ * a source and target per unit, the target-language attribute must match, and
+ * every file must LOAD — see {@see testEveryCatalogSurvivesTheLoaderThatShipsIt()},
+ * which is the one of these the others cannot stand in for.
  */
 final class CatalogCompletenessTest extends TestCase
 {
@@ -35,6 +38,38 @@ final class CatalogCompletenessTest extends TestCase
         }
 
         return $sources;
+    }
+
+    /**
+     * Every catalog must load through the loader the application uses.
+     *
+     * The other tests here parse the files with simplexml, which answers "is
+     * this well-formed XML" — and that is NOT the question. XLIFF has an XSD,
+     * Symfony's loader validates against it, and a file can be perfectly
+     * well-formed while failing that: two `trans-unit` elements sharing an
+     * `id` is well-formed XML and an XLIFF schema violation.
+     *
+     * What makes it worth a test of its own is the failure mode.
+     * {@see LenientXliffLoader} degrades an invalid catalog to an EMPTY one on
+     * purpose — English is the right thing to show when a translation file is
+     * broken — so the whole locale silently reverts to English with nothing
+     * logged and nothing thrown. Every gate here passed while that was true;
+     * it was caught by a widget test that happened to measure a French label.
+     *
+     * Asserting the unit count, not merely that it loaded: an empty catalogue
+     * IS what a broken file degrades to, so "it loaded" is satisfied by the
+     * defect.
+     */
+    public function testEveryCatalogSurvivesTheLoaderThatShipsIt(): void
+    {
+        $loader = new LenientXliffLoader();
+        $english = \count($loader->load(self::DIR.'/messages.en.xlf', 'en')->all('messages'));
+        self::assertGreaterThan(500, $english, 'the English catalog loaded, and is the size a catalog should be');
+
+        foreach (['fr', 'de', 'es', 'it', 'ja', 'he'] as $locale) {
+            $loaded = \count($loader->load(self::DIR.'/messages.'.$locale.'.xlf', $locale)->all('messages'));
+            self::assertSame($english, $loaded, \sprintf('messages.%s.xlf loads %d of %d units — a schema error degrades it to English in silence', $locale, $loaded, $english));
+        }
     }
 
     public function testEveryEnglishSourceExistsInAllSixTargetCatalogs(): void

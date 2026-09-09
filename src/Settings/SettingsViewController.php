@@ -75,6 +75,7 @@ final class SettingsViewController implements ContributedView
             ->onExit($exit);
         $this->keymapList
             ->onRebind($this->rebind(...))
+            ->onReset($this->resetBinding(...))
             ->onFocusNext($this->focusNav(...))
             ->onExit($exit);
     }
@@ -297,6 +298,12 @@ final class SettingsViewController implements ContributedView
     private function rebind(string $action, string $key): void
     {
         $this->keymap->rebind($action, $key);
+        $this->keymapList->setRows($this->keymap->rows());
+    }
+
+    private function resetBinding(string $action): void
+    {
+        $this->keymap->resetBinding($action);
         $this->keymapList->setRows($this->keymap->rows());
     }
 

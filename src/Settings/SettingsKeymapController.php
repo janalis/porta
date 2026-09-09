@@ -64,10 +64,14 @@ final class SettingsKeymapController
      */
     public function rows(): array
     {
+        // Read once for the whole list rather than per action: it is a decode
+        // of two small files, and asking 200-odd times would turn opening a
+        // settings page into filesystem work proportional to the catalogue.
+        $overrides = IdeConfig::load($this->files->rootDir())->keymap;
         $rows = [];
         foreach ($this->actions->labels() as $action => $label) {
             $binding = $this->editor->getKeybindings()->getBindings($action)[0] ?? $this->paneBinding($action) ?? $this->ideKeys->getBindings($action)[0] ?? '';
-            $rows[] = new KeybindingRow($action, $this->translator->trans($label), $binding);
+            $rows[] = new KeybindingRow($action, $this->translator->trans($label), $binding, array_key_exists($action, $overrides));
         }
 
         return $rows;
@@ -135,6 +139,78 @@ final class SettingsKeymapController
         ])
         .$saved
         .$note);
+    }
+
+    /**
+     * Drop $action's override so it goes back to the shipped default.
+     *
+     * The counterpart the page never had. A rebind could be made and never
+     * unmade: pressing Enter on a row and then any key wrote an override —
+     * even one identical to the default, which is how a `.porta.json` ends up
+     * carrying `cursor_left: ["left"]` — and nothing short of hand-editing the
+     * file could take it back.
+     *
+     * An override is not only a binding, which is why leaving one behind is
+     * not harmless: it PINS the action against every future change to the
+     * default, silently and forever.
+     */
+    public function resetBinding(string $action): void
+    {
+        $scope = $this->scope->current();
+        if (!array_key_exists($action, self::fileKeymap($this->files->path($scope)))) {
+            // Nothing to undo HERE. Said plainly rather than reported as a
+            // failed write, and named by file, because the other scope may
+            // well be the one holding it.
+            $this->notifier->flash($this->translator->trans('%action% is not bound in %file%', [
+                '%action%' => $this->translator->trans($this->actions->label($action)),
+                '%file%' => $this->files->label($scope),
+            ]));
+
+            return;
+        }
+
+        $removed = $this->writer->removeKeymap($scope, $action);
+        if ($removed) {
+            $this->ideKeys->rebuild();
+            $this->menuRebuilder->rebuild();
+        }
+        // Re-read AFTER the write: the default is only what fires if the other
+        // file does not bind this action too, and that is exactly the case
+        // where "back to X" would name a key the next keypress will not use.
+        $effective = IdeConfig::load($this->files->rootDir())->keymap[$action] ?? null;
+        if (null !== $effective) {
+            // Notifier::notify() already requests a render.
+            $this->notifier->warn($this->translator->trans('%action% keeps its binding — %file% sets it', [
+                '%action%' => $this->translator->trans($this->actions->label($action)),
+                '%file%' => $this->files->label(ConfigScope::Project === $scope ? ConfigScope::Global : ConfigScope::Project),
+            ]));
+
+            return;
+        }
+        $this->notifier->flash($this->translator->trans('Reset %action% to %key%', [
+            '%action%' => $this->translator->trans($this->actions->label($action)),
+            '%key%' => ShortcutFormatter::format(ActionCatalog::ACTIONS[$action]['keys'][0] ?? ''),
+        ])
+            .SettingsFlash::savedSuffix($this->translator, $removed));
+    }
+
+    /**
+     * The `keymap` block of ONE config file, unmerged.
+     *
+     * {@see IdeConfig::load()} answers what the two files decided together,
+     * which cannot say which of them wrote a line — and "reset" is a write to
+     * one named file, so it needs the unmerged answer.
+     *
+     * @return array<array-key, mixed>
+     */
+    private static function fileKeymap(?string $path): array
+    {
+        /** @var mixed $config */
+        $config = null === $path || !is_file($path) ? null : json_decode((string) file_get_contents($path), associative: true);
+        /** @var mixed $keymap */
+        $keymap = \is_array($config) ? $config['keymap'] ?? null : null;
+
+        return \is_array($keymap) ? $keymap : [];
     }
 
     /**

@@ -689,6 +689,23 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame(['a'], IdeConfig::load($this->project->dir)->keymap['cursor_up']);
     }
 
+    /** Delete on the list reaches the keymap controller and the row set is rebuilt from what the file now says. */
+    public function testResettingFromTheKeybindingsSection(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $this->selectSettingsSection($this->nav, 'keybindings');
+        $this->keymapList->handleInput("\r");
+        $this->keymapList->handleInput('a');
+        $this->assertSame(['a'], IdeConfig::load($this->project->dir)->keymap['cursor_up']);
+
+        $this->keymapList->handleInput("\x1b[3~"); // Delete
+
+        $this->assertArrayNotHasKey('cursor_up', IdeConfig::load($this->project->dir)->keymap);
+        $rows = array_column(Probe::get($this->keymapList, 'rows'), null, 'action');
+        $this->assertFalse($rows['cursor_up']->overridden, 'and the list was rebuilt, not left showing the override');
+    }
+
     public function testTabCyclesBetweenNavAndContent(): void
     {
         $controller = $this->controller();

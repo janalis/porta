@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\KeybindingRow;
 use Porta\Event\SettingsSectionRequested;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
@@ -353,6 +354,88 @@ final class KeybindingsListWidgetTest extends TestCase
 
         $this->assertStringContainsString('Save', $screen);
         $this->assertStringNotContainsString('Duplicate Line', $screen);
+    }
+
+    /**
+     * Delete asks the controller to drop the selected row's override, and does
+     * it on the row the FILTER shows — the same rule Enter follows, because a
+     * key that acts on the row underneath the one you can see is worse than no
+     * key at all.
+     */
+    public function testDeleteAsksToResetTheSelectedRow(): void
+    {
+        $resets = [];
+        $widget = $this->widget();
+        $widget->onReset(static function (string $action) use (&$resets): void {
+            $resets[] = $action;
+        });
+
+        $widget->handleInput("\x1b[B"); // down to Duplicate Line
+        $widget->handleInput("\x1b[3~"); // Delete
+
+        $this->assertSame(['duplicate_line'], $resets);
+    }
+
+    /** Delete is not Backspace: Backspace belongs to the filter field, and overloading it would make both untrustworthy. */
+    public function testBackspaceDoesNotResetABinding(): void
+    {
+        $resets = [];
+        $widget = $this->widget();
+        $widget->onReset(static function (string $action) use (&$resets): void {
+            $resets[] = $action;
+        });
+
+        $widget->handleInput("\x7f");
+
+        $this->assertSame([], $resets);
+    }
+
+    /**
+     * An overridden row is showing a CHOICE and looked exactly like the two
+     * hundred rows showing a default, so the one row with something to reset
+     * was the one row you could not pick out. Marked with a colour rather than
+     * a glyph: this row budgets its width down to the column, and a marker
+     * column would come out of the label.
+     */
+    public function testAnOverriddenRowIsMarkedAndADefaultOneIsNot(): void
+    {
+        $widget = new KeybindingsListWidget(new Translator('en'));
+        AttachedStyles::attach($widget);
+        $widget->setRows([
+            new KeybindingRow('save', 'Save', 'ctrl+s', overridden: true),
+            new KeybindingRow('duplicate_line', 'Duplicate Line', 'ctrl+d'),
+        ]);
+
+        $lines = $widget->render(new RenderContext(60, 6));
+        $overridden = $this->rowWith($lines, 'Save');
+        $plain = $this->rowWith($lines, 'Duplicate Line');
+
+        $this->assertNotSame(
+            $this->markup($overridden, 'Ctrl+S'),
+            $this->markup($plain, 'Ctrl+D'),
+            'the two shortcuts are drawn differently',
+        );
+        $this->assertStringContainsString('Ctrl+S', AnsiUtils::stripAnsiCodes($overridden), 'and the key itself still reads');
+    }
+
+    /** @param list<string> $lines */
+    private function rowWith(array $lines, string $label): string
+    {
+        foreach ($lines as $line) {
+            if (str_contains(AnsiUtils::stripAnsiCodes($line), $label)) {
+                return $line;
+            }
+        }
+
+        return '';
+    }
+
+    /** The escape sequence immediately before $needle — what makes the two rows differ, or not. */
+    private function markup(string $line, string $needle): string
+    {
+        $at = mb_strpos($line, $needle);
+
+        return false === $at ? '' : mb_substr($line, start: 0, length: $at);
     }
 
     public function testEscapeLeavesTheFilterAndBringsEveryActionBack(): void

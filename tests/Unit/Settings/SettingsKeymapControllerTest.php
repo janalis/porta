@@ -21,6 +21,7 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\SettingsKeymapController;
 use Porta\Settings\SettingsScope;
+use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
@@ -39,9 +40,12 @@ use Symfony\Component\Tui\Tui;
 
 final class SettingsKeymapControllerTest extends TestCase
 {
+    use PreservesPortaHome;
     use StatusReads;
 
     private LiveKeybindings $live;
+    /** Held so the destructor does not remove the global fixture mid-test. */
+    private TempProject $home;
     private MenuBarWidget $menuBar;
     private ActionRegistry $actions;
     private PluginHost $host;
@@ -122,6 +126,112 @@ final class SettingsKeymapControllerTest extends TestCase
         $this->assertSame(['f12'], $this->live->getBindings('save'), 'the live map re-merged the persisted rebind');
         $this->assertSame($parser, $this->live->current()->getParser(), 'the shared parser rode through');
         $this->assertNotSame([], Probe::get($this->menuBar, 'menus'), 'a rebind rebakes the menu bar');
+    }
+
+    /**
+     * The counterpart the page never had: a rebind could be made and never
+     * unmade. Pressing Enter on a row and then any key wrote an override —
+     * even one identical to the default — and nothing short of hand-editing
+     * .porta.json could take it back.
+     */
+    public function testResetDropsTheOverrideAndRebuildsTheLiveMap(): void
+    {
+        $project = new TempProject();
+        // An action the CATALOG gives a default key, so "back to the default"
+        // is a key this test can name rather than an absence it has to trust.
+        $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
+        $controller->rebind('copy_path', "\x1b[24~"); // F12
+        $this->assertSame(['f12'], IdeConfig::load($project->dir)->keymap['copy_path'], 'overridden first');
+        $this->assertSame(['f12'], $this->live->getBindings('copy_path'), 'and live');
+
+        $controller->resetBinding('copy_path');
+
+        $this->assertArrayNotHasKey('copy_path', IdeConfig::load($project->dir)->keymap);
+        $this->assertStringContainsString('Reset Copy Path to Ctrl+Shift+C', $this->flashText($status));
+        $this->assertSame(['ctrl+shift+c'], $this->live->getBindings('copy_path'), 'the shipped default fires again');
+    }
+
+    /**
+     * An override is not only a binding — it PINS the action against every
+     * future change to the default. A file left holding `"keymap": {}` reads
+     * like a decision and is one nobody made, so the block goes when its last
+     * entry does.
+     */
+    public function testResettingTheLastOverrideTakesTheWholeKeymapBlock(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new StatusBarWidget(), new Keybindings());
+        $controller->rebind('copy_path', "\x1b[24~");
+        $controller->rebind('fold_all', "\x1b[23~"); // F11
+
+        $controller->resetBinding('copy_path');
+        $this->assertArrayHasKey('keymap', $this->configFile($project->dir), 'fold_all still holds it open');
+
+        $controller->resetBinding('fold_all');
+        $this->assertArrayNotHasKey('keymap', $this->configFile($project->dir));
+    }
+
+    /**
+     * Removing the override is not the same as getting the default back.
+     *
+     * `keymap` merges per ACTION — a file naming an action replaces its whole
+     * chord list — so dropping this file's line hands the action to the OTHER
+     * file if that one binds it too. "Reset X to <default>" would then be the
+     * only thing on screen and false, which is the same trap
+     * {@see SettingsKeymapController::rebind()} already guards, told the same
+     * way and with the same string.
+     */
+    public function testResettingWhatTheOtherFileAlsoBindsSaysTheBindingStays(): void
+    {
+        $this->home = new TempProject(['.porta/config.json' => json_encode(['keymap' => ['copy_path' => ['f9']]], \JSON_THROW_ON_ERROR)]);
+        putenv('PORTA_HOME='.$this->home->dir);
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
+        $controller->rebind('copy_path', "\x1b[24~"); // F12, in the project file
+
+        $controller->resetBinding('copy_path');
+
+        $this->assertArrayNotHasKey('copy_path', $this->configFile($project->dir)['keymap'] ?? [], 'the project line went');
+        // No ToastCenter in a directly constructed Notifier, so the warning
+        // lands on the status bar — the same message either way.
+        $shown = $this->flashText($status);
+        $this->assertStringContainsString('keeps its binding', $shown);
+        $this->assertStringNotContainsString('Reset Copy Path', $shown, 'and never claimed the default came back');
+        $this->assertSame(['f9'], IdeConfig::load($project->dir)->keymap['copy_path'], 'because the global file still decides it');
+    }
+
+    /** Resetting what this file never bound is said plainly, not reported as a failed write. */
+    public function testResettingAnActionThisFileNeverBoundSaysSo(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
+
+        $controller->resetBinding('copy_path');
+
+        $this->assertStringContainsString('Copy Path is not bound in', $this->flashText($status));
+        $this->assertSame([], $this->configFile($project->dir), 'and nothing was written');
+    }
+
+    /** Which rows have something to reset — the one thing 200 identical-looking rows never said. */
+    public function testRowsSayWhichActionsAConfigFileOverrides(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new StatusBarWidget(), new Keybindings());
+        $controller->rebind('copy_path', "\x1b[24~");
+
+        $byAction = array_column($controller->rows(), null, 'action');
+
+        $this->assertTrue($byAction['copy_path']->overridden);
+        $this->assertFalse($byAction['duplicate_line']->overridden, 'a shipped default is not a choice');
+    }
+
+    /** The project's .porta.json as written, or [] when nothing ever wrote one. @return array<array-key, mixed> */
+    private function configFile(string $rootDir): array
+    {
+        $file = $rootDir.'/.porta.json';
+        $decoded = is_file($file) ? json_decode((string) file_get_contents($file), associative: true) : null;
+
+        return \is_array($decoded) ? $decoded : [];
     }
 
     public function testRebindWithAModifierChordPersistsTheFullToken(): void

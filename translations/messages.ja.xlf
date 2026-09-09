@@ -1103,8 +1103,8 @@
         <target>キーバインド — %count% 件中 %shown% 件 · ⏎ で再割り当て</target>
       </trans-unit>
       <trans-unit id="830">
-        <source>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter</source>
-        <target>キーバインド — %count% 件のアクション · ⏎ で再割り当て · Ctrl+F で絞り込み</target>
+        <source>Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · Del to reset</source>
+        <target>キーバインド — %count% 件のアクション · ⏎ で再割り当て · Ctrl+F で絞り込み · Del で既定に戻す</target>
       </trans-unit>
       <trans-unit id="831">
         <source>No file open · press %key% to open a file</source>
@@ -2989,6 +2989,14 @@
       <trans-unit id="815">
         <source>Notification Log</source>
         <target>通知ログ</target>
+      </trans-unit>
+      <trans-unit id="839">
+        <source>Reset %action% to %key%</source>
+        <target>%action% を %key% に戻しました</target>
+      </trans-unit>
+      <trans-unit id="840">
+        <source>%action% is not bound in %file%</source>
+        <target>%action% は %file% で割り当てられていません</target>
       </trans-unit>
     </body>
   </file>

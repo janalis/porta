@@ -72,6 +72,9 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     /** @var (callable(string, string): void)|null a captured key (action, raw key data) to rebind */
     private $onRebind = null;
 
+    /** @var (callable(string): void)|null an action whose override the user asked to drop */
+    private $onReset = null;
+
     public function __construct(
         private readonly Translator $translator,
         ?Styles $styles = null,
@@ -87,6 +90,14 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     public function onRebind(callable $callback): self
     {
         $this->onRebind = $callback;
+
+        return $this;
+    }
+
+    /** @param callable(string): void $callback */
+    public function onReset(callable $callback): self
+    {
+        $this->onReset = $callback;
 
         return $this;
     }
@@ -168,6 +179,14 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         }
         if ($kb->matches($data, 'rebind')) {
             $this->armCapture();
+
+            return;
+        }
+        if ($kb->matches($data, 'reset_binding')) {
+            $row = $this->shown[$this->list->selected()] ?? null;
+            if (null !== $row && null !== $this->onReset) {
+                ($this->onReset)($row->action);
+            }
 
             return;
         }
@@ -264,7 +283,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             .(
                 $this->filtering
                     ? $this->translator->trans('Keybindings — %shown% of %count% · ⏎ to rebind', ['%shown%' => \count($this->shown), '%count%' => \count($this->rows)])
-                    : $this->translator->trans('Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter', ['%count%' => \count($this->rows)])
+                    : $this->translator->trans('Keybindings — %count% actions · ⏎ to rebind · Ctrl+F to filter · Del to reset', ['%count%' => \count($this->rows)])
             );
         $lines = [HeaderRenderer::title($title, $width, $this->styles)];
         if ($this->filtering) {
@@ -283,7 +302,17 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             }
 
             $shortcut = ShortcutFormatter::format($entry->binding);
-            $right = '' === $shortcut ? $this->styles->of(Role::Dim)->apply('—') : $shortcut;
+            // An overridden row is showing a CHOICE, and until now looked
+            // exactly like the 200 rows showing a default — so the one row
+            // with something to reset was the one row you could not pick out.
+            // The mark is a colour rather than a glyph on purpose: this row
+            // budgets its width down to the column, and a marker column would
+            // come out of the label.
+            $right = match (true) {
+                '' === $shortcut => $this->styles->of(Role::Dim)->apply('—'),
+                $entry->overridden => $this->styles->of(Role::Modified)->apply($shortcut),
+                default => $shortcut,
+            };
             $rightWidth = '' === $shortcut ? 1 : mb_strwidth($shortcut);
             if ($index === $this->capturingIndex) {
                 $prompt = $this->translator->trans('Press a key… (Esc to cancel)');
@@ -309,6 +338,10 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             'page_up' => [Key::PAGE_UP],
             'page_down' => [Key::PAGE_DOWN],
             'rebind' => [Key::ENTER],
+            // Delete, not Backspace: Backspace belongs to the filter field,
+            // and a key that erases a query on one row and an override on the
+            // next is the kind of overload people learn to distrust.
+            'reset_binding' => [Key::DELETE],
             // Ctrl+F is the settings view's find key on its other two panes,
             // and it was DEAD here — the exact shape the nav's own comment
             // warns about. `/` is the type-to-filter idiom the rest of the app

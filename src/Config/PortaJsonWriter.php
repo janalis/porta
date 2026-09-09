@@ -78,6 +78,35 @@ final readonly class PortaJsonWriter
         });
     }
 
+    /**
+     * Drop an action's override so it goes back to the shipped default, and
+     * take the whole `keymap` block with it once it holds nothing.
+     *
+     * The empty block is not left behind on purpose. An override is not only
+     * a binding — it is a PIN: whatever this file says survives every future
+     * change to the default, silently. A user who resets every action they
+     * ever touched should end up with a file that says nothing about the
+     * keymap, not one that says `{}` and reads like a decision.
+     *
+     * Returns whether the file changed: false both when nothing bound the
+     * action and when the write failed, so the caller must know which it was
+     * BEFORE calling (see {@see \Porta\Settings\SettingsKeymapController::resetBinding()}).
+     */
+    public function removeKeymap(ConfigScope $scope, string $action): bool
+    {
+        return $this->edit($scope, static function (array &$config) use ($action): void {
+            $keymap = self::section($config, 'keymap');
+            unset($keymap[$action]);
+            if ([] === $keymap) {
+                unset($config['keymap']);
+
+                return;
+            }
+
+            $config['keymap'] = $keymap;
+        });
+    }
+
     /** Persist a project/global plugin as enabled by dropping it from the `disabledPlugins` list. */
     public function persistPluginEnabled(ConfigScope $scope, string $plugin): bool
     {

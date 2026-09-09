@@ -333,3 +333,11 @@ Plugin commands are rebindable through their namespaced id
 (`"php-cs-fixer:fix": ["ctrl+alt+f"]`). Keymap changes apply on the next
 launch; **Settings → Keybindings** writes the same block for you after
 capturing a keypress.
+
+On that page, `Enter` captures a new key and **`Del` puts the action back to
+its shipped default**, removing its line from the file — and dropping the whole
+`keymap` block once its last line goes. Rows a config file overrides are drawn
+in the modified colour, so the ones you have changed are the ones you can pick
+out. This matters beyond tidiness: an override is a *pin*. Whatever the file
+says survives every future change to the default, silently, including a binding
+you set to the value it already had.
