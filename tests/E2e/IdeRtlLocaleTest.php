@@ -208,7 +208,7 @@ final class IdeRtlLocaleTest extends TestCase
     public function testRtlSurvivesATerminalResize(): void
     {
         // RTL and resize meet in one place and nowhere else: `Tui::start()`
-        // forces a FULL repaint on SIGWINCH (symfony/tui 8.1.2), and the frame
+        // forces a FULL repaint on SIGWINCH (symfony/tui 8.1.6), and the frame
         // it forces goes through `BidiTui::processRender()` — an override that
         // reimplements the parent's private render step and re-mirrors every
         // row. Both halves are covered on their own (IdeResponsiveTest resizes
