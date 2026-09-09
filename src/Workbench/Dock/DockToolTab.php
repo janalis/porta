@@ -21,10 +21,12 @@ use Porta\Widget\Support\ResultsViewState;
  * A CONTRIBUTED tool (a plugin's) has a null $mode and carries its identity and
  * behaviour in {@see DockToolHandlers} instead — see that class for why null
  * rather than an extra enum case.
+ *
+ * @phpstan-import-type ResultRow from \Porta\Support\ResultRowShape
  */
 final class DockToolTab
 {
-    /** @var list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> */
+    /** @var list<ResultRow> */
     public array $rows = [];
 
     /** Async work (grep/scan) still in flight for this tab. */

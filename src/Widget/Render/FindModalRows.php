@@ -25,6 +25,8 @@ use Porta\Widget\Support\RowSelection;
  * back-reference to the modal, which would relocate the code while making the
  * coupling worse. Contrast {@see PickerLayout}, whose layouts *were* extractable
  * because they already took their state as parameters.
+ *
+ * @phpstan-import-type ResultRow from \Porta\Support\ResultRowShape
  */
 final class FindModalRows
 {
@@ -55,7 +57,7 @@ final class FindModalRows
      * One match line: `    <line>  <text>`, with the matched ranges highlighted
      * over the row's own background.
      *
-     * @param array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>} $result
+     * @param ResultRow $result
      */
     public static function match(array $result, RowSelection $selected, int $width, Styles $styles): string
     {
@@ -85,7 +87,7 @@ final class FindModalRows
      * $replacement is resolved by the caller — the modal's preview closure is
      * never invoked for an excluded row, so `''` arrives here and is ignored.
      *
-     * @param array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>} $result
+     * @param ResultRow $result
      */
     // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     public static function previewMatch(array $result, RowSelection $selected, bool $excluded, string $replacement, int $width, Styles $styles): string

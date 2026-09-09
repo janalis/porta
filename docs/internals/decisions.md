@@ -4832,10 +4832,10 @@ thing keeping them in agreement is that somebody notices.
 
 Every other row in this codebase that travels between subsystems is an object —
 `DisplayRow`, `SearchHit`, `KeybindingRow`. This one is a raw array because it
-started as a grep result and grew consumers. Not refactored here: it is a
-mechanical change across eighteen files and a defect fix should not carry one.
-Recorded so the next person to widen this shape knows it is the third time, and
-that the fix is a small readonly class, not a nineteenth copy of the docblock.
+started as a grep result and grew consumers. Not refactored in that commit: it
+is a mechanical change and a defect fix should not carry one.
+
+**And "a small readonly class" turned out to be wrong** — see the entry below.
 
 ## The other list that scrolled in silence (2026-09-10)
 
@@ -4871,3 +4871,40 @@ blank — the sibling's shape, and the one that keeps mago's
 is that a list whose content the reader takes to be complete has to say when it
 is not. Applying it to the keybindings list or the results panel would add
 chrome to lists that already answer the question in words.
+
+## One row shape, and the two ways it refused to become a class (2026-09-10)
+
+The previous entry said the fix for fourteen hand-copied declarations of the
+results-row shape was "a small readonly class, like `DisplayRow` or
+`SearchHit`". Tried it. It cannot be one.
+
+**`PluginApi::showList()` takes that shape.** It is part of the published
+plugin API, so every plugin that builds rows builds plain arrays. Turning it
+into a class is a breaking change to code this repository does not contain.
+
+So it stays an array and stops being fourteen arrays: `@phpstan-type ResultRow`
+lives once on `Porta\Support\ResultRowShape`, and every consumer does
+`@phpstan-import-type ResultRow from …`. mago resolves it — checked before
+committing to the sweep, and checked again afterwards by feeding a wrong shape
+to an imported signature and watching it fail. No runtime change, no new arch
+edges: the annotation carries the FQCN, so not one `use` statement was added.
+
+Three things that had to be got right, none of them obvious:
+
+**The holder cannot share the alias's name.** `final class ResultRow` holding
+`@phpstan-type ResultRow` collides: the `use Porta\Support\ResultRow` wins and
+every import silently resolved to the empty CLASS. Analyze went from clean to
+noisy on unrelated lines, which is what gave it away. The holder is
+`ResultRowShape`; the alias is `ResultRow`.
+
+**The annotation belongs in the class docblock, above the attributes.** Written
+between `#[AsWidget(...)]` and `final class`, it is a floating comment and not
+the class docblock at all — mago reports `Cannot find … Porta\Widget\ResultRow`
+and the alias resolves to nothing.
+
+**A class with no members is the point, not an oversight.** `ResultRowShape`
+carries no code because it cannot; the docblock explains that so the next
+reader does not "clean it up".
+
+*Re-opens if* `PluginApi` ever versions its row API, at which point the class
+this wanted to be becomes possible.

@@ -27,6 +27,8 @@ use Symfony\Component\Tui\Tui;
  * result set, and the actions that drive the shared results panel. Owns that
  * state and orchestrates the async {@see ProjectSearch} engine so the IDE
  * coordinator only forwards panel callbacks here.
+ *
+ * @phpstan-import-type ResultRow from \Porta\Support\ResultRowShape
  */
 final class ProjectSearchController
 {
@@ -43,7 +45,7 @@ final class ProjectSearchController
     private array $scope = ['.'];
     /** file mask (e.g. `*.php`, `*.{php,js}`); empty searches all files. */
     private string $mask = '';
-    /** @var list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> */
+    /** @var list<ResultRow> */
     private array $lastSearchResults = [];
 
     /** True while showResultsPane binds its own tab — suppresses the adopt-on-bind hook. */

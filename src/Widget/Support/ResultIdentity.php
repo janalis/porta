@@ -9,10 +9,12 @@ namespace Porta\Widget\Support;
  * row-set changes — pure statics over passed state (the render-tier rule), so
  * {@see \Porta\Widget\ResultsPanelWidget}'s capture, restore and refresh paths
  * share one spelling of the freeze/thaw loops instead of three.
+ *
+ * @phpstan-import-type ResultRow from \Porta\Support\ResultRowShape
  */
 final class ResultIdentity
 {
-    /** @param array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>} $result */
+    /** @param ResultRow $result */
     public static function key(array $result): string
     {
         return $result['path']."\0".$result['line'];
@@ -22,7 +24,7 @@ final class ResultIdentity
      * Re-key positional (matchIndex) context state by identity, dropping
      * entries whose index no longer resolves to a result.
      *
-     * @param list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $results
+     * @param list<ResultRow> $results
      * @param array<int, bool>                                     $expanded
      * @param array<int, list<array{line: int, text: string}>>     $cache
      *
@@ -54,7 +56,7 @@ final class ResultIdentity
      * Map identity-keyed context state back to positions in $results,
      * dropping identities that no longer match any result.
      *
-     * @param list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $results
+     * @param list<ResultRow> $results
      * @param array<string, bool>                                  $expanded
      * @param array<string, list<array{line: int, text: string}>>  $cache
      *
@@ -91,7 +93,7 @@ final class ResultIdentity
      * (empty paths are location-less — the logs — and stay null so a refresh
      * re-selects newest), the group key for a header, nulls otherwise.
      *
-     * @param list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $results
+     * @param list<ResultRow> $results
      *
      * @return array{?string, ?int, ?string} [path, line, groupKey]
      */

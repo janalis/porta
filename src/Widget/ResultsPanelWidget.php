@@ -44,6 +44,8 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 /**
  * Bottom results panel: project-wide search (Ctrl+Shift+F) and, later,
  * find-usages results. Hidden (zero rows) when closed.
+ *
+ * @phpstan-import-type ResultRow from \Porta\Support\ResultRowShape
  */
 #[AsChromeRoot]
 #[AsIdeService]
@@ -71,7 +73,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
      */
     private const int MESSAGE_FLOOR = 24;
 
-    /** @var list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> ranges (search mode only) are display-column match spans */
+    /** @var list<ResultRow> ranges (search mode only) are display-column match spans */
     private array $results = [];
     private bool $grouped = false;
     private ResultGrouping $grouping = ResultGrouping::File;
@@ -135,7 +137,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         $this->invalidate();
     }
 
-    /** @param list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $results */
+    /** @param list<ResultRow> $results */
     public function setResults(array $results): void
     {
         $this->results = $results;
@@ -172,7 +174,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
      * the first match — for the newest-first logs that IS the contract: the
      * latest line stays visible on every append.
      *
-     * @param list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $rows
+     * @param list<ResultRow> $rows
      */
     public function refreshResults(array $rows): void
     {
@@ -632,7 +634,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
      * by file), or `basename:line` (grouped by directory, so files within a
      * directory stay distinguishable).
      *
-     * @param array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>} $result
+     * @param ResultRow $result
      */
     private function groupedLabel(array $result): string
     {
@@ -645,7 +647,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
      * One match row — `path:line  text` when flat, or an indented `line  text`
      * under its file header when grouped — with the match spans highlighted.
      *
-     * @param array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>} $result
+     * @param ResultRow $result
      */
     private function matchLine(array $result, string $bg, int $columns): string
     {
@@ -681,7 +683,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
      * Rows with no tail (every search result) come back untouched, so the
      * highlight spans they carry still line up with the string.
      *
-     * @param array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>} $result
+     * @param ResultRow $result
      */
     private function body(array $result, int $prefixWidth, int $columns): string
     {
@@ -705,7 +707,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
      * Truncate a match row to width and highlight each match span, closing with
      * the row bg so the tail keeps its colour.
      *
-     * @param array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>} $result
+     * @param ResultRow $result
      */
     private function highlightMatch(string $text, int $prefixWidth, array $result, string $bg, int $columns): string
     {

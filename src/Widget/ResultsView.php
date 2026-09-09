@@ -17,11 +17,13 @@ use Porta\Widget\Support\ResultLayout;
  * header — `path (count)` — followed by its match rows when expanded.
  *
  * A pure builder so grouping/collapse logic is unit-tested without the widget.
+ *
+ * @phpstan-import-type ResultRow from \Porta\Support\ResultRowShape
  */
 final class ResultsView
 {
     /**
-     * @param list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $results
+     * @param list<ResultRow> $results
      * @param array<string, bool>                                                                                $collapsed group key => collapsed
      * @param string                                                                                             $filter    keep only matches whose text/path contains this (case-insensitive)
      * @param array<int, bool>                                                                                   $expanded  match index => show its context lines
@@ -89,7 +91,7 @@ final class ResultsView
      * Directory and file collapse keys never collide — a name can't be both a
      * file and a directory in the same parent.
      *
-     * @param list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $results
+     * @param list<ResultRow> $results
      * @param array<string, bool>                                                                                $collapsed
      * @param array<int, bool>                                                                                   $expanded
      * @param array<int, list<array{line: int, text: string}>>                                                   $context
@@ -155,7 +157,7 @@ final class ResultsView
     }
 
     /**
-     * @param array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>} $result
+     * @param ResultRow $result
      * @param string                                                                                       $needle already lowercased; empty passes everything
      */
     private static function passes(array $result, string $needle): bool

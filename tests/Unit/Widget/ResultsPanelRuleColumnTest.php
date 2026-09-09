@@ -18,10 +18,12 @@ use Symfony\Component\Tui\Render\RenderContext;
  * Split out of {@see ResultsPanelWidgetTest} rather than added to it: that
  * class is what pins mago's `too-many-methods` threshold, and a focused class
  * about one behaviour is the better shape anyway.
+ *
+ * @phpstan-import-type ResultRow from \Porta\Support\ResultRowShape
  */
 final class ResultsPanelRuleColumnTest extends TestCase
 {
-    /** @param list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $rows */
+    /** @param list<ResultRow> $rows */
     private function panelText(array $rows, int $columns, string $mode = 'problems'): string
     {
         $panel = new ResultsPanelWidget();

@@ -21,6 +21,8 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  * row at or above the caret. That is also why this can run per frame where the
  * semantic highlight needs a settle timer: the work is a walk over rows already
  * in memory, and only when the caret actually moved and the tab is visible.
+ *
+ * @phpstan-import-type ResultRow from \Porta\Support\ResultRowShape
  */
 #[AsEager]
 final class StructureFollowsCaret
@@ -74,9 +76,9 @@ final class StructureFollowsCaret
      * A caret ABOVE the first symbol (the file's header) encloses nothing, and
      * selecting the first symbol there would be a lie.
      *
-     * @param list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $rows
+     * @param list<ResultRow> $rows
      *
-     * @return array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}|null
+     * @return ResultRow|null
      */
     private function enclosingRow(array $rows, int $line): ?array
     {

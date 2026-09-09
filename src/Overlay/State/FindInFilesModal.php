@@ -38,6 +38,8 @@ use Symfony\Component\Tui\Input\Keybindings;
  *
  * It owns UI state only; the {@see \Porta\Search\ProjectSearchController} wires
  * the callbacks and feeds it results.
+ *
+ * @phpstan-import-type ResultRow from \Porta\Support\ResultRowShape
  */
 final class FindInFilesModal
 {
@@ -95,7 +97,7 @@ final class FindInFilesModal
     private int $scopeIndex = 0;
     /** @var array{regex: bool, case: bool, word: bool, preserve: bool, tokens: string} */
     private array $options = ['regex' => false, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'any'];
-    /** @var list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> */
+    /** @var list<ResultRow> */
     private array $results = [];
     /** @var list<\Porta\Widget\Support\DisplayRow> */
     private array $displayRows = [];
@@ -254,7 +256,7 @@ final class FindInFilesModal
         ($this->invalidate)();
     }
 
-    /** @param list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}> $results */
+    /** @param list<ResultRow> $results */
     public function setPreview(array $results): void
     {
         $this->results = $results;

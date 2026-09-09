@@ -18,6 +18,8 @@ use Porta\Support\ProjectPaths;
  * Rows are normalised HERE, on core's side of the boundary, because plugin
  * files sit outside mago's analyzer: whatever shape a plugin's row arrives in,
  * the widget must be handed the one it renders.
+ *
+ * @phpstan-import-type ResultRow from \Porta\Support\ResultRowShape
  */
 #[AsIdeService]
 final class DockToolController
@@ -92,7 +94,7 @@ final class DockToolController
      * the panel prints what it is given.
      *
      * @param  list<mixed>                                                                                      $rows
-     * @return list<array{path: string, line: int, text: string, tail?: string, ranges?: list<array{start: int, length: int}>}>
+     * @return list<ResultRow>
      */
     private function normalize(array $rows): array
     {
