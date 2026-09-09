@@ -4107,9 +4107,14 @@ sizes to about fifteen columns and the filler is cut to fit:
 
 Worse than the `(Al…` case that started the day, because these are truncated
 with `ellipsis: ''`: a German reader sees `keine Tref` with **nothing** saying
-it was cut. Both layouts count the filler now, and only when it will be drawn —
-measuring it always would widen every populated list for a row it is not going
-to show.
+it was cut. Both layouts count the filler now.
+
+**Corrected the same day — do not take the reasoning below on its own.** This
+originally counted the filler ONLY when it was about to be drawn, arguing that
+measuring it always would widen every populated list for a row it never shows.
+That trades a static width for a resize under the reader's eye, which
+`layoutList` is explicitly built to avoid; see *Reviewing the day's own diff*
+further down. It is measured unconditionally now.
 
 `layoutSearch`'s floor seats every translation of `no results` today at 24
 columns. That is luck, not a rule, and the test uses a longer message on
@@ -4170,13 +4175,16 @@ row you draw" BEFORE the fifth instance, not after it. Three rules in priority
 order — count fixed rows, give up the value rather than the affordance, scroll
 live input — with the four cases as the table that earned them.
 
-**On the gate for it.** Pinning content does not work: a box one column too wide
-still contains everything an assertion looks for, which is exactly why nine
-mutants escaped every content-shaped test in that file. Pinning constants goes
-stale the first time a glyph changes. The invariant — declared width equals
-drawn width, across locales because the widest row changes with the translation
-— is the only form of the check that both fails when it should and survives
-ordinary edits.
+**On the gate for it.** Pinning constants goes stale the first time a glyph
+changes. The invariant — declared width equals drawn width, across locales
+because the widest row changes with the translation — both fails when it should
+and survives ordinary edits.
+
+**Read the next two entries before quoting this one.** It originally said
+"pinning content does not work" flatly, on the strength of nine mutants escaping
+`FindInFilesModalTest`. That is true of a PRESENCE assertion and not of an exact
+one — `MarkdownTableTest` pins whole rendered rows and kills the same class
+without an invariant. The distinction is presence versus exactness.
 
 ## Table cells wrap now (2026-09-09)
 

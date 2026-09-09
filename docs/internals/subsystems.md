@@ -284,10 +284,15 @@ every width anyone had looked at:
 
 Three rules, in the order they matter:
 
-1. **A fixed row goes into the width.** If a row's content is decided by
-   anything other than the list the box measures, add it to that `max()`. Count
-   it only when it will be drawn, or an empty-state row widens every populated
-   list.
+1. **A fixed row goes into the width, unconditionally.** If a row's content is
+   decided by anything other than the list the box measures, add it to that
+   `max()` — including a row that only appears sometimes, like an empty-state
+   filler. Counting one *only when it is about to be drawn* looks like the
+   frugal choice and is not: the box then resizes on the keystroke that makes
+   the row appear, and `PickerLayout::layoutList()` measures the UNFILTERED
+   items precisely so it cannot do that. Measured at 15 columns, then 27 on the
+   keystroke that emptied the list. A width that is stable and slightly generous
+   beats one that moves under the reader's eye.
 2. **When something must give, give up the value, never the affordance.** A key
    hint, a glyph, a count is unreconstructable; a label is usually visible
    elsewhere on screen. `MenuPanel::renderItem()` is the reference — it elides
@@ -302,10 +307,16 @@ Three rules, in the order they matter:
 The gate for rule 1 is an invariant, not a number: a row's declared width must
 equal the width it draws, over several locales, since the widest row changes
 with the translation. See `FindInFilesModalGeometryTest`. Pinning the constants
-instead goes stale the first time a glyph changes, and — measured — pinning
-CONTENT does not work either: a box one column too wide still contains
-everything an assertion looks for, which is why nine mutants escaped every
-content-shaped test in that file.
+instead goes stale the first time a glyph changes.
+
+What does NOT gate layout is a **presence** assertion — "the screen contains
+this text" — because a box a column too wide still contains it. Nine mutants
+escaped every test in `FindInFilesModalTest` for that reason. An **exact**
+assertion does gate it: `MarkdownTableTest` pins whole rendered rows, and an
+exact row moves the moment the arithmetic does, so the same class of mutant
+dies there without any invariant being written. The distinction is presence
+versus exactness, not content versus geometry — measured both ways, a day
+apart, and the first reading of it was too broad.
 
 ## The bottom dock
 
