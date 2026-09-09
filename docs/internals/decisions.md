@@ -4230,6 +4230,28 @@ which is what lets a link survive being wrapped: three tests that used to assert
 a link was DROPPED by truncation now assert it survives, which is the whole
 point of the change.
 
+**The mutation follow-up, and a correction to the entry above.** Infection over
+the change: 118 mutants, 22 escaped, MSI 81%. Every escape is an
+Increment/DecrementInteger on a defensive fallback — `?? 0`, `?? 1`,
+`max(0, …)` — whose branch cannot run, because `$widths` is the union of every
+row's columns and each row iterates a subset of them. The analyzer requires the
+`??` (it cannot prove membership across two arrays), so they stay: equivalent
+mutants, recorded here so the next reader does not re-derive it.
+
+Two tests were written for those escapes before reading them properly — a
+column-alignment invariant and a wrapped-link-position check — on the assumption
+that the escapes were LAYOUT arithmetic. They were not, and both tests turned
+out to kill nothing the suite did not already kill: verified by disabling them
+and re-running the same mutations, which still failed. Deleted.
+
+That corrects the claim in the entry above it. "Pinning content does not gate
+geometry" was true of `FindInFilesModal`, whose tests ask whether some text is
+PRESENT — and a box a column too wide still contains the text. It is not true
+here: `testATableColumnPadsToTheWidestCellPlusATwoColumnGap` and its neighbours
+pin the exact rendered rows, and an exact row moves when the arithmetic does.
+The rule is not about content versus geometry; it is that a presence assertion
+gates nothing about layout, while an exact-rendering assertion gates it well.
+
 **Two things the gates caught.** The column budgeter had an empty-set guard that
 `max()` seemed to need; the coverage gate showed the line never runs, because
 with no columns the row is one space wide and the loop containing the `max()`
