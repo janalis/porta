@@ -25,6 +25,9 @@ interface PluginLifecycleOps extends PluginEnablement
     /** A plugin setting changed: re-resolve the LSP servers if that plugin provides one. */
     public function onProviderSettingChanged(string $name): void;
 
+    /** A plugin replaced its language server's BINARY on disk: re-resolve and relaunch, map change or not. */
+    public function onServerBinaryReplaced(string $name): void;
+
     /** One of $name's OWN settings was written; tell it, and reconfigure the LSP if it serves one. */
     public function onPluginSettingChanged(string $name, string $key, bool|int|string $value): void;
 

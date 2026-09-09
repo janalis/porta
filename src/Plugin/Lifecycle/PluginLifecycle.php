@@ -594,6 +594,21 @@ final class PluginLifecycle implements PluginLifecycleOps
     }
 
     /**
+     * $name replaced its language server's binary on disk.
+     *
+     * Distinct from {@see onProviderSettingChanged()}: across an UPGRADE the
+     * resolved map does not move — same path, same argv — so the pool's
+     * identical-map skip declines and the old process keeps serving.
+     */
+    #[\Override]
+    public function onServerBinaryReplaced(string $name): void
+    {
+        if ($this->plugins->providesLanguageServer($name) && !$this->lspReconfigurer->isOverridden()) {
+            $this->lspReconfigurer->relaunch();
+        }
+    }
+
+    /**
      * The Settings page wrote one of $name's own settings.
      *
      * Separate from {@see onProviderSettingChanged()} because that one is also

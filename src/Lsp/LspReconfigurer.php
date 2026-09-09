@@ -29,6 +29,19 @@ final readonly class LspReconfigurer
         return null !== $this->lspCommand && '' !== $this->lspCommand;
     }
 
+    /**
+     * Re-resolve every server and relaunch, even when the map is unchanged.
+     *
+     * For the install-a-binary path: a first install changes the map (the
+     * plugin resolved no command before), an upgrade does not (same path, same
+     * argv) — and only the forced drop makes the second one take effect.
+     */
+    public function relaunch(): void
+    {
+        $this->lsp->reload(ServerLocator::locateAll($this->rootDir, $this->lspCommand, $this->pluginServers->languageServers()));
+        $this->reopener->reopenAllInLsp();
+    }
+
     /** Re-resolve every server (config + plugins), swap the pool, and re-open buffers. */
     public function reconfigure(): void
     {

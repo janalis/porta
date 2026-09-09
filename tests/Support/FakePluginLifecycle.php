@@ -57,9 +57,17 @@ final class FakePluginLifecycle implements PluginLifecycleOps
     /** @var list<array{string, string, bool|int|string}> plugin, key and new value, as the Settings page reported them */
     public array $pluginSettingChanged = [];
 
+    /** @var list<string> plugins that reported replacing their server's binary on disk */
+    public array $serverBinaryReplaced = [];
+
     public function onProviderSettingChanged(string $name): void
     {
         $this->providerSettingChanged[] = $name;
+    }
+
+    public function onServerBinaryReplaced(string $name): void
+    {
+        $this->serverBinaryReplaced[] = $name;
     }
 
     public function onPluginSettingChanged(string $name, string $key, bool|int|string $value): void

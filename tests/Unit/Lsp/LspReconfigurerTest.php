@@ -80,4 +80,30 @@ final class LspReconfigurerTest extends TestCase
         $reconfigurer->reconfigure();
         $this->assertSame(1, $this->reopened, 'the identical second resolve is a no-op');
     }
+
+    /**
+     * The install-a-binary path relaunches through an identical map.
+     *
+     * That is the difference between {@see LspReconfigurer::relaunch()} and
+     * {@see LspReconfigurer::reconfigure()}, and the whole reason the former
+     * exists: an UPGRADE lands the new server at the same path, so the argv is
+     * byte-identical, the reconfigure skip declines to act, and the old process
+     * keeps answering while the installer says it succeeded. Written because a
+     * mutation swapping relaunch() back to reconfigure() passed every other
+     * test in the suite.
+     */
+    public function testRelaunchReopensBuffersEvenWhenTheMapIsUnchanged(): void
+    {
+        $pool = new LspSessionPool('/tmp/proj', new FixedActiveFile(), new Translator('en'));
+        $pool->configure([], static function (string $line): void {}, static function (array $params): void {}, static fn (array $edit): bool => false);
+        $reconfigurer = $this->reconfigurer($pool, 'my-server --stdio');
+
+        $reconfigurer->reconfigure();
+        $this->assertSame(1, $this->reopened);
+
+        $reconfigurer->relaunch();
+
+        $this->assertSame(2, $this->reopened, 'the same map still relaunches');
+        $this->assertSame('my-server', $pool->statusFor('/tmp/proj/a.php'), 'and the map survives the forced drop');
+    }
 }

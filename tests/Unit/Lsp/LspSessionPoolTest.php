@@ -150,6 +150,37 @@ final class LspSessionPoolTest extends TestCase
         $this->assertCount(4, $this->clients, 'the death evicted the slot with a FRESH budget — the success reset the count');
     }
 
+    /**
+     * The one case an identical map must NOT be left alone: the binary behind
+     * it was replaced on disk.
+     *
+     * An upgrade lands at the same path, so the argv is byte-identical and
+     * {@see LspSessionPool::reconfigure()} correctly declines — which left the
+     * running process answering from the inode `rename()` had already
+     * unlinked, while the installer's toast said it succeeded.
+     *
+     * `reload()` takes the map as well as forcing the drop, because the FIRST
+     * install changes it too: with no binary yet the plugin resolves no command
+     * and is absent from the map entirely. Forcing a drop while KEEPING the old
+     * map was the shape that hung — sessions stopped, and nothing left to
+     * start.
+     */
+    public function testReloadDropsTheSessionEvenWhenTheMapIsUnchanged(): void
+    {
+        $pool = $this->pool(self::SERVERS);
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $client = $this->clients[0]['client'];
+
+        $this->assertFalse($pool->reconfigure(self::SERVERS), 'sanity: the identical map is still skipped');
+        $this->assertFalse($client->stopped);
+
+        $pool->reload(self::SERVERS);
+
+        $this->assertTrue($client->stopped, 'the stale process is stopped');
+        $pool->notifyDidOpen('/tmp/proj/b.php', 'y', 'php', 1);
+        $this->assertCount(2, $this->clients, 'and the next didOpen starts a fresh one from the map it was handed');
+    }
+
     public function testReconfigureWithAnIdenticalMapKeepsTheRunningSessions(): void
     {
         // The provider-setting hook reconfigures on EVERY setting of a

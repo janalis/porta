@@ -113,13 +113,36 @@ final class LspSessionPool
         if ($this->configured && !$this->disabled && $servers === $this->servers) {
             return false;
         }
+        $this->reload($servers);
+
+        return true;
+    }
+
+    /**
+     * Take $servers and drop every live session, whether or not the map moved.
+     *
+     * {@see reconfigure()} skips an identical map on purpose: the
+     * provider-setting hook fires for every setting of a provider plugin, and
+     * without that diff a palette toggle would tear down every server. There is
+     * exactly one case where an unchanged map must still relaunch — a server's
+     * BINARY was replaced on disk. An upgrade lands at the same path, so the
+     * argv is byte-identical and the skip declines to act, leaving the old
+     * process serving the inode `rename()` already unlinked while the installer
+     * reports success.
+     *
+     * It takes the map rather than keeping the current one because the FIRST
+     * install changes it too: with no binary yet, the plugin resolves no
+     * command at all and is absent from the map entirely.
+     *
+     * @param array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}> $servers
+     */
+    public function reload(array $servers): void
+    {
         $this->stop();
         $this->sessions = [];
         $this->statuses = [];
         $this->startFailures = [];
         $this->servers = $servers;
-
-        return true;
     }
 
     public function stop(): void

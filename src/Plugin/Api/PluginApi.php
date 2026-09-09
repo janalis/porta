@@ -1070,6 +1070,27 @@ final class PluginApi
         $runtime->tui->requestRender();
     }
 
+    /**
+     * Tell the IDE this plugin just replaced its language server's BINARY on
+     * disk, so the servers are re-resolved and the running sessions relaunched.
+     *
+     * For a plugin that installs its own server. {@see changeSetting()} is not
+     * a substitute: the LSP pool skips a reconfigure whose resolved map is
+     * unchanged — deliberately, or every setting toggle would tear down every
+     * server — and an UPGRADE resolves to byte-identical argv, so the old
+     * process keeps answering while the install reports success.
+     *
+     * An action method: calling it during activate() throws.
+     *
+     * @throws PluginException
+     */
+    public function relaunchLanguageServer(): void
+    {
+        $runtime = $this->manager->runtime(); // activate()-phase gate
+        $runtime->lifecycle->onServerBinaryReplaced($this->pluginName);
+        $runtime->tui->requestRender();
+    }
+
     /** The active TAB's file path (viewer tabs included), or null when no tab is open. */
     public function activeFile(): ?string
     {

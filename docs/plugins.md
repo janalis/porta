@@ -703,6 +703,7 @@ Actions (from handlers/hooks):
 | `projectRoot(): string` | The project root (also safe during `activate()`) |
 | `setting(string $key): bool\|int\|string` | The current value of a setting this plugin registered — the user's value coerced to the declared kind, or the default. Safe during `activate()`, but `registerSetting()` must run first. |
 | `changeSetting(string $key, bool\|int\|string $value)` | Persist a new value for a setting this plugin registered — coerced, kept live and written to `.porta.json`, exactly like a Settings-page edit. An action method (throws during `activate()`). |
+| `relaunchLanguageServer()` | Say that this plugin just replaced its language server's BINARY on disk: the servers are re-resolved and the running sessions relaunched. For a plugin that installs its own server. Do NOT use `changeSetting()` for this — the LSP pool skips a reconfigure whose resolved map is unchanged (deliberately, or every setting toggle would tear down every server), and an UPGRADE lands at the same path with byte-identical argv, so the old process keeps answering while the install reports success. An action method (throws during `activate()`). |
 
 Diagnostics published via `setDiagnostics` behave exactly like LSP
 diagnostics — inline end-of-line messages, the scroll-stripe, and the
