@@ -4048,3 +4048,40 @@ cannot state is worse than none.
 
 That is the same conclusion the catalog gate reached from the other side: in
 the reverse direction, prefer the check you can be sure of over the precise one.
+
+## Infection over the session's diff (2026-09-09)
+
+100 mutants over today's `src/` changes, 11 escaped, MSI 87%. Ten were real and
+they cluster in exactly one place, which is the finding.
+
+**`optionsRowWidth()`/`footerRowWidth()` sum each row's geometry a SECOND time**
+— once to size the box, once to build the string — and nothing checked the two
+sums agree. Every arithmetic mutant escaped: each `+ 2` off by one, the leading
+column dropped, the separators dropped. Every test in that file asks whether
+some text survived, and a box one column too WIDE still contains the text.
+
+The guard is the invariant rather than the numbers: a row's declared width must
+equal the width it draws, over five locale/scope pairs (the two rows trade
+places for the widest depending on both). It kills all nine width escapes at
+once and would have caught the original `(Al…` before it shipped. Pinning the
+constants instead would have been nine assertions that go stale the moment a
+glyph changes.
+
+**The tenth**: `exportResults()` is Unit-covered, but every test reads the
+FILE, so deleting its flash outright was invisible — and the flash is the only
+thing telling the user an export happened, since it writes to
+`.porta/search-results.txt` and opens nothing.
+
+**The one survivor is left deliberately.** `max(1, …)` → `max(2, …)` on the
+scope label's elision floor: both values keep `truncate()` off zero, and it only
+bites in a box already too narrow to render the row. An equivalent mutant by the
+doctrine at the top of `infection.json5` — recorded so the next reader does not
+re-derive it.
+
+**Cost of the fix.** Adding those tests pushed `FindInFilesModalTest` past
+mago's `too-many-methods` threshold, which `mago.toml` says is bisected to the
+real maximum and must not be raised to fit new code. Split by subject instead —
+`FindInFilesModalGeometryTest` is the arithmetic, `FindInFilesModalTest` is what
+the modal says — with the four-helper rig extracted to
+`tests/Support/ComposesFindModal`, because the duplication gate is tree-wide and
+copying `compose()` into the new class is exactly the clone it exists to refuse.

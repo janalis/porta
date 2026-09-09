@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Overlay\State\FindInFilesModal;
 use Porta\Overlay\State\FindModalCallbacks;
+use Porta\Tests\Support\ComposesFindModal;
 use Porta\Tests\Support\Probe;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\Glyphs;
@@ -15,7 +16,6 @@ use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\FindModalRows;
 use Porta\Widget\Render\ModalFrame;
-use Porta\Widget\Render\OverlayCompositor;
 use Porta\Widget\Render\PopupMetrics;
 use Porta\Widget\Render\TabCloseGlyph;
 use Porta\Widget\Support\OptionTagState;
@@ -24,6 +24,8 @@ use Symfony\Component\Tui\Input\Keybindings;
 
 final class FindInFilesModalTest extends TestCase
 {
+    use ComposesFindModal;
+
     private Keybindings $kb;
     private int $invalidateCount = 0;
 
@@ -65,11 +67,6 @@ final class FindInFilesModalTest extends TestCase
         return $modal;
     }
 
-    private function modal(): FindInFilesModal
-    {
-        return new FindInFilesModal(static fn () => null);
-    }
-
     /** Counts every ($this->invalidate)() call via {@see $this->invalidateCount}. */
     private function modalCountingInvalidate(): FindInFilesModal
     {
@@ -86,54 +83,6 @@ final class FindInFilesModalTest extends TestCase
             ['path' => 'src/A.php', 'line' => 9, 'text' => 'foo two', 'ranges' => []],
             ['path' => 'other/B.php', 'line' => 2, 'text' => 'foo three', 'ranges' => []],
         ];
-    }
-
-    /**
-     * Lay the modal out on a blank $rows×$columns screen and composite its
-     * panel where it placed itself — the test-side stand-in for the
-     * presenter's span push, keeping every geometry assertion in the same
-     * screen coordinates the mouse paths use.
-     *
-     * @return list<string>
-     */
-    private function compose(FindInFilesModal $modal, int $columns = 100, int $rows = 24): array
-    {
-        $lines = array_fill(0, count: $rows, value: str_repeat(' ', times: $columns));
-        $placed = $modal->layout([0, 0, $rows, $columns], CaretVisibility::Shown);
-        if (null === $placed) {
-            return $lines;
-        }
-        $box = $modal->lastBox();
-        \assert(null !== $box, description: 'the modal laid out a box');
-
-        return $this->placeAt($lines, $placed['rows'], $placed['top'], $placed['col'], $box->width, $columns);
-    }
-
-    /**
-     * Splice the box rows into the screen lines — the test's own composition
-     * scaffold over the prod {@see OverlayCompositor::into} splicer.
-     *
-     * @param list<string> $lines
-     * @param list<string> $box
-     *
-     * @return list<string>
-     */
-    private function placeAt(array $lines, array $box, int $startRow, int $col, int $width, int $columns): array
-    {
-        foreach ($box as $i => $boxLine) {
-            $row = $startRow + $i;
-            if ($row >= \count($lines)) {
-                break;
-            }
-            $lines[$row] = OverlayCompositor::into($lines[$row], $col, $width, $columns, $boxLine);
-        }
-
-        return $lines;
-    }
-
-    private function screen(FindInFilesModal $modal): string
-    {
-        return AnsiUtils::stripAnsiCodes(implode("\n", $this->compose($modal)));
     }
 
     /**
@@ -953,7 +902,6 @@ final class FindInFilesModalTest extends TestCase
         $this->assertTrue($closed, 'Esc fires the close hook');
     }
 
-    // --- Mutation-sweep gap-closing tests below ------------------------
     /**
      * One result is not "1 results".
      *
@@ -992,71 +940,6 @@ final class FindInFilesModalTest extends TestCase
         $modal->open('Find in Files');
 
         $this->assertStringContainsString('Find window (Alt+Enter)', $this->screen($modal));
-    }
-
-    /**
-     * The footer is counted by the width too, and it is the options row's
-     * short-label case that needs it.
-     *
-     * With the default scope the options row is the wider of the two fixed
-     * rows in every locale we ship, so it alone sets the floor. A SHORT scope
-     * label shrinks it — and short is what a real project has: this repo's own
-     * `search-scopes.json` holds `src`, `docs`, `config`. Pick one of those in
-     * a locale whose labels are long and the footer becomes the widest row in
-     * the modal, with `(Alt+Enter)` at the end of it, first against the wall.
-     */
-    public function testAShortScopeLabelLeavesTheFooterAsTheWidestRow(): void
-    {
-        $modal = new FindInFilesModal(static fn () => null, translator: new Translator('fr'));
-        $modal->open('Find in Files');
-        $modal->setScopes(['src'], index: 0);
-
-        // Read the FOOTER row, not the screen: 'Portée' is also the options
-        // row's scope caption, so a screen-wide assertion passes on the wrong
-        // row while the footer is cut behind it.
-        $rows = array_values(array_filter(explode("\n", $this->screen($modal)), static fn (string $r): bool => str_contains($r, '(Alt+Enter)')));
-
-        $this->assertCount(1, $rows, 'the footer, and only the footer, names this key');
-        $this->assertStringContainsString('Portée', $rows[0], 'the action after the key is still on the row');
-    }
-
-    /**
-     * The box has to seat its own toolbar row.
-     *
-     * The width is a max over the title, the query and the visible result rows
-     * — everything that VARIES. The options row does not vary: five fixed tags,
-     * a translated caption, the scope label and the key hint. Left out of that
-     * max it was the one row guaranteed to overflow, and the row-wide truncate
-     * spends an overflow on the TAIL, so `(Alt+S)` rendered as `(Al…` — the
-     * modal eating the only thing that says how to change the scope.
-     */
-    public function testTheBoxWidensToSeatTheScopeRowsKeyHint(): void
-    {
-        $modal = $this->modal();
-        $modal->open('Find in Files');
-        $modal->setScopes(['A directory whose name runs long'], index: 0);
-
-        $screen = $this->screen($modal);
-
-        $this->assertStringContainsString('Scope: A directory whose name runs long (Alt+S)', $screen, 'the whole row, key included');
-    }
-
-    /**
-     * And when the terminal genuinely cannot fit it, the LABEL gives way —
-     * never the key. The label is a value the results already show; the key is
-     * the only affordance for changing it.
-     */
-    public function testInATerminalTooNarrowToWidenTheLabelElidesAndTheKeySurvives(): void
-    {
-        $modal = $this->modal();
-        $modal->open('Find in Files');
-        $modal->setScopes(['A directory whose name runs long'], index: 0);
-
-        $screen = AnsiUtils::stripAnsiCodes(implode("\n", $this->compose($modal, columns: 56)));
-
-        $this->assertStringContainsString('(Alt+S)', $screen, 'the key is never what gets cut');
-        $this->assertStringNotContainsString('A directory whose name runs long', $screen, 'the label is');
-        $this->assertStringContainsString('Scope: A', $screen, 'and what is left of it still reads as the scope');
     }
 
     public function testCustomTranslatorIsUsedNotTheEnglishDefault(): void

@@ -273,6 +273,33 @@ final class ProjectSearchControllerTest extends TestCase
         $this->assertStringContainsString('bar()', (string) file_get_contents($project->path('src/A.php')));
     }
 
+    /**
+     * The export says so, and says how much.
+     *
+     * Every other export test reads the FILE, so a mutation sweep could delete
+     * the flash outright and nothing noticed — and the flash is the only thing
+     * telling the user the export happened at all, since it writes to
+     * `.porta/search-results.txt` rather than opening anything.
+     *
+     * The count is asserted in the singular with the plural denied: one result
+     * is the case the wording used to get wrong, and
+     * `assertStringContainsString('1 result')` is satisfied by "1 results".
+     */
+    public function testExportingFlashesWhatItWroteAndHowManyRowsWereInIt(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n// needle in A\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search('needle');
+        $this->awaitModalShows('needle in A');
+
+        $controller->exportResults();
+
+        $flash = $this->flashed();
+        $this->assertStringContainsString('Exported 1 result', $flash);
+        $this->assertStringNotContainsString('Exported 1 results', $flash, 'one row is not "1 results"');
+    }
+
     public function testExportResultsGroupsMultipleFilesWithABlankLineBetweenThem(): void
     {
         $project = new TempProject([
