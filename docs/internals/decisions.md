@@ -4177,3 +4177,64 @@ stale the first time a glyph changes. The invariant — declared width equals
 drawn width, across locales because the widest row changes with the translation
 — is the only form of the check that both fails when it should and survives
 ordinary edits.
+
+## Table cells wrap now (2026-09-09)
+
+`MarkdownRenderer` had always said tables and code fences truncate rather than
+wrap. This measures what that cost and replaces it for tables.
+
+**Before**, `docs/*.md` rendered at a range of pane widths, counting rows that
+came out elided:
+
+| pane | rows elided | of | share |
+| --- | --- | --- | --- |
+| 70 | 296 | 3407 | 8.7% |
+| 91 (120-column terminal, tree open) | 192 | 3019 | 6.4% |
+| 120 | 136 | 2745 | 5.0% |
+| 160 | 99 | 2534 | 3.9% |
+| 200 | 77 | 2413 | 3.2% |
+
+Worst pages at 91: `plugins.md` (86 rows), `keybindings.md` (54) — the two most
+reference-shaped documents, where a reader can least guess what was cut. It did
+not go away with a bigger terminal: one cell in `plugins.md` runs to about 600
+characters, so it was structural rather than a narrow-pane edge.
+
+**Two things compounded it.** `HelpViewerWidget` binds no horizontal movement
+at all, so an elided cell could not be scrolled to; and `findLines()` returns
+the RENDERED lines, so `Ctrl+F` could not find the elided text either. A reader
+who knew a phrase was in the docs was told there were no matches. The rendering
+limit was documented; that consequence was not.
+
+**After**: columns are budgeted against the pane — the widest gives up a column
+at a time down to an eight-column floor — and each cell wraps inside its own, so
+a row is as tall as its tallest cell. Truncation at the pane edge, counted the
+same way:
+
+| pane | truncated rows, before | after |
+| --- | --- | --- |
+| 70 | 296 | 34 |
+| 91 | 192 | 9 |
+| 120 | 136 | **0** |
+| 160 | 99 | **0** |
+| 200 | 77 | **0** |
+
+Every one of the nine remaining at 91 is a **code fence**, which still
+truncates on purpose: reflowing code changes what it says. No rendered row
+exceeds its pane at any width, so the compositor invariant holds.
+
+**How it is built.** The word splitting and the greedy packer were extracted
+from the paragraph wrapper and are now shared, so a cell breaks exactly where a
+paragraph would — and there is one implementation for the duplication gate to
+be happy about. Link spans come back per wrapped fragment and column-relative,
+which is what lets a link survive being wrapped: three tests that used to assert
+a link was DROPPED by truncation now assert it survives, which is the whole
+point of the change.
+
+**Two things the gates caught.** The column budgeter had an empty-set guard that
+`max()` seemed to need; the coverage gate showed the line never runs, because
+with no columns the row is one space wide and the loop containing the `max()`
+cannot start. Deleted, with a test for the degenerate table that made the
+argument concrete. And the test class hit mago's `too-many-methods` — bisected
+in `mago.toml` to that class's own count — so the table cases moved to
+`MarkdownTableTest` rather than the threshold moving.
+

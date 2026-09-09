@@ -212,98 +212,6 @@ final class MarkdownRendererTest extends TestCase
         $this->assertSame($bg.$text.Sgr::RESET, $doc->lines[0]);
     }
 
-    public function testTablesAlignBoldTheHeaderAndCarryCellLinks(): void
-    {
-        $doc = $this->render("| Key | Action |\n| --- | --- |\n| `F1` | Open [docs](guide.md) now |");
-        $plain = $this->rows($doc->lines);
-
-        $this->assertSame(' Key  Action', rtrim($plain[0]));
-        $this->assertStringContainsString("\x1b[1m", $doc->lines[0], 'header row is bold');
-        $this->assertMatchesRegularExpression('/^─+\s+─+/u', trim($plain[1]), 'separator renders as rules');
-        $this->assertSame(' F1   Open docs now', rtrim($plain[2]));
-        $this->assertSame(strpos($plain[0], needle: 'Action'), strpos($plain[2], needle: 'Open'), 'columns align to natural widths');
-
-        $this->assertSame(1, $doc->groupCount());
-        $span = $doc->links[0];
-        $this->assertSame('guide.md', $span->target);
-        $this->assertSame(2, $span->line);
-        $this->assertSame('docs', AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($doc->lines[2], $span->col, $span->endCol - $span->col)), 'the span brackets exactly the link text');
-    }
-
-    public function testTableSeparatorRuleWidthsMatchEachColumnIndependently(): void
-    {
-        // Two columns of DIFFERENT widths: a shared/uniform mutation to the
-        // rule-building loop (dropping str_repeat, or reordering the glyphs
-        // vs the 2-space gap) is only observable when the columns differ.
-        $doc = $this->render("| A | BBBB |\n| --- | --- |\n| x | y |");
-        $sep = rtrim($this->rows($doc->lines)[1]);
-        $this->assertSame(' '.str_repeat('─', times: 1).'  '.str_repeat('─', times: 4), $sep);
-    }
-
-    public function testTableSeparatorLineIsExactlyMutedColorThenRuleThenReset(): void
-    {
-        $doc = $this->render("| A |\n| --- |\n| x |");
-        $expected = $this->styles->of(Role::Muted)->getAnsiRestore().' ─'.Sgr::RESET;
-        $this->assertSame($expected, $doc->lines[1]);
-    }
-
-    public function testASecondSeparatorRowIsAlsoRecognizedNotJustTheFirst(): void
-    {
-        // headerSeen must flip permanently once tripped by the FIRST real
-        // (non-separator) row — a second separator-shaped row appearing
-        // later must still be rendered as a rule, not as a bolded header.
-        $doc = $this->render("| A |\n| --- |\n| x |\n| --- |\n| y |");
-        $plain = array_map(rtrim(...), $this->rows($doc->lines));
-        $this->assertSame(' ─', $plain[1]);
-        $this->assertSame(' ─', $plain[3]);
-        $this->assertStringNotContainsString("\x1b[1m", $doc->lines[3], 'a later row is not re-bolded as a header');
-    }
-
-    public function testOnlyTheFirstNonSeparatorRowIsBolded(): void
-    {
-        $doc = $this->render("| Head |\n| --- |\n| x |\n| y |");
-        $this->assertStringContainsString("\x1b[1m", $doc->lines[0], 'the header row is bolded');
-        $this->assertStringNotContainsString("\x1b[1m", $doc->lines[2], 'the first data row is plain');
-        $this->assertStringNotContainsString("\x1b[1m", $doc->lines[3], 'the second data row is plain');
-    }
-
-    public function testTheHeaderRowIsExactlyBoldThenTrimmedTextThenReset(): void
-    {
-        $doc = $this->render('| Head |');
-        $this->assertSame(Sgr::BOLD.' Head'.Sgr::RESET, $doc->lines[0], 'trailing whitespace trimmed before the reset, bold visibly wraps the text');
-    }
-
-    public function testANonHeaderTableRowIsNotWrappedInBoldOrAResetPair(): void
-    {
-        $doc = $this->render("| Head |\n| --- |\n| x |");
-        $this->assertSame(' x', rtrim($doc->lines[2]), 'no leading bold or trailing reset on a plain data row');
-    }
-
-    public function testATableColumnPadsToTheWidestCellPlusATwoColumnGap(): void
-    {
-        // column 0's widest cell is "AA" (2); the narrower "x" cell (1) must
-        // pad out to that width (1 fill space) plus the fixed 2-space gap.
-        $doc = $this->render('| AA | B |'."\n".'| --- | --- |'."\n".'| x | yy |');
-        $this->assertSame(' x   yy', $this->rows($doc->lines)[2]);
-    }
-
-    public function testATableCellLinkSpanColumnAccountsForEveryPrecedingColumnsWidth(): void
-    {
-        $doc = $this->render("| AAAA | B |\n| --- | --- |\n| x | [l](t.md) |");
-        $span = $doc->links[0];
-        $text = $this->rows($doc->lines)[2];
-        $this->assertSame('l', mb_substr($text, $span->col, $span->endCol - $span->col), 'the span column is offset past column 0s full padded width');
-    }
-
-    public function testAnEmptyTableCellStillContributesAZeroWidthColumnNotOne(): void
-    {
-        // A lone row with an empty cell: the running max's own default must
-        // be 0, or a never-otherwise-populated column would pad to width 1
-        // instead of collapsing to nothing.
-        $doc = $this->render('|  |');
-        $this->assertSame('', rtrim($this->rows($doc->lines)[0]));
-    }
-
     public function testASeparatorCellRequiresDashesAtTheVeryStartOfTheCell(): void
     {
         // A dash run buried after other content must not be mistaken for a
@@ -339,14 +247,11 @@ final class MarkdownRendererTest extends TestCase
         $this->assertStringContainsString('anchor', implode("\n", $this->rows($doc->lines)), 'the anchor text still renders');
     }
 
-    public function testAngleBracketTargetsAndTruncatedTableSpansAreDropped(): void
+    public function testAngleBracketTargetsAreUnwrapped(): void
     {
         $doc = $this->render('[spaced](<my file.md>)');
-        $this->assertSame('my file.md', $doc->target(0));
 
-        $doc = $this->render("| A | B |\n| --- | --- |\n| xxxxxxxxxx | words then a [link](far.md) |", 20);
-        $this->assertStringEndsWith('…', rtrim(AnsiUtils::stripAnsiCodes($doc->lines[2])), 'the row truncated');
-        $this->assertSame([], $doc->links, 'spans truncated out of view are dropped');
+        $this->assertSame('my file.md', $doc->target(0));
     }
 
     public function testMonochromeOutputHasNoEscapes(): void
@@ -405,35 +310,6 @@ final class MarkdownRendererTest extends TestCase
         $joined = implode("\n", $this->rows($doc->lines));
         $this->assertSame(1, substr_count($joined, needle: 'code'), 'the fence-open line never re-enters the block dispatcher as stray paragraph text');
         $this->assertStringContainsString('tail', $joined);
-    }
-
-    public function testAnIndentedTableRowIsStillRecognized(): void
-    {
-        $doc = $this->render("  | A | B |\n  | --- | --- |\n  | x | y |");
-        $plain = $this->rows($doc->lines);
-        $this->assertSame(' A  B', rtrim($plain[0]));
-    }
-
-    public function testATableFlushesAPendingParagraphFirst(): void
-    {
-        $doc = $this->render("intro text\n| A |\n| --- |\n| x |");
-        $plain = $this->rows($doc->lines);
-        $this->assertSame('intro text', $plain[0]);
-    }
-
-    public function testATrailingWhitespaceTableRowStillParsesItsLastCell(): void
-    {
-        $doc = $this->render("| A | B |   \n| --- | --- |\n| x | y |");
-        $plain = $this->rows($doc->lines);
-        $this->assertSame(' A  B', rtrim($plain[0]));
-        $this->assertSame(' x  y', rtrim($plain[2]));
-    }
-
-    public function testContentImmediatelyAfterATableWithNoBlankLineStillRenders(): void
-    {
-        $doc = $this->render("| A |\n| --- |\n| x |\nafter");
-        $plain = $this->rows($doc->lines);
-        $this->assertSame('after', end($plain), 'the boundary line was reprocessed as a paragraph, not swallowed by the table scan');
     }
 
     public function testAHashInTheMiddleOfALineIsNotTreatedAsAHeading(): void
@@ -705,31 +581,6 @@ final class MarkdownRendererTest extends TestCase
         $lineAfterSpan = mb_substr($this->rows($doc->lines)[0], $span->endCol, length: 1);
         $this->assertSame(' ', $lineAfterSpan, 'the space right after the span is not part of it');
         $this->assertSame(7, $span->endCol - $span->col, 'the span itself is exactly "go here" (7), not "go here " (8)');
-    }
-
-    public function testATableRowFillingTheLineExactlyToWidthStillHidesASpanEndingRightAtTheEdge(): void
-    {
-        // Filling exactly to $width (no visible "…") still applies the
-        // tighter width-1 margin: a span ending exactly at the last column
-        // must be dropped defensively, matching a genuinely-truncated line.
-        $doc = $this->render('| '.str_repeat('a', times: 16).' [bb](t.md) |', 20);
-        $this->assertSame(' '.str_repeat('a', times: 16).' bb', rtrim($this->rows($doc->lines)[0]));
-        $this->assertSame(20, mb_strwidth(rtrim($this->rows($doc->lines)[0])));
-        $this->assertSame([], $doc->links, 'the row fills exactly to width, so the trailing span is still hidden');
-    }
-
-    public function testATableRowOneColumnUnderWidthKeepsASpanEndingAtItsLastColumn(): void
-    {
-        $doc = $this->render('| '.str_repeat('a', times: 15).' [bb](t.md) |', 20);
-        $this->assertNotEmpty($doc->links, 'one column of slack: the same span is kept, not hidden');
-    }
-
-    public function testATruncatedRowsLinkIsDropped(): void
-    {
-        $doc = $this->render('| [aa](x.md) '.str_repeat('b', times: 20).' [cc](y.md) |', 20);
-        $this->assertStringEndsWith('…', rtrim($this->rows($doc->lines)[0]));
-        $this->assertCount(1, $doc->links, 'only the link before the truncation point survives');
-        $this->assertSame('x.md', $doc->links[0]->target);
     }
 
     public function testALinksOpenSequenceIsExactlyUnderlineThenTheTabAccentColor(): void

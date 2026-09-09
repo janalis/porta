@@ -16,7 +16,10 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * bold/italic/inline code, fenced code blocks, bullet/ordered lists, tables,
  * blockquotes, horizontal rules and links become styled ANSI lines plus
  * {@see LinkSpan}s keyed by rendered position. Prose word-wraps to the pane
- * width (tables and code fences truncate instead). Every inline style is a
+ * width, and so does a table CELL: the columns are budgeted against the pane
+ * and each cell wraps inside its own, so a row is as tall as its tallest cell
+ * and nothing is lost. Only code fences still truncate, because reflowing code
+ * changes what it says. Every inline style is a
  * self-contained SGR region — opened at its start column and closed at its
  * end — so the viewer can splice a highlight over any span with plain column
  * slicing. All color flows through the injected {@see Styles}: with colors
@@ -27,6 +30,9 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final class MarkdownRenderer
 {
+    /** Narrowest a table column may be squeezed to before the row truncates instead. */
+    private const int MIN_COLUMN = 8;
+
     private const int MIN_WIDTH = 20;
 
     private int $nextGroup = 0;
@@ -191,32 +197,113 @@ final class MarkdownRenderer
     }
 
     /** @param list<string> $rows raw `| a | b |` lines (a `---` separator row allowed) */
-    private function table(array $rows, int $width): void
+    /**
+     * Column widths that fit the pane, shrinking the widest until they do.
+     *
+     * The natural widths — each column as wide as its longest cell — are what
+     * the table WANTS. When their total overruns the pane the widest column
+     * gives up a column at a time, so a long prose column narrows while a
+     * column of keys keeps every character of every key. Nothing is dropped:
+     * whatever a column loses in width it gains in wrapped rows.
+     *
+     * The floor stops a column being narrowed into a stack of single letters;
+     * below it the table is simply wider than the pane and the row truncate
+     * takes over, which is what a two-column terminal deserves.
+     *
+     * @param array<array-key, list<array{text: string, width: int, spans: list<array{col: int, endCol: int, target: string, group: int}>}>> $cells
+     *
+     * @return array<array-key, int>
+     */
+    private static function columnWidths(array $cells, int $width): array
     {
-        $cells = [];
-        $separator = [];
-        foreach ($rows as $index => $row) {
-            $parts = array_map(trim(...), \array_slice(explode('|', trim($row, characters: '|')), offset: 0));
-            if ([] !== $parts && 1 === preg_match('/^:?-{3,}:?$/', $parts[0])) {
-                $separator[$index] = true;
-                continue;
-            }
-            $cells[$index] = array_map(fn (string $cell): array => $this->assemble($this->inline($cell), 0), $parts);
-        }
-
         $widths = [];
         foreach ($cells as $rowCells) {
             foreach ($rowCells as $column => $cell) {
                 $widths[$column] = max($widths[$column] ?? 0, $cell['width']);
             }
         }
+        // No empty-set guard: a table of nothing but separator rows yields no
+        // columns, `rowWidth([])` is the leading space alone, and one column is
+        // never wider than the pane — so the loop that would call max() on an
+        // empty array cannot run. The coverage gate is what said so.
+        while (self::rowWidth($widths) > $width) {
+            $widest = array_keys($widths, max($widths), strict: true)[0];
+            if ($widths[$widest] <= self::MIN_COLUMN) {
+                break;
+            }
+            --$widths[$widest];
+        }
+
+        return $widths;
+    }
+
+    /**
+     * What a row of these columns occupies: a leading space, each column, and
+     * the two trailing spaces after each — exactly what the row assembly emits.
+     *
+     * @param array<array-key, int> $widths
+     */
+    private static function rowWidth(array $widths): int
+    {
+        $total = 1 + (2 * \count($widths));
+        foreach ($widths as $columnWidth) {
+            $total += $columnWidth;
+        }
+
+        return $total;
+    }
+
+    /**
+     * One cell's segments wrapped to $width, as one fragment per rendered row.
+     *
+     * Shares the paragraph wrapper's word splitting and greedy packing, so a
+     * cell breaks where a paragraph would; the spans come back per fragment and
+     * column-relative, which is what lets a link survive being wrapped.
+     *
+     * @param list<MarkdownSegment> $segments
+     *
+     * @return list<array{text: string, width: int, spans: list<array{col: int, endCol: int, target: string, group: int}>}>
+     */
+    private function wrapCell(array $segments, int $width): array
+    {
+        $fragments = [];
+        foreach (self::packWords(self::toWords($segments, $width), $width, firstCol: 0, hang: 0) as $lineWords) {
+            $fragments[] = $this->assemble($this->wordsToSegments($lineWords), 0);
+        }
+
+        return $fragments;
+    }
+
+    /**
+     * One markdown table: budget the columns against the pane, then wrap each
+     * cell inside its own so no cell loses its tail.
+     *
+     * @param list<string> $rows the `|`-delimited source lines, separator included
+     */
+    private function table(array $rows, int $width): void
+    {
+        $cells = [];
+        $sources = [];
+        $separator = [];
+        foreach ($rows as $index => $row) {
+            /** @var list<string> $parts */
+            $parts = array_map(trim(...), explode('|', trim($row, characters: '|')));
+            if ([] !== $parts && 1 === preg_match('/^:?-{3,}:?$/', $parts[0])) {
+                $separator[$index] = true;
+                continue;
+            }
+            $sources[$index] = array_map($this->inline(...), $parts);
+            $cells[$index] = array_map(fn (array $segments): array => $this->assemble($segments, 0), $sources[$index]);
+        }
+
+        $widths = self::columnWidths($cells, $width);
 
         $headerSeen = false;
         foreach ($rows as $index => $row) {
             if (array_key_exists($index, $separator)) {
                 $rule = ' ';
                 foreach ($widths as $columnWidth) {
-                    $rule .= str_repeat(Glyphs::MD_RULE, $columnWidth).'  ';
+                    $rule .= str_repeat(Glyphs::MD_RULE, max(0, $columnWidth)).'  ';
                 }
                 $this->lines[] = $this->styles->of(Role::Muted)->getAnsiRestore().AnsiText::truncate(rtrim($rule), $width).$this->resetAll();
                 continue;
@@ -224,19 +311,33 @@ final class MarkdownRenderer
 
             $isHeader = !$headerSeen;
             $headerSeen = true;
-            $text = ' ';
-            $col = 1;
-            $spans = [];
-            foreach ($cells[$index] as $column => $cell) {
-                foreach ($cell['spans'] as $span) {
-                    $spans[] = ['col' => $span['col'] + $col, 'endCol' => $span['endCol'] + $col, 'target' => $span['target'], 'group' => $span['group']];
-                }
-                $text .= $cell['text'].str_repeat(' ', max(0, ($widths[$column] ?? 0) - $cell['width']) + 2);
-                $col += ($widths[$column] ?? 0) + 2;
+
+            // Each cell wraps inside its own budgeted column, so the row is as
+            // tall as its tallest cell and every column keeps its text. The
+            // cells were parsed once above; only the wrapping needs the width.
+            $wrapped = [];
+            $height = 1;
+            foreach ($sources[$index] as $column => $segments) {
+                $wrapped[$column] = $this->wrapCell($segments, $widths[$column] ?? 1);
+                $height = max($height, \count($wrapped[$column]));
             }
-            $line = $isHeader ? $this->bold().rtrim($text).$this->resetAll() : rtrim($text);
-            $this->lines[] = AnsiText::truncate($line, $width);
-            $this->recordSpans($spans, \count($this->lines) - 1, $width);
+
+            foreach (range(start: 0, end: $height - 1) as $physical) {
+                $text = ' ';
+                $col = 1;
+                $spans = [];
+                foreach ($wrapped as $column => $fragments) {
+                    $fragment = $fragments[$physical] ?? ['text' => '', 'width' => 0, 'spans' => []];
+                    foreach ($fragment['spans'] as $span) {
+                        $spans[] = ['col' => $span['col'] + $col, 'endCol' => $span['endCol'] + $col, 'target' => $span['target'], 'group' => $span['group']];
+                    }
+                    $text .= $fragment['text'].str_repeat(' ', max(0, ($widths[$column] ?? 0) - $fragment['width']) + 2);
+                    $col += ($widths[$column] ?? 0) + 2;
+                }
+                $line = $isHeader ? $this->bold().rtrim($text).$this->resetAll() : rtrim($text);
+                $this->lines[] = AnsiText::truncate($line, $width);
+                $this->recordSpans($spans, \count($this->lines) - 1, $width);
+            }
         }
         $this->lines[] = '';
     }
@@ -298,14 +399,32 @@ final class MarkdownRenderer
      */
     private function wrapSegments(array $segments, int $width, string $firstPrefix, int $hang, string $contPrefix): void
     {
+        $words = self::toWords($segments, $width - max($hang, 2));
+
+        $prefix = $firstPrefix;
+        $prefixWidth = AnsiUtils::visibleWidth($firstPrefix);
+        foreach (self::packWords($words, $width, $prefixWidth, $hang) as $index => $lineWords) {
+            $this->emitLine(0 === $index ? $prefix : $contPrefix, 0 === $index ? $prefixWidth : $hang, $lineWords, $width);
+        }
+    }
+
+    /**
+     * Split styled segments into words, hard-breaking any single word wider
+     * than $room (a long URL or path has no break to greedily take).
+     *
+     * @param list<MarkdownSegment> $segments
+     *
+     * @return list<MarkdownWord>
+     */
+    private static function toWords(array $segments, int $room): array
+    {
+        $room = max(1, $room);
         $words = [];
         foreach ($segments as $segment) {
             $splitWords = preg_split('/ +/', $segment->text, -1, \PREG_SPLIT_NO_EMPTY);
             foreach (\is_array($splitWords) ? $splitWords : [] as $word) {
                 $wordWidth = AnsiUtils::visibleWidth($word);
-                $room = $width - max($hang, 2);
                 while ($wordWidth > $room) {
-                    // A single over-wide word (long URL/path) hard-breaks.
                     $head = AnsiUtils::sliceByColumn($word, 0, $room);
                     $words[] = new MarkdownWord($head, AnsiUtils::visibleWidth($head), $segment->kind, $segment->target, $segment->group);
                     $word = AnsiUtils::sliceByColumn($word, $room, \PHP_INT_MAX);
@@ -317,26 +436,39 @@ final class MarkdownRenderer
             }
         }
 
-        $prefix = $firstPrefix;
-        $prefixWidth = AnsiUtils::visibleWidth($firstPrefix);
+        return $words;
+    }
+
+    /**
+     * Greedily pack words into lines of $width, the first line starting at
+     * $firstCol and the rest at $hang.
+     *
+     * Shared by the paragraph wrapper and the table-cell wrapper: one greedy
+     * packer, so a cell breaks its text exactly where a paragraph would.
+     *
+     * @param list<MarkdownWord> $words
+     *
+     * @return list<list<MarkdownWord>>
+     */
+    private static function packWords(array $words, int $width, int $firstCol, int $hang): array
+    {
+        $lines = [];
         $lineWords = [];
-        $col = $prefixWidth;
+        $col = $firstCol;
         foreach ($words as $word) {
             $needed = ([] === $lineWords ? 0 : 1) + $word->width;
             if ([] !== $lineWords && ($col + $needed) > $width) {
-                $this->emitLine($prefix, $prefixWidth, $lineWords, $width);
-                $prefix = $contPrefix;
-                $prefixWidth = $hang;
+                $lines[] = $lineWords;
                 $lineWords = [];
-                $col = $prefixWidth;
+                $col = $hang;
                 $needed = $word->width;
             }
             $lineWords[] = $word;
             $col += $needed;
         }
-        if ([] !== $lineWords || '' !== $firstPrefix) {
-            $this->emitLine($prefix, $prefixWidth, $lineWords, $width);
-        }
+        $lines[] = $lineWords;
+
+        return $lines;
     }
 
     /** @param list<MarkdownWord> $lineWords */
