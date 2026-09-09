@@ -248,6 +248,83 @@ final class KeybindingsDocTest extends TestCase
     }
 
     /**
+     * And the other direction: every key the "Inside Find in Files" table
+     * lists must be one those surfaces actually bind.
+     *
+     * The gate above is one-way — it asks whether each bound key is written
+     * down, which cannot see a row for a key that is not bound at all. Three
+     * were. `Ctrl+G`, `Ctrl+Shift+T` and `Ctrl+U` are EDITOR verbs that had sat
+     * at the end of the Search table since the doc was written; inserting the
+     * `### Inside Find in Files` heading above them (`f056e73b`) swallowed all
+     * three into the new table, and for a day the doc promised Go to Line and
+     * Go to Super Method inside a modal that binds neither.
+     *
+     * Nothing caught it because a doc gate that only runs one way grades the
+     * code against the doc and never the doc against the code — the same
+     * both-directions rule `composer arch` has, which this did not.
+     *
+     * The find BAR's keys count as bound: the table's prose contrasts
+     * `Alt+X` there with `Alt+R` here, and that is the sentence stopping a
+     * reader from mixing them up.
+     */
+    public function testEveryKeyTheFindInFilesTableListsIsOneThoseSurfacesBind(): void
+    {
+        $bound = [];
+        foreach (self::modalKeys() as $keys) {
+            foreach ($keys as $key) {
+                $bound[] = self::normalise($key);
+            }
+        }
+        // The conventions modalKeys() drops, which the table still documents.
+        $bound = [...$bound, 'escape', 'enter', 'tab', 'backspace', 'up', 'down', 'esc'];
+
+        $documented = self::findInFilesTableKeys();
+        // An empty extraction has no strays either, so the count is asserted
+        // first: a parser that silently stops matching would otherwise turn
+        // this gate green and leave it that way.
+        $this->assertGreaterThanOrEqual(13, \count($documented), 'the table was read, not skipped');
+
+        $stray = [];
+        foreach ($documented as $key) {
+            if (\in_array($key, $bound, strict: true)) {
+                continue;
+            }
+            $stray[] = $key;
+        }
+
+        $this->assertSame([], $stray, "docs/keybindings.md documents these under `### Inside Find in Files`, and neither find surface binds them:\n  ".implode("\n  ", $stray));
+    }
+
+    /**
+     * The backticked chords in the KEY column of the `### Inside Find in Files`
+     * table — the column only, so the prose and the Action column (which name
+     * glyphs like `.*` and `Aa`) are not read as chords.
+     *
+     * @return list<string> normalised
+     */
+    private static function findInFilesTableKeys(): array
+    {
+        $section = self::section('Search');
+        $at = mb_strpos($section, needle: '### Inside Find in Files');
+        self::assertIsInt($at, 'the Search section carries the Find-in-Files subsection');
+        $table = mb_substr($section, $at);
+
+        $keys = [];
+        foreach (explode("\n", $table) as $line) {
+            if (!str_starts_with($line, '| `')) {
+                continue;
+            }
+            $column = explode('|', $line)[1] ?? '';
+            preg_match_all('~`([^`]+)`~', $column, $matches);
+            foreach ($matches[1] as $chord) {
+                $keys[] = self::normalise($chord);
+            }
+        }
+
+        return $keys;
+    }
+
+    /**
      * One `## `-delimited section of the doc, by heading.
      *
      * @return string its body, heading excluded

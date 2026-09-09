@@ -141,6 +141,9 @@ nothing.
 | --- | --- |
 | `Ctrl+F` / `Ctrl+R` | Find / find-and-replace in file (`F3`/`Shift+F3` cycle, `Tab` switches field, `Alt+X` regex, `Alt+W` whole word, `Alt+R` replace, `Alt+A` replace all, `Alt+↑`/`Alt+↓` recall an earlier query) |
 | `Ctrl+Shift+F` | Find in Files — see the table below |
+| `Ctrl+G` | Go to line |
+| `Ctrl+Shift+T` | Go to test / go to tested class |
+| `Ctrl+U` | Go to the super method — the parent class, interface or trait that declares the one under the caret (resolved from the project's own files; no language server answers this) |
 
 Both find surfaces share one query history — what you looked for in this
 project, whichever surface you looked from — kept in `.porta/search-history.json`
@@ -164,9 +167,6 @@ replaces in the bar, and neither surface can have both.
 | `Tab` | Move between the find, replace and file-mask fields |
 | `Delete` | Exclude the selected match from `Alt+A`'s bulk replace |
 | `Alt+A` | Replace across the project (every match still included) |
-| `Ctrl+G` | Go to line |
-| `Ctrl+Shift+T` | Go to test / go to tested class |
-| `Ctrl+U` | Go to the super method — the parent class, interface or trait that declares the one under the caret (resolved from the project's own files; no language server answers this) |
 
 ## Run, debug, git
 

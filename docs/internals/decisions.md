@@ -3948,3 +3948,30 @@ to make the assertion narrower than the screen.
 Not changed: `%count% shown` ("1 shown" is correct), `Files (%count%)` and the
 other parenthesised counts, and `Keybindings — %count% actions`, where a keymap
 with one action is not a state the app has.
+
+## The doc gate ran one way (2026-09-09)
+
+`docs/keybindings.md` promised `Ctrl+G`, `Ctrl+Shift+T` and `Ctrl+U` under
+**Inside Find in Files**. The modal binds none of them — they are editor verbs
+that had sat at the end of the Search table since the doc was written, and
+inserting the `### Inside Find in Files` heading above them (`f056e73b`)
+swallowed all three into the new table. Moved back.
+
+`KeybindingsDocTest` could not see it, and the reason is worth writing down: it
+asked only whether every bound key is written down. That direction cannot
+notice a ROW for a key nothing binds. `composer arch` fails on drift in either
+direction and says so in `CLAUDE.md`; this gate had the same job and only half
+the rule, so it now also grades the table against the code.
+
+**Two mutations, and the third is the interesting one.** Re-planting the exact
+regression fails, and renaming a documented chord to one nothing binds fails.
+But breaking the row PARSER passed: no rows extracted means no strays, and the
+gate goes green and stays green. Fixed by asserting the count first — the
+`settle-loops-need-content` rule, in a new place: "nothing is wrong" is
+satisfied by having looked at nothing.
+
+Also checked, and NOT a defect: the five option tags (`.* Aa \b Pc ·"`) show no
+keys on screen, which is the same gap the footer's `Alt+Enter` had. Every one of
+them is documented in the table above, which is what `F1` renders — so the keys
+are discoverable, the row has no room for five more hints, and adding chrome
+there would be design rather than repair.
