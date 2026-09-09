@@ -91,13 +91,13 @@ final class AsyncProcess
         // @mago-expect lint:no-error-control-operator -- proc_open on a nonexistent/unusable binary emits a spawn ("posix_spawn() failed") warning that guarding the inputs cannot reliably prevent; the false return is handled below.
         $process = @proc_open($this->command, $descriptors, $pipes, $cwd, $this->env);
         if (!\is_resource($process)) {
-            // Defensive: proc_open spawns even unusable binaries (exec
-            // failure surfaces later as an exit code), so this is unreachable
-            // in tests.
-            // @codeCoverageIgnoreStart
+            // Reached whenever the binary is not on the PATH: the ARRAY form
+            // of proc_open resolves the program itself and returns false when
+            // posix_spawn cannot, where the string form would have handed the
+            // miss to a shell and reported it later as exit 127. So callers
+            // that need to tell "the tool is missing" from "the tool failed"
+            // get that answer here, before anything is spawned.
             return false;
-
-            // @codeCoverageIgnoreEnd
         }
 
         $this->process = $process;

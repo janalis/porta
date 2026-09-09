@@ -31,6 +31,26 @@ final class AsyncProcessTest extends TestCase
         $this->assertSame("hello\nworld\n", $process->output());
     }
 
+    public function testABinaryThatIsNotOnThePathIsRefusedBeforeAnythingSpawns(): void
+    {
+        // The one signal a caller has for "this tool is not installed": the
+        // array form of proc_open resolves the program itself, so a miss is
+        // false HERE rather than an exit 127 from a shell later. Callers lean
+        // on it — symfony-lsp tells "curl is not available" from "cannot reach
+        // github.com" by exactly this — so it must stay a false, and it must
+        // stay silent: no callback ever fires.
+        $process = new AsyncProcess(['porta-no-such-binary-e2f7'], getcwd());
+        $fired = false;
+
+        $this->assertFalse($process->start(static function () use (&$fired): void {
+            $fired = true;
+        }));
+
+        $this->pump(0.05);
+        $this->assertFalse($fired, 'nothing was spawned, so nothing can exit');
+        $this->assertSame('', $process->output());
+    }
+
     public function testStreamsChunksAsTheyArrive(): void
     {
         $process = new AsyncProcess([\PHP_BINARY, '-r', 'echo "a\n"; usleep(30000); echo "b\n";'], getcwd());
