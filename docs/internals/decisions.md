@@ -4422,3 +4422,74 @@ from this side in any case.
 Incidentally the new path is a fix, not just a change: `mb_strwidth()` scored
 that conjunct 3 columns, the grapheme walk scores it 2, and 2 is what a terminal
 draws.
+
+## The symfony-lsp round: four symptoms, four causes (2026-09-09)
+
+Four things the user reported from real use, none of which shared a fix. Worth
+recording because the shape repeats: the plugin could download a binary but had
+no notion of *state* — it never asked what was installed, whether it ran, or
+whether it was being used.
+
+**"could not resolve the latest symfony-lsp release"** (`fe0000ff`). The tag
+lookup went through `api.github.com`, which is 60 requests/hour per IP
+unauthenticated. That budget was exhausted for this IP while nothing else was
+wrong. The tag now comes from the `releases/latest` redirect on `github.com` —
+ordinary release traffic on the host the download already uses — with the API
+kept as a fallback that carries `Authorization: Bearer` when `GITHUB_TOKEN` or
+`GH_TOKEN` is set. The blindness was the deeper half: `curl -fsSL` discards the
+status, so rate-limit, offline, DNS failure and a missing curl all produced one
+string. They are four messages now, and the rate-limit one names the reset time.
+
+**A binary that could not run replaced one that could** (`52175da9`). There was
+no smoke test, and the rename is atomic and irreversible. A wrong-architecture
+download now fails `--version` while the old copy is still on disk.
+
+**An upgrade silently did nothing** (`55acea0e`). The plugin relaunched by side
+effect — writing `binary: ''` to trip a reconfigure — and
+`LspSessionPool::reconfigure()` returns false when the resolved map is
+unchanged. On a FIRST install the map changes (null → path) so it worked; on an
+upgrade the argv is byte-identical, so no session stopped and the running
+server kept serving the inode `rename()` had unlinked. `reload()` is the
+explicit force, reached through `PluginApi::relaunchLanguageServer()`.
+
+The test that caught it did not exist because every relaunch test covered the
+first install — the one case that *cannot* short-circuit.
+
+**"Install Server" stayed in the menu** (`3a55f8cb`). It cannot disappear:
+`MenuItem`'s `isEnabled` predicate greys an entry, it never hides it. Hiding
+would also have removed the update path, which was the affordance actually
+missing — re-running install WAS the update, which nobody could guess. Two
+commands over one action, each enabled when it applies.
+
+### The follow-ups, and one measurement that closed a bullet
+
+**Probe curl and tar before a byte moves.** tar is not needed until the archive
+is on disk, so a machine without it waited out a ~9MB download to be told
+`could not extract` — which reads as a corrupt release. Both are resolved with
+`ExecutableFinder` up front now, and the old `-1 && -1` heuristic for "curl is
+not available" is gone: a missing tool no longer reaches that code, so leaving
+the branch would have made it a wrong label for a timeout.
+
+**The scratch reaps itself.** Quitting mid-download runs neither the success
+sweep nor the failure sweep, so ~9MB stayed under a pid-keyed name — and pids
+recycle, so that leftover was also the tree the next install with the same pid
+would extract into. Proven, not argued: with the sweep disabled the test lands
+the *stale* binary and reports success. Directories are reaped only when
+nothing in them has been touched for an hour, because a second Porta window may
+be downloading into a sibling right now.
+
+**`hash_file()` on the archive stays synchronous.** Measured on the real
+artifact rather than argued: sha256 over the 8.9MB binary is **37ms** warm
+(five runs, 36.6–38.2), so the ~3.5MB compressed tarball costs roughly 15ms —
+one dropped frame, once per install, inside an operation that already spent
+seconds on the network. An async chunked hasher or a `shasum` dependency buys
+that frame back and adds a failure mode. Re-open it if the release grows an
+order of magnitude, or if the same read moves onto a per-keystroke path.
+
+**And a claim in core that was wrong.** `AsyncProcess::start()` carried
+`@codeCoverageIgnore` over its unspawnable-binary return, justified as "proc_open
+spawns even unusable binaries (exec failure surfaces later as an exit code), so
+this is unreachable in tests". Not on the ARRAY form: PHP resolves the program
+itself and `proc_open` returns false. The path is reachable, it is the only
+signal a caller has for "this tool is missing", and symfony-lsp's error messages
+were already leaning on it. It has a test now and no ignore.
