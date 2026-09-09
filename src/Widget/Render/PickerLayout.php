@@ -62,14 +62,18 @@ final class PickerLayout
         foreach ($overlay['items'] as $item) {
             $width = max($width, mb_strwidth($item['label']) + mb_strwidth($item['hint']) + 6);
         }
-        if ([] === $visible) {
-            // The filler row replaces the items, so nothing else in this width
-            // is measuring it — and it is truncated with NO ellipsis, which
-            // makes a cut invisible rather than merely ugly: German's "keine
-            // Treffer" rendered as "keine Tref" in a box sized from a
-            // three-letter title and two short rows.
-            $width = max($width, mb_strwidth($emptyMessage) + 2);
-        }
+        // The filler row shown when nothing matches: measured ALWAYS, not only
+        // when it is about to be drawn. Nothing else in this width measures it
+        // — and it truncates with no ellipsis, so a cut is invisible rather
+        // than merely ugly (German's "keine Treffer" drew as "keine Tref" in a
+        // box sized from a three-letter title and two short rows).
+        //
+        // Unconditionally, because the width above is deliberately taken over
+        // the UNFILTERED items so the box cannot resize under the reader's eye,
+        // and counting this one only when the filter stops matching puts that
+        // resize straight back: measured at 15 columns, then 27 on the
+        // keystroke that emptied the list.
+        $width = max($width, mb_strwidth($emptyMessage) + 2);
         $width = min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER);
 
         $content = [];
@@ -146,12 +150,10 @@ final class PickerLayout
         foreach ($visible as $row) {
             $width = max($width, mb_strwidth($row->hit->label ?? '') + mb_strwidth($row->hit->detail ?? '') + 6);
         }
-        if ([] === $search->rows && '' !== $search->emptyMessage) {
-            // Same rule as the list's filler below — the 24-column floor
-            // happens to seat every translation of "no results" today, which
-            // is luck rather than a guarantee.
-            $width = max($width, mb_strwidth($search->emptyMessage) + 2);
-        }
+        // Same rule as the list's filler, and unconditional for the same
+        // reason. The 24-column floor happens to seat every translation of
+        // "no results" today, which is luck rather than a guarantee.
+        $width = max($width, mb_strwidth($search->emptyMessage) + 2);
         $width = min($width, $columns - PopupMetrics::CENTERED_MARGIN, PopupMetrics::CENTERED_MAX_INNER);
 
         $popup = [

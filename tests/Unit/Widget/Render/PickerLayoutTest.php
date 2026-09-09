@@ -125,10 +125,15 @@ final class PickerLayoutTest extends TestCase
         $this->assertStringContainsString('≡ dev', $this->filterRow($filter));
     }
 
-    /** The list overlay's filter row, plain, for a box sized from two short items. */
-    private function filterRow(TextField $filter): string
+    /**
+     * A Run-shaped list overlay: a three-letter title over two short rows,
+     * which is the box narrow enough for a filler or a filter to overrun.
+     *
+     * @return array{rows: list<string>, top: int, col: int, width: int, box: \Porta\Overlay\Region\ModalBox}
+     */
+    private function layout(TextField $filter, string $emptyMessage = 'no matches'): array
     {
-        $out = PickerLayout::layoutList(
+        return PickerLayout::layoutList(
             [0, 0, 24, 100],
             [
                 'title' => 'Run',
@@ -143,8 +148,14 @@ final class PickerLayoutTest extends TestCase
             ],
             $this->styles(),
             closeHovered: false,
-            emptyMessage: 'no matches',
+            emptyMessage: $emptyMessage,
         );
+    }
+
+    /** The list overlay's filter row, plain. */
+    private function filterRow(TextField $filter): string
+    {
+        $out = $this->layout($filter);
 
         foreach ($out['rows'] as $row) {
             $plain = AnsiUtils::stripAnsiCodes($row);
@@ -154,6 +165,30 @@ final class PickerLayoutTest extends TestCase
         }
 
         self::fail('the picker drew no filter row');
+    }
+
+    /**
+     * The box does not resize as the filter stops matching.
+     *
+     * The width is taken over the UNFILTERED items on purpose: a box sized from
+     * what survives the filter shrinks and re-centres on every keystroke,
+     * walking out from under the eye reading it. Counting the filler row only
+     * when it is about to be drawn puts that resize straight back — measured at
+     * 15 columns, then 27 on the keystroke that emptied the list — which is why
+     * it is measured whether or not it will be shown.
+     */
+    public function testTheBoxKeepsItsWidthWhenTheFilterStopsMatching(): void
+    {
+        $widths = [];
+        foreach (['', 'd', 'zz'] as $typed) {
+            $filter = new TextField();
+            foreach (mb_str_split($typed) as $character) {
+                $filter->insert($character);
+            }
+            $widths[] = $this->layout($filter, 'aucune correspondance')['width'];
+        }
+
+        $this->assertSame([$widths[0], $widths[0], $widths[0]], $widths, 'one width, whatever the filter matches');
     }
 
     /**
