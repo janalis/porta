@@ -4836,3 +4836,38 @@ started as a grep result and grew consumers. Not refactored here: it is a
 mechanical change across eighteen files and a defect fix should not carry one.
 Recorded so the next person to widen this shape knows it is the third time, and
 that the fix is a small readonly class, not a nineteenth copy of the docblock.
+
+## The other list that scrolled in silence (2026-09-10)
+
+The menu bar was made to mark its overflow this morning under one rule: **a
+surface may truncate, but it may not silently drop.** That rule has a vertical
+half, and only one widget in the IDE was keeping it — `TabBarWidget`, which has
+drawn ▲/▼ edge rows since it was written. Everything else that scrolls drops
+in silence.
+
+Most of them are fine that way. The keybindings list is two hundred rows with
+its count in the header and a filter. The results panel carries `N results` in
+its status. The file tree is unbounded by nature and nobody expects to see all
+of it. What they share is that the reader already knows the list is longer than
+the window.
+
+The settings nav is the one that is not like that: five sections, one indented
+row per installed plugin, then the language catalogue — a finite, complete menu
+of destinations, with no count anywhere. With nine plugins that is 28 rows, and
+on a 24-row terminal the last six were simply not there, indistinguishable from
+a list that ends where it appears to.
+
+It reserves the two edge rows now, and only while it actually overflows, which
+is the same trade `TabBarWidget` makes. A reserved ROW rather than a marker
+column, because this widget's floor is measured to the column: a marker in the
+last cell would come straight out of a name, which is the defect its own
+`minWidth()` was fixed for earlier today.
+
+The indicator draws unconditionally and the caller picks between it and a
+blank — the sibling's shape, and the one that keeps mago's
+`no-boolean-flag-parameter` quiet without an expectation comment.
+
+**Not swept further on purpose.** The rule is not "every list gets arrows"; it
+is that a list whose content the reader takes to be complete has to say when it
+is not. Applying it to the keybindings list or the results panel would add
+chrome to lists that already answer the question in words.

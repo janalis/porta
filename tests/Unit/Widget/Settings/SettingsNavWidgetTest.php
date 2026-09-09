@@ -9,6 +9,7 @@ use Porta\Event\SettingsSearchRequested;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\RendersWidget;
+use Porta\Ui\Glyphs;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -265,15 +266,64 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertSame(24, $widget->minWidth());
     }
 
-    /** The nav's rows at $width, ANSI stripped and right-trimmed. @return list<string> */
-    private function navRows(SettingsNavWidget $widget, int $width): array
+    /** The nav's rows at $width x $rows, ANSI stripped and right-trimmed. @return list<string> */
+    private function navRows(SettingsNavWidget $widget, int $width, int $rows = 40): array
     {
         $lines = [];
-        foreach ($widget->render(new RenderContext($width, 40)) as $line) {
+        foreach ($widget->render(new RenderContext($width, $rows)) as $line) {
             $lines[] = rtrim(AnsiUtils::stripAnsiCodes($line));
         }
 
         return $lines;
+    }
+
+    /**
+     * A finite, complete menu of destinations that scrolls has to say so.
+     *
+     * Five sections, one row per installed plugin, then the language
+     * catalogue — 28 rows with nine plugins, and on a 24-row terminal the last
+     * six were simply not there. Nothing distinguished that from a list which
+     * ends where it appears to. The vertical tab strip has marked its overflow
+     * this way since it was written; this was the only other finite list in
+     * the IDE and it marked nothing.
+     */
+    public function testAListThatScrollsSaysThereIsMore(): void
+    {
+        $widget = $this->widget();
+        $widget->setPluginEntries(['phpantom', 'mago', 'tempest', 'chroma', 'image-viewer', 'graph-viewer', 'local-history', 'git', 'symfony-lsp']);
+
+        $rows = $this->navRows($widget, 22, rows: 22);
+
+        $this->assertSame('', trim($rows[0]), 'nothing is clipped above yet, so the top edge stays blank');
+        $this->assertStringContainsString(Glyphs::SCROLL_DOWN, end($rows), 'and the bottom says there is more');
+        $this->assertContains(' General', $rows, 'the list itself still starts where it did');
+    }
+
+    /** Scrolled into the middle, both edges are clipped and both say so. */
+    public function testBothEdgesMarkWhenBothAreClipped(): void
+    {
+        $widget = $this->widget();
+        $widget->setPluginEntries(['phpantom', 'mago', 'tempest', 'chroma', 'image-viewer', 'graph-viewer', 'local-history', 'git', 'symfony-lsp']);
+        for ($i = 0; $i < 27; ++$i) {
+            $widget->handleInput("\x1b[B"); // to the last entry, dragging the window with it
+        }
+
+        $rows = $this->navRows($widget, 22, rows: 22);
+
+        $this->assertStringContainsString(Glyphs::SCROLL_UP, $rows[0]);
+        $this->assertSame('', trim((string) end($rows)), 'nothing below the last entry, so the bottom edge is blank');
+    }
+
+    /** A list that fits keeps every row for entries — the edges cost nothing when there is nothing to say. */
+    public function testAListThatFitsSpendsNoRowsOnMarkers(): void
+    {
+        $widget = $this->widget();
+
+        $rows = $this->navRows($widget, 22, rows: 40);
+
+        $this->assertSame(' General', $rows[0], 'the first entry is on the first row');
+        $this->assertStringNotContainsString(Glyphs::SCROLL_DOWN, implode('', $rows));
+        $this->assertStringNotContainsString(Glyphs::SCROLL_UP, implode('', $rows));
     }
 
     public function testMaxWidthIsSixty(): void

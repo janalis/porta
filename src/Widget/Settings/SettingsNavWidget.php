@@ -10,6 +10,7 @@ use Porta\Event\SettingsSearchRequested;
 use Porta\I18n\Translator;
 use Porta\Layout\ResizableSidebar;
 use Porta\Support\AnsiText;
+use Porta\Ui\Glyphs;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
@@ -327,6 +328,22 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     }
 
     /**
+     * A centred ▲/▼ edge row; the caller draws a blank when that side is not
+     * clipped, which is the shape {@see \Porta\Widget\TabBarWidget} uses for
+     * the same job.
+     *
+     * A reserved ROW rather than a column in the last cell, which this
+     * widget's own floor demands: the nav is drawn as narrow as
+     * {@see minWidth()}, and a marker column would come straight out of a name.
+     */
+    private function indicatorRow(string $glyph, int $width): string
+    {
+        $left = str_repeat(' ', times: max(0, intdiv($width, num2: 2) - 1));
+
+        return $this->styles->of(Role::Faint)->apply(AnsiText::padRight($left.$glyph, $width));
+    }
+
+    /**
      * One row's text before truncation.
      *
      * Shared with {@see minWidth()} deliberately: a bound that measures rows
@@ -358,9 +375,21 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         }
         $this->memoKey = $key;
 
-        $scroll = $this->list->follow($rows);
+        // A list that scrolls has to SAY so. This one is a finite, complete
+        // menu of destinations — five sections, one row per installed plugin,
+        // then the language catalogue — so a reader reasonably takes what is
+        // drawn for all of it. With nine plugins installed it is 28 rows, and
+        // on a 24-row terminal the last six simply were not there. The
+        // vertical tab strip has marked its overflow this way since it was
+        // written; nothing else in the IDE did.
+        $overflow = $rows > 2 && \count($this->entries) > $rows;
+        $budget = $overflow ? $rows - 2 : $rows;
+        $scroll = $this->list->follow($budget);
         $lines = [];
-        for ($row = 0; $row < $rows; ++$row) {
+        if ($overflow) {
+            $lines[] = $scroll > 0 ? $this->indicatorRow(Glyphs::SCROLL_UP, $width) : AnsiText::blank($width);
+        }
+        for ($row = 0; $row < $budget; ++$row) {
             $index = $scroll + $row;
             $entry = $this->entries[$index] ?? null;
             if (null === $entry) {
@@ -378,6 +407,9 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
 
             $text = AnsiText::truncate($this->rowText($entry), $width, pad: true);
             $lines[] = $this->shadeRow($text, $index === $this->list->selected(), $index === $this->hoveredIndex);
+        }
+        if ($overflow) {
+            $lines[] = ($scroll + $budget) < \count($this->entries) ? $this->indicatorRow(Glyphs::SCROLL_DOWN, $width) : AnsiText::blank($width);
         }
 
         return $this->memoLines = $this->withMenuOverlay($lines, $width);
