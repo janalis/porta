@@ -3888,3 +3888,38 @@ looked right alone — the box seats twelve, the window fills what it is handed,
 the source hands up five — and nothing anywhere errors. It is visible only in
 the composed frame, which is why the guard for it is an E2e that counts rendered
 rows (`IdePickerTest`) rather than a unit test of any one layer.
+
+## The footer names its key, and a test that proved nothing (2026-09-09)
+
+`Alt+Enter` — "open in Find window" — appeared **nowhere** in the find modal.
+Both its footer siblings say their key: `⏎ open` names Enter, and `Scope`
+carries `(Alt+S)` on the options row above. It was the one action in that modal
+you could only learn from the source, so the footer names it now.
+
+The footer is counted by `boxWidth()` for the same reason the options row is,
+and establishing that it MATTERS took three tries — recorded because the first
+two would have shipped.
+
+**Attempt one** asserted the French screen still contained `(Alt+Enter)` and
+`Portée`. Green, and worthless: with the default scope the options row is the
+wider of the two fixed rows in every locale we ship (en 51/41, de 56/45, es
+55/51, ja 53/45, he 47/40), so it alone sets the floor and dropping
+`footerRowWidth()` changed nothing. Both mutations survived.
+
+**Attempt two** narrowed the options row by selecting a SHORT scope label —
+`src`, which is what a real project has; this repo's own `search-scopes.json`
+holds `src`, `docs`, `config`. That inverts it: fr with `src` is options 43,
+footer 53, so the footer sets the width. The mutations still survived, because
+the assertion looked at the whole screen and `Portée` is ALSO the options
+row's scope caption. The footer was being truncated behind a passing test that
+matched the wrong row.
+
+**Attempt three** reads the footer ROW — the one line carrying `(Alt+Enter)` —
+and asserts the action after the key is still on it. Four mutations, all dead.
+
+The lesson is the old one with a new face: a screen-wide `assertStringContains`
+is a search over every row, so it passes on whichever row happens to carry the
+needle. When the defect is that ONE row is too narrow, the assertion has to
+name that row. See also `claims-are-not-guards` and the phantom title-bar clip
+in the entry above — both times the reading was wide where the defect was
+narrow.

@@ -47,6 +47,16 @@ final class FindInFilesModal
     /** The scope field's key hint — measured by the width and drawn by the row, so one spelling. */
     private const string SCOPE_KEY = ' (Alt+S)';
 
+    /**
+     * The footer's Find-window key hint.
+     *
+     * Alt+Enter appeared NOWHERE in this modal. Its two footer siblings both
+     * said their key — `⏎ open` names Enter, and `Scope` has `(Alt+S)` on the
+     * options row above — so it was the one action here you could only find by
+     * reading the source.
+     */
+    private const string FIND_WINDOW_KEY = ' (Alt+Enter)';
+
     private const array KEYS = [
         'select_cancel' => [Key::ESCAPE],
         'accept_completion' => [Key::ENTER],
@@ -620,7 +630,7 @@ final class FindInFilesModal
     {
         $status = $this->statusText();
         $width = max(mb_strwidth($this->title) + mb_strwidth($status) + 10, mb_strwidth($this->query->value()) + 9, PopupMetrics::FIND_MIN_WIDTH); // + 10: the frame's title-bar chrome
-        $width = max($width, $this->optionsRowWidth());
+        $width = max($width, $this->optionsRowWidth(), $this->footerRowWidth());
         foreach ($visible as $row) {
             $text = null !== $row->filePath ? $row->filePath : $this->results[$row->matchIndex]['text'] ?? '';
             $width = max($width, mb_strwidth($text) + 8);
@@ -792,6 +802,40 @@ final class FindInFilesModal
     }
 
     /** The footer hint row; the action words are clickable/hoverable zones. */
+    /**
+     * The footer's actions in order, visible label => click-zone name.
+     *
+     * One list, read by the row that draws them and by the width that has to
+     * seat them — the same pairing {@see optionTags()} has, for the same
+     * reason.
+     *
+     * @return array<string, string>
+     */
+    private function footerActions(): array
+    {
+        return [
+            $this->translator->trans('Find window').self::FIND_WINDOW_KEY => 'find_window',
+            $this->translator->trans('Scope') => 'footer_scope',
+        ];
+    }
+
+    /**
+     * The footer's natural width, counted by {@see boxWidth()} for the reason
+     * {@see optionsRowWidth()} is: it is a fixed row that cannot shrink, so
+     * left out of the width it is a row that silently truncates. It had not
+     * tipped over yet — English needs 29 of the 48-column minimum — but French
+     * already needed 41, and naming the key here costs twelve more.
+     */
+    private function footerRowWidth(): int
+    {
+        $width = 1 + mb_strwidth($this->translator->trans('⏎ open'));
+        foreach (array_keys($this->footerActions()) as $label) {
+            $width += mb_strwidth(' · ') + mb_strwidth($label);
+        }
+
+        return $width;
+    }
+
     private function footerRow(int $width): string
     {
         $this->footerZones->clear();
@@ -801,7 +845,7 @@ final class FindInFilesModal
         $sep = ' · ';
         $line = ' '.$this->translator->trans('⏎ open').$sep;
         $col = mb_strwidth($line);
-        foreach ([$this->translator->trans('Find window') => 'find_window', $this->translator->trans('Scope') => 'footer_scope'] as $label => $name) {
+        foreach ($this->footerActions() as $label => $name) {
             $this->footerZones->add($name, $col, $col + mb_strwidth($label));
             $line .= $name === $this->hovered
                 ? $this->styles->merge(Role::RowHighlightBg, Role::Bright)->apply($label).$dim

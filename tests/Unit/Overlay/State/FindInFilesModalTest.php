@@ -178,7 +178,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertStringContainsString('src/A.php', $screen, 'grouped file header');
         $this->assertStringContainsString('other/B.php', $screen);
         $this->assertStringContainsString('foo one', $screen, 'match rows render');
-        $this->assertStringContainsString('Find window · Scope', $screen, 'footer actions');
+        $this->assertStringContainsString('Find window (Alt+Enter) · Scope', $screen, 'footer actions, each naming its key');
         $this->assertStringNotContainsString('Close', $screen, 'the Close word is retired — Esc/outside-click dismiss');
         $this->assertStringContainsString('Esc', $screen, 'the title carries the dismiss hint');
     }
@@ -954,6 +954,47 @@ final class FindInFilesModalTest extends TestCase
     }
 
     // --- Mutation-sweep gap-closing tests below ------------------------
+    /**
+     * Alt+Enter was the modal's one unreachable action.
+     *
+     * Its footer siblings both name their key — `⏎ open` is Enter, and `Scope`
+     * carries `(Alt+S)` on the options row — so "Find window" was the only
+     * thing here you could not learn from the screen.
+     */
+    public function testTheFooterNamesTheFindWindowKey(): void
+    {
+        $modal = $this->modal();
+        $modal->open('Find in Files');
+
+        $this->assertStringContainsString('Find window (Alt+Enter)', $this->screen($modal));
+    }
+
+    /**
+     * The footer is counted by the width too, and it is the options row's
+     * short-label case that needs it.
+     *
+     * With the default scope the options row is the wider of the two fixed
+     * rows in every locale we ship, so it alone sets the floor. A SHORT scope
+     * label shrinks it — and short is what a real project has: this repo's own
+     * `search-scopes.json` holds `src`, `docs`, `config`. Pick one of those in
+     * a locale whose labels are long and the footer becomes the widest row in
+     * the modal, with `(Alt+Enter)` at the end of it, first against the wall.
+     */
+    public function testAShortScopeLabelLeavesTheFooterAsTheWidestRow(): void
+    {
+        $modal = new FindInFilesModal(static fn () => null, translator: new Translator('fr'));
+        $modal->open('Find in Files');
+        $modal->setScopes(['src'], index: 0);
+
+        // Read the FOOTER row, not the screen: 'Portée' is also the options
+        // row's scope caption, so a screen-wide assertion passes on the wrong
+        // row while the footer is cut behind it.
+        $rows = array_values(array_filter(explode("\n", $this->screen($modal)), static fn (string $r): bool => str_contains($r, '(Alt+Enter)')));
+
+        $this->assertCount(1, $rows, 'the footer, and only the footer, names this key');
+        $this->assertStringContainsString('Portée', $rows[0], 'the action after the key is still on the row');
+    }
+
     /**
      * The box has to seat its own toolbar row.
      *
