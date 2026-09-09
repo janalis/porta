@@ -644,7 +644,7 @@ final class IdeFindInProjectTest extends TestCase
                 600 => function ($tui) use ($panelText, $project): void {
                     $tui->tick();
                     $this->promote($tui); // modal → results pane (F5 rerun lives on the pane)
-                    $this->assertStringContainsString('1 results', $tui->getById('results')->statusText());
+                    $this->assertStringContainsString('1 result', $tui->getById('results')->statusText());
                     $project->write('src/B.php', "// tok added later\n"); // a new match on disk
                     $tui->handleInput("\x1b[15~"); // F5 → rerun
                 },

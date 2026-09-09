@@ -206,7 +206,7 @@ final class IdeContextMenusTest extends TestCase
                     // Assert on the results panel itself (the tree sidebar also lists
                     // Outside.php, so the whole screen is the wrong surface).
                     $panel = AnsiUtils::stripAnsiCodes(implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 14))));
-                    $this->assertStringContainsString('1 results', $tui->getById('results')->statusText(), 'only the in-folder match counts (root is out of scope)');
+                    $this->assertStringContainsString('1 result', $tui->getById('results')->statusText(), 'only the in-folder match counts (root is out of scope)');
                     $this->assertStringContainsString('sub/Inside.php', $panel, 'the in-folder match is listed');
                     $this->assertStringNotContainsString('Outside.php', $panel, 'the root match is excluded');
                     $tui->handleInput("\r"); // jump to the match

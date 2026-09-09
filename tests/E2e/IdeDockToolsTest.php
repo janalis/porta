@@ -176,7 +176,7 @@ final class IdeDockToolsTest extends TestCase
                     // The row and the strip count are two paints; the count
                     // follows, so it is the one to await.
                     $this->awaitPainted($tui, $terminal, '✗ live boom');
-                    $this->awaitPainted($tui, $terminal, '1 results');
+                    $this->awaitPainted($tui, $terminal, '1 result');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'the live refresh did not steal the focus');
 
@@ -390,7 +390,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->handleInput("\x1b[6;3~"); // alt+page_down cycles: LSP Log → wraps to Problems
                     $tui->tick();
                     $this->assertSame('Problems', $tui->getById('results')->getTitle(), 'cycling walks the tool instances');
-                    $this->assertStringContainsString('1 results', $tui->getById('results')->statusText(), 'the inactive-tab refresh is visible on arrival');
+                    $this->assertStringContainsString('1 result', $tui->getById('results')->statusText(), 'the inactive-tab refresh is visible on arrival');
                 },
                 600 => function ($tui, $terminal, $ide) use ($dock): void {
                     // × tabs one by one: the last close gives the slot back via the MRU.

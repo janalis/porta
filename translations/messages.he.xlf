@@ -1983,8 +1983,8 @@
         <target>מחפש…</target>
       </trans-unit>
       <trans-unit id="450">
-        <source>%count% results</source>
-        <target>%count% תוצאות</target>
+        <source>%count% result|%count% results</source>
+        <target>תוצאה %count%|%count% תוצאות</target>
       </trans-unit>
       <trans-unit id="451">
         <source>%count% shown</source>
@@ -2455,8 +2455,8 @@
         <target>מחיקת ענף…</target>
       </trans-unit>
       <trans-unit id="564">
-        <source>Exported %count% results</source>
-        <target>יוצאו %count% תוצאות</target>
+        <source>Exported %count% result|Exported %count% results</source>
+        <target>יוצאה תוצאה %count%|יוצאו %count% תוצאות</target>
       </trans-unit>
       <trans-unit id="565">
         <source>Find in Files</source>

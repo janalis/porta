@@ -3923,3 +3923,28 @@ needle. When the defect is that ONE row is too narrow, the assertion has to
 name that row. See also `claims-are-not-guards` and the phantom title-bar clip
 in the entry above — both times the reading was wide where the defect was
 narrow.
+
+## "1 results" (2026-09-09)
+
+The find modal's title, the results panel's status, and the export flash all
+counted with `%count% results` — no plural form, so one match read `1 results`
+in all seven locales.
+
+The catalog knows better in fifteen other places (`%count% version|%count%
+versions`, `Copied %count% line|%count% lines`, `%count% setting|%count%
+settings`), and the find modal's OWN grow row two rows below the title says
+`%count% more result|%count% more results`. The two most-read counters in the
+app were the ones not doing it. `Exported %count% results` was the third.
+
+Nine test assertions pinned the ungrammatical form, which is how it survived —
+`'1 results'` had been written down often enough to look intended.
+
+**The guard needed care.** `assertStringContainsString('1 result', $screen)` is
+satisfied by "1 results" and pins nothing; the test denies the plural
+explicitly. That is the second time in one round a containment assertion passed
+for the wrong reason — see the footer entry above — and both times the fix was
+to make the assertion narrower than the screen.
+
+Not changed: `%count% shown` ("1 shown" is correct), `Files (%count%)` and the
+other parenthesised counts, and `Keybindings — %count% actions`, where a keymap
+with one action is not a state the app has.

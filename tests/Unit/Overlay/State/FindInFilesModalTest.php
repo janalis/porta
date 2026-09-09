@@ -955,6 +955,31 @@ final class FindInFilesModalTest extends TestCase
 
     // --- Mutation-sweep gap-closing tests below ------------------------
     /**
+     * One result is not "1 results".
+     *
+     * The catalog spells fifteen other counts as pipe plurals — `%count%
+     * version|%count% versions`, and this modal's OWN grow row says
+     * `%count% more result|%count% more results` — so the two most-read
+     * counters in the app were the ones not doing it: this title, and the
+     * results panel's status beside it.
+     *
+     * Asserted as a whole word with the plural denied, because
+     * `assertStringContainsString('1 result')` is satisfied by "1 results" and
+     * would pin nothing at all.
+     */
+    public function testASingleResultIsCountedInTheSingular(): void
+    {
+        $modal = $this->modal();
+        $modal->open('Find in Files');
+        $modal->setPreview([['path' => 'src/A.php', 'line' => 0, 'text' => 'one', 'ranges' => []]]);
+
+        $screen = $this->screen($modal);
+
+        $this->assertStringContainsString('1 result', $screen);
+        $this->assertStringNotContainsString('1 results', $screen, 'the plural form is what it used to say');
+    }
+
+    /**
      * Alt+Enter was the modal's one unreachable action.
      *
      * Its footer siblings both name their key — `⏎ open` is Enter, and `Scope`

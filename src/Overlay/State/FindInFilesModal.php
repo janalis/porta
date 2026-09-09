@@ -707,7 +707,7 @@ final class FindInFilesModal
 
     private function statusText(): string
     {
-        return $this->searching ? $this->translator->trans('searching…') : $this->translator->trans('%count% results', ['%count%' => \count($this->results)]);
+        return $this->searching ? $this->translator->trans('searching…') : $this->translator->trans('%count% result|%count% results', ['%count%' => \count($this->results)]);
     }
 
     /**

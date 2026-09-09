@@ -1983,8 +1983,8 @@
         <target>ricerca…</target>
       </trans-unit>
       <trans-unit id="450">
-        <source>%count% results</source>
-        <target>%count% risultati</target>
+        <source>%count% result|%count% results</source>
+        <target>%count% risultato|%count% risultati</target>
       </trans-unit>
       <trans-unit id="451">
         <source>%count% shown</source>
@@ -2455,8 +2455,8 @@
         <target>Elimina ramo…</target>
       </trans-unit>
       <trans-unit id="564">
-        <source>Exported %count% results</source>
-        <target>%count% risultati esportati</target>
+        <source>Exported %count% result|Exported %count% results</source>
+        <target>%count% risultato esportato|%count% risultati esportati</target>
       </trans-unit>
       <trans-unit id="565">
         <source>Find in Files</source>

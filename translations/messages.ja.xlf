@@ -1983,8 +1983,8 @@
         <target>検索中…</target>
       </trans-unit>
       <trans-unit id="450">
-        <source>%count% results</source>
-        <target>%count% 件</target>
+        <source>%count% result|%count% results</source>
+        <target>%count% 件|%count% 件</target>
       </trans-unit>
       <trans-unit id="451">
         <source>%count% shown</source>
@@ -2455,8 +2455,8 @@
         <target>ブランチを削除…</target>
       </trans-unit>
       <trans-unit id="564">
-        <source>Exported %count% results</source>
-        <target>%count% 件の結果をエクスポートしました</target>
+        <source>Exported %count% result|Exported %count% results</source>
+        <target>%count% 件の結果をエクスポートしました|%count% 件の結果をエクスポートしました</target>
       </trans-unit>
       <trans-unit id="565">
         <source>Find in Files</source>

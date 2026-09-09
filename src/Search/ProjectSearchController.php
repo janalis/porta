@@ -453,7 +453,7 @@ final class ProjectSearchController
 
         $abs = $this->paths->absolute('.porta/search-results.txt');
         $this->fs->dumpFile($abs, implode("\n", $lines)."\n");
-        $this->statusBar->flash($this->translator->trans('Exported %count% results', ['%count%' => \count($this->lastSearchResults)]));
+        $this->statusBar->flash($this->translator->trans('Exported %count% result|Exported %count% results', ['%count%' => \count($this->lastSearchResults)]));
 
         return $abs;
     }

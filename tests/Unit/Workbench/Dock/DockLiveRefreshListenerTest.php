@@ -67,7 +67,7 @@ final class DockLiveRefreshListenerTest extends TestCase
         $listener->onDiagnosticsChanged(new DiagnosticsChanged());
 
         $this->assertStringContainsString('✗ boom', $this->plainPanel(), 'the open Problems tab picked up the new diagnostic');
-        $this->assertStringContainsString('1 results', $this->results->statusText());
+        $this->assertStringContainsString('1 result', $this->results->statusText());
     }
 
     public function testAConcealedProblemsTabStillRefreshes(): void
@@ -81,7 +81,7 @@ final class DockLiveRefreshListenerTest extends TestCase
         $listener->onDiagnosticsChanged(new DiagnosticsChanged());
 
         $this->assertFalse($this->results->isVisible());
-        $this->assertStringContainsString('1 results', $this->results->statusText(), 'the hidden tab keeps its count fresh for the strip');
+        $this->assertStringContainsString('1 result', $this->results->statusText(), 'the hidden tab keeps its count fresh for the strip');
     }
 
     public function testRefreshesAnOpenLspLogTab(): void

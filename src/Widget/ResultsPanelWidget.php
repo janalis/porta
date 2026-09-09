@@ -565,7 +565,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     /** 'N results · M shown', or 'searching…' while a search runs. */
     private function buildStatus(): string
     {
-        $status = $this->searching ? $this->translator->trans('searching…') : $this->translator->trans('%count% results', ['%count%' => \count($this->results)]);
+        $status = $this->searching ? $this->translator->trans('searching…') : $this->translator->trans('%count% result|%count% results', ['%count%' => \count($this->results)]);
         if (!$this->searching && '' !== $this->filter->value()) {
             $shown = 0;
             foreach ($this->displayRows as $row) {

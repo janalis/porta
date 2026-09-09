@@ -227,7 +227,7 @@ final class IdeTest extends TestCase
         $this->step(3.75, function () use ($screen, $tui): void {
             // The modal's live preview groups matches under a file header.
             $this->assertStringContainsString('src/Target.php', $screen(), 'grouped under its file header');
-            $this->assertStringContainsString('1 results', $screen());
+            $this->assertStringContainsString('1 result', $screen());
             $tui->handleInput("\r"); // the first match is pre-selected → jump
         });
         $this->step(3.85, function () use ($editor, $tui): void {

@@ -1983,8 +1983,8 @@
         <target>suche…</target>
       </trans-unit>
       <trans-unit id="450">
-        <source>%count% results</source>
-        <target>%count% Treffer</target>
+        <source>%count% result|%count% results</source>
+        <target>%count% Treffer|%count% Treffer</target>
       </trans-unit>
       <trans-unit id="451">
         <source>%count% shown</source>
@@ -2455,8 +2455,8 @@
         <target>Branch löschen…</target>
       </trans-unit>
       <trans-unit id="564">
-        <source>Exported %count% results</source>
-        <target>%count% Ergebnisse exportiert</target>
+        <source>Exported %count% result|Exported %count% results</source>
+        <target>%count% Ergebnis exportiert|%count% Ergebnisse exportiert</target>
       </trans-unit>
       <trans-unit id="565">
         <source>Find in Files</source>

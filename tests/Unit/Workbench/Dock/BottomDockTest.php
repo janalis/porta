@@ -201,7 +201,7 @@ final class BottomDockTest extends TestCase
         $this->assertSame(['sh 1', 'Problems', 'Notifications'], array_column($tabs, 'label'), 'sessions and tool instances each keep their own strip tab');
         $this->assertSame([false, false, true], array_column($tabs, 'active'), 'the newest tool owns the slot');
         $this->assertSame(['shell:1', '1', '2'], array_column($tabs, 'key'), 'session tabs carry their session id, tool tabs their instance key');
-        $this->assertSame(['', '', '1 results'], array_column($tabs, 'status'), 'only the displayed tool carries a status');
+        $this->assertSame(['', '', '1 result'], array_column($tabs, 'status'), 'only the displayed tool carries a status');
 
         $dock->hide();
         $this->assertSame([], $dock->aliveTabs(), 'hiding the dock hides the strip too');
@@ -377,7 +377,7 @@ final class BottomDockTest extends TestCase
         $this->assertStringContainsString('0 results', $this->results->statusText());
 
         $dock->reveal(DockTab::Results, (string) $todo->id);
-        $this->assertStringContainsString('1 results', $this->results->statusText(), 'binding shows the refreshed rows');
+        $this->assertStringContainsString('1 result', $this->results->statusText(), 'binding shows the refreshed rows');
 
         $todo->rows = [];
         $dock->refreshIfBound($todo); // on display: pushed straight to the widget
