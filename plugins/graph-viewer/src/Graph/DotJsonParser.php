@@ -187,17 +187,12 @@ final class DotJsonParser
         if (1 !== (\count($points) % 3)) {
             return [$points, $tip]; // not 3n+1: use the raw points as a polyline
         }
-        /** @var array{float, float} $first */
         $first = $points[0];
         $poly = [$first];
         for ($i = 0; ($i + 3) < \count($points); $i += 3) {
-            /** @var array{float, float} $p0 */
             $p0 = $points[$i];
-            /** @var array{float, float} $p1 */
             $p1 = $points[$i + 1];
-            /** @var array{float, float} $p2 */
             $p2 = $points[$i + 2];
-            /** @var array{float, float} $p3 */
             $p3 = $points[$i + 3];
             $chord = hypot($p3[0] - $p0[0], $p3[1] - $p0[1]);
             $steps = max(2, (int) ceil($chord / self::FLATTEN_CHORD_PT));

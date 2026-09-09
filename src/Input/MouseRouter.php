@@ -655,7 +655,9 @@ final class MouseRouter
         // structureless files) but the renderer keeps its last non-empty rect,
         // so the click only counts when a segment is actually under the
         // pointer — otherwise it falls through to whatever now owns the row.
-        if (null !== ($rel = $this->hit->hit($this->panes->breadcrumbs(), $mouse->row, $mouse->col)) && null !== ($line = $this->panes->breadcrumbs()->lineAtColumn($rel['col']))) {
+        $rel = $this->hit->hit($this->panes->breadcrumbs(), $mouse->row, $mouse->col);
+        $line = null === $rel ? null : $this->panes->breadcrumbs()->lineAtColumn($rel['col']);
+        if (null !== $line) {
             $this->tui->setFocus($this->panes->editor());
             $this->panes->editor()->jumpTo($line, 0);
             $this->tui->requestRender();

@@ -41,7 +41,7 @@
     "require-dev": {
         "ext-simplexml": "*",
         "brianium/paratest": "^7.23",
-        "carthage-software/mago": "1.46.*",
+        "carthage-software/mago": "1.47.*",
         "infection/infection": "^0.34.2",
         "phpunit/phpunit": "^13.2",
         "systemsdk/phpcpd": "^9.1"
