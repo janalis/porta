@@ -4377,3 +4377,40 @@ asserts where each cell BEGINS, and both directions die.
 
 The rule this leaves: "I verified it against the mutations I thought of" is not
 "it is redundant". The mutation tool enumerates; I do not.
+
+## The no-intl leg, checked without being able to run it (2026-09-09)
+
+The upgrade's one remaining risk was CI's `intl` / no-`intl` matrix, which this
+box cannot reproduce — intl is compiled statically into the local PHP, so it
+cannot be unloaded. What CAN be checked is the thing that leg actually exercises,
+and this upgrade raised the stakes on it: `AnsiUtils::visibleWidth()` now walks
+GRAPHEMES whenever text carries a combining mark or a format character, where it
+used to call `mb_strwidth()`. Without intl those calls land on
+`symfony/polyfill-intl-grapheme`.
+
+Two things needed to be true.
+
+**The polyfill provides the function at all.** `grapheme_str_split()` is a PHP
+8.4 addition; had the polyfill not carried it, the no-intl leg would fatal on
+the new path rather than fail an assertion. It does (`bootstrap.php:62`).
+
+**Native and polyfill agree on WIDTH**, which is all `visibleWidth()` uses the
+split for. Compared across 18 strings — Latin plus combining marks, ZWJ family
+and tag-sequence emoji, regional indicators, Devanagari conjuncts, Hebrew with
+niqqud, Thai, Arabic, CJK, and zero-width joiners/marks:
+
+- **2 split differently.** `क्ष` (KA + VIRAMA + SSA) is one cluster natively and
+  two under the polyfill.
+- **0 differ in width.** The Devanagari case sums to 2 either way — one cluster
+  of width 2, or two of width 1.
+
+So the two CI legs measure the same widths even where they disagree about
+cluster boundaries. Worth knowing that the disagreement exists: `sliceByColumn()`
+walks the same split, so a slice boundary landing inside a conjunct would keep it
+whole under intl and cut it under the polyfill. Not reachable by anything here —
+no shipped locale is Devanagari and no fixture carries one — and not fixable
+from this side in any case.
+
+Incidentally the new path is a fix, not just a change: `mb_strwidth()` scored
+that conjunct 3 columns, the grapheme walk scores it 2, and 2 is what a terminal
+draws.
