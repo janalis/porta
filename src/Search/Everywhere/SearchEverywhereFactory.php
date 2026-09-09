@@ -91,6 +91,7 @@ final class SearchEverywhereFactory
             $this->scheduler,
             $this->translator,
             'Go to File',
+            categoryCap: SearchEverywhereController::SOLO_CAP,
         );
     }
 
@@ -123,6 +124,7 @@ final class SearchEverywhereFactory
             $this->translator,
             $title,
             seedRecentFiles: false,
+            categoryCap: SearchEverywhereController::SOLO_CAP,
         );
     }
 

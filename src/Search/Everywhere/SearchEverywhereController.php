@@ -37,6 +37,14 @@ final class SearchEverywhereController
      */
     private const int MORE_STEP = 20;
 
+    /**
+     * What a single-category picker passes as its `$categoryCap`: the same step
+     * "more results" reveals, so the popup's window fills and the arrows scroll
+     * it. Past that the growth row appears exactly as before — this widens the
+     * first page, it does not unbound the list.
+     */
+    public const int SOLO_CAP = self::MORE_STEP;
+
     /** @var array<int, list<SearchHit>> hits keyed by category order */
     private array $hitsByCategory = [];
 
@@ -44,8 +52,16 @@ final class SearchEverywhereController
     private array $shown = [];
 
     /**
-     * @param list<SearchSource>                $syncSources  files, actions (run immediately)
-     * @param list<SearchSource>                $asyncSources classes, symbols, text (debounced)
+     * @param list<SearchSource> $syncSources  files, actions (run immediately)
+     * @param list<SearchSource> $asyncSources classes, symbols, text (debounced)
+     * @param ?int               $categoryCap  rows one category shows before a
+     *                                         "more results" row takes over;
+     *                                         null shares the list by
+     *                                         {@see SearchCategory::cap()}. A
+     *                                         single-category picker passes
+     *                                         {@see SOLO_CAP} — see
+     *                                         {@see capFor()} for why the
+     *                                         shared rule does not fit it
      */
     public function __construct(
         private readonly SearchOverlay $overlay,
@@ -60,6 +76,7 @@ final class SearchEverywhereController
         private readonly Translator $translator,
         private readonly string $title = 'Search Everywhere',
         private readonly bool $seedRecentFiles = true,
+        private readonly ?int $categoryCap = null,
     ) {}
 
     public function open(): void
@@ -215,7 +232,7 @@ final class SearchEverywhereController
         $rows = [];
         foreach (SearchCategory::cases() as $category) {
             $all = $this->hitsByCategory[$category->order()] ?? [];
-            $limit = $this->shown[$category->order()] ?? $category->cap();
+            $limit = $this->shown[$category->order()] ?? $this->capFor($category);
             $hits = \array_slice($all, offset: 0, length: $limit);
             if ([] === $hits) {
                 continue;
@@ -231,6 +248,20 @@ final class SearchEverywhereController
         }
         $this->overlay->setSearchRows($rows);
         $this->tui->requestRender();
+    }
+
+    /**
+     * A category's row budget: this picker's own, or the shared one.
+     *
+     * {@see SearchCategory::cap()} is a SHARING rule — six categories on one
+     * list, none of which may crowd the others out of view. A single-category
+     * picker shares with nobody, and paying the rule anyway cost rows the popup
+     * already had: Ctrl+P over forty matching files showed five of them and a
+     * "35 more results" row inside a box that seats twelve.
+     */
+    private function capFor(SearchCategory $category): int
+    {
+        return $this->categoryCap ?? $category->cap();
     }
 
     /**

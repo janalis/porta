@@ -99,7 +99,7 @@ final class SearchEverywhereControllerTest extends TestCase
      * @param list<SearchSource> $sync
      * @param list<SearchSource> $async
      */
-    private function controller(SearchOverlay $overlay, array $sync, array $async, BufferManager $buffers, string $root = '/proj'): SearchEverywhereController
+    private function controller(SearchOverlay $overlay, array $sync, array $async, BufferManager $buffers, string $root = '/proj', ?int $categoryCap = null): SearchEverywhereController
     {
         $opened = &$this->opened;
         $scheduled = &$this->scheduled;
@@ -147,6 +147,7 @@ final class SearchEverywhereControllerTest extends TestCase
                 }
             },
             new Translator('en'),
+            categoryCap: $categoryCap,
         );
     }
 
@@ -168,6 +169,43 @@ final class SearchEverywhereControllerTest extends TestCase
             static fn (int $n): SearchHit => new SearchHit($category, 'f'.$n, '', static function (): void {}),
             range(start: 0, end: $count - 1),
         );
+    }
+
+    /**
+     * A picker with one category does not pay the sharing cap.
+     *
+     * {@see SearchCategory::cap()} keeps six categories from crowding each
+     * other off one list. Go to File has nobody to crowd, and paying the rule
+     * anyway spent rows the popup already had: eight matches showed five and a
+     * grow row in a box that seats twelve.
+     */
+    public function testAPickerWithItsOwnCapShowsPastTheSharedOne(): void
+    {
+        $overlay = $this->overlay();
+        $files = $this->source(SearchCategory::Files);
+        $controller = $this->controller($overlay, [$files], [], new BufferManager(), categoryCap: SearchEverywhereController::SOLO_CAP);
+        $controller->open();
+
+        ($overlay->onQuery)('f');
+        $files->emits[0](self::hits(SearchCategory::Files, 8));
+
+        $this->assertSame(['f0', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7'], $this->labels($overlay->rows), 'all eight, and no grow row');
+    }
+
+    /** And it is still a cap, not an unbounding: past its own budget the same grow row appears. */
+    public function testAPickerWithItsOwnCapStillGrowsRatherThanRenderingEverything(): void
+    {
+        $overlay = $this->overlay();
+        $files = $this->source(SearchCategory::Files);
+        $controller = $this->controller($overlay, [$files], [], new BufferManager(), categoryCap: SearchEverywhereController::SOLO_CAP);
+        $controller->open();
+
+        ($overlay->onQuery)('f');
+        $files->emits[0](self::hits(SearchCategory::Files, 100));
+
+        $labels = $this->labels($overlay->rows);
+        $this->assertSame(SearchEverywhereController::SOLO_CAP, \count($labels) - 1);
+        $this->assertSame('80 more results', $labels[array_key_last($labels)]);
     }
 
     public function testACappedCategoryOffersARowThatGrowsIt(): void

@@ -3855,3 +3855,36 @@ outside the editor pane silently vanish from it — which had me convinced for a
 while that the modal's title bar and its result count clipped away at 24 rows.
 `screenGrid()` showed the title present and intact. Read the join, not the
 piece.
+
+## A sharing rule applied where nothing was shared (2026-09-09)
+
+`SearchCategory::cap()` returns 5 for every category, and its reason is written
+down: "so no one source floods the list". Six groups on one list, none of which
+may crowd the others off it. Correct — for Search Everywhere.
+
+`createGoToFile()` and `createScoped()` build the same controller with ONE
+source, and paid the same cap. Rendered, that is Ctrl+P over forty matching
+files showing five of them and a `35 more results` row inside a box with room
+for twelve: seven empty rows and a keystroke standing between the user and
+results already fetched.
+
+The discriminator is passed, not inferred. Deriving it from the source count
+read well and was wrong twice over: it makes a construction detail into
+policy, and it changed the cap for the single-source rig five controller tests
+use to exercise the grow machinery — tests whose subject is the shared rule,
+which would then have needed a second source added purely to keep the number
+they assert. `createGoToFile()` and `createScoped()` know what they are; they
+say so with `categoryCap: SOLO_CAP`.
+
+`SOLO_CAP` is `MORE_STEP`, the step the grow row already reveals, so the window
+fills and the arrows scroll it. Past that the same row appears: this widens the
+first page, it does not unbound the list — pinned by its own test, because a
+cap that only ever grows is the failure mode here.
+
+**How it was found, and the shape to reuse.** Not by reading `PickerLayout`,
+which is correct: its window is `min(count, rows - 6, 12)` and it fills
+whatever it is given. The disagreement was between three layers that each
+looked right alone — the box seats twelve, the window fills what it is handed,
+the source hands up five — and nothing anywhere errors. It is visible only in
+the composed frame, which is why the guard for it is an E2e that counts rendered
+rows (`IdePickerTest`) rather than a unit test of any one layer.
