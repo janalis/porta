@@ -3796,3 +3796,62 @@ Two details for whoever builds it:
   local history exists precisely so a deletion is survivable. So only the
   rename half is wanted, and `FileDeleted` needs no marker.
 
+
+## Undated evidence, and the one row nothing measured (2026-09-09)
+
+Two findings, both reached by reading rather than surveying, and the first one
+cost most of the round.
+
+### `error.log` was the only channel with no timestamps
+
+`.porta/error.log` held twenty-one byte-identical `RenderException` traces and
+nothing that placed any of them in time. The file's mtime said 2026-09-08 —
+three days AFTER the fix that closed them — so the reasonable reading was a
+live regression, and that is the reading I published before checking it. It was
+wrong. The entries are the same twenty-one round 7 already fixed; what finally
+dated them was `NarrowPaneRenderTest`'s docblock, which happens to quote their
+COUNT, and the table entry above. An mtime dates only the newest write, and a
+repeating fault writes identical bytes, so neither the content nor the
+filesystem could tell a live crash from a closed one.
+
+Roughly an hour went into reproducing a crash that no longer exists: a widget
+sweep at every width 1–60, a full IDE boot at 1×1, a progressive shrink, and a
+replay of the crashed session's own `layout.json` and open file. All green,
+which was the answer — it just took a long time to trust.
+
+`freeze.log` and `perf.log` had stamped every line all along, from five
+call sites repeating `$this->clock->now()->format('Y-m-d H:i:s')`. The stamp
+now lives in `DiagnosticLog::append()`, so **every** channel gets one —
+`error.log` and `dap.log` included — and the five call sites lost their copy.
+First line only: a trace is one entry, and stamping its frames would break the
+shape a reader counts entries by.
+
+The prose note in the table above ("the 21 entries are all pre-fix") is exactly
+the kind of standing-in-for-data that goes stale — the data says it now.
+
+### The modal never measured its own toolbar row
+
+`FindInFilesModal::boxWidth()` was a max over the title, the query and the
+visible result rows: everything that VARIES. The options row does not vary —
+five fixed tags, a translated caption, the scope label, and ` (Alt+S)`. Being
+absent from that max it was the one row guaranteed to overflow, by one column
+at the default width, and the row-wide truncate spends an overflow on the tail.
+So the modal rendered `Scope: Whole Project (Al…`, eating the only thing on
+screen that says how to change the scope — for a user whose own
+`search-prefs.json` records `scope: module`, i.e. someone who changes it.
+
+Fixed in both directions, because they answer different questions: `boxWidth()`
+counts the row now (so it fits, in French too, where the caption is longer),
+and the label — not the key — is what elides when a terminal is genuinely too
+narrow to widen into. The label is a value the results already show; the key is
+an affordance with nowhere else to appear. Same ordering the gutter's bookmark
+glyph got, and for the same reason.
+
+### For the next round
+
+A screen read through `modalText()` is NOT the screen. It renders the editor
+widget alone at a fixed `RenderContext(160, 40)`, so modal rows composited
+outside the editor pane silently vanish from it — which had me convinced for a
+while that the modal's title bar and its result count clipped away at 24 rows.
+`screenGrid()` showed the title present and intact. Read the join, not the
+piece.

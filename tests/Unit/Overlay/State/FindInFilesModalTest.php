@@ -954,6 +954,44 @@ final class FindInFilesModalTest extends TestCase
     }
 
     // --- Mutation-sweep gap-closing tests below ------------------------
+    /**
+     * The box has to seat its own toolbar row.
+     *
+     * The width is a max over the title, the query and the visible result rows
+     * — everything that VARIES. The options row does not vary: five fixed tags,
+     * a translated caption, the scope label and the key hint. Left out of that
+     * max it was the one row guaranteed to overflow, and the row-wide truncate
+     * spends an overflow on the TAIL, so `(Alt+S)` rendered as `(Al…` — the
+     * modal eating the only thing that says how to change the scope.
+     */
+    public function testTheBoxWidensToSeatTheScopeRowsKeyHint(): void
+    {
+        $modal = $this->modal();
+        $modal->open('Find in Files');
+        $modal->setScopes(['A directory whose name runs long'], index: 0);
+
+        $screen = $this->screen($modal);
+
+        $this->assertStringContainsString('Scope: A directory whose name runs long (Alt+S)', $screen, 'the whole row, key included');
+    }
+
+    /**
+     * And when the terminal genuinely cannot fit it, the LABEL gives way —
+     * never the key. The label is a value the results already show; the key is
+     * the only affordance for changing it.
+     */
+    public function testInATerminalTooNarrowToWidenTheLabelElidesAndTheKeySurvives(): void
+    {
+        $modal = $this->modal();
+        $modal->open('Find in Files');
+        $modal->setScopes(['A directory whose name runs long'], index: 0);
+
+        $screen = AnsiUtils::stripAnsiCodes(implode("\n", $this->compose($modal, columns: 56)));
+
+        $this->assertStringContainsString('(Alt+S)', $screen, 'the key is never what gets cut');
+        $this->assertStringNotContainsString('A directory whose name runs long', $screen, 'the label is');
+        $this->assertStringContainsString('Scope: A', $screen, 'and what is left of it still reads as the scope');
+    }
 
     public function testCustomTranslatorIsUsedNotTheEnglishDefault(): void
     {

@@ -44,6 +44,9 @@ final class FindInFilesModal
     use StylesDefault;
 
     /** @var array<string, list<string>> the modal's own action bindings (matched with the editor's parser) */
+    /** The scope field's key hint — measured by the width and drawn by the row, so one spelling. */
+    private const string SCOPE_KEY = ' (Alt+S)';
+
     private const array KEYS = [
         'select_cancel' => [Key::ESCAPE],
         'accept_completion' => [Key::ENTER],
@@ -617,6 +620,7 @@ final class FindInFilesModal
     {
         $status = $this->statusText();
         $width = max(mb_strwidth($this->title) + mb_strwidth($status) + 10, mb_strwidth($this->query->value()) + 9, PopupMetrics::FIND_MIN_WIDTH); // + 10: the frame's title-bar chrome
+        $width = max($width, $this->optionsRowWidth());
         foreach ($visible as $row) {
             $text = null !== $row->filePath ? $row->filePath : $this->results[$row->matchIndex]['text'] ?? '';
             $width = max($width, mb_strwidth($text) + 8);
@@ -696,28 +700,87 @@ final class FindInFilesModal
         return $this->searching ? $this->translator->trans('searching…') : $this->translator->trans('%count% results', ['%count%' => \count($this->results)]);
     }
 
+    /**
+     * The option tags in row order, name => glyph.
+     *
+     * One list, read by the row that draws them and by the width that has to
+     * seat them — two copies of a fixed five-cell run is two things to get out
+     * of step, and the duplication gate says so.
+     *
+     * @return array<string, string>
+     */
+    private function optionTags(): array
+    {
+        return ['regex' => '.*', 'case' => 'Aa', 'word' => '\\b', 'preserve' => 'Pc', 'tokens' => TokenScope::from($this->options['tokens'])->glyph()];
+    }
+
+    /**
+     * The options row's natural width: the five tags, the scope caption, the
+     * current scope label and the key hint.
+     *
+     * {@see boxWidth()} counts it because this row is the only one in the modal
+     * that cannot shrink — a preview row elides its text and the query field
+     * scrolls, but the tags are five fixed cells and the key hint is the whole
+     * point of the row. Left out of the width it was, reliably, the row that
+     * overflowed, and the row-wide truncate spent the overflow on the tail:
+     * `(Alt+S)` rendered as `(Al…`, hiding the only thing that says how to
+     * change the scope.
+     */
+    private function optionsRowWidth(): int
+    {
+        $tags = 0;
+        foreach ($this->optionTags() as $glyph) {
+            $tags += mb_strwidth($glyph) + 2;
+        }
+
+        return 1 + $tags + 2 + mb_strwidth($this->scopeCaption()) + mb_strwidth($this->scopeLabel()) + mb_strwidth(self::SCOPE_KEY);
+    }
+
+    /** The scope field's caption, translated — longer than English's in several locales. */
+    private function scopeCaption(): string
+    {
+        return $this->translator->trans('Scope:').' ';
+    }
+
+    /** The scope the modal is currently searching. */
+    private function scopeLabel(): string
+    {
+        return $this->scopeLabels[$this->scopeIndex] ?? $this->translator->trans('Whole Project');
+    }
+
     /** The option tags + scope label row; records the tag + scope click zones. */
     private function optionsRowLine(int $width): string
     {
-        $tokenGlyph = TokenScope::from($this->options['tokens'])->glyph();
         $this->optionZones->clear();
         $col = 1; // leading space
         $tags = '';
-        foreach (['regex' => '.*', 'case' => 'Aa', 'word' => '\\b', 'preserve' => 'Pc', 'tokens' => $tokenGlyph] as $name => $glyph) {
+        foreach ($this->optionTags() as $name => $glyph) {
             $w = mb_strwidth($glyph) + 2;
             $this->optionZones->add($name, $col, $col + $w);
             $col += $w;
-            $on = 'tokens' === $name ? 'any' !== $this->options['tokens'] : $this->options[$name];
+            $on = 'tokens' === $name ? 'any' !== $this->options['tokens'] : true === $this->options[$name];
             $tags .= FindModalRows::optionTag($glyph, OptionTagState::of($on, $name === $this->hovered), $this->styles);
         }
 
-        $label = $this->scopeLabels[$this->scopeIndex] ?? $this->translator->trans('Whole Project');
+        $caption = $this->scopeCaption();
+        // The LABEL elides, never the key. This row is assembled from a fixed
+        // run of tags plus a translated caption, so at the default box width it
+        // came out one column too wide — and the row-wide truncate below spent
+        // that column on the tail, turning "(Alt+S)" into "(Al…". The key is the
+        // only thing here that teaches how to change the scope; the label is a
+        // value the user can already read off the results. So the label is
+        // given whatever the fixed parts leave and shortens itself, which also
+        // holds in the languages where the caption is longer than English's.
+        $label = AnsiText::truncate(
+            $this->scopeLabel(),
+            max(1, $width - ($col + 2) - mb_strwidth($caption) - mb_strwidth(self::SCOPE_KEY)),
+        );
         $labelPart = 'scope' === $this->hovered
             ? $this->styles->merge(Role::RowHighlightBg, Role::Bright)->apply($label)
             : $this->styles->of(Role::TabAccent)->apply($label);
-        $scope = '  '.$this->styles->of(Role::Dim)->apply($this->translator->trans('Scope:').' ').$labelPart.$this->styles->of(Role::Dim)->apply(' (Alt+S)');
+        $scope = '  '.$this->styles->of(Role::Dim)->apply($caption).$labelPart.$this->styles->of(Role::Dim)->apply(self::SCOPE_KEY);
         // The scope zone starts past the two-space gap; clamp so a truncated box can't hit past the edge.
-        $this->optionZones->add('scope', $col + 2, min($col + 2 + mb_strwidth($this->translator->trans('Scope:').' '.$label.' (Alt+S)'), $width));
+        $this->optionZones->add('scope', $col + 2, min($col + 2 + mb_strwidth($caption.$label.self::SCOPE_KEY), $width));
 
         return $this->styles->of(Role::Toolbar)->apply(AnsiText::truncate(' '.$tags.$scope, $width, pad: true));
     }
