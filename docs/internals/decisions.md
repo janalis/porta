@@ -4147,3 +4147,33 @@ watches the text appear, so a cut is visible". It is the opposite: an
 end-truncated input goes STILL, and stillness is the one thing a typist reads as
 "nothing happened". The rule to carry forward is that a row holding live input
 scrolls to where the input is; only fixed text may elide.
+
+## The family, swept (2026-09-09)
+
+Four fixes today were the same shape, so the rest of the family was checked
+rather than waited for. Two results, and the second one closes the thread.
+
+**The remaining surfaces are correct**, and two of them are the reference for
+how it should be done:
+
+| surface | verdict |
+| --- | --- |
+| `MenuPanel` | counts label AND shortcut, elides the label, keeps the shortcut |
+| `StatusBarWidget` | right side cut to `columns - 3` first, then the left; `128:37` survives to ten columns, every cut marked |
+| completion popup | no fixed rows — every row is an item, all measured |
+| the input sweep | `TextField::render()` self-scrolls via `caretWindow`; the picker's filter was the only site drawing `value()` instead, and it is fixed |
+
+**The rule now lives in `subsystems.md`**, not only here. `decisions.md` is
+where a settled question is argued; `CLAUDE.md` routes someone about to touch
+overlays to `subsystems.md`, and that is the page that has to say "measure every
+row you draw" BEFORE the fifth instance, not after it. Three rules in priority
+order — count fixed rows, give up the value rather than the affordance, scroll
+live input — with the four cases as the table that earned them.
+
+**On the gate for it.** Pinning content does not work: a box one column too wide
+still contains everything an assertion looks for, which is exactly why nine
+mutants escaped every content-shaped test in that file. Pinning constants goes
+stale the first time a glyph changes. The invariant — declared width equals
+drawn width, across locales because the widest row changes with the translation
+— is the only form of the check that both fails when it should and survives
+ordinary edits.

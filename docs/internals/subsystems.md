@@ -264,6 +264,49 @@ border-only language, with item-run hit-testing where the border swallows and
 outside dismisses. The completion popup and signature hint stay
 editor-pane-composited and framed the same way.
 
+### Sizing one: measure every row you draw
+
+A floating box computes its width from its content, and the recurring defect is
+that "its content" quietly means *the varying* content — the title, the query,
+the item labels — while the box also draws rows that vary with none of it. A row
+nothing measured is a row that truncates, and a row-wide truncate spends the
+overflow on the TAIL, so what disappears is whatever the row ends with.
+
+Four of these landed on 2026-09-09, all in surfaces that had been correct at
+every width anyone had looked at:
+
+| row | sized from | what was lost |
+| --- | --- | --- |
+| Find modal's option tags | title, query, result rows | `(Alt+S)` → `(Al…` |
+| Find modal's footer | as above | latent; French was 5 columns from it |
+| Picker's "no matches" filler | title, item labels | `keine Treffer` → `keine Tref` |
+| Picker's type-to-filter row | item labels | the end of what you typed |
+
+Three rules, in the order they matter:
+
+1. **A fixed row goes into the width.** If a row's content is decided by
+   anything other than the list the box measures, add it to that `max()`. Count
+   it only when it will be drawn, or an empty-state row widens every populated
+   list.
+2. **When something must give, give up the value, never the affordance.** A key
+   hint, a glyph, a count is unreconstructable; a label is usually visible
+   elsewhere on screen. `MenuPanel::renderItem()` is the reference — it elides
+   the label and keeps the shortcut. Truncating with `ellipsis: ''` is worse
+   than truncating badly: it hides that anything was cut at all.
+3. **A row holding LIVE input scrolls; only fixed text elides.** An
+   end-truncated input goes still as you type past the width, and stillness
+   reads as "nothing happened". Use `AnsiText::scrollLineToCaret()` when the
+   field renders its caret marker, or `caretWindow()` at the text's end when it
+   does not (the frame permits one caret and the search modal owns it).
+
+The gate for rule 1 is an invariant, not a number: a row's declared width must
+equal the width it draws, over several locales, since the widest row changes
+with the translation. See `FindInFilesModalGeometryTest`. Pinning the constants
+instead goes stale the first time a glyph changes, and — measured — pinning
+CONTENT does not work either: a box one column too wide still contains
+everything an assertion looks for, which is why nine mutants escaped every
+content-shaped test in that file.
+
 ## The bottom dock
 
 The terminal panel, the debug panel and the list tools share one dock above the
