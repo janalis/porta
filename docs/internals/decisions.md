@@ -4493,3 +4493,59 @@ this is unreachable in tests". Not on the ARRAY form: PHP resolves the program
 itself and `proc_open` returns false. The path is reachable, it is the only
 signal a caller has for "this tool is missing", and symfony-lsp's error messages
 were already leaning on it. It has a test now and no ignore.
+
+## The floor that stopped fitting its own rows (2026-09-09)
+
+Found the way this round is supposed to find things: in the user's own
+`.porta/layout.json`, which carries `viewSidebarWidthPercent: {"settings": 8}`.
+
+Eight percent is not a width anyone chooses. It is what a drag to the stop
+persists, and where it lands is decided by `SettingsNavWidget::minWidth()` —
+because `LayoutController::clampSidebarWidth()` applies minWidth OUTSIDE its
+max-ratio and neighbour caps:
+
+    max($sidebar->minWidth(), min($width, $sidebar->maxWidth(), …))
+
+so on any terminal narrower than 200 columns, `settings: 8` resolves to exactly
+`minWidth()`. That number was a literal **14**.
+
+**14 was right when it was written.** `3a4340cc` (15 July) extracted the
+`PanelWidth` trait and gave the nav its own floor; the nav then held three
+sections and the language catalogue, and its widest row was `   JavaScript` at
+13 columns. Since then Interface and Highlighting joined `SECTIONS`, git became
+a plugin, and every installed plugin became an indented sub-row under Plugins.
+`   local-history` needs 16. Rendered at the floor, with this machine's own
+nine plugins:
+
+    |   image-view…|
+    |   graph-view…|
+    |   local-hist…|
+
+Three of the nine names the sidebar exists to name, cut — at the one width the
+sidebar is guaranteed to be drawn at.
+
+**Translation makes it worse than the English screen shows.** Rows go through
+`trans()`, and French renders Keybindings as `Raccourcis clavier` — 19 columns.
+At 14 a French user reads `Raccourcis c…` with no plugins installed at all.
+
+`minWidth()` measures its rows now, through the same `rowText()` the render
+draws, floored at the old 14 (so a bare English install drags exactly as far as
+it always did) and capped at 24. The cap is not cosmetic: given the `max()`
+above, a minimum derived from content with no bound of its own would let one
+absurdly named plugin win against the terminal's own width. 24 is what
+`PanelWidth` asks of a side panel generally; past it, rows truncate as before.
+
+Both halves are mutation-checked — freezing it back to 14 fails three tests,
+dropping the cap fails the fourth.
+
+### Why only this widget
+
+The same shape was checked at every other `minWidth()` and left alone.
+`FileTreeWidget` (12) and the git list panels (24) hold filenames and commit
+subjects — unbounded content, where a content-derived floor is meaningless.
+`GitTabsWidget` (30) has finite translated content and was measured: German's
+` Änderungen ` + ` Verlauf ` comes to 24, inside its floor.
+
+The settings nav is the one whose content is finite, known at render time, AND
+grew after its bound was set. That is the whole distinction — not "measure
+every floor", but "a floor over a growing set has to be measured".

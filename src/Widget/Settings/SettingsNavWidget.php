@@ -25,6 +25,7 @@ use Porta\Widget\Support\PanelRowStyle;
 use Porta\Widget\Support\PanelWidth;
 use Porta\Widget\Support\WheelScrollable;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -34,11 +35,14 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 
 /**
- * The settings view's left navigation sidebar: General, Keybindings and a
+ * The settings view's left navigation sidebar: the {@see SECTIONS} rows, one
+ * indented sub-row per installed plugin under Plugins, then a
  * (non-selectable) Languages header followed by one row per configurable
  * language. Selecting a row (arrow/click) fires onSelect with its id
- * ('general' | 'keybindings' | 'lang:<id>'); the header is skipped. Self-sizing
- * so the sidebar can be dragged wider/narrower.
+ * ('general' | 'interface' | 'highlighting' | 'keybindings' | 'plugins' |
+ * 'plugin:<name>' | 'lang:<id>'); the header is skipped. Self-sizing so the
+ * sidebar can be dragged wider/narrower — and {@see minWidth()} measures the
+ * rows rather than naming a number, because the row set here grows.
  *
  * @phpstan-type Entry array{id: string|null, label: string, kind: NavEntryKind}
  */
@@ -57,6 +61,24 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     use PanelRowStyle;
 
     private const array SECTIONS = ['general' => 'General', 'interface' => 'Interface', 'highlighting' => 'Highlighting', 'keybindings' => 'Keybindings', 'plugins' => 'Plugins'];
+
+    /**
+     * The floor under {@see minWidth()}'s measurement — what this nav was
+     * allowed to be when the number was a literal 14, kept so a bare install
+     * (whose widest row is `   JavaScript`, 13 columns) drags exactly as far
+     * as it always did.
+     */
+    private const int NARROWEST = 14;
+
+    /**
+     * The ceiling over it, and not cosmetic:
+     * {@see \Porta\Layout\LayoutController::clampSidebarWidth()} applies
+     * minWidth OUTSIDE its max-ratio and neighbour caps, so a minimum derived
+     * from content with no bound of its own would let one long plugin name
+     * win against the terminal's own width. 24 is what {@see PanelWidth}
+     * asks for a side panel generally; past it, rows truncate as before.
+     */
+    private const int WIDEST_MINIMUM = 24;
 
     /** @var list<Entry> */
     private array $entries;
@@ -134,10 +156,27 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         $this->invalidate();
     }
 
+    /**
+     * The narrowest this may be dragged: wide enough to READ every row it
+     * draws, not a number frozen against the rows it drew once.
+     *
+     * 14 was right in July, when the nav held three sections and the language
+     * catalogue and its widest row was `   JavaScript` at 13. Since then
+     * Interface and Highlighting arrived, and every installed plugin became a
+     * sub-row under Plugins — `   local-history` needs 16 — so dragging to
+     * the floor cut names the sidebar exists to name. Translated rows make it
+     * worse than the English screen shows: French renders Keybindings as
+     * `Raccourcis clavier`, 19 columns.
+     */
     #[\Override]
     public function minWidth(): int
     {
-        return 14;
+        $widest = 0;
+        foreach ($this->entries as $entry) {
+            $widest = max($widest, AnsiUtils::visibleWidth($this->rowText($entry)));
+        }
+
+        return max(self::NARROWEST, min($widest, self::WIDEST_MINIMUM));
     }
 
     #[\Override]
@@ -287,6 +326,24 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         return $this->list->rowIndexAt($relRow, \count($this->entries), headerRows: 0);
     }
 
+    /**
+     * One row's text before truncation.
+     *
+     * Shared with {@see minWidth()} deliberately: a bound that measures rows
+     * the render does not draw is a bound that drifts the moment either side
+     * changes. Language and plugin rows indent under their category and keep
+     * their own names — those are identifiers the user typed or installed,
+     * not prose to translate.
+     *
+     * @param Entry $entry
+     */
+    private function rowText(array $entry): string
+    {
+        return \in_array($entry['kind'], [NavEntryKind::Language, NavEntryKind::Plugin], strict: true)
+            ? '   '.$entry['label']
+            : ' '.$this->translator->trans($entry['label']);
+    }
+
     #[\Override]
     public function render(RenderContext $context): array
     {
@@ -315,14 +372,11 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
                 $lines[] = $this->styles
                     ->merge(Role::Toolbar, Role::Dim)
                     ->withBold()
-                    ->apply(AnsiText::truncate(' '.$this->translator->trans($entry['label']), $width, pad: true));
+                    ->apply(AnsiText::truncate($this->rowText($entry), $width, pad: true));
                 continue;
             }
 
-            // Language, plugin and the Git sub-item indent under their category
-            // and keep their own (untranslated) names.
-            $text = \in_array($entry['kind'], [NavEntryKind::Language, NavEntryKind::Plugin], strict: true) ? '   '.$entry['label'] : ' '.$this->translator->trans($entry['label']);
-            $text = AnsiText::truncate($text, $width, pad: true);
+            $text = AnsiText::truncate($this->rowText($entry), $width, pad: true);
             $lines[] = $this->shadeRow($text, $index === $this->list->selected(), $index === $this->hoveredIndex);
         }
 

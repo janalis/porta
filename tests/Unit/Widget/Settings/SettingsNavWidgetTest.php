@@ -11,6 +11,7 @@ use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class SettingsNavWidgetTest extends TestCase
@@ -209,6 +210,70 @@ final class SettingsNavWidgetTest extends TestCase
     public function testDefaultWidthIsTwentyTwo(): void
     {
         $this->assertSame(22, $this->widget()->width());
+    }
+
+    /**
+     * The floor has to fit the rows, because the floor is where the sidebar
+     * lands: the layout controller applies minWidth OUTSIDE its ratio caps, so
+     * a persisted `settings: 8` resolves to exactly this number on any terminal
+     * narrower than 200 columns.
+     *
+     * 14 was right in July, against three sections and the language catalogue.
+     * Plugins became sub-rows afterwards and the number did not move, so the
+     * one place the nav is guaranteed to be drawn was the one place it could
+     * not spell `local-history`.
+     */
+    public function testTheNarrowestWidthFitsEveryRowItDraws(): void
+    {
+        $widget = $this->widget();
+        $this->assertSame(14, $widget->minWidth(), 'a bare install drags exactly as far as it always did');
+
+        $widget->setPluginEntries(['git', 'symfony-lsp', 'local-history']);
+
+        $this->assertSame(16, $widget->minWidth(), '   local-history, indented');
+        $rows = $this->navRows($widget, $widget->minWidth());
+        $this->assertContains('   local-history', $rows, 'and at that width it is spelled out, not elided');
+    }
+
+    /**
+     * Measured through the translator, not off the English source strings:
+     * French spells Keybindings `Raccourcis clavier`, and a floor that fits
+     * only the English screen cuts a row in six of the seven shipped locales.
+     */
+    public function testTheNarrowestWidthFollowsTheTranslatedRows(): void
+    {
+        $widget = new SettingsNavWidget(new Translator('fr'));
+        AttachedStyles::attach($widget);
+
+        $this->assertSame(19, $widget->minWidth());
+        $this->assertContains(' Raccourcis clavier', $this->navRows($widget, 19));
+    }
+
+    /**
+     * One long plugin name must not win against the terminal.
+     *
+     * LayoutController::clampSidebarWidth() applies minWidth outside its
+     * max-ratio and neighbour caps, so an unbounded content-derived minimum
+     * would be honoured past the point where the pane beside it still fits.
+     * Past the ceiling, rows truncate exactly as they did before.
+     */
+    public function testAnAbsurdlyLongPluginNameCannotForceTheSidebarWider(): void
+    {
+        $widget = $this->widget();
+        $widget->setPluginEntries(['a-plugin-with-a-truly-preposterous-name']);
+
+        $this->assertSame(24, $widget->minWidth());
+    }
+
+    /** The nav's rows at $width, ANSI stripped and right-trimmed. @return list<string> */
+    private function navRows(SettingsNavWidget $widget, int $width): array
+    {
+        $lines = [];
+        foreach ($widget->render(new RenderContext($width, 40)) as $line) {
+            $lines[] = rtrim(AnsiUtils::stripAnsiCodes($line));
+        }
+
+        return $lines;
     }
 
     public function testMaxWidthIsSixty(): void
