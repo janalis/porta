@@ -4549,3 +4549,36 @@ subjects — unbounded content, where a content-derived floor is meaningless.
 The settings nav is the one whose content is finite, known at render time, AND
 grew after its bound was set. That is the whole distinction — not "measure
 every floor", but "a floor over a growing set has to be measured".
+
+## Two tabs called plugin.php (2026-09-09)
+
+`TabListProvider::title()` was `basename($b->path)` and nothing else, so any
+two open files sharing a name were two identical tabs. In THIS repository that
+is not an edge case — fourteen `plugin.php`, a `composer.json` per package, a
+`Installer.php` under more than one plugin — and the cost is closing or editing
+the wrong one of a matched pair.
+
+PhpStorm and VS Code both answer with `name (dir)`, and that ordering turns out
+to matter here for a reason neither of them has: the side tab strip
+(`tabBarPosition: right`, which is what this machine runs) gives a name 19
+columns. A leading `symfony-lsp/plugin.php` would truncate away the part that
+says what the file IS; `plugin.php (symfo…` still reads.
+
+The qualifier grows a directory at a time, because one level is not always
+enough: two `GitSidebar.php` under `<plugin>/src/View/` agree on `View` and on
+`src/View`, and separate only at the plugin name. It stops at the first depth
+that distinguishes, so the common case stays `plugin.php (git)`.
+
+**Only path-derived titles take part.** Every help page is deliberately one
+`Documentation` tab and a titled buffer shows the title it was given — those
+are decisions, not collisions, and qualifying them would undo one. The guard is
+mutation-checked: removing it turns two `Project Architecture` tabs into
+`Project Architecture (a)` and `(b)`, and the test says so.
+
+### Where it is NOT a second site
+
+Checked rather than assumed. Both file pickers already carry the directory as
+their own field beside the name — `FilesSource` and
+`SearchEverywhereController` each pass `dirname()` as the hit's secondary text,
+so Search Everywhere and Go to File never showed a bare basename. The tab strip
+was the one surface where the basename stood alone.
