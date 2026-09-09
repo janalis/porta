@@ -4260,3 +4260,29 @@ argument concrete. And the test class hit mago's `too-many-methods` — bisected
 in `mago.toml` to that class's own count — so the table cases moved to
 `MarkdownTableTest` rather than the threshold moving.
 
+
+## Reviewing the day's own diff (2026-09-09)
+
+Fourteen commits with one pair of eyes on them, so the diff was read back as a
+reviewer would. One finding, and it is in my own change from earlier the same
+day.
+
+`PickerLayout::layoutList()` measures its width over the UNFILTERED items on
+purpose — the comment there says why: a box sized from what survives the filter
+shrinks and re-centres on every keystroke, walking out from under the eye
+reading it. The filler-row fix counted `no matches` **only when the filler was
+about to be drawn**, which reinstates exactly that. Measured: 15 columns, then
+27 on the keystroke that emptied the list.
+
+The commit message even argued for the conditional — "measuring it always would
+widen every populated list for a row it never shows" — a plausible-sounding
+trade that swapped a static width for a dynamic resize, against a principle
+written down three lines above the line being changed. Both layouts measure it
+unconditionally now, and the no-resize property has its own test: one width
+across a filter that matches everything, something, and nothing. Re-planting the
+conditional fails it, and so does dropping the measurement.
+
+The lesson is not "review your own diff" so much as **read the comment beside
+the line you are changing**. The reason that box is sized the way it is was
+already there, in prose, three lines up — and the fix that broke it cited a
+trade-off the codebase had already decided.
