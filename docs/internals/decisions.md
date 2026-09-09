@@ -4648,3 +4648,23 @@ the real loader and asserts the unit COUNT matches English — not merely that
 the load returned, because an empty catalogue is exactly what the defect
 produces and "it loaded" is satisfied by it. Reintroducing the duplicate id
 fails it with `messages.fr.xlf loads 0 of 748 units`.
+
+### The duplicate the gate led to
+
+The same trip turned up a pre-existing one: `Cannot write %file%` had TWO
+`trans-unit` elements in every catalog, with different ids. Well-formed, schema-
+valid (the ids differ), and invisible — but the message id IS the source text,
+so the loader keeps whichever comes last and the other unit's translations are
+dead. In French, Japanese and Hebrew the two had genuinely DIVERGED
+(`d’écrire` vs `d'écrire`, `を書き込めません` vs `に書き込めません`,
+`את` vs `אל`), which means someone translated a line and watched it change
+nothing.
+
+The dead unit is gone from all seven, keeping what actually shipped so the
+cleanup is structural — except French, where the surviving copy carried a
+straight apostrophe against a catalog that uses `’` twenty-eight times to
+thirteen. That one is a typo and was fixed with it.
+
+Not gated: a duplicate SOURCE is legal XLIFF and the loader's last-one-wins is
+sane behaviour, so a test would be asserting a house style rather than a defect.
+Worth knowing it can happen, which is what this paragraph is for.

@@ -430,10 +430,6 @@
         <source>%file% is gone — restoring a version will bring it back</source>
         <target>%file% is gone — restoring a version will bring it back</target>
       </trans-unit>
-      <trans-unit id="822">
-        <source>Cannot write %file%</source>
-        <target>Cannot write %file%</target>
-      </trans-unit>
       <trans-unit id="820">
         <source>Cannot restore %file% — it is no longer there</source>
         <target>Cannot restore %file% — it is no longer there</target>

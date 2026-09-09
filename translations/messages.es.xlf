@@ -430,10 +430,6 @@
         <source>%file% is gone — restoring a version will bring it back</source>
         <target>%file% ya no existe: restaurar una versión lo recuperará</target>
       </trans-unit>
-      <trans-unit id="822">
-        <source>Cannot write %file%</source>
-        <target>No se puede escribir %file%</target>
-      </trans-unit>
       <trans-unit id="820">
         <source>Cannot restore %file% — it is no longer there</source>
         <target>No se puede restaurar %file%: el archivo ya no existe</target>
