@@ -27,6 +27,16 @@ use Symfony\Component\Clock\NativeClock;
  * Stamping the FIRST line only, so a multi-line trace stays one entry: the
  * lines after it are the trace's own, and prefixing those would corrupt the
  * shape a reader (or `grep '^2'`) uses to count entries.
+ *
+ * The clock is a trailing default rather than a required argument, which means
+ * the two channels built where no container is at hand — `error` from
+ * {@see \Porta\Ide} and {@see \Porta\Console\PortaCommand}, and `dap` — stamp
+ * from the WALL clock, while `freeze` and `perf` hand in the injected one. A
+ * test that freezes time therefore sees mock stamps in those two logs and real
+ * ones in the others. Nothing asserts on a crash stamp, so this buys a real
+ * date in a real user's crash log at the price of an inconsistency only a
+ * time-frozen test can see; `Ide` cannot reach the clock without widening the
+ * `porta.ide` locator for one caller, which its own membership gate refuses.
  */
 final class DiagnosticLog
 {

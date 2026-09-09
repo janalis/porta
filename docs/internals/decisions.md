@@ -4286,3 +4286,30 @@ The lesson is not "review your own diff" so much as **read the comment beside
 the line you are changing**. The reason that box is sized the way it is was
 already there, in prose, three lines up — and the fix that broke it cited a
 trade-off the codebase had already decided.
+
+## What the wrapping cost, measured (2026-09-09)
+
+The rest of the day's diff, read back the same way. No further defects; two
+numbers worth keeping and one wart written down.
+
+**Rendering is memoized on width.** `HelpViewerWidget` re-renders only when
+`$cols` changes, so the column budgeter's shrink loop is paid on a resize, not
+per frame. Alternated A/B/A/B against the pre-change renderer:
+
+| workload | before | after |
+| --- | --- | --- |
+| all `docs/*.md` × 4 widths (40 renders) | 95–97 ms | 108–112 ms |
+| `plugins.md` at 70 columns, the worst case | 5.97 ms | 8.20 ms |
+
+About 0.35 ms per document render, and 2.2 ms on the largest document at the
+narrowest width — comfortably inside a frame, and most of it is producing the
+extra rows rather than the loop, which runs a few hundred trivial iterations
+even against a 600-character cell. No optimisation warranted; the number is
+here so the next reader does not have to take it on faith.
+
+**The wart.** `DiagnosticLog`'s clock is a trailing default, so `freeze` and
+`perf` stamp from their injected clock while `error` and `dap` — built where no
+container is at hand — stamp from the wall clock. A time-frozen test sees the
+two disagree. Nothing asserts on a crash stamp, and `Ide` cannot reach the clock
+without widening the `porta.ide` locator for one caller, which its own
+membership gate refuses. Recorded in the class docblock rather than fixed.
