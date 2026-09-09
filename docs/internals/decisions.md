@@ -4120,3 +4120,30 @@ survived. The row is `' '.$message`, so one column is the leading space and the
 second is the trailing one that matches it — cosmetic symmetry with the item
 rows above, not correctness. Asserting it would pin padding, which
 `infection.json5` warns against in as many words.
+
+## An input that hid its own tail (2026-09-09)
+
+The previous entry flagged the list overlay's filter row as "probably the same
+shape, but I cannot produce a case where it visibly breaks" and left it. That
+was the wrong call twice over — it IS reachable, and the defect is not the one
+the shape predicted.
+
+The filter row was truncated whole, which puts the ellipsis at the END. A
+26-character filter in a box sized from two short items drew `≡ exceptio…`:
+past the width the row **stops changing as you type**, showing the opening
+characters of a filter you can no longer read. The box measures the UNFILTERED
+labels and never grows, so this is reachable by typing a branch name into a list
+of short ones — which is precisely when a long filter gets typed.
+
+The sibling settles it. `layoutSearch`'s query row has always scrolled
+(`AnsiText::scrollLineToCaret`), because it carries a cursor marker to scroll
+to. This row deliberately carries none — the frame allows one caret and the
+search modal owns it — so the window is taken at the END of the text via the
+same `caretWindow()` underneath, with an empty marker. The glyph stays put; only
+the typed text scrolls.
+
+**Why the earlier dismissal was wrong.** Both times the reasoning was "the user
+watches the text appear, so a cut is visible". It is the opposite: an
+end-truncated input goes STILL, and stillness is the one thing a typist reads as
+"nothing happened". The rule to carry forward is that a row holding live input
+scrolls to where the input is; only fixed text may elide.

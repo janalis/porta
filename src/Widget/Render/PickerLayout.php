@@ -87,7 +87,21 @@ final class PickerLayout
         // narrows, what narrowed it is on screen rather than being a mode the
         // user has to remember entering. No caret: the search modal owns the
         // one caret a frame may carry, and this is a filter, not a field.
-        $header = '' === $filter ? [] : [$styles->of(Role::Toolbar)->apply(AnsiText::truncate(' '.self::FILTER_GLYPH.' '.$filter, $width, pad: true))];
+        // The typed text tail-scrolls, the glyph does not. Truncating the whole
+        // row put the ellipsis at the END, so past the box width the row stopped
+        // changing as you typed and showed the first few characters of a filter
+        // you could no longer read — an input that hides its own tail. The
+        // search overlay's query row has always scrolled ({@see
+        // AnsiText::scrollLineToCaret}); it can, because it carries a cursor
+        // marker to scroll to. This row deliberately carries none, so the
+        // window is taken at the end of the text instead.
+        $prefix = ' '.self::FILTER_GLYPH.' ';
+        $room = max(1, $width - mb_strwidth($prefix));
+        $header = '' === $filter
+            ? []
+            : [$styles->of(Role::Toolbar)->apply(
+                AnsiText::padRight($prefix.AnsiText::caretWindow($filter, AnsiUtils::visibleWidth($filter), $room, marker: ''), $width),
+            )];
         $popup = [
             ModalFrame::titleBar($overlay['title'], $width + ModalFrame::CHROME_COLS, $styles, $closeHovered),
             ...ModalFrame::wrap([...$header, ...$content], $width, $styles),

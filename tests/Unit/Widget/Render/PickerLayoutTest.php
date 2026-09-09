@@ -83,6 +83,80 @@ final class PickerLayoutTest extends TestCase
     }
 
     /**
+     * A filter longer than its box shows what you just typed, not what you
+     * typed first.
+     *
+     * The row used to be truncated whole, which puts the ellipsis at the END:
+     * past the box width the row stopped changing as you typed, showing the
+     * opening characters of a filter you could no longer read. The box is sized
+     * from the UNFILTERED item labels and never grows, so this is reachable by
+     * typing a branch name into a list of short ones — which is exactly when
+     * anyone types a long filter.
+     *
+     * The sibling query row in {@see PickerLayout::layoutSearch()} has always
+     * scrolled, via a cursor marker this row deliberately does not carry.
+     */
+    public function testALongFilterShowsItsTailRatherThanItsHead(): void
+    {
+        $typed = 'feature/a-very-long-branch-name';
+        $filter = new TextField();
+        foreach (mb_str_split($typed) as $character) {
+            $filter->insert($character);
+        }
+
+        $row = $this->filterRow($filter);
+
+        // Whatever the box has room for must come from the END of the typed
+        // text — the box is narrow, so the assertion asks for the last few
+        // characters rather than a fixed count that would pin the width.
+        $this->assertStringContainsString(mb_substr($typed, start: -6), $row, 'the end of the filter, where the caret is');
+        $this->assertStringNotContainsString('feature/', $row, 'not the start, which is what an end-truncate keeps');
+        $this->assertStringContainsString('≡', $row, 'and the glyph identifying the row does not scroll away');
+    }
+
+    /** A filter that fits is drawn exactly as before — the scroll only engages past the width. */
+    public function testAFilterThatFitsIsUnchanged(): void
+    {
+        $filter = new TextField();
+        foreach (mb_str_split('dev') as $character) {
+            $filter->insert($character);
+        }
+
+        $this->assertStringContainsString('≡ dev', $this->filterRow($filter));
+    }
+
+    /** The list overlay's filter row, plain, for a box sized from two short items. */
+    private function filterRow(TextField $filter): string
+    {
+        $out = PickerLayout::layoutList(
+            [0, 0, 24, 100],
+            [
+                'title' => 'Run',
+                'items' => [
+                    ['label' => 'test', 'hint' => '', 'value' => 't'],
+                    ['label' => 'dev', 'hint' => '', 'value' => 'd'],
+                ],
+                'selected' => 0,
+                'hovered' => null,
+                'filter' => $filter,
+                'onPick' => static fn (): null => null,
+            ],
+            $this->styles(),
+            closeHovered: false,
+            emptyMessage: 'no matches',
+        );
+
+        foreach ($out['rows'] as $row) {
+            $plain = AnsiUtils::stripAnsiCodes($row);
+            if (str_contains($plain, '≡')) {
+                return $plain;
+            }
+        }
+
+        self::fail('the picker drew no filter row');
+    }
+
+    /**
      * The search overlay's own filler. Its 24-column floor happens to seat
      * every translation of "no results" today, which is luck and not a rule —
      * so the box is asked to seat a longer one.
