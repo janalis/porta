@@ -189,13 +189,18 @@ final class LspSessionTest extends TestCase
         $client = new FakeLspClient();
         $session = $this->session($client);
         $this->start($session);
+        // The two that do NOT match are opened FIRST and in between, because
+        // $syncedText keeps insertion order: with every match at the front, a
+        // loop that stopped at the first miss instead of skipping it would
+        // still close everything this asserts on. That mutant escaped a real
+        // run of the first draft of this test.
+        $session->notifyDidOpen('/tmp/other/d.php', 'd', 'php', 1);
         $session->notifyDidOpen('/tmp/old/a.php', 'a', 'php', 1);
-        $session->notifyDidOpen('/tmp/old/deep/b.php', 'b', 'php', 1);
         // A SIBLING whose path merely starts with the root's characters. The
         // boundary the naive str_starts_with() spelling gets wrong, and the
         // only reason this is a separate case from the one below.
         $session->notifyDidOpen('/tmp/oldish/c.php', 'c', 'php', 1);
-        $session->notifyDidOpen('/tmp/other/d.php', 'd', 'php', 1);
+        $session->notifyDidOpen('/tmp/old/deep/b.php', 'b', 'php', 1);
         $client->notifications = [];
 
         $session->closeUnder('/tmp/old');

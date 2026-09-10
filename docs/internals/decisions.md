@@ -5361,3 +5361,56 @@ silence is right, since `refuseUnhonourable()` returns before any operation
 runs, so there is no half-applied state to ask about. Both halves of that guard
 were mutation-checked: announcing unconditionally, and not announcing at all,
 each fail a test.
+
+## Mutating the round's own work (2026-09-10)
+
+Infection over everything this session put in `src/` — 730 lines across four
+commits — `--git-diff-lines` against the round's last commit. 100 mutants, 84
+killed, **16 escaped**. Read as a review, not as a score.
+
+Four of the sixteen were **one-way assertions in tests written this same
+session**, which is the recurring self-inflicted defect and worth naming again:
+
+- `closeUnder()`'s fixture opened every matching file FIRST, so `continue`
+  → `break` closed everything the test asserted on before it stopped. The two
+  non-matching paths are opened first and in between now.
+- "released over nothing" asserted no MOVE and never asked whether anything had
+  been OPENED — and removing that early return opens every dragged file.
+- "a folder dropped on the editor opens nothing" used a set of one, so skipping
+  the folder and giving up at it were the same answer. It is a mixed set now,
+  folder first.
+- `pressRow` on a file asserted only that nothing was deferred, which is equally
+  true of a press that does nothing at all.
+
+The largest finding was a whole **unguarded precedence chain**: the file tree's
+row-style `match(true)`. Every arm of it is a style and nothing else, so the
+plain text is identical whichever fires and a stripped comparison grades all of
+them as passing. Only the arm added this session had a test — the one written
+after the same trap caught me an hour earlier. Five arms now, pinned by
+rendering one row in five states and requiring five different strings, plus a
+directory row that must be styled with a file row in the same state as the
+control.
+
+Also found: `setDropTarget()`'s no-change guard held nothing, and mode 1003
+hands the router a flood of motion events, so losing it re-renders the whole
+tree dozens of times per drag for a picture that never changed.
+
+**16 → 5, covered MSI 84% → 95%.** The five left, each judged:
+
+- `TreeDragRouter::drop()`'s `return` after `requestDrop()` — unreachable by
+  construction: the target only exists when the release was inside the TREE
+  rect, and the tree and the editor do not overlap.
+- `$this->tui->requestRender()` in `continueDrag()` — the line is right and
+  every sibling drag handler has it, but **no test can attribute the repaint**:
+  the loop's ticker paints within an E2e await either way. I wrote a test for
+  it, watched the mutant survive it, and deleted the test rather than keep one
+  that passes for a reason it does not name.
+- `FileTreeWidget::nodeAtRow()` public → protected — Infection noise on a final
+  class.
+- The two `$this->events?->` nullsafes — the class's own defensive idiom for a
+  widget built without a dispatcher; no production path does.
+
+*Re-opens if* a Unit-only mutation run is ever mistaken for a full one: it runs
+`--testsuite=Unit`, so anything only an E2e would kill escapes it. Three of this
+batch's survivors were checked against the E2e suite by hand before being
+judged.

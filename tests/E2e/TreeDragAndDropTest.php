@@ -46,7 +46,6 @@ final class TreeDragAndDropTest extends TestCase
             'src/A.php' => "<?php\n// a\n",
             'top.php' => "<?php\n// t\n",
         ]);
-        $project = $this->project;
     }
 
     public function testDraggingAFileOntoAFolderMovesItAndTakesItsMarksAlong(): void

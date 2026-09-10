@@ -10,6 +10,7 @@ use Porta\Event\TreeFileActivated;
 use Porta\Input\MouseEvent;
 use Porta\Input\TreeDragRouter;
 use Porta\Tests\Support\AttachedStyles;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\FileTreeWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -79,6 +80,23 @@ final class TreeDragRouterTest extends TestCase
         return $this->at(0, $relRow, 'm', $col);
     }
 
+    /** @return \Closure(): list<string> every path opened so far, in order */
+    private function recordOpens(): \Closure
+    {
+        $opened = [];
+        $this->treeEvents->addListener(TreeFileActivated::class, static function (TreeFileActivated $event) use (&$opened): void {
+            $opened[] = $event->path;
+        });
+
+        // By reference, and not an arrow function: an arrow fn captures at
+        // DEFINITION, so it would freeze the list while it is still empty and
+        // every "nothing was opened" assertion below would pass for free. The
+        // same trap the suite's await() rule names.
+        return static function () use (&$opened): array {
+            return $opened;
+        };
+    }
+
     public function testADragWithNothingArmedIsRefused(): void
     {
         $this->assertFalse($this->router()->continueDrag($this->at(32, 1), self::rect(), null), 'the chain falls through to everything else');
@@ -130,33 +148,34 @@ final class TreeDragRouterTest extends TestCase
     public function testAReleaseOverTheEditorOpensInsteadOfMoving(): void
     {
         $router = $this->router();
-        $opened = [];
-        $this->treeEvents->addListener(TreeFileActivated::class, static function (TreeFileActivated $event) use (&$opened): void {
-            $opened[] = $event->path;
-        });
+        $opened = $this->recordOpens();
         $router->arm([$this->project->path('top.php')]);
         $editor = new WidgetRect(row: 0, col: 40, columns: 40, rows: self::ROWS);
         $router->continueDrag($this->drag(60, 3), self::rect(), $editor);
         $router->continueDrag($this->release(60, 3), self::rect(), $editor);
 
-        $this->assertSame([$this->project->path('top.php')], $opened);
+        $this->assertSame([$this->project->path('top.php')], $opened());
         $this->assertSame([], $this->drops, 'nothing was moved');
     }
 
-    /** A folder has nothing to open: dropping one on the editor is a miss, not an instruction. */
-    public function testAFolderDroppedOnTheEditorOpensNothing(): void
+    /**
+     * A folder has nothing to open: dropping one on the editor is a miss, not
+     * an instruction — and it does not stop the files beside it from opening.
+     *
+     * The folder goes FIRST in the set, which is the whole point: with it last,
+     * skipping it and giving up at it are the same answer, and a `break` where
+     * the code says `continue` passes.
+     */
+    public function testAFolderDroppedOnTheEditorIsSkippedAndTheFilesBesideItOpen(): void
     {
         $router = $this->router();
-        $opened = [];
-        $this->treeEvents->addListener(TreeFileActivated::class, static function (TreeFileActivated $event) use (&$opened): void {
-            $opened[] = $event->path;
-        });
-        $router->arm([$this->project->path('src')]);
+        $opened = $this->recordOpens();
+        $router->arm([$this->project->path('src'), $this->project->path('top.php')]);
         $editor = new WidgetRect(row: 0, col: 40, columns: 40, rows: self::ROWS);
         $router->continueDrag($this->drag(60, 3), self::rect(), $editor);
         $router->continueDrag($this->release(60, 3), self::rect(), $editor);
 
-        $this->assertSame([], $opened);
+        $this->assertSame([$this->project->path('top.php')], $opened(), 'the folder was skipped, not a full stop');
         $this->assertSame([], $this->drops);
     }
 
@@ -164,11 +183,92 @@ final class TreeDragRouterTest extends TestCase
     public function testAReleaseOverNothingDropsNothing(): void
     {
         $router = $this->router();
+        $opened = $this->recordOpens();
         $router->arm([$this->project->path('top.php')]);
         $router->continueDrag($this->drag(60, 3), self::rect(), null);
         $router->continueDrag($this->release(60, 3), self::rect(), null);
 
         $this->assertSame([], $this->drops);
+        // Both halves, because "nothing happened" has two ways to be false and
+        // asserting one of them is how a mutant that opens every source on a
+        // release into empty space survives.
+        $this->assertSame([], $opened(), 'and nothing was opened either');
+    }
+
+    /**
+     * Only a drag or a release is the drag's business.
+     *
+     * The guard reads `!isLeftDrag() && !isLeftRelease()`, and its job is to
+     * let everything ELSE fall through the router's `||` chain to whatever owns
+     * it. Asserted with a drag armed, because the `null === $drag` arm
+     * short-circuits the whole condition and makes the interesting half
+     * unreachable — which is exactly how a negated version of it survives.
+     */
+    public function testAnEventThatIsNeitherADragNorAReleaseFallsThrough(): void
+    {
+        $router = $this->router();
+        $router->arm([$this->project->path('top.php')]);
+
+        // SGR 2 is the right button: a press, but not the left one.
+        $this->assertFalse($router->continueDrag($this->at(2, 1), self::rect(), null), 'a right-press is not the drag');
+        // Button 3 with motion — a bare hover-move under mode 1003.
+        $this->assertFalse($router->continueDrag($this->at(35, 1), self::rect(), null), 'nor is a hover-move');
+        $this->assertNull(Probe::get($this->tree, 'dropTarget'), 'and neither of them moved the highlight');
+    }
+
+    /** The highlight follows the pointer: that is the only feedback a drop target gets. */
+    public function testTheHighlightFollowsThePointerAcrossTheTree(): void
+    {
+        $router = $this->router();
+        $router->arm([$this->project->path('top.php')]);
+
+        $router->continueDrag($this->at(32, 1), self::rect(), null); // over src/
+        $this->assertSame($this->project->path('src'), Probe::get($this->tree, 'dropTarget'));
+
+        $router->continueDrag($this->drag(60, 3), self::rect(), null); // off the tree entirely
+        $this->assertNull(Probe::get($this->tree, 'dropTarget'), 'leaving the tree takes the highlight with it');
+    }
+
+    /**
+     * The release SPENDS the drag: it is disarmed before it is acted on.
+     *
+     * Without that, the gesture stays armed after the drop and the next release
+     * anywhere moves the same files a second time — silently, because every
+     * other symptom of the first move is indistinguishable from the second.
+     */
+    public function testAReleaseDisarmsTheDragSoItCannotBeSpentTwice(): void
+    {
+        $router = $this->router();
+        $router->arm([$this->project->path('top.php')]);
+        $router->continueDrag($this->at(32, 1), self::rect(), null);
+        $router->continueDrag($this->at(0, 1, 'm'), self::rect(), null);
+        $this->assertCount(1, $this->drops);
+
+        $this->assertFalse($router->continueDrag($this->at(0, 1, 'm'), self::rect(), null), 'the second release finds nothing armed');
+        $this->assertCount(1, $this->drops, 'and moves nothing again');
+        $this->assertNull(Probe::get($this->tree, 'dropTarget'), 'the highlight went with it');
+    }
+
+    /**
+     * A drop abandons the toggle its press deferred.
+     *
+     * Pressing a folder does not expand it any more — the expansion waits for a
+     * release that never moved, or the row would collapse under the pointer
+     * mid-drag. A drop has to throw that pending toggle away, or it survives to
+     * be paid by the NEXT click that happens to end without motion, and a
+     * folder nobody touched opens or closes on its own.
+     */
+    public function testADropAbandonsTheToggleThePressDeferred(): void
+    {
+        $router = $this->router();
+        $this->tree->pressRow(1); // press src/ — the toggle is deferred, not applied
+        $this->assertSame(1, Probe::get($this->tree, 'pendingToggle'), 'the press really did defer one');
+
+        $router->arm([$this->project->path('src')]);
+        $router->continueDrag($this->at(32, 3), self::rect(), null);
+        $router->continueDrag($this->at(0, 3, 'm'), self::rect(), null);
+
+        $this->assertNull(Probe::get($this->tree, 'pendingToggle'), 'and the drop threw it away');
     }
 
     /** Cancelling forgets the drag and takes its highlight with it. */
