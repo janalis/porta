@@ -376,6 +376,23 @@ final class KeybindingsListWidgetTest extends TestCase
         $this->assertSame(['duplicate_line'], $resets);
     }
 
+    /**
+     * Delete with no reset callback wired must do nothing rather than reach
+     * for a row it never checked. The guard is `&&`, and `||` there
+     * dereferences a null row on a page whose controller has not hooked it up
+     * yet — a shape every callback on this widget can be in, since they are
+     * installed after construction. Infection found this one.
+     */
+    public function testDeleteWithoutAResetCallbackDoesNotCrash(): void
+    {
+        $widget = new KeybindingsListWidget(new Translator('en'));
+        $widget->setRows([new KeybindingRow('save', 'Save', 'ctrl+s', overridden: true)]);
+
+        $widget->handleInput("\x1b[3~"); // Delete, with nothing listening
+
+        $this->addToAssertionCount(1);
+    }
+
     /** Delete is not Backspace: Backspace belongs to the filter field, and overloading it would make both untrustworthy. */
     public function testBackspaceDoesNotResetABinding(): void
     {

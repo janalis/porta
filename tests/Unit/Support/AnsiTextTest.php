@@ -40,7 +40,24 @@ final class AnsiTextTest extends TestCase
     {
         $wide = str_repeat('漢', times: 12).'end.php';
         foreach (range(start: 2, end: 30) as $width) {
-            $this->assertLessThanOrEqual($width, AnsiUtils::visibleWidth(AnsiText::elideMiddle($wide, $width)), "width {$width}");
+            $got = AnsiUtils::visibleWidth(AnsiText::elideMiddle($wide, $width));
+            $this->assertLessThanOrEqual($width, $got, "width {$width}");
+            // And graded from BELOW as well, which the first version was not:
+            // every arithmetic slip in here makes the result NARROWER, and a
+            // one-way `<= $width` passes all of them. Two columns of slack and
+            // no more — BOTH cuts can land inside a double-width grapheme, and
+            // each one that does costs a column. (One was the first guess here,
+            // and width 16 on this string disproved it: 14.)
+            $this->assertGreaterThanOrEqual($width - 2, $got, "width {$width} came back short");
+        }
+    }
+
+    /** With no wide graphemes there is no boundary to lose, so the fit is exact. */
+    public function testElideMiddleSpendsTheWholeBudgetOnAsciiText(): void
+    {
+        $path = 'src/Some/Deep/Namespace/ExampleClass.php';
+        foreach (range(start: 2, end: 39) as $width) {
+            $this->assertSame($width, AnsiUtils::visibleWidth(AnsiText::elideMiddle($path, $width)), "width {$width}");
         }
     }
 

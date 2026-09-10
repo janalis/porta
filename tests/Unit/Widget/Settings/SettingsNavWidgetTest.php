@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Event\SettingsSearchRequested;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\AttachedStyles;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Ui\Glyphs;
 use Porta\Widget\Settings\SettingsNavWidget;
@@ -312,6 +313,32 @@ final class SettingsNavWidgetTest extends TestCase
 
         $this->assertStringContainsString(Glyphs::SCROLL_UP, $rows[0]);
         $this->assertSame('', trim((string) end($rows)), 'nothing below the last entry, so the bottom edge is blank');
+    }
+
+    /**
+     * Exactly as many entries as rows is the boundary, and `>=` there would
+     * reserve two edge rows to announce an overflow that does not exist —
+     * dropping two entries that fit in order to say the list is longer than it
+     * is. Infection found this one; no test came near equality.
+     */
+    public function testAListThatFitsToTheRowExactlyIsNotAnOverflow(): void
+    {
+        $widget = $this->widget();
+        $count = \count(Probe::get($widget, 'entries'));
+
+        $rows = $this->navRows($widget, 22, rows: $count);
+
+        $this->assertStringNotContainsString(Glyphs::SCROLL_DOWN, implode('', $rows));
+        $this->assertSame(' General', $rows[0]);
+        $this->assertSame(' '.$this->lastEntryLabel($widget), rtrim((string) end($rows)), 'and the last entry is drawn, not traded for a marker');
+    }
+
+    private function lastEntryLabel(SettingsNavWidget $widget): string
+    {
+        /** @var list<array{id: string|null, label: string, kind: mixed}> $entries */
+        $entries = Probe::get($widget, 'entries');
+
+        return '  '.$entries[\count($entries) - 1]['label'];
     }
 
     /** A list that fits keeps every row for entries — the edges cost nothing when there is nothing to say. */

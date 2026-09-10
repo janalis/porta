@@ -4908,3 +4908,49 @@ reader does not "clean it up".
 
 *Re-opens if* `PluginApi` ever versions its row API, at which point the class
 this wanted to be becomes possible.
+
+## Infection over the session's own thirteen commits (2026-09-10)
+
+Ran the project's own review tool across everything changed since
+`3a55f8cb` — 309 mutants over 24 files, **259 killed, 47 escaped, MSI 84%**.
+Read as a review rather than a score. Four of the 47 were real.
+
+**`elideMiddle` was graded in one direction only,** which is the exact defect
+this session committed a fix for twice (the doc gate, the catalog gate). The
+sweep asserted `visibleWidth(...) <= $width` across widths 2–30 — and every
+arithmetic slip in that function makes the result NARROWER, so all of them
+passed. It is graded from below now, and an ASCII case pins the width exactly.
+
+Tightening it immediately disproved my first guess at the bound. I wrote
+`>= $width - 1`, reasoning that one cut could straddle a double-width grapheme;
+width 16 came back 14. **Both** cuts can straddle, and each one that does costs
+a column. The comment records the wrong number and the case that killed it.
+
+**The settings nav's overflow test never came near equality.** `count($entries)
+> $rows` with `>=` reserves two edge rows to announce an overflow that does not
+exist — dropping two entries that fit in order to say the list is longer than
+it is. Nothing tested exactly-fits.
+
+**Delete with no reset callback wired dereferenced a null row.** The guard is
+`null !== $row && null !== $this->onReset`; with `||` it is a fatal, and the
+mutation escaped because every test wires both. Callbacks on that widget are
+installed after construction, so "not wired yet" is a real state.
+
+**The rule column's two-space gap was unasserted.** Removing the separator runs
+the sentence and the rule together as one word, and
+`assertStringContainsString('worse.unused_import')` passes either way. Asserted
+against `…  worse.unused_import` now, cut and gap together.
+
+### The other 43, and why they stay
+
+Checked, not waved past. The bulk are the centring arithmetic in the ▲/▼
+indicator rows (`intdiv($width, 2) - 1`) — moving the glyph a column is not
+behaviour any test should freeze. `MenuBarWidget`'s `break` in
+`fittingTitles()` is a provably equivalent mutant: `$used` only grows, so once
+it passes `$columns` the counter is never reached again whether the loop
+breaks or not.
+
+The lesson worth keeping is not the 84%. It is that **three of the four were
+one-way assertions** — a bound with no floor, a comparison never tested at its
+boundary, a callback never tested absent — written by someone who had spent
+the same day fixing exactly that shape in two gates.

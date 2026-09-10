@@ -48,8 +48,10 @@ final class ResultsPanelRuleColumnTest extends TestCase
             'tail' => 'worse.unused_import',
         ]], 100);
 
-        $this->assertStringContainsString('worse.unused_import', $plain, 'the rule survives');
-        $this->assertStringContainsString(Glyphs::ELLIPSIS, $plain, 'and the sentence is what yielded, legibly');
+        // The two-space gap is asserted with it: the rule sits BEHIND the
+        // sentence, and run together they read as one word. Infection removed
+        // the separator and nothing noticed.
+        $this->assertStringContainsString(Glyphs::ELLIPSIS.'  worse.unused_import', $plain, 'the rule survives, a gap behind the cut sentence');
     }
 
     /** A row that fits is untouched: the reservation only spends width it has to. */
