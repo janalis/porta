@@ -7,10 +7,14 @@ namespace Porta\Tests\Unit\Widget\Render;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\State\SearchModalState;
+use Porta\Search\Everywhere\SearchCategory;
+use Porta\Search\Everywhere\SearchHit;
+use Porta\Search\Everywhere\SearchRow;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\Render\ModalFrame;
 use Porta\Widget\Render\PickerLayout;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -218,5 +222,89 @@ final class PickerLayoutTest extends TestCase
             ),
             'the filler row is drawn whole',
         );
+    }
+
+    /**
+     * Every picker row is exactly as wide as the box says it is.
+     *
+     * The overlay half of {@see \Porta\Tests\Unit\Widget\NarrowPaneRenderTest}.
+     * That sweep walks WIDGETS down to one column; a picker is not one — it is
+     * composited through the overlay host — so nothing had ever graded its
+     * geometry at a narrow bound. `PickerLayout` carries the same
+     * `max(1, $width - …)` idiom that produced six real overflows elsewhere
+     * today, which is why it is worth saying out loud that here it holds.
+     *
+     * **What holds it is {@see ModalFrame::wrapSections()}, not that
+     * arithmetic.** Every content row is clipped to the inner width in one
+     * place, so the row assembly above it can be off by a column and the box
+     * still comes out square — mutating those inner bounds does not fail this
+     * test, and that is the finding, not a gap in it. It is the ceiling the six
+     * widget rows were each missing: they assembled a row and nobody clipped it.
+     *
+     * From eight columns, which is the honest floor: below it the frame's own
+     * corners and padding (four columns) no longer fit and `$width` goes
+     * negative, because `min($width, $columns - MARGIN, MAX_INNER)` has no
+     * lower bound. That is unreachable in normal use — `clampSidebarWidth()`
+     * keeps the main pane at twenty columns — and it bleeds rather than throws,
+     * so it is recorded rather than guarded.
+     */
+    #[DataProvider('boundsWidths')]
+    public function testEveryPickerRowIsExactlyTheWidthTheBoxDeclares(int $columns): void
+    {
+        $filter = new TextField();
+        $filter->insert('dev');
+        $list = PickerLayout::layoutList(
+            [0, 0, 24, $columns],
+            [
+                'title' => 'Run',
+                'items' => [['label' => 'test suite', 'hint' => 'Ctrl+T', 'value' => 't']],
+                'selected' => 0,
+                'hovered' => null,
+                'filter' => $filter,
+                'onPick' => static fn (): null => null,
+            ],
+            $this->styles(),
+            closeHovered: false,
+            emptyMessage: 'no matches',
+        );
+
+        $query = new TextField();
+        $query->insert('abc');
+        $state = new SearchModalState('Go to File', $query, static function (): void {}, static function (): void {}, static function (): void {}, 'no results');
+        // Real hit rows, and long ones: the ` label · detail ` assembler is the
+        // piece that bounds the detail first and gives the label the rest, and
+        // an empty results list renders the filler instead and grades none of
+        // it. A mutant that loosened the detail's bound by one column survived
+        // this test until these rows were here.
+        $state->rows = [
+            SearchRow::header('Files'),
+            SearchRow::hit(new SearchHit(SearchCategory::Files, 'AVeryLongClassNameIndeed.php', 'src/Deeply/Nested/Namespace/Path', static function (): void {})),
+            SearchRow::hit(new SearchHit(SearchCategory::Files, 'b.php', '', static function (): void {})),
+        ];
+        $search = PickerLayout::layoutSearch(
+            [0, 0, 24, $columns],
+            $state,
+            $this->styles(),
+            closeHovered: false,
+            caret: CaretVisibility::Hidden,
+        );
+
+        foreach (['list' => $list, 'search' => $search] as $name => $out) {
+            foreach ($out['rows'] as $row => $text) {
+                $this->assertSame(
+                    $out['width'],
+                    AnsiUtils::visibleWidth($text),
+                    \sprintf('%s row %d at %d columns', $name, $row, $columns),
+                );
+            }
+        }
+    }
+
+    /** @return iterable<string, array{int}> */
+    public static function boundsWidths(): iterable
+    {
+        foreach ([8, 9, 12, 20, 24, 40, 60, 100, 200] as $columns) {
+            yield $columns.' columns' => [$columns];
+        }
     }
 }

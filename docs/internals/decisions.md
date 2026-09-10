@@ -5672,3 +5672,51 @@ lands at one that can.
 the git plugin, three in core — every one of them a `max()` that bounds one
 piece of a row while the rest draws at its natural width, or a pad with no
 ceiling.
+
+## Auditing the clamp idiom, and why the overlays were safe (2026-09-10)
+
+Six over-wide rows in one day, all the same spelling, so the next step was to
+stop hunting widget by widget and grep the idiom: `max(0, $width - …)` and
+`max(1, $width - …)` across `src/` and the bundled plugins. Twenty-eight sites.
+
+**Every reachable one is already correct**, and for a reason worth writing down:
+they are all inside widgets the sweep now covers, and the sweep is what proves
+them. The status bar, the dock strip, the menu bar, the editor's gutter, the
+keybindings list — each carries the idiom and each fits at every width, because
+each was made to.
+
+The one component outside the sweep is `PickerLayout`, which the overlay host
+composites rather than laying out. It carries the idiom twice. It is **also
+correct**, and not because of that arithmetic:
+
+> `ModalFrame::wrapSections()` clips every content row to the inner width in
+> one place — "the single place the invariant is enforced", as its own docblock
+> puts it.
+
+That is the difference between the two halves of this UI, and it explains the
+whole day's tally. The overlay path has a central ceiling, so a row assembled
+one column too wide is clipped on the way out and nobody ever sees it. The
+widget path has none: each widget assembles its own rows and hands them
+straight to the renderer, which throws. Six widgets were missing a ceiling; no
+overlay was, because the frame is theirs.
+
+Mutating `PickerLayout`'s inner bounds does not fail the new test, and that is
+the finding rather than a hole in it — the frame renders those bounds
+unobservable from outside.
+
+*Recorded, not fixed:* below eight columns of bounds the picker's own
+`min($width, $columns - MARGIN, MAX_INNER)` has no lower bound and `$width`
+goes negative, giving a four-column frame in a smaller box. It bleeds rather
+than throws — I could not make it throw — and it needs the editor pane union at
+three columns or less, which `clampSidebarWidth()`'s twenty-column floor
+prevents outside a 1×1 terminal transient. That transient is real (the crash
+log's own trace is `layout(…, 1, 1, …)`), which is why this is written down
+rather than dismissed.
+
+### Two measurement mistakes worth naming
+
+I read the picker's declared `width` as excluding the frame chrome, twice —
+first assuming two columns of it, then four — and both times the probe reported
+overflows that were my arithmetic, not the code's. The rows equal `width`
+exactly. A probe is only as good as the invariant you hand it, and an invariant
+you guessed at will happily report someone else's bug as yours.
