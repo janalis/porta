@@ -5414,3 +5414,32 @@ tree dozens of times per drag for a picture that never changed.
 `--testsuite=Unit`, so anything only an E2e would kill escapes it. Three of this
 batch's survivors were checked against the E2e suite by hand before being
 judged.
+
+## Auditing the feature against its own plan (2026-09-10)
+
+The approved plan for drag-and-drop listed six E2e cases. Three were never
+written, and nothing noticed — coverage was 100% and every gate was green,
+because the paths they name are reached by OTHER tests and only the questions
+go unasked.
+
+- **Cancel on the collision prompt.** Written. It is the only one of the three
+  prompt answers whose branch is an ABSENCE: the closure falls off both its
+  `if`s and does nothing. Coverage cannot tell that apart from the answer never
+  being chosen, and what it decides is whether a file gets overwritten.
+- **A folder dragged into another folder — the success case.** Written. Only its
+  refusal (dropping onto its own child) had a test, and the success path is the
+  one with the moving parts: every store keyed by the FILES has to ask
+  `ProjectPaths::moved()`, so the case puts a bookmark two levels inside the
+  folder and requires it to arrive.
+- **Dropping onto a FILE targets its parent directory.** Not written, and that
+  is the right call: `dropDirAt()` answers exactly that question and is unit
+  tested for the file row, the folder row and the header. An E2e would re-test
+  the wiring the folder case already exercises.
+
+Both new cases were mutation-checked: routing `cancel` into the overwrite branch
+fails the first, and dropping the subtree-buffer loop fails the second.
+
+*The general lesson, which is not about this feature:* a verification list in an
+approved plan is not a gate. Nothing re-reads it after the work lands, and the
+cases most likely to be skipped are the ones whose absence is invisible —
+an answer that does nothing, a success case whose refusal is already covered.

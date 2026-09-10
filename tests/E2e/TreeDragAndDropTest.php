@@ -160,6 +160,117 @@ final class TreeDragAndDropTest extends TestCase
     }
 
     /**
+     * A whole FOLDER dragged into another one, which is the case with the most
+     * moving parts and the one only its refusal was tested for.
+     *
+     * Everything under it moves, so every store keyed by the FILES has to ask
+     * `ProjectPaths::moved()` rather than compare paths — the bookmark below is
+     * on a file two levels inside the folder being dragged, and it following is
+     * the only evidence that the subtree half of `FileRenamed`'s contract was
+     * honoured rather than the folder being renamed by hand.
+     */
+    public function testDraggingAFolderTakesItsSubtreeAndTheOpenBufferInsideIt(): void
+    {
+        putenv('PATH=/nonexistent');
+        $this->project = new TempProject(['pkg/A.php' => "<?php\n// a\n", 'dest/keep.php' => "<?php\n"]);
+        $project = $this->project;
+
+        $this->runIde(
+            $project,
+            $project->path('pkg/A.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->frame($tui);
+                    Services::resolve($ide, BookmarkActions::class)->toggle();
+                    $this->assertSame(
+                        [(string) realpath($project->path('pkg/A.php')) => [0]],
+                        Services::resolve($ide, Bookmarks::class)->all(),
+                        'the mark starts on the file inside the folder',
+                    );
+                },
+                300 => function ($tui): void {
+                    $rows = $this->treeRows($tui);
+                    // dest/ sorts before pkg/. Both stay COLLAPSED — the file
+                    // inside pkg/ is open in the editor without its folder
+                    // being expanded, which is the point: the buffer has to
+                    // follow whether or not the tree is showing it.
+                    $this->assertSame('▸ dest/', trim($rows[1] ?? ''), 'dest/ is row 1');
+                    $this->assertSame('▸ pkg/', trim($rows[2] ?? ''), 'and pkg/ is row 2');
+                    $tui->handleInput("\x1b[<0;3;4M"); // press pkg/
+                    $tui->handleInput("\x1b[<32;3;3M"); // drag onto dest/
+                    $tui->handleInput("\x1b[<0;3;3m"); // release
+                },
+                460 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->assertDirectoryDoesNotExist($project->path('pkg'), 'the folder left its old place');
+                    $this->assertFileExists($project->path('dest/pkg/A.php'), 'and arrived whole');
+                    $this->assertStringEndsWith(
+                        'dest/pkg/A.php',
+                        (string) $tui->getById('editor')->getFilePath(),
+                        'the buffer that was open inside it followed',
+                    );
+                    $this->assertSame(
+                        [(string) realpath($project->path('dest/pkg/A.php')) => [0]],
+                        Services::resolve($ide, Bookmarks::class)->all(),
+                        'and so did the mark, two levels down',
+                    );
+                },
+            ],
+            columns: 120,
+        );
+    }
+
+    /**
+     * Cancel on the collision prompt leaves BOTH files exactly where they were.
+     *
+     * The third answer, and the only one whose branch is an absence — the
+     * closure simply falls off its two `if`s. Coverage cannot tell it apart
+     * from never being chosen at all, and what it decides is whether a file is
+     * overwritten, so it is worth its own case.
+     */
+    public function testACollisionAnsweredWithCancelMovesNothing(): void
+    {
+        putenv('PATH=/nonexistent');
+        $this->project = new TempProject([
+            'src/dup.php' => "<?php\n// the one already there\n",
+            'dup.php' => "<?php\n// the one being dragged\n",
+        ]);
+        $project = $this->project;
+
+        $this->runIde(
+            $project,
+            $project->path('src/dup.php'),
+            [
+                200 => function ($tui): void {
+                    $this->frame($tui);
+                    $tui->handleInput("\x1b[<0;3;4M"); // press the root dup.php
+                    $tui->handleInput("\x1b[<32;3;3M"); // drag onto src/
+                    $tui->handleInput("\x1b[<0;3;3m"); // release
+                },
+                320 => function ($tui, $terminal): void {
+                    $screen = implode("\n", $this->screenGrid($tui, $terminal));
+                    $this->assertStringContainsString('already exists', $screen, 'the prompt is up');
+                    $tui->handleInput("\x1b[B"); // → Rename…
+                    $tui->handleInput("\x1b[B"); // → Cancel
+                    $tui->handleInput("\r");
+                },
+                460 => function ($tui) use ($project): void {
+                    $this->assertStringContainsString(
+                        'the one being dragged',
+                        (string) file_get_contents($project->path('dup.php')),
+                        'the dragged file stayed put, with its own contents',
+                    );
+                    $this->assertStringContainsString(
+                        'the one already there',
+                        (string) file_get_contents($project->path('src/dup.php')),
+                        'and the one it would have replaced is untouched',
+                    );
+                },
+            ],
+            columns: 120,
+        );
+    }
+
+    /**
      * Dropped on the editor instead of a folder: the file OPENS and nothing
      * moves. The second drop target, and the only one that touches no disk.
      */
@@ -198,7 +309,6 @@ final class TreeDragAndDropTest extends TestCase
             'src/dup.php' => "<?php\n// the one already there\n",
             'dup.php' => "<?php\n// the one being dragged\n",
         ]);
-        $project = $this->project;
         $project = $this->project;
 
         $this->runIde(
