@@ -2994,6 +2994,46 @@
         <source>%action% is not bound in %file%</source>
         <target>%action% non è assegnato in %file%</target>
       </trans-unit>
+      <trans-unit id="841">
+        <source>Cannot copy %file%</source>
+        <target>Impossibile copiare %file%</target>
+      </trans-unit>
+      <trans-unit id="842">
+        <source>Cannot move %file%</source>
+        <target>Impossibile spostare %file%</target>
+      </trans-unit>
+      <trans-unit id="843">
+        <source>Cannot move %name% into itself</source>
+        <target>Impossibile spostare %name% dentro se stesso</target>
+      </trans-unit>
+      <trans-unit id="844">
+        <source>Copied %name%</source>
+        <target>%name% copiato</target>
+      </trans-unit>
+      <trans-unit id="845">
+        <source>Moved %name%</source>
+        <target>%name% spostato</target>
+      </trans-unit>
+      <trans-unit id="846">
+        <source>Move as</source>
+        <target>Sposta come</target>
+      </trans-unit>
+      <trans-unit id="847">
+        <source>Overwrite</source>
+        <target>Sovrascrivi</target>
+      </trans-unit>
+      <trans-unit id="848">
+        <source>Overwrite all</source>
+        <target>Sovrascrivi tutto</target>
+      </trans-unit>
+      <trans-unit id="849">
+        <source>%name% already exists in %dir%</source>
+        <target>%name% esiste già in %dir%</target>
+      </trans-unit>
+      <trans-unit id="850">
+        <source>%count% files already exist in %dir%</source>
+        <target>%count% file esistono già in %dir%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

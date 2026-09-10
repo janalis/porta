@@ -7,6 +7,7 @@ namespace Porta\Widget;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Editor\DiagnosticStyle;
+use Porta\Event\TreeDropRequested;
 use Porta\Event\TreeFileActivated;
 use Porta\Layout\ResizableSidebar;
 use Porta\Support\AnsiText;
@@ -67,6 +68,12 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     private readonly ListSelection $list;
     private readonly MultiSelection $selection;
     private int $lastRows = 24;
+
+    /** The directory a drag in progress would drop into, or null when no drag is live. */
+    private ?string $dropTarget = null;
+
+    /** A directory row whose expand/collapse is waiting to learn whether the press was a click. */
+    private ?int $pendingToggle = null;
 
     /** @var list<FileTreeNode> */
     private array $visible = [];
@@ -213,6 +220,151 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $this->invalidate();
 
         return $node;
+    }
+
+    /**
+     * The node at a widget-relative row, looked up and nothing else.
+     *
+     * The pure half of {@see nodeAt()}, which also moves the cursor and may
+     * collapse the selection. A drag has to know what it grabbed BEFORE the
+     * click that follows decides what the selection becomes, and asking the
+     * mutating one would make the question change its own answer.
+     */
+    public function nodeAtRow(int $relRow): ?FileTreeNode
+    {
+        $index = $this->list->rowIndexAt($relRow, \count($this->visible));
+
+        return null === $index ? null : $this->visible[$index];
+    }
+
+    /**
+     * A left press on a row, with a directory's expand/collapse HELD BACK
+     * until {@see commitPress()} says the press was a click.
+     *
+     * Pressing a folder to drag it used to toggle it, which is not a cosmetic
+     * annoyance: the rows below it move, so by the first motion event the row
+     * under the pointer is a different node and the drop lands somewhere
+     * nobody aimed at. Deferring is the shape the graph pane's drag already
+     * uses — a release with no motion becomes the click.
+     *
+     * Only the toggle waits. A file still activates on the press, which is
+     * this tree's documented behaviour and what its tests hold.
+     */
+    public function pressRow(int $relRow, ClickIntent $intent = ClickIntent::Open): void
+    {
+        $node = $this->nodeAtRow($relRow);
+        if (ClickIntent::Open !== $intent || null === $node || !$node->isDir) {
+            $this->clickRow($relRow, $intent);
+
+            return;
+        }
+        // Select it — the same collapse-unless-already-in rule a right-click
+        // follows — and remember what a click would still owe.
+        $this->nodeAt($relRow);
+        $this->pendingToggle = $relRow;
+    }
+
+    /** The press turned out to be a click: pay what {@see pressRow()} deferred. */
+    public function commitPress(): void
+    {
+        $row = $this->pendingToggle;
+        $this->pendingToggle = null;
+        if (null !== $row) {
+            $this->clickRow($row);
+        }
+    }
+
+    /** The press turned out to be a drag: the deferred toggle is abandoned. */
+    public function forgetPress(): void
+    {
+        $this->pendingToggle = null;
+    }
+
+    /**
+     * What a drag starting at this row would carry.
+     *
+     * Dragging a row that is IN the selection carries the whole selection —
+     * that is what the selection is for. Dragging one outside it carries just
+     * that row, without disturbing the selection, because the click that
+     * follows collapses it anyway.
+     *
+     * Empty — no drag — for the header row, for a $modified press (Ctrl and
+     * Shift are building a selection, not grabbing one), and a directory
+     * always travels alone: {@see selectedPaths()} answers with files only.
+     *
+     * The sibling of {@see \Porta\Widget\DockTabsWidget::dragSourceAt()},
+     * and read BEFORE the click runs for the same reason.
+     *
+     * @return list<string>
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- $modified is one fact with two values: the press is building a selection rather than grabbing one.
+    public function dragSourcesAt(int $relRow, bool $modified): array
+    {
+        $node = $modified ? null : $this->nodeAtRow($relRow);
+        if (null === $node) {
+            return [];
+        }
+        $selected = $this->selectedPaths();
+
+        return $node->isDir || !\in_array($node->path, $selected, strict: true) ? [$node->path] : $selected;
+    }
+
+    /**
+     * The directory a drop at this row would land in: the node itself when it
+     * is a folder, its parent when it is a file. PhpStorm's rule, and the one
+     * that makes a tree of files droppable at all.
+     */
+    public function dropDirAt(int $relRow): ?string
+    {
+        $node = $this->nodeAtRow($relRow);
+        if (null === $node) {
+            return null;
+        }
+
+        return $node->isDir ? $node->path : \dirname($node->path);
+    }
+
+    /**
+     * Say that a file should be opened, as a click on its row would.
+     *
+     * The same event the click path dispatches, so a drop on the editor and a
+     * click on the row reach the editor by one route rather than two.
+     */
+    public function requestOpen(string $path): void
+    {
+        $this->events?->dispatch(new TreeFileActivated($path));
+    }
+
+    /**
+     * Say that a drag was dropped onto $targetDir.
+     *
+     * The widget owns the gesture and no model, so it reports rather than
+     * acts — the shape {@see \Porta\Widget\DockTabsWidget::moveTab()} uses
+     * for a reorder.
+     *
+     * @param list<string> $sources
+     */
+    public function requestDrop(array $sources, string $targetDir, bool $copy): void
+    {
+        $this->events?->dispatch(new TreeDropRequested($sources, $targetDir, $copy));
+    }
+
+    /**
+     * Mark a directory as the pending drop of a drag in progress, or null to
+     * clear it.
+     *
+     * Painted in the tint a hovered directory already uses rather than a Role
+     * of its own: a button-held motion arrives as `isLeftDrag()`, never
+     * `isMove()`, so the hover router does not run while a drag is live and
+     * there is no second highlight this could be confused with.
+     */
+    public function setDropTarget(?string $path): void
+    {
+        if ($path === $this->dropTarget) {
+            return;
+        }
+        $this->dropTarget = $path;
+        $this->invalidate();
     }
 
     public function refresh(): void
@@ -482,6 +634,9 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
             // Subtle hover background beneath the pointer keeps the dir/file foreground.
             $lines[] = match (true) {
+                // Above the cursor row: during a drag the pointer is what the
+                // eye follows, and the cursor is wherever the press left it.
+                $node->path === $this->dropTarget => $this->styles->merge(Role::RowHighlightBg, Role::TabAccent)->apply($text),
                 $index === $this->list->selected() => $this->applyElement('selected', $text),
                 // A row selected but not under the cursor — the second file of
                 // a pair. The cursor keeps its own style above; without this

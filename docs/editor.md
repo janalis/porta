@@ -519,6 +519,35 @@ you", and directories are never marked.
 expands the tree down to the file you are editing, selects it and moves focus
 there, so you can carry on navigating from where the caret already was.
 
+Right-click a row for the rest: **New File…**, **New Folder…**, **Copy Path**,
+**Copy Relative Path**, **Rename…** and **Delete…**. A rename takes the open
+buffer with it, and everything else keyed by that path — bookmarks,
+breakpoints, recent files, saved search scopes, edit and jump history, local
+history — follows too, whether the file moved from here or from a language
+server's refactoring.
+
+### Dragging files
+
+Drag a row onto a folder to **move** it there. Dropping onto a *file* means its
+folder, so you can aim at any row rather than hunting for the directory line.
+The folder under the pointer is highlighted while you drag, `Esc` abandons the
+drag, and releasing without having moved is just a click.
+
+- **Several files at once.** Dragging a row that is part of a selection carries
+  the whole selection; dragging one outside it carries only that row. A folder
+  always travels alone.
+- **Drop on the editor** instead of a folder and the file simply opens — nothing
+  moves.
+- **Hold `Alt` as you release** to copy instead of moving. Not `Ctrl`, which
+  this tree already uses to add a row to the selection (and `Shift` to extend
+  to one), so that chord would mean two things at once.
+- **A name already taken** asks rather than refuses: *Overwrite*, *Rename…* or
+  *Cancel* for one file, *Overwrite all* or *Cancel* for several. Moves are not
+  undoable — the same rule a refactoring that renames files follows — so the
+  question is the safety net.
+- **A folder cannot be dropped inside itself** or its own descendant, and a
+  drop back into the folder a file is already in does nothing.
+
 ## Refactoring
 
 Porta does not implement refactorings; it asks the language server for the ones

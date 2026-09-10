@@ -64,6 +64,7 @@ final class MouseRouter
 
     /** @var array{row: int, col: int, moved: bool}|null a left-drag panning the graph viewer (release without motion = select) */
     private ?array $paneDrag = null;
+
     private ?string $tabDragPath = null;
 
     /** Double/triple-click detection, kept out of the routing logic. */
@@ -91,6 +92,7 @@ final class MouseRouter
         private readonly SeparatorWidget $separator,
         private readonly HoverRouter $hover,
         private readonly ContextMenuRouter $rightClick,
+        private readonly TreeDragRouter $treeDrag,
         private readonly ToastCenter $toasts,
         private readonly WheelRouter $wheel,
         private readonly StatusBarClickRouter $statusClick,
@@ -158,6 +160,7 @@ final class MouseRouter
             || $this->continueTabDrag($mouse, $tabsRect)
             || $this->continuePaneDrag($mouse)
             || $this->continueDockTabDrag($mouse)
+            || $this->treeDrag->continueDrag($mouse, $treeRect, $editorRect)
             || $this->pointers->of($this->views->activeId())->continueDrag($mouse)
             || $this->welcome->continueDrag($mouse)
             || $this->continueFindModalDrag($mouse)
@@ -185,6 +188,7 @@ final class MouseRouter
         $this->tabDragging = false;
         $this->dockTabDrag = null;
         $this->paneDrag = null;
+        $this->treeDrag->cancel();
         $this->pointers->of($this->views->activeId())->cancelDrag();
         $this->welcome->cancelDrag();
         $this->panes->editor()->cancelFindModalDrag();
@@ -670,11 +674,17 @@ final class MouseRouter
         if (null !== $treeRect && $treeRect->contains($mouse->row, $mouse->col)) {
             $rel = $treeRect->toRelative($mouse->row, $mouse->col);
             $this->tui->setFocus($this->panes->tree());
-            $this->panes->tree()->clickRow($rel['row'], match (true) {
+            // Resolve what a drag would carry BEFORE the click runs, the way
+            // tryDockTabClick resolves its source before handleTabClick: the
+            // click may collapse the selection to the row under the pointer,
+            // and by the first motion event the set the user grabbed is gone.
+            $sources = $this->panes->tree()->dragSourcesAt($rel['row'], $mouse->ctrl || $mouse->shift);
+            $this->panes->tree()->pressRow($rel['row'], match (true) {
                 $mouse->ctrl => ClickIntent::Add,
                 $mouse->shift => ClickIntent::Range,
                 default => ClickIntent::Open,
             });
+            $this->treeDrag->arm($sources);
             $this->tui->requestRender();
 
             return true;

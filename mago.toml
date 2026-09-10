@@ -124,7 +124,11 @@ excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server
 # code; the round-5 test split retired the E2e monolith that pinned two rules;
 # all nine re-bisected again under mago 1.45, where exactly one moved):
 #
-#   cyclomatic-complexity   144  Input/MouseRouter — still on top. 143 until the
+#   cyclomatic-complexity   147  Input/MouseRouter — still on top. It gained the
+#                                file-tree drag: one entry in route()'s `||`
+#                                chain and one `ctrl || shift` in the arm, +2.
+#                                The drag ITSELF is Tree/TreeDragRouter, which
+#                                is why it is only two. 144 before that; 143 until the
 #                                editor gutter grew a fold column, which the
 #                                router has to tell apart from the breakpoint
 #                                columns beside it; extracting the branch into
@@ -176,7 +180,9 @@ excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server
 #                                DebugValue: an inlay hint is what the code
 #                                MEANS and is always there, a debug value is
 #                                what it currently HOLDS and only while stopped)
-#   excessive-parameter-list 22  Bootstrap/WidgetHooks' constructor — near-
+#   excessive-parameter-list 24  Input/MouseRouter' constructor, which took
+#                                TreeDragRouter for the tree drag. 23 before.
+#                                Bootstrap/WidgetHooks is 22 — near-
 #                                unmoved since round 2 (splitting it was
 #                                measured: it INCREASES coupling edges). Round
 #                                26 dropped it 25 → 22: the pin had drifted
@@ -258,10 +264,10 @@ excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server
 # real maximum is not a gate. Verified failing: injecting 60 dummy
 # properties into Ui/Notifier trips too-many-properties and lint exits 1.
 [linter.rules]
-cyclomatic-complexity = { threshold = 145 }
+cyclomatic-complexity = { threshold = 147 }
 too-many-methods = { threshold = 86 }
 too-many-properties = { threshold = 31 }
 too-many-enum-cases = { threshold = 60 }
-excessive-parameter-list = { threshold = 23 }
+excessive-parameter-list = { threshold = 24 }
 kan-defect = { threshold = 8 }
 halstead = { effort-threshold = 21435, difficulty-threshold = 30, volume-threshold = 3236 }

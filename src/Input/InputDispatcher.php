@@ -37,6 +37,7 @@ final class InputDispatcher
         private readonly CommandRegistry $commands,
         private readonly LiveKeybindings $keybindings,
         private readonly OverlayHost $overlays,
+        private readonly TreeDragRouter $treeDrag,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
     ) {}
@@ -50,6 +51,15 @@ final class InputDispatcher
             $this->mouseRouter->route($mouse);
 
             return;
+        }
+
+        // Escape abandons a file-tree drag in flight. Deliberately NOT swallowed:
+        // the drag is a mouse gesture with the button still held, and Escape's
+        // own jobs — closing a menu, leaving a view — are unrelated and still
+        // have to run. Every fresh left press cancels it too, so this only
+        // matters for a drag the user talks themselves out of mid-gesture.
+        if ("\x1b" === $data) {
+            $this->treeDrag->cancel();
         }
 
         // An open context menu captures the keyboard modally: arrows/Enter/Esc

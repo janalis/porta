@@ -5166,3 +5166,61 @@ failure mentioning cannot see.
 `plugins.symfony-lsp.binary: ""` key left by the relaunch trick removed in
 `55acea0e` is in the user's personal config, not the repository's, so it is
 theirs to clear and not mine.
+
+## Drag and drop in the file tree (built 2026-09-10)
+
+The tree had no drag at all: a left press was consumed by `tryChromeClick` and
+armed nothing, so the `isLeftDrag()` that followed matched no `continue*`
+handler, fell out of `if (!$mouse->isLeftPress()) return;` and was **silently
+dropped** — as was the release. Moving a file meant `Rename…`, which is
+confined to `dirname($old)`.
+
+PhpStorm's semantics, as asked: drop onto a folder to move, drop onto a FILE to
+land in its folder, drop on the editor to open, drag a selected row to carry
+the whole selection, and a name clash asks rather than refuses.
+
+**Almost none of it is new code.** `TreeOperations::treeRename()` already had
+the load-bearing sequence — resolve the old path and collect the buffers under
+it BEFORE the move, rename, re-point, dispatch `FileRenamed`, refresh — and
+none of it was rename-specific, so it came out whole as `moveInto()`. The seven
+path-keyed stores and local-history then follow a drag-move for free, which the
+E2e asserts by watching a bookmark arrive at the new path.
+
+### Three decisions worth the words
+
+**`Alt` copies, not `Ctrl`.** PhpStorm uses Ctrl, but Ctrl+click on a tree row
+already means "add to the selection" and Shift means "extend to it", so that
+chord would decide two things in one gesture. The modifier is read from the
+RELEASE, so the chord that starts a drag never picks the outcome.
+
+**A folder's expand/collapse now waits for the release.** Pressing a folder to
+drag it used to toggle it, and that is not cosmetic: the rows below move, so by
+the first motion event the row under the pointer is a different node and the
+drop lands somewhere nobody aimed at. `pressRow()` defers only the toggle —
+a file still activates on the press, which is this tree's documented behaviour
+— and the release pays it when nothing moved. The shape is the graph pane's
+`$paneDrag`, where a release with `moved === false` becomes a click. Found by
+building it: the first version's folder-drop test failed because `src/` had
+collapsed under the pointer.
+
+**The drop is an event, not a call.** `MouseRouter` is the class both of mago's
+ceilings are bisected against, so injecting `TreeOperations` into it broke
+`excessive-parameter-list` outright. The tree reports `TreeDropRequested` — a
+command with exactly one listener — the way `DockTabsWidget` reports
+`DockTabMoveRequested`, and the drag itself lives in `Input/TreeDragRouter`,
+reached the way `WelcomeMouseRouter` is. What is left in `MouseRouter` is one
+entry in the `||` chain and one `ctrl || shift`: +2 cyclomatic, +1 parameter,
+both recorded in `mago.toml` beside the numbers they moved.
+
+### Not fixed here
+
+- **Unsaved changes are still lost on any move.** `BufferManager::close()` has
+  no dirty check and the guarded prompt lives only in `closeActiveBuffer()`.
+  Pre-existing — the tree's own rename has always had it — but a drag is a
+  casual gesture where a rename is a deliberate one, so this got easier to hit.
+- **Git decorations go stale after a move**; nothing listens to `FileRenamed`.
+- **The language server keeps the old URI open**: no `workspace/didRenameFiles`
+  anywhere, and the rename path closes buffers without `notifyDidClose`.
+- **Moves are not undoable**, which is settled — `WorkspaceEditor` calls
+  `RefactoringUndo::decline()` for any create/rename/delete. The collision
+  prompt is the safety net instead.

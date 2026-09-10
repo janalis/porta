@@ -2994,6 +2994,46 @@
         <source>%action% is not bound in %file%</source>
         <target>%action% は %file% で割り当てられていません</target>
       </trans-unit>
+      <trans-unit id="841">
+        <source>Cannot copy %file%</source>
+        <target>%file% をコピーできません</target>
+      </trans-unit>
+      <trans-unit id="842">
+        <source>Cannot move %file%</source>
+        <target>%file% を移動できません</target>
+      </trans-unit>
+      <trans-unit id="843">
+        <source>Cannot move %name% into itself</source>
+        <target>%name% を自身の中へは移動できません</target>
+      </trans-unit>
+      <trans-unit id="844">
+        <source>Copied %name%</source>
+        <target>%name% をコピーしました</target>
+      </trans-unit>
+      <trans-unit id="845">
+        <source>Moved %name%</source>
+        <target>%name% を移動しました</target>
+      </trans-unit>
+      <trans-unit id="846">
+        <source>Move as</source>
+        <target>名前を変えて移動</target>
+      </trans-unit>
+      <trans-unit id="847">
+        <source>Overwrite</source>
+        <target>上書き</target>
+      </trans-unit>
+      <trans-unit id="848">
+        <source>Overwrite all</source>
+        <target>すべて上書き</target>
+      </trans-unit>
+      <trans-unit id="849">
+        <source>%name% already exists in %dir%</source>
+        <target>%name% は %dir% に既にあります</target>
+      </trans-unit>
+      <trans-unit id="850">
+        <source>%count% files already exist in %dir%</source>
+        <target>%count% 件のファイルが %dir% に既にあります</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

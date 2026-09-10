@@ -2994,6 +2994,46 @@
         <source>%action% is not bound in %file%</source>
         <target>%action% n’est pas défini dans %file%</target>
       </trans-unit>
+      <trans-unit id="841">
+        <source>Cannot copy %file%</source>
+        <target>Impossible de copier %file%</target>
+      </trans-unit>
+      <trans-unit id="842">
+        <source>Cannot move %file%</source>
+        <target>Impossible de déplacer %file%</target>
+      </trans-unit>
+      <trans-unit id="843">
+        <source>Cannot move %name% into itself</source>
+        <target>Impossible de déplacer %name% dans lui-même</target>
+      </trans-unit>
+      <trans-unit id="844">
+        <source>Copied %name%</source>
+        <target>%name% copié</target>
+      </trans-unit>
+      <trans-unit id="845">
+        <source>Moved %name%</source>
+        <target>%name% déplacé</target>
+      </trans-unit>
+      <trans-unit id="846">
+        <source>Move as</source>
+        <target>Déplacer sous le nom</target>
+      </trans-unit>
+      <trans-unit id="847">
+        <source>Overwrite</source>
+        <target>Écraser</target>
+      </trans-unit>
+      <trans-unit id="848">
+        <source>Overwrite all</source>
+        <target>Tout écraser</target>
+      </trans-unit>
+      <trans-unit id="849">
+        <source>%name% already exists in %dir%</source>
+        <target>%name% existe déjà dans %dir%</target>
+      </trans-unit>
+      <trans-unit id="850">
+        <source>%count% files already exist in %dir%</source>
+        <target>%count% fichiers existent déjà dans %dir%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

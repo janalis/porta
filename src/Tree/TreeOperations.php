@@ -10,6 +10,7 @@ use Porta\Editor\Document;
 use Porta\Editor\OpenFocus;
 use Porta\Event\FileDeleted;
 use Porta\Event\FileRenamed;
+use Porta\Event\TreeDropRequested;
 use Porta\I18n\Translator;
 use Porta\Search\ProjectSearchController;
 use Porta\Search\SearchActions;
@@ -20,6 +21,7 @@ use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Notifier;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Tui\Tui;
@@ -141,39 +143,60 @@ final class TreeOperations
             if ('' === $name || $name === basename($old)) {
                 return;
             }
-            $new = \dirname($old).'/'.$name;
-            // Buffers are keyed by realpath(); resolve the old path the same way
-            // so an open file's buffer is re-pointed at the new name.
-            $resolvedOld = realpath($old);
-            $oldKey = $resolvedOld ? $resolvedOld : $old;
-            $this->withFs($this->translator->trans('Cannot rename %file%', ['%file%' => $this->paths->relative($old)]), function () use ($old, $new, $name, $oldKey): void {
-                // Read BEFORE the rename: a buffer's path is checked against a
-                // directory that is about to stop existing.
-                $inside = $this->buffersMoved($oldKey, $new);
-                $this->fs->rename($old, $new); // no overwrite: a name clash is an error
-                if ($this->buffers->has($oldKey)) {
-                    $this->buffers->close($oldKey);
-                    $this->bufferService->openFile($new);
-                }
-                // Renaming a FOLDER moves every file in it, and each open one
-                // is a tab still pointing into a directory that is gone: the
-                // reconciler flashes "deleted on disk" for a file that merely
-                // moved, and saving it writes the old folder back into
-                // existence, because dumpFile() creates the directories it
-                // needs.
-                foreach ($inside as $path => $target) {
-                    $this->buffers->close($path);
-                    $this->bufferService->openFile($target);
-                }
-                // Canonical both sides, per FileRenamed's contract: $oldKey was
-                // resolved BEFORE the rename (it cannot be, after), and the new
-                // path resolves now that it exists.
-                $newKey = ($resolvedNew = realpath($new)) ? $resolvedNew : $new;
-                $this->events->dispatch(new FileRenamed($oldKey, $newKey));
-                $this->tree->refresh();
-                $this->tui->setFocus($this->tree);
-                $this->notifier->success($this->translator->trans('Renamed to %name%', ['%name%' => $name]));
-            });
+            $this->moveInto(
+                $old,
+                \dirname($old).'/'.$name,
+                $this->translator->trans('Cannot rename %file%', ['%file%' => $this->paths->relative($old)]),
+                $this->translator->trans('Renamed to %name%', ['%name%' => $name]),
+            );
+        });
+    }
+
+    /**
+     * Move $old to $new and take everything that points at it along.
+     *
+     * The body {@see treeRename()} used to hold inline, extracted whole
+     * because none of it is rename-specific — a drop from a drag needs exactly
+     * the same sequence, and a second copy of it would be a second place to
+     * get the ordering wrong.
+     *
+     * The ordering IS the substance: the old path is resolved, and the buffers
+     * under it collected, BEFORE the move, because neither question can be
+     * asked of a directory that has stopped existing.
+     */
+    private function moveInto(string $old, string $new, string $failure, string $success, bool $overwrite = false): void
+    {
+        // Buffers are keyed by realpath(); resolve the old path the same way
+        // so an open file's buffer is re-pointed at the new name.
+        $resolvedOld = realpath($old);
+        $oldKey = $resolvedOld ? $resolvedOld : $old;
+        $this->withFs($failure, function () use ($old, $new, $oldKey, $success, $overwrite): void {
+            // Read BEFORE the rename: a buffer's path is checked against a
+            // directory that is about to stop existing.
+            $inside = $this->buffersMoved($oldKey, $new);
+            $this->fs->rename($old, $new, $overwrite); // a name clash is an error unless the user answered one
+            if ($this->buffers->has($oldKey)) {
+                $this->buffers->close($oldKey);
+                $this->bufferService->openFile($new);
+            }
+            // Renaming a FOLDER moves every file in it, and each open one
+            // is a tab still pointing into a directory that is gone: the
+            // reconciler flashes "deleted on disk" for a file that merely
+            // moved, and saving it writes the old folder back into
+            // existence, because dumpFile() creates the directories it
+            // needs.
+            foreach ($inside as $path => $target) {
+                $this->buffers->close($path);
+                $this->bufferService->openFile($target);
+            }
+            // Canonical both sides, per FileRenamed's contract: $oldKey was
+            // resolved BEFORE the rename (it cannot be, after), and the new
+            // path resolves now that it exists.
+            $newKey = ($resolvedNew = realpath($new)) ? $resolvedNew : $new;
+            $this->events->dispatch(new FileRenamed($oldKey, $newKey));
+            $this->tree->refresh();
+            $this->tui->setFocus($this->tree);
+            $this->notifier->success($success);
         });
     }
 
@@ -246,6 +269,136 @@ final class TreeOperations
     }
 
     /** Focus the editor and open its single-line prompt (tree file-op names/confirmations). */
+    /** The tree reports a drop; this is the one listener that performs it. */
+    #[AsEventListener]
+    public function onTreeDropRequested(TreeDropRequested $event): void
+    {
+        $this->dropOnto($event->sources, $event->targetDir, $event->copy);
+    }
+
+    /**
+     * Drop $sources into $targetDir — the commit half of a tree drag.
+     *
+     * Order matters and each guard answers a different question:
+     *
+     * 1. Anything already in the target is dropped from the set. Dragging a
+     *    file a few rows within its own folder is a slip, not an instruction,
+     *    and a "moved" flash for a file that did not move is a lie.
+     * 2. A directory cannot go inside itself or its own descendant. Nothing
+     *    else in the codebase guards this, because nothing else could reach
+     *    it: the rename is confined to `dirname($old)` and a language server
+     *    does not aim at its own subtree.
+     * 3. A name already taken is the user's decision, not ours — see
+     *    {@see askThenMove()}.
+     *
+     * @param list<string> $sources
+     */
+    private function dropOnto(array $sources, string $targetDir, bool $copy = false): void
+    {
+        $moving = array_values(array_filter($sources, static fn (string $path): bool => \dirname($path) !== $targetDir));
+        if ([] === $moving) {
+            return;
+        }
+        foreach ($moving as $path) {
+            if ($targetDir !== $path && !ProjectPaths::isUnder($targetDir, $path)) {
+                continue;
+            }
+
+            $this->notifier->error($this->translator->trans('Cannot move %name% into itself', ['%name%' => basename($path)]));
+
+            return;
+        }
+        $taken = array_values(array_filter($moving, fn (string $path): bool => $this->fs->exists($targetDir.'/'.basename($path))));
+        if ([] === $taken) {
+            $this->moveEach($moving, $targetDir, $copy);
+
+            return;
+        }
+
+        $this->askThenMove($moving, $taken, $targetDir, $copy);
+    }
+
+    /**
+     * The name is taken: ask rather than refuse, which is what the tree's own
+     * rename does today and what makes a drop recoverable without an undo
+     * (moves are deliberately outside `RefactoringUndo`).
+     *
+     * One prompt for a set, not one per file: `Rename…` has no single answer
+     * for several files, and a modal apiece is worse than the collision.
+     *
+     * @param list<string> $moving
+     * @param list<string> $taken
+     */
+    private function askThenMove(array $moving, array $taken, string $targetDir, bool $copy): void
+    {
+        $single = 1 === \count($moving) && 1 === \count($taken);
+        $items = [
+            ['label' => $this->translator->trans($single ? 'Overwrite' : 'Overwrite all'), 'hint' => '', 'value' => 'overwrite'],
+            ...($single ? [['label' => $this->translator->trans('Rename…'), 'hint' => '', 'value' => 'rename']] : []),
+            ['label' => $this->translator->trans('Cancel'), 'hint' => '', 'value' => 'cancel'],
+        ];
+        $title = $single
+            ? $this->translator->trans('%name% already exists in %dir%', ['%name%' => basename($taken[0]), '%dir%' => $this->paths->relative($targetDir)])
+            : $this->translator->trans('%count% files already exist in %dir%', ['%count%' => \count($taken), '%dir%' => $this->paths->relative($targetDir)]);
+
+        $this->tui->setFocus($this->editor);
+        $this->editor->openListOverlay($title, $items, function (string $choice) use ($moving, $targetDir, $copy): void {
+            if ('overwrite' === $choice) {
+                $this->moveEach($moving, $targetDir, $copy, overwrite: true);
+
+                return;
+            }
+            if ('rename' === $choice) {
+                $source = $moving[0];
+                $this->promptName($this->translator->trans('Move as'), basename($source), function (string $name) use ($source, $targetDir, $copy): void {
+                    $name = trim($name);
+                    if ('' !== $name) {
+                        $this->moveOne($source, $targetDir.'/'.$name, $copy);
+                    }
+                });
+            }
+        });
+        $this->tui->requestRender();
+    }
+
+    /**
+     * @param list<string> $moving
+     */
+    private function moveEach(array $moving, string $targetDir, bool $copy, bool $overwrite = false): void
+    {
+        foreach ($moving as $path) {
+            $this->moveOne($path, $targetDir.'/'.basename($path), $copy, $overwrite);
+        }
+    }
+
+    /**
+     * A copy is not a move and does not pretend to be one: nothing moved, so
+     * no `FileRenamed` is dispatched and no buffer is re-pointed. Only the
+     * tree has anything to say about it.
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- copy-versus-move is the one fact a drop carries; it decides which verb runs, not a second responsibility.
+    private function moveOne(string $source, string $target, bool $copy, bool $overwrite = false): void
+    {
+        $name = basename($target);
+        if (!$copy) {
+            $this->moveInto(
+                $source,
+                $target,
+                $this->translator->trans('Cannot move %file%', ['%file%' => $this->paths->relative($source)]),
+                $this->translator->trans('Moved %name%', ['%name%' => $name]),
+                $overwrite,
+            );
+
+            return;
+        }
+        $this->withFs($this->translator->trans('Cannot copy %file%', ['%file%' => $this->paths->relative($source)]), function () use ($source, $target, $name): void {
+            is_dir($source) ? $this->fs->mirror($source, $target) : $this->fs->copy($source, $target, overwriteNewerFiles: true);
+            $this->tree->refresh();
+            $this->tui->setFocus($this->tree);
+            $this->notifier->success($this->translator->trans('Copied %name%', ['%name%' => $name]));
+        });
+    }
+
     private function promptName(string $label, string $initial, callable $onSubmit, bool $danger = false): void
     {
         $this->tui->setFocus($this->editor);
