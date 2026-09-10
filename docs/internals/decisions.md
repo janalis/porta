@@ -5756,3 +5756,34 @@ a provider fails, and emptying the exemption list fails.
 `graph-viewer`, which have one widget apiece. A one-item list cannot go stale
 in the way this is guarding against, and a gate per plugin directory would cost
 more to read than it protects.
+
+## Another hand-written list of everything (2026-09-10)
+
+Same shape as the width sweeps, found by asking the same question of a
+different file: `CatalogCoverageTest::labelLiterals()` named **two** files
+carrying a `'label' => '…'` table translated with a dynamic id. There are
+**seven**, and one of the five it never read — the settings nav's inline
+`Languages` header — is translated at render time exactly like the two it did.
+
+Proved before fixing, the same way the ternary gap was: delete the `Languages`
+unit from the English catalog and run the gate. Green. It had been catalogued
+by luck for as long as this gate has existed.
+
+All seven are classified now, `true` or `false`, and a new test asserts the set
+of files carrying the pattern **is** that list. The `false` ones build their
+labels from data — a file's basename, a branch name, a symbol out of the
+buffer — so they are not ids, and a scanner that swept them would report the
+literal prefix of a concatenation (`'composer '.$name`) as an untranslated
+string. That is why the answer is a classification rather than "scan
+everything".
+
+Three of these lists have now gone stale the same way in one day — the core
+width sweep, the git one, and this. The pattern is worth stating plainly:
+
+> **A hand-written list of "everything" is wrong the first time someone adds
+> one, and nothing tells you.** Every such list wants a companion test that
+> derives the same set from the tree and fails on the difference.
+
+The lists that already do this — `PluginObservableContractTest`'s observable
+set, the architecture edge allowlist, `ThemeLockTest` — are the ones that have
+never been the source of a defect this session.

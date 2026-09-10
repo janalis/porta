@@ -227,16 +227,73 @@ final class CatalogCoverageTest extends TestCase
     }
 
     /**
-     * The 'label' => '...' entries of the two catalogs-as-data translated at
-     * render time with dynamic ids: the action catalog and the settings
-     * descriptor table.
+     * Every file carrying a `'label' => '…'` table, and whether those labels
+     * are translation IDS.
+     *
+     * Pinned rather than guessed, and checked against the tree by {@see
+     * testEveryLabelTableIsClassified()}: the scanner below used to name two
+     * files, there were seven, and the third translated one — the settings
+     * nav's inline `Languages` header — was invisible to this gate for as long
+     * as it has existed. It happened to be catalogued. Nothing said it had to
+     * be.
+     *
+     * The `false` entries build their labels from DATA — a file's basename, a
+     * branch name, a symbol from the buffer — so they are not ids and a scanner
+     * that swept them would report the literal prefix of a concatenation as a
+     * missing translation.
+     *
+     * @var array<string, bool> path relative to the repo root => holds ids
+     */
+    private const array LABEL_TABLES = [
+        '/src/Config/ActionCatalog.php' => true,
+        '/src/Settings/SettingsController.php' => true,
+        '/src/Widget/Settings/SettingsNavWidget.php' => true,
+        '/src/Editor/BreadcrumbScanner.php' => false, // symbol names from the buffer
+        '/src/Editor/EditorStructural.php' => false, // the same, for the structure panel
+        '/src/Run/RunConfigs.php' => false, // 'composer '.$name, 'make '.$target
+        '/plugins/git/src/Command/GitCommands.php' => false, // stash subjects and branch names
+    ];
+
+    /**
+     * A new `'label' => '…'` table must be classified before it can ship.
+     *
+     * The gate that would have caught the settings nav: this scanner is a
+     * hand-written list of files, and a hand-written list goes stale the first
+     * time someone adds a table. Adding one now fails here until it is either
+     * scanned for ids or marked as data.
+     */
+    public function testEveryLabelTableIsClassified(): void
+    {
+        $found = [];
+        foreach ($this->phpFiles() as $path) {
+            if (1 !== preg_match("/'label' => '/", (string) file_get_contents($path))) {
+                continue;
+            }
+            // phpFiles() yields paths with the `../../..` still in them, so
+            // both sides are resolved before the root prefix comes off.
+            $found[] = str_replace((string) realpath(self::ROOT), replace: '', subject: (string) realpath($path));
+        }
+        sort($found);
+        $classified = array_keys(self::LABEL_TABLES);
+        sort($classified);
+
+        $this->assertSame(
+            $classified,
+            $found,
+            "a 'label' => '…' table appeared or moved: add it to LABEL_TABLES as true (its labels are translation ids) or false (they are built from data)",
+        );
+    }
+
+    /**
+     * The `'label' => '...'` entries of the catalogs-as-data translated at
+     * render time with dynamic ids.
      *
      * @return list<string>
      */
     private function labelLiterals(): array
     {
         $labels = [];
-        foreach (['/src/Config/ActionCatalog.php', '/src/Settings/SettingsController.php'] as $file) {
+        foreach (array_keys(array_filter(self::LABEL_TABLES)) as $file) {
             $source = (string) file_get_contents(self::ROOT.$file);
             $matches = [];
             preg_match_all("/'label' => '((?:[^'\\\\]|\\\\.)*)'/", $source, $matches);
