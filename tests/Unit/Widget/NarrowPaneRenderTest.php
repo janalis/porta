@@ -8,10 +8,13 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\KeybindingRow;
 use Porta\Editor\Document;
+use Porta\Editor\FindMode;
+use Porta\History\SearchHistoryStore;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
 use Porta\Terminal\TerminalBuffer;
+use Porta\Tests\Support\FakeFindTarget;
 use Porta\Tests\Support\RendersExactWidth;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\BreadcrumbsWidget;
@@ -19,6 +22,9 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\FileTreeWidget;
+use Porta\Widget\FindBarWidget;
+use Porta\Widget\HelpViewerWidget;
+use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Onboarding\WelcomeWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
@@ -30,6 +36,8 @@ use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\DockTab;
+use Porta\Workbench\Menu\Menu;
+use Porta\Workbench\Menu\MenuItem;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
@@ -55,6 +63,9 @@ final class NarrowPaneRenderTest extends TestCase
      * inline form for exactly this reason.
      */
     private static ?TempProject $project = null;
+
+    /** Held for the same reason: the find bar keeps a reference to it. */
+    private static ?SearchHistoryStore $searchHistory = null;
 
     /**
      * Every pane widget, each given something to DRAW — a provider or a row
@@ -146,6 +157,41 @@ final class NarrowPaneRenderTest extends TestCase
         yield 'dock tabs' => [$dock];
 
         yield 'welcome' => [new WelcomeWidget(new Translator('en'))];
+
+        // Four more that were registered widgets all along and had never been
+        // in here — found by listing the #[AsIdeService] widgets and diffing
+        // them against this provider. Three of the four overflowed: the find
+        // bar in both its modes (an eight-column tag strip drawn whatever the
+        // pane could seat) and the help viewer (padRight() with no ceiling
+        // over a markdown renderer that floors its own wrap width).
+        $bar = new MenuBarWidget();
+        $bar->setMenus([
+            new Menu('File', [new MenuItem('Save', 'Ctrl+S', static function (): void {})]),
+            new Menu('Edit', [new MenuItem('Undo', 'Ctrl+Z', static function (): void {})]),
+            new Menu('View', []),
+        ]);
+        yield 'menu bar' => [$bar];
+
+        // Open is a second assembler: the dropdown draws through the overlay.
+        $openBar = new MenuBarWidget();
+        $openBar->setMenus([new Menu('File', [new MenuItem('Save', 'Ctrl+S', static function (): void {})])]);
+        $openBar->open(0);
+        yield 'menu bar (open)' => [$openBar];
+
+        self::$searchHistory ??= new SearchHistoryStore(self::$project->dir);
+        foreach ([
+            ['find bar',    FindMode::Find],
+            ['replace bar', FindMode::Replace],
+        ] as [$name, $mode]) {
+            $find = new FindBarWidget(new Translator('en'), history: self::$searchHistory);
+            $find->setFocused(true); // focused, so the field carries a caret — the column that made the row nine wide
+            $find->open(new FakeFindTarget(new Document("nothing here\n")), mode: $mode);
+            yield $name => [$find];
+        }
+
+        $help = new HelpViewerWidget();
+        $help->show('/docs/help.md', "# Heading\n\nSome help text that is long enough to need truncating.\n");
+        yield 'help viewer' => [$help];
     }
 
     #[DataProvider('paneWidgets')]

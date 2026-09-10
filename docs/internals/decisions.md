@@ -5622,7 +5622,53 @@ undo by accident here.
 All three floors are mutation-checked: restoring any of the three `max()`
 spellings fails the new sweep.
 
-*Still unswept, and named so nobody assumes otherwise:* `GraphViewerWidget` and
-`ImageViewerWidget`, in their own plugins. Both need a rasterizer or a layout
-engine to draw anything, so a sweep over them is its own piece of work rather
-than a line in this one.
+*Both remaining plugin panes were swept straight after* — see below. Naming a
+gap is not closing one.
+
+## Finishing the sweep, and three more crashes in core (2026-09-10)
+
+The entry above closed by naming two unswept plugin panes. Naming a gap is not
+closing one, so both are swept now — `ImageViewerWidget` and
+`GraphViewerWidget`, three states each, **and both were already correct**. The
+sweep's vacuity guard is what makes that a real answer rather than a loop over
+zero rows: 723 assertions apiece.
+
+Then the obvious question, which had not been asked: is the CORE sweep complete?
+Listing the `#[AsIdeService]` widgets and diffing them against the provider
+found **four that were registered all along and had never been in it** — and
+three of the four overflowed.
+
+- **`FindBarWidget`, both modes.** `max(0, $columns - tagsWidth())` bounded the
+  bar and drew the eight-column tag strip whatever the pane could seat. The same
+  clamp the diff toolbar had, under a comment that literally cites the diff
+  toolbar as the pattern it follows.
+- **`HelpViewerWidget`.** `padRight()` is a bound with no CEILING: the markdown
+  renderer floors its own wrap width, so in a narrower pane it returns lines
+  longer than the pane and padding them achieves nothing. Sixty-one rows over,
+  at every width from 1 to 18.
+- `MenuBarWidget`, closed and open: correct.
+
+`ContextMenu` is the fourth registered widget and is deliberately NOT in the
+sweep: it renders `[]` into the layout and draws through the overlay
+compositor, so the vacuity guard would reject it and rightly.
+
+### The find bar's off-by-one, which the first fix missed
+
+Guarding on `$col < 0` still left width 8 — exactly `tagsWidth()` — one column
+over. `scrollLineToCaret()` keeps the CARET visible, so a body asked for zero
+columns still returns the one the caret sits in. The guard is `$col < 1`: the
+strip needs its eight columns and the bar needs at least one.
+
+### A test that pinned the bug
+
+`testTagZoneStartClampsToZeroWhenTheBarIsNarrowerThanTheTags` asserted that at
+three columns the first tag zone clamps to column 0. That described the widget
+accurately and the zone was honest about where the tag was — five columns
+outside a three-column pane, which is what threw. It is two tests now: no tag
+zones at a width that cannot seat the strip, and zones where the strip actually
+lands at one that can.
+
+**Running total for this crash family, today: six live overflows** — three in
+the git plugin, three in core — every one of them a `max()` that bounds one
+piece of a row while the rest draws at its natural width, or a pad with no
+ceiling.

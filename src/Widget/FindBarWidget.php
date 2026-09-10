@@ -361,7 +361,22 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         // Same resolution the diff view's toolbar toggles already use.
         $this->optionZones->clear();
         $tags = '';
-        $col = max(0, $columns - self::tagsWidth());
+        $col = $columns - self::tagsWidth();
+        if ($col < 1) {
+            // Too narrow to seat the tag strip AND a column of bar: the bar
+            // alone, clipped, and no zones recorded — a tag drawn past the edge
+            // is neither visible nor clickable. `max(0, …)` bounded the BODY
+            // and left the eight-column strip at full width, so the row came
+            // out at least eight columns however narrow the pane was, and a row
+            // wider than its pane throws RenderException out of the render loop.
+            //
+            // A column of bar, not zero: scrollLineToCaret() keeps the CARET
+            // visible, so a body asked for nothing still returns the one column
+            // the caret sits in — and the row came out nine.
+            $body = $findField.$replaceField.$this->styles->of(Role::Dim)->apply("[{$position}]").'  '.$this->styles->of(Role::Faint)->apply($hints);
+
+            return [$this->styles->of(Role::Toolbar)->apply(AnsiText::scrollLineToCaret($body, $columns))];
+        }
         foreach ([['regex', '.*', $this->regex], ['word', '\b', $this->wholeWord]] as [$name, $glyph, $on]) {
             $tags .= FindModalRows::optionTag($glyph, OptionTagState::of($on, $name === $this->hoveredTag), $this->styles);
             $width = mb_strwidth($glyph) + 2;
@@ -372,7 +387,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $body = $findField.$replaceField.$this->styles->of(Role::Dim)->apply("[{$position}]").'  '.$this->styles->of(Role::Faint)->apply($hints);
         // Scroll the bar to the focused field's caret so a long query or
         // replacement never clips its cursor off the right edge.
-        $line = AnsiText::scrollLineToCaret($body, max(0, $columns - self::tagsWidth())).$tags;
+        $line = AnsiText::scrollLineToCaret($body, $columns - self::tagsWidth()).$tags;
 
         return [$this->styles->of(Role::Toolbar)->apply($line)];
     }

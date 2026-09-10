@@ -790,14 +790,37 @@ final class FindBarWidgetTest extends TestCase
         $this->assertGreaterThan($before, $bar->getRenderRevision());
     }
 
-    public function testTagZoneStartClampsToZeroWhenTheBarIsNarrowerThanTheTags(): void
+    /**
+     * A bar too narrow for the tag strip records no tag zones at all.
+     *
+     * This used to assert the opposite — that the first zone clamped to column
+     * 0 — which described a real `max(0, …)` in the widget and a tag strip
+     * drawn from column 0 to 7 inside a three-column pane. The zone was honest
+     * about where the tag was; the tag was five columns outside the pane, and
+     * drawing it threw `RenderException` out of the render loop. The strip is
+     * dropped at that width now, so there is nothing left to point at.
+     */
+    public function testABarTooNarrowForTheTagsOffersNoTagZones(): void
     {
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
         $bar->render(new RenderContext(3, 1)); // narrower than the 8-column tag strip
 
-        $this->assertFalse($bar->hoverAt(-1), 'nothing before column 0');
-        $this->assertTrue($bar->hoverAt(0), 'the first zone starts exactly at 0, not -1 or 1');
+        foreach ([-1, 0, 1, 2] as $column) {
+            $this->assertFalse($bar->hoverAt($column), 'no tag is on screen at column '.$column);
+        }
+    }
+
+    /** And where they DO fit, the strip is right-aligned and its first zone starts there. */
+    public function testTheTagZonesSitWhereTheStripIsDrawn(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
+        $bar->render(new RenderContext(40, 1));
+
+        $this->assertFalse($bar->hoverAt(31), 'one column before the strip');
+        $this->assertTrue($bar->hoverAt(32), 'the strip is the last eight columns of forty');
+        $this->assertTrue($bar->hoverAt(39), 'through to the final column');
     }
 
     public function testHoveringOneTagDoesNotTintTheOtherTag(): void

@@ -260,7 +260,13 @@ final class HelpViewerWidget extends EditorPaneWidget implements FindTarget
         for ($row = 0; $row < ($rows - self::HEADER_ROWS); ++$row) {
             $lineNo = $this->scrollTop + $row;
             $line = $this->searchHighlight($this->highlight($this->doc->lines[$lineNo] ?? '', $lineNo), $lineNo);
-            $lines[] = AnsiText::padRight($line, $cols);
+            // Truncate as well as pad. padRight() is a bound with no ceiling:
+            // the markdown renderer floors its own wrap width, so in a pane
+            // narrower than that floor it hands back lines longer than $cols
+            // and this padded them to no effect. A row wider than its pane
+            // throws RenderException out of the render loop and takes the
+            // session with it — the same crash the editor's gutter caused.
+            $lines[] = AnsiText::truncate($line, $cols, pad: true);
         }
 
         return $this->withMenuOverlay($lines, $cols);
