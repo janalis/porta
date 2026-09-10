@@ -82,6 +82,44 @@ final class LspSessionPoolTest extends TestCase
         $this->assertSame(['[php-ls] stderr says hi'], $logged, 'the shared hook identifies the server');
     }
 
+    /**
+     * A renamed folder is closed at EVERY running server, not the one its path
+     * happens to route to.
+     *
+     * The point of the fan-out: `src/Old/` can hold a .php and a .ts, and the
+     * two live in different sessions. Routing the close by path — which is what
+     * every other notify* on this pool does — would tell one server and leave
+     * the other holding a document with no file behind it.
+     */
+    public function testClosingUnderAFolderReachesEveryRunningServer(): void
+    {
+        $pool = $this->pool(self::SERVERS);
+        $pool->notifyDidOpen('/tmp/proj/src/Old/a.php', '<?php', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/src/Old/a.ts', 'x', 'typescript', 1);
+        $pool->notifyDidOpen('/tmp/proj/src/Keep/b.php', '<?php', 'php', 1);
+        $this->assertCount(2, $this->clients, 'two languages, two sessions — otherwise this proves nothing');
+        foreach ($this->clients as $built) {
+            $built['client']->notifications = [];
+        }
+
+        $pool->notifyDidCloseUnder('/tmp/proj/src/Old');
+
+        $this->assertSame(
+            [
+                ['textDocument/didClose file:///tmp/proj/src/Old/a.php'],
+                ['textDocument/didClose file:///tmp/proj/src/Old/a.ts'],
+            ],
+            array_map(
+                static fn (array $built): array => array_map(
+                    static fn (array $sent): string => $sent['method'].' '.$sent['params']['textDocument']['uri'],
+                    $built['client']->notifications,
+                ),
+                $this->clients,
+            ),
+            'each server was told about its own file, and Keep/b.php — same session as Old/a.php — stayed open',
+        );
+    }
+
     public function testDidOpenLazilyStartsTheMatchingServer(): void
     {
         $pool = $this->pool(self::SERVERS);

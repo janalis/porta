@@ -7,6 +7,7 @@ namespace Porta\Lsp;
 use Porta\Editor\Document;
 use Porta\Editor\TextDiff;
 use Porta\Support\Outcome;
+use Porta\Support\ProjectPaths;
 use Revolt\EventLoop;
 
 /**
@@ -176,6 +177,30 @@ final class LspSession
         $this->whenReady(fn () => $this->client?->notify('textDocument/didClose', [
             'textDocument' => $doc,
         ]));
+    }
+
+    /**
+     * Close every open document at or under $root — the file itself when $root
+     * is one, the whole subtree when it is a directory.
+     *
+     * The session's own open set is the authority: iterating $syncedText means
+     * a path the server was never told about is never closed either, and a
+     * folder rename closes exactly the files inside it without the caller
+     * having to know which of them were open.
+     *
+     * One test, not two: {@see ProjectPaths::isUnder()} is reflexive, so it
+     * already answers the plain-file case. An explicit `$path === $root` arm
+     * was written here first and survived its mutant untouched — it can never
+     * be the only true half.
+     */
+    public function closeUnder(string $root): void
+    {
+        foreach (array_keys($this->syncedText) as $path) {
+            if (!ProjectPaths::isUnder($path, $root)) {
+                continue;
+            }
+            $this->notifyDidClose($path);
+        }
     }
 
     public function notifyDidSave(string $path): void

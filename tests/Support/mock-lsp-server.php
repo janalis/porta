@@ -573,6 +573,16 @@ foreach (readFrames($in) as $message) {
             'method' => 'textDocument/publishDiagnostics',
             'params' => ['uri' => 'file:///porta-mock-unknown.php', 'diagnostics' => []],
         ]);
+    } elseif ('textDocument/didClose' === $method) {
+        // Echoed to the LOG channel, not to showMessage: window/logMessage
+        // lands in LspLog and changes no screen, so a test can prove the
+        // server was actually told without disturbing every other test that
+        // closes a tab with this server running.
+        sendMessage($out, [
+            'jsonrpc' => '2.0',
+            'method' => 'window/logMessage',
+            'params' => ['type' => 4, 'message' => 'didClose '.$message['params']['textDocument']['uri']],
+        ]);
     } elseif ('shutdown' === $method) {
         sendMessage($out, ['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => null]);
     } elseif ('exit' === $method) {

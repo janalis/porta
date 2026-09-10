@@ -5218,8 +5218,8 @@ both recorded in `mago.toml` beside the numbers they moved.
   after** — see below. It was pre-existing, but shipping a casual gesture over
   a path that drops work made it this change's problem.
 - **Git decorations go stale after a move**; nothing listens to `FileRenamed`.
-- **The language server keeps the old URI open**: no `workspace/didRenameFiles`
-  anywhere, and the rename path closes buffers without `notifyDidClose`.
+- ~~**The language server keeps the old URI open**~~ — **fixed**, see below.
+  `workspace/didRenameFiles` is still not sent; that is a feature, not this bug.
 - **Moves are not undoable**, which is settled — `WorkspaceEditor` calls
   `RefactoringUndo::decline()` for any create/rename/delete. The collision
   prompt is the safety net instead.
@@ -5259,3 +5259,50 @@ which it is, because the next reader will otherwise try to fix the calls.
 
 *Re-opens if* the class grows again: the honest fix at that point is to move
 the drop's five methods out, not to add a third annotation.
+
+## Telling the language server a file is gone (2026-09-10)
+
+The second of the four items drag-and-drop shipped over, and the last of them
+that was actually a defect.
+
+A move re-points the buffer — close the old path, open the new one — but only
+the second half ever reached the server. `didClose` was sent from the two
+tab-closing paths in `BufferService` and from nowhere else, so a rename, a move
+or a delete left the server holding a document at a URI with no file behind it.
+Everything it had indexed from that copy stayed live: the class defined twice,
+"go to definition" offering a path that no longer exists.
+
+**A path listener, not a call in the mover.** `FileRenamed` and `FileDeleted`
+already have six listeners in that family — bookmarks, breakpoints, recent
+files, search scopes, edit history, jump history — each retiring or re-keying
+one path-keyed store on the same two facts. The session pool is a seventh such
+store, so `Lsp/LspPathListener` is the shape, and it adds no namespace edge:
+`Lsp>Event` and `Lsp>Support` were both already allowed.
+
+**Every session, not the one the path routes to.** `src/Old/` can hold a `.php`
+and a `.ts`, which live in different sessions, and after the move the old path
+routes to no server at all. `LspSessionPool::notifyDidCloseUnder()` therefore
+asks all of them and lets each answer from its own open set — `LspSession`
+iterates `$syncedText`, which is exactly "the documents this session opened", so
+a path the server was never told about is never announced as closed either.
+
+### Proved through the log channel
+
+The mock server now echoes every `didClose` as `window/logMessage`, which lands
+in `LspLog` and repaints nothing. `showMessage` was the other option and would
+have flashed into every test that closes a tab with the mock running. The E2e
+asserts what the server was **told**, not what this side believes it sent —
+and it starts by asserting the list is empty, so it cannot pass by accident.
+
+### One mutant survived, and it was right
+
+The guard was written `$path === $root || ProjectPaths::isUnder($path, $root)`.
+Removing the first arm changed nothing: `isUnder` is reflexive, so the explicit
+file case can never be the only true half. Dead the moment it was written, and
+invisible to coverage — the line ran every time. It is one test now, with the
+reason in the docblock so the next reader does not add it back.
+
+*Re-opens as a feature, not a bug:* servers advertising
+`workspace.fileOperations.didRename` want the rename itself, not a close and an
+open — that is how a server updates imports for you. Needs capability
+negotiation, so it is its own change.

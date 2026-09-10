@@ -212,6 +212,22 @@ final class LspSessionPool
         $this->sessionFor($path)?->notifyDidClose($path);
     }
 
+    /**
+     * Tell every running server that $root — a file, or a whole directory —
+     * is gone from this client.
+     *
+     * Every session, not {@see sessionFor()}'s one: a renamed folder can hold
+     * files of several languages, and after the move the path no longer routes
+     * to a server at all. Each session answers for its own open set, so asking
+     * all of them costs nothing and misses nothing.
+     */
+    public function notifyDidCloseUnder(string $root): void
+    {
+        foreach ($this->sessions as $session) {
+            $session->closeUnder($root);
+        }
+    }
+
     public function notifyDidSave(string $path): void
     {
         $this->sessionFor($path)?->notifyDidSave($path);

@@ -10,7 +10,10 @@ use Porta\Editor\BufferService;
 use Porta\Editor\JumpHistory;
 use Porta\Editor\OpenFocus;
 use Porta\Editor\SelectionMode;
+use Porta\Event\TreeDropRequested;
 use Porta\Ide;
+use Porta\Lsp\LspLog;
+use Porta\Lsp\Uri;
 use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
@@ -21,6 +24,7 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Sgr;
 use Revolt\EventLoop;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -1771,5 +1775,76 @@ final class IdeLspFeaturesTest extends TestCase
         );
 
         $this->assertStringContainsString('use Acme\\Organized;', (string) $text, 'the organizeImports edit was applied without a picker');
+    }
+
+    /**
+     * A moved or deleted file is CLOSED at the server, not just forgotten here.
+     *
+     * The move re-points the buffer — close the old path, open the new one —
+     * but only the second half ever reached the language server, so the server
+     * kept a document open at a URI with no file behind it. Everything it
+     * indexed from that copy stayed live: the same class defined twice, "go to
+     * definition" offering a path that no longer exists.
+     *
+     * Proved through the LOG channel rather than the screen: the mock echoes
+     * every didClose as `window/logMessage`, which lands in {@see LspLog} and
+     * repaints nothing, so this asserts what the server was actually told and
+     * not what this side believes it sent.
+     */
+    public function testAMovedFileIsClosedAtTheServer(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => $this->mockLspConfig(),
+            'a.php' => "<?php\n",
+            'src/keep.php' => "<?php\n",
+        ]);
+        $old = (string) realpath($project->path('a.php'));
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                100 => function ($tui, $terminal, $ide) use ($project, $old): void {
+                    $this->awaitLspReady($tui, $terminal);
+                    $log = Services::resolve($ide, LspLog::class);
+                    $this->assertSame(
+                        [],
+                        $this->didClosed($log),
+                        'nothing was closed yet, so the assertion below cannot pass by accident',
+                    );
+
+                    Services::resolve($ide, EventDispatcherInterface::class)->dispatch(
+                        new TreeDropRequested([$project->path('a.php')], $project->path('src'), copy: false),
+                    );
+
+                    $this->assertFileExists($project->path('src/a.php'), 'the move itself happened');
+                    $this->await(
+                        // $log is the live service, so re-reading its entries
+                        // each turn is what makes this a real await and not a
+                        // verdict frozen at the first, empty reading.
+                        fn (): bool => \in_array(Uri::fromPath($old), $this->didClosed($log), strict: true),
+                        what: 'the server to be told the old path closed',
+                    );
+                },
+            ],
+        );
+    }
+
+    /**
+     * Every URI the mock reported a didClose for, in order.
+     *
+     * @return list<string>
+     */
+    private function didClosed(LspLog $log): array
+    {
+        $uris = [];
+        foreach ($log->entries() as $entry) {
+            if (1 !== preg_match('/didClose (\S+)$/', $entry['text'], $matches)) {
+                continue;
+            }
+            $uris[] = $matches[1];
+        }
+
+        return $uris;
     }
 }
