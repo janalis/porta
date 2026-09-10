@@ -60,7 +60,7 @@ final class TreeDragRouter
         $drag->target = $this->dropDir($mouse, $treeRect);
         $this->tree->setDropTarget($drag->target);
         if ($mouse->isLeftRelease()) {
-            $this->cancel();
+            $this->disarm();
             // A press and release on one spot is a CLICK: pay the toggle the
             // press deferred, and move nothing.
             $drag->moved ? $this->drop($drag, $mouse, $editorRect) : $this->tree->commitPress();
@@ -70,12 +70,41 @@ final class TreeDragRouter
         return true;
     }
 
-    /** Forget any armed drag and take its highlight with it. */
+    /**
+     * The gesture was ABANDONED from outside — Escape, or a fresh press
+     * somewhere else. Forget the drag, its highlight, and the folder toggle the
+     * press deferred.
+     *
+     * The toggle is the half that is easy to miss, and the reason this is not
+     * the same method the release path uses. Escape ends the drag while the
+     * button is still DOWN, so the release that follows finds nothing armed and
+     * is discarded — {@see continueDrag()} returns false and the router's chain
+     * falls through it. `commitPress()` therefore never runs, and a toggle left
+     * pending survives the whole gesture, to be paid by the next click that
+     * happens to end without motion. A folder nobody touched opening on its own
+     * is not cosmetic: the rows below it move, and the click after that lands
+     * somewhere nobody aimed at.
+     */
     public function cancel(): void
     {
         if (null === $this->drag) {
             return;
         }
+        $this->disarm();
+        $this->tree->forgetPress();
+    }
+
+    /**
+     * Spend the drag without judging what the press still owes.
+     *
+     * The release path's half of {@see cancel()}: it disarms FIRST and then
+     * decides, because a release with no motion is a click and still owes the
+     * toggle. Folding the two together is the obvious simplification and it is
+     * wrong — it makes clicking a folder stop expanding it, which is what the
+     * tree's own click tests said the first time this was written that way.
+     */
+    private function disarm(): void
+    {
         $this->drag = null;
         $this->tree->setDropTarget(null);
     }

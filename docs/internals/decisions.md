@@ -5443,3 +5443,38 @@ fails the first, and dropping the subtree-buffer loop fails the second.
 approved plan is not a gate. Nothing re-reads it after the work lands, and the
 cases most likely to be skipped are the ones whose absence is invisible —
 an answer that does nothing, a success case whose refusal is already covered.
+
+## Escape left a folder toggle behind (2026-09-10)
+
+Found by following a mutant, not by reading the code: the mutation review
+flagged `forgetPress()` in the drop path as unguarded, and asking who ELSE owes
+that call turned up a path where nobody made it.
+
+Pressing a folder no longer expands it — the toggle waits for a release that
+never moved, or the rows would slide out from under the pointer mid-drag.
+Escape ends the drag while the button is still **down**, so the release that
+follows finds nothing armed and the router discards it: `commitPress()` never
+runs. The pending toggle survived the whole gesture, and the next click that
+happened to end without motion paid it. Press a folder, start dragging, think
+better of it, click a file — and an unrelated folder opens. The rows below it
+move, so the click after that lands somewhere nobody aimed at.
+
+Reproduced twice before fixing: a unit test on the router's state, and an E2e
+that does the whole gesture and reads the tree.
+
+### The obvious fix was wrong, and the suite said so
+
+`cancel()` gained a `forgetPress()`, and two existing tests went red: clicking a
+folder stopped expanding it. The release path called `cancel()` too, so the
+disarm now ate the very toggle `commitPress()` was about to pay, one line later.
+
+They are two different meanings wearing one name, and they are split now:
+`disarm()` spends the drag without judging what the press still owes — the
+release path, which then decides between paying and forgetting — and the public
+`cancel()` is `disarm()` plus `forgetPress()`, for a gesture abandoned from
+outside. Both halves are mutation-checked: folding them back together fails the
+tree's click tests, and dropping the `forgetPress()` fails the new ones.
+
+*Worth keeping in mind:* the deferral has three exits — paid on a motionless
+release, forgotten on a drop, forgotten on a cancel — and each is written in a
+different method. A fourth caller of `arm()` would have to find all three.

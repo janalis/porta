@@ -271,6 +271,29 @@ final class TreeDragRouterTest extends TestCase
         $this->assertNull(Probe::get($this->tree, 'pendingToggle'), 'and the drop threw it away');
     }
 
+    /**
+     * Cancelling a drag also abandons the toggle its press deferred.
+     *
+     * Pressing a folder no longer expands it — the expansion waits for a
+     * release that never moved. Escape ends the drag, but the button is still
+     * DOWN, so the release that follows finds nothing armed and is discarded by
+     * the router: `commitPress()` never runs and the deferred toggle survives
+     * the whole gesture. The next click that happens to end without motion pays
+     * it, and a folder nobody touched opens or closes on its own.
+     */
+    public function testCancellingAlsoAbandonsTheDeferredToggle(): void
+    {
+        $router = $this->router();
+        $this->tree->pressRow(1); // press src/: the toggle is deferred
+        $router->arm([$this->project->path('src')]);
+        $router->continueDrag($this->at(32, 2), self::rect(), null);
+        $this->assertSame(1, Probe::get($this->tree, 'pendingToggle'), 'the press really did defer one');
+
+        $router->cancel(); // Escape
+
+        $this->assertNull(Probe::get($this->tree, 'pendingToggle'), 'the abandoned drag took it along');
+    }
+
     /** Cancelling forgets the drag and takes its highlight with it. */
     public function testCancelDisarmsSoALaterReleaseIsRefused(): void
     {

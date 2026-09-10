@@ -271,6 +271,55 @@ final class TreeDragAndDropTest extends TestCase
     }
 
     /**
+     * Escape mid-drag leaves nothing behind for a later click to pay.
+     *
+     * Pressing a folder does not expand it any more: the toggle waits for a
+     * release that never moved. Escape ends the drag while the button is still
+     * DOWN, so the release that follows finds nothing armed and is discarded —
+     * and the deferred toggle used to survive the whole gesture, to be paid by
+     * the next click that happened to end without motion. A folder nobody
+     * touched opening on its own is not a cosmetic slip: the rows below it
+     * move, and the next click lands somewhere nobody aimed at.
+     */
+    public function testEscapeMidDragLeavesNoToggleForTheNextClickToPay(): void
+    {
+        putenv('PATH=/nonexistent');
+        $this->project = new TempProject(['src/deep/A.php' => "<?php\n", 'keep.php' => "<?php\n"]);
+        $project = $this->project;
+
+        $this->runIde(
+            $project,
+            $project->path('keep.php'),
+            [
+                200 => function ($tui): void {
+                    $this->frame($tui);
+                    $rows = $this->treeRows($tui);
+                    $this->assertSame('▸ src/', trim($rows[1] ?? ''), 'src/ starts closed');
+                    $tui->handleInput("\x1b[<0;3;3M"); // press src/ — the toggle is deferred
+                    $tui->handleInput("\x1b[<32;3;4M"); // drag down a row
+                    $tui->handleInput("\x1b"); // …and think better of it
+                    $tui->handleInput("\x1b[<0;3;4m"); // the button comes up over nothing
+                },
+                300 => function ($tui): void {
+                    $this->assertSame('▸ src/', trim($this->treeRows($tui)[1] ?? ''), 'the cancelled drag expanded nothing');
+                    // An ordinary click on a FILE, two rows down. It ends where
+                    // it began, which is what pays a deferred toggle.
+                    $tui->handleInput("\x1b[<0;3;4M");
+                    $tui->handleInput("\x1b[<0;3;4m");
+                },
+                400 => function ($tui): void {
+                    $this->assertSame(
+                        '▸ src/',
+                        trim($this->treeRows($tui)[1] ?? ''),
+                        'and clicking a file did not open a folder nobody touched',
+                    );
+                },
+            ],
+            columns: 120,
+        );
+    }
+
+    /**
      * Dropped on the editor instead of a folder: the file OPENS and nothing
      * moves. The second drop target, and the only one that touches no disk.
      */
