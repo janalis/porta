@@ -5982,3 +5982,28 @@ configuration gate an hour ago.
 by a worked example rather than a table row, and the gate accepts a mention
 anywhere on the page. A gate demanding a table row would be arguing about form
 rather than coverage.
+
+## Where the derived-set rule stops (2026-09-10)
+
+Third application of the same question, and the first one whose answer was
+"leave it alone" — which is the more useful half of the entry.
+
+**Fixed:** `languages.<id>` in `docs/configuration.md` listed eleven of the
+thirteen ids `LanguageCatalog::LANGUAGES` accepts. `xml` and `dotenv` were
+missing, both real — `xml` with its own extension mapping, `dotenv` matched by
+FILENAME rather than extension (anything starting `.env`, except
+`.env.local.php`, which is real PHP). That last detail is now on the page,
+because a reader who cannot guess how an id is matched cannot use it.
+
+**Deliberately not gated:** the 188 entries of `ActionCatalog::ACTIONS`. 147 of
+their labels appear in no doc, and they should not — the sample is `Move Caret
+Up`, `Move Caret Down`, `Move Caret Left`. The discovery surface for a command
+is the palette and Settings → Keymap, both of which search the live catalog;
+`docs/keybindings.md` already gates the thing that genuinely needs writing down,
+which is the KEYS, and it derives its surfaces from the tree.
+
+The rule earns its keep where a doc claims to be a REFERENCE for a closed set a
+user must type exactly — settings keys, language ids, the plugin API, the
+observable events. It does not follow that every enumerable set wants a doc: an
+inventory nobody would read is worse than none, and a gate demanding one would
+be work with no reader at the end of it.

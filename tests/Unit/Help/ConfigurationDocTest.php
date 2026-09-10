@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Help;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
+use Porta\Config\LanguageCatalog;
 
 /**
  * The settings table in `docs/configuration.md` is the whole settings list.
@@ -77,6 +78,41 @@ final class ConfigurationDocTest extends TestCase
                 $key.' is documented as a legacy key but the config no longer supersedes it — drop the row and the entry',
             );
         }
+    }
+
+    /**
+     * Every language `languages.<id>` accepts is listed under that heading.
+     *
+     * It listed eleven of the thirteen: `xml` and `dotenv` were missing, both
+     * real entries in {@see LanguageCatalog::LANGUAGES} — `xml` with its own
+     * extension mapping, `dotenv` matched by filename.
+     */
+    public function testEveryLanguageIdIsListed(): void
+    {
+        $section = $this->languagesSection();
+
+        $missing = [];
+        foreach (array_keys(LanguageCatalog::LANGUAGES) as $id) {
+            if (str_contains($section, '`'.$id.'`')) {
+                continue;
+            }
+
+            $missing[] = $id;
+        }
+        sort($missing);
+
+        $this->assertSame([], $missing, 'languages.<id> accepts these and the page does not list them');
+    }
+
+    /** The `languages.<id>` heading down to the next one. */
+    private function languagesSection(): string
+    {
+        $doc = (string) file_get_contents(self::DOC);
+        $start = strpos($doc, needle: '### `languages.<id>`');
+        self::assertNotFalse($start, 'the languages section is where this test expects it');
+        $end = strpos($doc, needle: "\n## ", offset: $start);
+
+        return substr($doc, $start, false === $end ? null : $end - $start);
     }
 
     /**

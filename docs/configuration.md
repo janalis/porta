@@ -166,7 +166,11 @@ toggles (`Toggle Inline Diagnostics`, `Toggle Relative Line Numbers`,
 ### `languages.<id>`
 
 Per-language overrides for: `php`, `javascript`, `typescript`, `python`,
-`json`, `css`, `scss`, `html`, `markdown`, `yaml`, `twig`.
+`json`, `css`, `scss`, `html`, `markdown`, `yaml`, `twig`, `xml`, `dotenv`.
+
+`dotenv` is the one id matched by NAME rather than extension: any file whose
+name starts with `.env`, except `.env.local.php` and its siblings, which are
+real PHP.
 
 - `indentStyle` — `"auto"` (detect from the file), `"spaces"`, or `"tabs"`.
 - `indentSize` — `"auto"` or a positive integer.
