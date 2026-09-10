@@ -143,14 +143,25 @@ catalog validation and bind if the plugin loads.
 | `language` | `"en"` | UI locale: `en`, `fr`, `de`, `es`, `it`, `ja`, `he` (Hebrew mirrors the layout right-to-left) |
 | `theme` | `"dark"` | Color theme: `dark`, `light` or `high-contrast` (WCAG-AAA pairings) — swaps chrome and syntax colors live |
 | `inlineDiagnostics` | `true` | Dimmed end-of-line diagnostic messages |
-| `relativeLineNumbers` | `false` | Relative gutter numbering |
+| `lineNumbers` | `"absolute"` | Gutter numbering: `off`, `absolute` or `relative`. Replaces `relativeLineNumbers`, which still loads and is retired the first time this one is written |
 | `autoPairs` | `true` | Auto-closing brackets and quotes |
+| `breadcrumbs` | `true` | The scope path bar above the editor |
+| `stickyScroll` | `true` | Pin the enclosing scope headers to the top while scrolling |
+| `indentGuides` | `true` | Vertical rules at each indent level |
+| `methodSeparators` | `false` | A rule between members of a class |
+| `showWhitespace` | `false` | Render spaces and tabs as glyphs |
+| `tabBarPosition` | `"top"` | Where the editor tab strip sits: `top`, `bottom`, `left` or `right` |
+| `searchIncludeVendor` | `false` | Let Find in Files and Go to File descend into `vendor/` |
 | `formatOnSave` | `false` | Format via the language server before each Ctrl+S save (single-file saves only; a 2s timeout saves unformatted with a flash) |
 | `cursorShape` | `"bar"` | Hardware cursor shape: `bar`, `block` or `underline` — screen readers follow the hardware cursor |
 
 All of these apply live when changed from the Settings view or the palette
 toggles (`Toggle Inline Diagnostics`, `Toggle Relative Line Numbers`,
 `Toggle Auto-Pairs`).
+
+`relativeLineNumbers` is the one key here that is no longer current: a
+`.porta.json` still carrying it is read without complaint, and writing
+`lineNumbers` from the Settings view retires it.
 
 ### `languages.<id>`
 

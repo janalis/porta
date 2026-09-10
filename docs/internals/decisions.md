@@ -5914,3 +5914,33 @@ overclaims: a cap too small to hold one whole entry keeps nothing.
 *Not changed:* the 256KB cap itself, and the silence-on-failure contract. The
 trim reads the file once, inside the same suppressed-error block, on the one
 append per cap-crossing.
+
+## The configuration reference described under half of it (2026-09-10)
+
+`docs/configuration.md` carries the settings table a user consults before
+editing `.porta.json`. It listed **six** of the fourteen keys the file accepts.
+The missing eight — `breadcrumbs`, `indentGuides`, `lineNumbers`,
+`methodSeparators`, `searchIncludeVendor`, `showWhitespace`, `stickyScroll`,
+`tabBarPosition` — include every interface toggle the Settings view offers, and
+six of them appeared nowhere in `docs/` at all.
+
+And the inverse, in the same table: `relativeLineNumbers` was documented as
+current long after {@see IdeConfig::SUPERSEDED_BY} retired it in favour of
+`lineNumbers`. The one key the table named that nothing reads was described,
+while its replacement was not.
+
+Found by asking a question this codebase has answered well several times today
+and had never asked of the docs: **the set is derivable, so is it derived?**
+`IdeConfig::DEFAULT_SETTINGS` is the authority for what a `.porta.json` accepts,
+and nothing compared it to the page.
+
+Gated in both directions now, because each catches a different failure: a new
+setting shipping undocumented, and a row outliving its key. A legacy key may
+stay in the table only by being listed in `MAY_LINGER` with its reason, and a
+third assertion requires that reason to still be true — the key has to be one
+`SUPERSEDED_BY` actually knows about, so the exemption cannot outlive the
+supersession it cites.
+
+*Descriptions taken from the code, not invented:* every new row's wording comes
+from the Settings view's own descriptor label and its `options` list, and every
+default from `DEFAULT_SETTINGS`.
