@@ -4954,3 +4954,59 @@ The lesson worth keeping is not the 84%. It is that **three of the four were
 one-way assertions** — a bound with no floor, a comparison never tested at its
 boundary, a callback never tested absent — written by someone who had spent
 the same day fixing exactly that shape in two gates.
+
+## What mutating the PLUGINS costs, and what stops it (2026-09-10)
+
+`infection.json5` says `"directories": ["src"]`, so no plugin has ever been
+mutation-tested. The note in `porta-mutation-scope-src-only` records the
+consequence — a green `composer mutate` says nothing about `plugins/` — but not
+whether the gap is worth closing. Measured now.
+
+**The recipe works.** Infection needs a coverage report that contains plugin
+files, and the parallel run cannot produce one (the `<source>` block in
+`phpunit.xml.dist` explains why). The serial plugin pass's own flags do:
+
+    php -d pcov.enabled=1 -d pcov.directory=. -d 'pcov.exclude=#/(vendor|tests)/#' \
+        vendor/bin/phpunit --testsuite=Plugins --coverage-filter plugins \
+        --coverage-xml=… --log-junit=…
+
+Without `pcov.directory=.` the report holds `src/` only and Infection reports
+`0 mutations generated / MSI 0%` — which reads exactly like "nothing to fix"
+and is worth recognising, because it is the failure mode this whole exercise
+started from.
+
+**What it found: nothing to fix.**
+
+- `symfony-lsp` — **437 mutants, 437 killed, MSI 100%.** The plugin changed
+  most in this session, and its own tests are stronger than anything core got
+  today (84%).
+- `todo` — 12 mutants, one survivor, and it is equivalent: dropping
+  `array_values()` around an `array_filter()` whose result only meets
+  `implode()` and `[] === $parts`, both indifferent to list-ness. The call is
+  typing, not behaviour.
+
+**What stops it being routine.** Infection 0.35.4 aborts mutant generation on
+`plugins/git/src/Widget/GitPaneKeys.php`:
+
+    Expected an instance of PhpParser\Node\Stmt\Class_. Got: …\Stmt\Trait_
+
+It is a trait composing a trait — but that alone is not the trigger:
+`src/Widget/Support/ListPanelInteraction.php` has the same shape and mutates
+fine (128 mutants generated in that directory). The difference is that
+`GitPaneKeys` composes `PaneNavigationCallbacks` from `src/`, outside the
+configured source directories.
+
+**`--dry-run` never reaches that step**, which cost the best part of an hour:
+every plugin dry-runs clean, and `git` aborts the moment it is run for real. A
+dry run is not a check for this.
+
+No `composer mutate:plugins` script, deliberately: one that aborts on the
+largest plugin is worse than a documented recipe. *Re-opens if* the upstream
+`Trait_` abort is fixed, at which point the recipe above is the script.
+
+**And a live trap in `composer mutate` itself, checked and NOT found.** The
+obvious worry was that the same abort waits in core the day someone edits a
+trait — `composer mutate` is always diff-scoped, so it only ever parses changed
+files, and today's diff happened to contain none. Ran the whole of
+`src/Widget/Support` (traits included) for real: no abort. The trigger needs
+the cross-tree composition, so core is clear.
