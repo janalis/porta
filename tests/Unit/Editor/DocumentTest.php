@@ -199,6 +199,48 @@ final class DocumentTest extends TestCase
         $this->assertFalse($doc->isDirty(), 'undo to the loaded CRLF content is clean');
     }
 
+    /**
+     * Pasted CRLF text becomes lines, not carriage returns inside one.
+     *
+     * `insert()` normalises, and nothing checked it: the constructor's own
+     * normalisation is covered, so a suite built on LF fixtures never reaches
+     * this one. Deleting it left all 5,727 unit tests green.
+     *
+     * The path is a bracketed paste — text copied out of a browser or a Windows
+     * editor and dropped into the terminal. Without this the `\r` survives
+     * INSIDE a line, where it is a control character the width arithmetic
+     * counts as a column and the terminal does not, which is how a row comes to
+     * be drawn wider than its pane.
+     */
+    public function testPastedCrlfBecomesRealLines(): void
+    {
+        $doc = new Document("first\n");
+        $doc->setCursor(1, 0);
+
+        $doc->insert("alpha\r\nbeta\rgamma\n");
+
+        $this->assertSame(['first', 'alpha', 'beta', 'gamma', ''], $doc->getLines());
+        $this->assertStringNotContainsString("\r", $doc->getText(), 'no carriage return survived the paste');
+    }
+
+    /**
+     * A file reloaded from disk with CRLF becomes lines too.
+     *
+     * `replaceAll()` is what {@see \Porta\Editor\FilesystemReconciler} calls
+     * when the poller finds a clean buffer changed on disk — so this is every
+     * Windows-authored file in a repo, arriving by a door the constructor never
+     * sees. Its normalisation was unguarded in the same way.
+     */
+    public function testAReloadedCrlfFileBecomesRealLines(): void
+    {
+        $doc = new Document("old\n");
+
+        $doc->replaceAll("alpha\r\nbeta\r\n");
+
+        $this->assertSame(['alpha', 'beta', ''], $doc->getLines());
+        $this->assertStringNotContainsString("\r", $doc->getText(), 'no carriage return survived the reload');
+    }
+
     public function testCaretHooksRoundTripThroughASnapshot(): void
     {
         $doc = new Document("l1\nl2\nl3\n");

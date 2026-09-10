@@ -6044,3 +6044,38 @@ twenty minutes earlier claimed the drag "inherits the remap for free". It does
 not depend on it at all — a drop resolves by ROW. Its docblock now says what it
 covers (a mirrored layout) and points at the menu test for the map. Writing a
 false claim while fixing one next door is exactly how the first one got there.
+
+## Identity in the common case (2026-09-11)
+
+The RTL column map above was invisible because `logicalColumn()` returns its
+argument for a left-to-right run, and every test that claimed to cover it used
+Latin filenames. That is a SHAPE, not a one-off, and it is worth hunting
+deliberately:
+
+> A line that is the IDENTITY for ordinary input cannot be graded by ordinary
+> fixtures. Coverage says it ran; nothing says it did anything.
+
+Second instance, found by asking the question of the next candidate on that
+list. `Document` normalises `\r\n` and `\r` to `\n` at three doors. Deleting
+each in turn and running the unit suite:
+
+| Door | Reached by | Guarded |
+| --- | --- | --- |
+| `__construct()` | opening a file | yes |
+| `insert()` | a bracketed PASTE of Windows-line-ending text | **no** |
+| `replaceAll()` | `FilesystemReconciler` reloading a changed file from disk | **no** |
+
+Both unguarded doors are ordinary user paths — text copied out of a browser,
+and any Windows-authored file in the repository changing on disk. Without
+normalisation the `\r` survives INSIDE a line, where it is a control character
+the width arithmetic counts as a column and the terminal does not: the
+over-wide row family again, arriving from the data rather than the layout.
+
+The constructor's normalisation was covered, which is why nothing noticed —
+a suite reaches a class through its most obvious door and the other two inherit
+the confidence without the evidence.
+
+*The rest of the list, for whoever picks this up:* tab expansion, BOM handling,
+and wide-character width are all identity for ASCII input, and the shipped
+Japanese locale makes the last one reachable. `mb_strwidth` was audited in an
+earlier round and came back clean; the other two have not been asked.
