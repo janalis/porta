@@ -322,7 +322,14 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
 
             $labelWidth = max(0, $width - $rightWidth - 2);
             $label = AnsiText::truncate(' '.$entry->label, $labelWidth, pad: true);
-            $text = $label.' '.$right.' ';
+            // Clamped, because the label alone yielding is not enough: once
+            // $labelWidth hits its floor of zero the row is still
+            // `' ' + shortcut + ' '` wide, so a pane narrower than the
+            // shortcut got a row wider than itself — 8 columns into 1 — and an
+            // over-wide row garbles whatever is drawn beneath it. A no-op at
+            // every width where the label has room, which is all of them until
+            // the pane is narrower than `Ctrl+Shift+C`.
+            $text = AnsiText::truncate($label.' '.$right.' ', $width, pad: true, ellipsis: '');
             $lines[] = $this->shadeRow($text, $index === $this->list->selected(), $index === $this->hoveredIndex);
         }
 

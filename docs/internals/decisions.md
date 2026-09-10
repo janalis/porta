@@ -5096,3 +5096,42 @@ That is the third time in two days that a first-draft assertion has been
 one-way — anywhere-in-the-file, `<=` with no floor, a comparison never tested
 at its boundary. The pattern is asking a question the defect can answer
 correctly.
+
+## Eight widgets that had never been squeezed (2026-09-10)
+
+`search-history.json` on this machine reads `["nb", "mb_", "mb", "co"]` —
+someone auditing multibyte width calls, which is the family this whole session
+has been fixing. Finished the audit.
+
+**The `mb_strwidth` sweep came back clean.** Seventy call sites; one measures a
+value that is also styled elsewhere, and it is right by construction —
+`KeybindingsListWidget` measures the PLAIN `$shortcut` while drawing the styled
+`$right`, and SGR adds no visible width. Measuring the plain value is the safer
+of the two.
+
+**The gate behind it was half-applied, and that is where the defect was.**
+`RendersExactWidth::assertFitsEveryWidth()` renders at every width from 1 to 20
+and asserts no row exceeds the pane — the guard against the over-wide row that
+garbles the line beneath it. Seventeen widgets carry `#[AsWidget]`; **eight had
+never been through it**, including both settings panes.
+
+One of the eight failed: `KeybindingsListWidget` drew **eight columns into a
+one-column pane**. The row is `label … shortcut`, and only the LABEL yields —
+
+    $labelWidth = max(0, $width - $rightWidth - 2);
+
+so once that floor is reached the row is still `' ' + shortcut + ' '` wide,
+whatever the pane. `Ctrl+Alt+Shift+C` is sixteen columns; any pane narrower
+than eighteen got a row wider than itself. The composed row is clamped now, a
+no-op at every width where the label has room.
+
+The other seven fit. All eight are in the sweep's provider now, so the next one
+fails a build instead of garbling a screen.
+
+### The vacuity guard earned its keep on the way in
+
+`DockTabsWidget` with no provider renders zero rows, and a loop over no rows
+asserts nothing while reporting success. The sweep refuses that explicitly, and
+it refused my first fixture by name. The lesson it encodes is the same one this
+session keeps relearning from the other side: an empty result satisfies almost
+any assertion you can write about a result.

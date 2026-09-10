@@ -6,20 +6,30 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Porta\Config\KeybindingRow;
 use Porta\Editor\Document;
+use Porta\I18n\Translator;
+use Porta\Settings\SettingsRow;
+use Porta\Settings\SettingsRowKind;
 use Porta\Terminal\TerminalBuffer;
 use Porta\Tests\Support\RendersExactWidth;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\DockTabsWidget;
 use Porta\Widget\FileTreeWidget;
+use Porta\Widget\Onboarding\WelcomeWidget;
 use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\Settings\KeybindingsListWidget;
+use Porta\Widget\Settings\SettingsFormWidget;
+use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
+use Porta\Workbench\Dock\DockTab;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
@@ -105,6 +115,37 @@ final class NarrowPaneRenderTest extends TestCase
         $debug->open('Debug');
         $debug->setFrames([['id' => 1, 'name' => 'Service::handle', 'path' => '/p/src/Service.php', 'line' => 12]]);
         yield 'debug panel' => [$debug];
+
+        // The settings view's two panes, the dock strip and the welcome
+        // screen: eight of the seventeen registered widgets had never been
+        // through this sweep, and one of them emitted eight columns into a
+        // one-column pane. A shortcut column that yields only its LABEL still
+        // draws the shortcut, so once the label reached zero the row stopped
+        // shrinking.
+        $keys = new KeybindingsListWidget(new Translator('en'));
+        $keys->setRows([
+            new KeybindingRow('save', 'Save File', 'ctrl+s', overridden: true),
+            new KeybindingRow('copy_reference', 'Copy Reference', 'ctrl+alt+shift+c'),
+        ]);
+        yield 'keybindings list' => [$keys];
+
+        $nav = new SettingsNavWidget(new Translator('en'));
+        $nav->setPluginEntries(['git', 'local-history']);
+        yield 'settings nav' => [$nav];
+
+        $form = new SettingsFormWidget(new Translator('en'));
+        $form->setRows([new SettingsRow(key: 'autoPairs', label: 'Auto-pairs', kind: SettingsRowKind::Bool, value: true, restart: false)]);
+        yield 'settings form' => [$form];
+
+        $dock = new DockTabsWidget();
+        $dock->setProvider(static fn (): array => [
+            ['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'key' => '', 'status' => '3 problems'],
+            ['tab' => DockTab::Terminal, 'label' => 'Terminal', 'active' => false, 'key' => '', 'status' => ''],
+        ]);
+        $dock->beforeRender();
+        yield 'dock tabs' => [$dock];
+
+        yield 'welcome' => [new WelcomeWidget(new Translator('en'))];
     }
 
     #[DataProvider('paneWidgets')]
