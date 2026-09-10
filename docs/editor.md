@@ -55,6 +55,14 @@ Save / Discard / Cancel prompt on unsaved changes), `Ctrl+E` opens the
 recent-files popup. Every buffer keeps its cursor, undo history and
 diagnostics. The open set is restored on the next launch.
 
+Two open files with the same name say which is which — `plugin.php (git)` and
+`plugin.php (symfony-lsp)` — and the qualifier grows a directory at a time
+until it distinguishes them, so two `GitSidebar.php` under `<plugin>/src/View/`
+become `GitSidebar.php (git/src/View)` and `(other/src/View)`. It goes after
+the name rather than in front so the part that says what the file *is* survives
+a narrow strip. Names that are shared deliberately — every help page is one
+`Documentation` tab — are left alone.
+
 The tab bar sits on top by default; Settings → Interface moves it to the bottom,
 left or right. A side strip is a fixed 24 columns, so on a terminal too narrow
 to seat it and still leave a file worth reading it returns to the top on its own
@@ -276,6 +284,13 @@ At the end rather than in front, because the rule is what you search for to
 suppress it or to tell two identically-worded findings apart; the sentence is
 what you read the row for. It comes from the language server's `code`, or from
 an analyser plugin that passed one.
+
+Being at the end does not make it the first thing dropped: a panel too narrow
+for both elides the **sentence** and keeps the rule whole, which is the point —
+long messages are exactly the ones where the rule is all that tells two
+findings apart. Below a two-dozen-column floor for the message the row gives up
+and cuts normally, since a rule name with no sentence beside it names nothing
+you could act on.
 
 ## Unused and deprecated code
 

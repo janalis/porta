@@ -5135,3 +5135,34 @@ asserts nothing while reporting success. The sweep refuses that explicitly, and
 it refused my first fixture by name. The lesson it encodes is the same one this
 session keeps relearning from the other side: an empty result satisfies almost
 any assertion you can write about a result.
+
+## Doc examples that nobody was checking (2026-09-10)
+
+Swept the user docs against the surfaces this session changed, the way
+`search-navigation.md` turned out to need. Two were under-described, both in
+`docs/editor.md`: nothing said what happens to two open files with the same
+name, and the Problems panel's rule column was documented as sitting "at the
+end" without saying that being at the end no longer makes it the first thing
+dropped.
+
+Both now carry worked examples — and a worked example is the part of a doc a
+reader trusts most and the part nothing checks. `plugin.php (git)` is a promise
+about a format, and the format lives in `TabListProvider`.
+
+`TabNamingDocTest` executes the promise: it builds the buffers the doc
+describes, asserts the provider returns exactly the strings printed there, and
+asserts the doc still contains them. Both directions were mutation-checked —
+changing the format to a prefix fails it, and editing the doc's example to
+`(symfony)` fails it too.
+
+That is a different question from the one the other doc gates ask.
+`KeybindingsDocTest` and `SearchScopeDocTest` ask whether a vocabulary is
+MENTIONED; this asks whether a demonstration is still TRUE, which is the
+failure mentioning cannot see.
+
+### Checked and left alone
+
+`.porta.json` is gitignored and untracked — the dead
+`plugins.symfony-lsp.binary: ""` key left by the relaunch trick removed in
+`55acea0e` is in the user's personal config, not the repository's, so it is
+theirs to clear and not mine.
