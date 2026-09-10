@@ -5944,3 +5944,41 @@ supersession it cites.
 *Descriptions taken from the code, not invented:* every new row's wording comes
 from the Settings view's own descriptor label and its `options` list, and every
 default from `DEFAULT_SETTINGS`.
+
+## The plugin API reference omitted what the bundled plugins use (2026-09-10)
+
+Same question as the settings table, asked of the other big derivable set:
+`docs/plugins.md` is the contract third-party plugins are written against, and
+`PluginApi`'s public methods are enumerable. Eight were named nowhere on the
+page — and **six of the eight are called by the plugins this repo ships**:
+
+| Method | Used by |
+| --- | --- |
+| `registerHighlighter()` | tempest |
+| `syntaxTheme()` | tempest, git |
+| `setChangeMarks()` | git |
+| `copyToClipboard()` | git |
+| `onFileReloaded()` | git |
+| `onFileRewritten()` | local-history |
+| `registerTokenSpans()` | — |
+| `registerInstaller()` | `AbstractToolPlugin`, so every tool plugin |
+
+An author reading the reference could not discover how to do what the bundled
+plugins visibly do. That is worse than an undocumented corner: the feature is
+demonstrably supported and the only way to find it was to read core.
+
+**What is deliberately NOT documented** is the loader surface — the sixteen
+`buffered*` drains and `pluginName()`, which are public because the RUNTIME
+calls them and sit under `PluginApi`'s own "Loader/manager plumbing" banner.
+Documenting them would invite a plugin to call them.
+
+Gated both ways, and the second direction is the one that matters here: the
+exemption list is derived (`buffered*` plus one name) and pinned, so it cannot
+quietly grow to cover a method nobody wanted to write up. That is the failure
+mode an exemption list invites, and it is the same shape as `MAY_LINGER` in the
+configuration gate an hour ago.
+
+*Form left alone on purpose:* `registerPane()` and `registerViewer()` are taught
+by a worked example rather than a table row, and the gate accepts a mention
+anywhere on the page. A gate demanding a table row would be arguing about form
+rather than coverage.

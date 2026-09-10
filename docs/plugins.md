@@ -676,6 +676,11 @@ Registration (during `activate()`):
 | `onBufferSwitched(\Closure $hook)` | `$hook(string $path)` when the active buffer changes — a real change, not every re-show of the same file |
 | `onThemeChanged(\Closure $hook)` | `$hook(string $theme)` after a theme switch, **before** core drops its highlight caches — where a backend that bakes colours rebuilds |
 | `onSettingChanged(\Closure $hook)` | `$hook(string $key, bool\|int\|string $value)` when the Settings page writes one of **this plugin's own** settings. Runs after the write, so `setting()` reads the new value. Without it, anything read once in `activate()` is restart-required by construction |
+| `onFileReloaded(\Closure $hook)` | `$hook(string $path)` when the poller replaced a CLEAN buffer with what the file now holds on disk — an external edit, a branch switch, a formatter run outside the IDE. Sugar over the internal `BufferReloaded`, which carries a mutable `Buffer` and so cannot be observable |
+| `onFileRewritten(\Closure $hook)` | `$hook(string $path, string $previousText)` when a refactoring rewrote a file that had NO open buffer. The payload is the text the write REPLACED: the new content is on disk already and the old exists nowhere else. Not a save — no `onFileSaved` fires for it |
+| `registerHighlighter(...)` | Provide a syntax-highlighting backend for one or more languages. `$isAvailable` declines a language when e.g. a binary is missing, so the next provider gets it; a backend that faults is dropped for that buffer after three consecutive failures, and the buffer renders as plain text rather than broken |
+| `registerTokenSpans(array\|\Closure $languages, \Closure $classify)` | Classify comment and string regions for project search's token-scope filter ("only in comments/strings", "except in …"). Deliberately separate from `registerHighlighter()`: this runs once per FILE over raw content, where highlighting runs per visible line |
+| `registerInstaller(string $tool, \Closure $isAvailable, array $via)` | Declare how to install this plugin's tool binary plus a predicate for whether it is there. When it is not, the plugin's settings page offers a one-click install that tries each `[manager, package]` pair in order, running the first whose manager is on the PATH. Omit it and no install is offered |
 
 Actions (from handlers/hooks):
 
@@ -688,6 +693,9 @@ Actions (from handlers/hooks):
 | `toggleView(string $id)` | Flip it open or closed — what a keybinding on a view wants. "Is it open?" is the registry's to answer, so a plugin never holds its own controller to find out |
 | `showChangeMarkGutter(bool $on)` | Show or hide the version-control gutter STRIP itself. Hiding drops whatever marks were showing, so nothing lingers under a column that is no longer painted |
 | `showList(string $id, array $rows = [], ToolRun $run = ToolRun::Finished)` | Open your list tool's tab and show rows |
+| `setChangeMarks(string $path, array $marks)` | Paint the version-control gutter for one file: `0-based line => 'added'\|'modified'\|'deleted'`. `showChangeMarkGutter(false)` hides the strip and drops them |
+| `copyToClipboard(string $text)` | Put text on the system clipboard — for a view that copies a commit hash or a path and has no business injecting a service to do it |
+| `syntaxTheme()` | The `TerminalTheme` core is currently painting with, for a backend that bakes colours into its own output. Safe during `activate()`; pair it with `onThemeChanged()`, since a theme switch has no other hook |
 | `updateList(string $id, array $rows, ToolRun $run = ToolRun::Finished)` | Replace its rows in place; a no-op once the user ×'d the tab |
 | `replaceDocument(string $text)` | Replace the active text buffer's whole content as ONE undoable edit; no-op on an identical text, a viewer tab, or nothing open |
 | `trans(string $id, array $params = [])` | Translate through the IDE's catalogs; an unknown string passes through |
