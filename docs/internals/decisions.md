@@ -5342,10 +5342,8 @@ repository changes what `git status` says exactly as much as `git add` does.
 Both the class docblock and the plugin event table in `docs/plugins.md` now say
 so, because the table is the contract a plugin author reads.
 
-*Re-opens if* the extra `git status` per file operation ever shows up in
-`perf.log`: `WorkingTreeStatus` already coalesces an in-flight run, but
-`GitRefresher::refreshBranch()` also fires and a create cannot move HEAD. That
-is one cheap call on a user-initiated action, so it is not worth a filter today.
+*Re-opened the same day, by reading the change's own blast radius* — see
+below. The reasoning above is right for ONE file and wrong for twenty.
 
 ### The other silent producer, found and fixed in the same breath
 
@@ -5520,3 +5518,35 @@ test pins the other half — a modified press arms nothing, over both modified
 intents and three rows, with an unmodified press as the floor. `dragSourcesAt()`
 had documented that since it was written; nothing had ever checked that its
 caller asked it the right question.
+
+## Twenty files, one gesture, one announcement (2026-09-10)
+
+A regression introduced earlier the same day, found by asking what the new
+dispatch costs when the verb runs in a loop rather than by any log.
+
+`withFs()` announces a working-tree change around every filesystem verb, which
+is right — it is the choke point every verb goes through. But `moveEach()` calls
+it once per file, so dropping twenty files fired twenty `WorkingTreeChanged`
+events for one gesture. The listener runs `git status` over the whole repository
+and asks for the branch. `WorkingTreeStatus` coalesces an in-flight status into
+at most one rerun; `GitRefresher::refreshBranch()` coalesces nothing, so that
+half was twenty processes.
+
+I had written the opposite conclusion in the entry above — "one cheap call on a
+user-initiated action" — which was true of the single-file case I had in front
+of me and false of the one the feature exists for.
+
+Reproduced by counting the events for a three-file drop before touching
+anything: three.
+
+**A counter, not a flag.** `moveEach()` raises it around the loop and announces
+once in `finally`; `announceWorkingTree()` stays silent while it is up. Nothing
+nests batches today, and a flag would work — until something does, at which
+point the first inner batch to finish would clear it for everyone still running.
+The counter costs the same and cannot be got wrong.
+
+**In `finally`, twice, for the same reason:** a set that gives up halfway still
+moved the files it got to, and a listener that is never told cannot find out.
+
+Both halves are mutation-checked: dropping the batch fires per file again, and
+dropping the batch's own announcement leaves a completed drop silent.

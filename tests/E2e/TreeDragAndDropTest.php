@@ -7,6 +7,8 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BookmarkActions;
 use Porta\Editor\Bookmarks;
+use Porta\Event\TreeDropRequested;
+use Porta\Event\WorkingTreeChanged;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
@@ -14,6 +16,7 @@ use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Dragging a file in the tree, end to end, through the real mouse bytes.
@@ -264,6 +267,53 @@ final class TreeDragAndDropTest extends TestCase
                         (string) file_get_contents($project->path('src/dup.php')),
                         'and the one it would have replaced is untouched',
                     );
+                },
+            ],
+            columns: 120,
+        );
+    }
+
+    /**
+     * A drop of many files tells version control ONCE.
+     *
+     * `withFs()` announces a working-tree change around every filesystem verb,
+     * and a multi-file drop calls it once per file — so a listener that runs
+     * `git status` and `git rev-parse` gets asked N times for one gesture, and
+     * only the first of those has any new information in it.
+     */
+    public function testAMultiFileDropAnnouncesTheWorkingTreeChangeOnce(): void
+    {
+        putenv('PATH=/nonexistent');
+        $this->project = new TempProject([
+            'a.php' => "<?php\n",
+            'b.php' => "<?php\n",
+            'c.php' => "<?php\n",
+            'dest/keep.php' => "<?php\n",
+        ]);
+        $project = $this->project;
+        $moved = 0;
+
+        $this->runIde(
+            $project,
+            $project->path('dest/keep.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project, &$moved): void {
+                    $this->frame($tui);
+                    Services::resolve($ide, EventDispatcherInterface::class)->addListener(
+                        WorkingTreeChanged::class,
+                        static function () use (&$moved): void {
+                            ++$moved;
+                        },
+                    );
+
+                    Services::resolve($ide, EventDispatcherInterface::class)->dispatch(new TreeDropRequested(
+                        [$project->path('a.php'), $project->path('b.php'), $project->path('c.php')],
+                        $project->path('dest'),
+                        copy: false,
+                    ));
+
+                    $this->assertFileExists($project->path('dest/c.php'), 'all three moved');
+                    $this->assertSame(1, $moved, 'one gesture, one announcement');
                 },
             ],
             columns: 120,

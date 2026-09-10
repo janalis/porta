@@ -36,6 +36,13 @@ use Symfony\Component\Tui\Tui;
  */
 final class TreeOperations
 {
+    /**
+     * Depth of a batch of filesystem verbs announcing as one.
+     *
+     * @see announceWorkingTree()
+     */
+    private int $batch = 0;
+
     public function __construct(
         private readonly FileTreeWidget $tree,
         // Deliberately concrete: showDocument (the rename/delete re-point)
@@ -400,8 +407,17 @@ final class TreeOperations
      */
     private function moveEach(array $moving, string $targetDir, bool $copy, bool $overwrite = false): void
     {
-        foreach ($moving as $path) {
-            $this->moveOne($path, $targetDir.'/'.basename($path), $copy, $overwrite);
+        ++$this->batch;
+
+        try {
+            foreach ($moving as $path) {
+                $this->moveOne($path, $targetDir.'/'.basename($path), $copy, $overwrite);
+            }
+        } finally {
+            --$this->batch;
+            // In finally for the same reason withFs() is: a set that gave up
+            // halfway still moved the files it got to.
+            $this->announceWorkingTree();
         }
     }
 
@@ -469,6 +485,25 @@ final class TreeOperations
         } catch (IOExceptionInterface) {
             $this->notifier->error($failMessage);
         } finally {
+            $this->announceWorkingTree();
+        }
+    }
+
+    /**
+     * Say the working tree moved — unless a batch of verbs is in flight, which
+     * announces once for the lot.
+     *
+     * A drop of twenty files is twenty calls to {@see withFs()} and one
+     * gesture. The listener runs `git status` over the whole repository and
+     * asks for the branch; only the first of twenty has anything new to tell
+     * it, and the branch query does not coalesce the way the status does.
+     *
+     * A counter, not a flag: nothing nests batches today, and a flag would let
+     * the first inner one to finish clear it for the rest.
+     */
+    private function announceWorkingTree(): void
+    {
+        if (0 === $this->batch) {
             $this->events->dispatch(new WorkingTreeChanged());
         }
     }
