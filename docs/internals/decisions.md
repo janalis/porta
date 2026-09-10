@@ -5478,3 +5478,45 @@ tree's click tests, and dropping the `forgetPress()` fails the new ones.
 *Worth keeping in mind:* the deferral has three exits — paid on a motionless
 release, forgotten on a drop, forgotten on a cancel — and each is written in a
 different method. A fourth caller of `arm()` would have to find all three.
+**Followed up below**, because a warning in prose is not a guard.
+
+## One call, so the two answers cannot disagree (2026-09-10)
+
+Follow-up to the entry above, whose closing note was a warning in prose — the
+thing this codebase already knows reads like a verified rule and is not one.
+
+The press site asked the tree two questions and had to keep their answers in
+step by hand:
+
+```php
+$sources = $tree->dragSourcesAt($rel['row'], $mouse->ctrl || $mouse->shift);
+$tree->pressRow($rel['row'], match (true) { ctrl => Add, shift => Range, default => Open });
+$this->treeDrag->arm($sources);
+```
+
+"Is this press modified" is spelled twice — once from the modifier keys, once as
+an intent — and the ordering (sources BEFORE the click, which may collapse the
+selection) was held by a comment. A fourth intent added to that `match` without
+touching the line above it re-opens the bug fixed an hour earlier: a toggle
+deferred with no drag armed to spend it.
+
+`pressRow()` returns its own sources now. One call, one derivation, and the
+ordering is structural because it happens inside the method that owns both.
+`dragSourcesAt()` keeps its own tests but has exactly one caller — the widget
+itself.
+
+### Two tests, because the invariant has two halves
+
+The first is stated over the whole matrix: every row the fixture has × every
+`ClickIntent` case, and wherever a toggle was deferred the press must have
+handed back something to drag. It carries its own floor — a tree that never
+defers would satisfy it vacuously — so it also asserts that a plain press on a
+folder still defers.
+
+That one was not enough, and a mutant said so: spelling the flag
+`ClickIntent::Range === $intent` instead of `Open !== $intent` keeps the
+invariant true while making **Ctrl** arm a drag it should not. So the second
+test pins the other half — a modified press arms nothing, over both modified
+intents and three rows, with an unmodified press as the floor. `dragSourcesAt()`
+had documented that since it was written; nothing had ever checked that its
+caller asked it the right question.

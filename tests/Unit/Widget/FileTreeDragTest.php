@@ -179,6 +179,67 @@ final class FileTreeDragTest extends TestCase
     }
 
     /**
+     * A press that defers a toggle always hands back something to drag.
+     *
+     * The invariant that makes the deferral safe, stated once over every row
+     * the tree has and every intent a press can carry. It matters because the
+     * toggle is only ever paid by a release the DRAG router routes: arm it with
+     * nothing and `continueDrag()` refuses the release, the router discards it,
+     * and the toggle survives to be paid by some later click — which is exactly
+     * the bug Escape mid-drag used to cause.
+     *
+     * `pressRow()` returning its own sources makes this true by construction
+     * rather than by two callers agreeing on what "modified" means. This says
+     * so out loud, so the next intent added to that `match` has to keep it.
+     */
+    public function testAPressThatDefersAToggleAlwaysArmsSomething(): void
+    {
+        foreach ([0, 1, 2, 3, 4, 5] as $relRow) {
+            foreach (ClickIntent::cases() as $intent) {
+                $tree = $this->tree();
+                $sources = $tree->pressRow($relRow, $intent);
+                $where = \sprintf('row %d, %s', $relRow, $intent->name);
+
+                if (null === Probe::get($tree, 'pendingToggle')) {
+                    continue;
+                }
+
+                $this->assertNotSame([], $sources, $where.' deferred a toggle with no drag armed to spend it');
+            }
+        }
+        // The loop above is satisfied by a tree that never defers at all, so
+        // say that at least one row does.
+        $tree = $this->tree();
+        $tree->pressRow(1);
+        $this->assertSame(1, Probe::get($tree, 'pendingToggle'), 'a plain press on a folder still defers');
+    }
+
+    /**
+     * The other half of the same agreement: a MODIFIED press arms nothing.
+     *
+     * Ctrl and Shift are building a selection, not grabbing one, so no drag
+     * starts from them — `dragSourcesAt()` has said so since it was written,
+     * but nothing checked that `pressRow()` asks it the right question. It is
+     * the only caller now, so this is the only place that can.
+     */
+    public function testAModifiedPressArmsNothing(): void
+    {
+        foreach ([ClickIntent::Add, ClickIntent::Range] as $intent) {
+            foreach ([1, 2, 4] as $relRow) { // a folder, a file inside it, a file beside it
+                $this->assertSame(
+                    [],
+                    $this->tree()->pressRow($relRow, $intent),
+                    \sprintf('row %d with %s started a drag', $relRow, $intent->name),
+                );
+            }
+        }
+
+        // The control, or "arms nothing" would be satisfied by a press that
+        // never arms anything at all.
+        $this->assertNotSame([], $this->tree()->pressRow(4), 'an unmodified press on a file still does');
+    }
+
+    /**
      * The deferred toggle is really deferred, and really paid.
      *
      * Both halves in one test because either alone is satisfied by doing

@@ -674,17 +674,15 @@ final class MouseRouter
         if (null !== $treeRect && $treeRect->contains($mouse->row, $mouse->col)) {
             $rel = $treeRect->toRelative($mouse->row, $mouse->col);
             $this->tui->setFocus($this->panes->tree());
-            // Resolve what a drag would carry BEFORE the click runs, the way
-            // tryDockTabClick resolves its source before handleTabClick: the
-            // click may collapse the selection to the row under the pointer,
-            // and by the first motion event the set the user grabbed is gone.
-            $sources = $this->panes->tree()->dragSourcesAt($rel['row'], $mouse->ctrl || $mouse->shift);
-            $this->panes->tree()->pressRow($rel['row'], match (true) {
+            // One call, because a press that defers a folder's toggle MUST arm
+            // a drag to spend it: pressRow resolves what a drag would carry
+            // before its own click runs, so the ordering is structural rather
+            // than a comment, and "is this press modified" is derived once.
+            $this->treeDrag->arm($this->panes->tree()->pressRow($rel['row'], match (true) {
                 $mouse->ctrl => ClickIntent::Add,
                 $mouse->shift => ClickIntent::Range,
                 default => ClickIntent::Open,
-            });
-            $this->treeDrag->arm($sources);
+            }));
             $this->tui->requestRender();
 
             return true;

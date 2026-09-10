@@ -249,19 +249,34 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      *
      * Only the toggle waits. A file still activates on the press, which is
      * this tree's documented behaviour and what its tests hold.
+     *
+     * Returns what a drag from this press would carry, because the caller needs
+     * both and the two answers must agree. Read here rather than asked for
+     * separately: the sources have to be resolved BEFORE the click runs (which
+     * may collapse the selection to the row under the pointer), and the caller
+     * previously kept that ordering by comment while deriving "is this press
+     * modified" a second time, from the modifier keys rather than from the
+     * intent. Two spellings of one fact is how a press came to defer a toggle
+     * with no drag armed to spend it.
+     *
+     * @return list<string> absolute paths, in tree order; empty when the press
+     *                      grabbed nothing draggable
      */
-    public function pressRow(int $relRow, ClickIntent $intent = ClickIntent::Open): void
+    public function pressRow(int $relRow, ClickIntent $intent = ClickIntent::Open): array
     {
+        $sources = $this->dragSourcesAt($relRow, ClickIntent::Open !== $intent);
         $node = $this->nodeAtRow($relRow);
         if (ClickIntent::Open !== $intent || null === $node || !$node->isDir) {
             $this->clickRow($relRow, $intent);
 
-            return;
+            return $sources;
         }
         // Select it — the same collapse-unless-already-in rule a right-click
         // follows — and remember what a click would still owe.
         $this->nodeAt($relRow);
         $this->pendingToggle = $relRow;
+
+        return $sources;
     }
 
     /** The press turned out to be a click: pay what {@see pressRow()} deferred. */
