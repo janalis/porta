@@ -5863,15 +5863,22 @@ of the time and neither is guessable.
    `plugins/git/src/Widget` with `Expected an instance of
    PhpParser\Node\Stmt\Class_. Got: PhpParser\Node\Stmt\Trait_`.
 
-*What that is NOT:* "Infection cannot handle traits". `src/Widget/Support` holds
-eight of them and mutates fine — 228 mutants generated. I did not isolate which
-file trips it; excluding the directory's only `^trait` declaration
-(`GitPaneKeys.php`) does not help, so either the exclude did not apply the way I
-spelled it or something else in there parses as a trait. I stopped there rather
-than keep spending the round on tooling, which is the honest place to stop.
+*What that is NOT:* "Infection cannot handle traits", and this was worth
+measuring rather than assuming, because the first draft of this entry warned
+that a `src/` diff touching the wrong file could abort `composer mutate`
+outright. **It cannot.** `src/Widget` — a hundred files carrying sixteen
+traits — generates **6,127 mutants with no crash**, as does `src/Widget/Support`
+(eight traits, 228 mutants). The documented workflow is safe; the warning was a
+guess and is withdrawn.
 
-*Worth knowing regardless:* `composer mutate` is diff-scoped, so it only feeds
-Infection the files a change touched. If this is a general
-Infection-versus-something bug rather than a plugin one, a diff that happens to
-include the wrong file would abort the mutation run outright — and nobody would
-have seen it yet, because the file has to be in the diff.
+I did not isolate which file trips the plugin run. Excluding the directory's
+only `^trait` declaration (`GitPaneKeys.php`) does not help, so either the
+exclude did not apply the way I spelled it or something else in there parses as
+a trait. I stopped there rather than keep spending the round on tooling, which
+is the honest place to stop — the remaining question is upstream, not this
+codebase's.
+
+*One thing the whole-tree attempt did establish:* Infection over all of `src/`
+dies at 144 of 716 files with `Allowed memory size of 536870912 bytes
+exhausted`. That is not a defect — it is why `composer mutate` is diff-scoped —
+but it does mean a full-tree run needs `-d memory_limit=3G`, which nothing said.
