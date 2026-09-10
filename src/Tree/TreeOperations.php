@@ -171,6 +171,13 @@ final class TreeOperations
         $resolvedOld = realpath($old);
         $oldKey = $resolvedOld ? $resolvedOld : $old;
         $this->withFs($failure, function () use ($old, $new, $oldKey, $success, $overwrite): void {
+            // Write BEFORE the rename, or the edits are gone: the move closes
+            // each affected buffer and re-opens it from disk, and
+            // BufferManager::close() has no dirty check — the guarded prompt
+            // lives only in closeActiveBuffer(). Saving rather than asking is
+            // the only answer that loses nothing; "discard" would throw the
+            // work away and move anyway.
+            $this->saveDirtyUnder($oldKey);
             // Read BEFORE the rename: a buffer's path is checked against a
             // directory that is about to stop existing.
             $inside = $this->buffersMoved($oldKey, $new);
@@ -185,6 +192,14 @@ final class TreeOperations
             // moved, and saving it writes the old folder back into
             // existence, because dumpFile() creates the directories it
             // needs.
+            // Spelled out because this class outgrew mago's per-class
+            // inference budget: past it every local is inferred `mixed`, and
+            // the complaint lands on the CALLS rather than on the size that
+            // caused it. buffersMoved() is typed; these two say so again.
+            /**
+             * @var string $path
+             * @var string $target
+             */
             foreach ($inside as $path => $target) {
                 $this->buffers->close($path);
                 $this->bufferService->openFile($target);
@@ -209,6 +224,24 @@ final class TreeOperations
      *
      * @return array<string, string> current path => path after the rename
      */
+    /**
+     * Flush every dirty buffer at $root or under it.
+     *
+     * $root is canonical and so are buffer paths, so this is the same
+     * comparison {@see buffersMoved()} makes — one directory's worth of
+     * buffers, found the one way that works for a folder.
+     */
+    private function saveDirtyUnder(string $root): void
+    {
+        foreach ($this->buffers->all() as $buffer) {
+            if (!$buffer->isDirty() || $buffer->path !== $root && !ProjectPaths::isUnder($buffer->path, $root)) {
+                continue;
+            }
+
+            $this->bufferService->saveBuffer($buffer);
+        }
+    }
+
     private function buffersMoved(string $from, string $to): array
     {
         $moved = [];
@@ -392,6 +425,10 @@ final class TreeOperations
             return;
         }
         $this->withFs($this->translator->trans('Cannot copy %file%', ['%file%' => $this->paths->relative($source)]), function () use ($source, $target, $name): void {
+            // A copy reads from DISK, so an unsaved edit would be missing from
+            // the copy while staying in the original — the same surprise as
+            // losing it, wearing a different face.
+            $this->saveDirtyUnder(($resolved = realpath($source)) ? $resolved : $source);
             is_dir($source) ? $this->fs->mirror($source, $target) : $this->fs->copy($source, $target, overwriteNewerFiles: true);
             $this->tree->refresh();
             $this->tui->setFocus($this->tree);

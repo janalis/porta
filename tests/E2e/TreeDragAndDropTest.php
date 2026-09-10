@@ -386,6 +386,47 @@ final class TreeDragAndDropTest extends TestCase
         );
     }
 
+    /**
+     * Unsaved edits survive the move.
+     *
+     * The move closes the buffer and re-opens it from disk, and
+     * `BufferManager::close()` has no dirty check — the guarded prompt lives
+     * only in `closeActiveBuffer()`. So whatever was typed and not saved was
+     * simply gone. Renaming is a deliberate act you might think twice about;
+     * dragging is a flick of the wrist, which is why this is worth the save.
+     */
+    public function testUnsavedEditsSurviveADrag(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = $this->project();
+
+        $this->runIde(
+            $project,
+            $project->path('top.php'),
+            [
+                200 => function ($tui): void {
+                    $this->frame($tui);
+                    $tui->handleInput('EDIT');
+                    $this->assertTrue($tui->getById('editor')->getDocument()->isDirty(), 'the buffer is dirty');
+                },
+                300 => static function ($tui): void {
+                    $tui->handleInput("\x1b[<0;3;4M"); // press top.php
+                    $tui->handleInput("\x1b[<32;3;3M"); // drag onto src/
+                    $tui->handleInput("\x1b[<0;3;3m");
+                },
+                460 => function ($tui) use ($project): void {
+                    $this->assertFileExists($project->path('src/top.php'));
+                    $this->assertStringContainsString(
+                        'EDIT',
+                        (string) file_get_contents($project->path('src/top.php')),
+                        'the unsaved edit went with the file rather than being dropped on the floor',
+                    );
+                },
+            ],
+            columns: 120,
+        );
+    }
+
     /** The status bar's left segment, ANSI stripped — what file the editor is showing. */
     private function statusText(mixed $tui): string
     {

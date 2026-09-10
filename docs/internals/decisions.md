@@ -5214,13 +5214,48 @@ both recorded in `mago.toml` beside the numbers they moved.
 
 ### Not fixed here
 
-- **Unsaved changes are still lost on any move.** `BufferManager::close()` has
-  no dirty check and the guarded prompt lives only in `closeActiveBuffer()`.
-  Pre-existing — the tree's own rename has always had it — but a drag is a
-  casual gesture where a rename is a deliberate one, so this got easier to hit.
+- ~~**Unsaved changes are still lost on any move.**~~ **Fixed straight
+  after** — see below. It was pre-existing, but shipping a casual gesture over
+  a path that drops work made it this change's problem.
 - **Git decorations go stale after a move**; nothing listens to `FileRenamed`.
 - **The language server keeps the old URI open**: no `workspace/didRenameFiles`
   anywhere, and the rename path closes buffers without `notifyDidClose`.
 - **Moves are not undoable**, which is settled — `WorkspaceEditor` calls
   `RefactoringUndo::decline()` for any create/rename/delete. The collision
   prompt is the safety net instead.
+
+## The move that ate your edits (2026-09-10)
+
+Recorded as "not fixed" an hour earlier and then fixed, because drag-and-drop
+turned a deliberate act into a flick of the wrist.
+
+A move closes each affected buffer and re-opens it from disk.
+`BufferManager::close()` has no dirty check — the guarded Save/Discard/Cancel
+prompt lives only in `closeActiveBuffer()` — so anything typed and not saved
+was simply gone. The tree's `Rename…` has always had this; nobody hit it often
+because renaming is something you stop and think about.
+
+Reproduced first, as a failing E2e: type into a file, drag it to a folder, read
+the moved file off disk. It contained the original bytes.
+
+**Saved, not asked.** "Discard" is meaningless here — it would throw the work
+away and move the file anyway — so the only answer that loses nothing is to
+flush first, which is what PhpStorm does. It goes in `moveInto()`, the choke
+point both the drag and the context-menu rename now share, so the older path is
+mended by the same three lines.
+
+The copy path saves too, for a subtler reason: a copy reads from DISK, so an
+unsaved edit would be missing from the copy while still sitting in the
+original — the same surprise wearing a different face.
+
+### And the class hit mago's inference budget
+
+Analyze started failing on `foreach ($inside as $path => $target)` — code this
+change never touched — with `mixed-argument` on the two calls inside it.
+`TreeOperations` had grown past mago's per-class inference budget, and past it
+every local is inferred `mixed` and the complaint lands on the CALLS rather
+than on the size that caused it. Pinned with a `@var` pair and a comment saying
+which it is, because the next reader will otherwise try to fix the calls.
+
+*Re-opens if* the class grows again: the honest fix at that point is to move
+the drop's five methods out, not to add a third annotation.
