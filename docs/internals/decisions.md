@@ -5828,3 +5828,50 @@ two silent translation gaps between them.
 each, and `MockServerContractTest::GATED_BY` is a capability map whose "set" is
 the mock's own advertised capabilities — already the thing it is checked
 against.
+
+## Plugin code has never been mutation-reviewed, and here is how far I got (2026-09-10)
+
+`plugins/` is 4,421 lines at 100% line coverage that no mutation run has ever
+touched — `infection.json5` is `src`-only by design, because it judges against
+the Unit suite and plugin code is covered by the Plugins suite. After three live
+crashes turned up in `plugins/git/src/Widget/` today, that gap was worth
+attacking directly.
+
+**Two obstacles solved, one not.** Written down because the first two cost most
+of the time and neither is guessable.
+
+1. *Infection resolves `source.directories` relative to the CONFIG FILE.* A
+   config in `/tmp` looks for `phpunit.xml.dist` in `/tmp`. It has to sit in the
+   project root.
+2. *pcov instruments one directory tree and it is not the repo by default.*
+   Every attempt produced a coverage XML rooted under `src/` with zero
+   `plugins/git` entries, whatever `--coverage-filter` said, because the
+   `<source><include>` in `phpunit.xml.dist` deliberately excludes
+   `plugins/*/src`. The working recipe is the one
+   `CoveragePluginsCommand::phpunit()` already uses and nothing else documents:
+
+   ```
+   php -d pcov.enabled=1 -d pcov.directory=. -d 'pcov.exclude=#/(vendor|tests)/#' \
+     vendor/bin/phpunit plugins/git/tests --coverage-filter plugins \
+     --coverage-xml=coverage/<dir>/coverage-xml --log-junit=coverage/<dir>/junit.xml
+   ```
+
+   `pcov.directory=.` is the whole trick. With it the index carries 74
+   `plugins/git` entries and Infection reads them.
+
+3. **Blocked here:** Infection 0.35.4 aborts partway through
+   `plugins/git/src/Widget` with `Expected an instance of
+   PhpParser\Node\Stmt\Class_. Got: PhpParser\Node\Stmt\Trait_`.
+
+*What that is NOT:* "Infection cannot handle traits". `src/Widget/Support` holds
+eight of them and mutates fine — 228 mutants generated. I did not isolate which
+file trips it; excluding the directory's only `^trait` declaration
+(`GitPaneKeys.php`) does not help, so either the exclude did not apply the way I
+spelled it or something else in there parses as a trait. I stopped there rather
+than keep spending the round on tooling, which is the honest place to stop.
+
+*Worth knowing regardless:* `composer mutate` is diff-scoped, so it only feeds
+Infection the files a change touched. If this is a general
+Infection-versus-something bug rather than a plugin one, a diff that happens to
+include the wrong file would abort the mutation run outright — and nobody would
+have seen it yet, because the file has to be in the diff.
