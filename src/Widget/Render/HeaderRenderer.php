@@ -33,6 +33,17 @@ final class HeaderRenderer
             return $style->apply(AnsiText::scrollLineToCaret($text, $width));
         }
         $room = max(0, $width - mb_strwidth($suffix) - 1);
+        if (0 === $room) {
+            // The pane cannot seat the suffix and its gap, so the SUFFIX is
+            // what has to shrink — there is no text left to take it out of.
+            // `max(0, …)` above bounds the room and not the output, which is a
+            // clamp with no floor: it kept the suffix at full width and the row
+            // came out `mb_strwidth($suffix) + 1` columns wide however narrow
+            // the pane was. A row wider than its pane does not garble a line,
+            // it throws RenderException out of the render loop and takes the
+            // session with it.
+            return $style->apply(AnsiText::truncate($suffix.' ', $width));
+        }
 
         return $style->apply(AnsiText::padRight(AnsiText::scrollLineToCaret($text, $room), $room).Sgr::NORMAL_INTENSITY.Sgr::FAINT.$suffix.' ');
     }

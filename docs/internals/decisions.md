@@ -5587,3 +5587,42 @@ whose cases reach `trans()` belongs there too.
 inside a ternary hides its branches at bracket depth 1. There is no such call
 today. Concatenation into `trans()` would be read as several ids rather than
 one, which fails loudly rather than silently — the right way round.
+
+## The width sweep had never been pointed at a plugin (2026-09-10)
+
+`NarrowPaneRenderTest` renders every core pane widget at widths 1..20 and
+refuses a row wider than its pane. It exists because `CodeEditorWidget` did that
+twenty-one times in this repo's own `.porta/error.log`, and a `RenderException`
+does not garble a line — it escapes the render loop and takes the session.
+
+It is a CORE test over core widgets. Every widget the git plugin mounts — the
+whole git view — had never been through it. Pointing a throwaway probe at them
+found **three live crashes**, all the same shape:
+
+| Where | The clamp |
+| --- | --- |
+| `HeaderRenderer::render()` | `max(0, $width - suffix - 1)` bounds the room, then draws the suffix at full width: the commit box's `Esc` was four columns in a one-column pane |
+| `DiffViewWidget::renderToolbar()` | `max(0, $width - $tagsWidth)` bounds the title, then draws both toggles: a fixed twenty-two columns at every width below that |
+| `DiffViewRenderer`, unified and split | `max(1, $width - 12)` / `max(1, $width - 6)` bound the TEXT while the gutter keeps its eleven (or five) fixed columns |
+
+Every one is a **bound with no floor** — the recurring shape this codebase keeps
+finding: a `max()` that clamps one PIECE of a row while the rest is emitted at
+its natural width, so the total only grows as the pane shrinks.
+
+`HeaderRenderer` is core and shared. Only the commit box passes a suffix today,
+so the crash had exactly one door — but the next caller with a key hint would
+have inherited it, which is why the fix went into the helper rather than the
+widget.
+
+**Clipped before styling, never after.** The gutter is built plain, measured,
+then styled, because truncating an already-styled string cuts escape sequences
+in half. That is a rule this codebase learned the hard way and it is easy to
+undo by accident here.
+
+All three floors are mutation-checked: restoring any of the three `max()`
+spellings fails the new sweep.
+
+*Still unswept, and named so nobody assumes otherwise:* `GraphViewerWidget` and
+`ImageViewerWidget`, in their own plugins. Both need a rasterizer or a layout
+engine to draw anything, so a sweep over them is its own piece of work rather
+than a line in this one.
