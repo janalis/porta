@@ -49,9 +49,28 @@ queries. Full mouse support: click fields, toggles and result rows; wheel
 scrolls the preview; drag the split to resize the results pane.
 
 Toggles: regex (`Alt+R`), case-sensitive (`Alt+C`), whole-word (`Alt+W`),
-preserve-case on replace (`Alt+V`), token scope (`Alt+T`), and search scope
-(`Alt+S`, Whole Project or saved scopes — e.g. "Find in Files…" from a tree
-folder's context menu scopes to that folder).
+preserve-case on replace (`Alt+V`) and token scope (`Alt+T`).
+
+`Alt+S` cycles the **search scope**. Five are built in, and the selector names
+what each one resolves to right now — `Module (plugins/git)`, `Open Files (3)`
+— because three of them mean something different depending on which buffer you
+are in:
+
+| Scope | Searches |
+| --- | --- |
+| Whole Project | the project root |
+| Directory | the directory holding the current file |
+| Current File | that file alone |
+| Open Files | every open buffer; `(0)` when none are, which matches nothing |
+| Module | the nearest directory above the current file holding a `composer.json` — **or the whole project when there is none** |
+
+That last fallback is worth knowing: in a repository whose packages live under
+`plugins/`, editing anything in `src/` gives `Module (Whole Project)`, and the
+label says so rather than leaving "Module" to be read as a narrowing.
+
+Saved scopes follow the built-ins in the same cycle — "Find in Files…" from a
+tree folder's context menu scopes to that folder and remembers it, and "Add to
+Search Scopes" pins one so it is never evicted.
 
 - `Enter` opens the selected match.
 - `Alt+Enter` promotes the whole result set to its own tab on the

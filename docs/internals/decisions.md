@@ -5063,3 +5063,36 @@ version chained off `new TempProject()->dir`. `composer arch` failed it by
 name: the temporary is freed — and its directory removed — before the installer
 ever globs it. That check exists because the trap has been hit before; this is
 the first time it caught it before a flake did.
+
+## The scopes the docs never mentioned (2026-09-10)
+
+Auditing the re-open conditions (previous entry) meant reading the settled list
+closely, which led to reading the user docs the same way.
+`docs/search-navigation.md` described `Alt+S` as "Whole Project or saved
+scopes" and stopped. Four of the five built-in kinds were undocumented —
+Directory, Current File, Open Files and **Module**.
+
+Module is the one that matters, and it is the one this machine has persisted as
+its default. A reader never told the scope exists has certainly never been told
+that it searches the WHOLE PROJECT when nothing above the file holds a
+`composer.json` — which, in a repository whose packages live under `plugins/`,
+is what it does for everything in `src/`.
+
+The doc has a table now, one row per kind, saying what each searches. And a
+gate, because nothing else reads prose.
+
+### The gate's first version proved nothing
+
+It asked whether each `ScopeKind::label()` appeared **anywhere** in the
+document. Renaming the `Module` table row to `Modul` left it green: the word
+still occurs in the sentences around the table. A vocabulary check against a
+whole document is not a check that the vocabulary is described.
+
+It reads the `| Scope | Searches |` table now, asserts one row per enum case
+and no more, and that no row is empty. Three doc mutations kill it: rename a
+row, delete a row, empty a row's description.
+
+That is the third time in two days that a first-draft assertion has been
+one-way — anywhere-in-the-file, `<=` with no floor, a comparison never tested
+at its boundary. The pattern is asking a question the defect can answer
+correctly.
