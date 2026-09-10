@@ -554,4 +554,42 @@ final class IdeFilesystemSessionTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    /**
+     * A file that arrives with a UTF-8 BOM leaves with one.
+     *
+     * The round trip, which is the whole reason the document strips the mark
+     * rather than tolerating it: it is off the text everywhere the width
+     * arithmetic, the digest and the language server can see it, and back on
+     * the bytes at the one place that writes them. Nothing in this tree handled
+     * a BOM before — `mb_strwidth()` counts U+FEFF as a column that no terminal
+     * draws, so line 0 of such a file measured one wider than it rendered.
+     */
+    public function testAFileWithAByteOrderMarkKeepsItAcrossAnEdit(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['marked.php' => "\u{FEFF}<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('marked.php'),
+            [
+                200 => function ($tui) use ($project): void {
+                    $this->assertSame(
+                        '<?php',
+                        $tui->getById('editor')->getDocument()->getLine(0),
+                        'the mark is off the text the editor holds',
+                    );
+                    $tui->getById('editor')->getDocument()->setCursor(0, 0);
+                    $tui->handleInput('X');
+                    $tui->handleInput("\x13"); // ctrl+s
+                },
+                400 => function ($tui) use ($project): void {
+                    $saved = (string) file_get_contents($project->path('marked.php'));
+                    $this->assertStringStartsWith("\u{FEFF}", $saved, 'the mark went back on the bytes');
+                    $this->assertSame("\u{FEFF}X<?php\n", $saved, 'and the edit landed after it, not in front of it');
+                },
+            ],
+        );
+    }
 }

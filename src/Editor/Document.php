@@ -19,6 +19,9 @@ use Porta\Support\IntMath;
  */
 final class Document
 {
+    /** The UTF-8 byte-order mark, stripped on load and re-emitted on save. */
+    public const string BOM = "\u{FEFF}";
+
     public const TAB_SIZE = 4;
 
     /** @var string[] */
@@ -84,9 +87,24 @@ final class Document
     /** @var (\Closure(int): void)|null called per mutation; see {@see setEditHook()} */
     private ?\Closure $onEdit = null;
 
+    /**
+     * Whether the text this document was loaded from began with a UTF-8 BOM.
+     *
+     * Held rather than carried, because a BOM in the TEXT is wrong twice over:
+     * `mb_strwidth()` counts U+FEFF as one column where a terminal draws none,
+     * so line 0 measures wider than it renders and every column mapped on it is
+     * off by one — and it sits at column 0, where the caret starts, so the
+     * first character typed goes in front of it and it stops being a mark.
+     *
+     * The save path reads this back, so a file that arrived with one leaves
+     * with one. Everything else — the digest, the LSP's copy, a search — sees
+     * text without it, which is what they all want.
+     */
+    private bool $hadBom = false;
+
     public function __construct(string $text = '')
     {
-        $text = str_replace(["\r\n", "\r"], replace: "\n", subject: $text);
+        $text = $this->stripByteOrderMark(str_replace(["\r\n", "\r"], replace: "\n", subject: $text));
         $this->lines = '' === $text ? [''] : explode("\n", $text);
         // The normalized $text IS what implode would rebuild — digest it
         // directly instead of re-joining a copy of the file.
@@ -1357,10 +1375,29 @@ final class Document
      * Replace the entire buffer content as one undoable edit (used by
      * project-wide replace). The caret is clamped into the new text.
      */
+    /** Whether the loaded text began with a UTF-8 BOM; the save path re-emits it. */
+    public function hasByteOrderMark(): bool
+    {
+        return $this->hadBom;
+    }
+
+    /**
+     * Take a leading UTF-8 BOM off $text and record that it was there.
+     *
+     * Records either way, so a reload of a file that lost its mark clears the
+     * flag rather than leaving the previous answer standing.
+     */
+    private function stripByteOrderMark(string $text): string
+    {
+        $this->hadBom = str_starts_with($text, self::BOM);
+
+        return $this->hadBom ? substr($text, offset: \strlen(self::BOM)) : $text;
+    }
+
     public function replaceAll(string $text): void
     {
         $this->pushUndo();
-        $text = str_replace(["\r\n", "\r"], replace: "\n", subject: $text);
+        $text = $this->stripByteOrderMark(str_replace(["\r\n", "\r"], replace: "\n", subject: $text));
         $this->lines = '' === $text ? [''] : explode("\n", $text);
         $this->cursorLine = $this->clampLine($this->cursorLine);
         $this->cursorCol = $this->clampCol($this->cursorLine, $this->cursorCol);

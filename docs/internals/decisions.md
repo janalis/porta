@@ -6079,3 +6079,36 @@ the confidence without the evidence.
 and wide-character width are all identity for ASCII input, and the shipped
 Japanese locale makes the last one reachable. `mb_strwidth` was audited in an
 earlier round and came back clean; the other two have not been asked.
+
+## The byte-order mark nothing had ever looked at (2026-09-11)
+
+Third item off the identity-in-the-common-case list, and the first where the
+answer was that the handling did not exist at all: `grep -rn "BOM"` over `src`
+and `plugins` returned one line, and it was a bidi codepoint range.
+
+A UTF-8 BOM is valid UTF-8, so a marked file loaded without complaint and
+carried U+FEFF as the first character of line 0. Measured rather than assumed:
+
+- `mb_strwidth("\u{FEFF}<?php")` is **6**; a terminal draws **5**. Line 0 of
+  every marked file measured a column wider than it rendered, so it truncated
+  early and every column mapped on it was off by one.
+- The mark sits exactly where the caret starts. Typing one character on opening
+  such a file put it IN FRONT — invisible on screen, and no longer a byte-order
+  mark.
+
+Stripped on load and re-emitted on save, so the bytes round-trip. Everything
+between — the dirty digest, the LSP's copy of the document, a search — sees
+text without it, which is what all of them want, and the one line that writes
+bytes puts it back.
+
+### A false alarm I nearly reported
+
+On the way there I found that inserting at column 1 of `"é"` splits the
+character and produces invalid UTF-8, and briefly had a much larger defect.
+It is not one: columns in `Document` are BYTE offsets, `moveRight()` steps a
+whole character (0 → 2 across `é`), and `setCursor(0, 1)` is a position no real
+path produces. Checking the real cursor path before writing it up is the only
+reason that did not become a wrong entry in this file.
+
+*Still unasked from that list:* tab expansion. `mb_strwidth` was audited clean
+in an earlier round.

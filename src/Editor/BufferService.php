@@ -647,6 +647,13 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         $bytes = null !== $buffer->editorConfig
             ? DocumentWriter::render($buffer->document, $buffer->editorConfig)
             : $buffer->document->getText();
+        // The document strips a leading BOM on load so it is not a column the
+        // width arithmetic counts and the terminal does not; putting it back
+        // here is what keeps a file that arrived with one from quietly losing
+        // it. Outside this line nothing else should ever see it.
+        if ($buffer->document->hasByteOrderMark()) {
+            $bytes = Document::BOM.$bytes;
+        }
         try {
             $this->fs->dumpFile($buffer->path, $bytes);
         } catch (IOExceptionInterface) {
