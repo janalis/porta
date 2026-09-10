@@ -6007,3 +6007,40 @@ user must type exactly — settings keys, language ids, the plugin API, the
 observable events. It does not follow that every enumerable set wants a doc: an
 inventory nobody would read is worse than none, and a gate demanding one would
 be work with no reader at the end of it.
+
+## The RTL column map had no guard, and a docblock said it did (2026-09-11)
+
+`MouseRouter::route()` opens by mapping a click's screen column back to the
+logical column the widgets rendered, so a mouse works under an RTL locale.
+**Delete that line and everything passes** — all 5,727 unit tests, and all nine
+tests of `IdeRtlLocaleTest`, the file written for exactly this.
+
+Worse than unguarded: `testRtlClickInTheTreeRoutesToTheClickedEntry` said in so
+many words that "a broken RTL column map would misroute the click out of the
+(right-hand) tree pane and B would never open". It does not. That is the
+`claims-are-not-guards` failure in its purest form — a causal guarantee spelled
+out in prose, in the file whose job was to hold it.
+
+**Why every existing test missed it.** `PaneReorder::logicalColumn()` is the
+IDENTITY for a left-to-right run, and returns early for a row with no recorded
+runs. Every RTL mouse test here clicks a row of Latin filenames, so the map
+does nothing and its absence is invisible. Mirroring the LAYOUT (sidebar to the
+right) is a different mechanism entirely, and that is what those tests actually
+cover.
+
+The map bites where a row is genuinely right-to-left. Measured, not guessed: in
+Hebrew on a 160-column terminal, **row 0 column 0 maps to column 159**, and 122
+columns across the top rows move. That row is the menu bar, whose titles are
+translated — so a click on the first title is the case where visual and logical
+disagree by the width of the screen.
+
+The new test asks the live map where `titleStart(0)` lands, clicks THERE, and
+requires the first menu to open — plus an assertion that visual and logical
+differ, so it cannot pass by the map having quietly become the identity.
+Removing the map fails it.
+
+*And the same correction applied to my own work:* the RTL drag test written
+twenty minutes earlier claimed the drag "inherits the remap for free". It does
+not depend on it at all — a drop resolves by ROW. Its docblock now says what it
+covers (a mirrored layout) and points at the menu test for the map. Writing a
+false claim while fixing one next door is exactly how the first one got there.

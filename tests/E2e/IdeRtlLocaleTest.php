@@ -262,9 +262,15 @@ final class IdeRtlLocaleTest extends TestCase
 
     public function testRtlClickInTheTreeRoutesToTheClickedEntry(): void
     {
-        // End-to-end mouse chain in RTL: SGR click → MouseRouter → per-pane
-        // logicalColumn → rect hit-test → open. A broken RTL column map would
-        // misroute the click out of the (right-hand) tree pane and B would never open.
+        // End-to-end mouse chain in RTL: SGR click → MouseRouter → rect
+        // hit-test → open, with the sidebar MIRRORED to the right.
+        //
+        // It does not test the bidi column map, though it used to say it did:
+        // "a broken RTL column map would misroute the click out of the tree
+        // pane" is false, and deleting that map leaves this green. The rows
+        // here are Latin filenames, so every bidi run is left-to-right and
+        // logicalColumn() is the identity. {@see
+        // testRtlClickOnAMenuTitleOpensThatMenu()} is the one that bites.
         putenv('PATH=/nonexistent');
         $project = new TempProject([
             '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
@@ -290,6 +296,119 @@ final class IdeRtlLocaleTest extends TestCase
                 },
                 500 => function ($tui): void {
                     $this->assertStringEndsWith('B.php', (string) $tui->getById('editor')->getFilePath(), 'the RTL click opened the tree entry');
+                },
+            ],
+        );
+    }
+
+    /**
+     * And a DRAG in the tree, in RTL, lands where the pointer is.
+     *
+     * The gesture added later, run against a MIRRORED layout: press, motion
+     * and release all land in a tree pane that RTL has moved to the right, and
+     * the drop resolves the row under the pointer there.
+     *
+     * Not a test of the bidi column map, and it would be dishonest to claim so
+     * — deleting that map leaves this green, because a drop resolves by ROW and
+     * these rows are Latin filenames whose runs map to themselves. {@see
+     * testRtlClickOnAMenuTitleOpensThatMenu()} covers the map.
+     */
+    public function testRtlDragInTheTreeDropsOnTheFolderUnderThePointer(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            'src/keep.php' => "<?php\n",
+            'move.php' => "<?php\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('move.php'),
+            [
+                300 => function ($tui) use ($project): void {
+                    $tui->tick();
+                    $renderer = Probe::get($tui, 'renderer');
+                    $rect = $renderer->getWidgetRect($tui->getById('tree'));
+                    $this->assertNotNull($rect);
+                    $this->assertGreaterThan(0, $rect->col, 'RTL puts the file tree on the right');
+
+                    // Read the rows rather than assume them: directories sort
+                    // first, so this fixture is 1 = src/, 2 = .porta.json,
+                    // 3 = move.php. The menu bar sits above the tree, so a
+                    // widget row N is SGR row N + 2.
+                    $rows = array_map(
+                        AnsiUtils::stripAnsiCodes(...),
+                        $tui->getById('tree')->render(new RenderContext(30, 12)),
+                    );
+                    $this->assertSame('▸ src/', trim($rows[1] ?? ''), 'src/ is widget row 1');
+                    $this->assertSame('move.php', trim($rows[3] ?? ''), 'move.php is widget row 3');
+                    $col = $rect->col + 6;
+                    $tui->handleInput("\x1b[<0;{$col};5M"); // press move.php (widget row 3)
+                    $tui->handleInput("\x1b[<32;{$col};3M"); // drag onto src/  (widget row 1)
+                    $tui->handleInput("\x1b[<0;{$col};3m"); // release
+                },
+                500 => function ($tui) use ($project): void {
+                    $this->assertFileExists($project->path('src/move.php'), 'the RTL drag dropped on the folder under the pointer');
+                    $this->assertFileDoesNotExist($project->path('move.php'));
+                },
+            ],
+        );
+    }
+
+    /**
+     * A click on a menu title in RTL opens THAT menu, not its mirror image.
+     *
+     * The one thing in this file that actually exercises {@see
+     * \Porta\Input\MouseRouter}'s bidi column map — and it was missing. Every
+     * other RTL mouse test here clicks a row of Latin filenames, where every
+     * bidi run is left-to-right and `logicalColumn()` is the identity, so
+     * deleting the map outright left the whole file green (and the unit suite
+     * too, all 5,727 of them).
+     *
+     * The menu bar is where the map bites: its titles are Hebrew, the row is
+     * one right-to-left run, and visual column 0 maps to logical column 159 on
+     * a 160-column terminal. A click near the RIGHT edge is the FIRST menu.
+     */
+    public function testRtlClickOnAMenuTitleOpensThatMenu(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            'A.php' => "<?php\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => function ($tui): void {
+                    $tui->tick();
+                    $bar = $tui->getById('menu');
+                    $this->assertFalse($bar->isOpen(), 'nothing is open yet');
+
+                    // The first title starts at logical column titleStart(0);
+                    // ask the live map where that lands on screen, so the test
+                    // states the RELATIONSHIP rather than a magic number.
+                    $logical = $bar->titleStart(0) + 1;
+                    $visual = null;
+                    foreach (range(0, end: 199) as $candidate) {
+                        if ($logical !== $tui->logicalColumn(0, $candidate)) {
+                            continue;
+                        }
+
+                        $visual = $candidate;
+                        break;
+                    }
+                    $this->assertNotNull($visual, 'the first title is reachable on screen');
+                    $this->assertNotSame($logical, $visual, 'and RTL puts it somewhere else entirely — otherwise this proves nothing');
+
+                    $tui->handleInput("\x1b[<0;".($visual + 1).';1M');
+                },
+                500 => function ($tui): void {
+                    $bar = $tui->getById('menu');
+                    $this->assertTrue($bar->isOpen(), 'the click landed on a title');
+                    $this->assertSame(0, $bar->openIndex(), 'and on the FIRST one, where the pointer was');
                 },
             ],
         );
