@@ -74,9 +74,41 @@ final class DiagnosticLog
                 return; // unwritable location: stay silent by contract
             }
             $oversized = is_file($this->path) && (int) filesize($this->path) > $this->maxBytes;
-            file_put_contents($this->path, $entry."\n", $oversized ? 0 : \FILE_APPEND);
+            if ($oversized) {
+                file_put_contents($this->path, $this->recentTail().$entry."\n");
+
+                return;
+            }
+            file_put_contents($this->path, $entry."\n", \FILE_APPEND);
         } finally {
             restore_error_handler();
         }
+    }
+
+    /**
+     * The recent half of an oversized log, cut at an ENTRY boundary.
+     *
+     * Trimming rather than emptying, because the two are not equally bad in the
+     * case that actually happens: a crash STORM is what pushes this file past
+     * its cap, so starting over discarded the history at the exact moment there
+     * was most of it. The class docblock's own example — the twenty-one
+     * identical traces this repo's `error.log` held — is what that rule would
+     * have thrown away, and reading them is how a real defect was found.
+     *
+     * Forward to the first dated line, so the survivors begin with a stamp
+     * rather than the middle of somebody's stack trace: that is the shape the
+     * docblock above promises a reader counting entries with `grep '^2'`. A
+     * tail holding no entry start at all — one enormous trace — keeps nothing,
+     * which is the same answer as before and still bounded.
+     */
+    private function recentTail(): string
+    {
+        $tail = substr((string) file_get_contents($this->path), -intdiv($this->maxBytes, num2: 2));
+        $matches = [];
+        if (1 !== preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} /m', $tail, $matches, \PREG_OFFSET_CAPTURE)) {
+            return '';
+        }
+
+        return substr($tail, (int) $matches[0][1]);
     }
 }

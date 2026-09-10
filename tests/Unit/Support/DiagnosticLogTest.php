@@ -81,7 +81,16 @@ final class DiagnosticLogTest extends TestCase
         );
     }
 
-    public function testAnOversizedFileStartsOverInsteadOfGrowing(): void
+    /**
+     * A cap too small to hold one whole entry keeps nothing.
+     *
+     * The degenerate end of the trimming rule, not the rule itself — {@see
+     * testPastTheCapTheRecentEntriesSurvive()} is that. Here the recent half is
+     * four bytes and contains no entry start, so there is no honest way to keep
+     * any of it: the survivors have to begin with a stamp or a reader counting
+     * entries would find the middle of a stack trace posing as one.
+     */
+    public function testACapTooSmallForAnEntryKeepsNothing(): void
     {
         $project = new TempProject();
         $log = $this->log($project->dir.'/.porta/diag.log', maxBytes: 8);
@@ -89,7 +98,39 @@ final class DiagnosticLogTest extends TestCase
         $log->append('0123456789'); // stamp + 11 bytes on disk — past the cap
         $log->append('fresh');
 
-        $this->assertSame(self::STAMP." fresh\n", file_get_contents($log->path()), 'the oversized file was started over, not appended to');
+        $this->assertSame(self::STAMP." fresh\n", file_get_contents($log->path()), 'nothing of the old file survived, because none of its tail was an entry');
+    }
+
+    /**
+     * Past the cap, the RECENT half survives.
+     *
+     * The perverse case this closes: a crash storm is exactly what pushes this
+     * file past its cap, so under the old rule the log was emptied at the
+     * moment it had the most to say. The class docblock's own example — the
+     * twenty-one identical traces that sat in this repo's `error.log` — is the
+     * history that would have gone.
+     */
+    public function testPastTheCapTheRecentEntriesSurvive(): void
+    {
+        $project = new TempProject();
+        $log = $this->log($project->dir.'/.porta/diag.log', maxBytes: 120);
+
+        // Drive it to the exact moment of overflow, so the next append is the
+        // one that decides whether history survives. Anything less is timing:
+        // straight after a reset the file legitimately holds one entry.
+        $n = 0;
+        do {
+            $log->append('entry '.++$n);
+        } while (filesize($log->path()) <= 120 && $n < 100);
+        $last = 'entry '.$n;
+
+        $log->append('newest');
+
+        $kept = (string) file_get_contents($log->path());
+        $this->assertStringContainsString('newest', $kept, 'the entry that crossed the cap is there');
+        $this->assertStringContainsString($last, $kept, 'and so is the one before it — the file was trimmed, not emptied');
+        $this->assertStringNotContainsString('entry 1'."\n", $kept, 'while the oldest was dropped to make room');
+        $this->assertLessThanOrEqual(2 * 120, \strlen($kept), 'and the file stays bounded');
     }
 
     public function testAtTheCapItStillAppends(): void

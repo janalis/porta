@@ -5882,3 +5882,35 @@ codebase's.
 dies at 144 of 716 files with `Allowed memory size of 536870912 bytes
 exhausted`. That is not a defect — it is why `composer mutate` is diff-scoped —
 but it does mean a full-tree run needs `-d memory_limit=3G`, which nothing said.
+
+## A crash log that empties itself when it matters most (2026-09-10)
+
+`DiagnosticLog` caps itself at 256KB and, past the cap, replaced the whole file
+with the entry that crossed it. Bounded, tested, and deliberate — the test was
+called `testAnOversizedFileStartsOverInsteadOfGrowing` — but nothing recorded
+WHY starting over was chosen over keeping the recent half, and the two are not
+equally bad in the case that actually happens.
+
+**A crash storm is what pushes this file past its cap.** So the rule discarded
+the history at the exact moment there was most of it: the more the IDE was
+failing, the more likely its log was a single line. The class docblock's own
+worked example is the loss — the twenty-one identical `CodeEditorWidget` traces
+this repo's `error.log` held, which are what led to six over-wide rows earlier
+today. One more crash before I read them and there would have been nothing.
+
+It trims to the recent half now, cut FORWARD to the first dated line so the
+survivors begin with a stamp rather than the middle of somebody's stack trace —
+which is the shape the same docblock promises a reader counting entries with
+`grep '^2'`. A tail holding no entry start at all (one enormous trace) keeps
+nothing, which is the old answer and still bounded.
+
+Reproduced before fixing, and the first attempt at that test was **vacuous**: it
+appended a fixed number of entries and passed under the old rule, because
+straight after a reset the file legitimately holds recent entries. Only driving
+the log to the exact byte of overflow — append until `filesize > cap`, then one
+more — discriminates. The old test keeps its case under a name that no longer
+overclaims: a cap too small to hold one whole entry keeps nothing.
+
+*Not changed:* the 256KB cap itself, and the silence-on-failure contract. The
+trim reads the file once, inside the same suppressed-error block, on the one
+append per cap-crossing.
