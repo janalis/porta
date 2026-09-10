@@ -11,6 +11,7 @@ use Porta\Editor\OpenFocus;
 use Porta\Event\FileDeleted;
 use Porta\Event\FileRenamed;
 use Porta\Event\TreeDropRequested;
+use Porta\Event\WorkingTreeChanged;
 use Porta\I18n\Translator;
 use Porta\Search\ProjectSearchController;
 use Porta\Search\SearchActions;
@@ -443,13 +444,32 @@ final class TreeOperations
         $this->tui->requestRender();
     }
 
-    /** Run a filesystem mutation, flashing $failMessage if it raises an I/O error. */
+    /**
+     * Run a filesystem mutation, flashing $failMessage if it raises an I/O
+     * error — and tell version control that the working tree moved.
+     *
+     * All five of this class's filesystem verbs come through here: new file,
+     * new folder, move, copy, delete. Every one of them changes what `git
+     * status` would say, and until this line core was the one producer of
+     * working-tree changes that never announced them — so a file you moved sat
+     * unmarked in the tree until something unrelated, usually a save, happened
+     * to trigger a refresh. {@see WorkingTreeChanged} is payload-free and
+     * already carries a stash, a stage and a pull; a file appearing or moving
+     * is the same news from a different verb.
+     *
+     * In FINALLY, not after a successful $op: a mutation that raises partway —
+     * three of five files moved, then a permission error — has still changed
+     * the tree, and asking git is how anyone finds out what actually landed.
+     * The no-op cases never reach here; they return at their own guard.
+     */
     private function withFs(string $failMessage, callable $op): void
     {
         try {
             $op();
         } catch (IOExceptionInterface) {
             $this->notifier->error($failMessage);
+        } finally {
+            $this->events->dispatch(new WorkingTreeChanged());
         }
     }
 }

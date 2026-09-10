@@ -13,6 +13,7 @@ use Porta\Event\BufferRepointRequested;
 use Porta\Event\FileDeleted;
 use Porta\Event\FileRenamed;
 use Porta\Event\FileRewritten;
+use Porta\Event\WorkingTreeChanged;
 use Porta\Support\Files;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Filesystem\Exception\IOException;
@@ -65,6 +66,27 @@ final readonly class WorkspaceEditor
      * @param array<string, mixed> $edit
      */
     public function applyWorkspaceEdit(array $edit): WorkspaceEditOutcome
+    {
+        $outcome = $this->applyEdit($edit);
+        if (!$outcome->isRefused()) {
+            // The tree may have moved — a file created, renamed, deleted or
+            // rewritten on disk — and whatever computes version-control marks
+            // has no other way to hear about it. Once for the whole edit, not
+            // once per operation: a refactoring may rename twenty files, and
+            // twenty `git status` runs answer the same question.
+            //
+            // Not on a refusal, which is the one case where silence is right:
+            // refuseUnhonourable() returns before any operation runs, so there
+            // is no half-applied state to ask git about. Every other outcome
+            // may have changed disk, including a partial one.
+            $this->events->dispatch(new WorkingTreeChanged());
+        }
+
+        return $outcome;
+    }
+
+    /** @param array<string, mixed> $edit */
+    private function applyEdit(array $edit): WorkspaceEditOutcome
     {
         /** @var list<array<string, mixed>> $documentChanges */
         $documentChanges = \is_array($edit['documentChanges'] ?? null) ? $edit['documentChanges'] : [];

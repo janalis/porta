@@ -5217,7 +5217,8 @@ both recorded in `mago.toml` beside the numbers they moved.
 - ~~**Unsaved changes are still lost on any move.**~~ **Fixed straight
   after** — see below. It was pre-existing, but shipping a casual gesture over
   a path that drops work made it this change's problem.
-- **Git decorations go stale after a move**; nothing listens to `FileRenamed`.
+- ~~**Git decorations go stale after a move**~~ — **fixed**, see below. The
+  cause was not the missing listener; it was core never speaking at all.
 - ~~**The language server keeps the old URI open**~~ — **fixed**, see below.
   `workspace/didRenameFiles` is still not sent; that is a feature, not this bug.
 - **Moves are not undoable**, which is settled — `WorkspaceEditor` calls
@@ -5306,3 +5307,57 @@ reason in the docblock so the next reader does not add it back.
 `workspace.fileOperations.didRename` want the rename itself, not a close and an
 open — that is how a server updates imports for you. Needs capability
 negotiation, so it is its own change.
+
+## Core was the one producer of working-tree changes that never spoke (2026-09-10)
+
+The last of the four items drag-and-drop shipped over, and the diagnosis I had
+written down was wrong.
+
+I had recorded it as "nothing listens to `FileRenamed`", which suggested adding
+a listener in the git plugin. Tracing it properly said something else: the file
+tree's marks come from a whole-repository `git status`, refreshed on a save, a
+commit, a stage, a stash, a pull — and every one of those triggers is a git
+verb. `WorkingTreeChanged` exists precisely so a producer core knows nothing
+about can keep the marks honest, and core, which creates, moves, copies and
+deletes files all day, had never dispatched it once.
+
+So it was never one missing listener. It was five missing announcements, and
+they all leave through the same door: `TreeOperations::withFs()`, the wrapper
+every filesystem verb in that class already runs inside. One dispatch there and
+new file, new folder, move, copy and delete are all covered.
+
+**In `finally`, not after a successful call.** A mutation that raises partway —
+three of five files moved, then a permission error — has still changed the tree,
+and asking git is how anyone finds out what actually landed. The no-op cases
+(an empty name, a rename to the same name) never reach `withFs` at all; they
+return at their own guard.
+
+### The event's meaning, restated rather than widened
+
+`WorkingTreeChanged`'s docblock listed only VCS verbs, which is why nobody had
+thought to dispatch it from core. The list was a set of examples that had
+hardened into a definition. The event is defined by what its LISTENER owes it —
+"the tree moved, recompute" — not by who moved it, and a file created in a
+repository changes what `git status` says exactly as much as `git add` does.
+Both the class docblock and the plugin event table in `docs/plugins.md` now say
+so, because the table is the contract a plugin author reads.
+
+*Re-opens if* the extra `git status` per file operation ever shows up in
+`perf.log`: `WorkingTreeStatus` already coalesces an in-flight run, but
+`GitRefresher::refreshBranch()` also fires and a create cannot move HEAD. That
+is one cheap call on a user-initiated action, so it is not worth a filter today.
+
+### The other silent producer, found and fixed in the same breath
+
+`WorkspaceEditor` — the LSP-driven create/rename/delete/rewrite — had it too. I
+started to record it as "not reproduced, so not fixed", then noticed the
+reproduction was a unit test with a real dispatcher and two minutes' work.
+Deferring something that cheap is not discipline, it is bookkeeping.
+
+Same shape, different door: one announcement for the whole edit, because a
+refactoring may rename twenty files and twenty `git status` runs answer the
+same question. The guard is `!$outcome->isRefused()` — the one case where
+silence is right, since `refuseUnhonourable()` returns before any operation
+runs, so there is no half-applied state to ask about. Both halves of that guard
+were mutation-checked: announcing unconditionally, and not announcing at all,
+each fail a test.

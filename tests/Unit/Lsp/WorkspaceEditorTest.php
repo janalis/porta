@@ -12,6 +12,7 @@ use Porta\Event\BufferRepointRequested;
 use Porta\Event\FileDeleted;
 use Porta\Event\FileRenamed;
 use Porta\Event\FileRewritten;
+use Porta\Event\WorkingTreeChanged;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\RefactoringUndo;
@@ -481,6 +482,67 @@ final class WorkspaceEditorTest extends TestCase
         $this->assertFileExists($new);
         $this->assertSame("<?php\nclass Extracted {}\n", (string) file_get_contents($new));
         $this->assertSame(1, $outcome->touched);
+    }
+
+    /**
+     * A refactoring that lands on disk announces that the working tree moved.
+     *
+     * The same silence {@see \Porta\Tree\TreeOperations::withFs()} had: the
+     * file tree's version-control marks come from a whole-repository `git
+     * status`, refreshed only when something says the tree moved. A server-side
+     * rename or create moved it as surely as `git add` does, so without this
+     * the moved file sat unmarked until an unrelated save happened to trigger
+     * a refresh.
+     *
+     * Once for the whole edit, not once per operation: a refactoring may rename
+     * twenty files, and twenty `git status` runs answer the same question.
+     */
+    public function testAnAppliedEditAnnouncesThatTheWorkingTreeMoved(): void
+    {
+        $project = new TempProject(['old.php' => "<?php\n"]);
+        $events = new EventDispatcher();
+        $moved = 0;
+        $events->addListener(WorkingTreeChanged::class, static function () use (&$moved): void {
+            ++$moved;
+        });
+        $we = $this->workspaceEditor($events);
+
+        $outcome = $we->applyWorkspaceEdit([
+            'documentChanges' => [
+                ['kind' => 'rename', 'oldUri' => Uri::fromPath($project->path('old.php')), 'newUri' => Uri::fromPath($project->path('new.php'))],
+                ['kind' => 'create', 'uri' => Uri::fromPath($project->path('made.php'))],
+            ],
+        ]);
+
+        $this->assertFalse($outcome->isRefused());
+        $this->assertSame(1, $moved, 'two operations, one announcement');
+    }
+
+    /**
+     * A REFUSED edit changed nothing, and says nothing.
+     *
+     * The one case where silence is right: `refuseUnhonourable()` returns
+     * before any operation runs, so there is no half-applied state for git to
+     * be asked about. This is what stops the announcement from degrading into
+     * "applyWorkspaceEdit was called".
+     */
+    public function testARefusedEditAnnouncesNothing(): void
+    {
+        $events = new EventDispatcher();
+        $moved = 0;
+        $events->addListener(WorkingTreeChanged::class, static function () use (&$moved): void {
+            ++$moved;
+        });
+        $we = $this->workspaceEditor($events);
+
+        $outcome = $we->applyWorkspaceEdit([
+            'documentChanges' => [
+                ['kind' => 'rename', 'oldUri' => 'file:///nope/missing.php', 'newUri' => 'file:///nope/other.php'],
+            ],
+        ]);
+
+        $this->assertTrue($outcome->isRefused());
+        $this->assertSame(0, $moved);
     }
 
     public function testARenameOperationMovesTheFileAndAsksForTheBufferToFollow(): void

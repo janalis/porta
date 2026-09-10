@@ -268,7 +268,7 @@ never firing.
 | `LocaleChanged` | `string $locale` |
 | `GitCommitted` | — a commit was made from the git view |
 | `GitRemoteCompleted` | `string $operation` (`fetch`/`pull`/`push`), `bool $ok` |
-| `WorkingTreeChanged` | — the working tree moved under version control: a stage, stash, commit, reset or pull |
+| `WorkingTreeChanged` | — the working tree moved: a stage, stash, commit, reset or pull, or one of the file tree's own verbs (new file, new folder, move, copy, delete). It is defined by what a listener owes it — "recompute" — not by who moved the tree |
 | `FileRenamed` | `string $from`, `string $to` — both absolute and canonical; `$from` is already gone from disk. A DIRECTORY carries its whole tree, so anything you key by path should ask `ProjectPaths::moved()` rather than compare |
 | `FileRewritten` | `string $path`, `string $previousText` — a refactoring rewrote a file that had no open buffer. The payload is what the write REPLACED: the new content is on disk already, and the old exists nowhere else. Not a save, and no `BufferSaved` fires for it |
 
