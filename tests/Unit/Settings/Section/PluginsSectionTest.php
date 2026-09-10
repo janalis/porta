@@ -14,6 +14,7 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\Section\PluginsSection;
 use Porta\Settings\SettingsPluginsController;
+use Porta\Settings\SettingsProvenance;
 use Porta\Settings\SettingsScope;
 use Porta\Settings\SettingsScopeRow;
 use Porta\Tests\Support\FakePluginLifecycle;
@@ -45,6 +46,7 @@ final class PluginsSectionTest extends TestCase
             new ToolInstaller($project->dir, []),
             new SettingsScopeRow($scope, $files, new Translator('en')),
             $scope,
+            new SettingsProvenance($files),
         );
         $section = new PluginsSection($plugins, new Translator('en'));
 
@@ -84,6 +86,7 @@ final class PluginsSectionTest extends TestCase
             new ToolInstaller($project->dir, []),
             new SettingsScopeRow($scope, $files, new Translator('en')),
             $scope,
+            new SettingsProvenance($files),
         ), new Translator('en'));
 
         $section->reset('plugins', 'pluginSetting:binary');
@@ -119,6 +122,7 @@ final class PluginsSectionTest extends TestCase
             new ToolInstaller($project->dir, []),
             new SettingsScopeRow($scope, $files, new Translator('en')),
             $scope,
+            new SettingsProvenance($files),
         ), new Translator('en'));
 
         $pages = $section->pages();

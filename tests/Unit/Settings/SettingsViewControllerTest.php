@@ -297,6 +297,7 @@ final class SettingsViewControllerTest extends TestCase
             new ToolInstaller($this->project->dir, []),
             $scopeRow,
             $scope,
+            new SettingsProvenance($files),
         );
         $editorArea = new EditorArea(
             new BufferManager(),

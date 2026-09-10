@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
+use Porta\Config\ConfigScope;
 use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\InstallOutcome;
 use Porta\Plugin\Lifecycle\PluginInstaller;
@@ -30,6 +31,15 @@ final class SettingsPluginsController
     /** Prefix marking a row that belongs to the plugin's own descriptors. */
     private const string SETTING_PREFIX = 'pluginSetting:';
 
+    /**
+     * The config key a BUNDLED plugin's Enabled toggle writes.
+     *
+     * The only one of the two plugin lists a global write can be shadowed in:
+     * `disabledPlugins` is a UNION, so a global disable always lands, while
+     * `enabledPlugins` is replaced whole by the nearest layer that has it.
+     */
+    private const string BUNDLED_KEY = 'enabledPlugins';
+
     /** The removal row key awaiting its confirming second press. */
     private ?string $armed = null;
 
@@ -43,6 +53,7 @@ final class SettingsPluginsController
         private readonly ToolInstaller $installerTool,
         private readonly SettingsScopeRow $scopeRow,
         private readonly SettingsScope $scope,
+        private readonly SettingsProvenance $provenance,
     ) {}
 
     /** @return list<SettingsRow> */
@@ -81,6 +92,40 @@ final class SettingsPluginsController
         return $rows;
     }
 
+    /**
+     * Which file decides whether this plugin loads, for the Enabled toggle.
+     *
+     * Every other settings row on every other page carries this, and it is
+     * what {@see ShadowedWriteWarning} reads to say "you saved that globally
+     * and this project ignores it". This row carried none, so the one toggle
+     * whose key REPLACES rather than merges was the one that could not warn:
+     * flip a bundled plugin on from Global scope while the project has an
+     * `enabledPlugins` list, and the write lands, the list replaces it, and
+     * nothing happens or is said.
+     *
+     * Null for a project- or globally-INSTALLED plugin: that toggle writes
+     * `disabledPlugins`, which unions, so it can never be shadowed and a
+     * provenance tag would claim a conflict that does not exist.
+     */
+    private function enabledOrigin(string $name): ?ConfigScope
+    {
+        $key = $this->bundledKey($name);
+
+        return null === $key ? null : $this->provenance->originOf([$key]);
+    }
+
+    /** {@see BUNDLED_KEY} when $name is bundled with Porta, else null. */
+    private function bundledKey(string $name): ?string
+    {
+        foreach ($this->installer->installed() as $plugin) {
+            if ($plugin['name'] === $name) {
+                return 'embedded' === $plugin['scope'] ? self::BUNDLED_KEY : null;
+            }
+        }
+
+        return null;
+    }
+
     /** Whether a plugin is installed (its settings page is reachable — disabled ones too). */
     public function hasPlugin(string $name): bool
     {
@@ -108,6 +153,8 @@ final class SettingsPluginsController
                 // to differ from. A bundled plugin is off unless it is in
                 // DEFAULT_ENABLED_PLUGINS; a project or global one is on. A
                 // marker here would be wrong for one of the two.
+                origin: $this->enabledOrigin($name),
+                shadowed: null !== $this->bundledKey($name) && $this->provenance->shadowsGlobal([self::BUNDLED_KEY]),
             ),
             ...$this->pluginSettings->rows($name),
         ];

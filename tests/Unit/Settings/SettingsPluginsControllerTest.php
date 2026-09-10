@@ -14,6 +14,7 @@ use Porta\Plugin\Lifecycle\ToolInstaller;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\SettingsPluginsController;
+use Porta\Settings\SettingsProvenance;
 use Porta\Settings\SettingsRowKind;
 use Porta\Settings\SettingsScope;
 use Porta\Settings\SettingsScopeRow;
@@ -38,6 +39,8 @@ final class SettingsPluginsControllerTest extends TestCase
     private StatusBarWidget $status;
     private FakePluginLifecycle $lifecycle;
     private ?string $embeddedDir = null;
+    /** Held so its destructor does not remove the bundled fixture mid-test. */
+    private TempProject $embedded;
     private ?string $composerBinary = null;
     /** @var array<string, string|null> manager name => fake binary path */
     private array $managerBinaries = [];
@@ -75,6 +78,7 @@ final class SettingsPluginsControllerTest extends TestCase
             $this->installerTool,
             new SettingsScopeRow($scope, $files, new Translator('en')),
             $scope,
+            new SettingsProvenance($files),
         );
     }
 
@@ -184,6 +188,66 @@ final class SettingsPluginsControllerTest extends TestCase
         // all of them restart-required by construction.
         $this->assertSame([['demo', 'binary', '/opt/x']], $this->lifecycle->pluginSettingChanged);
         $this->assertSame('/opt/x', $this->pluginSettings->value('demo', 'binary'), 'and told AFTER the write, so setting() reads the new value');
+    }
+
+    /**
+     * The Enabled toggle is the one row on any settings page that carried no
+     * provenance, and it is the one whose key REPLACES rather than merges.
+     *
+     * `enabledPlugins` is taken whole from the nearest layer that has it, so a
+     * bundled plugin flipped on from Global scope while the project has that
+     * list writes correctly and changes nothing here.
+     * {@see \Porta\Settings\ShadowedWriteWarning} is what says so, and it
+     * reads `origin` — with none, the warning could not fire and the toggle
+     * was silent.
+     */
+    public function testTheEnabledToggleSaysWhichFileDecidesIt(): void
+    {
+        $controller = $this->bundled(['git']);
+        file_put_contents($this->project->path('.porta.json'), json_encode(['enabledPlugins' => ['todo']], \JSON_THROW_ON_ERROR));
+
+        $row = $controller->pluginRows('git')[0];
+
+        $this->assertSame(ConfigScope::Project, $row->origin, 'the project list decides whether a bundled plugin loads');
+    }
+
+    /**
+     * A project- or globally-INSTALLED plugin's toggle writes
+     * `disabledPlugins`, which UNIONS — both layers saying "not this one"
+     * agree — so a global write there can never be shadowed, and a tag would
+     * claim a conflict that cannot happen.
+     */
+    public function testAnInstalledPluginsToggleClaimsNoProvenance(): void
+    {
+        $controller = $this->controller();
+        $this->lifecycle->names = ['demo'];
+        mkdir($this->project->path('.porta/plugins/demo'), permissions: 0o755, recursive: true);
+        file_put_contents($this->project->path('.porta/plugins/demo/plugin.php'), data: '<?php return new stdClass();');
+        file_put_contents($this->project->path('.porta.json'), json_encode(['enabledPlugins' => ['todo']], \JSON_THROW_ON_ERROR));
+
+        $this->assertNull($controller->pluginRows('demo')[0]->origin);
+    }
+
+    /**
+     * A controller whose installer reports $names as plugins bundled with
+     * Porta.
+     *
+     * @param list<string> $names
+     */
+    private function bundled(array $names): SettingsPluginsController
+    {
+        // Held, not chained off: TempProject removes its dir in __destruct, so
+        // an inline temporary is freed before the installer ever globs it.
+        $this->embedded = new TempProject();
+        $this->embeddedDir = $this->embedded->dir;
+        foreach ($names as $name) {
+            mkdir($this->embeddedDir.'/'.$name, permissions: 0o755, recursive: true);
+            file_put_contents($this->embeddedDir.'/'.$name.'/plugin.php', data: '<?php return new stdClass();');
+        }
+        $controller = $this->controller();
+        $this->lifecycle->names = $names;
+
+        return $controller;
     }
 
     public function testTheEnabledToggleRoutesToSetEnabledAndReflectsDisabledState(): void

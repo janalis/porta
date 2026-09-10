@@ -496,10 +496,14 @@ Rejected, each with what would re-open it:
   and proceeds instead. Refusing reads well until you want a personal default
   for a key some open project happens to pin, at which point the global value
   is unreachable from inside that project. The write is correct; only this
-  project ignores it, and that is what the warning says. *Re-opens if* the
-  settings screen gains a way to edit a scope other than the one in effect,
-  which would make "change it where it is set" an instruction the user can
-  actually follow.
+  project ignores it, and that is what the warning says. ~~*Re-opens if* the
+  settings screen gains a way to edit a scope other than the one in effect~~ —
+  **that condition is met and the decision survives it** (2026-09-10):
+  {@see SettingsScopeRow} is exactly such a chooser. It does not help, because
+  switching to Project scope to store a PERSONAL default writes it into a file
+  that travels with the repository, which is a different thing from what the
+  user asked for. The global write is still the right write. Do not re-open on
+  the chooser.
 - **The one-time "there is a global file now" notice**, which this plan called
   for and which the shipped default made redundant. The notice existed to
   explain a surprise: an existing user's next edit landing in a file they had
@@ -5010,3 +5014,52 @@ trait — `composer mutate` is always diff-scoped, so it only ever parses change
 files, and today's diff happened to contain none. Ran the whole of
 `src/Widget/Support` (traits included) for real: no abort. The trigger needs
 the cross-tree composition, so core is clear.
+
+## The one toggle that could not warn (2026-09-10)
+
+Went looking for settled decisions whose recorded *re-opening condition* had
+since been met — a stale condition is the same defect as a stale justification,
+and it costs the next reader a round. One had: "Refusing a write the other
+layer overrules" says it re-opens if the settings screen gains a way to edit a
+scope other than the one in effect, and {@see SettingsScopeRow} is that. The
+decision survives anyway, for a reason that was not written down — switching to
+Project scope to store a PERSONAL default writes it into a file that travels
+with the repository — so the entry says so now rather than inviting the same
+round again.
+
+Checking its other claim found a real gap. It says **every** path that can
+write into a shadowed key warns and proceeds — "a setting, a reset, a plugin
+toggle, a rebind". The plugin toggle could not:
+`ShadowedWriteWarning::warnIf()` reads `origin`, and
+`SettingsPluginsController` was the only settings controller that set it on no
+row at all. With `origin` null the warning returns early, always.
+
+That matters most on precisely this row. The two plugin lists merge
+differently, and CLAUDE.md's settled list singles the asymmetry out:
+
+- `disabledPlugins` **unions** — both layers saying "not this one" agree, so a
+  global disable always lands and can never be shadowed.
+- `enabledPlugins` is **replaced whole** by the nearest layer that has it.
+
+So flipping a BUNDLED plugin on from Global scope, while the project has an
+`enabledPlugins` list — which this machine's `.porta.json` does, with nine
+entries — wrote correctly to the user file, was discarded entirely by the
+project list, and said nothing. Every other row on every other page would have
+warned.
+
+The toggle carries `origin` now, and only for bundled plugins: an installed
+plugin's toggle writes `disabledPlugins`, and tagging that would claim a
+conflict that cannot happen. Both halves are mutation-checked — dropping the
+provenance fails, and claiming it for installed plugins fails too.
+
+Nothing new was needed to say it: the existing funnel in
+`SettingsViewController::afterWrite()` already routes every form edit through
+`ShadowedWriteWarning`, and the row was the only thing missing.
+
+### And the arch gate earned its keep
+
+The test fixture wanted a temporary directory of bundled plugins, and the first
+version chained off `new TempProject()->dir`. `composer arch` failed it by
+name: the temporary is freed — and its directory removed — before the installer
+ever globs it. That check exists because the trap has been hit before; this is
+the first time it caught it before a flake did.
