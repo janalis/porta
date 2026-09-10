@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\I18n;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Search\Everywhere\SearchCategory;
+use Porta\Ui\ScopeKind;
 use Symfony\Component\Finder\Finder;
 
 /**
@@ -122,9 +123,23 @@ final class CatalogCoverageTest extends TestCase
     }
 
     /**
-     * Every literal-string first argument of a ->trans() call in src/ and the
-     * bundled plugins' src/. Dynamic ids cannot be collected statically; the
-     * two big dynamic-id tables are covered by {@see labelLiterals()}.
+     * Every literal string in the FIRST argument of a ->trans() call in src/
+     * and the bundled plugins' src/. Dynamic ids cannot be collected
+     * statically; the two big dynamic-id tables are covered by
+     * {@see labelLiterals()} and the enum labels by {@see enumLabelLiterals()}.
+     *
+     * The whole argument, not just its first token, because a choice between
+     * two ids is written as a ternary — `trans($single ? 'Overwrite' :
+     * 'Overwrite all')` — and a scanner that required the argument to BE a
+     * quoted string saw neither of them. Six such pairs were invisible to this
+     * gate, all of them translated by luck rather than by the rule.
+     *
+     * Only the first argument, and only at its own bracket depth: the params
+     * array is full of `'%file%'` placeholder keys that are not ids, and a
+     * nested call's arguments belong to that call. And in a ternary, only the
+     * BRANCHES: a condition like `'indentSize' === $key` decides with a string
+     * that is an array key, not an id, and taking the whole argument reported
+     * two of those as untranslated.
      *
      * @return list<string>
      */
@@ -147,19 +162,68 @@ final class CatalogCoverageTest extends TestCase
                 if ('(' !== $tokens[$j]) {
                     continue;
                 }
-                $j = $this->nextMeaningful($tokens, $j + 1);
-                $argument = $tokens[$j];
-                if (!(\is_array($argument) && \T_CONSTANT_ENCAPSED_STRING === $argument[0])) {
-                    continue;
-                }
-                $k = $this->nextMeaningful($tokens, $j + 1);
-                if (',' === $tokens[$k] || ')' === $tokens[$k]) {
-                    $ids[] = $this->unquote($argument[1]);
+
+                foreach ($this->firstArgumentStrings($tokens, $j + 1) as $id) {
+                    $ids[] = $id;
                 }
             }
         }
 
         return $ids;
+    }
+
+    /**
+     * The quoted strings the first argument can EVALUATE to: every one at the
+     * argument's own bracket depth, or — when it is a ternary — only those
+     * after the `?`.
+     *
+     * The condition of a ternary is not an id. `'i' === $scope ? … : …` and
+     * `'indentSize' === $key ? … : …` are both real, and both were reported as
+     * untranslated by the first draft of this.
+     *
+     * @param list<array{int, string, int}|string> $tokens
+     *
+     * @return list<string>
+     */
+    private function firstArgumentStrings(array $lexemes, int $start): array
+    {
+        $strings = [];
+        $branchesFrom = null;
+        $depth = 0;
+        for ($i = $start, $count = \count($lexemes); $i < $count; ++$i) {
+            $lexeme = $lexemes[$i];
+            if (\is_array($lexeme)) {
+                if (0 === $depth && \T_CONSTANT_ENCAPSED_STRING === $lexeme[0]) {
+                    $strings[] = [$i, $this->unquote($lexeme[1])];
+                }
+
+                continue;
+            }
+            if (\in_array($lexeme, ['(', '[', '{'], strict: true)) {
+                ++$depth;
+
+                continue;
+            }
+            if (')' === $lexeme && 0 === $depth) {
+                break; // the call closed: this was its only argument
+            }
+            if (\in_array($lexeme, [')', ']', '}'], strict: true)) {
+                --$depth;
+
+                continue;
+            }
+            if (',' === $lexeme && 0 === $depth) {
+                break; // the params array starts here and holds no ids
+            }
+            if ('?' === $lexeme && 0 === $depth && null === $branchesFrom) {
+                $branchesFrom = $i;
+            }
+        }
+
+        return array_values(array_map(
+            static fn (array $found): string => (string) $found[1],
+            array_filter($strings, static fn (array $found): bool => null === $branchesFrom || $found[0] > $branchesFrom),
+        ));
     }
 
     /**
@@ -185,15 +249,23 @@ final class CatalogCoverageTest extends TestCase
     }
 
     /**
-     * The five Search Everywhere category header labels, translated with a
-     * dynamic ->trans($category->title()) argument the transLiterals()
-     * scanner cannot see.
+     * Enum labels reaching the screen through a dynamic argument —
+     * `->trans($category->title())`, `->trans($kind->label())` — which no
+     * scanner of literals can see.
+     *
+     * Both enums, because the pattern is the point: `SearchCategory` was
+     * listed here and `ScopeKind` was not, so adding a sixth search scope would
+     * have shipped its English label into six locales with every gate green.
+     * A new enum whose cases reach `trans()` belongs here too.
      *
      * @return list<string>
      */
     private function categoryLiterals(): array
     {
-        return array_map(static fn (SearchCategory $c): string => $c->title(), SearchCategory::cases());
+        return [
+            ...array_map(static fn (SearchCategory $c): string => $c->title(), SearchCategory::cases()),
+            ...array_map(static fn (ScopeKind $k): string => $k->label(), ScopeKind::cases()),
+        ];
     }
 
     /** @return list<string> the en catalog's <source> texts */

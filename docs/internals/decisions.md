@@ -5550,3 +5550,40 @@ moved the files it got to, and a listener that is never told cannot find out.
 
 Both halves are mutation-checked: dropping the batch fires per file again, and
 dropping the batch's own announcement leaves a completed drop silent.
+
+## Twelve strings the catalog gate could not see (2026-09-10)
+
+`CatalogCoverageTest` reads every `->trans()` in `src/` and the bundled plugins
+and asks whether its id is in `messages.en.xlf`. It took the FIRST TOKEN after
+the `(` and required it to be a quoted string — so any call whose id is chosen
+rather than written was invisible:
+
+```php
+$this->translator->trans($single ? 'Overwrite' : 'Overwrite all');
+```
+
+Proved before fixing, by deleting the `Overwrite` unit from the English catalog
+and running the gate: green. Twelve ids across six such pairs, 431 → 443. All
+twelve happened to be translated — by luck, not by the rule, which is the only
+thing that was ever at stake here.
+
+**The whole first argument, minus two things.** Stop at the first top-level
+comma, because the params array is full of `'%file%'` keys that are not ids;
+and in a ternary take only what follows the `?`, because the CONDITION can be a
+string too. Both real: `'i' === $scope ? …` and `'indentSize' === $key ? …` were
+reported as untranslated by the first draft, which is how the second rule got
+written.
+
+### The enum half, which had already been solved once
+
+The same file has `categoryLiterals()`, there precisely because
+`->trans($category->title())` is a dynamic argument no scanner of literals can
+see. `ScopeKind::label()` is that pattern exactly and was not listed, so a sixth
+search scope would have shipped its English label into six locales with every
+gate green. Both enums are in that list now, and the docblock says a new enum
+whose cases reach `trans()` belongs there too.
+
+*Still not covered, and named so nobody assumes otherwise:* a ternary NESTED
+inside a ternary hides its branches at bracket depth 1. There is no such call
+today. Concatenation into `trans()` would be read as several ids rather than
+one, which fails loudly rather than silently — the right way round.
