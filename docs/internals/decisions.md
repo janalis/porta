@@ -5720,3 +5720,39 @@ first assuming two columns of it, then four — and both times the probe reporte
 overflows that were my arithmetic, not the code's. The rows equal `width`
 exactly. A probe is only as good as the invariant you hand it, and an invariant
 you guessed at will happily report someone else's bug as yours.
+
+## The list of everything was a hand-written list (2026-09-10)
+
+Six over-wide rows in a day, and the honest question afterwards is not "did I
+get them all" but "why were they findable at all, given a sweep exists".
+
+Because the sweep's membership was a hand-written provider. It graded whatever
+someone had remembered to add, which is why four registered core widgets and
+seven plugin widgets had never been through it, and why three of each group
+were broken. The sweep was never wrong; it was just answering a smaller
+question than its name suggested.
+
+Both sweeps check their own membership now. The core one reflects over
+`src/Widget/*.php`, keeps the classes carrying `#[AsIdeService]` — the
+container's own definition of "mounted in the IDE" — and fails if one is
+neither in the provider nor in `OUTSIDE_THE_PROVIDER`. The git one globs its
+`src/Widget/` for `AbstractWidget` subclasses, where a plugin class cannot be a
+container service and the directory is the membership.
+
+**Two exemptions, and they mean opposite things**, which is why they carry
+their reasons rather than sitting in a bare list:
+
+- `CodeEditorWidget` — swept HARDER than a provider entry can manage. The crash
+  was on the row path, and reaching it needs a file, a full gutter, sticky
+  headers and the viewer door: four states, four dedicated cases.
+- `ContextMenu` — not swept, and should not be. It renders `[]` into the layout
+  and paints through the overlay compositor, whose ceiling is
+  `ModalFrame::wrapSections()`. Its geometry is graded in `PickerLayoutTest`.
+
+Both new gates were mutation-checked in both directions: dropping a widget from
+a provider fails, and emptying the exemption list fails.
+
+*Deliberately not done:* the same self-check for `image-viewer` and
+`graph-viewer`, which have one widget apiece. A one-item list cannot go stale
+in the way this is guarding against, and a gate per plugin directory would cost
+more to read than it protects.

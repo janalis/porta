@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\KeybindingRow;
+use Porta\Container\AsIdeService;
 use Porta\Editor\Document;
 use Porta\Editor\FindMode;
 use Porta\History\SearchHistoryStore;
@@ -19,6 +20,7 @@ use Porta\Tests\Support\RendersExactWidth;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\ContextMenu;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\DockTabsWidget;
 use Porta\Widget\FileTreeWidget;
@@ -246,5 +248,65 @@ final class NarrowPaneRenderTest extends TestCase
         $editor->showDocument('/preview.md', new Document("# heading\n\ntext\n"));
 
         $this->assertFitsEveryWidth($editor);
+    }
+
+    /**
+     * Registered widgets the provider deliberately does not yield, and why.
+     *
+     * Two different reasons, kept apart because they mean opposite things: one
+     * is swept harder than the provider can manage, the other is not swept at
+     * all and should not be.
+     *
+     * @var array<class-string, string>
+     */
+    private const array OUTSIDE_THE_PROVIDER = [
+        // Four dedicated cases below instead, because the crash was on the ROW
+        // path and reaching it needs a file, a full gutter, sticky headers and
+        // the viewer door — states a single provider entry cannot hold at once.
+        CodeEditorWidget::class => 'swept by the four testTheEDITOR… cases below',
+        // Renders [] into the layout and paints through the overlay
+        // compositor, whose own ceiling is ModalFrame::wrapSections(). The
+        // picker geometry is graded in PickerLayoutTest instead.
+        ContextMenu::class => 'not laid out: it draws through the overlay compositor',
+    ];
+
+    /**
+     * Every registered widget is in the provider above, or is listed as
+     * deliberately outside it.
+     *
+     * The gap this closes is the one that let four of them sit unswept while
+     * three overflowed: the provider is a hand-written list, and a hand-written
+     * list of "everything" goes stale the first time someone adds a widget. It
+     * is checked against the container's own membership now, so a new
+     * `#[AsIdeService]` widget fails here until it is either swept or exempted
+     * with a reason.
+     */
+    public function testEveryRegisteredWidgetIsSweptOrExemptedOnPurpose(): void
+    {
+        $swept = [];
+        foreach (self::paneWidgets() as [$widget]) {
+            $swept[$widget::class] = true;
+        }
+        $swept += array_map(static fn (string $why): bool => true, self::OUTSIDE_THE_PROVIDER);
+
+        $missing = [];
+        foreach (glob(\dirname(__DIR__, levels: 3).'/src/Widget/*.php') as $file) {
+            $class = 'Porta\\Widget\\'.basename($file, suffix: '.php');
+            if (!class_exists($class) || !is_a($class, AbstractWidget::class, allow_string: true)) {
+                continue;
+            }
+            if ([] === new \ReflectionClass($class)->getAttributes(AsIdeService::class) || \array_key_exists($class, $swept)) {
+                continue;
+            }
+
+            $missing[] = $class;
+        }
+        sort($missing);
+
+        $this->assertSame(
+            [],
+            $missing,
+            'these widgets are mounted in the IDE and nothing renders them at a hostile width: add them to paneWidgets(), or to OUTSIDE_THE_PROVIDER with the reason',
+        );
     }
 }
