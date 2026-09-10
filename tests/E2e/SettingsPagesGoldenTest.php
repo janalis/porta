@@ -6,6 +6,11 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Settings\Section\GeneralSection;
+use Porta\Settings\Section\HighlightingSection;
+use Porta\Settings\Section\InterfaceSection;
+use Porta\Settings\Section\LanguageSection;
+use Porta\Settings\Section\PluginsSection;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\PreservesPath;
@@ -56,6 +61,53 @@ final class SettingsPagesGoldenTest extends TestCase
 
     /** Every page a controller composes rows for. */
     private const array PAGES = ['general', 'interface', 'highlighting', 'lang:php', 'plugins'];
+
+    /**
+     * Which page above stands for which section class.
+     *
+     * PAGES is a hand-written list of "every page", and a hand-written list of
+     * everything is wrong the first time someone adds one — three such lists
+     * went stale the same way the day this was written. {@see
+     * testEverySettingsSectionHasAGoldenPage()} checks it against the
+     * `Section/` directory, which is the container's own membership.
+     *
+     * `LanguageSection` claims a whole PREFIX rather than one id, so one
+     * language stands for the family: the rows come from the same composer.
+     *
+     * @var array<class-string, string>
+     */
+    private const array SECTION_PAGES = [
+        GeneralSection::class => 'general',
+        HighlightingSection::class => 'highlighting',
+        InterfaceSection::class => 'interface',
+        LanguageSection::class => 'lang:php',
+        PluginsSection::class => 'plugins',
+    ];
+
+    /**
+     * A new settings section has a golden page, or this fails.
+     *
+     * The defect it guards against is the one the golden test exists for,
+     * arriving through the door the golden test cannot see: a whole page
+     * rendering wrongly with every gate green, because nothing captured it.
+     */
+    public function testEverySettingsSectionHasAGoldenPage(): void
+    {
+        $sections = [];
+        foreach (glob(\dirname(__DIR__, levels: 2).'/src/Settings/Section/*.php') as $file) {
+            $sections[] = 'Porta\\Settings\\Section\\'.basename($file, suffix: '.php');
+        }
+        sort($sections);
+        $mapped = array_keys(self::SECTION_PAGES);
+        sort($mapped);
+
+        $this->assertSame($mapped, $sections, 'a settings section appeared or moved: give it a page in SECTION_PAGES and PAGES, then regenerate the golden');
+        $this->assertSame(
+            [],
+            array_values(array_diff(array_values(self::SECTION_PAGES), self::PAGES)),
+            'every section stands for a page the golden actually captures',
+        );
+    }
 
     /** Held so the destructors do not remove the dirs mid-test. */
     private TempProject $home;

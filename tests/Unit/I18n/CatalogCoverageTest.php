@@ -306,6 +306,46 @@ final class CatalogCoverageTest extends TestCase
     }
 
     /**
+     * The call sites that hand `trans()` an enum's own label, pinned.
+     *
+     * The third hand-written list in this file, and the last: {@see
+     * categoryLiterals()} names two enums because two are all anyone knew
+     * about. A third `->trans($thing->label())` anywhere in the tree would take
+     * its cases past every gate untranslated, which is exactly what `ScopeKind`
+     * did until today.
+     *
+     * Pinned as `file:line`-free call SHAPES rather than a count, so moving one
+     * of them does not fail and adding one does.
+     *
+     * @var list<string>
+     */
+    private const array ENUM_LABEL_CALLS = [
+        'Search/Everywhere/SearchEverywhereController.php',
+        'Search/ProjectSearchController.php',
+    ];
+
+    public function testEveryEnumLabelCallSiteIsCovered(): void
+    {
+        $found = [];
+        foreach ($this->phpFiles() as $path) {
+            if (1 !== preg_match('/->trans\(\$[a-zA-Z]+->[a-zA-Z]+\(\)/', (string) file_get_contents($path))) {
+                continue;
+            }
+            $resolved = (string) realpath($path);
+            $found[] = str_replace([(string) realpath(self::ROOT).'/src/', (string) realpath(self::ROOT).'/'], replace: '', subject: $resolved);
+        }
+        sort($found);
+        $pinned = self::ENUM_LABEL_CALLS;
+        sort($pinned);
+
+        $this->assertSame(
+            $pinned,
+            $found,
+            'a ->trans($x->label()) call appeared: its enum\'s cases are invisible to the literal scanner, so add them to categoryLiterals() and list the site here',
+        );
+    }
+
+    /**
      * Enum labels reaching the screen through a dynamic argument —
      * `->trans($category->title())`, `->trans($kind->label())` — which no
      * scanner of literals can see.

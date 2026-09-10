@@ -5787,3 +5787,44 @@ width sweep, the git one, and this. The pattern is worth stating plainly:
 The lists that already do this — `PluginObservableContractTest`'s observable
 set, the architecture edge allowlist, `ThemeLockTest` — are the ones that have
 never been the source of a defect this session.
+
+## Sweeping for the pattern itself (2026-09-10)
+
+Having found the same defect three times, the next step was to stop finding it
+by accident. Every `const array` in the suite that reads like an inventory,
+checked for whether it derives its set from the tree or asks a human to
+remember.
+
+Two more did not, and both are gated now:
+
+- **`CatalogCoverageTest::categoryLiterals()`** named two enums whose labels
+  reach `trans()` through a dynamic argument, because two were all anyone knew
+  about. The call SHAPE is enumerable — `->trans($x->method())` — so the sites
+  are pinned and a third one fails until its enum is added. This closes the last
+  of that file's three hand-written lists.
+- **`SettingsPagesGoldenTest::PAGES`** listed five settings pages; there are
+  five section classes. A sixth would have shipped with no golden capture at
+  all, which is precisely the defect that test exists to prevent, arriving
+  through the one door it cannot see.
+
+Checked and already sound, so left alone: `KeybindingsDocTest::surfaceKeymaps()`
+derives from every class in the tree with a `getDefaultKeybindings()`;
+`PluginObservableContractTest` pins its set and asserts it against reflection;
+the architecture allowlist fails on drift in either direction. Its `CONVENTIONS`
+list is an EXCLUSION rather than an inventory — a stale entry there weakens one
+check and cannot hide a new key, and adding to it is a visible edit.
+
+### The rule, stated once
+
+> A hand-written list of "everything" is wrong the first time someone adds one,
+> and nothing tells you. Give it a companion test that derives the same set from
+> the tree and fails on the difference.
+
+Five lists in this codebase now do that. The three that did it already have not
+produced a defect this session; the four that did not produced six crashes and
+two silent translation gaps between them.
+
+*Not gated, with the reason:* `image-viewer` and `graph-viewer` have one widget
+each, and `MockServerContractTest::GATED_BY` is a capability map whose "set" is
+the mock's own advertised capabilities — already the thing it is checked
+against.
