@@ -31,6 +31,7 @@ final class BufferManager
 
     public function open(string $path, string $content): Buffer
     {
+        $path = $this->sameFileAlreadyOpen($path) ?? $path;
         if (!\array_key_exists($path, $this->buffers)) {
             $this->buffers[$path] = new Buffer($path, $this->trackedDocument($path, $content), $this->highlighters->forFile($path));
         }
@@ -81,6 +82,56 @@ final class BufferManager
         }
 
         return $document;
+    }
+
+    /**
+     * The key of an already-open buffer over the SAME FILE as $path, or null.
+     *
+     * Paths reach this class through `realpath()`, which looks like a canonical
+     * name and is not one: on a case-insensitive filesystem it returns the case
+     * it was given, so `src/ide.php` and `src/Ide.php` are two keys over one
+     * file and the editor opens the same bytes twice. Edit both and the second
+     * save discards the first.
+     *
+     * Asked of the FILESYSTEM rather than of the string — same device, same
+     * inode. That needs no guess about which platform folds case, stays correct
+     * on one that does not (two names, two inodes, nothing merges), and answers
+     * for hard links, which are the same question in different clothes.
+     *
+     * An exact key hit short-circuits, so the ordinary open costs nothing.
+     */
+    private function sameFileAlreadyOpen(string $path): ?string
+    {
+        if (\array_key_exists($path, $this->buffers) || [] === $this->buffers) {
+            return null;
+        }
+        $id = self::fileId($path);
+        if (null === $id) {
+            return null; // no file behind it yet: a new file is its own buffer
+        }
+        foreach (array_keys($this->buffers) as $open) {
+            if ($id === self::fileId($open)) {
+                return $open;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * A file's identity on disk — device and inode — or null when $path names
+     * no file.
+     *
+     * One expression rather than a guard per failure, so both outcomes run
+     * every line: a missing file and a `stat()` that raced away answer the same
+     * `null`, and a pane tab whose path is not a file answers it too, which is
+     * why the caller can compare answers without excluding them first.
+     */
+    private static function fileId(string $path): ?string
+    {
+        $stat = is_file($path) ? stat($path) : false;
+
+        return \is_array($stat) ? $stat['dev'].':'.$stat['ino'] : null;
     }
 
     public function has(string $path): bool

@@ -6112,3 +6112,43 @@ reason that did not become a wrong entry in this file.
 
 *Still unasked from that list:* tab expansion. `mb_strwidth` was audited clean
 in an earlier round.
+
+## One file, two tabs, on every developer's laptop (2026-09-11)
+
+The identity-in-the-common-case list is finished — tab expansion turned out to
+be guarded, which is a clean negative — so the same question went to a new
+candidate: **path identity is a string compare, and it is only right when the
+spelling is consistent.**
+
+Buffers are keyed by `realpath()`, which reads like a canonical name and is
+not one. Measured on this machine:
+
+```
+realpath(".../Foo.php")  ->  .../Foo.php
+realpath(".../foo.php")  ->  .../foo.php     (the file is Foo.php)
+is_file(".../foo.php")   ->  true
+```
+
+`realpath()` resolves symlinks and `..`; it does **not** fold case. So on macOS
+and Windows — most developer machines — two spellings are two keys over one
+file, and `BufferManager::open()` made two buffers with two documents. Edit
+both and the second save silently discards the first.
+
+Reachable by typing: `porta src/ide.php` when the file is `src/Ide.php`, then
+reaching it again through Go to File, which offers the on-disk spelling.
+
+**Identity asked of the filesystem, not of the string:** same device, same
+inode. That needs no guess about which platform folds case, stays correct on
+one that does not (two names, two inodes, nothing merges), and answers for hard
+links, which are the same question in different clothes.
+
+### The 100% gate improved the design
+
+The first version guarded each failure separately — `is_file()`, then `false
+=== stat()`, then a `continue` for a buffer whose file vanished. Two of those
+are races that cannot be reached from a test, and coverage failed at 99.99%.
+Collapsing them into one expression (`is_file($p) ? stat($p) : false`, read
+back with `is_array()`) made every line run on both paths — and the result is
+simpler than what it replaced, not more convoluted. A pane tab whose path is
+not a file now answers `null` through the same door, which is why the caller
+can compare answers without excluding those first.
