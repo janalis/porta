@@ -9,6 +9,7 @@ use Porta\I18n\BaseDirection;
 use Porta\I18n\Bidi;
 use Porta\Tests\Support\Probe;
 use Porta\Ui\Glyphs;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
  * The UAX#9-subset line reorderer: directional runs, neutral resolution, SGR
@@ -360,6 +361,73 @@ final class BidiTest extends TestCase
         }
 
         $this->assertSame([], $unreachable, 'these have a mirror entry they can never reach');
+    }
+
+    /**
+     * The directional marks are STRONG, which is the whole reason they exist.
+     *
+     * U+200E and U+200F carry no glyph and no width; their only job is to give
+     * the neutral text beside them a direction. Classified as neutral they do
+     * precisely nothing — and the Hebrew catalog already ships nine strings
+     * using them in the belief that they work.
+     */
+    public function testTheDirectionalMarksAreStrong(): void
+    {
+        self::assertSame('L', Probe::invokeStatic(Bidi::class, 'classify', "\u{200E}"), 'left-to-right mark');
+        self::assertSame('R', Probe::invokeStatic(Bidi::class, 'classify', "\u{200F}"), 'right-to-left mark');
+        // The arabic letter mark needs no branch of its own — the Arabic block
+        // already classifies it R. It is asserted here so that staying true is
+        // deliberate, and spent below because it is zero-width all the same.
+        self::assertSame('R', Probe::invokeStatic(Bidi::class, 'classify', "\u{061C}"), 'arabic letter mark');
+    }
+
+    /**
+     * A mark binds the run beside it instead of letting it shatter.
+     *
+     * This is the settings form's Choice stepper: a Hebrew label, then a Latin
+     * value wrapped in `<` and `>`. Without a mark the opening `<` sits between
+     * strong R and strong L, takes the paragraph direction, and leaves for the
+     * far side of the group — mirroring on the way, so the row shows two `>`
+     * and the value is no longer bracketed.
+     */
+    public function testAMarkBindsALatinGroupThatWouldOtherwiseShatter(): void
+    {
+        $shattered = self::strip(Bidi::reorder(self::SHALOM.'  < dark > · light', BaseDirection::Rtl));
+        self::assertStringNotContainsString('< dark >', $shattered, 'the defect this mark exists to fix');
+
+        $bound = self::strip(Bidi::reorder(self::SHALOM.'  '."\u{200E}".'< dark > · light', BaseDirection::Rtl));
+
+        self::assertStringContainsString('< dark > · light', $bound, 'the value keeps its brackets and its order');
+    }
+
+    /**
+     * A mark costs a column going in and gives it back coming out.
+     *
+     * It measures one column and the terminal draws none, so a row carrying one
+     * renders narrower than every width function believes — and the RTL width
+     * invariant cannot see it, measuring with the same function. Rather than
+     * teach every measurer about zero-width characters, the mark is spent
+     * during ordering and leaves a space behind: the arithmetic never changes
+     * and the screen agrees with it.
+     */
+    public function testAMarkLeavesASpaceBehindSoTheRowKeepsItsWidth(): void
+    {
+        $line = self::SHALOM."\u{200E}".'abc';
+
+        $out = Bidi::reorder($line, BaseDirection::Rtl);
+
+        self::assertStringNotContainsString("\u{200E}", $out, 'the mark is spent, not shipped to the terminal');
+        self::assertSame(AnsiUtils::visibleWidth($line), AnsiUtils::visibleWidth($out), 'and the row is exactly as wide as before');
+    }
+
+    /** Every zero-width mark is spent, not only the one the settings form uses. */
+    public function testEveryDirectionalMarkIsSpent(): void
+    {
+        foreach (["\u{200E}", "\u{200F}", "\u{061C}"] as $mark) {
+            $out = Bidi::reorder(self::SHALOM.$mark.'abc', BaseDirection::Rtl);
+
+            self::assertStringNotContainsString($mark, $out, 'a mark reaching the terminal costs the row a column');
+        }
     }
 
     /**

@@ -32,6 +32,20 @@ use Porta\Ui\Sgr;
 final class Bidi
 {
     /**
+     * Zero-width directional marks, replaced by a space once they have been
+     * read. They measure one column and draw none, so leaving one in the output
+     * shortens the rendered row by exactly that much — and the RTL width
+     * invariant cannot see it, measuring with the same function that is wrong.
+     *
+     * @var array<string, true>
+     */
+    private const array SPENT = [
+        "\u{200E}" => true,
+        "\u{200F}" => true,
+        "\u{061C}" => true,
+    ];
+
+    /**
      * Neutral characters that mirror when rendered in a right-to-left run (L4).
      *
      * @var array<string, string>
@@ -208,6 +222,22 @@ final class Bidi
         // a test that derives its set from {@see \Porta\Ui\Glyphs} rather than
         // repeating it, since a list of glyphs is wrong the first time someone
         // adds one.
+        // The directional marks carry no glyph and no width; their whole job is
+        // to give the neutral text beside them a direction. Classified as
+        // neutral — which the U+2000-206F range below would do — they achieve
+        // exactly nothing, and the Hebrew catalog already ships nine strings
+        // using them. They are spent in serialize(), which puts a space in
+        // their place so the row keeps the width every measurer gave it.
+        if (0x200E === $cp) {
+            return 'L';
+        }
+        // U+061C ARABIC LETTER MARK needs no branch here — it already falls in
+        // the Arabic block above and classifies R. It appears in SPENT below
+        // because it is zero-width like the other two.
+        if (0x200F === $cp) {
+            return 'R';
+        }
+
         // UAX#9 CS/ES: the separators that can JOIN two numbers (W4 below).
         // Neutral everywhere else, which is what the W4 pass falls back to —
         // they are listed here only so that pass can tell them from a bracket.
@@ -389,7 +419,10 @@ final class Bidi
             if (1 === ($levels[$index] % 2) && array_key_exists($glyph, self::MIRROR)) {
                 $glyph = self::MIRROR[$glyph];
             }
-            $out .= $glyph;
+            // The mark has done its work in levels(); shipping it to the
+            // terminal is what makes a row render narrower than it measures.
+            // A space costs the same column every measurer already counted.
+            $out .= array_key_exists($glyph, self::SPENT) ? ' ' : $glyph;
         }
         if ('' !== $emitted) {
             $out .= Sgr::RESET;
