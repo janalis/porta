@@ -1071,6 +1071,66 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertSame($widths['en'], $widths['he'], 'the control begins at the same column in both directions');
     }
 
+    /**
+     * The value column is a COLUMN, whatever a label happens to end with.
+     *
+     * A label ending in a Latin run — `שרת LSP`, `עיצוב בעת שמירה (LSP)` — puts
+     * strong left-to-right text next to a control that is also left-to-right,
+     * and the two merge into one run: the control is drawn INSIDE the label,
+     * the label is torn in half, and the column moves. Measured across five
+     * real labels before the fix, the checkbox landed at columns 28, 33, 37, 46
+     * and 28.
+     *
+     * Asserted as "the same column in every row", because a case that only
+     * checked the label survived would pass on a ragged form — which is how
+     * this got through the round that fixed the value side.
+     */
+    public function testTheValueColumnHoldsWhateverTheLabelEndsWith(): void
+    {
+        $translator = new Translator('he');
+        $labels = ['גלילה דביקה', 'שרת LSP', 'עיצוב בעת שמירה (LSP)', 'חיפוש בקובצי vendor/', 'קווי הזחה'];
+        $rows = [];
+        foreach ($labels as $i => $label) {
+            $rows[] = new SettingsRow('k'.$i, $label, SettingsRowKind::Bool, true, false);
+        }
+        $widget = new SettingsFormWidget($translator);
+        AttachedStyles::attach($widget);
+        $widget->setRows($rows, 'T');
+
+        $columns = [];
+        foreach ($this->body($widget->render(new RenderContext(56, 7))) as $i => $line) {
+            if ($i >= \count($labels)) {
+                break;
+            }
+            $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl));
+            $columns[$labels[$i]] = mb_strpos($mirrored, needle: '[x]', encoding: 'UTF-8');
+        }
+
+        $this->assertCount(1, array_unique($columns), 'every checkbox is in the same column: '.json_encode($columns));
+    }
+
+    /** And the label itself is not torn around the control. */
+    public function testALabelEndingInLatinIsNotTornAroundTheControl(): void
+    {
+        $translator = new Translator('he');
+        $widget = new SettingsFormWidget($translator);
+        AttachedStyles::attach($widget);
+        $widget->setRows([new SettingsRow('lsp', 'שרת LSP', SettingsRowKind::Bool, true, false)], 'T');
+
+        $line = $this->body($widget->render(new RenderContext(56, 4)))[0];
+        $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl));
+
+        // Under RTL the label sits at the right and the control to its left, so
+        // EVERY part of the label — including its Latin tail — must come after
+        // the control. Before the fix the tail crossed over and the row read
+        // `LSP  [x]  תרש`, the control wedged into the middle of its own label.
+        $control = mb_strpos($mirrored, needle: '[x]', encoding: 'UTF-8');
+        $tail = mb_strpos($mirrored, needle: 'LSP', encoding: 'UTF-8');
+        $this->assertNotFalse($control);
+        $this->assertNotFalse($tail);
+        $this->assertLessThan($tail, $control, 'the whole label sits to the right of the control');
+    }
+
     #[\PHPUnit\Framework\Attributes\DataProvider('mirroredValueProvider')]
     public function testAValueKeepsItsBracketsWhenMirrored(SettingsRow $row, string $expected): void
     {

@@ -7,6 +7,7 @@ namespace Porta\Widget\Settings;
 use Porta\Container\AsWidget;
 use Porta\Event\SettingsSearchRequested;
 use Porta\Event\SettingsSectionRequested;
+use Porta\I18n\Bidi;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
@@ -486,7 +487,17 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      */
     private function gap(): string
     {
-        return $this->translator->isRtl() ? ' '."\u{200E}" : '  ';
+        // Two marks, not a space and a mark: the first ENDS the label's run and
+        // the second begins the control's. Without the first, a label whose own
+        // text ends in a Latin run — `שרת LSP`, `עיצוב בעת שמירה (LSP)` — puts
+        // strong left-to-right text against a left-to-right control, the two
+        // merge, and the control is drawn inside the label. The label tears in
+        // half and the column moves with it: across five real labels the
+        // checkbox landed at columns 28, 33, 37, 46 and 28.
+        //
+        // Both columns already existed as the gap, and each mark is spent for a
+        // space, so the label column and the rendered width are untouched.
+        return $this->translator->isRtl() ? Bidi::RTL_MARK.Bidi::LTR_MARK : '  ';
     }
 
     /**
@@ -507,7 +518,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      */
     private function valueEnd(): string
     {
-        return $this->translator->isRtl() ? "\u{200E}" : '';
+        return $this->translator->isRtl() ? Bidi::LTR_MARK : '';
     }
 
     private function marker(SettingsRow $row): string

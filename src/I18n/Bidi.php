@@ -31,6 +31,14 @@ use Porta\Ui\Sgr;
 final class Bidi
 {
     /**
+     * The zero-width marks that pin a run's direction where the text around it
+     * cannot. Strong here, and spent for a space on the way out, so a caller
+     * can place one without changing what anything measures.
+     */
+    public const string LTR_MARK = "\u{200E}";
+    public const string RTL_MARK = "\u{200F}";
+
+    /**
      * Zero-width directional marks, replaced by a space once they have been
      * read. They measure one column and draw none, so leaving one in the output
      * shortens the rendered row by exactly that much — and the RTL width
@@ -39,8 +47,8 @@ final class Bidi
      * @var array<string, true>
      */
     private const array SPENT = [
-        "\u{200E}" => true,
-        "\u{200F}" => true,
+        self::LTR_MARK => true,
+        self::RTL_MARK => true,
         "\u{061C}" => true,
     ];
 
