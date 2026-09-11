@@ -6442,3 +6442,36 @@ branch.** Not one was a wrong calculation or a bad boundary. The fixtures were
 always well-formed and always had the interesting element first, which is what a
 fixture written to demonstrate a feature looks like — and precisely not what a
 language server, a working tree, or a user's palette query looks like.
+
+## Sweeping the whole tree for one shape (2026-09-11)
+
+Four area reviews produced the same answer every time, so this stopped reviewing
+areas and swept `src/` for the shape alone: `@default: false` with only
+`Continue_` and `Break_` enabled. **434 mutants, 84 escaped** — a complete census
+of unexercised loop skips in the codebase, in one run, where the four area
+reviews together had covered a fraction of the tree.
+
+That census is the artefact worth having. It is not a to-do list — many are
+equivalent, and many sit in code whose tests live outside the Unit suite — but it
+is the whole population, and the shape is the one that has been real every time
+it was real at all.
+
+**Fixed from it:** `PluginLoader` walks every manifest and acts only on the
+skipped ones, so it skips the plugins that LOADED. As a `break` that means "stop
+at the first healthy plugin", and the skipped ones behind it get no warning —
+the user is never told which plugin did not load, or why. Every existing case in
+that file has *all* its plugins skipped, so there is no healthy one in front to
+stop at; a real install is the opposite, several that work and one that does not.
+
+**Two false starts, both fixture problems, both caught by re-running the mutant
+rather than trusting the green:** the first ordered the plugins wrongly for
+discovery, and the second skipped its plugin for a PLATFORM reason, which is
+warned about somewhere else entirely and never reaches this loop. A test that
+passes is not evidence that it tests anything.
+
+**Judged and left, with the reason:** `EditorScroll`'s four are convergence-loop
+controls, where `continue` and `break` differ only in whether the loop re-checks
+a state it has already settled — the "term on both sides" case `infection.json5`
+warns about. `PluginLoader:171` iterates a two-element array whose only nullable
+entry is last, so stopping and skipping are the same thing. The rest of the 84
+are unreviewed and now written down, which is more than was true this morning.

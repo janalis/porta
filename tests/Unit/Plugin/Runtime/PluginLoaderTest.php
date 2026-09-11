@@ -85,6 +85,36 @@ final class PluginLoaderTest extends TestCase
         $this->assertTrue($manager->hasPlugin('extra'), 'non-colliding global plugins load');
     }
 
+    /**
+     * A plugin that loads fine does not swallow the warning for one after it.
+     *
+     * The loop walks every manifest and acts only on the skipped ones, so it
+     * skips the plugins that loaded. As a `break` that reads as "stop at the
+     * first healthy plugin", and every existing case here stayed green because
+     * each has ALL its plugins skipped — there is no healthy one in front to
+     * stop at.
+     *
+     * Which is the ordinary shape of a real install: several plugins that work,
+     * one that does not. The one that does not is the only one the user needs
+     * told about, and it would have been the silent one.
+     */
+    public function testAWarningSurvivesAHealthyPluginOrderedBeforeIt(): void
+    {
+        $project = new TempProject([
+            // Discovery is alphabetical, so `alpha` is reached first and loads.
+            '.porta/plugins/alpha/plugin.php' => $this->pluginSource('alpha'),
+            // Skipped for an unmet PLUGIN requirement, which is what this loop
+            // reports — a platform requirement is warned about elsewhere.
+            '.porta/plugins/zulu/plugin.php' => $this->pluginSource('zulu'),
+            '.porta/plugins/zulu/composer.json' => '{"extra":{"porta":{"requires":["nowhere"]}}}',
+        ]);
+        $manager = $this->load($project);
+
+        $this->assertTrue($manager->hasPlugin('alpha'), 'the healthy one loaded');
+        $this->assertFalse($manager->hasPlugin('zulu'), 'and the other could not');
+        $this->assertStringContainsString('"zulu"', self::renderAll($manager->warnings()), 'the user is told which one, and why');
+    }
+
     public function testAnUnmetPlatformRequirementDeclinesByNameAndTakesDependentsAlong(): void
     {
         $project = new TempProject([
