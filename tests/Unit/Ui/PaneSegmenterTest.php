@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\Region\DropdownRegion;
+use Porta\Ui\LtrPane;
 use Porta\Ui\PaneSegmenter;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -167,6 +168,65 @@ final class PaneSegmenterTest extends TestCase
             ['start' => 4, 'width' => 4, 'ltr' => false], // the dropdown, on top
             ['start' => 8, 'width' => 4, 'ltr' => true],
         );
+    }
+
+    /**
+     * Exactly these panes stay verbatim under a right-to-left locale.
+     *
+     * {@see LtrPane} is an empty marker, and `PaneSegmenter` reads it as the
+     * whole of the mirror/verbatim decision — so the set IS the contract, and
+     * until now nothing held it. Removing the marker from `CodeEditorWidget`
+     * failed no test, and source code would have been bidi-reordered on the
+     * next frame.
+     *
+     * Derived from the tree rather than asserted class by class: FQCN follows
+     * path in this repo, so a new pane that marks itself appears here the moment
+     * it is written. Adding one is then a deliberate edit to this list, which is
+     * the point — a pane joins or leaves the verbatim set on purpose.
+     */
+    public function testTheVerbatimPaneSetIsExactlyThese(): void
+    {
+        $expected = [
+            \Porta\Widget\CodeEditorWidget::class,
+            \Porta\Widget\DebugPanelWidget::class,
+            \Porta\Widget\DockTabsWidget::class,
+            \Porta\Widget\EditorPaneWidget::class,
+            \Porta\Widget\ResultsPanelWidget::class,
+            \Porta\Widget\TerminalPanelWidget::class,
+            'Porta\\GitPlugin\\Widget\\DiffViewWidget',
+        ];
+        sort($expected);
+
+        $this->assertSame($expected, self::declaredVerbatimPanes());
+    }
+
+    /**
+     * Every class in the tree that marks ITSELF verbatim. Subclasses inherit
+     * the marker and are deliberately not listed — the decision is made once,
+     * where it is declared.
+     *
+     * @return list<string>
+     */
+    private static function declaredVerbatimPanes(): array
+    {
+        $found = [];
+        foreach ([__DIR__.'/../../../src', __DIR__.'/../../../plugins'] as $root) {
+            $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root));
+            foreach ($files as $file) {
+                if (!$file instanceof \SplFileInfo || 'php' !== $file->getExtension()) {
+                    continue;
+                }
+                $code = (string) file_get_contents($file->getPathname());
+                if (1 !== preg_match('/implements[^{]*\bLtrPane\b/', $code) || 1 !== preg_match('/^namespace\s+([^;]+);/m', $code, $namespace)) {
+                    continue;
+                }
+
+                $found[] = $namespace[1].'\\'.$file->getBasename('.php');
+            }
+        }
+        sort($found);
+
+        return $found;
     }
 
     public function testSegmentSkipsAContextlessWidget(): void

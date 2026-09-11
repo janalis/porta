@@ -205,6 +205,54 @@ final class IdeRtlLocaleTest extends TestCase
         );
     }
 
+    /**
+     * A row BELOW the menu bar is segmented into a verbatim part and a mirrored
+     * part — which is the whole claim this suite exists to support.
+     *
+     * Everything else here checks row 0, and row 0 is the menu bar: the one row
+     * that survives the segmenter losing its leaf walk, because the menu bar is
+     * the FIRST leaf. The width invariant next door cannot help either — one
+     * full-width verbatim run per row measures exactly the terminal width, so
+     * the degenerate output a broken walk produces satisfies it perfectly.
+     *
+     * Ten cases and 102 assertions passed with mirroring switched off for every
+     * row but one (decisions.md, 2026-09-11). This is the case that notices.
+     *
+     * Asserted as "both kinds of run are present" rather than as a column
+     * number, so it survives a layout change and still fails the moment a body
+     * row stops being segmented at all.
+     */
+    public function testRtlSegmentsARowBelowTheMenuBar(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            'demo.php' => "<?php\necho \$name;\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('demo.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    $tui->tick();
+                    $root = Probe::get($tui, 'root');
+                    $segmenter = Services::resolve($ide, \Porta\Ui\PaneSegmenter::class);
+                    \assert($segmenter instanceof \Porta\Ui\PaneSegmenter, description: 'the IDE exposes the segmenter');
+                    $runs = $segmenter->segment($root, $terminal->getColumns(), $terminal->getRows());
+
+                    // The editor body: code on one side, the mirrored sidebar on
+                    // the other. Row 0 is the menu bar and row 1 the tab strip.
+                    $body = $runs[3] ?? [];
+                    $this->assertGreaterThan(1, \count($body), 'the row is split into panes, not one verbatim block');
+                    $kinds = array_unique(array_column($body, 'ltr'));
+                    sort($kinds);
+                    $this->assertSame([false, true], $kinds, 'a verbatim code run AND a mirrored chrome run');
+                },
+            ],
+        );
+    }
+
     public function testRtlSurvivesATerminalResize(): void
     {
         // RTL and resize meet in one place and nowhere else: `Tui::start()`
