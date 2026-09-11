@@ -7365,3 +7365,94 @@ the round itself, one file over. Its own comment already worried about the case
 Three rounds running, the thing that escaped was not the feature but the
 invariant beside it: a repaint, a width, a column. The feature is what the test
 was written for; the invariant is what nobody was looking at.
+
+## The Hebrew settings screen: composition was never the defect (2026-09-11)
+
+Reported four times. Three rounds had fixed real things in the bidi engine —
+classification, W4 and W7, the mirror table, the caret duplication, the settings
+label and value sides, a nav off-by-one — and the screen was still wrong. That
+pattern is evidence in itself: what was being fixed was not what was broken.
+
+So this round measured before it touched anything.
+
+### What was established
+
+A throwaway project (session scratchpad, nothing in the repo touched) booted the
+real widget tree into a `VirtualTerminal` and graded every row of the composed
+frame against an invariant with teeth: the row's `visibleWidth` equals the
+terminal width, and — since reordering only ever PERMUTES glyphs inside a run —
+no glyph may leave its pane run. `Bidi::SPENT` marks are normalised to a space
+on both sides first, or every marked row reads as a false positive, which on the
+first attempt they did.
+
+Graded across 12 geometries × 11 sidebar widths × 4 tab-bar positions, including
+the reporter's exact configuration read from their own files: **226 × 67**
+(`stty size`), settings sidebar **8%** (`.porta/layout.json` — a value well
+outside the range first guessed at), `tabBarPosition: right`, `lineNumbers:
+absolute`, `language: he`. At that configuration the frame is correct:
+`badRows=0`, every row exactly 226 columns, every glyph inside its own run, and
+the content matching the screenshot line for line.
+
+**Frame composition is not the defect.** `PaneSegmenter`, `PaneReorder` and
+`Bidi` produce a correct frame at the exact settings that render wrongly on
+screen.
+
+Two candidate explanations were tested and dropped rather than argued:
+
+- *The terminal re-mirrors the already-mirrored frame.* The reporter runs cmux,
+  which renders through a bundled Ghostty; that binary carries no bidi
+  implementation (every `bidi` string in it belongs to QUIC). This was a
+  satisfying theory and it was wrong — it was nearly published as the diagnosis.
+- *An overlay crossing the boundary.* A floating region legitimately becomes its
+  own run in `PaneSegmenter::runsForRow()`. The boundary-crossing runs seen
+  earlier were correct segmentation.
+
+### The hole the round actually found
+
+Every test in the suite grades a COMPOSED frame. Nothing graded the bytes
+`ScreenWriter` writes — and those differ: after the first frame it switches to a
+differential repaint that rewrites only the changed row range, positioning
+itself with RELATIVE cursor moves (`CSI nA`/`CSI nB`) from its own row
+bookkeeping. A writer like that is correct by construction on the first frame,
+which is the only frame a full-render test ever exercises.
+
+`tests/Support/TerminalReplay.php` closes that: it replays written bytes into a
+cell grid, including the behaviour that matters — an over-wide row WRAPS, and
+every row after it is one off. `DifferentialRepaintTest` drives several frames
+and asserts the invariant the path owes: **a screen arrived at incrementally is
+the screen a single render of the final content produces.** Stated that way it
+needs no mirror arithmetic of its own; the full-render path is the oracle.
+
+Run against the real settings screen over six incremental steps, the written
+bytes match the intended frame exactly. **The write path is correct too.**
+
+### The fragility that is real
+
+`Glyphs` claimed in prose that its vocabulary was East Asian Width *Narrow*. It
+never was. Measured against the Unicode table, **39 of the ~50 non-ASCII glyphs
+are *Ambiguous*** — the box-drawing set, the arrows, the geometric shapes, and
+the pane separator itself — and Ambiguous is one column only by convention. Feed
+the same correct bytes to a terminal that spends two columns on them and **66 of
+67 rows corrupt**, content splitting across rows exactly as reported, because
+the wrap desynchronises the differential writer's row bookkeeping.
+
+That severity is also why it is not being claimed as the reporter's bug: their
+screen shows a handful of bad rows, not a total cascade. The claim is narrower
+and verified — the assumption existed, was undocumented, was stated falsely, and
+had no test. `GlyphsWidthTest` now pins one column per character; it kills a CJK
+glyph and an emoji added to the vocabulary. (A first probe, U+23CE ⏎, was
+assumed Wide and is Neutral — the test was right to pass, and the classification
+has to come from the Unicode table, not from memory.)
+
+`composer mutate` generates nothing for this diff: the only `src` change is a
+comment. The mutation evidence is manual and recorded above, plus the one that
+matters — an injected off-by-one in `differentialRender`'s cursor math fails 5
+of the 7 new cases. That is the bug class the screenshot looks like, and it is
+now caught.
+
+### Still open
+
+The reporter's screen is not yet explained. What is now excluded, with
+measurements rather than argument: frame composition, the mirroring, the
+segmentation, the differential write path, and the terminal's own bidi. Three
+rounds were spent inside the first two of those.

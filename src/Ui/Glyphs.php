@@ -10,8 +10,20 @@ namespace Porta\Ui;
  * deliberate, not accidental. Rules of the vocabulary: glyphs sharing one
  * surface (e.g. the editor gutter's marker column) must be distinct; the same
  * value on disjoint surfaces is fine and is called out where it happens. All
- * single-character glyphs are one display column wide (East Asian Width
- * Narrow) so they never break line-width math.
+ * single-character glyphs are one display column wide, which the whole render
+ * path's column arithmetic depends on; {@see
+ * \Porta\Tests\Unit\Ui\GlyphsWidthTest} is where that is enforced.
+ *
+ * They are not, however, East Asian Width *Narrow*, as this comment claimed for
+ * a long time. Most of the vocabulary is *Ambiguous* — the box-drawing set, the
+ * arrows, the geometric shapes, and the pane separator itself — and Ambiguous
+ * is one column only because terminals conventionally render it so. A terminal
+ * configured the other way (a CJK locale will do it) makes every row carrying
+ * one of these over-wide, and an over-wide row does not merely look wrong: the
+ * terminal wraps it, and since differential repaints are positioned with
+ * relative cursor moves, every later frame paints a row off. Measured: with
+ * Ambiguous rendered as two columns, 66 of 67 rows of the settings screen are
+ * corrupted. Prefer a Narrow or Neutral glyph when there is a choice.
  */
 final class Glyphs
 {
