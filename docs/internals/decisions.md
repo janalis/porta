@@ -6793,3 +6793,112 @@ that method was inserted between it and its method, so a block documenting
 `@param \Closure $mutate` sat on a method taking `string $file`, and `edit()`
 had none. Moved back. No gate reads prose, which is the whole reason it sat
 there unnoticed through a full green run.
+
+## Drag and drop, round 2: reach, feedback, and a keyboard twin (2026-09-11)
+
+The tree drag landed complete on 2026-09-10/11 — move, copy, collision prompts,
+refusals, Escape, 42 tests. Reading the implementation rather than the plan
+turned up three limits, and the third is the one that matters most.
+
+### Reach: it could only land on what was already on screen
+
+There is no auto-scroll anywhere in this codebase. Every other drag CLAMPS the
+pointer into its rect (`MouseRouter::clampedRelative`, plus two inlined copies),
+which is right for a text selection — the document scrolls with the caret — and
+useless for a tree, where the target is a row. A drag could not reach a folder
+below the fold, and could not reach into a collapsed one at all. On a fresh
+session most of a project is both.
+
+Two timers on `TreeDragRouter`, both cancelled by the existing `disarm()` so
+release, Escape and the fresh-press sweep already reach them. The repeat is a
+CLOCK rather than a motion event because a pointer resting on the edge sends
+nothing — the terminal reports motion, not position — so without one the scroll
+would stop exactly when the user is waiting for it.
+
+`ListSelection::scrollWindow()` is the new seam, and it has to cooperate with
+`follow()`, which runs every render and pulls the window back to CONTAIN the
+selection. A window moved past the selection would snap straight back. So the
+selection is dragged along, but only when it would otherwise fall outside — the
+smallest change that leaves `follow()` with nothing to undo.
+
+The spring-load dwell survives as long as the TARGET is unchanged, not as long
+as the pointer is. A pointer is never perfectly still; restarting on each jitter
+means the folder never opens, which looks exactly like the feature not existing.
+
+### Feedback: the drop target was the hover tint
+
+`FileTreeWidget` painted the drop target `merge(RowHighlightBg, TabAccent)` and
+the hovered directory — four lines below, in the same `match(true)` — with the
+same two roles in the same order. Byte-identical. "Your files are going here"
+and "the pointer is here" were the same row.
+
+The original justification was sound and beside the point: a button-held motion
+is `isLeftDrag()`, never `isMove()`, so the hover router is dormant during a
+drag and there is no competing highlight. True, and it does not make the two
+distinguishable to a human. That docblock had also survived the change that made
+it wrong, which is the usual way — no gate reads prose.
+
+`Role::DropTargetRow` costs four theme maps. Monochrome is why it could not stay
+a merge: there it must be a mark distinct from both the hover's underline and
+the selection's reverse, because a drag can rest on a row that is already both.
+The lint pin for enum size moves 60 → 61, re-bisected to confirm 60 still fails.
+
+The row also carries a count, which is the only thing that answers "what" — on a
+multi-selection drag the rows travelling may be scrolled off screen. It is a
+bound WITH a floor: under eight columns for the name the label goes entirely,
+because a row whose visible width disagrees with its declared width throws out of
+the render loop and takes the session with it. `NarrowPaneRenderTest` now sweeps
+a mid-drag tree; it had only ever seen a bare idle one, so that row had never
+been width-checked at all.
+
+The status-bar hint is **withdrawn at the release**, and the full suite is what
+found the need: it covered the filename that the drop-on-editor case puts in the
+status bar, which is that gesture's only confirmation. Withdrawal is guarded by
+the text, so a message posted since is never swallowed.
+
+### The third limit: it was the only way
+
+Moving a file across directories required a pointer. `ActionCatalog` had two
+tree entries, neither touching a file; New File, Rename, Delete and the drag
+were all mouse-only closures. Cut/Copy/Paste now sit on the menu and on
+ctrl+x/c/v, and the paste dispatches the SAME `TreeDropRequested` — so the
+prompts, the refusals, the buffer re-pointing, `FileRenamed`, the LSP didClose
+and the single `WorkingTreeChanged` are inherited, not reimplemented.
+
+The chords collide with the editor's cut and paste deliberately: separated by
+FOCUS, not by chord, so the same key means the same verb on whichever thing you
+are looking at. `EditorKeymap` owns them for text and never reaches the command
+registry; these are gated on tree focus, and the dispatcher checks commands
+before falling through to the focused widget. They are hidden from the palette,
+since opening it takes the focus they depend on.
+
+### What the mutation sweeps cost, and what they bought
+
+Thirty-odd mutants across five commits. Two real defects and six real test gaps,
+and the gaps are the same shape over and over — **a positive with no floor**:
+
+- The pane's header row is not an entry, so counting it left the scroll window a
+  row too tall and stopped one row early. The row it could never reach was the
+  last in the project — the one the feature exists to reach.
+- The dwell's memory of which folder it was counting for was not dropped when
+  the drag ended, so a second drag onto the same folder never armed one. A
+  feature that works once per folder per session.
+- Nothing asserted the payload label reached the ROW. The widget and the router
+  were each tested alone, so passing no label at all left both green.
+- Nothing asserted the hint is posted ONCE; re-posting on every motion event
+  would wipe anything else the status bar said for the whole drag.
+- Nothing asserted a cut is spent by its paste, that a copy is not, that Paste
+  is ABSENT with an empty clipboard, or that the chords are inert in the editor.
+- The file-row paste asserted a file the previous step had already created, so
+  it could not tell the two targets apart.
+
+And the spring-load row lookup was one more instance of the loop-skip shape that
+has turned up all session: every test sprang `src/`, the first row, where
+skipping and stopping agree.
+
+Two process notes worth keeping. A python edit script that asserts before its
+single write leaves the file untouched when a later step misses — hit again
+here, fixed again by writing after each edit. And `exit=124` is a TIMEOUT, not a
+kill: three mutants reported it, and running them alone showed one failing
+cleanly in nine seconds. A mutation sweep over E2e needs a per-run cap near the
+clean runtime, or a hang and a kill are indistinguishable.

@@ -530,8 +530,11 @@ server's refactoring.
 
 Drag a row onto a folder to **move** it there. Dropping onto a *file* means its
 folder, so you can aim at any row rather than hunting for the directory line.
-The folder under the pointer is highlighted while you drag, `Esc` abandons the
-drag, and releasing without having moved is just a click.
+The folder under the pointer is highlighted while you drag — in its own colour,
+not the ordinary hover tint — and carries a count of what would land on it, so a
+multi-file drag says what it is moving even when the rows it picked up have
+scrolled away. The status bar names the copy modifier as you start. `Esc`
+abandons the drag, and releasing without having moved is just a click.
 
 - **Several files at once.** Dragging a row that is part of a selection carries
   the whole selection; dragging one outside it carries only that row. A folder
@@ -547,6 +550,31 @@ drag, and releasing without having moved is just a click.
   question is the safety net.
 - **A folder cannot be dropped inside itself** or its own descendant, and a
   drop back into the folder a file is already in does nothing.
+- **The tree scrolls under the drag.** Hold the pointer on the top or bottom row
+  and it keeps moving, so the destination does not have to be on screen when you
+  start. It stops at the ends of the tree.
+- **A collapsed folder opens if you rest on it** for about half a second, which
+  is how you reach a row inside one without letting go. Moving on before that
+  leaves it shut.
+- **Released over nothing** — the tab strip, the dock, the status bar — the drag
+  says so rather than failing silently.
+
+### Moving files without the mouse
+
+The same move, on the chords every file manager uses: **`Ctrl+X`** / **`Ctrl+C`**
+on the selected rows, then **`Ctrl+V`** on the folder you want them in (a *file*
+row means its folder, exactly as a drop does). They are on the right-click menu
+too, and *Paste* only appears once there is something to paste.
+
+These are the editor's cut and paste as well, and which one you get depends on
+**what has focus** rather than on the chord: in the editor they move text, in the
+tree they move files. `Alt+1` focuses the tree.
+
+A cut is spent by its paste — those files are somewhere else now — while a copy
+stays on the clipboard, so you can paste the same set into several places. Name
+collisions, the refusal to paste a folder into itself, and everything that
+follows a file (buffers, bookmarks, breakpoints, history, the language server)
+behave exactly as they do for a drop, because it *is* one.
 
 ## Refactoring
 

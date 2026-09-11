@@ -39,6 +39,7 @@ nothing.
 | `Ctrl+Shift+\`` / `Alt+F11` | Open a new terminal session |
 | `Ctrl+PageDown` / `Ctrl+PageUp` | Next / previous terminal session (`Ctrl+Shift+W` closes one) |
 | `Alt+1` | Focus the project tree |
+| `Ctrl+X` / `Ctrl+C` / `Ctrl+V` | **In the file tree**: cut / copy / paste the selected files. The same chords move text in the editor — which you get depends on what has focus |
 | `Alt+6` | Problems panel |
 | `Alt+9` | Notification log — every flash the status bar showed and you missed |
 | `Ctrl+Alt+H` | Local history |
@@ -309,6 +310,12 @@ cursor, drag to select (double-click a word, triple-click a line,
 entries / tabs / menu items / panel rows, drag pane separators to resize,
 and right-click for a context menu. In the file tree, `Ctrl+Click` adds an
 entry to the selection and `Shift+Click` takes the range from the last one.
+
+**Dragging in the file tree** moves files: onto a folder to move, onto the
+editor to open, `Alt` held at the release to copy, `Esc` to abandon. The tree
+scrolls while you hold the pointer at its top or bottom edge, and a collapsed
+folder opens if you rest on it, so the destination need not be on screen when
+you start. `docs/editor.md` has the rest.
 
 The status bar's right-hand cells are clickable too: the error/warning counts
 open **Problems**, the `line:col` position opens **Go to Line**, and the
