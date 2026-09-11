@@ -7067,3 +7067,46 @@ on the next frame.
   order beside mirrored chrome. Decided with the user to leave the behaviour and
   correct the prose, in the interface docblock and in three user-facing docs
   that claimed Hebrew "runs fully right-to-left".
+
+## Mutating the RTL round: nineteen escapes, three shapes (2026-09-11)
+
+`composer mutate` over the six-commit RTL diff, judged against Unit and read by
+section: 135 killed, 19 escaped, MSI 87%. All nineteen were in code written that
+same day, and they fell into three shapes worth naming.
+
+**Separators nobody tested.** W4 accepts six separators; the cases exercised four
+(`: . , -`, via a line:column, a decimal, a thousands group and a date). `+` and
+`/` were added to the list and never asserted. Both were correct — `1+2` and
+`1/2` hold together — but a list of six with four tested is a list of four.
+
+**Range ends no glyph occupies.** The derived glyph sweep only sees codepoints
+the interface actually draws, so a neutral range whose EDGE no glyph happens to
+sit on can be off by one and nothing notices. `0x21FF`, `0x257F`, `0x259F`,
+`0x25FF` and `0x27BF` were all free to move. Pinned now by a boundary provider
+in the file's existing idiom — the same treatment the R ranges already had, which
+is the tell that this was an omission rather than a judgement.
+
+**The ends of the walk.** `joinNumberSeparators()` reads its separator's
+neighbours, and a separator in the first or last cell has only one. Every case
+put it safely in the middle, so `$i > 0`, `$i < $last` and the `- 1` in
+`$last` were all unpinned — and two of those mutants index past the array.
+`:12` and `12:` pin them: the separator is an ordinary neutral there and moves
+to the far side, which is both the correct answer and the discriminating one.
+
+### The one that needed a different fixture
+
+`substr($line, offset: 0, …)` in the caret guard survived, and the reason is
+worth keeping. Shifting the offset by one drops the row's first character and
+picks up the first byte of the escape that follows — and in an ASCII fixture a
+lone `\x1b` measures exactly the one column the dropped character would have.
+The two errors cancel, and every existing case was ASCII.
+
+A row carrying a WIDE character does not cancel: dropping `日` loses two columns
+and the stray byte returns one, so the measured width differs by one and the
+caret is judged to belong to the pane before its own. The new case uses a CJK
+prefix, which is also the realistic setting — a CJK filename or an emoji in a
+row that holds the caret.
+
+That is the second time this session a mutant survived because the fixture was
+all-ASCII, and the general form is the familiar one: **a fixture whose parts are
+uniform cannot grade arithmetic that only differs when they are not.**

@@ -152,6 +152,31 @@ final class PaneReorderTest extends TestCase
         $this->assertSame(1, substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'exactly one hardware cursor');
     }
 
+    /**
+     * The caret's column is measured in COLUMNS, not bytes.
+     *
+     * A row carrying a wide character — a CJK filename, an emoji — puts the
+     * caret at a column the byte offset does not agree with. Measuring from
+     * anywhere but the start of the line drifts by the difference, and the
+     * caret is then judged to belong to the pane before its own and stripped.
+     *
+     * The ASCII cases either side of this one cannot see it: there a stray
+     * escape byte counts as exactly the one column a dropped character would
+     * have, and the two errors cancel.
+     */
+    public function testTheCaretColumnIsMeasuredFromTheStartOfTheRow(): void
+    {
+        $line = "\u{65E5}ab".AnsiUtils::cursorMarker(CursorShape::Bar).'EFGH';
+        $runs = [
+            ['start' => 0, 'width' => 4, 'ltr' => true],
+            ['start' => 4, 'width' => 4, 'ltr' => true],
+        ];
+
+        $out = new PaneReorder()->reorderRow($line, $runs);
+
+        $this->assertSame(1, substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'the caret is this run\'s own');
+    }
+
     /** The pane that actually HOLDS the caret keeps it — the floor. */
     public function testTheCaretMarkerSurvivesInTheRunThatOwnsIt(): void
     {

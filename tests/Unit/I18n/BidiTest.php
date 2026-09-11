@@ -81,6 +81,23 @@ final class BidiTest extends TestCase
         self::assertSame('3.14', self::strip(Bidi::reorder('3.14', BaseDirection::Rtl)), 'a decimal');
         self::assertSame('1,234', self::strip(Bidi::reorder('1,234', BaseDirection::Rtl)), 'a thousands group');
         self::assertSame('2026-09-11', self::strip(Bidi::reorder('2026-09-11', BaseDirection::Rtl)), 'a date');
+        self::assertSame('1+2', self::strip(Bidi::reorder('1+2', BaseDirection::Rtl)), 'a European separator');
+        self::assertSame('1/2', self::strip(Bidi::reorder('1/2', BaseDirection::Rtl)), 'a ratio');
+    }
+
+    /**
+     * A separator with a number on only ONE side is an ordinary neutral.
+     *
+     * The ends of the line are where the W4 walk can run off: a separator in
+     * the first or last cell has no neighbour on one side, and reading past it
+     * would both join the wrong thing and index outside the array. Every case
+     * above puts the separator safely in the middle.
+     */
+    public function testASeparatorAtEitherEndDoesNotJoinAnything(): void
+    {
+        // Neutral, so it takes the base direction and moves to the far side.
+        self::assertSame('12:', self::strip(Bidi::reorder(':12', BaseDirection::Rtl)), 'nothing to its left');
+        self::assertSame(':12', self::strip(Bidi::reorder('12:', BaseDirection::Rtl)), 'nothing to its right');
     }
 
     /** The number survives with Hebrew around it, which is the real setting. */
@@ -343,6 +360,47 @@ final class BidiTest extends TestCase
         }
 
         $this->assertSame([], $unreachable, 'these have a mirror entry they can never reach');
+    }
+
+    /**
+     * The neutral ranges begin and end exactly where they say.
+     *
+     * The glyph sweep only sees codepoints the interface actually draws, so a
+     * range whose edge no glyph happens to occupy can be off by one and nothing
+     * notices — and the ranges added for arrows, shapes and symbols are mostly
+     * edge-free in that sense.
+     *
+     * @param int<0, 1114111> $codepoint
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('neutralRangeEdgeProvider')]
+    public function testTheNeutralRangesEndWhereTheySay(int $codepoint, bool $neutral): void
+    {
+        $class = Probe::invokeStatic(Bidi::class, 'classify', mb_chr($codepoint, encoding: 'UTF-8'));
+
+        self::assertSame($neutral, 'N' === $class, sprintf('U+%04X', $codepoint));
+    }
+
+    /** @return iterable<string, array{int, bool}> codepoint => is it neutral */
+    public static function neutralRangeEdgeProvider(): iterable
+    {
+        yield 'before arrows (0x218F)' => [0x218F, false];
+        yield 'arrows start (0x2190)' => [0x2190, true];
+        yield 'arrows end (0x21FF)' => [0x21FF, true];
+        yield 'after arrows (0x2200)' => [0x2200, false];
+        yield 'before misc technical (0x22FF)' => [0x22FF, false];
+        yield 'misc technical start (0x2300)' => [0x2300, true];
+        yield 'misc technical end (0x23FF)' => [0x23FF, true];
+        yield 'after misc technical (0x2400)' => [0x2400, false];
+        // Box drawing, blocks, shapes and symbols run together from 0x2500 to
+        // 0x27BF, so only the outer edges move the answer — but each internal
+        // end is still its own bound and can slip on its own.
+        yield 'before box drawing (0x24FF)' => [0x24FF, false];
+        yield 'box drawing start (0x2500)' => [0x2500, true];
+        yield 'box drawing end (0x257F)' => [0x257F, true];
+        yield 'block elements end (0x259F)' => [0x259F, true];
+        yield 'geometric shapes end (0x25FF)' => [0x25FF, true];
+        yield 'dingbats end (0x27BF)' => [0x27BF, true];
+        yield 'after dingbats (0x27C0)' => [0x27C0, false];
     }
 
     /**
