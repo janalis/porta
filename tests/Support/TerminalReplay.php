@@ -78,9 +78,9 @@ final class TerminalReplay
 
                 continue;
             }
-            $length2 = $this->characterLength($bytes, $i);
-            $this->put(substr($bytes, $i, $length2));
-            $i += $length2;
+            $character = self::characterAt($bytes, $i);
+            $this->put($character);
+            $i += \strlen($character);
         }
     }
 
@@ -235,15 +235,21 @@ final class TerminalReplay
         );
     }
 
-    private function characterLength(string $bytes, int $i): int
+    /**
+     * The whole character at this byte offset.
+     *
+     * Matched with `/\G./u` rather than decoded from the lead byte by hand: the
+     * stream is UTF-8 and a terminal replay that split a Hebrew letter down the
+     * middle would measure and place every cell after it wrongly. The offset
+     * stays in bytes because that is what `preg_match()` seeks in; only the
+     * character extraction has to be multibyte-aware. A byte that begins no
+     * valid sequence falls back to itself, so malformed input advances instead
+     * of looping.
+     */
+    private static function characterAt(string $bytes, int $offset): string
     {
-        $byte = \ord($bytes[$i]);
+        $m = [];
 
-        return match (true) {
-            $byte >= 0xF0 => 4,
-            $byte >= 0xE0 => 3,
-            $byte >= 0xC0 => 2,
-            default => 1,
-        };
+        return 1 === preg_match('/\G./u', $bytes, $m, offset: $offset) ? $m[0] : $bytes[$offset];
     }
 }
