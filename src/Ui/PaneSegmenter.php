@@ -41,14 +41,62 @@ final class PaneSegmenter
     {
         $leaves = [];
         $this->collectLeaves($root, $leaves);
+
+        $byRow = [];
+        for ($row = 0; $row < $rows; ++$row) {
+            $byRow[$row] = self::runsForRow($leaves, $row, $columns);
+        }
+
+        return $byRow;
+    }
+
+    /**
+     * The floating regions covering each row — the overlay layer, kept apart
+     * from the pane runs above.
+     *
+     * They used to be merged in, owning their columns outright, and that is
+     * what tore the RTL settings screen: a toast over the right of the screen
+     * TRUNCATED the pane beneath it, and reordering the shortened span
+     * re-right-aligned the pane's whole row, sliding every label ~28 columns
+     * left. A floating surface must hide what is under it and move nothing.
+     *
+     * @return array<int, list<array{start: int, width: int, ltr: bool}>>
+     */
+    public function segmentRegions(int $columns, int $rows): array
+    {
         $regions = $this->dropdowns->regions();
 
         $byRow = [];
         for ($row = 0; $row < $rows; ++$row) {
-            $byRow[$row] = self::runsForRow($leaves, $regions, $row, $columns);
+            $byRow[$row] = self::regionRunsForRow($regions, $row, $columns);
         }
 
         return $byRow;
+    }
+
+    /**
+     * The floating regions tiling one row, in paint order.
+     *
+     * @param list<DropdownRegion> $regions topmost last; each says whether it is verbatim
+     *
+     * @return list<array{start: int, width: int, ltr: bool}>
+     */
+    public static function regionRunsForRow(array $regions, int $row, int $columns): array
+    {
+        $columns = max(0, $columns);
+        $runs = [];
+        foreach ($regions as $region) {
+            if (!$region->coversRow($row)) {
+                continue;
+            }
+            $start = max(0, $region->col);
+            $end = min($columns, $region->col + $region->width);
+            if ($end > $start) {
+                $runs[] = ['start' => $start, 'width' => $end - $start, 'ltr' => $region->ltr];
+            }
+        }
+
+        return $runs;
     }
 
     /**
@@ -78,15 +126,18 @@ final class PaneSegmenter
 
     /**
      * The pane runs tiling one row: each column is owned by the topmost pane
-     * (later leaf, then any dropdown region on top), then contiguous same-owner
-     * columns are coalesced into runs. Uncovered gaps become verbatim runs.
+     * (the later leaf), then contiguous same-owner columns are coalesced into
+     * runs. Uncovered gaps become verbatim runs.
      *
-     * @param list<array{rect: WidgetRect, ltr: bool}> $leaves  paint order
-     * @param list<DropdownRegion>                     $regions topmost; each says whether it is verbatim
+     * Floating regions are deliberately NOT considered here — see
+     * {@see segmentRegions()} for why letting them own columns broke the panes
+     * underneath.
+     *
+     * @param list<array{rect: WidgetRect, ltr: bool}> $leaves paint order
      *
      * @return list<array{start: int, width: int, ltr: bool}>
      */
-    public static function runsForRow(array $leaves, array $regions, int $row, int $columns): array
+    public static function runsForRow(array $leaves, int $row, int $columns): array
     {
         $columns = max(0, $columns);
         /** @var list<int|string> $owner -1 = uncovered gap (verbatim) */
@@ -103,16 +154,6 @@ final class PaneSegmenter
                 $ltr[$col] = $leaf['ltr'];
             }
         }
-        foreach ($regions as $index => $region) {
-            if (!$region->coversRow($row)) {
-                continue;
-            }
-            for ($col = max(0, $region->col), $end = min($columns, $region->col + $region->width); $col < $end; ++$col) {
-                $owner[$col] = 'd'.$index;
-                $ltr[$col] = $region->ltr;
-            }
-        }
-
         $runs = [];
         for ($start = 0, $col = 1; $col <= $columns; ++$col) {
             if (!($col === $columns || $owner[$col] !== $owner[$start])) {

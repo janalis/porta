@@ -205,4 +205,137 @@ final class PaneReorderTest extends TestCase
             new PaneReorder()->logicalColumn($line, 3, $runs),
         );
     }
+
+    /**
+     * A floating surface hides what is under it and moves nothing else.
+     *
+     * This is the defect the Hebrew settings screen was reported for five
+     * times. A toast over the right of the screen used to OWN its columns
+     * during segmentation, which truncated the pane beneath it; reordering the
+     * shortened span then re-right-aligned the pane's whole row, sliding every
+     * label about 28 columns left. Measured on the real settings screen, the
+     * blast radius went from "columns 127..224 of four rows" to the toast's own
+     * box.
+     */
+    /**
+     * A floating surface must not MOVE the pane underneath it.
+     *
+     * The defect the Hebrew settings screen was reported for five times: a
+     * toast used to own its columns during segmentation, which truncated the
+     * pane beneath it, and reordering the shortened span re-right-aligned the
+     * pane's whole row — every label slid about 28 columns left. Measured on
+     * the real settings screen, the blast radius went from "columns 127..224 of
+     * four rows" down to the toast's own box.
+     *
+     * The invariant is positional, and deliberately not "nothing outside the
+     * region changes": reordering maps logical column c to visual
+     * span_end - 1 - c, so hiding the covered cells leaves its gap at the
+     * MIRRORED span, not at the region's own. What must hold is that no pane
+     * glyph moves — every difference lies in one of those two spans.
+     */
+    public function testAFloatingRegionDoesNotMoveThePaneUnderneath(): void
+    {
+        $reorder = new PaneReorder();
+        $line = 'abc '."\u{05E9}\u{05DC}\u{05D5}\u{05DD}".' def '."\u{05E2}\u{05D1}\u{05E8}\u{05D9}\u{05EA}".' ghi';
+        $width = AnsiUtils::visibleWidth($line);
+        $pane = [['start' => 0, 'width' => $width, 'ltr' => false]];
+        $region = ['start' => $width - 6, 'width' => 6, 'ltr' => true];
+
+        $without = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane));
+        $with = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [$region]));
+
+        $allowed = [];
+        for ($c = $region['start']; $c < ($region['start'] + $region['width']); ++$c) {
+            $allowed[$c] = true; // the surface's own columns
+            $allowed[$width - 1 - $c] = true; // and where its hidden cells mirror to
+        }
+        for ($c = 0; $c < $width; ++$c) {
+            if (\array_key_exists($c, $allowed)) {
+                continue;
+            }
+            $this->assertSame(
+                AnsiUtils::sliceByColumn($without, $c, length: 1),
+                AnsiUtils::sliceByColumn($with, $c, length: 1),
+                \sprintf('column %d moved', $c),
+            );
+        }
+        $this->assertSame($width, AnsiUtils::visibleWidth($with), 'the row still measures its width');
+    }
+
+    public function testAFloatingRegionShowsItsOwnContentAtItsOwnColumns(): void
+    {
+        // And the surface itself survives: blanking it for the pane's pass and
+        // stamping it back must not lose it, nor leave a second copy elsewhere.
+        $reorder = new PaneReorder();
+        $line = str_repeat(' ', times: 10).'[TOAST]'.str_repeat(' ', times: 3);
+        $width = AnsiUtils::visibleWidth($line);
+        $pane = [['start' => 0, 'width' => $width, 'ltr' => false]];
+
+        $with = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [['start' => 10, 'width' => 7, 'ltr' => true]]));
+
+        $this->assertSame('[TOAST]', AnsiUtils::sliceByColumn($with, startCol: 10, length: 7), 'the surface is where it belongs');
+        $this->assertSame(1, substr_count($with, needle: '[TOAST]'), 'and there is exactly one of it');
+    }
+
+    /**
+     * The whole two-pass shape, pinned on twelve Hebrew letters.
+     *
+     * Hebrew reverses cleanly, so the expected row can be worked out by hand
+     * and every step is constrained: blank the surface's LOGICAL columns, mirror
+     * the pane over its FULL span, stamp the surface's own cells back at its own
+     * columns. A region in the middle, because one at either end lets the
+     * arithmetic be wrong in ways that still look right.
+     */
+    public function testTheSurfaceIsBlankedMirroredAndStampedBack(): void
+    {
+        $reorder = new PaneReorder();
+        //             0123456789ab
+        $line = "\u{05D0}\u{05D1}\u{05D2}\u{05D3}\u{05D4}\u{05D5}\u{05D6}\u{05D7}\u{05D8}\u{05D9}\u{05DA}\u{05DB}";
+        $pane = [['start' => 0, 'width' => 12, 'ltr' => false]];
+
+        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [['start' => 4, 'width' => 4, 'ltr' => true]]));
+
+        // blanked 4..7 -> mirrored -> columns 4..7 stamped from the original.
+        $this->assertSame(
+            "\u{05DB}\u{05DA}\u{05D9}\u{05D8}" // the tail, mirrored to the front
+            ."\u{05D4}\u{05D5}\u{05D6}\u{05D7}" // the surface, verbatim at its own columns
+            ."\u{05D3}\u{05D2}\u{05D1}\u{05D0}", // the head, mirrored to the back
+            $out,
+        );
+    }
+
+    public function testTheHiddenCellsCarryNoBackgroundIntoTheMirroredGap(): void
+    {
+        // The cells a surface covers are blanked, and the gap they leave lands
+        // at the MIRRORED span, where nothing paints over it. If the blank
+        // inherited the SGR state running at that point, the pane would show a
+        // stray band of background — the bleed this class exists to stop.
+        $reorder = new PaneReorder();
+        $hebrew = "\u{05D0}\u{05D1}\u{05D2}\u{05D3}\u{05D4}\u{05D5}\u{05D6}\u{05D7}";
+        $line = "\x1b[48;5;236m".$hebrew."\x1b[49m";
+        $pane = [['start' => 0, 'width' => 8, 'ltr' => false]];
+
+        $out = $reorder->reorderRow($line, $pane, [['start' => 4, 'width' => 4, 'ltr' => true]]);
+
+        // The gap sits at columns 0..3; no background may be open when it paints.
+        $gap = AnsiUtils::sliceByColumn($out, startCol: 0, length: 4, strict: true);
+        $this->assertStringNotContainsString('48;5;236', $gap, 'the hidden cells leave no background behind');
+        $this->assertSame('    ', AnsiUtils::stripAnsiCodes($gap));
+    }
+
+    public function testASurfaceRunningPastTheRowEndIsClamped(): void
+    {
+        // A surface wider than what is left of the row: the slices either side
+        // must not be asked for a negative length.
+        $reorder = new PaneReorder();
+        $line = "\u{05D0}\u{05D1}\u{05D2}\u{05D3}";
+        $pane = [['start' => 0, 'width' => 4, 'ltr' => false]];
+
+        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [['start' => 2, 'width' => 9, 'ltr' => true]]));
+
+        // The head mirrors onto columns 3..2, which the surface then covers, so
+        // only the surface's own clamped cells remain visible.
+        $this->assertSame(4, AnsiUtils::visibleWidth($out), 'the row still measures its width');
+        $this->assertSame('  '."\u{05D2}\u{05D3}", $out);
+    }
 }

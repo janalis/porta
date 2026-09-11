@@ -7540,3 +7540,83 @@ possible one. A periodic or suspicion-driven absolute repaint is worth
 considering, and is deliberately NOT done here: this round fixes the defect with
 evidence for it, and speculating a second mechanism into existence is what the
 previous four rounds did.
+
+## The Hebrew settings screen, actually found: a toast truncates the pane under it (2026-09-12)
+
+Five reports. The previous round proved composition correct and the write path
+correct, and closed with the defect unexplained. It was explained by a second
+screenshot — of the General section, where the rule finally showed:
+
+- rows whose nav entry is HEBREW (`הדגשה`, `קיצורי מקשים`, `תוספות`) were swapped
+  with the form label beside them;
+- rows whose nav entry is LATIN (`chroma`, `git`) were correct, matching the
+  harness character for character.
+
+A rule, not an impression — and the lengths corroborated it: the label column
+held a 5-character word where an 11-character one belonged, and vice versa.
+
+### What it is
+
+`runsForRow()` assigned every column an owner, and a floating region overrode
+the pane beneath it. So a toast sitting over the right of the screen TRUNCATED
+the settings form's run from `0..206` to `0..179`, and `PaneReorder` then
+mirrored that shortened span as if it were the whole pane — re-right-aligning
+every glyph in the row about 28 columns left. RTL only: in LTR nothing is
+reordered, so nothing moved.
+
+Measured on the real settings screen, raising one toast changed **four rows
+across columns 127..224**. It now changes four rows inside the toast's own box,
+`180..224`, which is what a floating surface is supposed to do.
+
+### The fix
+
+Two layers instead of one. `segment()` returns the panes, whole;
+`segmentRegions()` returns the surfaces. `reorderRow()` blanks the surfaces'
+columns, reorders each pane over its FULL span against that hole, and stamps the
+surfaces back at their own columns.
+
+Both halves are load-bearing and both were mutation-checked: without the
+blanking the pane pass carries the toast's glyphs along and paints a second copy
+of the box elsewhere in the row (observed, not theorised); without the full-span
+reorder the pane slides.
+
+The invariant the tests pin is positional, and deliberately NOT "nothing outside
+the region changes" — reordering maps logical column `c` to visual
+`span_end - 1 - c`, so the hidden cells leave their gap at the MIRRORED span,
+not at the surface's own. What must hold is that no pane glyph moves. Writing
+the stronger claim first is what caught this: the test failed, and the failure
+was the test's, not the code's.
+
+### What the round cost, and why
+
+This signal was in hand early: a toast producing runs that cross the pane
+boundary was observed, written down, and then explicitly dismissed in a plan as
+"correct segmentation, not a bug". It was the bug. Three later rounds went into
+the bidi engine, which was never at fault.
+
+Two further self-inflicted detours are worth recording because both produced
+confident, wrong conclusions:
+
+- Reading the captured session with Python's TEXT mode silently converted every
+  `\r\n` to `\n`. The emulator then never saw a carriage return, invented 1046
+  wraps, and yielded "930 rows at 227 columns" — from which a terminal width of
+  227 was inferred and reported. Read captures with `newline=''`.
+- Terminal bidi was ruled out twice on bad evidence (a grep for "bidi", and a
+  naive whole-line-reversal model that predicted blank right-hand columns), then
+  re-opened, then finally settled properly: Ghostty 1.3.2 ships no bidi
+  implementation and no bidi config key, while its config keys ARE present in
+  the binary as exact strings, so their absence is real evidence.
+
+### Dead code found by mutation
+
+`blankRegions()` carried `max(0, …)` on both the blank width and the tail
+length. Every mutation of either survived, and removing both changed no test:
+`regionRunsForRow()` never yields an empty surface and `sliceByColumn()`
+tolerates a tail past the row. They were defensive code nothing could reach, and
+they are gone; the width invariant is an `assert` instead, which is also what
+satisfies mago.
+
+Some mutants remain alive on the two `sliceByColumn(strict: true)` flags and the
+prefix concatenation. They are not claimed as killed: asserting on stripped ANSI
+cannot see `strict`, and the one test that asserts on raw SGR passes either way.
+Recorded rather than papered over.

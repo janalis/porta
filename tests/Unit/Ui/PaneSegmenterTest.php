@@ -28,7 +28,7 @@ final class PaneSegmenterTest extends TestCase
             ['rect' => new WidgetRect(row: 0, col: 10, columns: 10, rows: 5), 'ltr' => true], // code
         ];
 
-        $runs = PaneSegmenter::runsForRow($leaves, [], 0, 20);
+        $runs = PaneSegmenter::runsForRow($leaves, 0, 20);
 
         $this->assertRuns(
             $runs,
@@ -44,7 +44,7 @@ final class PaneSegmenterTest extends TestCase
             ['rect' => new WidgetRect(row: 0, col: 5, columns: 6, rows: 1), 'ltr' => false], // painted on top
         ];
 
-        $runs = PaneSegmenter::runsForRow($leaves, [], 0, 20);
+        $runs = PaneSegmenter::runsForRow($leaves, 0, 20);
 
         $this->assertRuns(
             $runs,
@@ -60,7 +60,7 @@ final class PaneSegmenterTest extends TestCase
             ['rect' => new WidgetRect(row: 0, col: 4, columns: 4, rows: 1), 'ltr' => false],
         ];
 
-        $runs = PaneSegmenter::runsForRow($leaves, [], 0, 12);
+        $runs = PaneSegmenter::runsForRow($leaves, 0, 12);
 
         $this->assertRuns(
             $runs,
@@ -70,20 +70,23 @@ final class PaneSegmenterTest extends TestCase
         );
     }
 
-    public function testADropdownRegionIsTopmostAndSplitsAnLtrPane(): void
+    public function testAFloatingRegionLeavesThePaneUnderItWhole(): void
     {
+        // It used to SPLIT the pane into [0,5) [5,10) [10,20). That is what
+        // broke the Hebrew settings screen: reordering a pane over a span
+        // shortened by whatever floats above it re-aligns the pane's whole row.
+        // The surface is a separate layer now; the pane stays one run.
         $leaves = [
             ['rect' => new WidgetRect(row: 0, col: 0, columns: 20, rows: 3), 'ltr' => true], // LTR editor
         ];
-        $regions = [new DropdownRegion(0, 5, 5, 2)];
-
-        $runs = PaneSegmenter::runsForRow($leaves, $regions, 0, 20);
 
         $this->assertRuns(
-            $runs,
-            ['start' => 0, 'width' => 5, 'ltr' => true], // editor
-            ['start' => 5, 'width' => 5, 'ltr' => false], // dropdown (RTL, on top)
-            ['start' => 10, 'width' => 10, 'ltr' => true], // editor
+            PaneSegmenter::runsForRow($leaves, 0, 20),
+            ['start' => 0, 'width' => 20, 'ltr' => true],
+        );
+        $this->assertRuns(
+            PaneSegmenter::regionRunsForRow([new DropdownRegion(0, 5, 5, 2)], 0, 20),
+            ['start' => 5, 'width' => 5, 'ltr' => false],
         );
     }
 
@@ -95,7 +98,7 @@ final class PaneSegmenterTest extends TestCase
 
         // Row 0 is above the pane → the whole row is an uncovered verbatim run.
         $this->assertRuns(
-            PaneSegmenter::runsForRow($leaves, [], 0, 10),
+            PaneSegmenter::runsForRow($leaves, 0, 10),
             ['start' => 0, 'width' => 10, 'ltr' => true],
         );
     }
@@ -107,11 +110,12 @@ final class PaneSegmenterTest extends TestCase
         ];
         $regions = [new DropdownRegion(5, 2, 3, 2)]; // rows 5-6 only
 
-        // Row 0 is above the dropdown → the region owns nothing here.
+        // Row 0 is above the dropdown → nothing floats here, and the pane is whole.
         $this->assertRuns(
-            PaneSegmenter::runsForRow($leaves, $regions, 0, 10),
+            PaneSegmenter::runsForRow($leaves, 0, 10),
             ['start' => 0, 'width' => 10, 'ltr' => false],
         );
+        $this->assertSame([], PaneSegmenter::regionRunsForRow($regions, 0, 10));
     }
 
     /**
@@ -146,7 +150,7 @@ final class PaneSegmenterTest extends TestCase
         ];
 
         $this->assertRuns(
-            PaneSegmenter::runsForRow($leaves, [], 1, 10),
+            PaneSegmenter::runsForRow($leaves, 1, 10),
             ['start' => 0, 'width' => 10, 'ltr' => false],
         );
     }
@@ -162,11 +166,15 @@ final class PaneSegmenterTest extends TestCase
             new DropdownRegion(0, 4, 4, 2), // rows 0-1: this one owns four columns
         ];
 
+        // The region that misses the row is skipped; the one that covers it is
+        // still found, and the pane beneath both stays whole.
         $this->assertRuns(
-            PaneSegmenter::runsForRow($leaves, $regions, 0, 12),
-            ['start' => 0, 'width' => 4, 'ltr' => true],
-            ['start' => 4, 'width' => 4, 'ltr' => false], // the dropdown, on top
-            ['start' => 8, 'width' => 4, 'ltr' => true],
+            PaneSegmenter::regionRunsForRow($regions, 0, 12),
+            ['start' => 4, 'width' => 4, 'ltr' => false],
+        );
+        $this->assertRuns(
+            PaneSegmenter::runsForRow($leaves, 0, 12),
+            ['start' => 0, 'width' => 12, 'ltr' => true],
         );
     }
 
@@ -245,5 +253,31 @@ final class PaneSegmenterTest extends TestCase
 
         $this->assertSame([['start' => 0, 'width' => 6, 'ltr' => true]], $byRow[0]);
         $this->assertSame([['start' => 0, 'width' => 6, 'ltr' => true]], $byRow[1]);
+    }
+
+    public function testSegmentKeepsThePaneWholeAndReportsRegionsSeparately(): void
+    {
+        // The regression guard for the Hebrew settings screen. A floating
+        // surface must NOT join the pane runs: merged in it owns its columns,
+        // which truncates the pane beneath, and reordering the shortened span
+        // slides the pane's whole row sideways.
+        $root = new ContainerWidget();
+        $region = new DropdownRegion(0, 2, 3, 2);
+        $segmenter = new PaneSegmenter(new Renderer(new StyleSheet()), new class($region) implements \Porta\Overlay\Region\FloatingRegions {
+            public function __construct(
+                private readonly DropdownRegion $region,
+            ) {}
+
+            public function regions(): array
+            {
+                return [$this->region];
+            }
+        });
+
+        $panes = $segmenter->segment($root, 6, 2);
+        $regions = $segmenter->segmentRegions(6, 2);
+
+        $this->assertSame([['start' => 0, 'width' => 6, 'ltr' => true]], $panes[0], 'the pane spans the row, undisturbed');
+        $this->assertSame([['start' => 2, 'width' => 3, 'ltr' => false]], $regions[0], 'the surface is its own layer');
     }
 }

@@ -345,9 +345,16 @@ final class BidiTui extends Tui implements FrameHooks
         if (null !== $segmenter && null !== $reorder) {
             $this->lastLines = $lines; // pre-reorder, row-indexed, for click column mapping
             $this->lastRuns = $segmenter->segment($root, $columns, $rows);
+            // The floating surfaces are a SECOND layer, stamped over the panes
+            // after they have been reordered over their full spans. Merged into
+            // the pane runs they truncated whatever they covered, and the
+            // shortened span re-aligned the pane's whole row.
+            $regions = $segmenter->segmentRegions($columns, $rows);
             $out = [];
             foreach ($lines as $row => $line) {
-                $out[] = array_key_exists($row, $this->lastRuns) ? $reorder->reorderRow($line, $this->lastRuns[$row]) : $line;
+                // Both maps are filled for the same 0..rows-1, so one guard
+                // covers both; a `?? []` on the regions could never fire.
+                $out[] = array_key_exists($row, $this->lastRuns) ? $reorder->reorderRow($line, $this->lastRuns[$row], $regions[$row]) : $line;
             }
             $lines = $out;
         }

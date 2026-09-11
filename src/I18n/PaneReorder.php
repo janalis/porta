@@ -21,8 +21,84 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 #[AsIdeService]
 final class PaneReorder
 {
+    /**
+     * @param list<array{start: int, width: int, ltr: bool}> $runs    the panes, tiling the row
+     * @param list<array{start: int, width: int, ltr: bool}> $regions floating surfaces, painted over the panes
+     */
+    public function reorderRow(string $line, array $runs, array $regions = []): string
+    {
+        // Blank what floats before reordering the panes, then stamp it back.
+        // Without the blanking the pane pass carries the surface's own glyphs
+        // along with it and paints a second copy of the box somewhere else in
+        // the row; without the full-span reorder the pane slides sideways.
+        $row = $this->reorderPanes(self::blankRegions($line, $regions), $runs);
+        foreach ($regions as $region) {
+            $row = $this->paintRegion($row, $line, $region);
+        }
+
+        return $row;
+    }
+
+    /**
+     * The row with every floating surface's columns replaced by spaces.
+     *
+     * The pane underneath then reorders over its FULL span against a hole,
+     * which puts its visible text at exactly the columns it would occupy if
+     * nothing floated at all — and the surface is stamped over the hole after.
+     *
+     * @param list<array{start: int, width: int, ltr: bool}> $regions
+     */
+    private static function blankRegions(string $line, array $regions): string
+    {
+        foreach ($regions as $region) {
+            // No clamping here: regionRunsForRow() never yields a zero width,
+            // and sliceByColumn() tolerates a tail that runs past the row --
+            // guards for either survived every mutation, which is what dead
+            // defensive code looks like.
+            \assert($region['width'] > 0, description: 'regionRunsForRow() never yields an empty surface');
+            $end = $region['start'] + $region['width'];
+            $width = AnsiUtils::visibleWidth($line);
+            $line =
+                AnsiUtils::sliceByColumn($line, startCol: 0, length: $region['start'], strict: true)
+                .Sgr::RESET
+                .str_repeat(' ', $region['width'])
+                .AnsiUtils::sliceByColumn($line, $end, $width - $end, strict: true)
+                .Sgr::RESET;
+        }
+
+        return $line;
+    }
+
+    /**
+     * Put a floating surface back over the reordered row, at its own columns.
+     *
+     * The panes are reordered over their FULL spans first, exactly as if
+     * nothing floated above them, and the surface is then stamped back on top.
+     * That is what makes a toast behave like a toast: it hides the cells under
+     * it and moves none of them. Letting the region own its columns during
+     * segmentation instead truncated the pane beneath, and reordering the
+     * shortened span slid the pane's whole row sideways — the settings screen
+     * in Hebrew, reported five times.
+     *
+     * The surface's own content is taken from the ORIGINAL row (the panes' pass
+     * has shuffled it) and reordered within its own box unless it is verbatim.
+     *
+     * @param array{start: int, width: int, ltr: bool} $region
+     */
+    private function paintRegion(string $row, string $line, array $region): string
+    {
+        $end = $region['start'] + $region['width'];
+        $before = AnsiUtils::sliceByColumn($row, startCol: 0, length: $region['start'], strict: true);
+        $after = AnsiUtils::sliceByColumn($row, $end, AnsiUtils::visibleWidth($row) - $end, strict: true);
+        $slice = AnsiUtils::sliceByColumn($line, $region['start'], $region['width'], strict: true);
+        $slice = self::withoutABorrowedCaret($line, $slice, $region['start']);
+        $middle = $region['ltr'] ? $slice : Bidi::reorder($slice, BaseDirection::Rtl);
+
+        return $before.Sgr::RESET.$middle.Sgr::RESET.$after.Sgr::RESET;
+    }
+
     /** @param list<array{start: int, width: int, ltr: bool}> $runs */
-    public function reorderRow(string $line, array $runs): string
+    private function reorderPanes(string $line, array $runs): string
     {
         $out = '';
         foreach ($runs as $run) {
