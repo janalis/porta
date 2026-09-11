@@ -1594,6 +1594,10 @@
         <source>bad regex</source>
         <target>regex invalide</target>
       </trans-unit>
+      <trans-unit id="851">
+        <source>pattern too complex</source>
+        <target>motif trop complexe</target>
+      </trans-unit>
       <trans-unit id="364">
         <source>⏎/F3 next  Shift+F3 prev  Tab field  Alt+R replace  Alt+A all  Alt+X .*  Alt+W \b  Esc</source>
         <target>⏎/F3 suiv.  Shift+F3 préc.  Tab champ  Alt+R remplacer  Alt+A tout  Alt+X .*  Alt+W \b  Esc</target>

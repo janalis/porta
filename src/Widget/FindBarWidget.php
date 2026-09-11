@@ -72,6 +72,18 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
     private bool $wholeWord = false;
     private bool $patternInvalid = false;
 
+    /**
+     * Whether the engine GAVE UP on a line rather than finding nothing there.
+     *
+     * A pattern is checked for validity by running it against an empty
+     * subject, which only asks whether it compiles. `^(a|a?)+$` compiles and
+     * then exhausts PCRE's backtrack limit on twenty characters — the textbook
+     * catastrophic shape, and one people write by accident. `preg_match_all()`
+     * answers false, and skipping that line quietly reported an empty result as
+     * though it were an answer.
+     */
+    private bool $patternTooComplex = false;
+
     /** @var list<array{line: int, start: int, end: int}> byte offsets */
     private array $matches = [];
     private int $currentIndex = -1;
@@ -341,6 +353,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         $count = \count($this->matches);
         $position = match (true) {
             $this->patternInvalid => $this->translator->trans('bad regex'),
+            $this->patternTooComplex => $this->translator->trans('pattern too complex'),
             $count > 0 => \sprintf('%d/%d', $this->currentIndex + 1, $count),
             default => '0/0',
         };
@@ -414,6 +427,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
 
         $this->lastDocVersion = $this->target->findVersion();
         $this->patternInvalid = false;
+        $this->patternTooComplex = false;
         $query = $this->query->value();
         $caseInsensitive = strtolower($query) === $query; // smart-case carries into regex mode via the i flag
 
@@ -442,6 +456,10 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
                 $count = preg_match_all($pattern, $line, $found, \PREG_OFFSET_CAPTURE);
                 restore_error_handler();
                 if (false === $count) {
+                    // The engine gave up on this line: skip it, but remember,
+                    // so the count below is not offered as an answer.
+                    $this->patternTooComplex = true;
+
                     continue;
                 }
                 foreach ($found[0] as $hit) {

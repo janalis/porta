@@ -456,6 +456,45 @@ final class FindBarWidgetTest extends TestCase
         $this->assertSame([], $bar->getMatchesByLine());
     }
 
+    /**
+     * A pattern that COMPILES but gives up mid-line says so.
+     *
+     * The validity check runs the pattern against an empty subject, which only
+     * asks whether it compiles. `^(a|a?)+$` compiles fine and then exhausts
+     * PCRE's backtrack limit on a line of twenty `a`s — in two milliseconds, on
+     * an input this small. `preg_match_all()` answers `false`, and the line was
+     * silently skipped: the bar reported 0/0 and the user had no way to tell
+     * "there is nothing here" from "the engine gave up".
+     *
+     * Catastrophic backtracking is something people write by accident — this
+     * exact shape is the textbook one — so the honest answer is to say the
+     * pattern was too much, not to report an empty result as if it were one.
+     */
+    public function testAPatternThatExhaustsTheEngineSaysSoRatherThanReportingNothing(): void
+    {
+        $doc = new Document(str_repeat('a', times: 20)."!\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
+        $bar->handleInput("\x1bx"); // regex mode
+        $this->type($bar, '^(a|a?)+$');
+
+        $this->assertSame([], $bar->getMatchesByLine(), 'nothing matched, which is true as far as it goes');
+        $screen = AnsiUtils::stripAnsiCodes(implode('', $bar->render(new RenderContext(120, 1))));
+        $this->assertStringContainsString('too complex', $screen, 'and the bar says why it is empty');
+
+        // And it is not sticky: a state set on a bad pattern that outlives it
+        // is the same lie in the other direction.
+        foreach (range(1, end: 9) as $_) {
+            $bar->handleInput("\x7f"); // backspace out the whole pattern
+        }
+        $this->type($bar, 'a+');
+
+        $recovered = AnsiUtils::stripAnsiCodes(implode('', $bar->render(new RenderContext(120, 1))));
+        $this->assertStringNotContainsString('too complex', $recovered, 'a workable pattern clears it');
+        $this->assertNotSame([], $bar->getMatchesByLine(), 'and matches again');
+    }
+
     public function testWholeWordToggleNarrowsMatches(): void
     {
         $doc = new Document("foo foobar\nfoo\n");

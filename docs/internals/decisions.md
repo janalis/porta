@@ -6187,3 +6187,30 @@ two places, and the CRLF gap is exactly what that costs.
 
 They go through one `adopt()` now. A fourth concern arriving should not be a
 fourth chance to miss a door.
+
+## "No matches" and "the engine gave up" are not the same answer (2026-09-11)
+
+The find bar checks a user regex by running it against an EMPTY subject, which
+asks only whether it compiles. A pattern can compile and then fail on a real
+line, and PCRE says so the same way it says nothing matched: `preg_match_all()`
+returns `false`. The loop skipped that line, and the bar reported `[0/0]`.
+
+Measured, because a plausible failure is not a reproduction. `/(x+x+)+y/` — the
+regex people quote for this — never fails on modern PCRE2: the JIT and
+auto-possessification absorb it at 100,000 characters. `/^(a|a?)+$/` fails on
+**twenty**, in two milliseconds, with `preg_last_error()` 2. That is the shape
+worth guarding against, and it is one people write by accident.
+
+The bar now distinguishes the two, with `pattern too complex` beside the
+existing `bad regex`. Three mutants, and the third is the one that mattered:
+never SETTING the flag fails, removing the render arm fails, and never
+**clearing** it survived until the test went on to fix the pattern and require
+the message gone. A state set on a bad pattern that outlives it is the same lie
+in the other direction.
+
+*Recorded, not fixed:* `ProjectSearch` swallows the same `false` at three
+places — `matchRanges()`, the multiline whole-file scan, and the per-line
+offsets — so a project-wide search quietly returns fewer results. It takes only
+`$rootDir` and has no notifier, so surfacing from there is a channel decision
+rather than a one-line change, and this round did not reproduce it. The
+detection is identical; only the door is open.
