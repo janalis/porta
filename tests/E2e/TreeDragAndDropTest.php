@@ -16,6 +16,7 @@ use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
+use Porta\Widget\FileTreeWidget;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -90,6 +91,177 @@ final class TreeDragAndDropTest extends TestCase
                         Services::resolve($ide, Bookmarks::class)->all(),
                         'the bookmark followed, which only FileRenamed can do',
                     );
+                },
+            ],
+            columns: 120,
+        );
+    }
+
+    /**
+     * Cut and paste move a file across directories from the keyboard, and
+     * inherit everything the drop does.
+     *
+     * Before this the tree's whole file-operation surface — new, rename,
+     * delete and the drag — was mouse-only, so moving a file across
+     * directories needed a pointer. The paste asks for the same
+     * `TreeDropRequested` a drag asks for, and the bookmark below is what
+     * proves it: only the shared path dispatches `FileRenamed`.
+     */
+    public function testCutAndPasteMoveAFileFromTheKeyboard(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = $this->project();
+
+        $this->runIde(
+            $project,
+            $project->path('top.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->frame($tui);
+                    Services::resolve($ide, BookmarkActions::class)->toggle();
+                },
+                300 => function ($tui, $terminal, $ide): void {
+                    // Alt+1 is Focus Project Tree — the keyboard's way in, and
+                    // the reason this flow exists at all. A CLICK on a file row
+                    // would open it and hand focus to the editor, where Ctrl+X
+                    // rightly means cut TEXT.
+                    $tui->handleInput("\x1b1");
+                    $focus = $tui->getFocus();
+                    $this->assertInstanceOf(\Porta\Widget\FileTreeWidget::class, $focus, 'the tree has focus');
+                },
+                340 => function ($tui, $terminal, $ide) use ($project): void {
+                    // With the EDITOR focused, Ctrl+X is the editor's own cut
+                    // and must not touch the tree's clipboard — the two share a
+                    // chord and are separated only by focus.
+                    $tui->setFocus($tui->getById('editor'));
+                    $tui->handleInput("\x18");
+                    $idle = Services::resolve($ide, \Porta\Tree\TreePathClipboard::class);
+                    \assert($idle instanceof \Porta\Tree\TreePathClipboard, description: 'the IDE exposes the tree clipboard');
+                    $this->assertSame([], $idle->paths(), 'the editor kept its own Ctrl+X');
+
+                    $tui->handleInput("\x1b1"); // back to the tree
+                    $this->selectRow($tui, $project->path('top.php'));
+
+                    $tui->handleInput("\x18"); // Ctrl+X
+                    $clip = Services::resolve($ide, \Porta\Tree\TreePathClipboard::class);
+                    \assert($clip instanceof \Porta\Tree\TreePathClipboard, description: 'the IDE exposes the tree clipboard');
+                    $this->assertSame([$project->path('top.php')], $clip->paths(), 'the cut took the selected row');
+                },
+                380 => function ($tui) use ($project): void {
+                    $this->selectRow($tui, $project->path('src'));
+                    $tui->handleInput("\x16"); // Ctrl+V
+                },
+                460 => function ($tui, $terminal, $ide) use ($project): void {
+                    $spent = Services::resolve($ide, \Porta\Tree\TreePathClipboard::class);
+                    \assert($spent instanceof \Porta\Tree\TreePathClipboard, description: 'the IDE exposes the tree clipboard');
+                    $this->assertTrue($spent->isEmpty(), 'a cut is spent by its paste — those files are not there any more');
+
+                    $this->assertFileDoesNotExist($project->path('top.php'), 'the file left its old home');
+                    $this->assertFileExists($project->path('src/top.php'), 'and landed in the folder that was selected');
+                    $this->assertSame(
+                        [(string) realpath($project->path('src/top.php')) => [0]],
+                        Services::resolve($ide, Bookmarks::class)->all(),
+                        'the bookmark followed, so the paste took the drop path rather than renaming by hand',
+                    );
+                },
+            ],
+            columns: 120,
+        );
+    }
+
+    /**
+     * Walk the tree's selection onto $path with the arrow keys, the way a
+     * keyboard user reaches a row.
+     */
+    private function selectRow(\Symfony\Component\Tui\Tui $tui, string $path): void
+    {
+        $tree = $tui->getFocus();
+        $this->assertInstanceOf(FileTreeWidget::class, $tree, 'the tree has focus');
+        // Rewind to the first row first, so the walk is the same however the
+        // selection got where it is.
+        for ($step = 0; $step < 40; ++$step) {
+            $tui->handleInput("\x1b[A"); // Up
+        }
+        for ($step = 0; $step < 40 && $tree->selectedNode()?->path !== $path; ++$step) {
+            $tui->handleInput("\x1b[B"); // Down
+        }
+        $this->assertSame($path, $tree->selectedNode()?->path, 'the walk reached the row');
+    }
+
+    /**
+     * Ctrl+C keeps the original; the Paste item appears only once there is
+     * something to paste.
+     *
+     * The copy half of the clipboard, and the menu's half of it. A cut is spent
+     * by its paste and a copy survives, which is what lets the same set be
+     * pasted into several places.
+     */
+    public function testCopyAndPasteLeavesTheOriginalAndOffersPasteInTheMenu(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = $this->project();
+
+        $this->runIde(
+            $project,
+            $project->path('top.php'),
+            [
+                200 => function ($tui): void {
+                    $this->frame($tui);
+                    $tui->handleInput("\x1b1"); // Focus Project Tree
+                },
+                240 => function ($tui, $terminal): void {
+                    // Nothing copied yet, so the menu must not offer a Paste —
+                    // the floor under the assertion below that it appears.
+                    $tui->handleInput("\x1b[<2;3;3M"); // right-click src/
+                    $tui->tick();
+                    $this->assertNull($this->rowOf($this->screenGrid($tui, $terminal), 'Paste'), 'no Paste with an empty clipboard');
+                    $tui->handleInput("\x1b"); // dismiss
+                    $tui->handleInput("\x1b1"); // back to the tree
+                },
+                260 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->selectRow($tui, $project->path('top.php'));
+                    $tui->handleInput("\x03"); // Ctrl+C
+                    $clip = Services::resolve($ide, \Porta\Tree\TreePathClipboard::class);
+                    \assert($clip instanceof \Porta\Tree\TreePathClipboard, description: 'the IDE exposes the tree clipboard');
+                    $this->assertSame([$project->path('top.php')], $clip->paths(), 'the copy took the selected row');
+                    $this->assertTrue($clip->isCopy(), 'and remembered that it copies');
+                },
+                320 => function ($tui, $terminal): void {
+                    $tui->handleInput("\x1b[<2;3;3M"); // right-click src/
+                    $tui->tick();
+                    $grid = $this->screenGrid($tui, $terminal);
+                    $this->assertNotNull($this->rowOf($grid, 'Paste'), 'the menu offers Paste now there is something to paste');
+                },
+                380 => function ($tui) use ($project): void {
+                    $tui->handleInput("\x1b"); // dismiss the menu
+                    $tui->handleInput("\x1b1"); // back to the tree
+                    $this->selectRow($tui, $project->path('src'));
+                    $tui->handleInput("\x16"); // Ctrl+V
+                },
+                460 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->assertFileExists($project->path('src/top.php'), 'the copy landed');
+                    $this->assertFileExists($project->path('top.php'), 'and the original stayed, because it was a copy');
+
+                    $kept = Services::resolve($ide, \Porta\Tree\TreePathClipboard::class);
+                    \assert($kept instanceof \Porta\Tree\TreePathClipboard, description: 'the IDE exposes the tree clipboard');
+                    $this->assertSame([$project->path('top.php')], $kept->paths(), 'a copy survives its paste, so it can go to several places');
+                },
+                520 => function ($tui) use ($project): void {
+                    // Pasting onto a FILE row means that file's FOLDER, the same
+                    // rule a drop onto a file follows. The first copy is removed
+                    // first, or the assertion below would be satisfied by it and
+                    // could not tell the two targets apart.
+                    unlink($project->path('src/top.php'));
+                    $this->assertFileDoesNotExist($project->path('src/top.php'));
+
+                    $tui->handleInput("\x1b1");
+                    $this->selectRow($tui, $project->path('src'));
+                    $tui->handleInput("\x1b[C"); // Right expands src/ so its files are rows
+                    $this->selectRow($tui, $project->path('src/A.php'));
+                    $tui->handleInput("\x16"); // Ctrl+V
+                },
+                600 => function ($tui) use ($project): void {
+                    $this->assertFileExists($project->path('src/top.php'), 'it landed in the file\'s folder, not on the file');
                 },
             ],
             columns: 120,

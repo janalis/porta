@@ -58,6 +58,7 @@ final class TreeOperations
         private readonly ProjectSearchController $projectSearch,
         private readonly ProjectPaths $paths,
         private readonly EventDispatcherInterface $events,
+        private readonly TreePathClipboard $treeClipboard,
         private readonly Filesystem $fs = new Filesystem(),
     ) {}
 
@@ -82,6 +83,14 @@ final class TreeOperations
             $items[] = new MenuItem($this->translator->trans('Add to Search Scopes'), '', fn () => $this->projectSearch->addSearchScope($node->path));
             $items[] = MenuItem::separator();
         }
+        $items[] = new MenuItem($this->translator->trans('Cut'), '', fn () => $this->treeCut($node));
+        $items[] = new MenuItem($this->translator->trans('Copy'), '', fn () => $this->treeCopy($node));
+        // Offered only when there is something to paste: an item that is always
+        // there and usually does nothing teaches people to stop reading it.
+        if (!$this->treeClipboard->isEmpty()) {
+            $items[] = new MenuItem($this->translator->trans('Paste'), '', fn () => $this->treePaste($node));
+        }
+        $items[] = MenuItem::separator();
         $items[] = new MenuItem($this->translator->trans('Copy Path'), '', fn () => $this->copyAbsolutePath($node->path));
         $items[] = new MenuItem($this->translator->trans('Copy Relative Path'), '', fn () => $this->copyRelativePath($node->path));
         $items[] = MenuItem::separator();
@@ -94,6 +103,95 @@ final class TreeOperations
         $items[] = new MenuItem($this->translator->trans('Refresh'), '', fn () => $this->tree->refresh());
 
         return $items;
+    }
+
+    /**
+     * The paths a Cut or Copy on this row carries — the same answer a drag
+     * gives, so the two gestures cannot disagree about what "this row" means.
+     *
+     * @param FileTreeNode $node
+     *
+     * @return list<string>
+     */
+    private function clipboardSources(FileTreeNode $node): array
+    {
+        $selected = $this->tree->selectedPaths();
+
+        return $node->isDir || !\in_array($node->path, $selected, strict: true) ? [$node->path] : $selected;
+    }
+
+    /**
+     * The keyboard's way in: act on the row the tree has selected.
+     *
+     * The menu answers for the row that was right-clicked, which {@see
+     * \Porta\Widget\FileTreeWidget::nodeAt()} has already selected by the time
+     * an item runs — so both doors end up asking the same question of the same
+     * row, and there is no second notion of "the current file" to drift.
+     */
+    public function cutSelection(): void
+    {
+        $node = $this->tree->selectedNode();
+        if (null !== $node) {
+            $this->treeCut($node);
+        }
+    }
+
+    public function copySelection(): void
+    {
+        $node = $this->tree->selectedNode();
+        if (null !== $node) {
+            $this->treeCopy($node);
+        }
+    }
+
+    public function pasteIntoSelection(): void
+    {
+        $node = $this->tree->selectedNode();
+        if (null !== $node) {
+            $this->treePaste($node);
+        }
+    }
+
+    /** @param FileTreeNode $node */
+    private function treeCut(FileTreeNode $node): void
+    {
+        $this->treeClipboard->cut($this->clipboardSources($node));
+    }
+
+    /** @param FileTreeNode $node */
+    private function treeCopy(FileTreeNode $node): void
+    {
+        $this->treeClipboard->copy($this->clipboardSources($node));
+    }
+
+    /**
+     * Paste into the folder this row names, by asking for exactly the drop a
+     * drag would have asked for.
+     *
+     * The point of routing it through {@see TreeDropRequested} rather than
+     * calling {@see moveEach()} here is that everything hanging off the drop is
+     * inherited rather than reimplemented: the collision prompt, the refusal to
+     * move a folder into itself, saving dirty buffers first, re-pointing open
+     * buffers, `FileRenamed` and its seven listeners, the language server's
+     * didClose, and one `WorkingTreeChanged` for the whole batch.
+     *
+     * A cut is spent by its paste; a copy survives, so the same set can be
+     * pasted into several places.
+     *
+     * An empty clipboard needs no guard here: both doors already refuse one —
+     * the menu offers no Paste item and the keybinding is disabled — and a drop
+     * of nothing is a no-op at the far end anyway.
+     *
+     * @param FileTreeNode $node
+     */
+    private function treePaste(FileTreeNode $node): void
+    {
+        $sources = $this->treeClipboard->paths();
+        $copy = $this->treeClipboard->isCopy();
+        if (!$copy) {
+            $this->treeClipboard->clear();
+        }
+        $this->events->dispatch(new TreeDropRequested($sources, $this->treeTargetDir($node), $copy));
     }
 
     /**

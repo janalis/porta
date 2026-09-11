@@ -3050,6 +3050,18 @@
         <source>Drop on a folder to move, or on the editor to open</source>
         <target>フォルダーにドロップで移動、エディターにドロップで開く</target>
       </trans-unit>
+      <trans-unit id="855">
+        <source>Tree: Cut</source>
+        <target>ツリー: 切り取り</target>
+      </trans-unit>
+      <trans-unit id="856">
+        <source>Tree: Copy</source>
+        <target>ツリー: コピー</target>
+      </trans-unit>
+      <trans-unit id="857">
+        <source>Tree: Paste</source>
+        <target>ツリー: 貼り付け</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

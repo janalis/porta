@@ -89,6 +89,7 @@ final class ArchitectureCheckCommand extends Command
         'Command>Run',
         'Command>Search',
         'Command>Settings',
+        'Command>Tree',
         'Command>Widget',
         'Command>Workbench',
         'Config>Container',

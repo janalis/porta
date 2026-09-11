@@ -3050,6 +3050,18 @@
         <source>Drop on a folder to move, or on the editor to open</source>
         <target>גרור לתיקייה כדי להעביר, או לעורך כדי לפתוח</target>
       </trans-unit>
+      <trans-unit id="855">
+        <source>Tree: Cut</source>
+        <target>עץ: גזור</target>
+      </trans-unit>
+      <trans-unit id="856">
+        <source>Tree: Copy</source>
+        <target>עץ: העתק</target>
+      </trans-unit>
+      <trans-unit id="857">
+        <source>Tree: Paste</source>
+        <target>עץ: הדבק</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

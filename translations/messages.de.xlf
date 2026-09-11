@@ -3050,6 +3050,18 @@
         <source>Drop on a folder to move, or on the editor to open</source>
         <target>Auf einen Ordner ziehen zum Verschieben, auf den Editor zum Öffnen</target>
       </trans-unit>
+      <trans-unit id="855">
+        <source>Tree: Cut</source>
+        <target>Baum: ausschneiden</target>
+      </trans-unit>
+      <trans-unit id="856">
+        <source>Tree: Copy</source>
+        <target>Baum: kopieren</target>
+      </trans-unit>
+      <trans-unit id="857">
+        <source>Tree: Paste</source>
+        <target>Baum: einfügen</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

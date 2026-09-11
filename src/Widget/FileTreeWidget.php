@@ -443,10 +443,15 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      * Mark a directory as the pending drop of a drag in progress, or null to
      * clear it.
      *
-     * Painted in the tint a hovered directory already uses rather than a Role
-     * of its own: a button-held motion arrives as `isLeftDrag()`, never
-     * `isMove()`, so the hover router does not run while a drag is live and
-     * there is no second highlight this could be confused with.
+     * Painted in {@see Role::DropTargetRow}, and $label — already translated by
+     * the caller — trails the row to say what would land on it.
+     *
+     * It borrowed the hovered-directory tint at first, on the reasoning that a
+     * button-held motion arrives as `isLeftDrag()` and never `isMove()`, so the
+     * hover router is dormant during a drag and there was no second highlight
+     * to be confused with. True, and beside the point: the two styles were
+     * byte-identical, so "your files are going here" and "the pointer is here"
+     * were the same row.
      */
     public function setDropTarget(?string $path, string $label = ''): void
     {

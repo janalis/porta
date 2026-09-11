@@ -620,6 +620,8 @@ final class IdeContextMenusTest extends TestCase
                 },
                 230 => static function ($tui): void {
                     $tui->handleInput("\x1b[B"); // New Folder
+                    $tui->handleInput("\x1b[B"); // Cut
+                    $tui->handleInput("\x1b[B"); // Copy
                     $tui->handleInput("\x1b[B"); // Copy Path
                     $tui->handleInput("\x1b[B"); // Copy Relative Path
                     $tui->handleInput("\x1b[B"); // Rename…
@@ -646,7 +648,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php again
                 },
                 460 => static function ($tui): void {
-                    foreach (range(1, end: 4) as $_) {
+                    foreach (range(1, end: 6) as $_) {
                         $tui->handleInput("\x1b[B"); // → Rename…
                     }
                     $tui->handleInput("\r");
@@ -726,8 +728,9 @@ final class IdeContextMenusTest extends TestCase
                 },
                 330 => static function ($tui): void {
                     // A folder's menu carries the three search items a file's
-                    // does not, so Rename… is the 8th selectable row.
-                    foreach (range(1, end: 7) as $_) {
+                    // does not, and Cut/Copy sit above Copy Path, so Rename… is
+                    // the 10th selectable row.
+                    foreach (range(1, end: 9) as $_) {
                         $tui->handleInput("\x1b[B");
                     }
                     $tui->handleInput("\r");
@@ -787,7 +790,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php
                 },
                 350 => static function ($tui): void {
-                    foreach (range(1, end: 5) as $_) {
+                    foreach (range(1, end: 7) as $_) {
                         $tui->handleInput("\x1b[B"); // → Delete…
                     }
                     $tui->handleInput("\r");
@@ -874,6 +877,8 @@ final class IdeContextMenusTest extends TestCase
                 300 => static function ($tui): void {
                     // Rename is the 4th selectable item after New File/New Folder/Copy×2.
                     $tui->handleInput("\x1b[B"); // New Folder
+                    $tui->handleInput("\x1b[B"); // Cut
+                    $tui->handleInput("\x1b[B"); // Copy
                     $tui->handleInput("\x1b[B"); // Copy Path
                     $tui->handleInput("\x1b[B"); // Copy Relative Path
                     $tui->handleInput("\x1b[B"); // Rename…
@@ -908,6 +913,8 @@ final class IdeContextMenusTest extends TestCase
                 },
                 300 => static function ($tui): void {
                     $tui->handleInput("\x1b[B"); // New Folder
+                    $tui->handleInput("\x1b[B"); // Cut
+                    $tui->handleInput("\x1b[B"); // Copy
                     $tui->handleInput("\x1b[B"); // Copy Path
                     $tui->handleInput("\r");
                 },
@@ -916,6 +923,8 @@ final class IdeContextMenusTest extends TestCase
                 },
                 500 => static function ($tui): void {
                     $tui->handleInput("\x1b[B"); // New Folder
+                    $tui->handleInput("\x1b[B"); // Cut
+                    $tui->handleInput("\x1b[B"); // Copy
                     $tui->handleInput("\x1b[B"); // Copy Path
                     $tui->handleInput("\x1b[B"); // Copy Relative Path
                     $tui->handleInput("\r");
@@ -949,8 +958,9 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php (row 1)
                 },
                 350 => static function ($tui): void {
-                    // Delete is the 6th selectable item.
-                    foreach (range(1, end: 5) as $_) {
+                    // Delete is the 8th selectable item: Cut and Copy joined
+                    // the menu above Copy Path.
+                    foreach (range(1, end: 7) as $_) {
                         $tui->handleInput("\x1b[B");
                     }
                     $tui->handleInput("\r"); // Delete… → confirm prompt
@@ -982,7 +992,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php
                 },
                 300 => static function ($tui): void {
-                    foreach (range(1, end: 5) as $_) {
+                    foreach (range(1, end: 7) as $_) {
                         $tui->handleInput("\x1b[B");
                     }
                     $tui->handleInput("\r"); // Delete…
@@ -1011,7 +1021,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[<2;3;3M");
                 },
                 300 => static function ($tui): void {
-                    foreach (range(1, end: 5) as $_) {
+                    foreach (range(1, end: 7) as $_) {
                         $tui->handleInput("\x1b[B");
                     }
                     $tui->handleInput("\r"); // Delete…
@@ -1045,9 +1055,10 @@ final class IdeContextMenusTest extends TestCase
                 },
                 300 => static function ($tui): void {
                     // The menu anchors at the click (SGR row 2 = the frame's top
-                    // border), so item i sits at SGR row 3+i. "Open" is item 9
-                    // for a file node → SGR row 12.
-                    $tui->handleInput("\x1b[<0;4;13M"); // left-click "Open"
+                    // border), so item i sits at SGR row 3+i. "Open" is item 12
+                    // for a file node → SGR row 15. It was item 9 until Cut and
+                    // Copy joined the menu with a separator of their own.
+                    $tui->handleInput("\x1b[<0;4;16M"); // left-click "Open"
                 },
                 400 => function ($tui) use ($project): void {
                     $this->assertStringEndsWith('A.php', (string) $tui->getById('editor')->getFilePath(), 'Open reopened the file');
@@ -1056,8 +1067,8 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php again
                 },
                 500 => static function ($tui): void {
-                    // "Refresh" is the last item (10) → SGR row 13.
-                    $tui->handleInput("\x1b[<0;4;14M");
+                    // "Refresh" is the last item (13) → SGR row 16.
+                    $tui->handleInput("\x1b[<0;4;17M");
                     $tui->tick();
                 },
                 600 => function ($tui, $terminal): void {

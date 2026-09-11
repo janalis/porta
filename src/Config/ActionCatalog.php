@@ -281,6 +281,14 @@ final class ActionCatalog
         'expand' => ['label' => 'Tree: Expand'],
         'open' => ['label' => 'Tree: Open / Toggle'],
         'reload' => ['label' => 'Tree: Reload'],
+        // The tree's own Cut/Copy/Paste, on the chords every file manager uses.
+        // They collide with the editor's cut/paste by design and are separated
+        // by focus, not by chord: EditorKeymap owns ctrl+x/ctrl+v for TEXT, and
+        // these are gated on the tree holding focus, so the same key means the
+        // same verb on whichever thing you are looking at.
+        'tree_cut' => ['label' => 'Tree: Cut', 'keys' => ['ctrl+x']],
+        'tree_copy' => ['label' => 'Tree: Copy', 'keys' => ['ctrl+c']],
+        'tree_paste' => ['label' => 'Tree: Paste', 'keys' => ['ctrl+v']],
         // Ide-scope, not tree-scope: it works from wherever the caret is, which
         // is the whole point — Alt+F1 is PhpStorm's "Select In".
         'tree_select_opened_file' => ['label' => 'Select Opened File in Tree', 'keys' => ['alt+f1']],

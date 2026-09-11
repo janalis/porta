@@ -8,6 +8,7 @@ use Porta\Command\DebugCommands;
 use Porta\Command\FileCommands;
 use Porta\Command\PluginCommandProvider;
 use Porta\Command\SearchCommands;
+use Porta\Command\TreeCommands;
 use Porta\Command\ViewCommands;
 use Porta\Command\WorkbenchCommands;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
@@ -46,6 +47,10 @@ final class CommandProviderOrderTest extends ContainerTestCase
             FileCommands::class, // 400
             SearchCommands::class, // 300
             ViewCommands::class, // 200
+            // 150 — last of the core providers. Its three ids are gated on the
+            // tree holding focus, so their chords must lose every collision
+            // with a provider that is not.
+            TreeCommands::class,
         ];
 
         self::assertSame($expected, $actual, 'every command provider must carry #[AsTaggedItem] with its contractual priority');
