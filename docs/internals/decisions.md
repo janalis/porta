@@ -6560,3 +6560,40 @@ the two would have stayed indistinguishable.
 *Still confirmed and unfixed on the census:* `PaneSegmenter:99/108`,
 `TabBarWidget:189/209/287`, `LineDecorator:104/130`. Named so the next pass
 starts from a verified list rather than the raw one.
+
+## A highlight that bled to the end of the line (2026-09-11)
+
+`LineDecorator::applyAll()` paints overlapping spans — a search highlight under
+a selection under a diagnostic — and closes them by walking the open ones in
+REVERSE application order, skipping any that do not end at this column. As a
+`break`, everything below the first non-matching span stays open.
+
+The case that shows it has to be built deliberately: the span that ENDS here
+must sit at a lower index than one that continues, so the reverse walk meets the
+survivor first. Every existing multi-span case has them the other way round,
+where skipping and stopping agree.
+
+Measured rather than described, because the output is a string of escapes:
+
+```
+correct: <A>ab<B>cd</A><B>efgh</B>
+mutant : <A>ab<B>cdefgh</B><A>
+```
+
+The first decoration never closes and paints everything after it — a selection
+or a search hit smeared across the rest of the line — plus a stray re-open at
+the end.
+
+Its two siblings in the same method, both on the census:
+
+- The OPENING loop's skip is killed by the same test, which is a fair result
+  rather than luck: the case exercises both walks.
+- The `$next <= $col` skip is **equivalent**, and this time checked by running
+  it over five span layouts rather than by arguing from the bound invariants —
+  the output is byte-identical in every one. Bounds are ascending and unique and
+  no span survives clamping past the line width, so that branch can only be the
+  final bound, where stopping and skipping are the same thing.
+
+That is now the third equivalent mutant confirmed by running and the second real
+one confirmed by running, in a day where reasoning got it wrong in both
+directions. The rule is holding: construct the discriminating case and RUN it.

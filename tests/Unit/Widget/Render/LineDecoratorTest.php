@@ -88,6 +88,30 @@ final class LineDecoratorTest extends TestCase
         $this->assertSame('hello', LineDecorator::applyAll('hello', []));
     }
 
+    /**
+     * A span that ends here closes, even when a later-applied one does not.
+     *
+     * Open spans are closed by walking them in REVERSE application order and
+     * skipping any that do not end at this column. Turning that skip into a
+     * `break` leaves everything below the first non-matching span open — and
+     * the case that shows it needs the ending span to sit at a LOWER index than
+     * the one that continues, so the walk meets the survivor first.
+     *
+     * Every existing multi-span case here has them the other way round, where
+     * skipping and stopping agree. Get it wrong and the first decoration bleeds
+     * to the end of the line: a search highlight, or a selection, painted over
+     * everything after it.
+     */
+    public function testASpanClosesEvenWhenALaterOneRunsOnPastIt(): void
+    {
+        $spans = [
+            [0, 4, '<A>', '</A>', null],
+            [2, 8, '<B>', '</B>', null],
+        ];
+
+        $this->assertSame('<A>ab<B>cd</A><B>efgh</B>', LineDecorator::applyAll('abcdefgh', $spans));
+    }
+
     public function testApplyAllWithOneSpanIsByteIdenticalToApply(): void
     {
         $spans = [[6, 11, "\x1b[48;5;24m", "\x1b[49m", "\x1b[48;5;24m"]];
