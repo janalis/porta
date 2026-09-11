@@ -59,6 +59,34 @@ final class TreeDragRouterTest extends TestCase
         return new TreeDragRouter($this->tree, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24)), $this->clock);
     }
 
+    /** The two timers a drag runs, told apart by their interval. */
+    private const float SCROLL_TICK = 0.06;
+    private const float SPRING_DWELL = 0.5;
+
+    /**
+     * Pending timer ids at one interval.
+     *
+     * A live drag runs two clocks at once — the edge scroll and the
+     * spring-load dwell — so "nothing is pending" has to be asked of one of
+     * them, or a test about scrolling starts failing when a dwell is armed
+     * beside it.
+     *
+     * @return list<string>
+     */
+    private function pending(float $seconds): array
+    {
+        $ids = [];
+        foreach (array_keys($this->clock->scheduled) as $id) {
+            if ($this->clock->delays[$id] !== $seconds) {
+                continue;
+            }
+
+            $ids[] = (string) $id;
+        }
+
+        return $ids;
+    }
+
     /** A pane six rows high showing five of twelve collapsed directories. */
     private const int TALL_ROWS = 6;
 
@@ -342,6 +370,113 @@ final class TreeDragRouterTest extends TestCase
     }
 
     /**
+     * A drag resting on a collapsed folder opens it, so the drag can reach the
+     * rows inside.
+     *
+     * Dropping ON a collapsed folder already worked. What was unreachable was
+     * anything INSIDE one — and a tree opens collapsed, so on a fresh session
+     * that is most of the project.
+     */
+    public function testRestingOnACollapsedFolderOpensIt(): void
+    {
+        $router = $this->router();
+        $this->tree->clickRow(1); // collapse src/ again
+        $router->arm([$this->project->path('top.php')]);
+
+        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+
+        $this->assertCount(1, $this->pending(self::SPRING_DWELL), 'the dwell is running');
+        $this->clock->fire($this->pending(self::SPRING_DWELL)[0]);
+        $this->assertTrue(Probe::get($this->tree, 'expanded')[$this->project->path('src')] ?? false);
+    }
+
+    /**
+     * Moving WITHIN the same folder does not restart the dwell.
+     *
+     * The guard that matters. A pointer is never perfectly still, and every
+     * jitter is a motion event — restart the dwell on each one and the folder
+     * never opens at all, which is the failure mode that looks exactly like the
+     * feature not existing.
+     */
+    public function testStayingOnTheSameFolderLetsTheDwellRunOut(): void
+    {
+        $router = $this->router();
+        $this->tree->clickRow(1); // collapse src/
+        $router->arm([$this->project->path('top.php')]);
+
+        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+        $armed = $this->pending(self::SPRING_DWELL);
+        $router->continueDrag($this->drag(3, 1), self::rect(), null); // jitter, same row
+
+        $this->assertSame($armed, $this->pending(self::SPRING_DWELL), 'the same timer, still counting');
+        $this->assertNotContains($armed[0], $this->clock->cancelled, 'the dwell was left alone');
+    }
+
+    /** Moving to a different folder starts the dwell again for that one. */
+    public function testMovingToAnotherFolderRestartsTheDwell(): void
+    {
+        $router = $this->router();
+        $this->tree->clickRow(1); // collapse src/
+        $router->arm([$this->project->path('top.php')]);
+
+        $router->continueDrag($this->drag(2, 1), self::rect(), null); // src/
+        $first = $this->pending(self::SPRING_DWELL)[0];
+        $router->continueDrag($this->drag(2, 2), self::rect(), null); // top.php → the root
+
+        $this->assertContains($first, $this->clock->cancelled, 'the old dwell was dropped');
+        $this->assertNotSame([$first], $this->pending(self::SPRING_DWELL));
+    }
+
+    /**
+     * A second drag onto the SAME folder still springs it.
+     *
+     * The dwell remembers which folder it is counting for, so that jitter does
+     * not restart it. That memory has to be dropped when the drag ends, or the
+     * next drag onto the same folder is mistaken for the same dwell still
+     * running and never arms one at all — a feature that works once per folder
+     * per session.
+     */
+    public function testASecondDragOntoTheSameFolderSpringsItAgain(): void
+    {
+        $router = $this->router();
+        $this->tree->clickRow(1); // collapse src/
+        $router->arm([$this->project->path('top.php')]);
+        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+        $router->cancel();
+
+        $router->arm([$this->project->path('top.php')]);
+        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+
+        $this->assertCount(1, $this->pending(self::SPRING_DWELL), 'the second drag armed its own dwell');
+    }
+
+    /** A pointer off the tree cancels the dwell rather than leaving it counting. */
+    public function testLeavingTheTreeCancelsTheDwell(): void
+    {
+        $router = $this->router();
+        $this->tree->clickRow(1);
+        $router->arm([$this->project->path('top.php')]);
+        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+
+        $router->continueDrag($this->drag(60, 1), self::rect(), null);
+
+        $this->assertSame([], $this->pending(self::SPRING_DWELL));
+    }
+
+    /** And the drag ending takes it with it. */
+    public function testTheDwellStopsWhenTheDragEnds(): void
+    {
+        $router = $this->router();
+        $this->tree->clickRow(1);
+        $router->arm([$this->project->path('top.php')]);
+        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+
+        $router->cancel();
+
+        $this->assertSame([], $this->pending(self::SPRING_DWELL));
+    }
+
+    /**
      * A drag held at the bottom edge scrolls the tree, so a folder below the
      * fold can be dropped on.
      *
@@ -362,11 +497,11 @@ final class TreeDragRouterTest extends TestCase
 
         $router->continueDrag($this->drag(2, self::TALL_ROWS - 1), self::tallRect(), null);
 
-        $this->assertCount(1, $this->clock->scheduled, 'the edge armed a tick');
+        $this->assertCount(1, $this->pending(self::SCROLL_TICK), 'the edge armed a tick');
         $before = $this->tree->getRenderRevision();
-        $this->clock->fire();
+        $this->clock->fire($this->pending(self::SCROLL_TICK)[0]);
         $this->assertNotSame($before, $this->tree->getRenderRevision(), 'the tick scrolled the tree');
-        $this->assertCount(1, $this->clock->scheduled, 'and armed the next one, so it repeats');
+        $this->assertCount(1, $this->pending(self::SCROLL_TICK), 'and armed the next one, so it repeats');
     }
 
     /** The top edge scrolls the other way. */
@@ -378,8 +513,8 @@ final class TreeDragRouterTest extends TestCase
         $before = $this->tree->getRenderRevision();
 
         $router->continueDrag($this->drag(2, 1), self::tallRect(), null);
-        $this->assertCount(1, $this->clock->scheduled, 'the top edge armed a tick');
-        $this->clock->fire();
+        $this->assertCount(1, $this->pending(self::SCROLL_TICK), 'the top edge armed a tick');
+        $this->clock->fire($this->pending(self::SCROLL_TICK)[0]);
 
         $this->assertNotSame($before, $this->tree->getRenderRevision());
     }
@@ -392,7 +527,7 @@ final class TreeDragRouterTest extends TestCase
 
         $router->continueDrag($this->drag(2, 3), self::rect(), null);
 
-        $this->assertSame([], $this->clock->scheduled);
+        $this->assertSame([], $this->pending(self::SCROLL_TICK));
     }
 
     /** Leaving the edge stops the repeat rather than letting it run on. */
@@ -404,7 +539,7 @@ final class TreeDragRouterTest extends TestCase
 
         $router->continueDrag($this->drag(2, 3), self::rect(), null);
 
-        $this->assertSame([], $this->clock->scheduled, 'the pending tick was cancelled');
+        $this->assertSame([], $this->pending(self::SCROLL_TICK), 'the pending tick was cancelled');
     }
 
     /** A pointer that leaves the tree altogether stops it too. */
@@ -416,7 +551,7 @@ final class TreeDragRouterTest extends TestCase
 
         $router->continueDrag($this->drag(60, self::ROWS - 1), self::rect(), null);
 
-        $this->assertSame([], $this->clock->scheduled);
+        $this->assertSame([], $this->pending(self::SCROLL_TICK));
     }
 
     /**
@@ -433,7 +568,7 @@ final class TreeDragRouterTest extends TestCase
 
         $router->continueDrag($this->release(2, self::ROWS - 1), self::rect(), null);
 
-        $this->assertSame([], $this->clock->scheduled);
+        $this->assertSame([], $this->pending(self::SCROLL_TICK));
     }
 
     /** And so does Escape, through the same disarm. */
@@ -445,7 +580,7 @@ final class TreeDragRouterTest extends TestCase
 
         $router->cancel();
 
-        $this->assertSame([], $this->clock->scheduled);
+        $this->assertSame([], $this->pending(self::SCROLL_TICK));
     }
 
     /**
@@ -458,10 +593,10 @@ final class TreeDragRouterTest extends TestCase
         $router->arm([$this->project->path('d00')]);
         $router->continueDrag($this->drag(2, 1), self::tallRect(), null); // top edge, already at the top
 
-        $this->assertCount(1, $this->clock->scheduled, 'the edge armed a tick');
-        $this->clock->fire();
+        $this->assertCount(1, $this->pending(self::SCROLL_TICK), 'the edge armed a tick');
+        $this->clock->fire($this->pending(self::SCROLL_TICK)[0]);
 
-        $this->assertSame([], $this->clock->scheduled, 'nowhere to go, so it stopped');
+        $this->assertSame([], $this->pending(self::SCROLL_TICK), 'nowhere to go, so it stopped');
     }
 
     /**
@@ -481,8 +616,8 @@ final class TreeDragRouterTest extends TestCase
         $router->continueDrag($this->drag(2, self::TALL_ROWS - 1), self::tallRect(), null);
         $this->assertSame($this->project->path('d04'), Probe::get($this->tree, 'dropTarget'));
 
-        $this->assertCount(1, $this->clock->scheduled, 'the edge armed a tick');
-        $this->clock->fire();
+        $this->assertCount(1, $this->pending(self::SCROLL_TICK), 'the edge armed a tick');
+        $this->clock->fire($this->pending(self::SCROLL_TICK)[0]);
 
         $this->assertSame($this->project->path('d05'), Probe::get($this->tree, 'dropTarget'), 'resolved again, not left behind');
     }

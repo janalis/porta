@@ -67,6 +67,21 @@ final class FileTreeDragTest extends TestCase
         return $tree;
     }
 
+    /** Twelve collapsed directories, so a lookup has rows to walk past. */
+    private function tallDirTree(): FileTreeWidget
+    {
+        $files = [];
+        for ($i = 0; $i < 12; ++$i) {
+            $files[\sprintf('d%02d/keep.php', $i)] = "<?php\n";
+        }
+        $this->project = new TempProject($files);
+        $tree = new FileTreeWidget($this->project->dir);
+        AttachedStyles::attach($tree);
+        $tree->render(new RenderContext(40, 20));
+
+        return $tree;
+    }
+
     /** The rows a render of $rows lines actually shows, header stripped. */
     private function rowsOf(FileTreeWidget $tree, int $rows): string
     {
@@ -120,6 +135,73 @@ final class FileTreeDragTest extends TestCase
         $tree->scrollDuringDrag(99);
 
         $this->assertStringContainsString('f11.php', $this->rowsOf($tree, 6), 'the last entry is reachable');
+    }
+
+    /**
+     * A collapsed folder can be opened mid-drag, so the drag can reach inside
+     * it.
+     *
+     * Dropping ON a collapsed folder already works — it is a directory, so it
+     * is a target. What is unreachable is anything INSIDE it, and a tree opens
+     * collapsed, so on a fresh session that is most of the project.
+     */
+    public function testACollapsedFolderCanBeOpenedMidDrag(): void
+    {
+        $tree = $this->tree();
+        $src = $this->project->path('src');
+        $tree->clickRow(1); // collapse src/ again
+        $this->assertStringNotContainsString('a.php', $this->rowsOf($tree, 12), 'collapsed to begin with');
+
+        $this->assertTrue($tree->expandDuringDrag($src), 'it opened');
+
+        $this->assertStringContainsString('a.php', $this->rowsOf($tree, 12), 'and its contents can be dropped on');
+    }
+
+    /**
+     * Opening a folder mid-drag must NOT pay the toggle the press deferred.
+     *
+     * `pressRow()` defers a folder's toggle so the rows do not move under a
+     * live drag, and `commitPress()` pays it only if the gesture turns out to
+     * be a click. A spring-load that went through the ordinary toggle path
+     * would either pay that debt early or leave a second one behind, and the
+     * next unrelated click would open a folder nobody touched.
+     */
+    public function testOpeningAFolderMidDragLeavesTheDeferredToggleAlone(): void
+    {
+        $tree = $this->tree();
+        $tree->pressRow(1); // defers src/'s toggle
+        $this->assertSame(1, Probe::get($tree, 'pendingToggle'), 'the press deferred one');
+
+        $tree->expandDuringDrag($this->project->path('src'));
+
+        $this->assertSame(1, Probe::get($tree, 'pendingToggle'), 'still owed, neither paid nor forgotten');
+    }
+
+    /**
+     * The folder that springs open need not be the first row.
+     *
+     * The lookup walks the visible rows and skips the ones that do not match.
+     * Every other case here springs `src/`, which is row one — where skipping
+     * and stopping are the same thing, and a walk that gave up on the first
+     * mismatch would pass them all.
+     */
+    public function testAFolderFurtherDownTheTreeSpringsOpenToo(): void
+    {
+        $tree = $this->tallDirTree();
+
+        $this->assertTrue($tree->expandDuringDrag($this->project->path('d05')), 'the sixth folder, not the first');
+
+        $this->assertStringContainsString('keep.php', $this->rowsOf($tree, 20));
+    }
+
+    /** An already-open folder, a file, and a path outside the tree change nothing. */
+    public function testOnlyACollapsedFolderOpens(): void
+    {
+        $tree = $this->tree();
+
+        $this->assertFalse($tree->expandDuringDrag($this->project->path('src')), 'already open');
+        $this->assertFalse($tree->expandDuringDrag($this->project->path('top.php')), 'not a folder');
+        $this->assertFalse($tree->expandDuringDrag($this->project->dir.'/nope'), 'not in the tree');
     }
 
     /** The scroll is a render change, so the memo has to let it through. */

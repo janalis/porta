@@ -31,8 +31,17 @@ final class TreeDragRouter
      */
     private const float SCROLL_INTERVAL = 0.06;
 
+    /**
+     * How long a drag rests on a folder before it opens. PhpStorm's own
+     * spring-load is about half a second; shorter and a pointer crossing a
+     * folder on its way somewhere else opens it by accident.
+     */
+    private const float SPRING_DELAY = 0.5;
+
     private ?TreeDragState $drag = null;
     private ?string $scrollTimer = null;
+    private ?string $springTimer = null;
+    private ?string $springPath = null;
 
     public function __construct(
         private readonly FileTreeWidget $tree,
@@ -69,6 +78,7 @@ final class TreeDragRouter
         $drag->target = $this->dropDir($mouse, $treeRect);
         $this->tree->setDropTarget($drag->target);
         $this->trackEdge($drag, $mouse, $treeRect);
+        $this->trackSpring($drag->target);
         if ($mouse->isLeftRelease()) {
             $this->disarm();
             // A press and release on one spot is a CLICK: pay the toggle the
@@ -117,6 +127,7 @@ final class TreeDragRouter
     {
         $this->drag = null;
         $this->stopScrolling();
+        $this->stopSpring();
         $this->tree->setDropTarget(null);
     }
 
@@ -193,6 +204,46 @@ final class TreeDragRouter
         $this->tree->setDropTarget($drag->target);
         $this->tui->requestRender();
         $this->armScroll($drag, $mouse, $treeRect);
+    }
+
+    /**
+     * Start, keep or drop the dwell that opens the folder under the pointer.
+     *
+     * The first line is the one that matters: a pointer is never perfectly
+     * still, and every jitter is another motion event. Restart the dwell on
+     * each one and the folder never opens at all — a failure that looks exactly
+     * like the feature not being there. So the dwell survives as long as the
+     * TARGET is unchanged, not as long as the pointer is.
+     *
+     * Armed for any target rather than only a collapsed folder, because whether
+     * a path is one is the tree's question, not this router's; an already-open
+     * folder simply wakes up and finds nothing to do.
+     */
+    private function trackSpring(?string $target): void
+    {
+        if ($target === $this->springPath) {
+            return;
+        }
+        $this->stopSpring();
+        if (null === $target) {
+            return;
+        }
+        $this->springPath = $target;
+        $this->springTimer = $this->clock->delay(self::SPRING_DELAY, function () use ($target): void {
+            $this->springTimer = null;
+            if ($this->tree->expandDuringDrag($target)) {
+                $this->tui->requestRender();
+            }
+        });
+    }
+
+    private function stopSpring(): void
+    {
+        if (null !== $this->springTimer) {
+            $this->clock->cancel($this->springTimer);
+            $this->springTimer = null;
+        }
+        $this->springPath = null;
     }
 
     private function stopScrolling(): void

@@ -392,6 +392,41 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     }
 
     /**
+     * Open a collapsed directory under a live drag, so the drag can reach the
+     * rows inside it. Returns whether anything opened.
+     *
+     * Dropping ON a collapsed folder already works — it is a directory, so it
+     * is a target. What is unreachable is anything INSIDE one, and a tree opens
+     * collapsed, so on a fresh session that is most of the project.
+     *
+     * Deliberately NOT the toggle {@see clickRow()} uses. That one is a toggle,
+     * and a drag resting on an OPEN folder must not close it; more to the
+     * point, the press has already deferred a toggle of its own (see {@see
+     * pressRow()}) and paying or replacing that debt here is how a folder
+     * nobody touched ends up opening on the next unrelated click.
+     */
+    public function expandDuringDrag(string $path): bool
+    {
+        $node = null;
+        foreach ($this->visible as $candidate) {
+            if ($candidate->path !== $path) {
+                continue;
+            }
+
+            $node = $candidate;
+            break;
+        }
+        if (null === $node || !$node->isDir || ($this->expanded[$path] ?? false)) {
+            return false;
+        }
+        $this->expanded[$path] = true;
+        $this->rebuild();
+        $this->invalidate();
+
+        return true;
+    }
+
+    /**
      * Mark a directory as the pending drop of a drag in progress, or null to
      * clear it.
      *
