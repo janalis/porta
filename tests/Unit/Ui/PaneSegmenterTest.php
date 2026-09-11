@@ -113,6 +113,62 @@ final class PaneSegmenterTest extends TestCase
         );
     }
 
+    /**
+     * A leaf that misses the row is SKIPPED, not a reason to stop looking.
+     *
+     * The two cases above each hand the walk a single element, where skipping
+     * it and abandoning the walk produce the same answer. The real screen never
+     * looks like that. Measured from a running IDE at 160x24, the leaves arrive
+     * in paint order and the first one is the menu bar:
+     *
+     *     leaf 0  row 0   1 row   cols 0..159   RTL   (menu bar)
+     *     leaf 1  row 1   1 row   cols 0..128   RTL   (tab strip)
+     *     leaf 2  row 2  21 rows  cols 0..128   LTR   (code)
+     *     leaf 3  row 1  22 rows  col  129      RTL   (splitter)
+     *     leaf 4  row 1  22 rows  cols 130..159 RTL   (sidebar)
+     *     leaf 5  row 23  1 row   cols 0..159   RTL   (status bar)
+     *
+     * So leaf 0 misses every row but the first. Stop there and rows 1..23 are
+     * owned by nothing at all — one uncovered verbatim run apiece, which is
+     * the whole UI below the menu bar rendered unmirrored under an RTL locale.
+     * Row 2 is the sharpest: two runs (LTR code, RTL sidebar) collapse into one
+     * verbatim run and the sidebar stops mirroring.
+     *
+     * The RTL E2e suite does not notice — its ten cases pass with this walk
+     * abandoned after leaf 0 — so this unit case is the only thing holding it.
+     */
+    public function testALeafThatMissesTheRowDoesNotStopTheWalk(): void
+    {
+        $leaves = [
+            ['rect' => new WidgetRect(row: 0, col: 0, columns: 10, rows: 1), 'ltr' => false], // menu bar, row 0 only
+            ['rect' => new WidgetRect(row: 1, col: 0, columns: 10, rows: 4), 'ltr' => false], // the RTL pane below it
+        ];
+
+        $this->assertRuns(
+            PaneSegmenter::runsForRow($leaves, [], 1, 10),
+            ['start' => 0, 'width' => 10, 'ltr' => false],
+        );
+    }
+
+    /** The region walk has the same shape, and the same hole. */
+    public function testARegionThatMissesTheRowDoesNotStopTheWalk(): void
+    {
+        $leaves = [
+            ['rect' => new WidgetRect(row: 0, col: 0, columns: 12, rows: 3), 'ltr' => true],
+        ];
+        $regions = [
+            new DropdownRegion(5, 0, 12, 2), // rows 5-6: not this row
+            new DropdownRegion(0, 4, 4, 2), // rows 0-1: this one owns four columns
+        ];
+
+        $this->assertRuns(
+            PaneSegmenter::runsForRow($leaves, $regions, 0, 12),
+            ['start' => 0, 'width' => 4, 'ltr' => true],
+            ['start' => 4, 'width' => 4, 'ltr' => false], // the dropdown, on top
+            ['start' => 8, 'width' => 4, 'ltr' => true],
+        );
+    }
+
     public function testSegmentSkipsAContextlessWidget(): void
     {
         // A freshly built (unrendered) root has no render context, so the walk

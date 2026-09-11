@@ -6659,3 +6659,55 @@ element sits and whether the elements differ in size.
 
 Census position after this round: `TabBarWidget` closed (3 entries),
 `PaneSegmenter:99/108` still to review, and roughly eighty entries unread.
+
+## The RTL segmenter's two skips, and what the E2e suite does not see (2026-09-11)
+
+`PaneSegmenter::runsForRow()` carried the last two verified-surviving entries on
+the census. Both are the row filter, once for leaves and once for dropdown
+regions:
+
+```php
+foreach ($leaves as $index => $leaf) {
+    if ($row < $rect->row || $row >= ($rect->row + $rect->rows)) {
+        continue;      // → break
+    }
+```
+
+Two tests already cover those lines — `testARowOutsideAPaneIsNotOwnedByIt` and
+`testARegionOutsideTheRowIsIgnored` — and neither can grade them, because each
+hands the walk a SINGLE element. With one element, skipping it and abandoning
+the walk end in the same place.
+
+The docblock for the fix started out claiming the menu bar is the first leaf, so
+the walk would abandon on every row below it. That is the kind of claim that
+reads like a verified one, so it was measured instead — a probe in
+`runsForRow()` under a running IDE at 160x24:
+
+```
+leaf 0  row 0   1 row   cols 0..159   RTL   (menu bar)
+leaf 1  row 1   1 row   cols 0..128   RTL   (tab strip)
+leaf 2  row 2  21 rows  cols 0..128   LTR   (code)
+leaf 3  row 1  22 rows  col  129      RTL   (splitter)
+leaf 4  row 1  22 rows  cols 130..159 RTL   (sidebar)
+leaf 5  row 23  1 row   cols 0..159   RTL   (status bar)
+```
+
+The claim holds, and it is worse than described. Leaf 0 misses every row but the
+first, so `break` leaves rows 1..23 owned by nothing at all — one uncovered
+verbatim run apiece. Row 2 is the sharpest: the two runs it should produce (LTR
+code to column 128, RTL sidebar from 129) collapse into a single verbatim run
+and the sidebar stops mirroring. Under an RTL locale that is the entire UI below
+the menu bar rendered the wrong way round.
+
+**And the RTL E2e suite does not notice.** Ten cases, 102 assertions, all green
+with the leaf walk abandoned after leaf 0. That is worth more than the fix: the
+suite that exists specifically to prove mirroring works passes with mirroring
+switched off for every row but one. It asserts the pieces — that a string comes
+back mirrored, that a region is RTL — and never that the SCREEN was segmented.
+Consistent with the standing rule that the defects live at the joins, and a
+reminder that an E2e suite can be an expensive way to test a unit.
+
+The two new unit cases each put a non-covering element FIRST and a covering one
+after it, and each kills its own mutant. Census: `PaneSegmenter` closed, and
+with `TabBarWidget` closed earlier today there are no verified-surviving entries
+left — roughly eighty unread ones remain, which is a population, not a backlog.
