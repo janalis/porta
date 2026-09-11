@@ -535,4 +535,42 @@ final class KeybindingsListWidgetTest extends TestCase
         $this->assertNotFalse($tail);
         $this->assertLessThan($tail, $chord, 'the whole label sits to the right of the chord');
     }
+
+    /**
+     * Every row is exactly the pane's width, in either direction.
+     *
+     * The row's own comment already worries about this — a pane narrower than
+     * the shortcut once produced a row eight columns into one — but nothing
+     * asserted it. A row wider than its pane garbles whatever is drawn beneath
+     * it, and a row narrower leaves the pane behind it showing through.
+     *
+     * The mirrored row spends its divider column on a mark rather than adding
+     * one, which is only true while the width is checked.
+     *
+     * @param int<1, max> $width
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('keybindingWidthProvider')]
+    public function testEveryRowIsExactlyThePaneWidth(int $width, string $locale): void
+    {
+        $widget = new KeybindingsListWidget(new Translator($locale));
+        AttachedStyles::attach($widget);
+        $widget->setRows([
+            new KeybindingRow('a', 'הצג TODO', 'Ctrl+Shift+F', false),
+            new KeybindingRow('b', 'יציאה', 'Ctrl+Q', true),
+            new KeybindingRow('c', 'Show TODO', '', false),
+        ]);
+
+        foreach ($widget->render(new RenderContext($width, 6)) as $row => $line) {
+            $this->assertSame($width, AnsiUtils::visibleWidth($line), 'row '.$row.' fills its pane exactly');
+        }
+    }
+
+    /** @return iterable<string, array{int, string}> */
+    public static function keybindingWidthProvider(): iterable
+    {
+        foreach ([12, 20, 40, 64] as $width) {
+            yield $width.' en' => [$width, 'en'];
+            yield $width.' he' => [$width, 'he'];
+        }
+    }
 }

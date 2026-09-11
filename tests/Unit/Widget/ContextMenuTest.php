@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\BaseDirection;
+use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\Probe;
 use Porta\Widget\ContextMenu;
 use Porta\Workbench\Menu\MenuItem;
@@ -374,5 +376,24 @@ final class ContextMenuTest extends TestCase
         $menu->handleInput("\x1b"); // would be menu_close, if it were open
 
         $this->assertFalse($closed, 'a closed menu ignores input entirely — onClose never fires for it');
+    }
+
+    /**
+     * Being told the writing direction marks the panel for redraw.
+     *
+     * The direction decides where the shortcut column goes, and it arrives from
+     * a locale switch — a switch that changed the layout without asking for a
+     * repaint would leave the old one on screen until something unrelated
+     * happened to invalidate.
+     */
+    public function testBeingToldTheDirectionAsksForARedraw(): void
+    {
+        $widget = new ContextMenu();
+        AttachedStyles::attach($widget);
+        $before = $widget->getRenderRevision();
+
+        $widget->setTextDirection(BaseDirection::Rtl);
+
+        $this->assertNotSame($before, $widget->getRenderRevision());
     }
 }

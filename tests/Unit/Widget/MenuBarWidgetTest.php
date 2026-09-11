@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\BaseDirection;
+use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\RendersExactWidth;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Ui\Glyphs;
@@ -430,5 +432,24 @@ final class MenuBarWidgetTest extends TestCase
         $bar->moveSelection(2);
         $bar->handleInput("\r");
         $this->assertSame(['save'], $this->ran, 'two steps wrap back to Save — the magnitude moved, not just the sign');
+    }
+
+    /**
+     * Being told the writing direction marks the panel for redraw.
+     *
+     * The direction decides where the shortcut column goes, and it arrives from
+     * a locale switch — a switch that changed the layout without asking for a
+     * repaint would leave the old one on screen until something unrelated
+     * happened to invalidate.
+     */
+    public function testBeingToldTheDirectionAsksForARedraw(): void
+    {
+        $widget = new MenuBarWidget();
+        AttachedStyles::attach($widget);
+        $before = $widget->getRenderRevision();
+
+        $widget->setTextDirection(BaseDirection::Rtl);
+
+        $this->assertNotSame($before, $widget->getRenderRevision());
     }
 }

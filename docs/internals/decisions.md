@@ -7333,3 +7333,35 @@ assertion about it at all.
 string's end and takes the paragraph direction. Ending the label's run does not
 reach inside it — that needs a mark within the catalog string. Recorded rather
 than chased.
+
+## Mutating the three-site round: four real, three artifacts, two equivalent (2026-09-11)
+
+39 killed, 8 escaped, MSI 82%, read by section.
+
+**Three are harness artifacts**, verified by the procedure `infection.json5`
+prescribes rather than assumed: inverting the direction in
+`MenuLayoutRefreshListener`, and removing either of its two setter calls, leaves
+the Unit suite green and turns the E2e red. Their coverage lives outside the
+judged suite.
+
+**Two are equivalent, and the pair is guarded.** `KeybindingsListWidget` ends its
+row with both a trailing space and `pad: true`, and either alone fills the pane —
+so each mutant individually changes nothing. Removing BOTH fails all eight width
+cases. Worth knowing that the redundancy is real rather than one of them being
+untested.
+
+**Two were real and both were about redraw**, not direction: setting the writing
+direction on either menu widget did not mark it for repaint, so a locale switch
+would have changed the layout and left the old one on screen until something
+unrelated invalidated. The same class as `StatusBarWidget::withdrawFlash()`
+earlier today.
+
+**One was a width hole at a second site.** `KeybindingsListWidget` had no
+assertion that a row fills its pane — the same hole found in `MenuPanel` during
+the round itself, one file over. Its own comment already worried about the case
+("a pane narrower than the shortcut got a row wider than itself — 8 columns into
+1") and nothing checked it. Now checked at four widths in both directions.
+
+Three rounds running, the thing that escaped was not the feature but the
+invariant beside it: a repaint, a width, a column. The feature is what the test
+was written for; the invariant is what nobody was looking at.
