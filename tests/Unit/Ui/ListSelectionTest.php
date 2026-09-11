@@ -142,4 +142,89 @@ final class ListSelectionTest extends TestCase
 
         $this->assertSame(2, $list->followHeights([2, 2, 9], 5));
     }
+
+    /**
+     * The window can be moved on its own, for a drag that has to reach a row
+     * off the bottom of the pane.
+     *
+     * Every other mover here moves the SELECTION and lets {@see
+     * ListSelection::follow()} drag the window after it. A pointer drag is the
+     * one gesture that cannot: the row the user is aiming at is off-screen, and
+     * moving the selection to it would both change what is selected and, in the
+     * tree, change what the next click acts on.
+     */
+    public function testTheWindowMovesOnItsOwn(): void
+    {
+        $list = new ListSelection();
+
+        $this->assertTrue($list->scrollWindow(3, count: 20, visibleRows: 5));
+
+        $this->assertSame(3, $list->scroll());
+        $this->assertSame(3, $list->follow(5), 'and the next render leaves it there');
+    }
+
+    /**
+     * The selection comes along only when it would otherwise fall outside.
+     *
+     * This is the whole reason the method exists rather than a bare setter.
+     * `follow()` runs on every render and pulls the window back to contain the
+     * selection, so a window moved past the selection would snap straight back
+     * and the drag would never reach anything.
+     */
+    public function testTheSelectionIsDraggedAlongOnlyWhenTheWindowLeavesItBehind(): void
+    {
+        $list = new ListSelection();
+        $list->select(4);
+
+        // Still inside [2, 6]: untouched.
+        $list->scrollWindow(2, count: 20, visibleRows: 5);
+        $this->assertSame(4, $list->selected(), 'the selection was still on screen');
+
+        // The window moves past it, so it comes to the top row.
+        $list->scrollWindow(4, count: 20, visibleRows: 5);
+        $this->assertSame(6, $list->scroll());
+        $this->assertSame(6, $list->selected(), 'pulled to the first visible row');
+        $this->assertSame(6, $list->follow(5), 'so the render does not undo the scroll');
+    }
+
+    /** Scrolling back up hands the selection to the LAST visible row. */
+    public function testScrollingUpPastTheSelectionPullsItToTheBottomRow(): void
+    {
+        $list = new ListSelection();
+        $list->select(15);
+        $list->scrollWindow(15, count: 20, visibleRows: 5);
+
+        $list->scrollWindow(-10, count: 20, visibleRows: 5);
+
+        $this->assertSame(5, $list->scroll());
+        $this->assertSame(9, $list->selected(), 'the bottom of [5, 9]');
+        $this->assertSame(5, $list->follow(5));
+    }
+
+    /**
+     * The window stops at both ends, and says when it did not move.
+     *
+     * The return value is what lets a caller skip a repaint, so "I refused"
+     * has to be distinguishable from "I scrolled".
+     */
+    public function testTheWindowStopsAtBothEndsOfTheList(): void
+    {
+        $list = new ListSelection();
+
+        $this->assertFalse($list->scrollWindow(-1, count: 20, visibleRows: 5), 'already at the top');
+        $this->assertSame(0, $list->scroll());
+
+        $this->assertTrue($list->scrollWindow(99, count: 20, visibleRows: 5));
+        $this->assertSame(15, $list->scroll(), 'the last full window, not past the end');
+        $this->assertFalse($list->scrollWindow(1, count: 20, visibleRows: 5), 'and it stays there');
+    }
+
+    /** A list shorter than the window has nowhere to scroll. */
+    public function testAListThatFitsDoesNotScroll(): void
+    {
+        $list = new ListSelection();
+
+        $this->assertFalse($list->scrollWindow(5, count: 3, visibleRows: 10));
+        $this->assertSame(0, $list->scroll());
+    }
 }

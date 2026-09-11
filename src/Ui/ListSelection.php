@@ -94,6 +94,35 @@ final class ListSelection
     }
 
     /**
+     * Move the scroll window by $delta on its own, for a pointer drag that has
+     * to reach a row off the end of the pane. Returns whether it moved.
+     *
+     * The inverse of {@see follow()}, and it has to cooperate with it: `follow()`
+     * runs on every render and pulls the window back to CONTAIN the selection,
+     * so a window moved past the selection would snap straight back and the drag
+     * would never reach anything. The selection is therefore dragged along, but
+     * only when it would otherwise fall outside the new window — the smallest
+     * change that leaves `follow()` with nothing to undo.
+     *
+     * Every other mover here works the other way round, moving the selection and
+     * letting the window follow. A drag is the one gesture that cannot: the row
+     * being aimed at is off-screen, and in the tree the selection decides what
+     * the next click acts on.
+     */
+    public function scrollWindow(int $delta, int $count, int $visibleRows): bool
+    {
+        $last = max(0, $count - $visibleRows);
+        $scroll = min($last, max(0, $this->scroll + $delta));
+        if ($scroll === $this->scroll) {
+            return false;
+        }
+        $this->scroll = $scroll;
+        $this->selected = min(max($this->selected, $scroll), $scroll + $visibleRows - 1);
+
+        return true;
+    }
+
+    /**
      * Variable-height sibling of {@see follow()}: shift the scroll window so
      * the selected item fits within $availableRows, where $heights[$i] is item
      * $i's rendered row count. Walks back from the selection accumulating
