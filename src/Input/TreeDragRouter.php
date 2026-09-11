@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Porta\Input;
 
 use Porta\Container\AsIdeService;
+use Porta\I18n\Translator;
 use Porta\Support\Scheduler;
 use Porta\Tree\TreeDragState;
+use Porta\Ui\Glyphs;
 use Porta\Widget\FileTreeWidget;
+use Porta\Widget\StatusBarWidget;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 
@@ -43,10 +46,15 @@ final class TreeDragRouter
     private ?string $springTimer = null;
     private ?string $springPath = null;
 
+    /** The in-flight hint this router put on the status bar, '' for none. */
+    private string $announced = '';
+
     public function __construct(
         private readonly FileTreeWidget $tree,
         private readonly Tui $tui,
         private readonly Scheduler $clock,
+        private readonly StatusBarWidget $statusBar,
+        private readonly Translator $translator,
     ) {}
 
     /**
@@ -74,9 +82,19 @@ final class TreeDragRouter
         if (null === $drag || !$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
             return false;
         }
-        $drag->moved = $drag->moved || $mouse->isLeftDrag();
+        if (!$drag->moved && $mouse->isLeftDrag()) {
+            $drag->moved = true;
+            // Once, on the first motion — the only moment it is news. The Alt
+            // modifier is read from the RELEASE, so naming it here is an offer
+            // rather than a description, and it appears nowhere else in the UI.
+            $this->announced = $this->translator->trans(
+                'Moving %count% file — hold Alt to copy|Moving %count% files — hold Alt to copy',
+                ['%count%' => \count($drag->sources)],
+            );
+            $this->statusBar->flash($this->announced);
+        }
         $drag->target = $this->dropDir($mouse, $treeRect);
-        $this->tree->setDropTarget($drag->target);
+        $this->tree->setDropTarget($drag->target, $this->payloadLabel($drag));
         $this->trackEdge($drag, $mouse, $treeRect);
         $this->trackSpring($drag->target);
         if ($mouse->isLeftRelease()) {
@@ -128,6 +146,13 @@ final class TreeDragRouter
         $this->drag = null;
         $this->stopScrolling();
         $this->stopSpring();
+        // The hint describes a drag that is happening; once it is not, sitting
+        // out its remaining seconds would cover what the drop has to say —
+        // which on a drop into the editor is the name of the file just opened.
+        if ('' !== $this->announced) {
+            $this->statusBar->withdrawFlash($this->announced);
+            $this->announced = '';
+        }
         $this->tree->setDropTarget(null);
     }
 
@@ -201,9 +226,26 @@ final class TreeDragRouter
             return;
         }
         $drag->target = $this->dropDir($mouse, $treeRect);
-        $this->tree->setDropTarget($drag->target);
+        $this->tree->setDropTarget($drag->target, $this->payloadLabel($drag));
         $this->tui->requestRender();
         $this->armScroll($drag, $mouse, $treeRect);
+    }
+
+    /**
+     * What the drag is carrying, for the row it would land on.
+     *
+     * The highlight answers "where" and never "what", and on a multi-selection
+     * drag the rows that are travelling may be scrolled off screen entirely —
+     * so this is the only thing that says whether one file is moving or nine.
+     */
+    private function payloadLabel(TreeDragState $drag): string
+    {
+        return Glyphs::DROP_INTO
+        .' '
+        .$this->translator->trans(
+            '%count% file|%count% files',
+            ['%count%' => \count($drag->sources)],
+        );
     }
 
     /**
@@ -275,6 +317,11 @@ final class TreeDragRouter
             return;
         }
         if (null === $editorRect || !$editorRect->contains($mouse->row, $mouse->col)) {
+            // A release over the tab strip, the dock or the status bar used to
+            // be swallowed here without a word, which reads as the drag having
+            // silently failed rather than having missed.
+            $this->statusBar->flash($this->translator->trans('Drop on a folder to move, or on the editor to open'));
+
             return;
         }
         foreach ($drag->sources as $path) {

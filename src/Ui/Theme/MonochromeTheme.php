@@ -36,6 +36,7 @@ final class MonochromeTheme
                 // Selection wins where a row is both: render precedence puts the
                 // reverse-video selection ahead of the underline.
                 Role::RowHighlightBg->selector() => new Style(underline: true),
+                Role::DropTargetRow->selector() => new Style(reverse: true, bold: true),
                 Role::FieldFocusBg->selector() => new Style(underline: true),
                 Role::BarHoverBg->selector() => new Style(underline: true),
                 // Character selection is reverse (like the row selection); search

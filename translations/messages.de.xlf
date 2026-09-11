@@ -3038,6 +3038,18 @@
         <source>%count% files already exist in %dir%</source>
         <target>%count% Dateien sind in %dir% bereits vorhanden</target>
       </trans-unit>
+      <trans-unit id="852">
+        <source>%count% file|%count% files</source>
+        <target>%count% Datei|%count% Dateien</target>
+      </trans-unit>
+      <trans-unit id="853">
+        <source>Moving %count% file — hold Alt to copy|Moving %count% files — hold Alt to copy</source>
+        <target>%count% Datei wird verschoben — Alt zum Kopieren|%count% Dateien werden verschoben — Alt zum Kopieren</target>
+      </trans-unit>
+      <trans-unit id="854">
+        <source>Drop on a folder to move, or on the editor to open</source>
+        <target>Auf einen Ordner ziehen zum Verschieben, auf den Editor zum Öffnen</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

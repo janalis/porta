@@ -28,6 +28,7 @@ final class DarkTheme
                 Role::SelectedRow->selector() => new Style(background: 31, color: 231, bold: true),
                 Role::SelectedRowUnfocused->selector() => new Style(background: 237),
                 Role::RowHighlightBg->selector() => new Style(background: 236),
+                Role::DropTargetRow->selector() => new Style(background: 22, color: 231, bold: true),
                 Role::FieldFocusBg->selector() => new Style(background: 236),
                 Role::PopupRow->selector() => new Style(background: 236, color: 250),
                 Role::HeaderBar->selector() => new Style(background: 237),

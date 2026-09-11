@@ -144,6 +144,27 @@ final class StatusBarWidget extends AbstractWidget
         $this->invalidate();
     }
 
+    /**
+     * Take back a flash, if it is still the one on screen.
+     *
+     * For a message that belongs to something IN PROGRESS rather than to
+     * something that happened — a drag's "Moving 3 files" stops being true the
+     * moment the drag ends, and sitting out its remaining seconds would cover
+     * whatever the drop itself has to say.
+     *
+     * Guarded by the text rather than clearing whatever is there, so a message
+     * posted since — a save, an error — is never silently swallowed by whoever
+     * flashed before it.
+     */
+    public function withdrawFlash(string $text): void
+    {
+        if (null === $this->flash || $this->flash['text'] !== $text) {
+            return;
+        }
+        $this->flash = null;
+        $this->invalidate();
+    }
+
     #[\Override]
     public function beforeRender(): void
     {

@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Input;
 use PHPUnit\Framework\TestCase;
 use Porta\Event\TreeDropRequested;
 use Porta\Event\TreeFileActivated;
+use Porta\I18n\Translator;
 use Porta\Input\MouseEvent;
 use Porta\Input\TreeDragRouter;
 use Porta\Tests\Support\AttachedStyles;
@@ -14,7 +15,9 @@ use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\FileTreeWidget;
+use Porta\Widget\StatusBarWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -37,6 +40,7 @@ final class TreeDragRouterTest extends TestCase
     /** @var list<TreeDropRequested> */
     private array $drops = [];
     private FakeScheduler $clock;
+    private StatusBarWidget $statusBar;
 
     /** The tree rect used throughout: 30 columns wide, starting at the top-left. */
     private const int ROWS = 12;
@@ -44,6 +48,7 @@ final class TreeDragRouterTest extends TestCase
     private function router(): TreeDragRouter
     {
         $this->clock = new FakeScheduler();
+        $this->statusBar = new StatusBarWidget();
         $this->project = new TempProject(['src/a.php' => "<?php\n", 'top.php' => "<?php\n"]);
         $this->treeEvents = new EventDispatcher();
         $events = $this->treeEvents;
@@ -56,7 +61,7 @@ final class TreeDragRouterTest extends TestCase
         $this->tree->render(new RenderContext(30, self::ROWS));
         $this->drops = [];
 
-        return new TreeDragRouter($this->tree, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24)), $this->clock);
+        return new TreeDragRouter($this->tree, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24)), $this->clock, $this->statusBar, new Translator('en'));
     }
 
     /** The two timers a drag runs, told apart by their interval. */
@@ -99,6 +104,7 @@ final class TreeDragRouterTest extends TestCase
     private function tallRouter(): TreeDragRouter
     {
         $this->clock = new FakeScheduler();
+        $this->statusBar = new StatusBarWidget();
         $files = [];
         for ($i = 0; $i < 12; ++$i) {
             $files[\sprintf('d%02d/keep.php', $i)] = "<?php\n";
@@ -110,7 +116,7 @@ final class TreeDragRouterTest extends TestCase
         $this->tree->render(new RenderContext(30, self::TALL_ROWS));
         $this->drops = [];
 
-        return new TreeDragRouter($this->tree, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24)), $this->clock);
+        return new TreeDragRouter($this->tree, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24)), $this->clock, $this->statusBar, new Translator('en'));
     }
 
     private static function tallRect(): WidgetRect
@@ -425,6 +431,161 @@ final class TreeDragRouterTest extends TestCase
 
         $this->assertContains($first, $this->clock->cancelled, 'the old dwell was dropped');
         $this->assertNotSame([$first], $this->pending(self::SPRING_DWELL));
+    }
+
+    /** What the status bar is showing right now, ANSI stripped. */
+    private function flashed(): string
+    {
+        return AnsiUtils::stripAnsiCodes(implode('', $this->statusBar->render(new RenderContext(100, 1))));
+    }
+
+    /**
+     * The drag says what it is carrying, and names the modifier that changes
+     * what it will do.
+     *
+     * Alt-to-copy is read from the RELEASE, so it is still an offer while the
+     * drag is in flight — and it appeared nowhere in the UI at all, only in
+     * docs/editor.md, which is not where anyone is looking mid-gesture.
+     */
+    public function testTheFirstMovementSaysWhatIsMovingAndHowToCopy(): void
+    {
+        $router = $this->router();
+        $router->arm([$this->project->path('top.php'), $this->project->path('src/a.php')]);
+
+        $router->continueDrag($this->drag(2, 2), self::rect(), null);
+
+        $this->assertStringContainsString('Moving 2 files', $this->flashed());
+        $this->assertStringContainsString('Alt', $this->flashed(), 'and the modifier is offered');
+    }
+
+    /**
+     * The hint is posted ONCE, on the first movement — not on every motion
+     * event for as long as the drag lasts.
+     *
+     * A pointer in flight produces a steady stream of motion events. Re-posting
+     * on each one would wipe anything else the status bar had to say, over and
+     * over, for the whole drag — so the guard is tested by putting a message up
+     * mid-drag and moving again.
+     */
+    public function testTheHintDoesNotKeepWipingWhateverElseTheStatusBarSays(): void
+    {
+        $router = $this->router();
+        $router->arm([$this->project->path('top.php')]);
+        $router->continueDrag($this->drag(2, 2), self::rect(), null);
+
+        $this->statusBar->flash('Saved');
+        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+
+        $this->assertStringContainsString('Saved', $this->flashed(), 'the hint had already had its say');
+    }
+
+    /**
+     * The payload reaches the ROW, not just the status bar.
+     *
+     * The widget renders whatever label it is handed and the router is what
+     * hands it over; with the two tested only separately, a drag that passes no
+     * label at all leaves both sides passing and the row saying nothing.
+     */
+    public function testTheDropTargetRowShowsWhatIsComing(): void
+    {
+        $router = $this->router();
+        $router->arm([$this->project->path('top.php')]);
+
+        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+
+        $rows = AnsiUtils::stripAnsiCodes(implode("\n", $this->tree->render(new RenderContext(40, self::ROWS))));
+        $this->assertStringContainsString('1 file', $rows);
+    }
+
+    /** A press that never moved is a click, and says nothing. */
+    public function testAClickSaysNothing(): void
+    {
+        $router = $this->router();
+        $router->arm([$this->project->path('top.php')]);
+
+        $router->continueDrag($this->release(2, 2), self::rect(), null);
+
+        $this->assertStringNotContainsString('Moving', $this->flashed());
+    }
+
+    /**
+     * The in-flight hint goes when the drag does.
+     *
+     * It describes something HAPPENING, so it stops being true at the release —
+     * and sitting out its remaining seconds would cover what the drop itself
+     * has to say. On a drop into the editor that is the name of the file just
+     * opened, which is the only confirmation the gesture gets.
+     */
+    public function testTheInFlightHintIsTakenBackAtTheRelease(): void
+    {
+        $router = $this->router();
+        $router->arm([$this->project->path('top.php')]);
+        $router->continueDrag($this->drag(2, 2), self::rect(), null);
+        $this->assertStringContainsString('Moving', $this->flashed());
+
+        $router->continueDrag($this->release(2, 1), self::rect(), null);
+
+        $this->assertStringNotContainsString('Moving', $this->flashed(), 'the status bar is free again');
+    }
+
+    /** Escape takes it back too, through the same disarm. */
+    public function testCancellingTakesTheHintBack(): void
+    {
+        $router = $this->router();
+        $router->arm([$this->project->path('top.php')]);
+        $router->continueDrag($this->drag(2, 2), self::rect(), null);
+
+        $router->cancel();
+
+        $this->assertStringNotContainsString('Moving', $this->flashed());
+    }
+
+    /**
+     * A message posted SINCE the hint is not swallowed with it.
+     *
+     * The withdrawal is guarded by the text, so a drag that ends after
+     * something more important has been said leaves that standing.
+     */
+    public function testAMessagePostedOverTheHintSurvivesTheRelease(): void
+    {
+        $router = $this->router();
+        $router->arm([$this->project->path('top.php')]);
+        $router->continueDrag($this->drag(2, 2), self::rect(), null);
+        $this->statusBar->flash('Saved');
+
+        $router->cancel();
+
+        $this->assertStringContainsString('Saved', $this->flashed());
+    }
+
+    /**
+     * A drop that landed on nothing says so.
+     *
+     * Releasing over the tab strip, the dock or the status bar was swallowed
+     * without a word, which reads as the move having silently failed rather
+     * than having missed — and the two call for opposite reactions.
+     */
+    public function testADropOnNeitherTargetExplainsItself(): void
+    {
+        $router = $this->router();
+        $router->arm([$this->project->path('top.php')]);
+        $router->continueDrag($this->drag(60, 20), self::rect(), null); // off the tree
+        $router->continueDrag($this->release(60, 20), self::rect(), null);
+
+        $this->assertStringContainsString('Drop on a folder', $this->flashed());
+        $this->assertSame([], $this->drops, 'and nothing moved');
+    }
+
+    /** A drop that DID land says nothing extra — the move speaks for itself. */
+    public function testASuccessfulDropDoesNotExplainItself(): void
+    {
+        $router = $this->router();
+        $router->arm([$this->project->path('top.php')]);
+        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+        $router->continueDrag($this->release(2, 1), self::rect(), null);
+
+        $this->assertStringNotContainsString('Drop on a folder', $this->flashed());
+        $this->assertCount(1, $this->drops);
     }
 
     /**

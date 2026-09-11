@@ -83,9 +83,9 @@ final class FileTreeDragTest extends TestCase
     }
 
     /** The rows a render of $rows lines actually shows, header stripped. */
-    private function rowsOf(FileTreeWidget $tree, int $rows): string
+    private function rowsOf(FileTreeWidget $tree, int $rows, int $width = 40): string
     {
-        return AnsiUtils::stripAnsiCodes(implode("\n", \array_slice($tree->render(new RenderContext(40, $rows)), offset: 1)));
+        return AnsiUtils::stripAnsiCodes(implode("\n", \array_slice($tree->render(new RenderContext($width, $rows)), offset: 1)));
     }
 
     /**
@@ -135,6 +135,74 @@ final class FileTreeDragTest extends TestCase
         $tree->scrollDuringDrag(99);
 
         $this->assertStringContainsString('f11.php', $this->rowsOf($tree, 6), 'the last entry is reachable');
+    }
+
+    /**
+     * The drop target says what is about to land on it.
+     *
+     * The highlight alone answers "where", never "what" — and on a
+     * multi-selection drag the rows that are travelling may be scrolled off
+     * screen entirely, so the count is the only thing that says whether this is
+     * one file or nine.
+     */
+    public function testTheDropTargetRowCarriesThePayloadLabel(): void
+    {
+        $tree = $this->tree();
+
+        $tree->setDropTarget($this->project->path('src'), "\u{2190} 3 files");
+
+        $this->assertStringContainsString('3 files', $this->rowsOf($tree, 12));
+    }
+
+    /**
+     * A pane too narrow for the label drops the label, not the name.
+     *
+     * The row must still measure exactly the width it claims — one whose
+     * visible width disagrees with its declared one throws out of the render
+     * loop and takes the session with it. So the label is a bound WITH a floor:
+     * below it the label goes entirely, rather than eating the filename or
+     * overflowing the row.
+     */
+    public function testANarrowPaneDropsTheLabelRatherThanTheName(): void
+    {
+        $tree = $this->tree();
+        $tree->setDropTarget($this->project->path('src'), "\u{2190} 3 files");
+
+        $narrow = AnsiUtils::stripAnsiCodes(implode("\n", \array_slice($tree->render(new RenderContext(12, 12)), offset: 1)));
+
+        $this->assertStringNotContainsString('3 files', $narrow, 'the label stood down');
+        $this->assertStringContainsString('src', $narrow, 'and the name survived');
+    }
+
+    /**
+     * The floor is exact: the label stays while the name still has its eight
+     * columns, and goes the moment it would not.
+     *
+     * Measured rather than assumed — `" ← 3 files "` is eleven columns, so the
+     * last width that can carry it beside an eight-column name is nineteen.
+     * Without a case on the boundary itself, a floor one column out reads the
+     * same as a correct one and hides the label a column early forever.
+     */
+    public function testTheLabelSurvivesExactlyDownToItsFloor(): void
+    {
+        $tree = $this->tree();
+        $tree->setDropTarget($this->project->path('src'), "\u{2190} 3 files");
+
+        $this->assertStringContainsString('3 files', $this->rowsOf($tree, 12, width: 19), 'nineteen columns still fits it');
+        $this->assertStringNotContainsString('3 files', $this->rowsOf($tree, 12, width: 18), 'eighteen does not');
+    }
+
+    /** Changing only the label still redraws — the count is part of the row. */
+    public function testChangingThePayloadLabelRedraws(): void
+    {
+        $tree = $this->tree();
+        $src = $this->project->path('src');
+        $tree->setDropTarget($src, "\u{2190} 1 file");
+        $before = $tree->getRenderRevision();
+
+        $tree->setDropTarget($src, "\u{2190} 2 files");
+
+        $this->assertNotSame($before, $tree->getRenderRevision());
     }
 
     /**

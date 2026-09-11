@@ -27,6 +27,7 @@ final class LightTheme
                 Role::SelectedRow->selector() => new Style(background: 111, color: 16, bold: true),
                 Role::SelectedRowUnfocused->selector() => new Style(background: 253),
                 Role::RowHighlightBg->selector() => new Style(background: 253),
+                Role::DropTargetRow->selector() => new Style(background: 151, color: 16, bold: true),
                 Role::FieldFocusBg->selector() => new Style(background: 253),
                 Role::PopupRow->selector() => new Style(background: 253, color: 240),
                 Role::HeaderBar->selector() => new Style(background: 253),

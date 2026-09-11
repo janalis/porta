@@ -33,6 +33,7 @@ final class ThemeLockTest extends TestCase
         yield 'selected-row' => [Role::SelectedRow, new Style(background: 31, color: 231, bold: true)];
         yield 'selected-row-unfocused' => [Role::SelectedRowUnfocused, new Style(background: 237)];
         yield 'row-highlight-bg' => [Role::RowHighlightBg, new Style(background: 236)];
+        yield 'drop-target-row' => [Role::DropTargetRow, new Style(background: 22, color: 231, bold: true)];
         yield 'field-focus-bg' => [Role::FieldFocusBg, new Style(background: 236)];
         yield 'popup-row' => [Role::PopupRow, new Style(background: 236, color: 250)];
         yield 'header-bar' => [Role::HeaderBar, new Style(background: 237)];
@@ -100,6 +101,7 @@ final class ThemeLockTest extends TestCase
         yield 'selected-row' => [Role::SelectedRow, new Style(background: 111, color: 16, bold: true)];
         yield 'selected-row-unfocused' => [Role::SelectedRowUnfocused, new Style(background: 253)];
         yield 'row-highlight-bg' => [Role::RowHighlightBg, new Style(background: 253)];
+        yield 'drop-target-row' => [Role::DropTargetRow, new Style(background: 151, color: 16, bold: true)];
         yield 'field-focus-bg' => [Role::FieldFocusBg, new Style(background: 253)];
         yield 'popup-row' => [Role::PopupRow, new Style(background: 253, color: 240)];
         yield 'header-bar' => [Role::HeaderBar, new Style(background: 253)];
@@ -244,6 +246,7 @@ final class ThemeLockTest extends TestCase
             Role::SelectedRowUnfocused,
             Role::TabActiveBg,
             Role::RowHighlightBg,
+            Role::DropTargetRow,
             Role::FieldFocusBg,
             Role::BarHoverBg,
             Role::SelectionBg,
@@ -290,6 +293,11 @@ final class ThemeLockTest extends TestCase
         $this->assertEquals(new Style(underline: true), $mono->of(Role::RowHighlightBg));
         $this->assertEquals(new Style(underline: true), $mono->of(Role::FieldFocusBg), 'the field background reads like its hover-tint twin without colour');
         $this->assertEquals(new Style(underline: true), $mono->of(Role::BarHoverBg));
+        $this->assertEquals(
+            new Style(reverse: true, bold: true),
+            $mono->of(Role::DropTargetRow),
+            'a live drop target reads without colour, and not as the selection or a hover',
+        );
     }
 
     public function testListElementRulesMirrorTheSelectionRolesInEveryTheme(): void

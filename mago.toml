@@ -174,12 +174,20 @@ excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server
 #                                with no correction note; re-probed
 #                                2026-09-09, the pin is right and the prose
 #                                was wrong — at 30 both classes fire.
-#   too-many-enum-cases      60  Ui/Role (the theme role vocabulary; 58 until
+#   too-many-enum-cases      61  Ui/Role (the theme role vocabulary; 58 until
 #                                OccurrenceWriteBg joined it — a read and a write
 #                                occurrence cannot share one role — and 60 with
 #                                DebugValue: an inlay hint is what the code
 #                                MEANS and is always there, a debug value is
-#                                what it currently HOLDS and only while stopped)
+#                                what it currently HOLDS and only while stopped.
+#                                61 with DropTargetRow: a live drop target had
+#                                been borrowing the hovered-directory tint, and
+#                                the two were byte-identical, so "the files are
+#                                going here" looked exactly like "the pointer is
+#                                here". Monochrome is why it cannot be a merge
+#                                of existing roles — there it has to be a mark
+#                                distinct from both the hover's underline and
+#                                the selection's reverse)
 #   excessive-parameter-list 24  Input/MouseRouter' constructor, which took
 #                                TreeDragRouter for the tree drag. 23 before.
 #                                Bootstrap/WidgetHooks is 22 — near-
@@ -267,7 +275,7 @@ excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server
 cyclomatic-complexity = { threshold = 147 }
 too-many-methods = { threshold = 86 }
 too-many-properties = { threshold = 31 }
-too-many-enum-cases = { threshold = 60 }
+too-many-enum-cases = { threshold = 61 }
 excessive-parameter-list = { threshold = 24 }
 kan-defect = { threshold = 8 }
 halstead = { effort-threshold = 21435, difficulty-threshold = 30, volume-threshold = 3236 }

@@ -45,6 +45,14 @@ enum Role
     case SelectedRowUnfocused;
     case RowHighlightBg;
     case PopupRow;
+    // Where a drag would land. Its own role rather than the hovered-directory
+    // tint it used to borrow: those were byte-identical, so "this is where the
+    // files are going" looked exactly like "the pointer is here". Green in the
+    // colour themes, the ordinary affordance for a live drop target, and
+    // reverse+bold in monochrome — distinct from the selection's plain reverse
+    // and the hover's underline, because a drag can rest on a row that is
+    // already both.
+    case DropTargetRow;
     // The background of a labelled single-line input row (the results panel's
     // filter). A token distinct from RowHighlightBg so a field's background and
     // the row-hover tint can diverge — today they resolve to the same shade.

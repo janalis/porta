@@ -68,6 +68,9 @@ final class Glyphs
     // → value as NAV_CURRENT on a disjoint surface.
     public const string REPLACE_ARROW = '→';
     public const string RENAME_FROM = '←';
+    // What a live drag would drop here, trailing the target row. Same value as
+    // RENAME_FROM — disjoint surfaces (a tree row mid-drag vs a rename prompt).
+    public const string DROP_INTO = '←';
 
     // The menu dropdown's separator rule (a full-width row between item groups).
     // Same ─ value as FRAME_HORIZONTAL on a disjoint surface.

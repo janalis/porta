@@ -69,8 +69,21 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     private readonly MultiSelection $selection;
     private int $lastRows = 24;
 
+    /** Columns the name keeps for itself before the payload label stands down. */
+    private const int DROP_LABEL_FLOOR = 8;
+
     /** The directory a drag in progress would drop into, or null when no drag is live. */
     private ?string $dropTarget = null;
+
+    /**
+     * What the live drag is carrying, already translated, or '' for none.
+     *
+     * A rendered string rather than a count because the widget has no
+     * translator and no business gaining one for this: the router that owns the
+     * gesture knows how many paths it picked up and already translates for the
+     * status bar.
+     */
+    private string $dropLabel = '';
 
     /** A directory row whose expand/collapse is waiting to learn whether the press was a click. */
     private ?int $pendingToggle = null;
@@ -435,13 +448,33 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      * `isMove()`, so the hover router does not run while a drag is live and
      * there is no second highlight this could be confused with.
      */
-    public function setDropTarget(?string $path): void
+    public function setDropTarget(?string $path, string $label = ''): void
     {
-        if ($path === $this->dropTarget) {
+        if ($path === $this->dropTarget && $label === $this->dropLabel) {
             return;
         }
         $this->dropTarget = $path;
+        $this->dropLabel = $label;
         $this->invalidate();
+    }
+
+    /**
+     * The payload label trailing the drop-target row, or '' when this is not
+     * that row or the pane cannot spare the columns.
+     *
+     * The floor is the point. A row whose visible width disagrees with the
+     * width it declares throws out of the render loop and takes the session
+     * with it, so this is a bound that can REFUSE: below the floor the label
+     * goes entirely rather than eating the filename it sits beside.
+     */
+    private function dropTrailing(FileTreeNode $node, int $room): string
+    {
+        if ($node->path !== $this->dropTarget || '' === $this->dropLabel) {
+            return '';
+        }
+        $label = ' '.$this->dropLabel.' ';
+
+        return (AnsiUtils::visibleWidth($label) + self::DROP_LABEL_FLOOR) <= $room ? $label : '';
     }
 
     public function refresh(): void
@@ -706,6 +739,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             // painting them separately would mean slicing the styled line again,
             // and their meaning is the shape, not the colour.
             $marks = $this->marksFor($node);
+            $marks .= $this->dropTrailing($node, $width - AnsiUtils::visibleWidth($marks));
             $text = AnsiText::blank($node->depth + 1).$icon.$node->name.($node->isDir ? '/' : '');
             $text = AnsiText::truncate($text, max(1, $width - AnsiUtils::visibleWidth($marks)), pad: true).$marks;
 
@@ -713,7 +747,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             $lines[] = match (true) {
                 // Above the cursor row: during a drag the pointer is what the
                 // eye follows, and the cursor is wherever the press left it.
-                $node->path === $this->dropTarget => $this->styles->merge(Role::RowHighlightBg, Role::TabAccent)->apply($text),
+                $node->path === $this->dropTarget => $this->styles->of(Role::DropTargetRow)->apply($text),
                 $index === $this->list->selected() => $this->applyElement('selected', $text),
                 // A row selected but not under the cursor — the second file of
                 // a pair. The cursor keeps its own style above; without this

@@ -3038,6 +3038,18 @@
         <source>%count% files already exist in %dir%</source>
         <target>%count% 件のファイルが %dir% に既にあります</target>
       </trans-unit>
+      <trans-unit id="852">
+        <source>%count% file|%count% files</source>
+        <target>%count% 個のファイル|%count% 個のファイル</target>
+      </trans-unit>
+      <trans-unit id="853">
+        <source>Moving %count% file — hold Alt to copy|Moving %count% files — hold Alt to copy</source>
+        <target>%count% 個のファイルを移動 — Alt でコピー|%count% 個のファイルを移動 — Alt でコピー</target>
+      </trans-unit>
+      <trans-unit id="854">
+        <source>Drop on a folder to move, or on the editor to open</source>
+        <target>フォルダーにドロップで移動、エディターにドロップで開く</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

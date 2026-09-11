@@ -81,6 +81,13 @@ final class NarrowPaneRenderTest extends TestCase
         self::$project ??= new TempProject(['a.php' => "<?php\n", 'src/Deep.php' => "<?php\n"]);
         yield 'file tree' => [new FileTreeWidget(self::$project->dir)];
 
+        // Mid-drag, which is a different row: the drop target wears its own
+        // Role and trails a payload label, and both had never been rendered at
+        // a hostile width — the sweep only ever saw a bare, idle tree.
+        $dragged = new FileTreeWidget(self::$project->dir);
+        $dragged->setDropTarget(self::$project->path('src'), "\u{2190} 12 files");
+        yield 'file tree mid-drag' => [$dragged];
+
         $status = new StatusBarWidget();
         $status->setProvider(static fn (): array => ['left' => 'src/Widget/Thing.php ●', 'right' => '12:4  LSP:none']);
         yield 'status bar' => [$status];
