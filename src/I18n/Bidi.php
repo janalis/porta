@@ -181,6 +181,13 @@ final class Bidi
         // a test that derives its set from {@see \Porta\Ui\Glyphs} rather than
         // repeating it, since a list of glyphs is wrong the first time someone
         // adds one.
+        // UAX#9 CS/ES: the separators that can JOIN two numbers (W4 below).
+        // Neutral everywhere else, which is what the W4 pass falls back to —
+        // they are listed here only so that pass can tell them from a bracket.
+        if (0x2B === $cp || 0x2C === $cp || 0x2D === $cp || 0x2E === $cp || 0x2F === $cp || 0x3A === $cp) {
+            return 'CS';
+        }
+
         // Split in two, and kept in locals rather than a helper call: the
         // analyzer stops applying type assertions to a condition this long, and
         // this runs per grapheme per row per frame.
@@ -229,6 +236,7 @@ final class Bidi
 
         // Resolve each neutral run to 'L' or 'R' from its strong neighbours,
         // treating numbers as R for the boundary test and the base at the edges.
+        $classes = self::joinNumberSeparators($classes);
         $resolved = $classes;
         $boundary = static fn (string $c): string => 'L' === $c ? 'L' : 'R'; // R, EN, (resolved) → R
         $baseDir = $baseRtl ? 'R' : 'L';
@@ -259,6 +267,41 @@ final class Bidi
         }
 
         return $levels;
+    }
+
+    /**
+     * UAX#9 W4: a SINGLE separator between two European numbers is part of the
+     * number; every other separator is an ordinary neutral.
+     *
+     * Without this the `:` in a line:column indicator resolved to the
+     * surrounding right-to-left direction, split the two digit runs and swapped
+     * them — the status bar read `5:12` with the caret at line 12, column 5.
+     *
+     * Judged against the classes as they arrived rather than as this loop
+     * leaves them, which makes the pass order-independent by construction. It
+     * cannot currently matter — for a separator to be swayed by its neighbour
+     * having just joined a number, that neighbour would need a number on BOTH
+     * sides, and one of its sides is this separator. Mutating the copy away
+     * changes no output, and it is kept for the shape rather than the effect.
+     *
+     * @param list<string> $classes
+     *
+     * @return list<string>
+     */
+    private static function joinNumberSeparators(array $classes): array
+    {
+        $original = $classes;
+        $last = \count($original) - 1;
+        foreach ($original as $i => $class) {
+            if ('CS' !== $class) {
+                continue;
+            }
+
+            $joins = $i > 0 && $i < $last && 'EN' === $original[$i - 1] && 'EN' === $original[$i + 1];
+            $classes[$i] = $joins ? 'EN' : 'N';
+        }
+
+        return $classes;
     }
 
     /**

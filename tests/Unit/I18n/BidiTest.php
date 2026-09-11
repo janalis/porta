@@ -67,6 +67,42 @@ final class BidiTest extends TestCase
         self::assertSame(self::SHALOM_VISUAL.' 12', self::strip(Bidi::reorder('12 '.self::SHALOM, BaseDirection::Rtl)));
     }
 
+    /**
+     * A separator between two numbers belongs to the number (UAX#9 W4).
+     *
+     * Without it the `:` resolves to the surrounding right-to-left direction,
+     * splits the two digit runs and swaps them — so the status bar's caret
+     * indicator read `5:12` while the caret sat at line 12, column 5. It is the
+     * most-looked-at number in the editor and it was backwards in Hebrew.
+     */
+    public function testASeparatorBetweenTwoNumbersHoldsThemTogether(): void
+    {
+        self::assertSame('12:5', self::strip(Bidi::reorder('12:5', BaseDirection::Rtl)), 'line:column');
+        self::assertSame('3.14', self::strip(Bidi::reorder('3.14', BaseDirection::Rtl)), 'a decimal');
+        self::assertSame('1,234', self::strip(Bidi::reorder('1,234', BaseDirection::Rtl)), 'a thousands group');
+        self::assertSame('2026-09-11', self::strip(Bidi::reorder('2026-09-11', BaseDirection::Rtl)), 'a date');
+    }
+
+    /** The number survives with Hebrew around it, which is the real setting. */
+    public function testANumberGroupHoldsTogetherInsideHebrew(): void
+    {
+        $line = self::SHALOM.' 12:5';
+
+        self::assertStringContainsString('12:5', self::strip(Bidi::reorder($line, BaseDirection::Rtl)));
+    }
+
+    /**
+     * The floor: W4 joins a SINGLE separator, not a run of them.
+     *
+     * Without this, "merge any neutral flanked by digits" would read as the
+     * same rule and pass every case above, while quietly swallowing the
+     * neutrals UAX#9 leaves alone.
+     */
+    public function testOnlyASingleSeparatorJoinsTwoNumbers(): void
+    {
+        self::assertSame('5::12', self::strip(Bidi::reorder('12::5', BaseDirection::Rtl)), 'two separators stay neutral');
+    }
+
     public function testWideCharacterWidthIsPreserved(): void
     {
         $out = self::strip(Bidi::reorder("a\u{65E5}b", BaseDirection::Rtl)); // 日 is two columns
