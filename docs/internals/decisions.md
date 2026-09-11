@@ -7193,3 +7193,24 @@ the one below it, in every locale, and hovering tinted the wrong row.
 
 Found by reading the same screen for a different reason, which is the argument
 for looking at a real one.
+
+## Mutating the settings round: two escapes, one real (2026-09-11)
+
+`composer mutate` over the diff, judged against Unit and read by section: 35
+killed, 2 escaped, MSI 94%. Both were in `SettingsFormWidget::gap()`, the two
+columns between a label and its control that now spend one on a mark.
+
+**Equivalent:** swapping the operands, so the mark precedes the space rather
+than following it. Measured — the gap is two columns either way and the stepper
+binds either way, because the neutral space between the mark and the control
+resolves left-to-right from both sides. Nothing can tell them apart.
+
+**Real:** dropping the space and keeping only the mark. The stepper still binds,
+so every case written for it passed — but the gap becomes ONE column in Hebrew
+and two in English, and the form quietly lays out differently per locale.
+
+That the mark is paid for out of the existing gap rather than added beside it is
+the reason the label column keeps its alignment, and it was asserted in a
+docblock and by nothing else — `claims-are-not-guards` again, in prose I wrote
+the same day. The new case renders the same row under both locales and requires
+the control to begin at the same column.

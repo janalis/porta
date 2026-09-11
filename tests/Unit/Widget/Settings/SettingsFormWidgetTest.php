@@ -1044,6 +1044,33 @@ final class SettingsFormWidgetTest extends TestCase
      * Rendered through the real reorder, because the widget's own output is in
      * logical order and looks perfect there — this defect only exists on screen.
      */
+    /**
+     * The mark SPENDS a gap column rather than adding one.
+     *
+     * The label column keeps its alignment only because the mark is paid for
+     * out of the two columns already between a label and its control. Take the
+     * space away and the gap is one column in Hebrew and two in English — the
+     * form quietly laid out differently per locale. That was asserted in a
+     * docblock and by nothing else.
+     */
+    public function testTheMarkIsPaidForOutOfTheGap(): void
+    {
+        $label = 'גלילה דביקה';
+        $widths = [];
+        foreach (['en', 'he'] as $locale) {
+            $widget = new SettingsFormWidget(new Translator($locale));
+            AttachedStyles::attach($widget);
+            $widget->setRows([new SettingsRow('sticky', $label, SettingsRowKind::Bool, true, false)], 'T');
+
+            $line = AnsiUtils::stripAnsiCodes($this->body($widget->render(new RenderContext(58, 4)))[0]);
+            $control = mb_strpos($line, needle: '[x]', encoding: 'UTF-8');
+            $this->assertNotFalse($control, 'the row drew its checkbox');
+            $widths[$locale] = AnsiUtils::visibleWidth(mb_substr($line, start: 0, length: $control, encoding: 'UTF-8'));
+        }
+
+        $this->assertSame($widths['en'], $widths['he'], 'the control begins at the same column in both directions');
+    }
+
     #[\PHPUnit\Framework\Attributes\DataProvider('mirroredValueProvider')]
     public function testAValueKeepsItsBracketsWhenMirrored(SettingsRow $row, string $expected): void
     {
