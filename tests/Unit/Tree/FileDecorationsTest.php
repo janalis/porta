@@ -36,6 +36,49 @@ final class FileDecorationsTest extends TestCase
         return $out;
     }
 
+    /**
+     * A clean buffer does not stop the scan at the buffers after it.
+     *
+     * The loop skips a buffer with nothing to report, and turning that
+     * `continue` into a `break` left every test here green: each opened ONE
+     * buffer, or opened the interesting one first. Two tabs where the first is
+     * clean is the ordinary case, and the second tab's dirty mark would simply
+     * not be drawn.
+     */
+    public function testACleanBufferDoesNotHideTheDirtyOneAfterIt(): void
+    {
+        [$decorations, $buffers] = $this->make();
+        $buffers->open('/p/clean.php', "<?php\n");
+        $dirty = $buffers->open('/p/dirty.php', "<?php\n");
+        $dirty->document->insert('x');
+
+        $snapshot = $decorations->snapshot();
+
+        $this->assertArrayHasKey('/p/dirty.php', $snapshot, 'the second buffer was still reached');
+        $this->assertTrue($snapshot['/p/dirty.php']['dirty']);
+        $this->assertArrayNotHasKey('/p/clean.php', $snapshot, 'and the first still says nothing');
+    }
+
+    /**
+     * A line with no diagnostics does not stop the search for the worst one.
+     *
+     * `worstMarkable()` skips empty lines, and turning that `continue` into a
+     * `break` left the suite green because every fixture put its diagnostic on
+     * the first line. A warning on line 5 of a file whose earlier lines are
+     * clean is the ordinary case, and its mark would vanish.
+     */
+    public function testADiagnosticBelowACleanLineIsStillFound(): void
+    {
+        [$decorations, $buffers] = $this->make();
+        $buffer = $buffers->open('/p/a.php', "<?php\n");
+        $buffer->diagnostics = [0 => [], 5 => [['severity' => 2, 'message' => 'm', 'col' => 0]]];
+
+        $snapshot = $decorations->snapshot();
+
+        $this->assertArrayHasKey('/p/a.php', $snapshot, 'the diagnostic below the empty line counts');
+        $this->assertSame(2, $snapshot['/p/a.php']['severity']);
+    }
+
     public function testAnUntouchedCleanBufferIsAbsentEntirely(): void
     {
         [$decorations, $buffers] = $this->make();

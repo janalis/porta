@@ -6343,3 +6343,35 @@ FORM against a refactor that drops whichever operation is currently doing it.
 direction:* a survivor that looked real was equivalent, after two survivors that
 looked equivalent turned out real. Neither instinct is worth trusting; only the
 run is.
+
+## src/Tree's first mutation review, and what the scope can and cannot say (2026-09-11)
+
+26 mutants, 23 killed, 3 escaped — and the small number is itself the finding.
+`TreeOperations` is nearly all of this namespace and nearly all of it is covered
+by E2e, so a run judged against the Unit suite barely sees it. That is the
+harness artifact `infection.json5` warns about, read from the other end: **an
+area whose tests live outside Unit cannot be reviewed this way at all.**
+
+Worth remembering when picking the next area: `Search`, `Lsp`, `I18n`, `Help`
+and `Container` have real Unit coverage; `Overlay`, `Layout` and `Tree` do not.
+
+All three escapes were in `FileDecorations`, the per-frame tree marks, and two
+were real — both the same shape as the History ones, a loop whose SKIP was never
+exercised:
+
+- The buffer loop's `continue` for a buffer with nothing to report. As a `break`
+  the whole suite stayed green: every test opened one buffer, or opened the
+  interesting one first. Two tabs where the first is clean is the ordinary case,
+  and the second tab's dirty mark simply would not be drawn.
+- `worstMarkable()`'s `continue` past a line with no diagnostics. As a `break`,
+  the suite stayed green because every fixture put its diagnostic on line 0. A
+  warning on line 5 of a file with clean lines above it loses its mark.
+
+The third — `break` → `continue` on the first error — survives and should: it is
+a pure early exit, nothing outranks an error, and the method's own docblock
+already says so. Equivalent, verified by running it rather than by reading it.
+
+*Four areas reviewed for the first time today between this and History, and
+every real gap in both was the same one:* a loop's skip-this-one branch, taken
+only when the fixture has a second element that differs from the first. Fixtures
+tend to have one of everything.
