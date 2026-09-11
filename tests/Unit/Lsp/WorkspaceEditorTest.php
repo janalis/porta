@@ -700,6 +700,18 @@ final class WorkspaceEditorTest extends TestCase
         yield 'renaming what is not there' => [[['kind' => 'rename', 'oldUri' => 'file:///nope/missing.php', 'newUri' => 'file:///nope/other.php']], 'missing.php'];
         yield 'deleting what is not there' => [[['kind' => 'delete', 'uri' => 'file:///nope/missing.php']], 'missing.php'];
         yield 'an operation we do not know' => [[['kind' => 'teleport', 'uri' => 'file:///nope/a.php']], 'teleport'];
+        // A plain text edit carries no `kind`, so the validation loop skips it.
+        // Skipping is right; STOPPING there is not, and a `break` in its place
+        // left every case above green — each of them leads with the resource
+        // operation. A server sending edits before operations, which the spec
+        // allows and several do, would have had the operation applied unchecked.
+        yield 'an operation behind a text edit' => [
+            [
+                ['textDocument' => ['uri' => 'file:///nope/a.php'], 'edits' => []],
+                ['kind' => 'delete', 'uri' => 'file:///nope/missing.php'],
+            ],
+            'missing.php',
+        ];
     }
 
     /** @param list<array<string, mixed>> $changes */

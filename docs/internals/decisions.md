@@ -6408,3 +6408,37 @@ are not in the Unit suite.
 skips and the lines with a cluster of survivors first. Both were real every time;
 the concat operands, the `array_values` calls and the early-exit `break` were
 equivalent every time.
+
+## src/Lsp, and the heuristic paying for itself (2026-09-11)
+
+2,220 mutants, 1,852 killed, **350 escaped**, covered MSI 84%. Reading 350 is not
+a review, it is a second job — so this used the rule the three earlier runs
+produced: **go to the loop skips first.** Four in the whole namespace, and the
+filter took seconds.
+
+Two were real, and both are the same defect wearing LSP clothes: a loop that
+SKIPS a malformed entry, where stopping instead truncates everything behind it.
+
+- `LspMapper::collectScopes()` drops a symbol that is not an array — servers do
+  send the odd null in a symbol list. As a `break`, one bad entry early in a real
+  response silently shortens the breadcrumb trail from there on, which reads
+  exactly like a file with no more scopes.
+- `WorkspaceEditor::refuseUnhonourable()` skips a change with no `kind`, which is
+  every plain text edit. As a `break`, the FIRST text edit ends the validation
+  and a resource operation behind it is applied unchecked — a refusal that exists
+  to stop the editor deleting or overwriting something it should not. Every
+  existing case in that data provider leads with the resource operation, so all
+  of them stayed green. The spec allows edits before operations and servers do
+  send them that way.
+
+`NavigationController`'s call-hierarchy skip is the same shape and is left: its
+tests drive the controller through a live session and do not live in Unit.
+`LspClient`'s 96 escapes are the harness artifact `infection.json5` already
+documents by name — `tests/Integration/LspClientTest` asserts that payload in
+full.
+
+**Four areas reviewed in a day, and every real gap in all four was a loop's skip
+branch.** Not one was a wrong calculation or a bad boundary. The fixtures were
+always well-formed and always had the interesting element first, which is what a
+fixture written to demonstrate a feature looks like — and precisely not what a
+language server, a working tree, or a user's palette query looks like.

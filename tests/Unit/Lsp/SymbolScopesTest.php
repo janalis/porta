@@ -31,6 +31,23 @@ final class SymbolScopesTest extends TestCase
         ];
     }
 
+    /**
+     * A malformed symbol is SKIPPED, not treated as the end of the list.
+     *
+     * The loop drops anything that is not an array — servers do send the odd
+     * null or scalar in a symbol list — and turning that `continue` into a
+     * `break` left every test here green, because each passes a list of
+     * well-formed symbols. One bad entry early in a real response would have
+     * silently truncated the breadcrumb trail from that point on, which reads
+     * exactly like a file that has no more scopes.
+     */
+    public function testABadSymbolDoesNotTruncateTheOnesAfterIt(): void
+    {
+        $scopes = LspMapper::symbolScopes([null, 'not a symbol', self::symbol('Svc', 5, 4, 40)]);
+
+        self::assertSame([['label' => 'Svc', 'startLine' => 5, 'endLine' => 41, 'kind' => 'type']], $scopes);
+    }
+
     public function testTheFULLRangeIsKeptNotTheNameSSelectionRange(): void
     {
         // A trail asks which scopes contain the caret; a selectionRange is one
