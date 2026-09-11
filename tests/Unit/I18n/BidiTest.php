@@ -7,6 +7,8 @@ namespace Porta\Tests\Unit\I18n;
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\BaseDirection;
 use Porta\I18n\Bidi;
+use Porta\Tests\Support\Probe;
+use Porta\Ui\Glyphs;
 
 /**
  * The UAX#9-subset line reorderer: directional runs, neutral resolution, SGR
@@ -193,6 +195,71 @@ final class BidiTest extends TestCase
         // 日 occupies screen columns 1–2; a click on its first cell maps to its
         // logical column (1), just past the leading "a".
         self::assertSame(1, Bidi::visualToLogicalColumn("a\u{65E5}b", 1, BaseDirection::Rtl));
+    }
+
+    /**
+     * No glyph the interface draws is strong LATIN text.
+     *
+     * `classify()` is an allow-list of neutral ranges with `return 'L'` at the
+     * bottom, so every codepoint nobody thought about is declared Latin. A
+     * marker classified `L` glues itself into the adjacent Latin run instead of
+     * taking the direction of the text around it, and lands on the wrong side
+     * of the name it belongs to: ` ▸ src/ ` came out `      /▸ src `.
+     *
+     * Derived from {@see Glyphs} rather than listed here, because a list of
+     * glyphs is wrong the first time someone adds one and nothing says so. The
+     * next arrow added to that class fails this the moment it appears.
+     *
+     * Two exemptions, both principled. ASCII letters and digits ARE strong
+     * Latin — `CHECKBOX_ON` is `[x]`. And U+E0A0, the branch icon, is a Private
+     * Use codepoint, which Unicode assigns to `L`; it always sits beside its
+     * Latin branch name, so following the standard costs nothing here.
+     */
+    public function testNoGlyphTheInterfaceDrawsIsStrongLatinText(): void
+    {
+        $offenders = [];
+        foreach (new \ReflectionClass(Glyphs::class)->getConstants() as $name => $value) {
+            $chars = preg_split('//u', (string) $value, flags: \PREG_SPLIT_NO_EMPTY);
+            foreach (false === $chars ? [] : $chars as $char) {
+                $codepoint = mb_ord($char, encoding: 'UTF-8');
+                // ASCII letters and digits ARE strong Latin (CHECKBOX_ON is
+                // "[x]"), and U+E000-F8FF is Private Use, which Unicode assigns
+                // to L — the branch icon there sits beside its Latin name.
+                $exempt = 1 === preg_match('/[A-Za-z0-9]/', $char) || $codepoint >= 0xE000 && $codepoint <= 0xF8FF;
+                if ($exempt || 'L' !== Probe::invokeStatic(Bidi::class, 'classify', $char)) {
+                    continue;
+                }
+
+                $offenders[] = $name.' ('.$char.')';
+            }
+        }
+
+        $this->assertSame([], $offenders, 'these glyphs would be reordered as if they were Latin words');
+    }
+
+    /**
+     * Every glyph in the mirror table can actually reach the mirror.
+     *
+     * L4 mirroring only applies to a cell that resolved to an ODD embedding
+     * level, i.e. one inside a right-to-left run. A glyph classified as strong
+     * Latin never gets there, so its entry in `MIRROR` is dead code that reads
+     * like a working feature — and `«` and `»` were exactly that.
+     *
+     * Derived from the table itself, so an entry added without a matching
+     * classification fails here rather than silently doing nothing.
+     */
+    public function testEveryMirroredGlyphCanReachTheMirror(): void
+    {
+        $unreachable = [];
+        foreach (array_keys(Probe::getStatic(Bidi::class, 'MIRROR')) as $glyph) {
+            if ('L' !== Probe::invokeStatic(Bidi::class, 'classify', (string) $glyph)) {
+                continue;
+            }
+
+            $unreachable[] = (string) $glyph;
+        }
+
+        $this->assertSame([], $unreachable, 'these have a mirror entry they can never reach');
     }
 
     /**

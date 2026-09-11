@@ -169,21 +169,46 @@ final class Bidi
         if ($cp >= 0x0030 && $cp <= 0x0039) {
             return 'EN';
         }
-        // ASCII space/punctuation/symbols, the common Unicode spaces and the
-        // box-drawing block (frame borders — Unicode class ON) are neutral.
-        if (
+        // ASCII space/punctuation/symbols, the common Unicode spaces, and the
+        // symbol blocks the interface draws from — all Unicode class ON.
+        //
+        // The fallback below is `L`, so anything missing from this list is
+        // declared Latin TEXT: a marker classified that way glues itself into
+        // the adjacent Latin run rather than taking the direction of the text
+        // around it, and lands on the wrong side of the name it belongs to.
+        // Forty of Glyphs' seventy-six constants did exactly that — arrows,
+        // triangles, blocks, ticks and the close ×. The list is held honest by
+        // a test that derives its set from {@see \Porta\Ui\Glyphs} rather than
+        // repeating it, since a list of glyphs is wrong the first time someone
+        // adds one.
+        // Split in two, and kept in locals rather than a helper call: the
+        // analyzer stops applying type assertions to a condition this long, and
+        // this runs per grapheme per row per frame.
+        $asciiNeutral =
             0x20 === $cp
             || 0xA0 === $cp
+            || 0xAB === $cp
+            || 0xBB === $cp // « » — in MIRROR, so they must be able to reach L4
+            || 0xB7 === $cp // · MIDDLE DOT (the hint severity, and a shown space)
+            || 0xD7 === $cp // × MULTIPLICATION SIGN (the close button)
             || $cp >= 0x21 && $cp <= 0x2F
             || $cp >= 0x3A && $cp <= 0x40
             || $cp >= 0x5B && $cp <= 0x60
-            || $cp >= 0x7B && $cp <= 0x7E
-            || $cp >= 0x2000 && $cp <= 0x206F
-            || $cp >= 0x2500 && $cp <= 0x257F
-        ) {
+            || $cp >= 0x7B && $cp <= 0x7E;
+        $symbolNeutral =
+            $cp >= 0x2000 && $cp <= 0x206F
+            || $cp >= 0x2190 && $cp <= 0x21FF // arrows
+            || $cp >= 0x2300 && $cp <= 0x23FF // misc technical (⏸)
+            || $cp >= 0x2500 && $cp <= 0x257F // box drawing (frame borders)
+            || $cp >= 0x2580 && $cp <= 0x259F // block elements (the error stripe)
+            || $cp >= 0x25A0 && $cp <= 0x25FF // geometric shapes (▸ ▾ ● ◆)
+            || $cp >= 0x2600 && $cp <= 0x27BF; // misc symbols and dingbats (✓ ✗)
+        if ($asciiNeutral || $symbolNeutral) {
             return 'N';
         }
 
+        // Everything else — Latin, CJK, and the Private Use Area, which Unicode
+        // assigns to L and where the branch icon lives beside its Latin name.
         return 'L';
     }
 
