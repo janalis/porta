@@ -10,6 +10,7 @@ use Porta\Config\ConfigScope;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
@@ -26,6 +27,7 @@ use Symfony\Component\Tui\Render\RenderContext;
 final class IdeRtlLocaleTest extends TestCase
 {
     use ClearsPortaLsp;
+    use NavigatesSettings;
     use PreservesPath;
     use RunsIde;
 
@@ -248,6 +250,58 @@ final class IdeRtlLocaleTest extends TestCase
                     $kinds = array_unique(array_column($body, 'ltr'));
                     sort($kinds);
                     $this->assertSame([false, true], $kinds, 'a verbatim code run AND a mirrored chrome run');
+                },
+            ],
+        );
+    }
+
+    /**
+     * A settings value survives the whole mirroring pipeline, not just the
+     * reorder called by hand.
+     *
+     * The widget renders in logical order and looks perfect there; the defect
+     * only exists once the segmenter has split the row into panes and the
+     * reorder has run on the settings pane's own column span. This drives the
+     * real screen — the same route `testRtlEveryPaneRowKeepsItsWidth` takes,
+     * asked a question about content rather than width.
+     */
+    public function testRtlSettingsValuesKeepTheirBrackets(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => json_encode(['settings' => ['language' => 'he', 'theme' => 'dark']]),
+            'demo.php' => "<?php\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('demo.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                    // The view opens on General; Theme lives on Interface.
+                    $this->selectSettingsSection($this->settingsNav($tui), 'interface');
+                },
+                500 => function ($tui, $terminal, $ide): void {
+                    $tui->tick();
+                    $renderer = Probe::get($tui, 'renderer');
+                    $root = Probe::get($tui, 'root');
+                    $segmenter = Services::resolve($ide, \Porta\Ui\PaneSegmenter::class);
+                    $reorder = Services::resolve($ide, \Porta\I18n\PaneReorder::class);
+                    \assert($segmenter instanceof \Porta\Ui\PaneSegmenter, description: 'the IDE exposes the segmenter');
+                    \assert($reorder instanceof \Porta\I18n\PaneReorder, description: 'the IDE exposes the reorder');
+
+                    $columns = $terminal->getColumns();
+                    $rows = $terminal->getRows();
+                    $lines = array_values($renderer->render($root, $columns, $rows));
+                    $runs = $segmenter->segment($root, $columns, $rows);
+                    $screen = '';
+                    foreach ($lines as $row => $line) {
+                        $screen .= AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $runs[$row]))."\n";
+                    }
+
+                    $this->assertStringContainsString('< dark >', $screen, 'the theme value reads as one bracketed block');
+                    $this->assertStringNotContainsString("\u{200E}", $screen, 'and no directional mark reached the terminal');
                 },
             ],
         );

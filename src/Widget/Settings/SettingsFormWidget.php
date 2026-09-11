@@ -423,7 +423,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             // A button whose caption fell back to its own label leaves the
             // label column blank rather than saying it twice.
             $label = SettingsRowKind::Action === $row->kind && '' === (string) $row->value ? '' : $row->label;
-            $text = $this->marker($row).AnsiText::padRight($label, $layout->label).$this->gap().$control;
+            $text = $this->marker($row).AnsiText::padRight($label, $layout->label).$this->gap().$control.$this->valueEnd();
             $detail = SettingsRowDetail::of($row, $this->translator);
             if ('' !== $detail) {
                 // No dangling separator when the control is empty — an unset
@@ -431,7 +431,6 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
                 // what its hint always meant.
                 $text .= $this->styles->of(Role::Dim)->apply(('' === $control ? '  ' : ' · ').$detail);
             }
-            $text .= $this->valueEnd();
             // An overflowing value being edited must keep its caret on screen:
             // scroll the assembled row to the marker instead of a hard clip that
             // would drop it off the right edge (every other field does this).
@@ -499,9 +498,12 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      * direction and leaves — so a row that used to be correct starts showing
      * `[ [x`. Fixing the stepper this way traded one broken row for another.
      *
-     * Bracketing the whole value region holds every shape at once: the stepper,
-     * the checkbox, the action button and the int row's range. Measured against
-     * all four before choosing this over marking the control alone.
+     * Bracketing the CONTROL holds every shape at once: the stepper, the
+     * checkbox, the action button and the int row's stepper. The detail clause
+     * beyond it is deliberately left outside — it is translated prose and
+     * belongs mirrored, and wrapping it too is what broke the scope row, whose
+     * detail is Hebrew where the theme row's is a Latin option name. Measured
+     * against every shape with a detail of each direction before choosing.
      */
     private function valueEnd(): string
     {

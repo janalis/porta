@@ -1071,11 +1071,20 @@ final class SettingsFormWidgetTest extends TestCase
      */
     public static function mirroredValueProvider(): iterable
     {
-        yield 'choice' => [new SettingsRow('theme', 'ערכת נושא', SettingsRowKind::Choice, 'dark', false, ['dark', 'light']), '< dark > · light'];
+        // The CONTROL is what the mark protects; the detail beyond it is prose
+        // and mirrors, separated by the space the spent mark leaves behind.
+        yield 'choice' => [new SettingsRow('theme', 'ערכת נושא', SettingsRowKind::Choice, 'dark', false, ['dark', 'light']), '< dark >'];
         yield 'bool' => [new SettingsRow('sticky', 'גלילה דביקה', SettingsRowKind::Bool, true, false), '[x]'];
         yield 'action' => [new SettingsRow('rm', 'demo (project)', SettingsRowKind::Action, 'Remove', false), '[Remove]'];
         yield 'int' => [new SettingsRow('indent', 'גודל הזחה', SettingsRowKind::Int, 4, false, null, 1, 8), '< 4 >'];
         yield 'int range' => [new SettingsRow('indent', 'גודל הזחה', SettingsRowKind::Int, 4, false, null, 1, 8), '1-8'];
+        // A detail clause in HEBREW, which the theme row's Latin option name
+        // does not exercise: wrapping the detail along with the control reads
+        // as the same fix and breaks this row, because prose belongs mirrored.
+        yield 'choice with a hebrew detail' => [
+            new SettingsRow('scope', 'שמירת שינויים אל', SettingsRowKind::Choice, '.porta.json', false, ['.porta.json'], hint: 'להפעלה זו'),
+            '< .porta.json >',
+        ];
     }
 
     /** The mark is spent on the way out, so the row is exactly as wide as it measures. */
