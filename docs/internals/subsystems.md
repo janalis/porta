@@ -560,10 +560,9 @@ map visual → logical per pane before hit-testing.
 
 Two limits worth knowing. The marker is whole-pane, so a verbatim pane's own
 translated headings render left-to-right beside mirrored chrome; the results and
-debug panels carry both. And `Bidi` implements W4 but not the rest of the
-W-rules, no isolates and no bracket-pair algorithm, so `foo.php:42` renders
-`42:foo.php` — which is what UAX#9 prescribes, the colon taking the paragraph
-direction between Latin and a number.
+debug panels carry both. And `Bidi` implements W4 and W7 but not the rest of
+the W-rules, and has no isolates and no bracket-pair algorithm — so a bracketed
+group whose delimiters sit between opposite directions still needs a mark.
 
 Where a run needs pinning, the **directional marks work**: U+200E and U+200F are
 classified strong, and `Bidi` spends each one for a space on the way out, so a

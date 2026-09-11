@@ -7214,3 +7214,56 @@ the reason the label column keeps its alignment, and it was asserted in a
 docblock and by nothing else — `claims-are-not-guards` again, in prose I wrote
 the same day. The new case renders the same row under both locales and requires
 the control to begin at the same column.
+
+## W7, and two "limits" that were mine rather than the standard's (2026-09-11)
+
+Hunting the shape this session keeps producing — a Latin token inside Hebrew
+prose — against the shipped catalog rather than a fixture. Every maximal Latin
+run in all 757 Hebrew strings, checked for surviving the mirror:
+
+```
+before:  3 strings shatter a Latin token   (UTF-8 ×2, autoload.psr-4)
+after:   0
+```
+
+All three were one shape: a hyphen between a letter and a digit. That is
+**UAX#9 W7** — search back from each European number to the first strong type,
+and an `L` there makes the number `L` too. Without it the digit stays a number,
+numbers act as right-to-left for neutral resolution, and the separator in front
+takes the paragraph direction and splits the token.
+
+### The part worth recording is what W7 retired
+
+Two things this session had written down as limits turn out to have been
+mistakes of mine, not properties of the standard:
+
+- **`src/Foo.php:42` → `42:src/Foo.php`.** Recorded twice — in `Bidi`'s docblock
+  and in the commit that added W4 — as "what UAX#9 prescribes", fixable only by
+  an isolate at the call site. That reading applied N1 without W7, which runs
+  first: the line number is preceded by Latin, so it IS Latin by the time N1
+  looks, and the colon has `L` on both sides. The standard gives the intact
+  answer. It renders `src/Foo.php:42` now.
+- **The settings int row's block order.** Recorded a few hours ago as needing
+  isolates because "digits are `EN` rather than `L` and no mark can change
+  that". A mark cannot, but W7 can — the mark in front of the control is strong
+  `L`, so every number after it reads as Latin. The row now renders
+  `< 4 > · 1-8` in logical order, matching the choice row beside it.
+
+Both claims were argued from the spec and both were wrong in the same way:
+quoting the rule that supported the conclusion and not the one that ran before
+it. `claims-are-not-guards` is usually about prose outliving code; this is the
+other failure, prose that was never right.
+
+The hyphen introduced for the range stays, and is no longer what fixes the
+settings row — measured: a range in bare Hebrew prose still needs it
+(`1–8` → `8–1`), a range after a mark no longer does.
+
+### Rule order is observably equivalent here
+
+Running W7 before W4 rather than after survived mutation, and rather than
+contrive a case, it was brute-forced: 400,000 random class sequences, of which
+**3,804 produce different intermediate classes and 0 produce different embedding
+levels**. A separator W4 declines to fold resolves to the same direction through
+N1 that it would have reached as a number, so the difference is absorbed before
+anything observable. The rules are applied in the numbered order because that is
+the spec's order, not because this subset can tell.

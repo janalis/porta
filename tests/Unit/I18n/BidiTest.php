@@ -87,6 +87,54 @@ final class BidiTest extends TestCase
     }
 
     /**
+     * A number attached to Latin text reads as Latin (UAX#9 W7).
+     *
+     * W7 searches back from each European number to the first strong type; an
+     * L there makes the number L too. Without it a digit stays a number, and
+     * numbers act as right-to-left for neutral resolution — so the separator
+     * before it takes the paragraph direction and splits the token in half.
+     *
+     * Measured against the shipped Hebrew catalog: three of its 757 strings
+     * contain a Latin token the mirror shattered, and all three are this shape.
+     */
+    public function testANumberAttachedToLatinTextStaysWithIt(): void
+    {
+        foreach (['UTF-8', 'autoload.psr-4', 'PHP 8.4', 'v1.2'] as $token) {
+            $out = self::strip(Bidi::reorder(self::SHALOM.' '.$token, BaseDirection::Rtl));
+
+            self::assertStringContainsString($token, $out, $token.' is one token, not two');
+        }
+    }
+
+    /**
+     * And a path with a line number is one reference, not two.
+     *
+     * This was recorded as a limit that only a bidi isolate could lift — the
+     * colon sitting between Latin and a number, taking the paragraph direction
+     * by N1. That reading applied N1 without W7, which runs first: the line
+     * number is preceded by Latin, so it IS Latin by the time N1 looks, and the
+     * colon has L on both sides. The standard gives the intact answer.
+     */
+    public function testAPathWithALineNumberSurvives(): void
+    {
+        self::assertSame(
+            'src/Foo.php:42',
+            self::strip(Bidi::reorder('src/Foo.php:42', BaseDirection::Rtl)),
+            'a file reference is one token',
+        );
+    }
+
+    /** A number with no Latin before it is still a number — the floor for W7. */
+    public function testANumberAfterHebrewIsStillANumber(): void
+    {
+        // The status bar's caret indicator: nothing Latin precedes it, so W7
+        // leaves it alone and W4 keeps its separator. Were W7 to fire here the
+        // digits would read as Latin text and the row would lay out differently.
+        self::assertSame('12:5', self::strip(Bidi::reorder('12:5', BaseDirection::Rtl)));
+        self::assertStringContainsString('12:5', self::strip(Bidi::reorder(self::SHALOM.' 12:5', BaseDirection::Rtl)));
+    }
+
+    /**
      * A separator with a number on only ONE side is an ordinary neutral.
      *
      * The ends of the line are where the W4 walk can run off: a separator in

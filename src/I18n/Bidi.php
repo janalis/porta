@@ -15,19 +15,18 @@ use Porta\Ui\Sgr;
  * Hebrew read right-to-left while paths, code and numbers stay left-to-right, and
  * right-anchors LTR content (trailing pad becomes leading pad) under an RTL base.
  *
- * Scope: W4 only of the W-rules — a single separator between two European
- * numbers joins them, so a line:column indicator, a decimal and a thousands
- * group survive. Absent: W1-W3 and W5-W7, explicit embedding controls
- * (LRE/RLE/PDF), isolates (LRI/RLI/FSI/PDI), the bracket-pair algorithm (N0),
- * Arabic shaping, and paragraph-level base detection (P2/P3 — the base is
- * always passed in). These cover the IDE's chrome; richer bidi is out of scope.
+ * Scope: W4 and W7 of the W-rules. W4 folds a single separator between two
+ * European numbers into the number, so a line:column indicator, a decimal and a
+ * thousands group survive; W7 makes a number preceded by Latin text Latin, so a
+ * path with a line number, a charset like `UTF-8` and a version stay in one
+ * piece. Absent: W1-W3, W5, W6, explicit embedding controls (LRE/RLE/PDF),
+ * isolates (LRI/RLI/FSI/PDI), the bracket-pair algorithm (N0), Arabic shaping,
+ * and paragraph-level base detection (P2/P3 — the base is always passed in).
+ * These cover the IDE's chrome; richer bidi is out of scope.
  *
- * One consequence worth knowing rather than mistaking for a bug: `foo.php:42`
- * renders as `42:foo.php` under an RTL base. The colon sits between Latin and a
- * number, and UAX#9 has numbers act as right-to-left for neutral resolution
- * (N1), so it takes the paragraph direction and swaps the two runs. That is
- * what the standard prescribes; pinning such a reference left-to-right needs an
- * isolate at the call site, not a change here.
+ * Where a run still needs pinning, the directional marks work: U+200E and
+ * U+200F are strong here, and each is spent for a space on the way out so a row
+ * keeps the width every measurer gave it.
  */
 final class Bidi
 {
@@ -293,7 +292,7 @@ final class Bidi
 
         // Resolve each neutral run to 'L' or 'R' from its strong neighbours,
         // treating numbers as R for the boundary test and the base at the edges.
-        $classes = self::joinNumberSeparators($classes);
+        $classes = self::numbersAfterLatinReadAsLatin(self::joinNumberSeparators($classes), $direction);
         $resolved = $classes;
         $boundary = static fn (string $c): string => 'L' === $c ? 'L' : 'R'; // R, EN, (resolved) → R
         $baseDir = $baseRtl ? 'R' : 'L';
@@ -356,6 +355,43 @@ final class Bidi
 
             $joins = $i > 0 && $i < $last && 'EN' === $original[$i - 1] && 'EN' === $original[$i + 1];
             $classes[$i] = $joins ? 'EN' : 'N';
+        }
+
+        return $classes;
+    }
+
+    /**
+     * UAX#9 W7: a European number preceded by Latin text IS Latin.
+     *
+     * Search back from each number to the first STRONG type — neutrals and
+     * other numbers do not count, and the run starts at the paragraph direction
+     * — and an `L` there makes the number `L` too.
+     *
+     * Without it a digit stays a number, and numbers act as right-to-left for
+     * neutral resolution (N1), so the separator in front of one takes the
+     * paragraph direction and splits the token it belongs to: `UTF-8` renders
+     * `8-UTF`, `src/Foo.php:42` renders `42:src/Foo.php`.
+     *
+     * Runs AFTER W4, as the rules are numbered: W4 has already folded the
+     * separator between two numbers into the number, so `12:5` is one run by
+     * the time this looks at it — and finds the paragraph direction behind it,
+     * not Latin, so a caret indicator keeps reading as a number.
+     *
+     * @param list<string> $classes
+     *
+     * @return list<string>
+     */
+    private static function numbersAfterLatinReadAsLatin(array $classes, BaseDirection $direction): array
+    {
+        $strong = BaseDirection::Rtl === $direction ? 'R' : 'L';
+        foreach ($classes as $i => $class) {
+            if ('L' === $class || 'R' === $class) {
+                $strong = $class;
+                continue;
+            }
+            if ('EN' === $class && 'L' === $strong) {
+                $classes[$i] = 'L';
+            }
         }
 
         return $classes;
