@@ -249,6 +249,25 @@ final class ProjectSearchControllerTest extends TestCase
         $this->assertStringContainsString('too complex', $this->flashed());
     }
 
+    /**
+     * And an ordinary search does not flash it.
+     *
+     * The floor the test above needs: asserting only that the warning APPEARS
+     * for a bad pattern is satisfied by a warning that appears for everything,
+     * which is how a mutation inverting that `if` survived the first run.
+     */
+    public function testAnOrdinarySearchDoesNotFlashTooComplex(): void
+    {
+        $project = new TempProject(['src/A.php' => "needle here\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+
+        $controller->search('needle');
+        $this->awaitModalShows('needle here');
+
+        $this->assertStringNotContainsString('too complex', $this->flashed());
+    }
+
     public function testSearchDeliversResultsToTheOpenModal(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n// needle here\n"]);

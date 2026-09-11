@@ -6270,3 +6270,32 @@ also stop the setting from saving.
 *Read paths left alone, with the reason:* `bundledBelow()` and the other
 `JsonFile::read(...) ?? []` callers degrade to defaults on a malformed file,
 which is right for a read — `IdeConfig` is the one that warns, and it does.
+
+## Mutating the day's later work (2026-09-11)
+
+Second mutation pass over this session, base `97875ff1` — 72 mutants across the
+1,100 lines the fixes since then added, 44 killed, **7 escaped**. Read as a
+review, and only one of the seven was a real gap.
+
+**The real one, and it is my own recurring mistake:** inverting
+`if ($this->projectSearch->gaveUp())` in the controller survived. The test
+asserted the "too complex" flash APPEARS for a bad pattern and never that it
+stays away otherwise — which a warning that fires for every search would also
+satisfy. That is the third one-way assertion of mine this session and the same
+shape each time: a positive with no floor. It has one now.
+
+**The other six, judged and left:**
+
+- `BufferManager::fileId()`'s concat, four mutants. Checked by hand rather than
+  reasoned about, which was worth doing: dropping EITHER operand is killed — the
+  method returns `?string` and an int fails the return type — so what actually
+  escapes is the `dev`/`ino` ORDER swap, and any deterministic pairing of the two
+  is equally correct. Genuinely equivalent.
+- `PortaJsonWriter::setAside()`'s error-suppressing closure returning false
+  instead of true. No test makes the rename fail, and the suppression exists for
+  a case that cannot be provoked from a fixture. Defensive, and the entry above
+  says why the failure is deliberately ignored.
+
+*Worth keeping:* checking a survivor by hand beat reasoning about it twice
+today. The concat operands looked unguarded and are not; the RTL column map
+looked guarded by a test that said so and was not.
