@@ -571,3 +571,10 @@ one either side of a row's CONTROL — `< dark >`, `[x]`, `[Remove]` are machine
 data and would otherwise lose a delimiter to the paragraph direction. The detail
 clause past the control is deliberately left OUTSIDE the marks: it is translated
 prose and belongs mirrored, and wrapping it is what broke the scope row.
+
+A two-column row needs a mark at BOTH boundaries: one to END the label's run and
+one to begin the value's. A label whose own text ends in a Latin run — `שרת LSP`,
+`הצג TODO` — is strong left-to-right just as the value beside it is, so without
+the first mark the two merge and the value is drawn inside the label, taking the
+column with it. `SettingsFormWidget`, `KeybindingsListWidget` and `MenuPanel`
+each hand-roll such a row and each carries the pair.

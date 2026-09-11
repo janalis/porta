@@ -7267,3 +7267,69 @@ levels**. A separator W4 declines to fold resolves to the same direction through
 N1 that it would have reached as a number, so the difference is absorbed before
 anything observable. The rules are applied in the numbered order because that is
 the spec's order, not because this subset can tell.
+
+## The other half of a settings row (2026-09-11)
+
+The settings screen was reported broken in Hebrew a second time, and rightly:
+the previous round fixed the VALUE side of a row and left the LABEL side broken.
+
+A row is `label` + gap + `control`. When the label's own text ends in a Latin
+run — 29 of the 757 Hebrew strings do — that tail is strong left-to-right, the
+control beside it is too, and the two merge into one run. The control is then
+drawn INSIDE the label:
+
+```
+שרת LSP                ->  LSP                [x]  תרש
+עיצוב בעת שמירה (LSP)  ->  LSP)  [x] ) הרימש תעב בוציע
+חיפוש בקובצי vendor/   ->  vendor/   [x]  יצבוקב שופיח
+```
+
+and the column goes with it. Across five real labels the checkbox landed at
+columns **28, 33, 37, 46 and 28**. That is what the report meant.
+
+The mark added last round is what binds the control; the label's tail joins the
+same run. So the previous fix was a necessary half, and the gap now spends both
+its columns: one mark to END the label's run, one to begin the control's.
+
+### Why the first round missed it
+
+Every fixture in it had a pure-Hebrew label. The round before found the same
+thing (a fixture with one example of a row shape), and the round before that
+(one example of a detail's direction). Three rounds, one shape:
+
+> A fixture with one example of a thing cannot grade a rule about the thing.
+
+The lesson that generalises is in the ASSERTION, not the fixture. "The label
+survived" passes on a ragged form; **"every row's second column starts at the
+same position"** does not. All three new cases assert the column.
+
+### Three sites, because a defect here always has a second one
+
+`SettingsFormWidget`, `KeybindingsListWidget` and `MenuPanel` each hand-roll a
+two-column row, and all three tore. The menu needed the direction pushed in — it
+is static, and neither menu widget carries a `Translator` — so both widgets got
+a setter, the shape `BidiTui::setPaneReorder()` already uses, leaving thirteen
+construction sites untouched.
+
+**One wiring point, not two.** It was first wired in `WidgetHooks` for boot and
+in `MenuLayoutRefreshListener` for the live switch; a mutation showed the boot
+half was dead. `Ide`'s startup calls `SettingsController::applyAll()`, which
+applies the persisted locale through the same setting a user switch does, so the
+listener already fires at boot. Removing it gave back a constructor argument on
+a class near the parameter ceiling.
+
+### A guard that had nothing to do with direction
+
+One surviving menu mutant added a gap column for the mark instead of spending
+one. Nothing noticed — and the result is a segment one column wider than the
+panel it is drawn into, which in this renderer garbles the rows beneath it.
+Menu segments are now width-checked at four widths in both directions. The
+over-wide row is this codebase's worst failure and the menu panel had no
+assertion about it at all.
+
+### Known and not fixed
+
+`חיפוש בקובצי vendor/` renders `/vendor`: the trailing slash is neutral at the
+string's end and takes the paragraph direction. Ending the label's run does not
+reach inside it — that needs a mark within the catalog string. Recorded rather
+than chased.
