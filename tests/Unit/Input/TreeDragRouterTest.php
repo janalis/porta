@@ -10,6 +10,7 @@ use Porta\Event\TreeFileActivated;
 use Porta\Input\MouseEvent;
 use Porta\Input\TreeDragRouter;
 use Porta\Tests\Support\AttachedStyles;
+use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\FileTreeWidget;
@@ -35,12 +36,14 @@ final class TreeDragRouterTest extends TestCase
     private EventDispatcher $treeEvents;
     /** @var list<TreeDropRequested> */
     private array $drops = [];
+    private FakeScheduler $clock;
 
     /** The tree rect used throughout: 30 columns wide, starting at the top-left. */
     private const int ROWS = 12;
 
     private function router(): TreeDragRouter
     {
+        $this->clock = new FakeScheduler();
         $this->project = new TempProject(['src/a.php' => "<?php\n", 'top.php' => "<?php\n"]);
         $this->treeEvents = new EventDispatcher();
         $events = $this->treeEvents;
@@ -53,7 +56,38 @@ final class TreeDragRouterTest extends TestCase
         $this->tree->render(new RenderContext(30, self::ROWS));
         $this->drops = [];
 
-        return new TreeDragRouter($this->tree, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24)));
+        return new TreeDragRouter($this->tree, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24)), $this->clock);
+    }
+
+    /** A pane six rows high showing five of twelve collapsed directories. */
+    private const int TALL_ROWS = 6;
+
+    /**
+     * Twelve directories in a pane that fits five of them — the shape every
+     * scrolling case needs, and the one the fixture above deliberately is not.
+     * Directories rather than files so that the row under the pointer IS the
+     * drop target, and scrolling therefore changes it.
+     */
+    private function tallRouter(): TreeDragRouter
+    {
+        $this->clock = new FakeScheduler();
+        $files = [];
+        for ($i = 0; $i < 12; ++$i) {
+            $files[\sprintf('d%02d/keep.php', $i)] = "<?php\n";
+        }
+        $this->project = new TempProject($files);
+        $this->treeEvents = new EventDispatcher();
+        $this->tree = new FileTreeWidget($this->project->dir, events: $this->treeEvents);
+        AttachedStyles::attach($this->tree);
+        $this->tree->render(new RenderContext(30, self::TALL_ROWS));
+        $this->drops = [];
+
+        return new TreeDragRouter($this->tree, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24)), $this->clock);
+    }
+
+    private static function tallRect(): WidgetRect
+    {
+        return new WidgetRect(row: 0, col: 0, columns: 30, rows: self::TALL_ROWS);
     }
 
     private static function rect(): WidgetRect
@@ -305,5 +339,151 @@ final class TreeDragRouterTest extends TestCase
 
         $this->assertFalse($router->continueDrag($this->at(0, 1, 'm'), self::rect(), null));
         $this->assertSame([], $this->drops);
+    }
+
+    /**
+     * A drag held at the bottom edge scrolls the tree, so a folder below the
+     * fold can be dropped on.
+     *
+     * The rest of this file drags within a tree that fits, where the pointer
+     * can always reach its target and the edge is never touched. On a real
+     * project it is the other way round: the folder being aimed at is usually
+     * the one off the bottom.
+     *
+     * The tick is a timer rather than a motion event because a pointer resting
+     * on the edge sends NOTHING — the terminal reports motion, not position, so
+     * without a clock the scroll would stop the instant the user stopped
+     * moving, which is exactly when they are waiting for it.
+     */
+    public function testAPointerHeldAtTheBottomEdgeScrollsTheTree(): void
+    {
+        $router = $this->tallRouter();
+        $router->arm([$this->project->path('d00')]);
+
+        $router->continueDrag($this->drag(2, self::TALL_ROWS - 1), self::tallRect(), null);
+
+        $this->assertCount(1, $this->clock->scheduled, 'the edge armed a tick');
+        $before = $this->tree->getRenderRevision();
+        $this->clock->fire();
+        $this->assertNotSame($before, $this->tree->getRenderRevision(), 'the tick scrolled the tree');
+        $this->assertCount(1, $this->clock->scheduled, 'and armed the next one, so it repeats');
+    }
+
+    /** The top edge scrolls the other way. */
+    public function testAPointerHeldAtTheTopEdgeScrollsBackUp(): void
+    {
+        $router = $this->tallRouter();
+        $router->arm([$this->project->path('d00')]);
+        $this->tree->scrollDuringDrag(2); // somewhere to scroll back from
+        $before = $this->tree->getRenderRevision();
+
+        $router->continueDrag($this->drag(2, 1), self::tallRect(), null);
+        $this->assertCount(1, $this->clock->scheduled, 'the top edge armed a tick');
+        $this->clock->fire();
+
+        $this->assertNotSame($before, $this->tree->getRenderRevision());
+    }
+
+    /** Away from the edges nothing is armed — the common case pays nothing. */
+    public function testADragInTheMiddleArmsNoTick(): void
+    {
+        $router = $this->router();
+        $router->arm([$this->project->path('top.php')]);
+
+        $router->continueDrag($this->drag(2, 3), self::rect(), null);
+
+        $this->assertSame([], $this->clock->scheduled);
+    }
+
+    /** Leaving the edge stops the repeat rather than letting it run on. */
+    public function testMovingOffTheEdgeStopsTheScroll(): void
+    {
+        $router = $this->router();
+        $router->arm([$this->project->path('top.php')]);
+        $router->continueDrag($this->drag(2, self::ROWS - 1), self::rect(), null);
+
+        $router->continueDrag($this->drag(2, 3), self::rect(), null);
+
+        $this->assertSame([], $this->clock->scheduled, 'the pending tick was cancelled');
+    }
+
+    /** A pointer that leaves the tree altogether stops it too. */
+    public function testLeavingTheTreeStopsTheScroll(): void
+    {
+        $router = $this->router();
+        $router->arm([$this->project->path('top.php')]);
+        $router->continueDrag($this->drag(2, self::ROWS - 1), self::rect(), null);
+
+        $router->continueDrag($this->drag(60, self::ROWS - 1), self::rect(), null);
+
+        $this->assertSame([], $this->clock->scheduled);
+    }
+
+    /**
+     * The release stops the repeat.
+     *
+     * Without this the tree would go on scrolling after the drop, driven by a
+     * timer nothing owns any more.
+     */
+    public function testTheReleaseStopsTheScroll(): void
+    {
+        $router = $this->router();
+        $router->arm([$this->project->path('top.php')]);
+        $router->continueDrag($this->drag(2, self::ROWS - 1), self::rect(), null);
+
+        $router->continueDrag($this->release(2, self::ROWS - 1), self::rect(), null);
+
+        $this->assertSame([], $this->clock->scheduled);
+    }
+
+    /** And so does Escape, through the same disarm. */
+    public function testCancellingStopsTheScroll(): void
+    {
+        $router = $this->router();
+        $router->arm([$this->project->path('top.php')]);
+        $router->continueDrag($this->drag(2, self::ROWS - 1), self::rect(), null);
+
+        $router->cancel();
+
+        $this->assertSame([], $this->clock->scheduled);
+    }
+
+    /**
+     * The tree reaching its end stops the repeat, rather than ticking forever
+     * against a window that cannot move.
+     */
+    public function testScrollingStopsAtTheEndOfTheTree(): void
+    {
+        $router = $this->tallRouter();
+        $router->arm([$this->project->path('d00')]);
+        $router->continueDrag($this->drag(2, 1), self::tallRect(), null); // top edge, already at the top
+
+        $this->assertCount(1, $this->clock->scheduled, 'the edge armed a tick');
+        $this->clock->fire();
+
+        $this->assertSame([], $this->clock->scheduled, 'nowhere to go, so it stopped');
+    }
+
+    /**
+     * After a tick the rows have moved under a stationary pointer, so the drop
+     * target is resolved again from where the pointer still is.
+     *
+     * Skipping this leaves the highlight — and the drop — pointing at whatever
+     * row USED to be under the pointer, which is the row the user deliberately
+     * scrolled away from.
+     */
+    public function testATickReResolvesTheTargetUnderTheStationaryPointer(): void
+    {
+        $router = $this->tallRouter();
+        $router->arm([$this->project->path('d00')]);
+
+        // The bottom visible row is d04; one scrolled row puts d05 there.
+        $router->continueDrag($this->drag(2, self::TALL_ROWS - 1), self::tallRect(), null);
+        $this->assertSame($this->project->path('d04'), Probe::get($this->tree, 'dropTarget'));
+
+        $this->assertCount(1, $this->clock->scheduled, 'the edge armed a tick');
+        $this->clock->fire();
+
+        $this->assertSame($this->project->path('d05'), Probe::get($this->tree, 'dropTarget'), 'resolved again, not left behind');
     }
 }

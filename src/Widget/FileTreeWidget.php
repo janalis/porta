@@ -365,6 +365,33 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     }
 
     /**
+     * Scroll the tree by $delta rows under a live drag, without moving what the
+     * drag is aiming at. Returns whether it moved.
+     *
+     * A drag can only ever land on a row that is on screen, and on any real
+     * project the folder being aimed at is usually exactly the one that is not.
+     * Every other drag in this codebase CLAMPS the pointer into its rect
+     * instead, which is right for a text selection (the document scrolls with
+     * the caret) and useless for a tree, where the target is a row rather than
+     * a point.
+     *
+     * The window moves on its own rather than by moving the selection, because
+     * the selection is what the next click acts on — see {@see
+     * \Porta\Ui\ListSelection::scrollWindow()} for why it still comes along
+     * when the window would otherwise leave it behind.
+     */
+    public function scrollDuringDrag(int $delta): bool
+    {
+        // Row 0 is the header, so the window is one row shorter than the pane.
+        if (!$this->list->scrollWindow($delta, \count($this->visible), $this->lastRows - 1)) {
+            return false;
+        }
+        $this->invalidate();
+
+        return true;
+    }
+
+    /**
      * Mark a directory as the pending drop of a drag in progress, or null to
      * clear it.
      *

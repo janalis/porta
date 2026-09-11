@@ -49,6 +49,90 @@ final class FileTreeDragTest extends TestCase
         return $tree;
     }
 
+    /**
+     * A tree taller than the pane, for the cases about reaching off-screen
+     * rows. Twelve files at the root, rendered six rows high.
+     */
+    private function tallTree(): FileTreeWidget
+    {
+        $files = [];
+        for ($i = 0; $i < 12; ++$i) {
+            $files[\sprintf('f%02d.php', $i)] = "<?php\n";
+        }
+        $this->project = new TempProject($files);
+        $tree = new FileTreeWidget($this->project->dir);
+        AttachedStyles::attach($tree);
+        $tree->render(new RenderContext(40, 6));
+
+        return $tree;
+    }
+
+    /** The rows a render of $rows lines actually shows, header stripped. */
+    private function rowsOf(FileTreeWidget $tree, int $rows): string
+    {
+        return AnsiUtils::stripAnsiCodes(implode("\n", \array_slice($tree->render(new RenderContext(40, $rows)), offset: 1)));
+    }
+
+    /**
+     * A drag can reach a row that is off the bottom of the pane.
+     *
+     * Without this the drag is confined to what was on screen when it started,
+     * which on any real project is a small fraction of the tree — the folder
+     * being aimed at is usually exactly the one that is not visible.
+     */
+    public function testTheWindowScrollsUnderADragSoOffScreenRowsCanBeReached(): void
+    {
+        $tree = $this->tallTree();
+        $this->assertStringNotContainsString('f09.php', $this->rowsOf($tree, 6), 'off screen to begin with');
+
+        $this->assertTrue($tree->scrollDuringDrag(5), 'the window moved');
+
+        $this->assertStringContainsString('f09.php', $this->rowsOf($tree, 6), 'and now it can be dropped on');
+    }
+
+    /**
+     * Scrolling stops at the ends, and says so — the drag repeats this on a
+     * timer, so "I refused" is what stops it repainting forever.
+     */
+    public function testScrollingUnderADragStopsAtTheEnds(): void
+    {
+        $tree = $this->tallTree();
+
+        $this->assertFalse($tree->scrollDuringDrag(-1), 'already at the top');
+
+        $tree->scrollDuringDrag(99);
+        $this->assertFalse($tree->scrollDuringDrag(1), 'and at the bottom it stops too');
+    }
+
+    /**
+     * Scrolling reaches the LAST row, not one short of it.
+     *
+     * Row 0 of the pane is the tree's header, so a pane of N rows shows N-1
+     * entries. Counting the header as an entry leaves the window one row too
+     * tall, which stops the scroll one row early — and the row it can never
+     * reach is the last one in the project, which is precisely the row this
+     * whole feature exists to let a drag get to.
+     */
+    public function testTheWindowScrollsAllTheWayToTheLastRow(): void
+    {
+        $tree = $this->tallTree();
+
+        $tree->scrollDuringDrag(99);
+
+        $this->assertStringContainsString('f11.php', $this->rowsOf($tree, 6), 'the last entry is reachable');
+    }
+
+    /** The scroll is a render change, so the memo has to let it through. */
+    public function testScrollingUnderADragDropsTheRenderMemo(): void
+    {
+        $tree = $this->tallTree();
+        $before = $tree->getRenderRevision();
+
+        $tree->scrollDuringDrag(3);
+
+        $this->assertNotSame($before, $tree->getRenderRevision());
+    }
+
     public function testAGrabOnAnUnselectedRowCarriesThatRowAlone(): void
     {
         $tree = $this->tree();

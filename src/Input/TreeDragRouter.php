@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Input;
 
 use Porta\Container\AsIdeService;
+use Porta\Support\Scheduler;
 use Porta\Tree\TreeDragState;
 use Porta\Widget\FileTreeWidget;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -24,11 +25,19 @@ use Symfony\Component\Tui\Tui;
 #[AsIdeService]
 final class TreeDragRouter
 {
+    /**
+     * Rows per tick while the pointer rests in an edge zone — about 16 a
+     * second, the rate a held arrow key repeats at.
+     */
+    private const float SCROLL_INTERVAL = 0.06;
+
     private ?TreeDragState $drag = null;
+    private ?string $scrollTimer = null;
 
     public function __construct(
         private readonly FileTreeWidget $tree,
         private readonly Tui $tui,
+        private readonly Scheduler $clock,
     ) {}
 
     /**
@@ -59,6 +68,7 @@ final class TreeDragRouter
         $drag->moved = $drag->moved || $mouse->isLeftDrag();
         $drag->target = $this->dropDir($mouse, $treeRect);
         $this->tree->setDropTarget($drag->target);
+        $this->trackEdge($drag, $mouse, $treeRect);
         if ($mouse->isLeftRelease()) {
             $this->disarm();
             // A press and release on one spot is a CLICK: pay the toggle the
@@ -106,7 +116,92 @@ final class TreeDragRouter
     private function disarm(): void
     {
         $this->drag = null;
+        $this->stopScrolling();
         $this->tree->setDropTarget(null);
+    }
+
+    /**
+     * Keep the tree scrolling while the pointer rests in an edge zone, and stop
+     * the moment it does not.
+     *
+     * Re-armed from scratch on every motion so the tick always carries the
+     * LATEST pointer, which is what it re-resolves the drop target from.
+     */
+    private function trackEdge(TreeDragState $drag, MouseEvent $mouse, ?WidgetRect $treeRect): void
+    {
+        $this->stopScrolling();
+        if (0 !== $this->edgeDelta($mouse, $treeRect)) {
+            $this->armScroll($drag, $mouse, $treeRect);
+        }
+    }
+
+    /**
+     * Which way a pointer at this row should scroll the tree, or 0 away from
+     * the edges.
+     *
+     * Row 0 is the tree's header and row 1 its first entry, so both mean "one
+     * more row above this one, please"; the pane's last row means the same
+     * downwards. A drag that has left the tree scrolls nothing.
+     */
+    private function edgeDelta(MouseEvent $mouse, ?WidgetRect $treeRect): int
+    {
+        if (null === $treeRect || !$treeRect->contains($mouse->row, $mouse->col)) {
+            return 0;
+        }
+        $row = $treeRect->toRelative($mouse->row, $mouse->col)['row'];
+
+        return match (true) {
+            $row <= 1 => -1,
+            $row >= ($treeRect->rows - 1) => 1,
+            default => 0,
+        };
+    }
+
+    /**
+     * A pointer resting on the edge sends NOTHING — the terminal reports
+     * motion, not position — so the repeat has to come from a clock. Without
+     * one the scroll would stop the instant the user stopped moving, which is
+     * exactly when they are waiting for it.
+     *
+     * The drag is captured rather than read back off the field: the timer is
+     * cancelled by {@see disarm()}, so the one it was armed with is the only
+     * one it can ever fire against.
+     */
+    private function armScroll(TreeDragState $drag, MouseEvent $mouse, ?WidgetRect $treeRect): void
+    {
+        $this->scrollTimer = $this->clock->delay(self::SCROLL_INTERVAL, function () use ($drag, $mouse, $treeRect): void {
+            $this->scrollTimer = null;
+            $this->scrollTick($drag, $mouse, $treeRect);
+        });
+    }
+
+    /**
+     * One scrolled row, then the same again — until the tree has no more to
+     * give, which is what ends the chain.
+     *
+     * The rows have moved under a pointer that has not, so the drop target is
+     * resolved AGAIN from where the pointer still is. Leaving it alone would
+     * point the highlight, and the drop, at the row the user just scrolled away
+     * from.
+     */
+    private function scrollTick(TreeDragState $drag, MouseEvent $mouse, ?WidgetRect $treeRect): void
+    {
+        if (!$this->tree->scrollDuringDrag($this->edgeDelta($mouse, $treeRect))) {
+            return;
+        }
+        $drag->target = $this->dropDir($mouse, $treeRect);
+        $this->tree->setDropTarget($drag->target);
+        $this->tui->requestRender();
+        $this->armScroll($drag, $mouse, $treeRect);
+    }
+
+    private function stopScrolling(): void
+    {
+        if (null === $this->scrollTimer) {
+            return;
+        }
+        $this->clock->cancel($this->scrollTimer);
+        $this->scrollTimer = null;
     }
 
     private function dropDir(MouseEvent $mouse, ?WidgetRect $treeRect): ?string
