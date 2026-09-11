@@ -423,7 +423,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             // A button whose caption fell back to its own label leaves the
             // label column blank rather than saying it twice.
             $label = SettingsRowKind::Action === $row->kind && '' === (string) $row->value ? '' : $row->label;
-            $text = $this->marker($row).AnsiText::padRight($label, $layout->label).'  '.$control;
+            $text = $this->marker($row).AnsiText::padRight($label, $layout->label).$this->gap().$control;
             $detail = SettingsRowDetail::of($row, $this->translator);
             if ('' !== $detail) {
                 // No dangling separator when the control is empty — an unset
@@ -431,6 +431,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
                 // what its hint always meant.
                 $text .= $this->styles->of(Role::Dim)->apply(('' === $control ? '  ' : ' · ').$detail);
             }
+            $text .= $this->valueEnd();
             // An overflowing value being edited must keep its caret on screen:
             // scroll the assembled row to the marker instead of a hard clip that
             // would drop it off the right edge (every other field does this).
@@ -468,6 +469,45 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      * Leading, so one vertical scan of the page answers "what have I changed
      * here?" — which nothing on this screen could answer before.
      */
+    /**
+     * The two columns between a label and its control — one of them spent on a
+     * left-to-right mark when the interface is mirrored.
+     *
+     * A control is machine data: `< dark >`, `[x]`, `[Remove]`. Sat between a
+     * Hebrew label and a Latin value, its opening delimiter has strong
+     * right-to-left on one side and strong left-to-right on the other, so with
+     * nothing to bind it it takes the paragraph direction, leaves for the far
+     * side of the group, and mirrors on the way — the row then shows two `>`
+     * and the value is not bracketed at all.
+     *
+     * The mark gives that delimiter something to hold on to. It costs one of
+     * the two gap columns rather than a third, so the label column keeps its
+     * alignment; and {@see \Porta\I18n\Bidi} spends it for a space on the way
+     * out, so the rendered row is as wide as every measurer thinks it is.
+     */
+    private function gap(): string
+    {
+        return $this->translator->isRtl() ? ' '."\u{200E}" : '  ';
+    }
+
+    /**
+     * The closing half of the pair {@see gap()} opens.
+     *
+     * One mark is not enough, and the checkbox is what proves it: with a mark
+     * only in front, `[x]`'s opening bracket binds left-to-right while its
+     * closing one still has the row's padding on its right, takes the paragraph
+     * direction and leaves — so a row that used to be correct starts showing
+     * `[ [x`. Fixing the stepper this way traded one broken row for another.
+     *
+     * Bracketing the whole value region holds every shape at once: the stepper,
+     * the checkbox, the action button and the int row's range. Measured against
+     * all four before choosing this over marking the control alone.
+     */
+    private function valueEnd(): string
+    {
+        return $this->translator->isRtl() ? "\u{200E}" : '';
+    }
+
     private function marker(SettingsRow $row): string
     {
         return $row->isModified()

@@ -6,10 +6,13 @@ namespace Porta\Tests\Unit\Widget\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ConfigScope;
+use Porta\I18n\BaseDirection;
+use Porta\I18n\Bidi;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
 use Porta\Widget\Settings\SettingsRowDetail;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /** The dim trailing clause: what a row is for, and what its control may become. */
 final class SettingsRowDetailTest extends TestCase
@@ -85,7 +88,7 @@ final class SettingsRowDetailTest extends TestCase
 
     public function testABoundedIntShowsItsRange(): void
     {
-        $this->assertSame('1–8', $this->detail($this->row(SettingsRowKind::Int, 4, min: 1, max: 8)));
+        $this->assertSame('1-8', $this->detail($this->row(SettingsRowKind::Int, 4, min: 1, max: 8)));
     }
 
     public function testASingleSidedBoundShowsOnlyTheBoundThatExists(): void
@@ -165,5 +168,29 @@ final class SettingsRowDetailTest extends TestCase
         bool $shadowed = false,
     ): SettingsRow {
         return new SettingsRow(key: 'k', label: 'L', kind: $kind, value: $value, restart: $restart, min: $min, max: $max, hint: $hint, origin: $origin, shadowed: $shadowed);
+    }
+
+    /**
+     * The range holds together on a mirrored screen.
+     *
+     * An en dash is an ordinary neutral, so UAX#9 never joins the numbers
+     * either side of it: under a right-to-left base each takes the paragraph
+     * direction between them and the two swap, and `1–8` reads `8–1`. A hyphen
+     * is a separator, which W4 joins into the number itself.
+     */
+    public function testAnIntRangeDoesNotReverseWhenMirrored(): void
+    {
+        $row = new SettingsRow('indentSize', 'Indent size', SettingsRowKind::Int, 4, false, null, 1, 8);
+
+        $detail = SettingsRowDetail::of($row, new Translator('he'));
+
+        $this->assertStringContainsString('1-8', $detail, 'the bounds read low to high');
+        $this->assertSame('1-8', self::strip(Bidi::reorder($detail, BaseDirection::Rtl)), 'and still do once mirrored');
+    }
+
+    /** ANSI codes stripped, for comparing a reordered string. */
+    private static function strip(string $line): string
+    {
+        return AnsiUtils::stripAnsiCodes($line);
     }
 }

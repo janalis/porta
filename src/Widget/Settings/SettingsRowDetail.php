@@ -108,11 +108,19 @@ final class SettingsRowDetail
         return implode('/', array_map(static fn (string $option): string => self::optionLabel($row, $option), $others));
     }
 
-    /** `1–8`, or a single-sided bound, or nothing when the number is unbounded. */
+    /**
+     * `1-8`, or a single-sided bound, or nothing when the number is unbounded.
+     *
+     * A HYPHEN rather than the en dash typography would prefer: an en dash is
+     * an ordinary neutral, so UAX#9 never joins the numbers either side of it,
+     * and under a right-to-left base each takes the paragraph direction between
+     * them and the two swap — `1–8` reads `8–1`, a range stated backwards. A
+     * hyphen is a separator, which W4 folds into the number itself.
+     */
     private static function range(?int $min, ?int $max): string
     {
         if (null !== $min && null !== $max) {
-            return $min.'–'.$max;
+            return $min.'-'.$max;
         }
         if (null !== $min) {
             return '≥ '.$min;

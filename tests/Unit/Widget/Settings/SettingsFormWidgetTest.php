@@ -6,6 +6,8 @@ namespace Porta\Tests\Unit\Widget\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Event\SettingsSectionRequested;
+use Porta\I18n\BaseDirection;
+use Porta\I18n\Bidi;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
@@ -995,7 +997,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->setRows([new SettingsRow(key: 'maxBytes', label: 'Max bytes', kind: SettingsRowKind::Int, value: 4_194_304, restart: false, min: 0, max: 8_388_608, step: 1_048_576)]);
 
         $screen = AnsiUtils::stripAnsiCodes(implode("\n", $widget->render(new RenderContext(80, 5))));
-        $this->assertStringContainsString('0–8388608', $screen, 'the range is visible without hammering the key');
+        $this->assertStringContainsString('0-8388608', $screen, 'the range is visible without hammering the key');
 
         $widget->handleInput("\x1b[C"); // one step right
 
@@ -1027,5 +1029,69 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->hoverRow(1);
         $this->assertTrue($widget->clearHover());
         $this->assertStringNotContainsString("\x1b[48;5;236m", implode('', $widget->render(new RenderContext(60, 10))));
+    }
+
+    /**
+     * A Choice row's value keeps its brackets on a mirrored screen.
+     *
+     * The stepper is `< value >` with a Latin value, sitting after a Hebrew
+     * label. The opening `<` has strong right-to-left on one side and strong
+     * left-to-right on the other, so with nothing to bind it it takes the
+     * paragraph direction, leaves for the far side of the group and mirrors on
+     * the way — the row then shows two `>`, and the current value is no longer
+     * bracketed at all. Theme is the first row on the Interface page.
+     *
+     * Rendered through the real reorder, because the widget's own output is in
+     * logical order and looks perfect there — this defect only exists on screen.
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('mirroredValueProvider')]
+    public function testAValueKeepsItsBracketsWhenMirrored(SettingsRow $row, string $expected): void
+    {
+        $translator = new Translator('he');
+        $widget = new SettingsFormWidget($translator);
+        AttachedStyles::attach($widget);
+        $widget->setRows([$row], $translator->trans('Interface'));
+
+        $line = $this->body($widget->render(new RenderContext(58, 4)))[0];
+        $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl));
+
+        $this->assertStringContainsString($expected, $mirrored, 'the value reads as one intact block');
+    }
+
+    /**
+     * Every shape a value takes, because fixing one broke another.
+     *
+     * A mark in FRONT of the control alone binds the stepper and breaks the
+     * checkbox: `[x]`'s opening bracket goes left-to-right while its closing one
+     * still has the row's padding on its right, takes the paragraph direction
+     * and leaves, so a row that rendered correctly starts showing `[ [x`. Only
+     * bracketing the whole value region holds all four.
+     *
+     * @return iterable<string, array{SettingsRow, string}>
+     */
+    public static function mirroredValueProvider(): iterable
+    {
+        yield 'choice' => [new SettingsRow('theme', 'ערכת נושא', SettingsRowKind::Choice, 'dark', false, ['dark', 'light']), '< dark > · light'];
+        yield 'bool' => [new SettingsRow('sticky', 'גלילה דביקה', SettingsRowKind::Bool, true, false), '[x]'];
+        yield 'action' => [new SettingsRow('rm', 'demo (project)', SettingsRowKind::Action, 'Remove', false), '[Remove]'];
+        yield 'int' => [new SettingsRow('indent', 'גודל הזחה', SettingsRowKind::Int, 4, false, null, 1, 8), '< 4 >'];
+        yield 'int range' => [new SettingsRow('indent', 'גודל הזחה', SettingsRowKind::Int, 4, false, null, 1, 8), '1-8'];
+    }
+
+    /** The mark is spent on the way out, so the row is exactly as wide as it measures. */
+    public function testAMirroredRowShipsNoDirectionalMark(): void
+    {
+        $translator = new Translator('he');
+        $widget = new SettingsFormWidget($translator);
+        AttachedStyles::attach($widget);
+        $widget->setRows([
+            new SettingsRow('theme', $translator->trans('Theme'), SettingsRowKind::Choice, 'dark', false, ['dark', 'light']),
+        ], $translator->trans('Interface'));
+
+        $row = $this->body($widget->render(new RenderContext(58, 4)))[0];
+        $mirrored = Bidi::reorder($row, BaseDirection::Rtl);
+
+        $this->assertStringNotContainsString("\u{200E}", $mirrored, 'no mark reaches the terminal');
+        $this->assertSame(58, AnsiUtils::visibleWidth($mirrored), 'and the row still fills its pane');
     }
 }
