@@ -7110,3 +7110,86 @@ row that holds the caret.
 That is the second time this session a mutant survived because the fixture was
 all-ASCII, and the general form is the familiar one: **a fixture whose parts are
 uniform cannot grade arithmetic that only differs when they are not.**
+
+## The settings screen in Hebrew, and two fixtures that lied (2026-09-11)
+
+Reported as "the settings UI is broken in Hebrew". It was, in two places — and
+the round is most useful for how nearly it went wrong.
+
+### The marks were inert
+
+U+200E and U+200F were classified NEUTRAL. They are strong `L` and `R` by
+definition; giving the neutral text beside them a direction is the whole reason
+they exist. So the one tool Unicode provides for this problem did nothing, and
+the Hebrew catalog already ships **nine strings using them**.
+
+They also measured one column and drew none, so a row carrying one rendered
+narrower than every width function believed — a toast padded to 30 columns drew
+29 — and the RTL width invariant could not see it, measuring with the same
+function that was wrong.
+
+Rather than teach every measurer about zero-width characters, a mark is now
+SPENT: it does its work in `levels()` and leaves a space behind. The arithmetic
+never changes and the screen agrees with it.
+
+### What was actually broken on screen
+
+With real translated labels, two rows:
+
+```
+Theme        < dark > · light   ->   dark > · light >
+Indent size  < 4 > · 1–8        ->   8–1 · < 4 >
+```
+
+The stepper's opening `<` had strong R on one side and strong L on the other,
+took the paragraph direction, left for the far side of the group and mirrored on
+the way — two `>`, and the current value no longer bracketed. The range reversed
+because an en dash is an ordinary neutral, so W4 never joins the numbers either
+side of it; a hyphen is a separator and does.
+
+### Two fixtures that lied, in opposite directions
+
+**The first overstated the damage.** An early read had the checkbox breaking too
+and the keybindings chord column flipping sides per row. Both came from labels
+invented for the fixture: all 191 action labels and every settings label are
+genuinely translated, and with real content those rows were always fine. Half an
+hour spent on defects that did not exist would have been the cheaper mistake.
+
+**The second understated it, twice.** Marking only the front of the control
+fixed the stepper and broke the checkbox — `[x]` became `[ [x`, because its
+closing bracket still had the row's padding on its right. Marking the whole
+value region fixed that and broke the SCOPE row, whose detail clause is Hebrew
+where the theme row's is a Latin option name: prose wrapped in a left-to-right
+region stops being prose. Only bracketing the control — machine data — while
+leaving the detail outside holds every shape.
+
+Each wrong answer passed the test written for the row in front of it. The
+general form is the one this session keeps producing: **a fixture with one
+example of a thing cannot grade a rule about the thing.** The provider now
+carries a choice, a bool, an action, an int, and a choice whose detail is
+Hebrew.
+
+And the second of those was only caught by driving the real settings screen
+through the segmenter and the per-pane reorder. The widget renders in logical
+order and looks perfect there; every one of these defects exists only after the
+mirror.
+
+### The known limit
+
+The int row still reads `1-8 · < 4 >` rather than `< 4 > · 1-8`. Its digits are
+`EN` rather than `L`, and no mark can make an all-numeric group a left-to-right
+unit — only an isolate can, and there is no isolate support. Both halves are
+legible; the order inside the block is wrong. **This is the case that would
+re-open isolates**, and the first concrete one.
+
+### A defect that had nothing to do with Hebrew
+
+`SettingsNavWidget::rowIndexAt()` counted from the top of the pane, while
+`render()` reserves its first line for the ▲ indicator as soon as the entries
+outnumber the pane — and reserves it even when nothing is scrolled, so the line
+is blank rather than absent. Measured at 24×6: screen row 1 showed "General"
+while the hit test answered "Interface". Clicking a settings category selected
+the one below it, in every locale, and hovering tinted the wrong row.
+
+Found by reading the same screen for a different reason, which is the argument
+for looking at a real one.
