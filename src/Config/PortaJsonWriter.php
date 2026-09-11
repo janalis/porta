@@ -380,19 +380,6 @@ final readonly class PortaJsonWriter
     }
 
     /**
-     * The read-modify-write every persist* shares: load the scope's file
-     * (missing or unparseable reads as empty), hand the decoded config to
-     * $mutate by reference, write it back. Spelled once here rather than eight
-     * times.
-     *
-     * False when the scope has no file at all — a global write in an
-     * environment with neither PORTA_HOME nor HOME. Every caller already reads
-     * false as "the write failed" and flashes accordingly, so nothing new has
-     * to learn about the case.
-     *
-     * @param \Closure(array<array-key, mixed>): void $mutate
-     */
-    /**
      * Move an unreadable config out of the way, keeping its bytes.
      *
      * `<file>.invalid` rather than `.bak`, because `.bak` reads like a copy of
@@ -412,6 +399,19 @@ final readonly class PortaJsonWriter
         restore_error_handler();
     }
 
+    /**
+     * The read-modify-write every persist* shares: load the scope's file
+     * (missing or unparseable reads as empty), hand the decoded config to
+     * $mutate by reference, write it back. Spelled once here rather than eight
+     * times.
+     *
+     * False when the scope has no file at all — a global write in an
+     * environment with neither PORTA_HOME nor HOME. Every caller already reads
+     * false as "the write failed" and flashes accordingly, so nothing new has
+     * to learn about the case.
+     *
+     * @param \Closure(array<array-key, mixed>): void $mutate
+     */
     private function edit(ConfigScope $scope, \Closure $mutate): bool
     {
         $file = $this->files->path($scope);

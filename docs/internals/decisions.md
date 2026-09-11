@@ -6711,3 +6711,85 @@ The two new unit cases each put a non-covering element FIRST and a covering one
 after it, and each kills its own mutant. Census: `PaneSegmenter` closed, and
 with `TabBarWidget` closed earlier today there are no verified-surviving entries
 left — roughly eighty unread ones remain, which is a population, not a backlog.
+
+## Reading the mutation log wrong: timeouts are not escapes (2026-09-11)
+
+The census this session has been working from was built by grepping numbered
+entries out of `coverage/infection.log`. That log has **two** sections, and
+Infection numbers them independently:
+
+```
+Escaped mutants:      (7 entries)
+Timed Out mutants:    (21 entries)
+```
+
+A grep for `^[0-9]+\) /Users` collects all 28 and loses which section each came
+from. Every `Document.php` entry in the census was a TIMEOUT, and hand-mutating
+all seven — BOM strip, the ternary, three match arms, both `str_replace`
+variants — killed every one against `tests/Unit/Editor`. The reason is visible
+in the coverage map: line 1420 is attributed **1,997 covering tests**, and the
+config's per-mutant budget is 45 seconds. A heavily-covered line cannot finish,
+so it times out, and a timeout says nothing whatever about a gap.
+
+Two theories were checked and discarded before the right one: a stale coverage
+map (`coverage-xml/Editor/Document.php.xml` is 03:19, fresh) and a test not
+attributed to the line (`DocumentAdoptTest` appears six times against 1420).
+Both would have been comfortable explanations. Neither was true.
+
+So the standing "~80 unreviewed census entries" is not a backlog of gaps; it is
+an unknown mixture of gaps and lines too well covered to mutate in 45 seconds.
+Future rounds read the sections separately.
+
+### What the seven real escapes were
+
+- **`ProjectSearchController:509`** — already closed at 03:28 by
+  `test(search): the too-complex flash needs a floor`, eight minutes after the
+  log was written. The log was stale for this one.
+- **`BufferManager:132`** — `is_file($path) ? stat($path) : false` mutated to
+  `: true`. `is_array(true)` is false, so the method returns null either way.
+  Equivalent, and no test can be written that says otherwise.
+- **`BufferManager:134` ×4** — the `dev.':'.ino` separator moved, removed, or
+  the device dropped. The separator guards against digit-run ambiguity across
+  devices: dev 1/ino 23 and dev 12/ino 3 both spell `123` without it. Measured
+  on this machine, every path a test can reach reports the SAME device —
+  16777232 for the checkout, the temp dir, `/usr/bin`, and the read-only system
+  volume alike, because APFS firmlinks present one device. With `dev` constant
+  the concatenation is injective on `ino` alone, so all four mutants are
+  equivalent for every input a portable test can construct. The separator stays
+  because it is right for a mounted second volume, not because a test holds it.
+- **`PortaJsonWriter:410`** — real, and fixed below.
+
+## A swallowed warning that would have printed on the screen (2026-09-11)
+
+`setAside()` moves an unreadable `.porta.json` out of the way before overwriting
+it, and swallows a failed rename on purpose — the courtesy must not stop the
+setting from saving. The swallowing is `set_error_handler(static fn (): bool => true)`,
+and mutating that `true` to `false` survived.
+
+The two existing tests both rename SUCCESSFULLY, so the handler never has an
+error to swallow and its return value cannot matter to them.
+
+The new case makes `.porta.json.invalid` a non-empty DIRECTORY, which is a
+rename POSIX refuses — no permission trick, so a suite running as root sees the
+same failure.
+
+The interesting part is what to assert. The obvious assertion — that the test
+runner notices — does not work, and the first attempt at this test failed for
+that reason: **a handler returning false hands the warning to PHP's BUILT-IN
+handler, not to whichever handler was installed before it.** PHPUnit never sees
+it and the suite stays green. Measured instead:
+
+```
+return true    output=0 bytes     error_get_last=null
+return false   output=205 bytes   error_get_last=SET: rename(...)
+```
+
+Those 205 bytes are `Warning: rename(...)` written straight to the terminal
+Porta is drawing on — the over-wide-row garble family, arriving through a
+settings write. The test asserts on the output and on `error_get_last()`.
+
+Found alongside it: `edit()`'s docblock had been stranded on `setAside()` when
+that method was inserted between it and its method, so a block documenting
+`@param \Closure $mutate` sat on a method taking `string $file`, and `edit()`
+had none. Moved back. No gate reads prose, which is the whole reason it sat
+there unnoticed through a full green run.

@@ -89,6 +89,53 @@ final class PortaJsonWriterTest extends TestCase
         $this->assertFalse($fresh['settings']['autoPairs'], 'the new file holds the change');
     }
 
+    /**
+     * A set-aside that CANNOT happen still lets the setting save.
+     *
+     * The rename is a courtesy, so its failure is swallowed on purpose — the
+     * whole point of moving the file aside is to make a destructive write less
+     * destructive, and a courtesy that refuses the write would strand the user
+     * exactly as refusing outright would. The swallowing is a `set_error_handler`
+     * returning true, and a handler that returns FALSE instead hands the warning
+     * back to PHP: silent in production, a failed test run here, and in a build
+     * that promotes warnings, an exception thrown out of a settings write.
+     *
+     * Nothing graded that. Both cases above rename successfully, so the handler
+     * never has an error to swallow and its return value does not matter to
+     * them. Here `.porta.json.invalid` is a non-empty DIRECTORY, which is a
+     * rename POSIX refuses, and no permission trick is involved — a suite
+     * running as root would still see it fail.
+     *
+     * The assertion is on the OUTPUT and on `error_get_last()`, not on the test
+     * runner noticing. A handler returning false hands the warning to PHP's
+     * BUILT-IN handler, not to whichever handler was installed before — so
+     * PHPUnit never sees it and the suite stays green either way. Measured:
+     * returning false prints 205 bytes of `Warning: rename(...)` and sets
+     * `error_get_last()`; returning true produces neither. Those 205 bytes go
+     * straight to the terminal Porta is drawing on, which is the over-wide-row
+     * garble family arriving through a settings write.
+     */
+    public function testASetAsideThatFailsDoesNotStopTheSettingFromSaving(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => "{\n  \"settings\": {\n    \"theme\": \"light\",\n  }\n}\n",
+            '.porta.json.invalid/occupied.txt' => "not going anywhere\n",
+        ]);
+        $writer = new PortaJsonWriter(ConfigFiles::for($project->dir));
+
+        error_clear_last();
+        ob_start();
+        $saved = $writer->persistSetting(ConfigScope::Project, 'autoPairs', false);
+        $printed = (string) ob_get_clean();
+
+        $this->assertTrue($saved, 'the setting still saves');
+        $this->assertSame('', $printed, 'and nothing was printed at the terminal');
+        $this->assertNull(error_get_last(), 'the failed rename raised nothing');
+        $this->assertFileExists($project->path('.porta.json.invalid/occupied.txt'), 'the rename could not happen');
+        $fresh = json_decode((string) file_get_contents($project->path('.porta.json')), associative: true);
+        $this->assertFalse($fresh['settings']['autoPairs'], 'and the change landed anyway');
+    }
+
     /** A readable file is edited in place — nothing is set aside. */
     public function testAReadableConfigIsNotMovedAside(): void
     {
