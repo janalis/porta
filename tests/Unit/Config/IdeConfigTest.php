@@ -277,6 +277,14 @@ final class IdeConfigTest extends TestCase
         $this->assertFalse(IdeConfig::load($project->dir)->settings['inlineDiagnostics']);
     }
 
+    /**
+     * Overwriting a corrupt config is deliberate: refusing would strand the
+     * user, since the Settings view offers no way to repair their JSON.
+     *
+     * The file itself is set aside as `.porta.json.invalid` first, so the typo
+     * costs a rename rather than everything configured — {@see
+     * \Porta\Tests\Unit\Config\PortaJsonWriterTest::testAMalformedConfigIsMovedAsideRatherThanDestroyed()}.
+     */
     public function testPersistSettingIgnoresCorruptExistingFile(): void
     {
         $project = new TempProject(['.porta.json' => '{not json']);
@@ -334,6 +342,14 @@ final class IdeConfigTest extends TestCase
         $this->assertSame(['ctrl+shift+q'], IdeConfig::load($project->dir)->keymap['duplicate_line']);
     }
 
+    /**
+     * Overwriting a corrupt config is deliberate: refusing would strand the
+     * user, since the Settings view offers no way to repair their JSON.
+     *
+     * The file itself is set aside as `.porta.json.invalid` first, so the typo
+     * costs a rename rather than everything configured — {@see
+     * \Porta\Tests\Unit\Config\PortaJsonWriterTest::testAMalformedConfigIsMovedAsideRatherThanDestroyed()}.
+     */
     public function testPersistKeymapIgnoresCorruptExistingFile(): void
     {
         $project = new TempProject(['.porta.json' => '{not json']);

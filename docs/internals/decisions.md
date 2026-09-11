@@ -6229,3 +6229,44 @@ And the same sticky-state mutant survived here that survived in the find bar
 twenty minutes earlier: nothing proved the flag clears. One controller holds one
 `ProjectSearch` for the session, so reuse is the only case that happens — the
 test runs a giving-up search and then an ordinary one on the same instance.
+
+## A typo in .porta.json cost you the whole file (2026-09-11)
+
+Same lens as the regex fixes — **a sentinel indistinguishable from a real
+answer** — pointed at `json_decode`. `JsonFile::read()` returns null for a
+missing file AND for a malformed one, and `PortaJsonWriter::edit()` did
+`JsonFile::read($file) ?? []`.
+
+So a `.porta.json` with a trailing comma, the commonest JSON typo there is, meant
+the next settings change started from an empty array and wrote back a file
+holding only the key just toggled. Theme, language, plugin list, LSP config,
+per-language indents — gone, from one click in Settings.
+
+### What I got wrong first
+
+My first fix refused the write. Two existing tests went red:
+`testPersistSettingIgnoresCorruptExistingFile` and its keymap twin have asserted
+"overwrite a corrupt file" for a long time.
+
+That is a **deliberate decision and it is the right one.** Refusing strands the
+user: the Settings view offers no way to repair JSON, so every change would fail
+until they found a text editor. Inverting it would have traded silent data loss
+for a silent dead end.
+
+What was wrong is losing the file, not writing. It is renamed to
+`.porta.json.invalid` first, so a one-character typo costs a rename rather than
+everything configured. The two existing tests keep asserting the write and now
+carry the reason they never had — their names described the behaviour
+("Ignores corrupt existing file") and justified nothing, which is why it was not
+obvious from the suite that inverting them was off the table.
+
+`.invalid` rather than `.bak`: a `.bak` reads like a copy of something that
+worked. A previous one is overwritten, because the interesting file is the one
+just lost and a chain of them would turn one typo into a litter of dead files in
+a repository. The rename's own failure is ignored — it runs to make a
+destructive write less destructive, and a rename that cannot happen must not
+also stop the setting from saving.
+
+*Read paths left alone, with the reason:* `bundledBelow()` and the other
+`JsonFile::read(...) ?? []` callers degrade to defaults on a malformed file,
+which is right for a read — `IdeConfig` is the one that warns, and it does.

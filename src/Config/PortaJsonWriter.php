@@ -392,13 +392,52 @@ final readonly class PortaJsonWriter
      *
      * @param \Closure(array<array-key, mixed>): void $mutate
      */
+    /**
+     * Move an unreadable config out of the way, keeping its bytes.
+     *
+     * `<file>.invalid` rather than `.bak`, because `.bak` reads like a copy of
+     * something that worked. A previous one is overwritten: the interesting file
+     * is the one the user just lost, and keeping a chain of them would turn one
+     * typo into a litter of dead files in a repository.
+     *
+     * Failure is ignored on purpose. This runs to make a destructive write less
+     * destructive, and a rename that cannot happen must not also stop the
+     * setting from being saved — that would strand the user for the sake of a
+     * courtesy.
+     */
+    private function setAside(string $file): void
+    {
+        set_error_handler(static fn (): bool => true);
+        rename($file, $file.'.invalid');
+        restore_error_handler();
+    }
+
     private function edit(ConfigScope $scope, \Closure $mutate): bool
     {
         $file = $this->files->path($scope);
         if (null === $file) {
             return false;
         }
-        $config = JsonFile::read($file) ?? [];
+        // A malformed file and an absent one both decode to null, and treating
+        // them alike meant the next settings change started from an empty array
+        // and wrote back a config holding only the key just toggled — theme,
+        // language, plugin list, LSP config, per-language indents, all gone from
+        // one click in Settings.
+        //
+        // Writing anyway is the RIGHT call and stays: refusing would strand the
+        // user, because the Settings view offers no way to repair their JSON and
+        // every change would fail until they found a text editor. What is wrong
+        // is losing the file. It is moved aside first, so a one-character typo
+        // costs a rename rather than everything the user had configured.
+        //
+        // The out-parameter is what tells the two cases apart: JsonFile leaves
+        // it untouched for a file that is simply not there.
+        $reason = null;
+        $config = JsonFile::read($file, $reason);
+        if (null === $config && null !== $reason) {
+            $this->setAside($file);
+        }
+        $config ??= [];
         $mutate($config);
         // An edit that leaves nothing behind should not CONJURE a config file
         // to hold it. Resetting the only key a fresh project ever set, or
