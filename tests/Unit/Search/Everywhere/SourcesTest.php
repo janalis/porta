@@ -91,6 +91,28 @@ final class SourcesTest extends TestCase
         $source->cancel(); // no-op for a synchronous source
     }
 
+    /**
+     * A command that does not match does not end the search for ones that do.
+     *
+     * The loop skips a non-matching command, and turning that `continue` into a
+     * `break` left every test here green — each registered its matching command
+     * FIRST, so the hit was already collected before the loop gave up. Register
+     * it second, which is the ordinary case for any query, and the palette goes
+     * empty.
+     */
+    public function testAMatchAfterANonMatchIsStillOffered(): void
+    {
+        $registry = new CommandRegistry();
+        $registry->add('a', static function (): void {}, label: 'Nothing Here');
+        $registry->add('b', static function (): void {}, label: 'Save File');
+        $source = new ActionsSource($registry);
+
+        $hits = $this->collect(static fn (\Closure $emit) => $source->query('save', $emit));
+
+        $labels = array_map(static fn (SearchHit $h): string => $h->label, $hits);
+        $this->assertSame(['Save File'], $labels, 'the non-matching first entry was skipped, not treated as the end');
+    }
+
     public function testActionsSourceOrdersMultipleMatchesByScoreDescending(): void
     {
         // Both labels match 'b', but with clearly different fuzzy scores (a
@@ -218,6 +240,12 @@ final class SourcesTest extends TestCase
         ($hits[0]->activate)();
         $this->assertSame($project->dir.'/a.php', $opened[0]);
         $this->assertSame(1, $jumped[0], 'the match is on line index 1');
+        // The DETAIL is what the picker prints beside the line, and nothing
+        // asserted it: seven mutants lived on that one expression — the concat,
+        // both its operands, and every way of shifting the `+ 1`. Lines are held
+        // 0-based and shown 1-based, so an off-by-one here is wrong on every
+        // result in the list.
+        $this->assertSame('a.php:2', $hits[0]->detail, 'project-relative path, and the line as a reader counts it');
         $source->cancel(); // idempotent; delegates to ProjectSearch::cancel
     }
 }

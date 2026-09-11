@@ -6375,3 +6375,36 @@ already says so. Equivalent, verified by running it rather than by reading it.
 every real gap in both was the same one:* a loop's skip-this-one branch, taken
 only when the fixture has a second element that differs from the first. Fixtures
 tend to have one of everything.
+
+## src/Search's first mutation review (2026-09-11)
+
+1,283 mutants, 1,088 killed, **152 escaped**, covered MSI 87% — far too many to
+read one by one, so this round took the two shapes that had already produced
+real defects today rather than working through the list.
+
+**A loop's skip branch,** for the third time. `ActionsSource` skips a command
+whose fuzzy score is null, and as a `break` every test in the file stayed green:
+each registered its MATCHING command first, so the hit was collected before the
+loop gave up. Register it second — which is the ordinary case for any query —
+and the palette empties. That is now three areas in a row where the only real
+gaps were a loop's `continue`, all invisible for the same reason: a fixture with
+the interesting element first.
+
+**A line carrying a cluster.** Seven survivors sat on one expression in
+`TextSource` — `$result['path'].':'.($line + 1)`: the concat, both operands, and
+every way of shifting the `+ 1`. A cluster on one line is a reliable sign that
+nothing asserts what the line PRODUCES, and here it is the detail a reader sees
+beside every Search Everywhere result. Lines are held 0-based and shown 1-based,
+so an off-by-one there is wrong on every row at once. It has an exact assertion
+now.
+
+*Left unread, deliberately:* the remaining ~145, most of them in
+`SearchEverywhereController`, whose behaviour is driven through the overlay and
+therefore lives in E2e — the same harness limit the `src/Tree` entry above
+describes. Reading them would mean grading Unit-suite mutants against tests that
+are not in the Unit suite.
+
+**The heuristic worth keeping from three reviews in one day:** go to the loop
+skips and the lines with a cluster of survivors first. Both were real every time;
+the concat operands, the `array_values` calls and the early-exit `break` were
+equivalent every time.
