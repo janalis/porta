@@ -137,6 +137,53 @@ final class BidiTest extends TestCase
         self::assertStringNotContainsString('(', $out);
     }
 
+    /**
+     * The glyphs that POINT mirror too — an arrow that keeps pointing right in
+     * a right-to-left run points away from the thing it introduces.
+     *
+     * `‹` and `›` were already in the table; the arrows and triangles beside
+     * them in the same chrome were not, so a tree's disclosure marker and a
+     * rename's arrow kept their left-to-right sense in a mirrored pane.
+     *
+     * @param non-empty-string $glyph
+     * @param non-empty-string $mirrored
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('directionalGlyphProvider')]
+    public function testDirectionalGlyphsMirrorInsideARightToLeftRun(string $glyph, string $mirrored): void
+    {
+        $out = self::strip(Bidi::reorder($glyph.self::SHALOM, BaseDirection::Rtl));
+
+        self::assertStringContainsString($mirrored, $out, $glyph.' should mirror to '.$mirrored);
+        self::assertStringNotContainsString($glyph, $out);
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function directionalGlyphProvider(): iterable
+    {
+        yield 'rename arrow' => ['←', '→'];
+        yield 'nav arrow' => ['→', '←'];
+        yield 'tree disclosure' => ['▸', '◂'];
+        yield 'stopped line' => ['▶', '◀'];
+        yield 'card accent' => ['▌', '▐'];
+        yield 'vcs bar' => ['▎', '▕'];
+        yield 'modal resize grab' => ['┛', '┗'];
+    }
+
+    /**
+     * The floor: a glyph that points UP or DOWN must NOT mirror.
+     *
+     * Mirroring is horizontal. "Add every pointing glyph to the table" reads
+     * like the same rule as the case above and would quietly turn the scroll
+     * indicators upside down.
+     */
+    public function testVerticalGlyphsAreLeftAlone(): void
+    {
+        foreach (['▲', '▼', '▾'] as $glyph) {
+            $out = self::strip(Bidi::reorder($glyph.self::SHALOM, BaseDirection::Rtl));
+            self::assertStringContainsString($glyph, $out, $glyph.' points up or down and has no mirror');
+        }
+    }
+
     public function testFrameCornersMirrorInsideARightToLeftRun(): void
     {
         // A corner adjacent to Hebrew resolves rtl and mirrors under L4, the

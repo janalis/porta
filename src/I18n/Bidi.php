@@ -39,6 +39,23 @@ final class Bidi
         '»' => '«',
         '‹' => '›',
         '›' => '‹',
+        // Glyphs that POINT. An arrow keeping its left-to-right sense inside a
+        // mirrored run points away from the thing it introduces — a rename's
+        // ← away from the new name, a tree's ▸ away from the children it opens.
+        // ▲ ▼ ▾ are deliberately absent: mirroring is horizontal, and a scroll
+        // indicator that flipped would point the wrong way up.
+        '←' => '→',
+        '→' => '←',
+        '▸' => '◂',
+        '◂' => '▸',
+        '▶' => '◀',
+        '◀' => '▶',
+        '▌' => '▐',
+        '▐' => '▌',
+        '▎' => '▕',
+        '▕' => '▎',
+        '┛' => '┗',
+        '┗' => '┛',
         // Frame corners and tees: a border row caught inside an RTL run must
         // keep its box shape when the run reverses (rounded modal family and
         // the square focus-frame family alike).
