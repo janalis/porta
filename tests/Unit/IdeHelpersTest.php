@@ -115,6 +115,30 @@ final class IdeHelpersTest extends TestCase
         }
     }
 
+    public function testTheFrameDumpHatchWritesTheComposedFrame(): void
+    {
+        // The support hatch: a screenshot says what the terminal drew, this
+        // says what Porta composed. Five rounds were argued from photographs.
+        $path = $this->project->dir.'/frame.txt';
+        putenv('PORTA_FRAME_DUMP='.$path);
+        try {
+            $ide = new Ide($this->project->dir, null, new VirtualTerminal(columns: 40, rows: 6));
+            $tui = Services::resolve($ide, Tui::class);
+            $tui->requestRender();
+            $tui->processRender();
+            self::assertFileExists($path);
+            $dumped = (string) file_get_contents($path);
+            self::assertNotSame('', $dumped, 'the composed frame reached the file');
+            // Readable text, not a second copy of the escape soup: the whole
+            // point is to be diffable against a screenshot by eye.
+            self::assertStringNotContainsString("\x1b", $dumped, 'the dump is stripped of ANSI');
+        } finally {
+            putenv('PORTA_FRAME_DUMP');
+            Services::resolve($ide, ViewRegistry::class)->closeAll();
+            Services::resolve($ide, Notifier::class)->dismissAll();
+        }
+    }
+
     public function testThePerfCollectorIsWiredAsSinkAndInputListener(): void
     {
         $tui = Services::resolve($this->ide, Tui::class);

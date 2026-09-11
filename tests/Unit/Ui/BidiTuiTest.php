@@ -384,4 +384,35 @@ final class BidiTuiTest extends TestCase
         $tui->processRender();
         self::assertSame([80, 120], $widths, 'a resize fires with the new width');
     }
+
+    public function testTheFrameSinkSeesTheFinalMirroredLines(): void
+    {
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $this->enableRtl($tui);
+        $seen = [];
+        $tui->setFrameSink(static function (array $lines) use (&$seen): void {
+            $seen = $lines;
+        });
+        $tui->requestRender();
+        $tui->processRender();
+
+        $this->assertNotSame([], $seen, 'the sink was handed the frame');
+        $this->assertStringContainsString(self::SHALOM_VISUAL, implode('', $seen), 'and it is the mirrored form, as written');
+    }
+
+    public function testClearingTheFrameSinkStopsIt(): void
+    {
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $calls = 0;
+        $tui->setFrameSink(static function (array $lines) use (&$calls): void {
+            ++$calls;
+        });
+        $tui->setFrameSink(null);
+        $tui->requestRender();
+        $tui->processRender();
+
+        $this->assertSame(0, $calls);
+    }
 }

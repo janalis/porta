@@ -66,6 +66,9 @@ final class BidiTui extends Tui implements FrameHooks
     /** Counter sink for skipped/coalesced frame generation; null outside a full Ide. */
     private ?PerfCollector $perf = null;
 
+    /** @var (\Closure(list<string>): void)|null handed every frame's final lines */
+    private ?\Closure $frameSink = null;
+
     /** Minimum seconds between generated frames while pacing is wired (60fps). */
     public const float MIN_FRAME_INTERVAL = 1 / 60;
 
@@ -92,6 +95,23 @@ final class BidiTui extends Tui implements FrameHooks
      * @var array{requested: \ReflectionProperty, root: \ReflectionProperty, renderer: \ReflectionProperty, screenWriter: \ReflectionProperty}|null
      */
     private ?array $tuiPrivates = null;
+
+    /**
+     * Install (or clear, with null) a sink handed every frame's FINAL lines —
+     * after the per-pane reorder, exactly as they go to the terminal.
+     *
+     * The instrument for "the screen is wrong and nobody can agree why". A
+     * screenshot says what the terminal drew; this says what Porta composed.
+     * Put the two side by side and the question of which half is at fault stops
+     * being a matter of reading Hebrew glyphs off a photograph — a full round
+     * was lost to exactly that.
+     *
+     * @param (\Closure(list<string>): void)|null $sink
+     */
+    public function setFrameSink(?\Closure $sink): void
+    {
+        $this->frameSink = $sink;
+    }
 
     /**
      * Throw away what the screen is believed to hold, so the next frame is a
@@ -357,6 +377,9 @@ final class BidiTui extends Tui implements FrameHooks
                 $out[] = array_key_exists($row, $this->lastRuns) ? $reorder->reorderRow($line, $this->lastRuns[$row], $regions[$row]) : $line;
             }
             $lines = $out;
+        }
+        if (null !== $this->frameSink) {
+            ($this->frameSink)($lines);
         }
         $screenWriter->writeLines($lines);
         $t2 = null !== $this->clock ? Clocks::seconds($this->clock) : null;

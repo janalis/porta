@@ -58,6 +58,7 @@ use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\TailwindStylesheet;
@@ -262,6 +263,15 @@ final class Ide
             // the frame writer never repositions absolutely on its own, so a
             // desync there would otherwise last the whole session.
             $terminal->onKittyActivated($this->bidiTui->resyncScreen(...));
+        }
+        // A support hatch: PORTA_FRAME_DUMP=<path> writes the frame Porta
+        // COMPOSED next to whatever the terminal actually drew, so a screen
+        // nobody can explain stops being argued from screenshots.
+        $dump = getenv('PORTA_FRAME_DUMP');
+        if (\is_string($dump) && '' !== $dump) {
+            $this->bidiTui->setFrameSink(static function (array $lines) use ($dump): void {
+                file_put_contents($dump, implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines)));
+            });
         }
         $this->tui->addListener($this->perf->countInput(...), priority: 1000);
         // Last: hand the plugin handlers their live runtime seam and flash the

@@ -7620,3 +7620,45 @@ Some mutants remain alive on the two `sliceByColumn(strict: true)` flags and the
 prefix concatenation. They are not claimed as killed: asserting on stripped ANSI
 cannot see `strict`, and the one test that asserts on raw SGR passes either way.
 Recorded rather than papered over.
+
+## A frame dump, because five rounds were argued from photographs (2026-09-12)
+
+The toast fix was real and is not the whole story: the screen is still reported
+wrong. Continuing to reason from screenshots is what made the previous rounds
+expensive, so this adds the instrument that ends the argument.
+
+`PORTA_FRAME_DUMP=<path>` makes `Ide` hand `BidiTui` a frame sink, and every
+frame's FINAL lines — after the per-pane reorder, exactly as they go to the
+terminal — are written there with ANSI stripped. A screenshot then says what the
+terminal drew; the file says what Porta composed. Whichever half is at fault
+stops being a matter of reading Hebrew glyphs off a photograph.
+
+It belongs in the same family as `.porta/error.log`, `freeze.log` and
+`perf.log`, and `getenv()` in `src` already has precedent (`PortaHome`,
+`ServerLocator`, `PluginLoader`).
+
+### A correction to the previous entry
+
+That entry said the reporter's capture proved Porta writes the row unswapped,
+and inferred that the corruption therefore happens after Porta's bytes. That
+inference rested on ONE row: the settings title appears exactly once in the
+whole 357KB, and it is left of the separator. A single sample from a session
+that may simply not have reproduced the bug is not proof of anything, and it was
+reported as if it were.
+
+What the capture does support, and no more: in that session, in that frame,
+Porta composed the row correctly.
+
+The other leads from that round were each run down properly before being
+dropped, and are recorded so they are not re-opened for free:
+
+- **Terminal bidi is out.** Ghostty 1.3.2 carries no bidi implementation and no
+  bidi config key, while its config keys ARE present in the binary as exact
+  strings — so their absence is evidence, not silence. cmux adds no CoreText
+  line layout (`CTLineCreateWithAttributedString`, `CTTypesetter*`,
+  `kCTWritingDirectionAttributeName`: all absent) and no ICU (`ubidi_*`: absent),
+  so it is not reordering through the platform's text stack either.
+- **The bidi engine is out**, measured across 12 geometries, 11 sidebar widths
+  and 4 tab-bar positions at the reporter's exact configuration.
+- **The differential write path is out**, graded byte-for-byte by
+  `TerminalReplay` over six incremental frames.
