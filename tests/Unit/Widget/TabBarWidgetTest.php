@@ -104,6 +104,80 @@ final class TabBarWidgetTest extends TestCase
         $this->assertStringNotContainsString('very-long-filename-11.php', $plain, 'tabs past the width are dropped');
     }
 
+    /**
+     * The window follows the ACTIVE tab, wherever it sits in the list.
+     *
+     * The strip finds the active index by walking the tabs and skipping the
+     * inactive ones. Turning that skip into a `break` leaves the index at 0 the
+     * moment the first tab is not the active one — so the window stays at the
+     * start and the tab you are editing is off-screen.
+     *
+     * Invisible to {@see testTrailingTabsDroppedWhenActiveIsFirst()} by its own
+     * name: with the active tab first, 0 is the right answer either way.
+     */
+    public function testTheWindowFollowsAnActiveTabAtTheEndOfTheList(): void
+    {
+        $tabs = [];
+        for ($i = 0; $i < 12; ++$i) {
+            $tabs[] = ['name' => \sprintf('very-long-filename-%02d.php', $i), 'dirty' => false, 'active' => 11 === $i];
+        }
+        $bar = new TabBarWidget();
+        $bar->setProvider(static fn () => $tabs);
+        $bar->beforeRender();
+
+        $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(60, 1))[0]);
+
+        $this->assertStringContainsString('very-long-filename-11.php', $plain, 'the active tab is on screen');
+        $this->assertStringNotContainsString('very-long-filename-00.php', $plain, 'and the window scrolled past the first');
+    }
+
+    /** The side strip has its own copy of that walk, and the same hole. */
+    public function testTheSideStripAlsoFollowsAnActiveTabAtTheEnd(): void
+    {
+        $tabs = [];
+        for ($i = 0; $i < 30; ++$i) {
+            $tabs[] = ['name' => \sprintf('file-%02d.php', $i), 'dirty' => false, 'active' => 29 === $i];
+        }
+        $bar = new TabBarWidget();
+        $bar->setPosition(TabBarPosition::Left);
+        $bar->setProvider(static fn () => $tabs);
+        $bar->beforeRender();
+
+        $plain = AnsiUtils::stripAnsiCodes(implode("\n", $bar->render(new RenderContext(24, 10))));
+
+        $this->assertStringContainsString('file-29.php', $plain, 'the active tab is on screen');
+        $this->assertStringNotContainsString('file-00.php', $plain, 'and the window scrolled past the first');
+    }
+
+    /**
+     * The strip STOPS at the first tab that does not fit; it does not keep
+     * looking for a narrower one further down the list.
+     *
+     * Tabs are drawn left to right in list order, so the packing loop's exit is
+     * load-bearing: skipping the tab that overflows and drawing a later, shorter
+     * one in its place reorders the strip. The row still measures exactly the
+     * width it claims, so nothing crashes and no fixture of same-width tabs can
+     * tell the two apart — every other case here gives the tabs equal widths,
+     * where a skip and a stop drop exactly the same set.
+     */
+    public function testPackingStopsAtTheFirstTabThatDoesNotFitRatherThanSkippingIt(): void
+    {
+        $tabs = [
+            ['name' => 'long-name-000000.php', 'dirty' => false, 'active' => true],
+            ['name' => 'long-name-111111.php', 'dirty' => false, 'active' => false],
+            ['name' => 'a.php', 'dirty' => false, 'active' => false],
+        ];
+        $bar = new TabBarWidget();
+        $bar->setProvider(static fn () => $tabs);
+        $bar->beforeRender();
+
+        $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(40, 1))[0]);
+
+        $this->assertStringContainsString('long-name-000000.php', $plain, 'the first tab fits');
+        $this->assertStringNotContainsString('long-name-111111.php', $plain, 'the second does not');
+        $this->assertStringNotContainsString('a.php', $plain, 'and the third does not jump the queue past it');
+    }
+
     public function testTabIndexAtColumn(): void
     {
         $bar = new TabBarWidget();

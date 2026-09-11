@@ -6597,3 +6597,65 @@ Its two siblings in the same method, both on the census:
 That is now the third equivalent mutant confirmed by running and the second real
 one confirmed by running, in a day where reasoning got it wrong in both
 directions. The rule is holding: construct the discriminating case and RUN it.
+
+## Three mutants in the tab strip, and a fixture that hid all three (2026-09-11)
+
+`TabBarWidget` carried three census entries. All three survived for the same
+reason, and the reason is a fixture, not a bound.
+
+**Two of them are the active-tab scan**, once for the horizontal strip and once
+for the side strip — the same six lines written twice:
+
+```php
+foreach ($parts as $i => $candidate) {
+    if (!$candidate['active']) {
+        continue;      // → break
+    }
+    $activeIndex = $i;
+    break;
+}
+```
+
+Turned into `break`, the walk stops at the first tab and leaves `$activeIndex`
+at its initialiser, 0. The overflow window then follows tab 0 forever: open a
+dozen files and the strip shows the first few while you are editing the last,
+with no way to scroll to what you are typing in.
+
+Nothing caught it because the test that covers the line is called
+`testTrailingTabsDroppedWhenActiveIsFirst`, and its name is the whole problem —
+with the active tab first, `$activeIndex` is 0 whether the loop walked or
+stopped. Both new tests put the active tab LAST and assert the first tab has
+scrolled off; each kills its own copy.
+
+**The third is the packing loop's exit**:
+
+```php
+if (($used + $part['width']) > ($overflow ? $columns - 1 : $columns)) {
+    break;             // → continue
+}
+```
+
+This one looked equivalent and is not. Tabs are drawn left to right in list
+order, so stopping and skipping differ the moment the widths differ: `continue`
+walks past the tab that overflows and draws a later, NARROWER one in the gap it
+left. Measured rather than argued, three tabs at 40 columns:
+
+```
+correct: ‹ long-name-000000.php × │
+mutant : ‹ long-name-000000.php × │ a.php × │
+```
+
+The strip is now out of order — a tab appears between two that are adjacent
+nowhere — and `$last` reaches the end of the list, so the `›` more-tabs
+indicator goes blank while tabs are still hidden. The row measures exactly the
+width it claims either way, so `assertFitsEveryWidth` has nothing to say about
+it, and every fixture in the file gives its tabs equal widths, where the skipped
+tab could never fit either.
+
+That is the same finding for the third time today from a different direction:
+**a fixture whose elements are all alike cannot grade a loop's skip.** The three
+tests added here differ from the existing ones only in where the interesting
+element sits and whether the elements differ in size.
+
+Census position after this round: `TabBarWidget` closed (3 entries),
+`PaneSegmenter:99/108` still to review, and roughly eighty entries unread.
