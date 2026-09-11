@@ -9,6 +9,7 @@ use Porta\I18n\BaseDirection;
 use Porta\I18n\Bidi;
 use Porta\I18n\PaneReorder;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Style\CursorShape;
 
 final class PaneReorderTest extends TestCase
 {
@@ -122,6 +123,47 @@ final class PaneReorderTest extends TestCase
 
         $this->assertSame('     [םולש]  םולש  [ ]  ', $plain, 'padding leads, the marker sits at the right edge');
         $this->assertSame(24, AnsiUtils::visibleWidth($out), 'width preserved');
+    }
+
+    /**
+     * One caret marker goes in, one comes out.
+     *
+     * `sliceByColumn(strict: true)` re-emits the escape state active at a
+     * slice's start, and it counts the zero-width APC caret marker as state —
+     * so every run to the RIGHT of the caret opened with a copy of it. The
+     * ScreenWriter strips only the first, which left a raw `\x1b_pi:c;1` on the
+     * terminal every frame, once per pane past the caret. Worse, the surviving
+     * copy loses its `\x07` terminator and swallows the text after it.
+     *
+     * Only the reorder path re-slices a composed row, so LTR never sees this.
+     * {@see \Porta\Overlay\Region\SpanSlicer} carries the same guard for the
+     * same vendored behaviour.
+     */
+    public function testTheCaretMarkerIsNotCopiedIntoEveryPaneToItsRight(): void
+    {
+        $line = 'ab'.AnsiUtils::cursorMarker(CursorShape::Bar).'cdEFGH';
+        $runs = [
+            ['start' => 0, 'width' => 4, 'ltr' => false],
+            ['start' => 4, 'width' => 4, 'ltr' => true],
+        ];
+
+        $out = new PaneReorder()->reorderRow($line, $runs);
+
+        $this->assertSame(1, substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'exactly one hardware cursor');
+    }
+
+    /** The pane that actually HOLDS the caret keeps it — the floor. */
+    public function testTheCaretMarkerSurvivesInTheRunThatOwnsIt(): void
+    {
+        $line = 'abcd'.AnsiUtils::cursorMarker(CursorShape::Bar).'EFGH';
+        $runs = [
+            ['start' => 0, 'width' => 4, 'ltr' => true],
+            ['start' => 4, 'width' => 4, 'ltr' => true],
+        ];
+
+        $out = new PaneReorder()->reorderRow($line, $runs);
+
+        $this->assertSame(1, substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'the caret is still on screen');
     }
 
     public function testLogicalColumnMatchesBidiWithinTheRtlSlice(): void

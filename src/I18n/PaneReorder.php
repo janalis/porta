@@ -38,10 +38,39 @@ final class PaneReorder
             // class's contract and not the slicer's: two vendored behaviours
             // currently make it redundant, and a stray background bleeding
             // across panes is the bug that made this class exist.
+            $slice = self::withoutABorrowedCaret($line, $slice, $run['start']);
             $out .= ($run['ltr'] ? $slice : Bidi::reorder($slice, BaseDirection::Rtl)).Sgr::RESET;
         }
 
         return $out;
+    }
+
+    /**
+     * Drop a caret marker this run only inherited from an earlier one.
+     *
+     * `sliceByColumn(strict: true)` opens each slice by re-emitting the escape
+     * state active at that column, and it counts the zero-width APC caret
+     * marker as state — so every run to the RIGHT of the caret opened with a
+     * copy of a cursor that belongs to another pane. The ScreenWriter strips
+     * only the first, so the rest reached the terminal as raw escapes, once per
+     * pane per frame; and the surviving copy loses its `\x07` terminator, which
+     * makes it swallow the text after it.
+     *
+     * Only this path re-slices an already-composed row, which is why an LTR
+     * locale never sees it. {@see \Porta\Overlay\Region\SpanSlicer} carries
+     * the same guard against the same vendored behaviour.
+     */
+    private static function withoutABorrowedCaret(string $line, string $slice, int $start): string
+    {
+        $markerAt = strpos($line, AnsiUtils::CURSOR_MARKER_PREFIX);
+        // No caret on this row, or it sits at or after this run's first column,
+        // which makes it this run's own. The second test covers the first run
+        // for free — nothing can sit before column zero.
+        if (false === $markerAt || AnsiUtils::visibleWidth(substr($line, offset: 0, length: $markerAt)) >= $start) {
+            return $slice;
+        }
+
+        return (string) preg_replace('/\x1b_pi:c;[^\x07]*\x07/', replacement: '', subject: $slice);
     }
 
     /**
