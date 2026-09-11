@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Workbench\Menu;
 
+use Porta\I18n\BaseDirection;
+use Porta\I18n\Bidi;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
@@ -57,7 +59,7 @@ final class MenuPanel
      *
      * @return list<array{segment: string, separator: bool}>
      */
-    public static function segments(array $items, int $selected, int $panelWidth, Styles $styles): array
+    public static function segments(array $items, int $selected, int $panelWidth, Styles $styles, BaseDirection $direction = BaseDirection::Ltr): array
     {
         $out = [];
         foreach ($items as $index => $item) {
@@ -70,6 +72,7 @@ final class MenuPanel
                         $index === $selected ? MenuSelection::Selected : MenuSelection::Unselected,
                         $item->enabled() ? MenuAvailability::Enabled : MenuAvailability::Disabled,
                         $styles,
+                        $direction,
                     ),
                 'separator' => $item->separator,
             ];
@@ -120,7 +123,7 @@ final class MenuPanel
         return !$item->separator && $item->enabled();
     }
 
-    private static function itemSegment(MenuItem $item, int $panelWidth, MenuSelection $selection, MenuAvailability $availability, Styles $styles): string
+    private static function itemSegment(MenuItem $item, int $panelWidth, MenuSelection $selection, MenuAvailability $availability, Styles $styles, BaseDirection $direction): string
     {
         $inner = max(0, $panelWidth - self::EDGE_COLS);
         $shortcut = $item->shortcut;
@@ -137,6 +140,16 @@ final class MenuPanel
         };
         $tail = '' !== $shortcut ? $styles->of(Role::CompletionHint)->apply($shortcut) : str_repeat(' ', max(0, mb_strwidth($shortcut)));
 
-        return $style->apply(' '.$label.str_repeat(' ', $gap).$tail.' ');
+        // A mirrored menu spends one gap column on a mark that ENDS the label's
+        // run. Four shipped action labels end in a Latin run (`הצג TODO`,
+        // `Git: הסחנה (stash)`, …) and a tail like that is strong left-to-right
+        // just as the shortcut is, so without it the two merge and the shortcut
+        // is drawn inside the label. `$gap` is floored at 1, and Bidi spends the
+        // mark for a space, so the row keeps its width either way.
+        $divide = BaseDirection::Rtl === $direction
+            ? Bidi::RTL_MARK.str_repeat(' ', $gap - 1)
+            : str_repeat(' ', $gap);
+
+        return $style->apply(' '.$label.$divide.$tail.' ');
     }
 }

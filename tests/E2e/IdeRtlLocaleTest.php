@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\ConfigScope;
+use Porta\I18n\BaseDirection;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\ClearsPortaLsp;
@@ -265,6 +266,42 @@ final class IdeRtlLocaleTest extends TestCase
      * real screen — the same route `testRtlEveryPaneRowKeepsItsWidth` takes,
      * asked a question about content rather than width.
      */
+    /**
+     * The menus learn the writing direction at boot, not just when it changes.
+     *
+     * `MenuPanel` lays the shortcut column out for the direction, and neither
+     * menu widget carries a Translator — so the direction is pushed in, from
+     * `WidgetHooks` at boot and from `MenuLayoutRefreshListener` on a locale
+     * switch. A unit test of the panel cannot see whether either push happened.
+     */
+    public function testRtlMenusAreToldTheirDirectionAtBoot(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            'demo.php' => "<?php\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('demo.php'),
+            [
+                300 => function ($tui, $terminal, $ide): void {
+                    $this->assertSame(
+                        BaseDirection::Rtl,
+                        Probe::get(Services::resolve($ide, \Porta\Widget\MenuBarWidget::class), 'direction'),
+                        'the menu bar was told the locale mirrors',
+                    );
+                    $this->assertSame(
+                        BaseDirection::Rtl,
+                        Probe::get(Services::resolve($ide, \Porta\Widget\ContextMenu::class), 'direction'),
+                        'and so was the context menu',
+                    );
+                },
+            ],
+        );
+    }
+
     public function testRtlSettingsValuesKeepTheirBrackets(): void
     {
         putenv('PATH=/nonexistent');

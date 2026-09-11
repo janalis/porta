@@ -7,6 +7,7 @@ namespace Porta\Widget;
 use Porta\Container\AsChromeRoot;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
+use Porta\I18n\BaseDirection;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Support\MenuNavigation;
 use Porta\Widget\Support\StylesDefault;
@@ -34,9 +35,25 @@ final class ContextMenu extends OverlayWidget
     use MenuNavigation;
     use StylesDefault;
 
+    private BaseDirection $direction = BaseDirection::Ltr;
+
     public function __construct(?Styles $styles = null)
     {
         $this->initStyles($styles);
+    }
+
+    /**
+     * The writing direction the panel lays its columns out for.
+     *
+     * A setter rather than a constructor argument, the shape {@see
+     * \Porta\Ui\BidiTui::setPaneReorder()} uses: the direction arrives from the
+     * locale long after this widget is built, changes while it is alive, and
+     * every existing construction site would otherwise have to learn about it.
+     */
+    public function setTextDirection(BaseDirection $direction): void
+    {
+        $this->direction = $direction;
+        $this->invalidate();
     }
 
     /** @var list<MenuItem> */
@@ -79,7 +96,7 @@ final class ContextMenu extends OverlayWidget
      */
     public function segments(int $panelWidth): array
     {
-        return $this->open ? MenuPanel::segments($this->items, $this->selected, $panelWidth, $this->styles) : [];
+        return $this->open ? MenuPanel::segments($this->items, $this->selected, $panelWidth, $this->styles, $this->direction) : [];
     }
 
     #[\Override]

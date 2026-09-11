@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Workbench\Menu;
 
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\BaseDirection;
+use Porta\I18n\Bidi;
 use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Workbench\Menu\MenuItem;
@@ -182,5 +184,73 @@ final class MenuPanelTest extends TestCase
         $segment = MenuPanel::segments($items, 0, 10, new Styles(DarkTheme::definition()))[0]['segment'];
         // inner=8, labelMax=8-(2+2)=4 (label fits untouched), gap=8-2-2=4.
         $this->assertSame(' Ab    F2 ', AnsiUtils::stripAnsiCodes($segment));
+    }
+
+    /**
+     * The shortcut column is a COLUMN, whatever a label ends with.
+     *
+     * The third site of the defect the settings form and the keybindings page
+     * had: a label ending in a Latin run is strong left-to-right, the shortcut
+     * beside it is too, and the two merge — so the shortcut is drawn inside the
+     * label, which is torn around it. Four shipped action labels end that way.
+     */
+    public function testTheShortcutColumnHoldsWhateverTheLabelEndsWith(): void
+    {
+        $items = [
+            new MenuItem('יציאה', 'Ctrl+Q', static fn () => null),
+            new MenuItem('הצג TODO', 'Ctrl+Q', static fn () => null),
+            new MenuItem('Git: הסחנה (stash)', 'Ctrl+Q', static fn () => null),
+        ];
+
+        $columns = [];
+        foreach (MenuPanel::segments($items, 0, 30, new Styles(DarkTheme::definition()), BaseDirection::Rtl) as $row) {
+            $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($row['segment'], BaseDirection::Rtl));
+            $columns[] = mb_strpos($mirrored, needle: 'Ctrl+Q', encoding: 'UTF-8');
+        }
+
+        $this->assertCount(1, array_unique($columns), 'every shortcut is in the same column: '.json_encode($columns));
+    }
+
+    /**
+     * A segment is exactly the panel's width, in either direction.
+     *
+     * The mirrored row spends one of its gap columns on a mark rather than
+     * adding a column beside it. Add instead of spend and the segment is one
+     * column wider than the panel it is drawn into — an over-wide row, which in
+     * this renderer garbles whatever is beneath it.
+     *
+     * @param int<1, max> $width
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('menuWidthProvider')]
+    public function testASegmentIsExactlyThePanelWidth(int $width, BaseDirection $direction): void
+    {
+        $items = [
+            new MenuItem('הצג TODO', 'Ctrl+Q', static fn () => null),
+            new MenuItem('יציאה', 'Ctrl+Shift+Q', static fn () => null),
+            new MenuItem('Show TODO', 'Ctrl+Q', static fn () => null),
+        ];
+
+        foreach (MenuPanel::segments($items, 0, $width, new Styles(DarkTheme::definition()), $direction) as $row) {
+            $this->assertSame($width, AnsiUtils::visibleWidth($row['segment']), 'a row wider than its panel garbles the rows beneath it');
+        }
+    }
+
+    /** @return iterable<string, array{int, BaseDirection}> */
+    public static function menuWidthProvider(): iterable
+    {
+        foreach ([20, 24, 30, 44] as $width) {
+            yield $width.' ltr' => [$width, BaseDirection::Ltr];
+            yield $width.' rtl' => [$width, BaseDirection::Rtl];
+        }
+    }
+
+    /** A left-to-right menu is untouched — the mark is spent only when mirrored. */
+    public function testALeftToRightMenuCarriesNoMark(): void
+    {
+        $items = [new MenuItem('Show TODO', 'Ctrl+Q', static fn () => null)];
+
+        $segment = MenuPanel::segments($items, 0, 30, new Styles(DarkTheme::definition()))[0]['segment'];
+
+        $this->assertStringNotContainsString(Bidi::RTL_MARK, $segment, 'nothing to pin when nothing mirrors');
     }
 }

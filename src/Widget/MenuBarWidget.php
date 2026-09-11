@@ -7,6 +7,7 @@ namespace Porta\Widget;
 use Porta\Container\AsChromeRoot;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
+use Porta\I18n\BaseDirection;
 use Porta\Support\IntMath;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
@@ -45,9 +46,25 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
     use MenuNavigation;
     use StylesDefault;
 
+    private BaseDirection $direction = BaseDirection::Ltr;
+
     public function __construct(?Styles $styles = null)
     {
         $this->initStyles($styles);
+    }
+
+    /**
+     * The writing direction the panel lays its columns out for.
+     *
+     * A setter rather than a constructor argument, the shape {@see
+     * \Porta\Ui\BidiTui::setPaneReorder()} uses: the direction arrives from the
+     * locale long after this widget is built, changes while it is alive, and
+     * every existing construction site would otherwise have to learn about it.
+     */
+    public function setTextDirection(BaseDirection $direction): void
+    {
+        $this->direction = $direction;
+        $this->invalidate();
     }
 
     /** @var list<Menu> */
@@ -217,7 +234,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             return [];
         }
 
-        return MenuPanel::segments($this->menus[$this->openIndex]->items, $this->selected, $panelWidth, $this->styles);
+        return MenuPanel::segments($this->menus[$this->openIndex]->items, $this->selected, $panelWidth, $this->styles, $this->direction);
     }
 
     #[\Override]

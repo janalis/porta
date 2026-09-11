@@ -6,7 +6,11 @@ namespace Porta\Workbench\Menu;
 
 use Porta\Event\LocaleChanged;
 use Porta\Event\ThemeChanged;
+use Porta\I18n\BaseDirection;
+use Porta\I18n\Translator;
 use Porta\Layout\PaneLayout;
+use Porta\Widget\ContextMenu;
+use Porta\Widget\MenuBarWidget;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
@@ -21,6 +25,9 @@ final class MenuLayoutRefreshListener
     public function __construct(
         private readonly MenuRebuilder $menuRebuilder,
         private readonly PaneLayout $paneLayout,
+        private readonly Translator $translator,
+        private readonly MenuBarWidget $menuBar,
+        private readonly ContextMenu $contextMenu,
     ) {}
 
     #[AsEventListener]
@@ -34,5 +41,13 @@ final class MenuLayoutRefreshListener
     {
         $this->menuRebuilder->rebuild();
         $this->paneLayout->applyDirection();
+        // The menus lay their shortcut column out for the direction too, and
+        // hold it as state because neither widget carries a Translator. This is
+        // also the BOOT path, not only the live switch: Ide's startup calls
+        // SettingsController::applyAll(), which applies the persisted locale
+        // through the same setting and so dispatches this event.
+        $direction = $this->translator->isRtl() ? BaseDirection::Rtl : BaseDirection::Ltr;
+        $this->menuBar->setTextDirection($direction);
+        $this->contextMenu->setTextDirection($direction);
     }
 }
