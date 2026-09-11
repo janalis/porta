@@ -256,6 +256,12 @@ final class Ide
             // The backlog probe on the beat and slow-paint lines separates a
             // slow widget tree from a terminal that stopped draining.
             $this->perf->setPendingBytesProbe($terminal->pendingBytes(...));
+            // The host answers the kitty keyboard query whenever it likes, and
+            // the inner terminal replies with an UNQUEUED write that can land
+            // inside a half-flushed frame. Repaint from scratch once it has:
+            // the frame writer never repositions absolutely on its own, so a
+            // desync there would otherwise last the whole session.
+            $terminal->onKittyActivated($this->bidiTui->resyncScreen(...));
         }
         $this->tui->addListener($this->perf->countInput(...), priority: 1000);
         // Last: hand the plugin handlers their live runtime seam and flash the

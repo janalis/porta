@@ -7456,3 +7456,87 @@ The reporter's screen is not yet explained. What is now excluded, with
 measurements rather than argument: frame composition, the mirroring, the
 segmentation, the differential write path, and the terminal's own bidi. Three
 rounds were spent inside the first two of those.
+
+## The Hebrew settings screen, found: a foreign write spliced into a frame (2026-09-11)
+
+Four rounds inside the bidi engine, then a round proving the bidi engine was
+innocent, and then this. The defect was never in what Porta composed — it was in
+what reached the tty.
+
+### The evidence
+
+`script -q /tmp/porta.raw ./bin/porta` on the reporter's own machine, 357KB of a
+real session. Three facts fell out of it immediately:
+
+1. Of 977 row writes, **930 measure 227 columns and 47 measure 226** — and the
+   226s are all the status bar. Rows should all be exactly the terminal width.
+2. The capture contains **no `CSI 2J` and no `CSI H`. Anywhere.** After the first
+   append, every frame is positioned with RELATIVE cursor moves against
+   `ScreenWriter`'s own `hardwareCursorRow`. Nothing ever repositions
+   absolutely, so a cursor that desyncs once stays wrong for the whole session.
+3. Three escape sequences in the stream do not parse. One of them is the whole
+   bug, at offset 4146, inside the first frame:
+
+```
+ESC[38;   ESC[>7u   5;240m 11
+```
+
+An SGR — the line-number colour — cut in half by `CSI >7u`, the kitty keyboard
+enable. The tty aborts the incomplete CSI, consumes the kitty sequence, and then
+prints `5;240m` as **six literal characters**. The row is six columns too wide,
+it wraps, and by (2) every differential repaint after it lands on the wrong row
+for the rest of the session.
+
+### Why it could not be reproduced
+
+`Terminal::write()` is `fwrite(\STDOUT, …)` — direct and unqueued — and it is
+called from the *stdin data handler*, when the host answers the `CSI ?u` query.
+`NonBlockingTerminal` queues frame bytes and flushes them as the tty accepts
+them, so the reply can arrive mid-flush and splice itself into a partial frame.
+
+None of that happens under a `VirtualTerminal`: there is no host, no query, no
+reply. Every reproduction attempt — 12 geometries, 11 sidebar widths, 4 tab-bar
+positions, the reporter's exact `layout.json` — was therefore guaranteed to come
+out clean, and did.
+
+`NonBlockingTerminal`'s own docblock described this write as a "one-shot 7-byte
+kitty enable [that] still writes directly **at boot**". It is not at boot. It is
+whenever the host replies, long after the stream went non-blocking. The comment
+was the reason nobody looked at it — [[stale-justifications-survive-moves]] again,
+and this time the stale reason hid a real bug for four rounds.
+
+### The fix
+
+The bytes cannot be intercepted: the inner terminal is final and writes to
+STDOUT itself. So the damage is REPAIRED at the one moment it can occur.
+`NonBlockingTerminal` wraps the kitty callback (the inner writes `CSI >7u`
+immediately *before* invoking it) and exposes `onKittyActivated()`; `Ide` wires
+it to `BidiTui::resyncScreen()`, which forces a full render — clear, absolute
+home, every row rewritten.
+
+`resyncScreen()` is one line. It was three: a mutation proved that resetting the
+screen writer by reflection changed no test, because `Tui::requestRender(true)`
+already resets it. The redundant lines came out.
+
+Two mutants had to be chased down rather than assumed dead:
+
+- `requestRender(true)` → `requestRender()` survived at first because the
+  redundant reset was still masking it. With the method reduced to its one real
+  line, it fails the case.
+- Removing the wiring in `Ide.php` changed no test at all — the feature would
+  have been dead with every gate green ([[porta-self-registering-services]] in
+  another costume). `IdeHelpersTest` now asserts the hook is installed, and that
+  mutant dies too.
+
+9 of 9 mutants killed, MSI 100%.
+
+### What this says about the render path
+
+The deeper fragility is (2): frames are positioned relatively and nothing ever
+resyncs. Any stray byte from any source — a plugin, a signal handler, a library
+writing to stdout — corrupts the screen permanently rather than for one frame.
+The kitty enable is the instance that was found; it is unlikely to be the only
+possible one. A periodic or suspicion-driven absolute repaint is worth
+considering, and is deliberately NOT done here: this round fixes the defect with
+evidence for it, and speculating a second mechanism into existence is what the
+previous four rounds did.

@@ -93,6 +93,28 @@ final class IdeHelpersTest extends TestCase
         }
     }
 
+    public function testANonBlockingTerminalGetsTheKittyResyncHook(): void
+    {
+        // The inner terminal answers the host's kitty keyboard query with an
+        // UNQUEUED write straight to stdout, from its stdin handler -- so it can
+        // land inside a half-flushed frame and splice itself into an escape
+        // sequence. Captured from a real session it cut an SGR in half, leaving
+        // six literal characters in the row; the tty wrapped it and, because
+        // frames are positioned relatively and nothing ever repositions
+        // absolutely, every row below stayed one off for the whole session.
+        // Ide must hook that moment so the screen is repainted from scratch.
+        $stream = fopen('php://memory', mode: 'w+');
+        \assert(false !== $stream, description: 'php://memory always opens');
+        $terminal = new \Porta\Ui\NonBlockingTerminal(new VirtualTerminal(columns: 80, rows: 24), $stream);
+        $ide = new Ide($this->project->dir, null, $terminal);
+        try {
+            self::assertNotNull(Probe::get($terminal, 'onKittyActivated'), 'the boot wired the kitty resync');
+        } finally {
+            Services::resolve($ide, ViewRegistry::class)->closeAll();
+            Services::resolve($ide, Notifier::class)->dismissAll();
+        }
+    }
+
     public function testThePerfCollectorIsWiredAsSinkAndInputListener(): void
     {
         $tui = Services::resolve($this->ide, Tui::class);

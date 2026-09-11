@@ -27,8 +27,24 @@ use Symfony\Component\Tui\Terminal\TerminalInterface;
  * delegating them to the inner terminal would emit direct, blocking writes
  * that also reorder around queued frame bytes. Known deviations/bypasses:
  * bell() emits BEL through the queue on all platforms (the vendor plays a
- * sound via afplay on macOS), and the inner terminal's one-shot 7-byte kitty
- * enable still writes directly at boot.
+ * sound via afplay on macOS), and the inner terminal's one-shot kitty enable
+ * (`CSI >7u`) still writes DIRECTLY, bypassing the queue.
+ *
+ * That last one is not the harmless boot write this comment used to claim it
+ * was. The inner terminal sends it from its stdin handler, when the host
+ * answers the `CSI ?u` query — which is whenever the host gets round to it,
+ * long after the stream went non-blocking and while a frame may be half
+ * flushed. Captured from a real session, it landed inside an SGR:
+ *
+ *     ESC[38;   ESC[>7u   5;240m
+ *
+ * leaving `5;240m` to print as six literal characters, making the row six
+ * columns too wide. The tty wraps it and every row below is one off — for the
+ * rest of the session, because the frame writer only ever repositions
+ * relatively. The bytes cannot be intercepted (the inner terminal is final and
+ * writes to STDOUT itself), so the damage is REPAIRED instead:
+ * {@see onKittyActivated()} fires after the enable, and the owner resyncs the
+ * screen with a full clear.
  */
 final class NonBlockingTerminal implements TerminalInterface
 {
@@ -40,6 +56,9 @@ final class NonBlockingTerminal implements TerminalInterface
 
     /** @var (\Closure(): void)|null forwarded to the writer, surviving stop()/start() cycles */
     private ?\Closure $onDrain = null;
+
+    /** @var (\Closure(): void)|null fired just after the inner terminal's direct kitty enable */
+    private ?\Closure $onKittyActivated = null;
 
     /** Whether this decorator switched the stream to non-blocking mode. */
     private bool $nonBlockingActive = false;
@@ -62,7 +81,17 @@ final class NonBlockingTerminal implements TerminalInterface
     {
         // The inner terminal's boot writes (bracketed paste, kitty query) run
         // while the stream is still blocking; only then flip to non-blocking.
-        $this->inner->start($onInput, $onResize, $onKittyProtocolActivated);
+        //
+        // The kitty callback is wrapped rather than passed through: the inner
+        // terminal writes `CSI >7u` straight to stdout immediately BEFORE
+        // invoking it, so this is the first moment the owner can learn that a
+        // stray sequence may have been spliced into a half-flushed frame.
+        $this->inner->start($onInput, $onResize, function () use ($onKittyProtocolActivated): void {
+            $onKittyProtocolActivated();
+            if (null !== $this->onKittyActivated) {
+                ($this->onKittyActivated)();
+            }
+        });
         stream_set_blocking($this->stream, enable: false);
         // The writer's own cap is out of the picture (PHP_INT_MAX): overflow is
         // enforced here as a flush-first pre-check, because the writer's cap
@@ -70,6 +99,19 @@ final class NonBlockingTerminal implements TerminalInterface
         $this->writer = new NonBlockingWriter($this->stream, $this->onWriteError(...), \PHP_INT_MAX);
         $this->writer->onDrain($this->onDrain);
         $this->nonBlockingActive = true;
+    }
+
+    /**
+     * Install (or clear, with null) the hook fired right after the inner
+     * terminal has answered the kitty keyboard query with its own direct,
+     * unqueued write — the one moment a foreign sequence can be spliced into a
+     * frame. The owner repairs the screen from here; see the class docblock.
+     *
+     * @param (\Closure(): void)|null $hook
+     */
+    public function onKittyActivated(?\Closure $hook): void
+    {
+        $this->onKittyActivated = $hook;
     }
 
     /**

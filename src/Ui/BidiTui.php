@@ -94,6 +94,39 @@ final class BidiTui extends Tui implements FrameHooks
     private ?array $tuiPrivates = null;
 
     /**
+     * Throw away what the screen is believed to hold, so the next frame is a
+     * FULL render with a clear and an absolute reposition.
+     *
+     * The repair for a screen someone else has written to.
+     * {@see \Symfony\Component\Tui\Render\ScreenWriter} positions every
+     * frame after the first with RELATIVE cursor moves against its own row
+     * bookkeeping, and it never emits an absolute reposition on its own — a
+     * whole session's output contains no `CSI 2J` and no `CSI H`. So a single
+     * stray byte reaching the tty out of band desynchronises the cursor
+     * permanently: from then on every differential repaint lands on the wrong
+     * row, and nothing ever resyncs.
+     *
+     * That is not hypothetical. The inner terminal answers the kitty keyboard
+     * query by writing `CSI >7u` DIRECTLY to stdout, bypassing this decorator's
+     * queue, from the stdin handler — so it can land in the middle of a
+     * half-flushed frame. Captured from a real session:
+     *
+     *     ESC[38;   ESC[>7u   5;240m
+     *
+     * an SGR cut in half, leaving `5;240m` to be printed as six literal
+     * characters. The row is then six columns too wide, the terminal wraps it,
+     * and every row below is one off for the rest of the session.
+     */
+    public function resyncScreen(): void
+    {
+        // `true` is the whole method: the vendor's forced render resets the
+        // screen writer itself, which is what makes the next frame a full one
+        // with a clear and an absolute home. Resetting it here as well was
+        // redundant -- a mutation said so, by changing no test when removed.
+        $this->requestRender(true);
+    }
+
+    /**
      * Install a hook fired whenever the terminal width changes (including the
      * first frame), before the frame renders — so a re-arrangement it makes
      * paints in the same frame. The render loop already re-reads the width

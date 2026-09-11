@@ -207,4 +207,36 @@ final class DifferentialRepaintTest extends TestCase
 
         $this->assertNotSame($narrow, $wide, 'a terminal that widens Ambiguous does not show the composed frame');
     }
+
+    public function testResyncScreenRepaintsAbsolutelySoADesyncedCursorRecovers(): void
+    {
+        // Frames after the first are positioned RELATIVELY, and the writer
+        // never emits an absolute reposition on its own -- a whole real session
+        // of output contains no CSI 2J and no CSI H. So once the cursor is off
+        // by a row, nothing recovers. resyncScreen() is the repair, and what
+        // makes it one is the clear plus the absolute home.
+        $terminal = new VirtualTerminal(columns: self::COLUMNS, rows: self::ROWS);
+        $tui = $this->tui($terminal, rtl: false);
+        self::$lines = [self::row('name', 'value')];
+        $tui->requestRender();
+        $tui->processRender();
+
+        // An ordinary second frame: relative only.
+        $terminal->clearOutput();
+        $this->widget->invalidate();
+        self::$lines = [self::row('name', 'other')];
+        $tui->requestRender();
+        $tui->processRender();
+        $ordinary = $terminal->getOutput();
+        $this->assertStringNotContainsString("\x1b[2J", $ordinary, 'the normal path never repositions absolutely');
+
+        $terminal->clearOutput();
+        $this->widget->invalidate();
+        $tui->resyncScreen();
+        $tui->processRender();
+        $repaired = $terminal->getOutput();
+
+        $this->assertStringContainsString("\x1b[2J", $repaired, 'the screen is cleared');
+        $this->assertStringContainsString("\x1b[H", $repaired, 'and the cursor placed absolutely');
+    }
 }

@@ -32,9 +32,13 @@ final class NonBlockingTerminalTest extends TestCase
                 private array &$calls,
             ) {}
 
+            /** @var (callable(): void)|null the kitty callback this inner was handed */
+            public $kitty = null;
+
             public function start(callable $onInput, callable $onResize, callable $onKittyProtocolActivated): void
             {
                 $this->calls[] = 'start';
+                $this->kitty = $onKittyProtocolActivated;
                 $onInput('probe'); // prove the callbacks were passed through verbatim
             }
 
@@ -422,5 +426,67 @@ final class NonBlockingTerminalTest extends TestCase
         $this->assertSame(1, $drains, 'the hook survived the restart');
         $terminal->stop();
         fclose($peer);
+    }
+
+    public function testTheKittyEnableWakesTheOwnerSoTheScreenCanBeRepaired(): void
+    {
+        // The inner terminal answers the host's kitty query by writing
+        // `CSI >7u` STRAIGHT to stdout, bypassing this decorator's queue, from
+        // its stdin handler. Captured from a real session it landed inside an
+        // SGR -- `ESC[38;` `ESC[>7u` `5;240m` -- leaving six literal characters
+        // in the row, which the tty then wrapped, putting every row below one
+        // off for the rest of the session. The bytes cannot be intercepted, so
+        // the owner has to be told it happened.
+        $calls = [];
+        $inner = $this->inner($calls);
+        [$stream] = $this->pair();
+        $terminal = new NonBlockingTerminal($inner, $stream);
+
+        $woken = 0;
+        $terminal->onKittyActivated(static function () use (&$woken): void {
+            ++$woken;
+        });
+        $terminal->start(static function (): void {}, static function (): void {}, static function (): void {});
+
+        $this->assertSame(0, $woken, 'nothing fires until the host actually answers');
+
+        ($inner->kitty)();
+
+        $this->assertSame(1, $woken, 'the owner is told the moment the direct write has happened');
+    }
+
+    public function testTheWrappedKittyCallbackStillReachesTheTui(): void
+    {
+        // The vendor's own callback sets the kitty flag on the key parser.
+        // Wrapping it must not swallow it.
+        $calls = [];
+        $inner = $this->inner($calls);
+        [$stream] = $this->pair();
+        $terminal = new NonBlockingTerminal($inner, $stream);
+
+        $vendor = 0;
+        $terminal->start(
+            static function (): void {},
+            static function (): void {},
+            static function () use (&$vendor): void {
+                ++$vendor;
+            },
+        );
+        ($inner->kitty)();
+
+        $this->assertSame(1, $vendor);
+    }
+
+    public function testWithNoHookInstalledTheKittyCallbackIsHarmless(): void
+    {
+        $calls = [];
+        $inner = $this->inner($calls);
+        [$stream] = $this->pair();
+        $terminal = new NonBlockingTerminal($inner, $stream);
+        $terminal->start(static function (): void {}, static function (): void {}, static function (): void {});
+
+        ($inner->kitty)();
+
+        $this->assertContains('start', $calls);
     }
 }
