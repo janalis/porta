@@ -35,6 +35,13 @@ final class EditorConfigGlobTest extends TestCase
         yield 'doublestar middle miss' => ['a/**/z.txt', 'x/z.txt', false];
         yield 'bare doublestar' => ['**', 'any/deep/path.x', true];
         yield 'trailing doublestar' => ['src**', 'srcabc', true];
+        // A `**` that is neither before a slash NOR at the end. Every case
+        // above has it in one of those two places, where a translator that
+        // STOPPED after emitting `.*` produces the same answer as one that
+        // carries on — so the miss below is the one that tells them apart: a
+        // truncated pattern is a bare `.*` and matches anything at all.
+        yield 'doublestar mid-segment' => ['**.js', 'a/b/foo.js', true];
+        yield 'doublestar mid-segment miss' => ['**.js', 'a/b/foo.txt', false];
 
         // question mark
         yield 'question one char' => ['a?c.txt', 'abc.txt', true];

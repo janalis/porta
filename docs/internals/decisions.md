@@ -6503,3 +6503,29 @@ its elements alike, and the interesting one first.
 needs a fixture built around an oddity (an invalid template entry; a `**` not
 followed by a slash) rather than around ordinary use — worth doing, not worth
 doing badly at the end of a long pass. They stay on the census.
+
+## The two I said I would come back to (2026-09-11)
+
+Both closed, and both were fixed by REORDERING an existing fixture rather than
+by writing a new test — which is the clearest statement yet of what the census
+is actually finding.
+
+**`IdeConfig::templateMap()`** skips a template whose body is not a string. The
+existing case already fed it two rejects; they were both at the END of the map,
+where stopping and skipping produce the same result. Moved between the keepers,
+with one more keeper behind them, and the difference appears: a single typo in a
+`templates` block would have silently dropped every template after it.
+
+**`EditorConfigGlob`**'s `**` branch, for a `**` that is neither followed by a
+slash nor at the end of the pattern. Every existing case has it in one of those
+two places — `**/foo.js`, `a/**/z.txt`, a bare `**`, a trailing `src**` — and in
+both of those a translator that stopped after emitting `.*` answers the same as
+one that carries on. `**.js` against `a/b/foo.txt` is what tells them apart: a
+truncated pattern is a bare `.*`, and matches everything.
+
+That second one is worth noting for what it says about coverage of a
+translator: eighteen glob cases, every one of them exercising `**`, and none of
+them in the position where the loop's control flow mattered.
+
+**Five real defects off the census now**, and not one needed a new test file.
+Four needed an existing fixture to stop having all its elements alike.

@@ -107,10 +107,16 @@ final class IdeConfigTest extends TestCase
                 'php' => [
                     'templates' => [
                         'dd' => 'dd($1);$0',
+                        // The rejects sit BETWEEN the keepers on purpose: with
+                        // them last, a loop that stopped at the first bad entry
+                        // instead of skipping it produced the same map, and the
+                        // difference — every template after the typo silently
+                        // gone — was invisible.
+                        'bad' => ['not', 'a', 'string'],
                         // An empty body is KEPT — it is how a built-in is switched off.
                         'fore' => '',
-                        'bad' => ['not', 'a', 'string'],
                         'alsobad' => 42,
+                        'sf' => 'sprintf($1)$0',
                     ],
                 ],
                 'javascript' => ['templates' => 'not-an-object'],
@@ -119,7 +125,11 @@ final class IdeConfigTest extends TestCase
 
         $config = IdeConfig::load($project->dir);
 
-        $this->assertSame(['dd' => 'dd($1);$0', 'fore' => ''], $config->languages['php']['templates']);
+        $this->assertSame(
+            ['dd' => 'dd($1);$0', 'fore' => '', 'sf' => 'sprintf($1)$0'],
+            $config->languages['php']['templates'],
+            'every valid entry survives, including the ones behind a rejected one',
+        );
         $this->assertArrayNotHasKey('javascript', $config->languages, 'a non-object templates block leaves nothing behind');
     }
 
