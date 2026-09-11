@@ -7,6 +7,7 @@ namespace Porta\Widget\Settings;
 use Porta\Config\KeybindingRow;
 use Porta\Container\AsWidget;
 use Porta\Event\SettingsSectionRequested;
+use Porta\I18n\Bidi;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
@@ -329,7 +330,15 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
             // over-wide row garbles whatever is drawn beneath it. A no-op at
             // every width where the label has room, which is all of them until
             // the pane is narrower than `Ctrl+Shift+C`.
-            $text = AnsiText::truncate($label.' '.$right.' ', $width, pad: true, ellipsis: '');
+            // A mark, not a space, between the two columns under RTL: four
+            // shipped action labels end in a Latin run (`הצג TODO`,
+            // `Git: הסחנה (stash)`, …), and a tail like that is strong
+            // left-to-right just as the chord is — so without something to end
+            // the label's run the two merge and the chord is drawn inside the
+            // label. It costs the same column the space did, Bidi spending the
+            // mark for a space on the way out.
+            $divide = $this->translator->isRtl() ? Bidi::RTL_MARK : ' ';
+            $text = AnsiText::truncate($label.$divide.$right.' ', $width, pad: true, ellipsis: '');
             $lines[] = $this->shadeRow($text, $index === $this->list->selected(), $index === $this->hoveredIndex);
         }
 

@@ -7,6 +7,8 @@ namespace Porta\Tests\Unit\Widget\Settings;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\KeybindingRow;
 use Porta\Event\SettingsSectionRequested;
+use Porta\I18n\BaseDirection;
+use Porta\I18n\Bidi;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\Probe;
@@ -484,5 +486,53 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget->handleInput("\x0c"); // ctrl+l, captured raw
 
         $this->assertSame([['quit', "\x0c"]], $rebinds);
+    }
+
+    /**
+     * The chord column is a COLUMN, whatever a label ends with.
+     *
+     * Four shipped action labels end in a Latin run — `הצג TODO`,
+     * `Git: הסחנה (stash)` and two more. That tail is strong left-to-right and
+     * so is the chord beside it, so the two merge and the chord is drawn inside
+     * the label: `TODO ... Ctrl+S גצה`, with the label torn around it.
+     *
+     * The same defect the settings form had one file over. Asserted as the
+     * column rather than as the label surviving, because a ragged column passes
+     * the latter.
+     */
+    public function testTheChordColumnHoldsWhateverTheLabelEndsWith(): void
+    {
+        $widget = new KeybindingsListWidget(new Translator('he'));
+        AttachedStyles::attach($widget);
+        $widget->setRows([
+            new KeybindingRow('a', 'יציאה', 'Ctrl+S', false),
+            new KeybindingRow('b', 'הצג TODO', 'Ctrl+S', false),
+            new KeybindingRow('c', 'Git: הסחנה (stash)', 'Ctrl+S', false),
+            new KeybindingRow('d', 'קווי הזחה', 'Ctrl+S', false),
+        ]);
+
+        $columns = [];
+        foreach (\array_slice($widget->render(new RenderContext(52, 6)), offset: 1, length: 4) as $line) {
+            $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl));
+            $columns[] = mb_strpos($mirrored, needle: 'Ctrl+S', encoding: 'UTF-8');
+        }
+
+        $this->assertCount(1, array_unique($columns), 'every chord is in the same column: '.json_encode($columns));
+    }
+
+    /** And a Latin tail stays with its label rather than crossing the chord. */
+    public function testALabelEndingInLatinIsNotTornAroundTheChord(): void
+    {
+        $widget = new KeybindingsListWidget(new Translator('he'));
+        AttachedStyles::attach($widget);
+        $widget->setRows([new KeybindingRow('a', 'הצג TODO', 'Ctrl+S', false)]);
+
+        $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($widget->render(new RenderContext(52, 4))[1], BaseDirection::Rtl));
+
+        $chord = mb_strpos($mirrored, needle: 'Ctrl+S', encoding: 'UTF-8');
+        $tail = mb_strpos($mirrored, needle: 'TODO', encoding: 'UTF-8');
+        $this->assertNotFalse($chord);
+        $this->assertNotFalse($tail);
+        $this->assertLessThan($tail, $chord, 'the whole label sits to the right of the chord');
     }
 }
