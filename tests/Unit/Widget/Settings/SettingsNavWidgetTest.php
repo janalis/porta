@@ -411,4 +411,43 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertCount(1, $widget->render(new RenderContext(24, 1)), 'exactly 1 context row renders exactly 1 line');
         $this->assertCount(12, $widget->render(new RenderContext(24, 0)), 'a non-positive context row count falls back to 12');
     }
+
+    /**
+     * A click lands on the row it is pointing at, even when the list scrolls.
+     *
+     * `render()` reserves its first line for the ▲ indicator as soon as the
+     * entries outnumber the pane — and reserves it even when nothing is
+     * scrolled yet, so the line is blank rather than absent. The hit test did
+     * not know, and counted from the top of the PANE instead of the top of the
+     * list: every click came out one row low, so choosing a category selected
+     * the one below it. Nothing to do with the locale.
+     *
+     * Asserted through the selection shade, which is the widget's own answer to
+     * "which row did that pick", rather than by mapping a label back to an id.
+     */
+    public function testAClickSelectsTheRowItPointsAtWhenTheListScrolls(): void
+    {
+        $widget = $this->widget();
+        $widget->setPluginEntries(['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta']);
+        $rows = $widget->render(new RenderContext(24, 6));
+        $this->assertSame('', trim(AnsiUtils::stripAnsiCodes($rows[0])), 'the first line is the reserved indicator slot');
+
+        $widget->handleClick(1);
+
+        $shaded = $widget->render(new RenderContext(24, 6));
+        $this->assertStringContainsString("\x1b[48;5;31m", $shaded[1], 'the clicked line is the selected one');
+    }
+
+    /** Hovering takes the same path, so it was wrong in the same way. */
+    public function testHoverTintsTheRowItPointsAtWhenTheListScrolls(): void
+    {
+        $widget = $this->widget();
+        $widget->setPluginEntries(['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta']);
+        $widget->render(new RenderContext(24, 6));
+
+        $widget->hoverRow(2);
+
+        $rows = $widget->render(new RenderContext(24, 6));
+        $this->assertStringContainsString("\x1b[48;5;236m", $rows[2], 'the tinted line is the one under the pointer');
+    }
 }

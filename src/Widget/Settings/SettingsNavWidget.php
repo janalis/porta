@@ -89,6 +89,9 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
 
     /** @var array{int, int, int} the [revision, width, rows] the memo was rendered for */
     private array $memoKey = [-1, -1, -1];
+
+    /** Non-entry rows the last render put above the list: the ▲ slot, or none. */
+    private int $indicatorRows = 0;
     private readonly ListSelection $list;
 
     /** @var (callable(string): void)|null selection moved to this entry id */
@@ -322,9 +325,20 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         return $from;
     }
 
+    /**
+     * The entry under a widget-relative row, or null when that row holds no
+     * entry.
+     *
+     * The count of non-entry rows above the list is not a constant: {@see
+     * render()} reserves its first line for the ▲ indicator as soon as the
+     * entries outnumber the pane, and reserves it even when nothing is scrolled
+     * yet — the line is blank then, not absent. Counting from the top of the
+     * PANE rather than the top of the LIST put every click and hover one row
+     * low, so choosing a category selected the one below it.
+     */
     private function rowIndexAt(int $relRow): ?int
     {
-        return $this->list->rowIndexAt($relRow, \count($this->entries), headerRows: 0);
+        return $this->list->rowIndexAt($relRow, \count($this->entries), $this->indicatorRows);
     }
 
     /**
@@ -383,6 +397,10 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         // vertical tab strip has marked its overflow this way since it was
         // written; nothing else in the IDE did.
         $overflow = $rows > 2 && \count($this->entries) > $rows;
+        // Remembered for the hit test, which runs between frames and cannot
+        // recompute it: the pattern {@see \Porta\Widget\FileTreeWidget} uses
+        // for a render-time measurement a later click needs.
+        $this->indicatorRows = $overflow ? 1 : 0;
         $budget = $overflow ? $rows - 2 : $rows;
         $scroll = $this->list->follow($budget);
         $lines = [];
