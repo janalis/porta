@@ -6299,3 +6299,47 @@ shape each time: a positive with no floor. It has one now.
 *Worth keeping:* checking a survivor by hand beat reasoning about it twice
 today. The concat operands looked unguarded and are not; the RTL column map
 looked guarded by a test that said so and was not.
+
+## src/History's first mutation review (2026-09-11)
+
+The `coverage/infection_*` directories left by the August rounds name the areas
+that have had one: config, console, editor, highlight, input, settings, support,
+ui, widget, workbench. `src/History` is not among them, and it holds everything
+the user's `.porta/` remembers — so it got one. 328 mutants, 278 killed, **9
+escaped**, covered MSI 96%.
+
+**Two real gaps, both in the same shape: the common case untested.**
+
+- `SessionRestorer::restore()` guards `null === $data || [] === $data['buffers']`.
+  Turning that `||` into `&&` left the whole History suite green — with no
+  session file, `$data` is null and the mutant dereferences it. Every existing
+  test wrote a session first, so the FIRST-RUN path — every new project, every
+  clone — was the one nobody asked about. Both arms have a test now.
+- `SearchHistoryStore::load()` caps at `MAX`, and nothing held it. `add()` slices
+  too, so the store never writes more than the cap — which is exactly why the
+  load-side slice looked safe. A hand-edited file, or one left by a build with a
+  larger cap, would have loaded whole and stayed that size.
+
+### Seven equivalent mutants, and I got them wrong twice
+
+The other seven are `array_values()` removals across four stores. I judged them
+real — dropping one leaves gaps in the keys, and `json_encode` writes
+`{"0":…,"2":…}` where the file says `[…]`, which is a format change in a
+user-editable file. Then I "confirmed" three as killed.
+
+Both conclusions were wrong.
+
+The confirmation was a **broken mutation**: a crude `replace('array_values(', '(')`
+left unbalanced parentheses, and the `exit=2` I read as a catch was a parse
+error. Mutated cleanly, they survive. And they survive because every one of them
+is followed by `array_unshift`, `array_slice` or `array_merge` — **all three
+renumber** — so the calls are redundant tidiness and no test can kill them.
+
+The test written for the property is kept, with a docblock that says plainly it
+does not guard those calls: PHP's renumbering does, and the test pins the file's
+FORM against a refactor that drops whichever operation is currently doing it.
+
+*Third time today that checking beat reasoning, and the first time in this
+direction:* a survivor that looked real was equivalent, after two survivors that
+looked equivalent turned out real. Neither instinct is worth trusting; only the
+run is.

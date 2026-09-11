@@ -10,6 +10,43 @@ use Porta\Tests\Support\TempProject;
 
 final class SearchScopeStoreTest extends TestCase
 {
+    /**
+     * The persisted `scopes` is a JSON ARRAY, whatever was removed from it.
+     *
+     * The property is worth holding on its own: this file is the user's to read
+     * and edit, and `json_encode` turns a non-sequentially-keyed array into an
+     * OBJECT — `{"0":…,"2":…}` where the file says `[…]`.
+     *
+     * It does NOT guard the `array_values()` calls, and it would be dishonest to
+     * imply otherwise: mutating those away changes nothing, because every one of
+     * them is followed by `array_unshift`, `array_slice` or `array_merge`, and
+     * all three renumber. They are redundant tidiness, in this store and in the
+     * three others that share the shape. What currently guarantees the file's
+     * form is PHP, not this code — so this pins the form, against the day a
+     * refactor drops the operation that happens to be doing the renumbering.
+     */
+    public function testTheSavedScopeListStaysAJsonArrayAfterARemoval(): void
+    {
+        $project = new TempProject();
+        $store = new SearchScopeStore($project->dir);
+        $store->addPinned('keep', ['src']);
+        $store->addRecent('middle', ['docs']);
+        $store->addRecent('last', ['config']);
+
+        $store->forget('docs'); // takes the middle one out
+
+        $raw = (string) file_get_contents($project->dir.'/.porta/search-scopes.json');
+        $decoded = json_decode($raw, associative: true);
+        $this->assertIsArray($decoded);
+        $this->assertArrayHasKey('scopes', $decoded);
+        $this->assertSame(
+            array_keys($decoded['scopes']),
+            range(0, \count($decoded['scopes']) - 1),
+            'the keys are 0..n with no gaps, so this encodes as an array and not an object',
+        );
+        $this->assertStringNotContainsString('"0":', $raw, 'and the bytes say so too');
+    }
+
     public function testEmptyByDefault(): void
     {
         $tempProject = new TempProject();

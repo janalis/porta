@@ -402,6 +402,39 @@ final class IdeHelpersTest extends TestCase
         $this->assertStringEndsWith('Real.php', (string) Services::resolve($this->ide, Tui::class)->getById('editor')->getFilePath());
     }
 
+    /**
+     * No session file at all — a fresh project — restores nothing, quietly.
+     *
+     * The commonest path through `restore()` and nothing walked it. The guard
+     * reads `null === $data || [] === $data['buffers']`, and turning that `||`
+     * into `&&` left the whole History suite green: with no file, `$data` is
+     * null and the mutant dereferences it. Every test here had written a session
+     * first, so the first-run case — every new project, every clone — was the
+     * one nobody asked about.
+     */
+    public function testRestoreWithNoSessionFileAtAllDoesNothing(): void
+    {
+        $sessionFile = $this->project->dir.'/.porta/session.json';
+        $this->assertFileDoesNotExist($sessionFile, 'nothing has written one');
+
+        $restorer = Services::resolve($this->ide, SessionRestorer::class);
+        \assert($restorer instanceof \Porta\History\SessionRestorer, description: 'the locator serves a SessionRestorer');
+
+        $this->assertFalse($restorer->restore(), 'there was nothing to restore');
+    }
+
+    /** A session file recording NO buffers is the same answer by the other arm. */
+    public function testRestoreWithAnEmptyBufferListDoesNothing(): void
+    {
+        new \Porta\History\SessionStore($this->project->dir)->save([['path' => '/gone.php', 'line' => 0, 'col' => 0]], null);
+        new \Porta\History\SessionStore($this->project->dir)->save([], null); // empties it again
+
+        $restorer = Services::resolve($this->ide, SessionRestorer::class);
+        \assert($restorer instanceof \Porta\History\SessionRestorer, description: 'the locator serves a SessionRestorer');
+
+        $this->assertFalse($restorer->restore());
+    }
+
     public function testRestoreWithEveryBufferMissingRestoresNothing(): void
     {
         $tui = Services::resolve($this->ide, Tui::class);

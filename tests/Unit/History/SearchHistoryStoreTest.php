@@ -10,6 +10,27 @@ use Porta\Tests\Support\TempProject;
 
 final class SearchHistoryStoreTest extends TestCase
 {
+    /**
+     * A file holding more than the cap is trimmed on LOAD, not just on write.
+     *
+     * `add()` slices to MAX, so the store never writes more than that — which is
+     * why nothing noticed that `load()`'s own slice was unguarded. The file is
+     * the user's: a hand-edited one, or one left by an older build with a larger
+     * cap, would have loaded whole and stayed that size for good.
+     */
+    public function testAFileLongerThanTheCapIsTrimmedOnLoad(): void
+    {
+        $project = new TempProject();
+        $queries = array_map(static fn (int $n): string => 'query '.$n, range(1, end: 40));
+        mkdir($project->dir.'/.porta', permissions: 0o755, recursive: true);
+        file_put_contents($project->dir.'/.porta/search-history.json', json_encode(['queries' => $queries]));
+
+        $all = new SearchHistoryStore($project->dir)->all();
+
+        $this->assertLessThanOrEqual(20, \count($all), 'the cap applies to what arrives, not only to what leaves');
+        $this->assertSame('query 1', $all[0] ?? null, 'and it keeps the newest end of the file');
+    }
+
     public function testAddRecordsMostRecentFirstAndDeduplicates(): void
     {
         $tempProject = new TempProject();
