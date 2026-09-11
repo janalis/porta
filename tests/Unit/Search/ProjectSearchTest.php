@@ -122,9 +122,38 @@ final class ProjectSearchTest extends TestCase
         // the PCRE backtrack limit on the file's long run: preg_match_all returns
         // false for that file, which the whole-file scan skips (no results).
         $project = new TempProject(['src/A.php' => str_repeat('a', times: 30)."!\nz\n"]);
-        $results = $this->awaitSearch(new ProjectSearch($project->dir), "(a+)+\nz", options: new SearchOptions(regex: true));
+        $search = new ProjectSearch($project->dir);
+        $results = $this->awaitSearch($search, "(a+)+\nz", options: new SearchOptions(regex: true));
 
         $this->assertSame([], $results);
+        // And it SAYS so. This used to assert the empty list alone, which is
+        // the same answer PCRE gives for "nothing here" — a project search
+        // quietly returning fewer results is worse than the find bar doing it,
+        // because a handful of skipped files among thousands is invisible.
+        $this->assertTrue($search->gaveUp(), 'the engine gave up and the search admits it');
+    }
+
+    /**
+     * An ordinary search does not claim the engine gave up — including one that
+     * FOLLOWS a search that did.
+     *
+     * One controller holds one ProjectSearch for the session, so the reuse case
+     * is the only one that happens. A flag set on a bad pattern and never
+     * cleared would warn about every search afterwards, which is the same lie
+     * in the other direction.
+     */
+    public function testTheGiveUpFlagDoesNotOutliveTheSearchThatSetIt(): void
+    {
+        // The a-run followed by `z` is what drives the pattern into the
+        // expensive scan; `needle` is there for the ordinary search after it.
+        $project = new TempProject(['src/A.php' => str_repeat('a', times: 30)."!\nz\nneedle\n"]);
+        $search = new ProjectSearch($project->dir);
+
+        $this->awaitSearch($search, "(a+)+\nz", options: new SearchOptions(regex: true));
+        $this->assertTrue($search->gaveUp(), 'the first search gave up');
+
+        $this->awaitSearch($search, 'needle');
+        $this->assertFalse($search->gaveUp(), 'and the next one does not inherit it');
     }
 
     public function testMultilineQueryMatchesAcrossLinesWithAPreview(): void

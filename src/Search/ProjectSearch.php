@@ -27,9 +27,26 @@ final class ProjectSearch
     private ?string $grep = null;
     private bool $grepResolved = false;
 
+    /**
+     * Whether the regex engine GAVE UP somewhere in the last search.
+     *
+     * PCRE reports "I stopped trying" the same way it reports "nothing here":
+     * `preg_match_all()` answers false. Three paths below swallow that, and a
+     * project-wide search silently returning fewer results is worse than the
+     * find bar doing it — a handful of skipped files among thousands is
+     * invisible. The controller reads this and says so.
+     */
+    private bool $gaveUp = false;
+
     public function __construct(
         private readonly string $rootDir,
     ) {}
+
+    /** Whether the last search hit a pattern the engine could not finish. */
+    public function gaveUp(): bool
+    {
+        return $this->gaveUp;
+    }
 
     /**
      * @param callable(list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>): void $onDone
@@ -38,6 +55,7 @@ final class ProjectSearch
     public function search(string $query, callable $onDone, SearchOptions $options = new SearchOptions(), string|array $scope = '.', string $mask = ''): void
     {
         $this->cancel();
+        $this->gaveUp = false;
         $paths = \is_array($scope) ? array_values($scope) : [$scope];
         if ('' === trim($query) || [] === $paths) {
             $onDone([]);
@@ -159,6 +177,8 @@ final class ProjectSearch
         $count = preg_match_all($pattern, $text, $matches, \PREG_OFFSET_CAPTURE);
         restore_error_handler();
         if (false === $count) {
+            $this->gaveUp = true;
+
             return [];
         }
         $ranges = [];
@@ -240,6 +260,8 @@ final class ProjectSearch
                 $count = preg_match_all($pattern, $content, $matches, \PREG_OFFSET_CAPTURE);
                 restore_error_handler();
                 if (false === $count) {
+                    $this->gaveUp = true;
+
                     continue;
                 }
                 // A multiline query always contains a real newline, so its matches
@@ -439,6 +461,8 @@ final class ProjectSearch
         $count = preg_match_all($this->pattern($query, $options), $line, $matches, \PREG_OFFSET_CAPTURE);
         restore_error_handler();
         if (false === $count) {
+            $this->gaveUp = true;
+
             return [];
         }
         $offsets = [];

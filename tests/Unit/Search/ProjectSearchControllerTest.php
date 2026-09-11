@@ -227,6 +227,28 @@ final class ProjectSearchControllerTest extends TestCase
         $this->assertSame(['needle'], new \Porta\History\SearchHistoryStore($project->dir)->all());
     }
 
+    /**
+     * A search the regex engine could not finish says so, rather than offering
+     * its short result list as the answer.
+     *
+     * PCRE reports "I gave up" exactly as it reports "nothing here", and a
+     * project search skipping a handful of files among thousands is invisible.
+     * The find bar learned to distinguish the two the same day; this is the
+     * project-wide surface, whose only channel is the status bar.
+     */
+    public function testASearchTheEngineCannotFinishFlashesInstead(): void
+    {
+        $project = new TempProject(['src/A.php' => str_repeat('a', times: 30)."!\nz\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->toggleOption('regex');
+
+        $controller->search("(a+)+\nz");
+        $this->await(fn (): bool => str_contains($this->flashed(), 'too complex'), 3.0, 'the too-complex flash');
+
+        $this->assertStringContainsString('too complex', $this->flashed());
+    }
+
     public function testSearchDeliversResultsToTheOpenModal(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n// needle here\n"]);

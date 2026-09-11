@@ -502,6 +502,13 @@ final class ProjectSearchController
                 // from) comments/strings before they reach whichever surface is live.
                 $results = $this->languageFilter->apply($results, $query, $this->searchOptions);
                 $this->lastSearchResults = $results;
+                // PCRE reports "I gave up" the same way it reports "nothing
+                // here". Without this the user reads a short result list as the
+                // answer, and a handful of skipped files among thousands is
+                // invisible.
+                if ($this->projectSearch->gaveUp()) {
+                    $this->statusBar->flash($this->translator->trans('pattern too complex'));
+                }
                 $modal = $this->editor->findModal();
                 if ($modal->isOpen()) {
                     $modal->setPreview($results);

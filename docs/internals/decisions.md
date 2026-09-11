@@ -6208,9 +6208,24 @@ never SETTING the flag fails, removing the render arm fails, and never
 the message gone. A state set on a bad pattern that outlives it is the same lie
 in the other direction.
 
-*Recorded, not fixed:* `ProjectSearch` swallows the same `false` at three
-places — `matchRanges()`, the multiline whole-file scan, and the per-line
-offsets — so a project-wide search quietly returns fewer results. It takes only
-`$rootDir` and has no notifier, so surfacing from there is a channel decision
-rather than a one-line change, and this round did not reproduce it. The
-detection is identical; only the door is open.
+**And the project-wide surface, fixed straight after.** `ProjectSearch` swallowed
+the same `false` at three places — `matchRanges()`, the multiline whole-file
+scan, and the per-line offsets. I wrote it up as "a channel decision, not a
+one-line change" because the class takes only `$rootDir` and has no notifier,
+then reread that and found it was bookkeeping: the CONTROLLER already flashes
+elsewhere, so the class needs no new dependency, only to record what happened
+and let the caller read it.
+
+A project search is the worse of the two, not the better: a handful of skipped
+files among thousands is invisible, where a find bar at least shows `[0/0]` on
+the line in front of you.
+
+`testMultilineScanSkipsFilesThatBlowThePcreBacktrackLimit` already existed and
+asserted the silent empty result. Reading it closely is what settled the
+question — "which the whole-file scan skips (no results)" DESCRIBES the
+behaviour and gives no reason for preferring it. It asserts the signal now too.
+
+And the same sticky-state mutant survived here that survived in the find bar
+twenty minutes earlier: nothing proved the flag clears. One controller holds one
+`ProjectSearch` for the session, so reuse is the only case that happens — the
+test runs a giving-up search and then an ordinary one on the same instance.
