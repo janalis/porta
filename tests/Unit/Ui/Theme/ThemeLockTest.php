@@ -232,6 +232,13 @@ final class ThemeLockTest extends TestCase
         $this->assertEquals(new Style(color: 118), $hc->of(Role::DebugValue), 'bright green live values');
         $this->assertEquals($hc->of(Role::DiagError), $hc->of(Role::DiagErrorDim), 'no dim tier in high contrast');
         $this->assertEquals($hc->of(Role::DiagInfo), $hc->of(Role::DiagInfoDim), 'no dim tier in high contrast');
+        // A live drop target is accessibility-critical in the same way the
+        // selection is: it says where files are about to go, and it has to be
+        // unmistakable against BOTH the selection and the hover tint, which in
+        // this theme are the two shades nearest it.
+        $this->assertEquals(new Style(background: 28, color: 231, bold: true), $hc->of(Role::DropTargetRow), 'white-on-green drop target, bold');
+        $this->assertNotEquals($hc->of(Role::SelectedRow), $hc->of(Role::DropTargetRow), 'and never the selection');
+        $this->assertNotEquals($hc->of(Role::RowHighlightBg), $hc->of(Role::DropTargetRow), 'nor the hover tint');
     }
 
     public function testMonochromeStylesNoRoleExceptSelectionAndHover(): void

@@ -155,6 +155,31 @@ final class FileTreeDragTest extends TestCase
     }
 
     /**
+     * The label sits on the target row and on no other.
+     *
+     * The case above reads the whole pane as one string, which cannot tell "on
+     * the right row" from "on every row" — and the guard that decides has two
+     * arms, either of which, inverted, paints the label down the entire tree.
+     * That is the difference between a drop target and a wall of noise, and it
+     * passed.
+     */
+    public function testThePayloadLabelSitsOnTheTargetRowAndNoOther(): void
+    {
+        $tree = $this->tree();
+        $tree->setDropTarget($this->project->path('src'), "\u{2190} 3 files");
+
+        $rows = \array_slice($tree->render(new RenderContext(40, 12)), offset: 1);
+        $plain = array_map(AnsiUtils::stripAnsiCodes(...), $rows);
+
+        // Row 0 of the entries is `src/`, the drop target; 1 and 2 are its file
+        // and top.php, and the rest are blank filler.
+        $this->assertStringContainsString('3 files', $plain[0], 'the target row says what is coming');
+        foreach (\array_slice($plain, offset: 1) as $index => $row) {
+            $this->assertStringNotContainsString('3 files', $row, 'row '.($index + 1).' is not a drop target');
+        }
+    }
+
+    /**
      * A pane too narrow for the label drops the label, not the name.
      *
      * The row must still measure exactly the width it claims — one whose
@@ -270,6 +295,27 @@ final class FileTreeDragTest extends TestCase
         $this->assertFalse($tree->expandDuringDrag($this->project->path('src')), 'already open');
         $this->assertFalse($tree->expandDuringDrag($this->project->path('top.php')), 'not a folder');
         $this->assertFalse($tree->expandDuringDrag($this->project->dir.'/nope'), 'not in the tree');
+    }
+
+    /**
+     * The window is exactly as tall as the pane minus its header — it does not
+     * scroll PAST the end into blank rows.
+     *
+     * The last-row case above pins one side of this: a window too tall stops
+     * short of the final row. A window too SHORT sails past it, and the pane
+     * ends up showing filler under the last file with no way back except
+     * scrolling up. Both are off-by-ones on the same subtraction.
+     */
+    public function testTheWindowStopsWithTheLastRowAtTheBottom(): void
+    {
+        $tree = $this->tallTree();
+
+        $tree->scrollDuringDrag(99);
+
+        // Twelve entries in a five-entry window: the last window is f07..f11.
+        $plain = $this->rowsOf($tree, 6);
+        $this->assertStringContainsString('f07.php', $plain, 'the last window starts at the eighth entry');
+        $this->assertStringNotContainsString('f06.php', $plain, 'and not one earlier — it did not scroll past the end');
     }
 
     /** The scroll is a render change, so the memo has to let it through. */

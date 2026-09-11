@@ -389,6 +389,44 @@ final class StatusBarWidgetTest extends TestCase
         $this->assertSame(' AAA    BBB ', $plain, 'exactly: leading pad, left, the gap, right, trailing pad');
     }
 
+    /**
+     * Taking a flash back redraws, and only takes back the one it was given.
+     *
+     * The withdrawal exists for a message about something IN PROGRESS — a
+     * drag's "Moving 3 files" is not true once the drag ends, and sitting out
+     * its remaining seconds covers whatever the drop has to say. Clearing
+     * without redrawing leaves the stale line on screen until something else
+     * happens to invalidate, which is exactly the case nobody is watching.
+     */
+    public function testWithdrawingAFlashClearsItAndRedraws(): void
+    {
+        $status = new StatusBarWidget();
+        $status->setProvider(static fn (): array => ['left' => 'idle', 'right' => '']);
+        $status->flash('Moving 3 files');
+        $status->beforeRender();
+        $this->assertStringContainsString('Moving 3 files', AnsiUtils::stripAnsiCodes($status->render(new RenderContext(40, 1))[0]));
+        $before = $status->getRenderRevision();
+
+        $status->withdrawFlash('Moving 3 files');
+
+        $this->assertNotSame($before, $status->getRenderRevision(), 'the strip was marked for redraw');
+        $status->beforeRender();
+        $this->assertStringNotContainsString('Moving 3 files', AnsiUtils::stripAnsiCodes($status->render(new RenderContext(40, 1))[0]));
+    }
+
+    /** A message posted since is left alone — the withdrawal names its own. */
+    public function testWithdrawingSomethingElseLeavesTheFlashStanding(): void
+    {
+        $status = new StatusBarWidget();
+        $status->setProvider(static fn (): array => ['left' => 'idle', 'right' => '']);
+        $status->flash('Saved');
+
+        $status->withdrawFlash('Moving 3 files');
+
+        $status->beforeRender();
+        $this->assertStringContainsString('Saved', AnsiUtils::stripAnsiCodes($status->render(new RenderContext(40, 1))[0]));
+    }
+
     public function testStatusCellMenuIsNullWhenTruncatedOff(): void
     {
         $status = new StatusBarWidget();

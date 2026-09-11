@@ -6902,3 +6902,71 @@ here, fixed again by writing after each edit. And `exit=124` is a TIMEOUT, not a
 kill: three mutants reported it, and running them alone showed one failing
 cleanly in nine seconds. A mutation sweep over E2e needs a per-run cap near the
 clean runtime, or a hang and a kill are indistinguishable.
+
+## Mutating the drag round, read by section this time (2026-09-11)
+
+`composer mutate` over the whole six-commit diff, judged against Unit: 159
+killed, 23 escaped, 8 timed out, MSI 87%. The two lists were read SEPARATELY,
+which is the correction from earlier today — every `DarkTheme` entry was a
+timeout and says nothing, and reading them as escapes would have sent the round
+chasing colour constants.
+
+Of the 23 escapes, six were real gaps, two are equivalent, one is a harness
+artifact, and one was a false positive.
+
+### The one that mattered: a label on every row
+
+`dropTrailing()`'s guard is `$node->path !== $this->dropTarget || '' === $this->dropLabel`,
+and BOTH arms escaped — `!==` inverted to `===`, and `||` to `&&`. Either paints
+the payload label down the entire tree.
+
+It survived because every test read the pane as ONE string:
+`assertStringContainsString('3 files', $rows)` is satisfied by the label being on
+the right row, on the wrong row, or on all of them. That is the aggregate form of
+the same mistake this session keeps finding — an assertion that cannot fail for
+the reason it was written. The new case renders to an array and asserts the
+label is on row 0 and on no other row, which kills both arms and the spacing
+mutant beside them.
+
+### Two off-by-ones on the same subtraction, from opposite sides
+
+- `edgeDelta()`'s bottom bound, `rows - 1` → `rows - 2`: a two-row edge zone
+  starts scrolling while the pointer is still over a row the user is aiming at,
+  and the tree slides out from under the drop. The existing cases drag ON the
+  edge and in the MIDDLE, which between them leave the zone free to be any depth.
+- `scrollDuringDrag()`'s window, `lastRows - 1` → `lastRows - 2`: a window too
+  SHORT sails past the end into filler rows. The last-row case added during the
+  original round pins the other side — a window too TALL stops short of the final
+  row. Both bounds are now nailed, from both directions.
+
+### Also closed
+
+- The high-contrast drop-target shade. `ThemeLockTest` pins Dark and Light
+  exactly and deliberately leaves HC's table free to be tuned — but the drop
+  target is accessibility-critical in the same way the selection is, so it joins
+  the spot-locks, with assertions that it equals neither the selection nor the
+  hover tint in that theme.
+- The router's label FORMAT (`← 1 file`), which four Concat mutants could
+  reorder or strip while every assertion about the count still passed.
+- `StatusBarWidget::withdrawFlash()`'s `invalidate()`. Clearing without redrawing
+  leaves the stale line on screen until something else happens to invalidate —
+  precisely the case nobody is watching, since the withdrawal exists to get out
+  of the way of the next message.
+
+### Left alone, with reasons
+
+- **Equivalent, both confirmed by running rather than argued.** The row lookup's
+  `break` — paths are unique, so the walk finds the same node either way and only
+  the cost differs. And `$width - visibleWidth($marks)` → `+`: the drop target is
+  always a directory, directories carry no marks, so that term is zero on the
+  only row where the value is used.
+- **A harness artifact**, verified by the procedure `infection.json5` prescribes
+  rather than assumed: deleting the `tree_cut` registration leaves the Unit suite
+  green and turns the E2e red. Its coverage lives outside the judged suite.
+- **`$row <= 1` → `<= 0` was a FALSE POSITIVE** — hand-mutating it fails two
+  existing tests. Infection reported an escape for a mutant the suite kills,
+  which is the third time this session the census has been wrong in that
+  direction. Every entry still has to be mutated by hand before it is believed.
+- Three `requestRender()` removals inside the drag timers. They change when a
+  frame is asked for, not what is in it, and this repo has no seam that observes
+  a render request without a real terminal; noted rather than pinned.

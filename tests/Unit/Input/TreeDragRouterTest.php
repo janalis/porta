@@ -494,7 +494,9 @@ final class TreeDragRouterTest extends TestCase
         $router->continueDrag($this->drag(2, 1), self::rect(), null);
 
         $rows = AnsiUtils::stripAnsiCodes(implode("\n", $this->tree->render(new RenderContext(40, self::ROWS))));
-        $this->assertStringContainsString('1 file', $rows);
+        // The arrow and its spacing included: asserting only the count leaves
+        // the label free to arrive backwards or run into the filename.
+        $this->assertStringContainsString("\u{2190} 1 file", $rows);
     }
 
     /** A press that never moved is a click, and says nothing. */
@@ -678,6 +680,24 @@ final class TreeDragRouterTest extends TestCase
         $this->clock->fire($this->pending(self::SCROLL_TICK)[0]);
 
         $this->assertNotSame($before, $this->tree->getRenderRevision());
+    }
+
+    /**
+     * The edge zone is exactly one row deep at each end.
+     *
+     * The cases either side of this one drag ON the edge and in the MIDDLE,
+     * which between them leave the zone free to be any size at all — a zone two
+     * rows deep starts scrolling while the pointer is still over a row the user
+     * is aiming at, and the tree slides out from under the drop.
+     */
+    public function testTheRowJustInsideTheEdgeIsNotTheEdge(): void
+    {
+        $router = $this->tallRouter();
+        $router->arm([$this->project->path('d00')]);
+
+        $router->continueDrag($this->drag(2, self::TALL_ROWS - 2), self::tallRect(), null);
+
+        $this->assertSame([], $this->pending(self::SCROLL_TICK), 'one row in from the bottom is still ordinary tree');
     }
 
     /** Away from the edges nothing is armed — the common case pays nothing. */
