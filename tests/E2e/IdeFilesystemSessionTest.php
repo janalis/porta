@@ -616,4 +616,45 @@ final class IdeFilesystemSessionTest extends TestCase
             ],
         );
     }
+
+    /**
+     * Save All saves a dirty buffer sitting behind a clean one.
+     *
+     * The loop skips a buffer with nothing to write, and turning that
+     * `continue` into a `break` left the suite green: the existing Save All
+     * case dirties BOTH its buffers, so there is no clean one in front to stop
+     * at. Open a file, read it, open another and edit that — the ordinary way
+     * anyone works — and Ctrl+Alt+S would have written nothing while reporting
+     * success.
+     */
+    public function testSaveAllReachesADirtyBufferBehindACleanOne(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n// a\n", 'b.php' => "<?php\n// b\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x14"); // focus the tree
+                    $tui->handleInput("\x1b[B");
+                    $tui->handleInput("\r"); // open b.php, leaving a.php clean
+                },
+                400 => static function ($tui): void {
+                    $tui->handleInput('Y'); // dirty b.php only
+                    $tui->handleInput("\x1b\x13"); // ctrl+alt+s
+                },
+                600 => function ($tui, $terminal) use ($project): void {
+                    $this->assertStringContainsString(
+                        'Y',
+                        (string) file_get_contents($project->path('b.php')),
+                        'the dirty buffer behind the clean one was written',
+                    );
+                    $this->assertStringContainsString('Saved 1 file', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                },
+            ],
+        );
+    }
 }

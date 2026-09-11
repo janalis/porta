@@ -11,6 +11,24 @@ use Porta\Editor\IndentModel;
 
 final class IndentModelTest extends TestCase
 {
+    /**
+     * A blank line does not end the detection of the lines below it.
+     *
+     * The scan skips a blank line — it indents nothing and says nothing — and
+     * turning that `continue` into a `break` left every case here green,
+     * because each passes lines that are all indented. Nearly every real source
+     * file has a blank line near the top, and stopping there means the indent
+     * comes from whatever preceded it, or from the default: a file written with
+     * two spaces would be edited as if it used four.
+     */
+    public function testABlankLineDoesNotStopTheScanBelowIt(): void
+    {
+        $model = IndentModel::detect(['<?php', '', 'class A', '{', '  public $x;', '    public $y;'], 4);
+
+        $this->assertSame(2, $model->indentSize(), 'the two-space step below the blank line was still seen');
+        $this->assertFalse($model->usesTabs());
+    }
+
     public function testUnitAndDisplayWidthForSpaces(): void
     {
         $indent = new IndentModel(usesTabs: false, indentSize: 2, tabWidth: 8);

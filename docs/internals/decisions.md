@@ -6475,3 +6475,31 @@ a state it has already settled — the "term on both sides" case `infection.json
 warns about. `PluginLoader:171` iterates a two-element array whose only nullable
 entry is last, so stopping and skipping are the same thing. The rest of the 84
 are unreviewed and now written down, which is more than was true this morning.
+
+## Working the census: Save All, and indent detection (2026-09-11)
+
+Two more off the loop-skip census, both chosen for blast radius rather than for
+being interesting.
+
+**`BufferService::saveAllBuffers()` skips a buffer with nothing to write.** As a
+`break` that is "stop at the first CLEAN buffer" — so a dirty buffer behind a
+clean one is never written, and the flash still reports success. The existing
+Save All case dirties BOTH its buffers, so there is no clean one in front to
+stop at. Open a file, read it, open another and edit that — the ordinary way
+anyone works — and Ctrl+Alt+S would have written nothing.
+
+**`IndentModel::detect()` skips a blank line**, which indents nothing and says
+nothing. As a `break` the scan ends at the first one. Nearly every source file
+has a blank line near the top, so the indent would come from the one or two
+lines above it, or from the default — a file written with two spaces edited as
+though it used four, silently, on most files in most projects.
+
+Neither is exotic. Both are the plainest possible use of the feature, and both
+were invisible for the same reason as every other one today: the fixture has all
+its elements alike, and the interesting one first.
+
+*Judged and left from the same batch:* `IdeConfig`'s template-map skip and
+`EditorConfigGlob`'s `**` branch are the same shape and genuinely real, but each
+needs a fixture built around an oddity (an invalid template entry; a `**` not
+followed by a slash) rather than around ordinary use — worth doing, not worth
+doing badly at the end of a long pass. They stay on the census.
