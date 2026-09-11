@@ -23,10 +23,15 @@ final class DocumentWriter
             $lines = array_map(static fn (string $line): string => rtrim($line, characters: " \t"), $lines);
         }
 
+        // An .editorconfig that names an ending wins; without one the FILE's own
+        // ending is written back. Defaulting to LF rewrote every line of a
+        // CRLF file the first time it was saved — a whole-file diff nobody
+        // asked for, on every Windows-authored file in a repository.
         $eol = match ($config->eol) {
             'crlf' => "\r\n",
             'cr' => "\r",
-            default => "\n",
+            'lf' => "\n",
+            default => $document->eol(),
         };
         $text = implode($eol, $lines);
 

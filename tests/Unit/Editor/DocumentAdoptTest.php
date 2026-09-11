@@ -8,8 +8,9 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
 
 /**
- * The UTF-8 byte-order mark: taken off the text on load, remembered, and put
- * back by the save path.
+ * What a document REMEMBERS about the text it was loaded from: the UTF-8
+ * byte-order mark, and the line ending. Both are taken off the text on load and
+ * put back by the save path.
  *
  * Nothing in this tree handled one. A BOM is valid UTF-8, so a marked file
  * loaded without complaint and carried U+FEFF as the first character of line 0
@@ -19,6 +20,11 @@ use Porta\Editor\Document;
  * character typed on opening such a file went in FRONT of it, which is
  * invisible on screen and stops it being a byte-order mark.
  *
+ * The line ending is the same story with a bigger blast radius: lines are held
+ * LF-joined whatever the file used, and the save path defaulted to LF — so the
+ * first save of a CRLF file rewrote every line in it. A whole-file diff on
+ * every Windows-authored file the user touched.
+ *
  * Its own file rather than more methods on {@see DocumentTest}, which is at the
  * method ceiling — the same split {@see DocumentEdgeTest} and
  * {@see DocumentEditorConfigTest} already use.
@@ -26,7 +32,7 @@ use Porta\Editor\Document;
  * The round trip through a real save is
  * {@see \Porta\Tests\E2e\IdeFilesystemSessionTest::testAFileWithAByteOrderMarkKeepsItAcrossAnEdit()}.
  */
-final class DocumentBomTest extends TestCase
+final class DocumentAdoptTest extends TestCase
 {
     /**
      * A UTF-8 BOM is taken off the text and remembered, not carried in it.
@@ -78,5 +84,31 @@ final class DocumentBomTest extends TestCase
 
         $doc->replaceAll("plain again\n");
         $this->assertFalse($doc->hasByteOrderMark(), 'and a later reload without one clears it');
+    }
+
+    /** The line ending the file used is remembered, not just normalised away. */
+    public function testTheLoadedLineEndingIsRemembered(): void
+    {
+        $this->assertSame("\n", new Document("a\nb\n")->eol(), 'plain LF');
+        $this->assertSame("\r\n", new Document("a\r\nb\r\n")->eol(), 'CRLF');
+        $this->assertSame("\r", new Document("a\rb\r")->eol(), 'lone CR');
+        $this->assertSame("\n", new Document('no endings at all')->eol(), 'nothing to go on');
+    }
+
+    /** A mixed file answers for the ending it OPENS with. */
+    public function testAMixedFileAnswersForItsFirstEnding(): void
+    {
+        $this->assertSame("\r\n", new Document("a\r\nb\nc\n")->eol());
+    }
+
+    /** A reload adopts the new text's ending rather than keeping the old answer. */
+    public function testAReloadAdoptsTheNewEnding(): void
+    {
+        $doc = new Document("a\r\n");
+        $this->assertSame("\r\n", $doc->eol());
+
+        $doc->replaceAll("a\nb\n");
+
+        $this->assertSame("\n", $doc->eol(), 'the reload brought LF');
     }
 }

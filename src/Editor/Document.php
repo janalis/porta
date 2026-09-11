@@ -102,9 +102,19 @@ final class Document
      */
     private bool $hadBom = false;
 
+    /**
+     * The line ending the loaded text used, for the save path to write back.
+     *
+     * Lines are held LF-joined whatever the file used, because every consumer —
+     * the digest, the LSP, a search, the width arithmetic — wants one shape.
+     * Which shape the FILE used is a different question, and forgetting the
+     * answer rewrote every line of a CRLF file the first time it was saved.
+     */
+    private string $eol = "\n";
+
     public function __construct(string $text = '')
     {
-        $text = $this->stripByteOrderMark(str_replace(["\r\n", "\r"], replace: "\n", subject: $text));
+        $text = $this->adopt($text);
         $this->lines = '' === $text ? [''] : explode("\n", $text);
         // The normalized $text IS what implode would rebuild — digest it
         // directly instead of re-joining a copy of the file.
@@ -1382,22 +1392,44 @@ final class Document
     }
 
     /**
-     * Take a leading UTF-8 BOM off $text and record that it was there.
+     * Take incoming file text and make it this document's: remember the shape
+     * it arrived in, then hand back the one shape everything here works on.
      *
-     * Records either way, so a reload of a file that lost its mark clears the
-     * flag rather than leaving the previous answer standing.
+     * ONE seam for both doors — the constructor and {@see replaceAll()} — and
+     * it exists because they had drifted. Line-ending normalisation was in both
+     * but tested in only one, and the BOM and the line-ending memory each had
+     * to be added to both by hand. A third concern arriving should not be a
+     * third chance to miss a door.
+     *
+     * Everything recorded here is recorded UNCONDITIONALLY, so a reload of a
+     * file that lost its mark, or gained CRLF, answers for what it is now
+     * rather than leaving the previous answer standing.
      */
-    private function stripByteOrderMark(string $text): string
+    private function adopt(string $text): string
     {
         $this->hadBom = str_starts_with($text, self::BOM);
+        $text = $this->hadBom ? substr($text, offset: \strlen(self::BOM)) : $text;
+        // The FIRST ending decides, because a mixed file has no majority worth
+        // honouring and the one it opens with is the one a reader saw.
+        $this->eol = match (true) {
+            str_contains($text, "\r\n") => "\r\n",
+            str_contains($text, "\r") => "\r",
+            default => "\n",
+        };
 
-        return $this->hadBom ? substr($text, offset: \strlen(self::BOM)) : $text;
+        return str_replace(["\r\n", "\r"], replace: "\n", subject: $text);
+    }
+
+    /** The line ending the loaded text used; the save path writes it back. */
+    public function eol(): string
+    {
+        return $this->eol;
     }
 
     public function replaceAll(string $text): void
     {
         $this->pushUndo();
-        $text = $this->stripByteOrderMark(str_replace(["\r\n", "\r"], replace: "\n", subject: $text));
+        $text = $this->adopt($text);
         $this->lines = '' === $text ? [''] : explode("\n", $text);
         $this->cursorLine = $this->clampLine($this->cursorLine);
         $this->cursorCol = $this->clampCol($this->cursorLine, $this->cursorCol);

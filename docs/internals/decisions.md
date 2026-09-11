@@ -6152,3 +6152,38 @@ back with `is_array()`) made every line run on both paths — and the result is
 simpler than what it replaced, not more convoluted. A pane tab whose path is
 not a file now answers `null` through the same door, which is why the caller
 can compare answers without excluding those first.
+
+## Saving a CRLF file rewrote every line in it (2026-09-11)
+
+The identity hunt's biggest catch. Lines are held LF-joined whatever the file
+used — every consumer wants one shape — and `DocumentWriter` turned them back
+into bytes with `match ($config->eol) { 'crlf' => …, 'cr' => …, default =>
+"\n" }`. `EditorConfigResolver::resolve()` never returns null, so that writer
+runs for every save, and a file with no `.editorconfig` saying otherwise took
+the default.
+
+So the first Ctrl+S on any Windows-authored file converted the whole thing to
+LF. Silently, and as a whole-file diff — the kind that buries a real change in
+a thousand-line review.
+
+Reproduced end to end before touching anything: open a CRLF file, type one
+character, save, read the bytes back. Every `\r\n` was gone.
+
+The document remembers the ending it loaded and the writer uses it when the
+config does not name one. An explicit `end_of_line` still wins, which is the
+whole point of an `.editorconfig` — and that arm needed its own test, because
+"keep what the file had" as a default makes the override the interesting case.
+
+**Mixed files answer for their FIRST ending**, on the grounds that a mixed file
+has no majority worth honouring and the one it opens with is the one a reader
+saw.
+
+### Three concerns, two doors, one seam
+
+This is the third thing that had to happen at BOTH `__construct()` and
+`replaceAll()`: line-ending normalisation (which drifted — present in both,
+tested in one), the BOM, and now the ending itself. Each was added by hand to
+two places, and the CRLF gap is exactly what that costs.
+
+They go through one `adopt()` now. A fourth concern arriving should not be a
+fourth chance to miss a door.

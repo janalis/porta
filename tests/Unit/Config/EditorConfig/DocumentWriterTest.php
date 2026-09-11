@@ -51,6 +51,30 @@ final class DocumentWriterTest extends TestCase
         $this->assertSame("a\rb", DocumentWriter::render($doc, $this->config(['end_of_line' => 'cr'])));
     }
 
+    /**
+     * `end_of_line = lf` OVERRIDES the file's own ending.
+     *
+     * The arm that matters now that a missing setting means "keep what the file
+     * had": without it, a CRLF file under an `.editorconfig` demanding LF would
+     * fall through to the document's answer and keep its CRLF, which is the
+     * opposite of what the file asked for.
+     */
+    public function testLfEndOfLineOverridesACrlfFile(): void
+    {
+        $doc = new Document("a\r\nb\r\n");
+        $this->assertSame("\r\n", $doc->eol(), 'the document knows it loaded CRLF');
+
+        $this->assertSame("a\nb\n", DocumentWriter::render($doc, $this->config(['end_of_line' => 'lf'])));
+    }
+
+    /** With no setting at all, the file's own ending is written back. */
+    public function testWithoutASettingTheFilesOwnEndingIsKept(): void
+    {
+        $doc = new Document("a\r\nb\r\n");
+
+        $this->assertSame("a\r\nb\r\n", DocumentWriter::render($doc, $this->config([])));
+    }
+
     public function testInsertFinalNewlineAddsWhenMissing(): void
     {
         $doc = new Document("a\nb"); // no trailing newline

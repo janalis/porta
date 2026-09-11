@@ -592,4 +592,28 @@ final class IdeFilesystemSessionTest extends TestCase
             ],
         );
     }
+
+    /** A CRLF file edited and saved keeps its line endings. */
+    public function testACrlfFileKeepsItsLineEndingsAcrossAnEdit(): void
+    {
+        putenv('PATH=/nonexistent');
+        $project = new TempProject(['win.php' => "<?php\r\n\r\necho 1;\r\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('win.php'),
+            [
+                200 => static function ($tui): void {
+                    $tui->getById('editor')->getDocument()->setCursor(0, 5);
+                    $tui->handleInput('X');
+                    $tui->handleInput("\x13"); // ctrl+s
+                },
+                400 => function ($tui) use ($project): void {
+                    $saved = (string) file_get_contents($project->path('win.php'));
+                    $this->assertStringContainsString("\r\n", $saved, 'the file still uses CRLF');
+                    $this->assertSame("<?phpX\r\n\r\necho 1;\r\n", $saved);
+                },
+            ],
+        );
+    }
 }
