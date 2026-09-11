@@ -6970,3 +6970,100 @@ mutant beside them.
 - Three `requestRender()` removals inside the drag timers. They change when a
   frame is asked for, not what is in it, and this repo has no seam that observes
   a render request without a real terminal; noted rather than pinned.
+
+## Fixing RTL: two functions, one slicer, and four claims (2026-09-11)
+
+The bidi stack was sound in its parts and wrong at its edges. `I18n/Bidi` is a
+real UAX#9 subset with 34 tests; the defects were all in what it was told about
+the characters it was given, and in what the suite around it never asked.
+
+### classify() defaulted to "this is Latin text"
+
+The function is an allow-list of neutral ranges with `return 'L'` at the bottom,
+so every codepoint nobody had thought about was declared strong Latin. **Forty
+of Glyphs' seventy-six constants were** — ▸ ▾ → ← × ✓ ● ◆ █ ▎ and the rest.
+
+A glyph classified that way glues itself into the adjacent Latin run instead of
+taking the direction of the text around it:
+
+```
+before:  " ▸ src/      "  ->  "      /▸ src "
+after:   " ▸ src/      "  ->  "      /src ▸ "
+```
+
+The sharper symptom was that it depended on the CONTENT. A Hebrew folder name
+already came out right, so in a single list the disclosure marker sat on a
+different side depending on the name beside it. That is the tell for a
+classification bug rather than a layout one, and it is why the existing tests —
+which use Hebrew strings — could not see it.
+
+**Two derived gates, because the list is still a list.** Every string constant on
+`Glyphs` must not classify as `L`; every key in the `MIRROR` table must be able
+to REACH the mirror, since L4 only applies inside a right-to-left run. The second
+caught `«` and `»`, which had entries they could never reach — dead code that
+reads like a working feature. Proved load-bearing by adding a supplemental arrow
+outside every range and watching the sweep name it. Third hand-written list this
+session to be wrong by omission.
+
+### No W4, so the caret indicator read backwards
+
+`12:5` rendered `5:12`. UAX#9 W4 makes a single separator between two European
+numbers part of the number; without it the colon resolved to the surrounding
+right-to-left direction, split the two digit runs and swapped them. Dates,
+decimals and thousands groups went the same way. It is the most-looked-at number
+in the editor.
+
+What this deliberately does NOT fix, because it is not a bug: `src/Foo.php:42`
+still renders `42:src/Foo.php`. There the colon sits between Latin and a number,
+and N1 has numbers act as right-to-left for neutral resolution, so it takes the
+paragraph direction. That is what the standard prescribes; pinning such a
+reference needs an isolate at the call site.
+
+### A raw escape on the screen, every frame
+
+`sliceByColumn(strict: true)` opens each slice by re-emitting the escape state
+active at that column, and it counts the zero-width APC caret marker as state.
+So every run to the RIGHT of the caret opened with a copy of a cursor belonging
+to another pane; `ScreenWriter` strips only the first, and the survivor lost its
+`\x07` terminator and swallowed the text after it. Only this path re-slices an
+already-composed row, which is why LTR never saw it. `SpanSlicer` already
+carried the same guard against the same vendored behaviour.
+
+### The suite could not see mirroring stop
+
+`IdeRtlLocaleTest` checked segmentation on row 0 and nowhere else — and row 0 is
+the menu bar, the FIRST leaf, the one row that survives the segmenter losing its
+leaf walk. The width invariant beside it is satisfied exactly by the degenerate
+one-verbatim-run-per-row output that bug produces. Hence ten cases and 102
+assertions passing with mirroring off for every row but one.
+
+The new case asserts a row BELOW the menu bar carries both a verbatim run and a
+mirrored one. Verified the way it had to be: with the leaf walk re-broken it
+fails, while the original ten stay green.
+
+`LtrPane`'s membership is now pinned too. It is an empty marker that the
+segmenter reads as the whole mirror/verbatim decision, and removing it from
+`CodeEditorWidget` failed nothing — source code would have been bidi-reordered
+on the next frame.
+
+### Four claims that asserted the opposite of the measured behaviour
+
+- `Bidi`'s own scope note said digits are "reordered as left-to-right". True
+  only inside one digit run.
+- `WheelRouter`: "the strip renders mirrored under RTL". **Measured: a strip of
+  LATIN tab names is not mirrored, only right-anchored** — order preserved. Tab
+  order reverses only when the names are Hebrew, which for a code editor is the
+  rare case. So the unconditional flip matches the screen for Hebrew filenames
+  and opposes it for Latin ones, and one boolean cannot serve both. Left as it
+  stands: `IdeTabScrollTest` pins the current choice, and changing it is a
+  behaviour decision rather than a comment fix. Recorded here so it is a known
+  open question instead of a confident comment.
+- `LiveSettingsApplier`: the tab strip is "outside the RTL pane mirroring". It is
+  outside the LAYOUT mirroring; `TabBarWidget` carries no `LtrPane` and is
+  mirrored like any other chrome. The comment conflated the two mechanisms —
+  the same conflation that let the column map go unguarded.
+- `LtrPane` itself listed "search-results snippets" among code panes. The results
+  and debug panels carry translated headings too, and those render in logical
+  order beside mirrored chrome. Decided with the user to leave the behaviour and
+  correct the prose, in the interface docblock and in three user-facing docs
+  that claimed Hebrew "runs fully right-to-left".

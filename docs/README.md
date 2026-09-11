@@ -22,8 +22,17 @@ non-blocking event loop.
 ## Language support
 
 The UI is translated into English, French, German, Spanish, Italian,
-Japanese and Hebrew — Hebrew runs fully right-to-left with a mirrored
-layout. Switch under **Settings → General → Language**.
+Japanese and Hebrew. Hebrew mirrors the layout — the file tree moves to
+the right — and reorders each pane's chrome right-to-left.
+
+Code stays left-to-right, which is the point: the editor, the git diff,
+the terminal, the search results and the debug panel are verbatim, as
+are the Find-in-Files and go-to-file dialogs, which carry paths and
+code. Those surfaces' own headings stay left-to-right with them.
+Hebrew *inside* a document is not reordered either — the editor shows
+it in logical order and leaves shaping to your terminal.
+
+Switch under **Settings → Interface → Language**.
 
 ## Contributing
 

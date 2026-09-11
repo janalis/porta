@@ -15,9 +15,19 @@ use Porta\Ui\Sgr;
  * Hebrew read right-to-left while paths, code and numbers stay left-to-right, and
  * right-anchors LTR content (trailing pad becomes leading pad) under an RTL base.
  *
- * Scope: no explicit embedding controls (LRE/RLE/PDF), Arabic shaping, or number
- * post-processing (W-rules) — European digits are reordered as left-to-right.
- * These cover the IDE's chrome; richer bidi is out of scope.
+ * Scope: W4 only of the W-rules — a single separator between two European
+ * numbers joins them, so a line:column indicator, a decimal and a thousands
+ * group survive. Absent: W1-W3 and W5-W7, explicit embedding controls
+ * (LRE/RLE/PDF), isolates (LRI/RLI/FSI/PDI), the bracket-pair algorithm (N0),
+ * Arabic shaping, and paragraph-level base detection (P2/P3 — the base is
+ * always passed in). These cover the IDE's chrome; richer bidi is out of scope.
+ *
+ * One consequence worth knowing rather than mistaking for a bug: `foo.php:42`
+ * renders as `42:foo.php` under an RTL base. The colon sits between Latin and a
+ * number, and UAX#9 has numbers act as right-to-left for neutral resolution
+ * (N1), so it takes the paragraph direction and swaps the two runs. That is
+ * what the standard prescribes; pinning such a reference left-to-right needs an
+ * isolate at the call site, not a change here.
  */
 final class Bidi
 {

@@ -117,8 +117,11 @@ the message id, so untranslated lookups fall back to English. XLIFF
 catalogs live in `translations/messages.<locale>.xlf`. RTL (Hebrew) mirrors
 the layout — reversed pane order — and `Ui/BidiTui` reorders each composed
 row **per pane** with a UAX#9 subset (`I18n/Bidi`), so the reorder never
-crosses a pane boundary; code panes (editor, diff, terminal, results) stay
-verbatim, and mouse clicks map visual→logical per pane before hit-testing.
+crosses a pane boundary; panes marked `Ui/LtrPane` (editor, diff, terminal,
+results, debug) stay verbatim, as do the Find-in-Files and picker regions,
+and mouse clicks map visual→logical per pane before hit-testing. The marker
+is whole-pane, so a verbatim pane's own translated headings stay
+left-to-right with its content — a known trade, not a clean fit.
 
 ## Plugins
 

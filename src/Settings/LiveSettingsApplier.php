@@ -116,8 +116,13 @@ final class LiveSettingsApplier
 
     /**
      * Move the editor tab strip. Left/right are visual, not writing-direction
-     * relative — the pane sits inside the editor area, outside the RTL pane
-     * mirroring, so the user's explicit choice stays literal.
+     * relative, so the user's explicit choice stays literal.
+     *
+     * Not because the strip escapes the reorder — it does not. TabBarWidget is
+     * a leaf without {@see \Porta\Ui\LtrPane}, so the segmenter gives it a
+     * mirrored run like any other chrome. What it sits outside is the LAYOUT
+     * mirroring, which reverses pane ORDER; the two are separate mechanisms and
+     * the comment here used to conflate them.
      */
     public function applyTabBarPosition(string $value): void
     {

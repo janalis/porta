@@ -80,8 +80,16 @@ final class WheelRouter
                 return;
             }
             if ($this->hit->contains($tabsRect, $mouse) && !$this->panes->tabBar()->position()->isSide()) {
-                // The strip renders mirrored under RTL, so the visual swipe
-                // direction flips to match the on-screen tab order.
+                // MEASURED 2026-09-11, and the comment this replaces was
+                // wrong: a strip of LATIN tab names is not mirrored under RTL,
+                // only right-anchored — "‹ a.php │ b.php ›" keeps its order and
+                // moves to the right of the pane. Tab order reverses only when
+                // the NAMES are Hebrew, which for a code editor is the rare
+                // case. So this flip matches the on-screen order for Hebrew
+                // filenames and opposes it for Latin ones, and one boolean
+                // cannot be right for both. Left as it stands because
+                // IdeTabScrollTest pins the current choice and changing it is a
+                // behaviour decision, not a comment fix.
                 $this->panes->tabBar()->scrollBy($this->bidi->isMirrored() ? -$mouse->wheelHDelta : $mouse->wheelHDelta);
                 $this->tui->requestRender();
 

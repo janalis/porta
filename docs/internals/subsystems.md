@@ -554,5 +554,13 @@ RTL mirrors the layout (reversed pane order) and, via `Ui/BidiTui`, reorders
 each composed row **per pane**: `Ui/PaneSegmenter` splits the row into each
 pane's column run, and `I18n/PaneReorder` flips each run within its own span via
 `I18n/Bidi`, a UAX#9 subset. The reorder never crosses a pane boundary. Code
-panes marked `Ui/LtrPane` stay verbatim. Mouse clicks map visual → logical per
-pane before hit-testing.
+panes marked `Ui/LtrPane` stay verbatim, and the set is pinned by a test — the
+marker is empty, so nothing else would notice a pane leaving it. Mouse clicks
+map visual → logical per pane before hit-testing.
+
+Two limits worth knowing. The marker is whole-pane, so a verbatim pane's own
+translated headings render left-to-right beside mirrored chrome; the results and
+debug panels carry both. And `Bidi` implements W4 but not the rest of the
+W-rules, no isolates and no bracket-pair algorithm, so `foo.php:42` renders
+`42:foo.php` — which is what UAX#9 prescribes, the colon taking the paragraph
+direction between Latin and a number.

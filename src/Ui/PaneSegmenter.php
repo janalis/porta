@@ -82,7 +82,7 @@ final class PaneSegmenter
      * columns are coalesced into runs. Uncovered gaps become verbatim runs.
      *
      * @param list<array{rect: WidgetRect, ltr: bool}> $leaves  paint order
-     * @param list<DropdownRegion>                     $regions topmost, always RTL
+     * @param list<DropdownRegion>                     $regions topmost; each says whether it is verbatim
      *
      * @return list<array{start: int, width: int, ltr: bool}>
      */
