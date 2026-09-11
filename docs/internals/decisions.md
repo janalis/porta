@@ -6529,3 +6529,34 @@ them in the position where the loop's control flow mattered.
 
 **Five real defects off the census now**, and not one needed a new test file.
 Four needed an existing fixture to stop having all its elements alike.
+
+## The census has false positives, and tab names had the bug (2026-09-11)
+
+Working further down the loop-skip census turned up something about the census
+itself, which matters more than the entry it came from.
+
+**Two of its 84 entries were already guarded.** `MenuModel`'s adoptable-id skip
+and its separator skip are both reported as escaped, and both are killed outright
+by `MenuModelTest` — which is in the Unit suite the run was judged against.
+Infection runs only the tests its coverage map attributes to the mutated line, so
+an imprecise attribution reports a mutant as escaped that the suite does in fact
+catch.
+
+So the census is a list of CANDIDATES, not of gaps. Four others spot-checked by
+hand (`PaneSegmenter`, `TabBarWidget`, `LineDecorator`, `TabListProvider`) all
+genuinely survive, so the false-positive rate is low — but every entry still has
+to be mutated by hand before a test is written for it. Writing one for
+`MenuModel` would have added a test that proved nothing and claimed a fix that
+had happened years ago.
+
+**Fixed from the confirmed ones:** `TabListProvider` resolves tab-name
+collisions by walking titles and skipping any held by a single buffer. As a
+`break` that stops at the first UNIQUE name, leaving every collision behind it
+ambiguous. The existing test opens the colliding pair first and the unique name
+last, where skipping and stopping are the same — reordered, it fails. Open a
+file with a unique name before two that share one, which is most sessions, and
+the two would have stayed indistinguishable.
+
+*Still confirmed and unfixed on the census:* `PaneSegmenter:99/108`,
+`TabBarWidget:189/209/287`, `LineDecorator:104/130`. Named so the next pass
+starts from a verified list rather than the raw one.

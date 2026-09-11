@@ -50,13 +50,18 @@ final class TabListProviderTest extends TestCase
     public function testTabsSharingABasenameSayWhichOneTheyAre(): void
     {
         $buffers = new BufferManager();
+        // The UNIQUE name is opened first on purpose. Collisions are walked in
+        // the order their titles were first seen, and a walk that stopped at
+        // the first title with nothing to resolve — rather than skipping it —
+        // left every collision behind it ambiguous. With the pair opened first
+        // the two behave identically, which is how that went unnoticed.
+        $buffers->open('/p/src/Ide.php', '<?php');
         $buffers->open('/p/plugins/git/plugin.php', '<?php');
         $buffers->open('/p/plugins/symfony-lsp/plugin.php', '<?php');
-        $buffers->open('/p/src/Ide.php', '<?php');
 
         $names = array_column(new TabListProvider($buffers, new Translator('en'))->tabs(), 'name');
 
-        $this->assertSame(['plugin.php (git)', 'plugin.php (symfony-lsp)', 'Ide.php'], $names, 'and a name nothing collides with is left alone');
+        $this->assertSame(['Ide.php', 'plugin.php (git)', 'plugin.php (symfony-lsp)'], $names, 'and a name nothing collides with is left alone');
     }
 
     /**
