@@ -7662,3 +7662,73 @@ dropped, and are recorded so they are not re-opened for free:
   and 4 tab-bar positions at the reporter's exact configuration.
 - **The differential write path is out**, graded byte-for-byte by
   `TerminalReplay` over six incremental frames.
+
+## The Hebrew settings screen: the reordering is CoreText, in the terminal (2026-09-12)
+
+Porta's output is correct. The second reordering pass is cmux's renderer.
+
+### The evidence, both halves measured in one run
+
+Porta was driven in a REAL pty from the harness — `script` around `bin/porta`,
+`stty cols 226 rows 67`, the settings view opened by binding `ide_settings` to
+`alt+s` through `.porta.json`'s keymap (ctrl+, is not encodable without the
+kitty protocol). `PORTA_FRAME_DUMP` captured what Porta composed and `script`
+captured the bytes:
+
+- composed frame: `... תורדגה 5 — יללכ │ יללכ` — title left of the separator,
+  nav entry right. Correct.
+- replaying the captured bytes: the same, and **wraps=0** (the kitty splice fix
+  holding).
+
+So Porta composes correctly and writes correctly, in the real terminal path,
+with the real `NonBlockingTerminal` and the real negotiation.
+
+### What the terminal does with it
+
+cmux links CoreText and imports `_CTTypesetterCreateWithAttributedStringAndOptions`,
+`_CTTypesetterCreateLine`, `_CTLineGetGlyphRuns`, `_CTRunGetStatus`. A
+CTTypesetter applies UAX#9 unconditionally, and `CTRunGetStatus` exists to report
+`kCTRunStatusRightToLeft`. So each row is re-ordered after Porta has already
+ordered it visually.
+
+The model predicts the reported screen exactly, which is what makes it a
+diagnosis rather than another plausible mechanism:
+
+- The paragraph direction resolves LTR — the first strong character in these rows
+  is Latin (`English`, `.porta.json`).
+- The Hebrew label, the neutral run of spaces, the `│`, and the Hebrew nav entry
+  form ONE contiguous level-1 run (N1 gives the neutrals between two R runs the
+  R level). L2 reverses that run as a block: the two segments swap and each comes
+  out in logical order.
+- Everything outside it — `< dark >`, `והפעלה זו` — is at a different level and
+  does not move. Reported and observed.
+- A row whose nav entry is LATIN has only the label as an R run, so it reverses
+  IN PLACE: same position, no swap. Which is why `chroma`/`git` rows were always
+  the ones that looked right.
+
+Earlier rounds ruled terminal bidi out twice, both times wrongly: a `strings`
+grep for "bidi" (imported symbols are not string literals — use `nm -u`), and a
+naive whole-line-reversal model, which predicts the whole row moving and is NOT
+what UAX#9 does. Ghostty's own engine genuinely has no bidi; the reordering
+enters through cmux's CoreText shaping, not through Ghostty.
+
+### Why Porta cannot simply defeat it
+
+The remedy for a TUI is to wrap emitted text in `U+202D … U+202C` (LRO/PDF) so
+every character is strong L and nothing reorders. Porta cannot, as things stand:
+`AnsiUtils::visibleWidth()` counts those format characters as ONE COLUMN EACH
+(measured: LRO, PDF, LRM, LRI and PDI all report 1). A full-width row plus a pair
+would measure `width + 2`, and `ScreenWriter::differentialRender()` throws on a
+row wider than the terminal. This is also why `Bidi::SPENT` replaces the marks
+Porta inserts with spaces before they ever reach the tty.
+
+Spending an existing space on a mark instead of a space would break the run
+merge at the pane boundary and keep Porta's accounting intact — but only on
+terminals that give a format character zero cells; on one that gives it a cell,
+the row is right, and on one that gives it none, the row is a column short.
+Untestable from here, because the failure is in rendering, which no capture
+shows. Not built on a guess.
+
+**Open**, and deliberately so: the defect is in the terminal's shaping, Porta's
+frame and bytes are both correct, and the workaround is a trade nobody has
+measured.
