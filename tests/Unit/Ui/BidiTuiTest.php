@@ -415,4 +415,21 @@ final class BidiTuiTest extends TestCase
 
         $this->assertSame(0, $calls);
     }
+
+    public function testTerminalBidiModeLeavesTheRowLogical(): void
+    {
+        // A terminal that runs UAX#9 itself would reorder a pre-mirrored row a
+        // second time. In that mode Porta hands the job back and only marks the
+        // pane edges, so what reaches the tty is the LOGICAL word.
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $this->enableRtl($tui);
+        $tui->setTerminalBidi(true);
+        $tui->requestRender();
+        $tui->processRender();
+
+        $out = $terminal->getOutput();
+        self::assertStringContainsString(self::SHALOM, $out, 'the logical order is written');
+        self::assertStringNotContainsString(self::SHALOM_VISUAL, $out, 'Porta did not mirror it');
+    }
 }

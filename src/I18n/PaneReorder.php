@@ -70,6 +70,52 @@ final class PaneReorder
     }
 
     /**
+     * Leave the row in LOGICAL order, but stop the panes merging into one
+     * bidi run — for a terminal that runs the bidi algorithm itself.
+     *
+     * Most terminals draw the cells they are given and nothing else, so Porta
+     * reorders and {@see reorderRow()} is the path. Some do not: cmux shapes
+     * each row through CoreText (`CTTypesetterCreateWithAttributedStringAndOptions`,
+     * `CTRunGetStatus`), and a CTTypesetter applies UAX#9 unconditionally. On
+     * one of those, a pre-mirrored row is reordered a SECOND time and comes out
+     * wrong. Reordering it here first and marking the boundaries would only
+     * trade a swap for backwards text: the terminal reverses each run in place,
+     * so visual order becomes logical order. What such a terminal needs is the
+     * logical row, which it then mirrors correctly by itself.
+     *
+     * What it cannot get right unaided is WHERE to stop. A row is
+     * `[label][spaces][│][spaces][nav]`; N1 gives the neutrals between two
+     * right-to-left runs the right-to-left level, so label, separator and nav
+     * become ONE run and L2 reverses the lot as a block — the two panes swap.
+     * A strong left-to-right character at each pane edge ends the run there, so
+     * each pane mirrors within its own span.
+     *
+     * The mark SPENDS a padding space rather than being inserted, so the row's
+     * width never changes and the over-wide guard in
+     * {@see \Symfony\Component\Tui\Render\ScreenWriter} cannot fire. A run
+     * whose last column is not padding is left alone: there is nothing to spend.
+     *
+     * @param list<array{start: int, width: int, ltr: bool}> $runs
+     */
+    public function markBoundaries(string $line, array $runs): string
+    {
+        $width = AnsiUtils::visibleWidth($line);
+        foreach ($runs as $run) {
+            $end = $run['start'] + $run['width'];
+            if ($end >= $width) {
+                continue; // the last run: nothing to its right to merge with
+            }
+            $last = $end - 1;
+            if (' ' !== AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($line, $last, length: 1, strict: true))) {
+                continue; // no padding to spend, so the row keeps its width
+            }
+            $line = AnsiUtils::sliceByColumn($line, startCol: 0, length: $last, strict: true).Sgr::RESET.Bidi::LTR_MARK.AnsiUtils::sliceByColumn($line, $end, $width - $end, strict: true).Sgr::RESET;
+        }
+
+        return $line;
+    }
+
+    /**
      * Put a floating surface back over the reordered row, at its own columns.
      *
      * The panes are reordered over their FULL spans first, exactly as if

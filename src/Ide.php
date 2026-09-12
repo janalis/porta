@@ -267,6 +267,13 @@ final class Ide
         // A support hatch: PORTA_FRAME_DUMP=<path> writes the frame Porta
         // COMPOSED next to whatever the terminal actually drew, so a screen
         // nobody can explain stops being argued from screenshots.
+        // Some terminals run the bidi algorithm themselves (cmux shapes rows
+        // through CoreText, which applies UAX#9 unconditionally) and reorder a
+        // row Porta has already ordered. PORTA_TERMINAL_BIDI=1 hands the job
+        // back to them and only marks the pane edges.
+        if ('' !== (string) getenv('PORTA_TERMINAL_BIDI')) {
+            $this->bidiTui->setTerminalBidi(true);
+        }
         $dump = getenv('PORTA_FRAME_DUMP');
         if (\is_string($dump) && '' !== $dump) {
             $this->bidiTui->setFrameSink(static function (array $lines) use ($dump): void {

@@ -7732,3 +7732,58 @@ shows. Not built on a guess.
 **Open**, and deliberately so: the defect is in the terminal's shaping, Porta's
 frame and bytes are both correct, and the workaround is a trade nobody has
 measured.
+
+## PORTA_TERMINAL_BIDI: hand the reorder back to a terminal that does it anyway (2026-09-12)
+
+The diagnosis from the previous entry stands: cmux shapes rows through CoreText,
+which applies UAX#9, so a row Porta has already ordered visually is ordered a
+SECOND time. Porta's frame and bytes are both correct; the screen is not.
+
+### Why the obvious fix is the wrong one
+
+The first instinct was to keep mirroring and break the run merge with a mark at
+the pane edge. That trades one bug for another. The terminal reverses each
+right-to-left run IN PLACE, so a pre-mirrored run comes back as LOGICAL order:
+the panes would stop swapping and the Hebrew would read backwards instead.
+
+What such a terminal needs is the LOGICAL row — it does the mirroring itself,
+and does it correctly. What it cannot get right unaided is where to STOP. A row
+is `[label][spaces][│][spaces][nav]`, and N1 gives the neutrals between two
+right-to-left runs the right-to-left level, so label, separator and nav resolve
+to ONE run and L2 reverses the block: the panes swap. A strong left-to-right
+character at each pane edge ends the run there, and each pane then mirrors
+within its own span.
+
+### The shape
+
+`PORTA_TERMINAL_BIDI=1` sets `BidiTui::setTerminalBidi(true)`, and the frame
+path calls `PaneReorder::markBoundaries()` instead of `reorderRow()`: the row is
+left logical and each inner pane edge SPENDS one padding space on a `U+200E`.
+
+Spending rather than inserting is the whole trick. `AnsiUtils::visibleWidth()`
+counts a directional mark as one column — the same as the space it replaces — so
+the row's width is unchanged and the over-wide guard in `ScreenWriter` cannot
+fire. That guard is why wrapping rows in `LRO … PDF` was never available: a pair
+adds two columns to a row already exactly as wide as its pane. A pane whose last
+column is not padding is left alone rather than grown.
+
+Verified in a REAL pty (`script`, `stty cols 226 rows 67`, settings opened via a
+keymap binding, `PORTA_FRAME_DUMP` capturing the composition): the frame comes
+out logical (`כללי — 5 הגדרות`), the mark lands at column 206 immediately before
+the separator at 207, and all 65 written rows still measure exactly 226.
+
+### What is NOT claimed
+
+That it fixes the reported screen. The failure is in RENDERING, which no capture
+can show, so this is the first thing in the whole investigation that cannot be
+graded from here — only on the reporter's display. It ships as an env hatch and
+not as a setting for exactly that reason: if it works it can be promoted, and if
+it does not, nothing in the default path moved.
+
+Five mutants survive in `markBoundaries()` and are equivalent rather than
+untested: `continue`→`break` on either guard (runs tile the row in order, so the
+width guard only ever fires on the last one), `strict: true` on a probe whose
+result is stripped, and `$width - $end`→`$width + $end` where `sliceByColumn()`
+clamps. The behavioural ones — the last run keeping its padding, an unmarkable
+pane not abandoning the walk, the style being closed before the mark, the row
+closing its own state — are each pinned by a case.

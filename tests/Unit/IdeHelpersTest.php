@@ -139,6 +139,19 @@ final class IdeHelpersTest extends TestCase
         }
     }
 
+    public function testTerminalBidiIsWiredFromTheEnvironment(): void
+    {
+        putenv('PORTA_TERMINAL_BIDI=1');
+        try {
+            $ide = new Ide($this->project->dir, null, new VirtualTerminal(columns: 40, rows: 6));
+            self::assertTrue(Probe::get(Services::resolve($ide, Tui::class), 'terminalBidi'), 'the boot read the hatch');
+        } finally {
+            putenv('PORTA_TERMINAL_BIDI');
+            Services::resolve($ide, ViewRegistry::class)->closeAll();
+            Services::resolve($ide, Notifier::class)->dismissAll();
+        }
+    }
+
     public function testThePerfCollectorIsWiredAsSinkAndInputListener(): void
     {
         $tui = Services::resolve($this->ide, Tui::class);

@@ -69,6 +69,9 @@ final class BidiTui extends Tui implements FrameHooks
     /** @var (\Closure(list<string>): void)|null handed every frame's final lines */
     private ?\Closure $frameSink = null;
 
+    /** The terminal reorders bidi text itself, so this one must not. */
+    private bool $terminalBidi = false;
+
     /** Minimum seconds between generated frames while pacing is wired (60fps). */
     public const float MIN_FRAME_INTERVAL = 1 / 60;
 
@@ -95,6 +98,28 @@ final class BidiTui extends Tui implements FrameHooks
      * @var array{requested: \ReflectionProperty, root: \ReflectionProperty, renderer: \ReflectionProperty, screenWriter: \ReflectionProperty}|null
      */
     private ?array $tuiPrivates = null;
+
+    /**
+     * Tell the frame path that the TERMINAL runs the bidi algorithm itself.
+     *
+     * Then Porta must not reorder: the row would be reordered twice and come
+     * out wrong. It leaves the logical row and only marks the pane edges, so
+     * the terminal mirrors each pane within its own span instead of merging
+     * them into one run. See {@see PaneReorder::markBoundaries()}.
+     */
+    public function setTerminalBidi(bool $terminalBidi): void
+    {
+        $this->terminalBidi = $terminalBidi;
+    }
+
+    /**
+     * @param list<array{start: int, width: int, ltr: bool}> $runs
+     * @param list<array{start: int, width: int, ltr: bool}> $regions
+     */
+    private function arrange(PaneReorder $reorder, string $line, array $runs, array $regions): string
+    {
+        return $this->terminalBidi ? $reorder->markBoundaries($line, $runs) : $reorder->reorderRow($line, $runs, $regions);
+    }
 
     /**
      * Install (or clear, with null) a sink handed every frame's FINAL lines —
@@ -374,7 +399,7 @@ final class BidiTui extends Tui implements FrameHooks
             foreach ($lines as $row => $line) {
                 // Both maps are filled for the same 0..rows-1, so one guard
                 // covers both; a `?? []` on the regions could never fire.
-                $out[] = array_key_exists($row, $this->lastRuns) ? $reorder->reorderRow($line, $this->lastRuns[$row], $regions[$row]) : $line;
+                $out[] = array_key_exists($row, $this->lastRuns) ? $this->arrange($reorder, $line, $this->lastRuns[$row], $regions[$row]) : $line;
             }
             $lines = $out;
         }
