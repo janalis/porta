@@ -347,15 +347,13 @@ final class PaneReorderTest extends TestCase
         );
     }
 
-    public function testEachPaneIsWrappedInARightToLeftIsolate(): void
+    public function testEachPaneIsFrozenWithADirectionalOverride(): void
     {
-        // For a terminal that runs UAX#9 itself. Left to itself it resolves the
-        // row's direction from the first strong character and gets one of two
-        // things wrong: a Latin label makes the row left-to-right, so the Hebrew
-        // is merely reversed in place and the labels stay left-aligned; a Hebrew
-        // one makes it right-to-left and reorders runs across the WHOLE row, so
-        // the panes swap. An isolate settles the pane's own direction without
-        // letting it reorder anything outside itself.
+        // For a terminal that runs UAX#9 itself. Porta has already laid the row
+        // out, so the only requirement is that the terminal not lay it out
+        // again: an override makes every character inside strong left-to-right,
+        // and nothing reverses or reorders. An isolate was tried first and the
+        // reported menu bar showed its embedding level was not honoured.
         $reorder = new PaneReorder();
         $label = "\u{05E9}\u{05DC}\u{05D5}\u{05DD}";
         $line = ' '.$label.'  |  ab ';
@@ -365,12 +363,12 @@ final class PaneReorderTest extends TestCase
         $out = AnsiUtils::stripAnsiCodes($reorder->markBoundaries($line, $runs));
 
         $this->assertStringContainsString($label, $out, 'the text is left in logical order');
-        $this->assertSame(Bidi::RTL_ISOLATE, AnsiUtils::sliceByColumn($out, startCol: 0, length: 1), 'the pane opens an isolate');
-        $this->assertSame(Bidi::POP_ISOLATE, AnsiUtils::sliceByColumn($out, startCol: 6, length: 1), 'and closes it at its own edge');
+        $this->assertSame(Bidi::LTR_OVERRIDE, AnsiUtils::sliceByColumn($out, startCol: 0, length: 1), 'the pane opens an isolate');
+        $this->assertSame(Bidi::POP_DIRECTIONAL, AnsiUtils::sliceByColumn($out, startCol: 6, length: 1), 'and closes it at its own edge');
         $this->assertSame($width, AnsiUtils::visibleWidth($out), 'the row keeps its exact width');
     }
 
-    public function testTheIsolateSpendsPaddingRatherThanGrowingTheRow(): void
+    public function testTheOverrideSpendsPaddingRatherThanGrowingTheRow(): void
     {
         // Inserting would make the row wider than its pane, which is this
         // renderer's worst failure. The two cells are SPENT.
@@ -382,15 +380,15 @@ final class PaneReorderTest extends TestCase
 
         $this->assertSame(8, AnsiUtils::visibleWidth($out));
         $this->assertSame(
-            Bidi::RTL_ISOLATE.'ab'.Bidi::POP_ISOLATE.Bidi::RTL_ISOLATE.'cd'.Bidi::POP_ISOLATE,
+            Bidi::LTR_OVERRIDE.'ab'.Bidi::POP_DIRECTIONAL.Bidi::LTR_OVERRIDE.'cd'.Bidi::POP_DIRECTIONAL,
             $out,
             'each pane spends the padding at its own two ends',
         );
     }
 
-    public function testAPaneWithoutPaddingAtBothEndsIsLeftAlone(): void
+    public function testAPaneWithoutPaddingAtBothEndsIsLeftUnfrozen(): void
     {
-        // An isolate needs a cell at EACH end. Without both there is nothing to
+        // The pair needs a cell at EACH end. Without both there is nothing to
         // spend, and growing the row is not an option.
         $reorder = new PaneReorder();
         $line = 'abcd';
@@ -399,13 +397,13 @@ final class PaneReorderTest extends TestCase
         $out = $reorder->markBoundaries($line, $runs);
 
         $this->assertSame('abcd', AnsiUtils::stripAnsiCodes($out));
-        $this->assertStringNotContainsString(Bidi::RTL_ISOLATE, $out);
+        $this->assertStringNotContainsString(Bidi::LTR_OVERRIDE, $out);
     }
 
-    public function testAVerbatimPaneIsNeverIsolated(): void
+    public function testAVerbatimPaneIsNeverFrozen(): void
     {
-        // A code pane renders left-to-right on purpose; forcing it right-to-left
-        // would reverse the source.
+        // A code pane is already left-to-right and is never reordered, so it
+        // needs no freezing and must not lose two cells of padding to one.
         $reorder = new PaneReorder();
         $line = ' ab ';
         $runs = [['start' => 0, 'width' => 4, 'ltr' => true]];
@@ -415,7 +413,7 @@ final class PaneReorderTest extends TestCase
         $this->assertSame(' ab ', AnsiUtils::stripAnsiCodes($out));
     }
 
-    public function testAnUnisolatablePaneDoesNotStopALaterOne(): void
+    public function testAnUnfreezablePaneDoesNotStopALaterOne(): void
     {
         // The walk must SKIP a pane it cannot wrap, not abandon the row.
         $reorder = new PaneReorder();
@@ -427,7 +425,7 @@ final class PaneReorderTest extends TestCase
 
         $out = AnsiUtils::stripAnsiCodes($reorder->markBoundaries($line, $runs));
 
-        $this->assertSame('ab'.Bidi::RTL_ISOLATE.'cd'.Bidi::POP_ISOLATE, $out);
+        $this->assertSame('ab'.Bidi::LTR_OVERRIDE.'cd'.Bidi::POP_DIRECTIONAL, $out);
         $this->assertSame(6, AnsiUtils::visibleWidth($out), 'the row keeps its width');
     }
 
@@ -569,7 +567,7 @@ final class PaneReorderTest extends TestCase
 
         $this->assertStringNotContainsString(Bidi::LTR_MARK, $out);
         $this->assertStringNotContainsString(Bidi::RTL_MARK, $out);
-        $this->assertSame(Bidi::RTL_ISOLATE.'ab  cd'.Bidi::POP_ISOLATE, $out);
+        $this->assertSame(Bidi::LTR_OVERRIDE.'ab  cd'.Bidi::POP_DIRECTIONAL, $out);
         $this->assertSame(8, AnsiUtils::visibleWidth($out), 'and the row keeps its width');
     }
 }

@@ -7995,3 +7995,54 @@ counts them as a column each — so every row carrying one came up two columns
 short. They are now spent for spaces, exactly as `Bidi::serialize()` does on the
 other path. Confirmed against the real pty: zero stray marks, all 65 rows still
 226 columns.
+
+## Freeze the row instead of delegating to the terminal (2026-09-12)
+
+The isolate did not work, and the screen said so precisely. The menu bar came
+back as:
+
+```
+הרץ תוספים קוד ניווט עריכה קובץ │ Git │ עזרה תצוגה
+```
+
+Every Hebrew GROUP reversed correctly and no group moved. That is the signature
+of a terminal reversing right-to-left runs IN PLACE and never reordering them —
+so the isolate's embedding level was not honoured, whatever else it did with
+`U+2067`.
+
+Which settles the strategy: if the terminal will not reorder runs, Porta cannot
+delegate layout to it at all. Porta keeps the layout it already computes, and
+the row is FROZEN so the terminal cannot lay it out again.
+
+`U+202D … U+202C` — a left-to-right OVERRIDE — is the strongest statement in the
+algorithm: every character inside is treated as strong L, so nothing reverses
+and nothing reorders. Unlike an isolate it asks the terminal for no embedding
+arithmetic, only that it honour an override.
+
+Verified by running a UAX#9 reorder (overrides, strong types, N1/N2, L2) over
+the rows Porta actually emits, from the real-pty frame dump: all forty come back
+IDENTICAL. And the check was audited rather than trusted — 67 of 67 rows carry
+the override and zero rows containing Hebrew go unfrozen, so "unchanged" is not
+the vacuous result of a row having no Hebrew in it.
+
+### Three attempts, and why the failures were informative
+
+1. **Marks at the pane edge.** Ends a run; says nothing about layout. The row
+   stayed left-aligned.
+2. **Logical order, terminal mirrors.** Made the Hebrew readable — a real step —
+   and left the layout wrong in two different ways depending on whether the
+   row's first strong character was Latin or Hebrew. Both were reported, in that
+   order, which is how the rule became visible.
+3. **Right-to-left isolates.** Correct in the specification, not honoured here.
+
+Each was disproved by a screen, not by argument, and each narrowed what the
+terminal actually does. Only the third could have been predicted from the
+evidence available at the time, and it was not.
+
+### A fixture that hid the case
+
+The freeze SPENDS a padding cell at each end of a pane. `BidiTuiTest`'s shared
+widget renders a bare word with no padding and no layout to pad it — the one
+shape that cannot be frozen. Padding it broke a neighbouring click test, which
+is the usual fixture trap; the freeze test now builds its own full-width row
+instead. Every real pane has padding: measured, 67 of 67.

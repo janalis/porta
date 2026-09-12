@@ -52,6 +52,19 @@ final class Bidi
     public const string POP_ISOLATE = "\u{2069}";
 
     /**
+     * A left-to-right OVERRIDE and its pop.
+     *
+     * The strongest statement available: every character inside is treated as
+     * strong left-to-right, whatever it actually is, so nothing reorders and
+     * nothing reverses. For a pane Porta has ALREADY laid out visually that is
+     * the whole requirement — "draw these cells in this order" — and unlike an
+     * isolate it does not depend on the terminal implementing embedding levels
+     * correctly, only on it honouring an override at all.
+     */
+    public const string LTR_OVERRIDE = "\u{202D}";
+    public const string POP_DIRECTIONAL = "\u{202C}";
+
+    /**
      * Zero-width directional marks, replaced by a space once they have been
      * read. They measure one column and draw none, so leaving one in the output
      * shortens the rendered row by exactly that much — and the RTL width
@@ -64,6 +77,8 @@ final class Bidi
         self::RTL_MARK => true,
         self::RTL_ISOLATE => true,
         self::POP_ISOLATE => true,
+        self::LTR_OVERRIDE => true,
+        self::POP_DIRECTIONAL => true,
         "\u{061C}" => true,
     ];
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
+use Porta\I18n\Bidi;
 use Porta\I18n\PaneReorder;
 use Porta\Tests\Support\Probe;
 use Porta\Ui\BidiTui;
@@ -26,7 +27,7 @@ final class BidiTuiTest extends TestCase
 {
     use \Porta\Tests\Support\PumpsLoop;
 
-    private const string SHALOM = "\u{05E9}\u{05DC}\u{05D5}\u{05DD}";
+    public const string SHALOM = "\u{05E9}\u{05DC}\u{05D5}\u{05DD}";
     private const string SHALOM_VISUAL = "\u{05DD}\u{05D5}\u{05DC}\u{05E9}";
 
     private Renderer $renderer;
@@ -416,20 +417,36 @@ final class BidiTuiTest extends TestCase
         $this->assertSame(0, $calls);
     }
 
-    public function testTerminalBidiModeLeavesTheRowLogical(): void
+    public function testTerminalBidiModeFreezesTheMirroredRow(): void
     {
-        // A terminal that runs UAX#9 itself would reorder a pre-mirrored row a
-        // second time. In that mode Porta hands the job back and only marks the
-        // pane edges, so what reaches the tty is the LOGICAL word.
+        // A terminal that runs UAX#9 itself would reorder a row Porta has
+        // already ordered. Porta keeps the layout either way and adds a
+        // left-to-right override, which makes every character inside strong L
+        // so nothing reverses and nothing reorders.
+        //
+        // Its own widget, padded at BOTH ends: the freeze spends one cell at
+        // each end of a pane rather than growing the row, and the shared
+        // fixture is deliberately unpadded, which is the one shape that cannot
+        // be frozen. Every real pane has padding.
         $terminal = new VirtualTerminal(columns: 20, rows: 2);
-        $tui = $this->tuiWith($terminal);
+        $renderer = new Renderer(new StyleSheet());
+        $this->renderer = $renderer;
+        $tui = new BidiTui(terminal: $terminal, renderer: $renderer);
+        $tui->add(new class extends AbstractWidget {
+            public function render(RenderContext $context): array
+            {
+                // A FULL row: this bare rig has no layout to pad with, and a
+                // run reaching past the line's end has nothing to spend.
+                return [' '.BidiTuiTest::SHALOM.str_repeat(' ', times: 15)];
+            }
+        });
         $this->enableRtl($tui);
         $tui->setTerminalBidi(true);
         $tui->requestRender();
         $tui->processRender();
 
         $out = $terminal->getOutput();
-        self::assertStringContainsString(self::SHALOM, $out, 'the logical order is written');
-        self::assertStringNotContainsString(self::SHALOM_VISUAL, $out, 'Porta did not mirror it');
+        self::assertStringContainsString(self::SHALOM_VISUAL, $out, 'Porta still laid the row out');
+        self::assertStringContainsString(Bidi::LTR_OVERRIDE, $out, 'and told the terminal not to');
     }
 }

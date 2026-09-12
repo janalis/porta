@@ -121,7 +121,13 @@ final class BidiTui extends Tui implements FrameHooks
      */
     private function arrange(PaneReorder $reorder, string $line, array $runs, array $regions): string
     {
-        return $this->terminalBidi ? $reorder->markBoundaries($line, $runs) : $reorder->reorderRow($line, $runs, $regions);
+        $row = $reorder->reorderRow($line, $runs, $regions);
+
+        // Porta lays the row out either way. On a terminal that runs the bidi
+        // algorithm itself the row then has to be FROZEN, or it is reordered a
+        // second time -- measured: each Hebrew run reversed in place while the
+        // runs never move, so a menu bar's items came out in the wrong order.
+        return $this->terminalBidi ? $reorder->markBoundaries($row, $runs) : $row;
     }
 
     /**

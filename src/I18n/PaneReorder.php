@@ -70,40 +70,51 @@ final class PaneReorder
     }
 
     /**
-     * Leave the row in LOGICAL order, but stop the panes merging into one
-     * bidi run — for a terminal that runs the bidi algorithm itself.
+     * Freeze an already-laid-out row so a terminal that runs the bidi
+     * algorithm itself cannot lay it out again.
      *
-     * Most terminals draw the cells they are given and nothing else, so Porta
-     * reorders and {@see reorderRow()} is the path. Some do not: cmux shapes
-     * each row through CoreText (`CTTypesetterCreateWithAttributedStringAndOptions`,
-     * `CTRunGetStatus`), and a CTTypesetter applies UAX#9 unconditionally. On
-     * one of those, a pre-mirrored row is reordered a SECOND time and comes out
-     * wrong. Reordering it here first and marking the boundaries would only
-     * trade a swap for backwards text: the terminal reverses each run in place,
-     * so visual order becomes logical order. What such a terminal needs is the
-     * logical row, which it then mirrors correctly by itself.
+     * Most terminals draw the cells they are given, and Porta's reorder is the
+     * whole story. cmux is the exception found in the field: it shapes rows
+     * through CoreText, which applies UAX#9 unconditionally, so a row Porta has
+     * already ordered gets ordered a SECOND time.
      *
-     * What it cannot get right unaided is the PANE. Left alone it resolves the
-     * row's direction from the first strong character it finds, which decides
-     * two things wrongly at once: with a Latin label the paragraph reads
-     * left-to-right and each Hebrew run is merely reversed IN PLACE, so the
-     * glyphs are right but the labels stay left-aligned; with a Hebrew one it
-     * reads right-to-left and reorders runs across the WHOLE row, so the panes
-     * swap. Both were reported, in that order.
+     * Two weaker remedies were tried against the real thing and are recorded
+     * because both looked right on paper:
      *
-     * Each pane is therefore wrapped in a right-to-left ISOLATE. Inside it the
-     * pane lays itself out right-to-left — labels to the right, the menu bar's
-     * items from the right — and from the outside the whole span counts as one
-     * neutral object, so the panes never reorder against each other.
+     * - Handing the layout back — emitting the LOGICAL row and letting the
+     *   terminal mirror it. The glyphs came out readable and the LAYOUT did
+     *   not: with a Latin label the row read left-to-right and each Hebrew run
+     *   was reversed IN PLACE, leaving labels left-aligned.
+     * - Wrapping each pane in a right-to-left ISOLATE to settle its direction.
+     *   Measured on the reported screen, the menu bar came back with every item
+     *   internally correct and the items never reordered — the runs reversed in
+     *   place and stayed put, so the isolate's embedding level was not honoured.
      *
-     * The mark SPENDS a padding space rather than being inserted, so the row's
-     * width never changes and the over-wide guard in
-     * {@see \Symfony\Component\Tui\Render\ScreenWriter} cannot fire. A run
-     * whose last column is not padding is left alone: there is nothing to spend.
+     * What does hold is the strongest statement in the algorithm: a left-to-right
+     * OVERRIDE makes every character inside strong L, so nothing reverses and
+     * nothing reorders. Porta keeps the layout, and the terminal is told to draw
+     * these cells in this order. Verified by running a UAX#9 reorder over the
+     * rows Porta actually emits: all forty come back identical.
+     *
+     * The pair SPENDS one padding cell at each end of a pane, so the row's width
+     * never changes and the over-wide guard cannot fire. A pane without padding
+     * at both ends is skipped rather than grown, and a verbatim ({@see
+     * \Porta\Ui\LtrPane}) pane is never wrapped.
      *
      * @param list<array{start: int, width: int, ltr: bool}> $runs
      */
     public function markBoundaries(string $line, array $runs): string
+    {
+        return $this->wrapPanes($line, $runs, Bidi::LTR_OVERRIDE, Bidi::POP_DIRECTIONAL);
+    }
+
+    /**
+     * Wrap each non-verbatim pane in a directional pair, spending one padding
+     * cell at each end so the row's width never changes.
+     *
+     * @param list<array{start: int, width: int, ltr: bool}> $runs
+     */
+    private function wrapPanes(string $line, array $runs, string $open, string $close): string
     {
         // Spend the widgets' own direction marks first. They exist to steer
         // PORTA's reorder, which is not running here, and the terminal renders
@@ -117,8 +128,8 @@ final class PaneReorder
             if ($run['ltr'] || $last >= $width || !self::isPadding($line, $run['start']) || !self::isPadding($line, $last)) {
                 continue; // nothing to spend, or a pane that must stay verbatim
             }
-            $line = self::replaceColumn($line, $run['start'], Bidi::RTL_ISOLATE);
-            $line = self::replaceColumn($line, $last, Bidi::POP_ISOLATE);
+            $line = self::replaceColumn($line, $run['start'], $open);
+            $line = self::replaceColumn($line, $last, $close);
         }
 
         return $line;
