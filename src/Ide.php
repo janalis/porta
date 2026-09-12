@@ -43,6 +43,7 @@ use Porta\Support\PerfCollector;
 use Porta\Support\RevoltScheduler;
 use Porta\Ui\BidiTui;
 use Porta\Ui\NonBlockingTerminal;
+use Porta\Ui\TerminalBidi;
 use Porta\Ui\TerminalRestorer;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
@@ -267,11 +268,10 @@ final class Ide
         // A support hatch: PORTA_FRAME_DUMP=<path> writes the frame Porta
         // COMPOSED next to whatever the terminal actually drew, so a screen
         // nobody can explain stops being argued from screenshots.
-        // Some terminals run the bidi algorithm themselves (cmux shapes rows
-        // through CoreText, which applies UAX#9 unconditionally) and reorder a
-        // row Porta has already ordered. PORTA_TERMINAL_BIDI=1 hands the job
-        // back to them and only marks the pane edges.
-        if ('' !== (string) getenv('PORTA_TERMINAL_BIDI')) {
+        // A terminal that runs the bidi algorithm itself would reorder a row
+        // Porta has already ordered. {@see TerminalBidi} says which, and why
+        // the test is by name rather than by probe.
+        if (TerminalBidi::isApplied(getenv())) {
             $this->bidiTui->setTerminalBidi(true);
         }
         $dump = getenv('PORTA_FRAME_DUMP');

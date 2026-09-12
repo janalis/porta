@@ -7898,3 +7898,38 @@ extent; it is a shape change, not a tweak, and it has not been made here.
 
 `MenuOverlayController` gained a `Translator` (defaulted, so its single direct
 construction site in the tests is untouched).
+
+## cmux is detected by name, and the reorder handed back to it (2026-09-12)
+
+The evidence that settled the whole investigation came from a screenshot of the
+Highlighting section, and it is a detail no earlier one showed: on the SELECTED
+row, the blue background sat in the nav column while the glyphs drawn on it were
+the form's label. A terminal paints backgrounds from its cell grid and then
+shapes the text as a run, so only the text moves. Porta cannot produce that — it
+composes background and glyph into the same cells. The reorder is the terminal's.
+
+The rest of that screen is the rule stated plainly:
+
+| rows | the form's label | result |
+| --- | --- | --- |
+| 0-2 | `שמירת שינויים`, `מדגיש ברירת מחדל` — Hebrew | swapped with the nav entry |
+| 3+ | `elixir`, `go`, `ruby`, `rust`, `zig` — Latin | correct |
+
+A Latin label is a left-to-right run, so N1 has nothing to give the separator's
+neutrals and L2 has nothing to merge across it. Exactly what UAX#9 prescribes,
+and exactly what was on screen.
+
+`TerminalBidi::isApplied()` now answers the question, and `Ide` switches
+`BidiTui` into the logical-plus-boundary-marks mode when it says yes.
+
+Detection is BY NAME and narrow on purpose. Ghostty's own engine has no bidi, so
+keying off `TERM_PROGRAM=ghostty` would disable Porta's reorder for everyone
+using Ghostty directly and leave their Hebrew backwards; cmux is identified by
+its own `CMUX_BUNDLE_ID`. `PORTA_TERMINAL_BIDI` overrides in BOTH directions, so
+a wrong guess is always recoverable, and an empty value defers to detection
+rather than reading as "off" — `getenv()` returns `''` for a variable that is set
+but empty, and that must not strand a cmux user.
+
+Verified end to end in a real pty with nothing set: the mode came on by itself,
+the frame is logical (`כללי — 5 הגדרות`), and the boundary mark is at column 206
+against a separator at 207.
