@@ -391,6 +391,33 @@ final class FileTreeWidgetTest extends TestCase
         $this->assertSame('sub', $tree->selectedNode()?->name);
     }
 
+    public function testRefreshIfChangedSeesAnEntryAddedByANOTHERProcess(): void
+    {
+        // The tree trusts an unchanged directory mtime older than the grace
+        // window and skips the scandir. PHP caches stat results per path for
+        // the life of the process and clears them only for writes IT performs,
+        // so after the grace window an mtime bumped by ANOTHER process still
+        // reads as the cached one — and the directory is trusted forever.
+        //
+        // The test beside this one writes through TempProject, which is
+        // in-process and clears the cache as a side effect, which is why this
+        // went unnoticed. Here the writer is a separate process: another tool,
+        // a git checkout, a formatter.
+        $project = new TempProject(['a.php' => '']);
+        $tree = new FileTreeWidget($project->dir);
+        $tree->setFocused(true);
+        $tree->render(new RenderContext(30, 10));
+        $this->assertFalse($tree->refreshIfChanged(), 'nothing changed yet');
+
+        // Past the grace window, so the mtime shortcut is the path under test.
+        sleep(3);
+        $proc = proc_open(['/bin/sh', '-c', 'printf "" > '.escapeshellarg($project->dir.'/c.php')], [], $pipes);
+        \assert(\is_resource($proc), description: 'the external writer started');
+        proc_close($proc);
+
+        $this->assertTrue($tree->refreshIfChanged(), 'an entry added by another process is never seen');
+    }
+
     public function testRefreshIfChangedDetectsAddedAndRemovedEntries(): void
     {
         $project = new TempProject(['sub/b.php' => '', 'a.php' => '']);

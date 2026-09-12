@@ -77,9 +77,30 @@ final class Buffer
         return $this->document->isDirty();
     }
 
-    /** The file's on-disk fingerprint right now, or null when it is not a file. */
+    /**
+     * The file's on-disk fingerprint right now, or null when it is not a file.
+     *
+     * The cache is cleared first, for this path only. PHP caches stat results
+     * for the life of the process and invalidates them only for writes IT
+     * performs — so without this the stamp answers with whatever it saw the
+     * first time and an edit made by ANOTHER process is never noticed at all.
+     * That is the case the stamp exists for: another editor, a formatter, a
+     * branch switch.
+     *
+     * It hid behind the tests for as long as it existed, because they all write
+     * through `TempProject::write()`, which is in-process and clears the cache
+     * as a side effect. Measured with a separate writer: three seconds of
+     * polling, no detection.
+     *
+     * The three calls below stay three calls: with the entry warm, PHP answers
+     * the second and third from cache, and replacing them with one `stat()`
+     * measured 3x SLOWER (its array construction costs more than the cache
+     * hits it saves).
+     */
     public function diskStampNow(): ?string
     {
+        clearstatcache(clear_realpath_cache: true, filename: $this->path);
+
         return is_file($this->path) ? (int) filemtime($this->path).':'.(int) filesize($this->path) : null;
     }
 

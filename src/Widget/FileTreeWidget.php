@@ -894,6 +894,13 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     private function dirChangedSince(string $dir, int $freshBefore): bool
     {
         $scan = $this->scannedSigs[$dir];
+        // Clear the cache for this path first. PHP caches stat results for the
+        // life of the process and invalidates them only for writes IT performs,
+        // so an mtime bumped by ANOTHER process still reads as the cached one —
+        // and since an unchanged mtime past the grace window is trusted without
+        // a scandir, the directory would then be trusted forever. Measured: a
+        // file created by a separate process was never seen.
+        clearstatcache(clear_realpath_cache: true, filename: $dir);
         // Read the mtime BEFORE the signature it vouches for: a change
         // landing after this read bumps the mtime again → caught next tick.
         $mtime = is_dir($dir) ? (int) filemtime($dir) : -1;

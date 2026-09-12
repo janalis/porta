@@ -8260,3 +8260,55 @@ and neither points anywhere:
   `DiagnosticLog::append()`. A twelve-second `stat` on a local SSD is not
   filesystem latency, it is a process that was not scheduled. Attributed to
   contention rather than turned into a fix — see [[e2e-flake-under-machine-load]].
+
+## External file edits were never detected (2026-09-12)
+
+Found by following `.porta/freeze.log` rather than by looking for it. The stall
+backtraces all land on `is_file()` in `Buffer::diskStampNow()` and `filemtime()`
+in `FileTreeWidget::dirChangedSince()` — which turned out not to be the defect
+(see below), but reading that code closely turned up a worse one.
+
+**PHP caches stat results per path for the life of the process, and clears them
+only for writes IT performs.** Neither poll cleared the cache, so:
+
+- a buffer's disk stamp answered with whatever it saw the first time, and
+- the tree, which trusts an unchanged directory mtime older than its two-second
+  grace window without a `scandir`, trusted every directory forever.
+
+Measured before fixing, with a separate writer process: three seconds of polling
+and no detection, on both paths. An edit by another editor, a formatter run, a
+`git checkout` — none of it was seen.
+
+### Why the suite never caught it
+
+Every existing test writes through `TempProject::write()` →
+`Filesystem::dumpFile()`, which is IN-PROCESS and clears the cache as a side
+effect. The feature therefore worked perfectly in tests and not at all in life.
+[[porta-fixtures-overstate]] again, in a new shape: this time the fixture was not
+a mock but the WRITE ITSELF.
+
+Both new tests drive an external writer through `proc_open()`, which measurably
+leaves the cache intact. Removing either `clearstatcache()` fails them.
+
+### A benchmark that stopped a regression
+
+`diskStampNow()` makes three calls — `is_file`, `filemtime`, `filesize` — and
+collapsing them into one `stat()` looked like an obvious saving. Measured, A/B/A/B:
+
+| | 3 calls | one `stat()` |
+| --- | --- | --- |
+| cache cleared | 115.7 / 116.3ms | 121.0 / 120.8ms |
+| cache warm | **2.6ms** | 8.4ms |
+
+The second and third calls are cache hits; `stat()`'s array construction costs
+more than they do. Three calls stay three calls, and the reason is now in the
+docblock so it is not "optimised" again.
+
+### The stalls themselves are not a defect
+
+121 loop stalls, but 120 inside one hour — 2026-09-11 15:00, when `composer
+verify` runs had this machine at load 32 — and the traces show a `stat` on the
+event loop, which is a process that was not scheduled rather than a slow disk.
+The slicing added earlier is working: the traces come through
+`pollFilesystemSlice()`, which bounds how MANY stats a tick makes, and cannot
+bound how long one takes. Attributed to contention.
