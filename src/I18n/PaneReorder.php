@@ -133,10 +133,26 @@ final class PaneReorder
      */
     private function paintRegion(string $row, string $line, array $region): string
     {
-        $end = $region['start'] + $region['width'];
-        $before = AnsiUtils::sliceByColumn($row, startCol: 0, length: $region['start'], strict: true);
-        $after = AnsiUtils::sliceByColumn($row, $end, AnsiUtils::visibleWidth($row) - $end, strict: true);
-        $slice = AnsiUtils::sliceByColumn($line, $region['start'], $region['width'], strict: true);
+        $width = AnsiUtils::visibleWidth($row);
+        // A floating box is laid out in the same LOGICAL space as the widgets,
+        // so a mirrored frame has to mirror the box too. Leaving it at its
+        // logical columns is what puts an app-menu dropdown at the opposite end
+        // of the screen from the title it belongs to: `File` is logically first,
+        // so its dropdown sits at column 0 while the mirrored menu bar draws
+        // `קובץ` at the far right. Mirroring across the row is also what makes
+        // the stamp land exactly in the hole {@see blankRegions()} left behind.
+        // Clamp to what the row actually holds: a surface hanging off the end
+        // has fewer cells than it claims, and stamping its claimed width would
+        // make the row SHORTER than its pane -- caught by the clamping case.
+        $keep = max(0, min($region['width'], $width - $region['start']));
+        if (0 === $keep) {
+            return $row;
+        }
+        $start = max(0, $width - $region['start'] - $keep);
+        $end = $start + $keep;
+        $before = AnsiUtils::sliceByColumn($row, startCol: 0, length: $start, strict: true);
+        $after = AnsiUtils::sliceByColumn($row, $end, $width - $end, strict: true);
+        $slice = AnsiUtils::sliceByColumn($line, $region['start'], $keep, strict: true);
         $slice = self::withoutABorrowedCaret($line, $slice, $region['start']);
         $middle = $region['ltr'] ? $slice : Bidi::reorder($slice, BaseDirection::Rtl);
 

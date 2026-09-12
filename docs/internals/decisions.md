@@ -7821,3 +7821,43 @@ that was read as evidence of corruption. It was not: the teardown emits
 always ends one row down. Stop the replay at the last `CSI ?2026l` before
 grading a screen. The startup scroll is real; the one in those replays was the
 teardown.
+
+## A floating box is laid out logically and must mirror with the frame (2026-09-12)
+
+Reported: "the main menu bar drop downs are misplaced". That one sentence was
+worth more than every capture in this investigation, because it is reproducible
+in seconds and it names a second surface with the same cause.
+
+Opening the File menu under a Hebrew locale at 226 columns, the dropdown's
+region is `0+38` — the far LEFT — while the mirrored menu bar draws `קובץ` at
+column ~218, the far RIGHT. A `DropdownRegion` carries the column the widget
+laid it out at, which is LOGICAL, and it was being stamped there into a frame
+that has since been mirrored to VISUAL columns. `File` is logically first, so
+its dropdown sat at column zero.
+
+`PaneReorder::paintRegion()` now mirrors the box across the row:
+`start = width - region.start - region.width`. The dropdown lands at 188..225,
+directly under its title, with its own contents mirrored
+(`שמור קובץ` against `Ctrl+S`).
+
+That mirror is also what makes the two passes agree. `blankRegions()` blanks the
+surface's LOGICAL columns, the pane mirror carries that hole across the pane's
+span, and the stamp mirrors across the row: over a full-width pane those are the
+same columns, so the box lands exactly in its own hole and no gap is ever
+visible. (Over a pane narrower than the row they can differ; that is a known
+edge, not a claim.)
+
+Clamping had to come with it: a surface hanging off the end of the row has fewer
+cells than it claims, and stamping the claimed width made the row SHORTER than
+its pane — the worst failure this renderer has. Caught by the clamping case,
+which had been asserting the old unmirrored position and failed honestly when
+the behaviour changed. Three tests failed that way, and each was a stale
+expectation rather than a regression.
+
+Eight mutants survive in `paintRegion()`: `max(0, …)`/`min(…)` decrements whose
+guarded values cannot reach the boundary on any tested path, `strict: true` on
+slices whose results are compared stripped, `$width - $end` → `$width + $end`
+where `sliceByColumn()` clamps, and the zero-width early return, which is
+equivalent because rebuilding a row around an empty middle reproduces it. The
+positional claims — the box mirrors, it lands in its own hole, it is stamped
+once, it is clamped, a box entirely off-row changes nothing — are each pinned.

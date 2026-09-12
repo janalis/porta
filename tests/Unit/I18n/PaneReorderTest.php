@@ -274,7 +274,8 @@ final class PaneReorderTest extends TestCase
 
         $with = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [['start' => 10, 'width' => 7, 'ltr' => true]]));
 
-        $this->assertSame('[TOAST]', AnsiUtils::sliceByColumn($with, startCol: 10, length: 7), 'the surface is where it belongs');
+        // width 20, box at logical 10 wide 7 -> mirrored start 20-10-7 = 3.
+        $this->assertSame('[TOAST]', AnsiUtils::sliceByColumn($with, startCol: 3, length: 7), 'the surface is where it belongs');
         $this->assertSame(1, substr_count($with, needle: '[TOAST]'), 'and there is exactly one of it');
     }
 
@@ -305,23 +306,25 @@ final class PaneReorderTest extends TestCase
         );
     }
 
-    public function testTheHiddenCellsCarryNoBackgroundIntoTheMirroredGap(): void
+    public function testTheHoleAndTheMirroredBoxAreTheSameColumns(): void
     {
-        // The cells a surface covers are blanked, and the gap they leave lands
-        // at the MIRRORED span, where nothing paints over it. If the blank
-        // inherited the SGR state running at that point, the pane would show a
-        // stray band of background — the bleed this class exists to stop.
+        // The two passes have to agree. blankRegions() blanks the surface's
+        // LOGICAL columns; the pane mirror carries that hole across its span;
+        // the stamp mirrors the box across the row. For a surface over a
+        // full-width pane those are the same columns, so the box lands exactly
+        // in its own hole and no gap is ever visible.
         $reorder = new PaneReorder();
         $hebrew = "\u{05D0}\u{05D1}\u{05D2}\u{05D3}\u{05D4}\u{05D5}\u{05D6}\u{05D7}";
-        $line = "\x1b[48;5;236m".$hebrew."\x1b[49m";
         $pane = [['start' => 0, 'width' => 8, 'ltr' => false]];
 
-        $out = $reorder->reorderRow($line, $pane, [['start' => 4, 'width' => 4, 'ltr' => true]]);
+        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow($hebrew, $pane, [['start' => 4, 'width' => 4, 'ltr' => true]]));
 
-        // The gap sits at columns 0..3; no background may be open when it paints.
-        $gap = AnsiUtils::sliceByColumn($out, startCol: 0, length: 4, strict: true);
-        $this->assertStringNotContainsString('48;5;236', $gap, 'the hidden cells leave no background behind');
-        $this->assertSame('    ', AnsiUtils::stripAnsiCodes($gap));
+        $this->assertSame(8, AnsiUtils::visibleWidth($out), 'the row keeps its width');
+        $this->assertSame(
+            "\u{05D4}\u{05D5}\u{05D6}\u{05D7}",
+            AnsiUtils::sliceByColumn($out, startCol: 0, length: 4),
+            'the box sits at the mirror of its logical columns, filling its own hole',
+        );
     }
 
     public function testASurfaceRunningPastTheRowEndIsClamped(): void
@@ -334,10 +337,15 @@ final class PaneReorderTest extends TestCase
 
         $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [['start' => 2, 'width' => 9, 'ltr' => true]]));
 
-        // The head mirrors onto columns 3..2, which the surface then covers, so
-        // only the surface's own clamped cells remain visible.
+        // The surface claims nine columns but only two exist past its start, so
+        // it is clamped to those. What must never happen is the row coming back
+        // SHORTER than its pane.
         $this->assertSame(4, AnsiUtils::visibleWidth($out), 'the row still measures its width');
-        $this->assertSame('  '."\u{05D2}\u{05D3}", $out);
+        $this->assertSame(
+            "\u{05D2}\u{05D3}",
+            AnsiUtils::sliceByColumn($out, startCol: 0, length: 2),
+            'only the two cells that exist are stamped, at the mirror of their start',
+        );
     }
 
     public function testMarkBoundariesLeavesTheRowLogicalAndEndsEachPanesRun(): void
@@ -470,5 +478,56 @@ final class PaneReorderTest extends TestCase
 
         $this->assertStringContainsString(Sgr::RESET.Bidi::LTR_MARK, $out, 'the style is closed before the mark');
         $this->assertStringEndsWith(Sgr::RESET, $out, 'and the row closes its own state, never the next row\'s');
+    }
+
+    public function testAFloatingBoxIsMirroredWithTheFrame(): void
+    {
+        // A floating surface is laid out in the same LOGICAL space as the
+        // widgets, so a mirrored frame has to mirror its box too. Leaving it at
+        // its logical columns is what put an app-menu dropdown at the opposite
+        // end of the screen from the title it belongs to: `File` is logically
+        // first, so its dropdown sat at column 0 while the mirrored menu bar
+        // drew `קובץ` at the far right. Reported, reproduced at 226 columns
+        // (region 0+38 against a title at ~218), and fixed here.
+        $reorder = new PaneReorder();
+        $line = '[AB]'.str_repeat(' ', times: 6);
+        $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
+
+        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [['start' => 0, 'width' => 4, 'ltr' => true]]));
+
+        $this->assertSame('[AB]', AnsiUtils::sliceByColumn($out, startCol: 6, length: 4), 'the box mirrors to the far end');
+        $this->assertSame(10, AnsiUtils::visibleWidth($out), 'and the row keeps its width');
+    }
+
+    public function testAMirroredBoxLandsInTheHoleItsHiddenCellsLeft(): void
+    {
+        // The two passes have to agree: blankRegions() blanks the LOGICAL
+        // columns, the pane mirror carries that hole to the mirrored span, and
+        // the stamp fills exactly that span. If they disagreed the row would
+        // show a gap in one place and the box in another -- which is what a
+        // second copy of the menu box looked like.
+        $reorder = new PaneReorder();
+        $line = '[AB]'.str_repeat(' ', times: 6);
+        $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
+
+        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [['start' => 0, 'width' => 4, 'ltr' => true]]));
+
+        $this->assertSame(1, substr_count($out, needle: '[AB]'), 'exactly one copy of the box');
+    }
+
+    public function testASurfaceStartingPastTheRowIsNotStampedAtAll(): void
+    {
+        // Nothing of it exists in this row, so there is nothing to take a slice
+        // from. Stamping a zero-width box would still rebuild the row around an
+        // empty middle, and any slip in that arithmetic changes its width.
+        $reorder = new PaneReorder();
+        $line = "\u{05D0}\u{05D1}\u{05D2}\u{05D3}";
+        $pane = [['start' => 0, 'width' => 4, 'ltr' => false]];
+
+        $withBox = $reorder->reorderRow($line, $pane, [['start' => 10, 'width' => 3, 'ltr' => true]]);
+        $without = $reorder->reorderRow($line, $pane);
+
+        $this->assertSame(AnsiUtils::stripAnsiCodes($without), AnsiUtils::stripAnsiCodes($withBox), 'the row is untouched');
+        $this->assertSame(4, AnsiUtils::visibleWidth(AnsiUtils::stripAnsiCodes($withBox)));
     }
 }
