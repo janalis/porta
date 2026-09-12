@@ -553,4 +553,23 @@ final class PaneReorderTest extends TestCase
         $this->assertSame(3, $reorder->logicalColumn($line, visualCol: 6, runs: $pane, regions: $region));
         $this->assertSame(0, $reorder->logicalColumn($line, visualCol: 9, runs: $pane, regions: $region));
     }
+
+    public function testTheWidgetsOwnDirectionMarksAreSpentNotPassedOn(): void
+    {
+        // Those marks exist to steer PORTA's reorder, which does not run in this
+        // mode. The terminal renders them as nothing while Porta still counts
+        // them as a column each, so leaving them in makes every row carrying one
+        // come up short on screen. Spending them for spaces is what
+        // Bidi::serialize() does on the other path.
+        $reorder = new PaneReorder();
+        $line = ' ab'.Bidi::RTL_MARK.Bidi::LTR_MARK.'cd ';
+        $runs = [['start' => 0, 'width' => 8, 'ltr' => false]]; // the two marks are a column each to Porta
+
+        $out = AnsiUtils::stripAnsiCodes($reorder->markBoundaries($line, $runs));
+
+        $this->assertStringNotContainsString(Bidi::LTR_MARK, $out);
+        $this->assertStringNotContainsString(Bidi::RTL_MARK, $out);
+        $this->assertSame(Bidi::RTL_ISOLATE.'ab  cd'.Bidi::POP_ISOLATE, $out);
+        $this->assertSame(8, AnsiUtils::visibleWidth($out), 'and the row keeps its width');
+    }
 }

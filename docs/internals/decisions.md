@@ -7969,3 +7969,29 @@ Verified in a real pty at 226x67: the menu bar pane wrapped as `RLI@0 PDI@225`,
 the settings form as `RLI@0 PDI@206` and the nav as `RLI@208 PDI@225` — the
 one-column separator between them correctly skipped, having no padding to spend
 — and all 65 written rows still exactly 226 columns.
+
+### Verified by simulating the terminal, not by guessing (2026-09-12)
+
+The isolate change could not be graded by looking at a capture — the failure is
+in rendering. So the prediction was computed instead: a small UAX#9 reorder
+(isolates, strong types, N1/N2, L2) run over the rows Porta actually emits, from
+the real-pty frame dump.
+
+- Menu bar: `קובץ` comes out at the far RIGHT, the items ordered right-to-left.
+  That was the report.
+- Settings rows: `כללי — 5 הגדרות│  כללי` — the label right-aligned against the
+  separator, the nav entry to its right. That is the correct screen.
+
+The first attempt at that simulation got the nav pane wrong, and the bug was in
+the simulation: it resolved a neutral at an isolate BOUNDARY to the paragraph
+level instead of the isolate's embedding level. N2 says the embedding. Worth
+recording because the wrong version looked plausible and would have sent the
+next round chasing a pane that was already correct.
+
+It also found something real: the direction marks `SettingsFormWidget` inserts
+were reaching the terminal. They exist to steer PORTA's reorder, which does not
+run in this mode, and a terminal renders them as nothing while Porta still
+counts them as a column each — so every row carrying one came up two columns
+short. They are now spent for spaces, exactly as `Bidi::serialize()` does on the
+other path. Confirmed against the real pty: zero stray marks, all 65 rows still
+226 columns.

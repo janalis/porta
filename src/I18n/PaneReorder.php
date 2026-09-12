@@ -105,6 +105,12 @@ final class PaneReorder
      */
     public function markBoundaries(string $line, array $runs): string
     {
+        // Spend the widgets' own direction marks first. They exist to steer
+        // PORTA's reorder, which is not running here, and the terminal renders
+        // them as nothing — so left in place they cost the row a visible column
+        // each while Porta still counts them as one. Spending them for spaces
+        // is exactly what Bidi::serialize() does on the other path.
+        $line = strtr($line, [Bidi::LTR_MARK => ' ', Bidi::RTL_MARK => ' ', "\u{061C}" => ' ']);
         $width = AnsiUtils::visibleWidth($line);
         foreach ($runs as $run) {
             $last = $run['start'] + $run['width'] - 1;
