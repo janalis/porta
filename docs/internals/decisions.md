@@ -8046,3 +8046,35 @@ widget renders a bare word with no padding and no layout to pad it — the one
 shape that cannot be frozen. Padding it broke a neighbouring click test, which
 is the usual fixture trap; the freeze test now builds its own full-width row
 instead. Every real pane has padding: measured, 67 of 67.
+
+## The last frame is left in .porta/frame.txt (2026-09-12)
+
+Five rounds of this were argued from photographs of Hebrew glyphs, and at least
+three of my readings of those photographs were wrong. The instrument existed
+behind `PORTA_FRAME_DUMP` and was never used, because it needed switching on
+first.
+
+Porta now REMEMBERS the last composed frame and writes it to
+`.porta/frame.txt` at shutdown, beside `error.log`, `freeze.log` and
+`perf.log`. Reproduce, quit, and the evidence is there with nothing to enable.
+A screenshot says what the TERMINAL drew; that file says what Porta COMPOSED,
+and a disagreement between them names which half is at fault.
+
+The cost is one `array_map` per frame and one write at exit.
+`PORTA_FRAME_DUMP=<path>` still writes every frame for watching a session live.
+
+### Where the menu bar stands
+
+The freeze is working: the glyphs on screen are in Porta's VISUAL form
+(`צבוק`, not `קובץ`), so the terminal is no longer re-reversing characters.
+What the reporter still sees is an item ORDER that does not match what
+`Bidi::reorder()` produces for the same input — tested directly with the
+reporter's own item set including `Git`, it returns
+`קובץ | עריכה | ניווט | קוד | תוספים | הרץ | Git | תצוגה | עזרה` read
+right-to-left, which is correct.
+
+So either the row Porta composes there differs from that string, or something
+downstream still reorders. That is exactly the question `.porta/frame.txt`
+answers, and it cannot be settled from here: the git plugin does not load in the
+scratch fixture, so the reporter's menu bar cannot be reproduced end to end.
+Recorded as open rather than guessed at again.

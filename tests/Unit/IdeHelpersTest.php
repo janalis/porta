@@ -115,6 +115,41 @@ final class IdeHelpersTest extends TestCase
         }
     }
 
+    public function testTheLastFrameIsLeftBehindForDiagnosis(): void
+    {
+        // No switch to find: a screen nobody can explain leaves its own evidence
+        // beside error.log and perf.log. A screenshot says what the terminal
+        // drew; this says what Porta composed.
+        $terminal = new VirtualTerminal(columns: 40, rows: 6);
+        $ide = new Ide($this->project->dir, null, $terminal);
+        try {
+            $tui = Services::resolve($ide, Tui::class);
+            $tui->requestRender();
+            $tui->processRender();
+            Probe::invoke($ide, 'writeLastFrame');
+            $path = $this->project->dir.'/.porta/frame.txt';
+            self::assertFileExists($path);
+            self::assertStringNotContainsString("\x1b", (string) file_get_contents($path), 'readable, not escape soup');
+        } finally {
+            Services::resolve($ide, ViewRegistry::class)->closeAll();
+            Services::resolve($ide, Notifier::class)->dismissAll();
+        }
+    }
+
+    public function testASessionThatNeverPaintedLeavesNoFrameBehind(): void
+    {
+        // A boot that fails before the first frame must not leave an empty file
+        // where the previous session's evidence was.
+        $ide = new Ide($this->project->dir, null, new VirtualTerminal(columns: 40, rows: 6));
+        try {
+            Probe::invoke($ide, 'writeLastFrame');
+            self::assertFileDoesNotExist($this->project->dir.'/.porta/frame.txt');
+        } finally {
+            Services::resolve($ide, ViewRegistry::class)->closeAll();
+            Services::resolve($ide, Notifier::class)->dismissAll();
+        }
+    }
+
     public function testTheFrameDumpHatchWritesTheComposedFrame(): void
     {
         // The support hatch: a screenshot says what the terminal drew, this

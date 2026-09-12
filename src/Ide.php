@@ -77,6 +77,9 @@ final class Ide
 
     private Tui $tui;
     private BidiTui $bidiTui;
+
+    /** @var list<string> the last frame composed, written to .porta/frame.txt at shutdown */
+    private array $lastFrame = [];
     private FileTreeWidget $tree;
     private CodeEditorWidget $editor;
     private Notifier $notifier;
@@ -274,17 +277,47 @@ final class Ide
         if (TerminalBidi::isApplied(getenv())) {
             $this->bidiTui->setTerminalBidi(true);
         }
+        // Always REMEMBER the last frame; write it out at shutdown. A screen
+        // nobody can explain then leaves its own evidence in .porta/frame.txt
+        // next to error.log and perf.log, with nothing to switch on first --
+        // five rounds of this were argued from photographs of Hebrew glyphs.
+        // PORTA_FRAME_DUMP additionally writes every frame to a chosen path.
         $dump = getenv('PORTA_FRAME_DUMP');
-        if (\is_string($dump) && '' !== $dump) {
-            $this->bidiTui->setFrameSink(static function (array $lines) use ($dump): void {
-                file_put_contents($dump, implode("\n", array_map(AnsiUtils::stripAnsiCodes(...), $lines)));
-            });
-        }
+        $target = \is_string($dump) && '' !== $dump ? $dump : null;
+        $this->bidiTui->setFrameSink(function (array $lines) use ($target): void {
+            $this->lastFrame = array_map(AnsiUtils::stripAnsiCodes(...), $lines);
+            if (null !== $target) {
+                file_put_contents($target, implode("\n", $this->lastFrame));
+            }
+        });
         $this->tui->addListener($this->perf->countInput(...), priority: 1000);
         // Last: hand the plugin handlers their live runtime seam and flash the
         // config/plugin load warnings, once every service they reach exists.
         $this->service(StartupWiring::class)->wire();
         $boot->mark('wired');
+    }
+
+    /**
+     * Leave the last composed frame in `.porta/frame.txt`.
+     *
+     * The counterpart to a screenshot: that says what the terminal drew, this
+     * says what Porta composed, and a disagreement between them names which
+     * half is at fault without anyone having to read Hebrew off a photograph.
+     * Best-effort — a session ending badly must not also fail here.
+     */
+    private function writeLastFrame(): void
+    {
+        if ([] === $this->lastFrame) {
+            return;
+        }
+
+        // No error control operator: the directory is the one Porta already
+        // writes error.log and perf.log into, so if it is there the write is
+        // ordinary, and if it is not there is nothing to suppress.
+        $dir = $this->rootDir.'/.porta';
+        if (is_dir($dir)) {
+            file_put_contents($dir.'/frame.txt', implode("\n", $this->lastFrame));
+        }
     }
 
     /**
@@ -441,6 +474,7 @@ final class Ide
             // Then: closing the full-screen views cancels their timers (the
             // git view's 2s status-poll repeat) so nothing re-arms below.
             $this->service(ViewRegistry::class)->closeAll();
+            $this->writeLastFrame();
             $this->watchdog->stop();
             $this->perf->stop();
             EventLoop::cancel($watcher);
