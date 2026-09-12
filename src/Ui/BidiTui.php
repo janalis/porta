@@ -127,7 +127,7 @@ final class BidiTui extends Tui implements FrameHooks
         // algorithm itself the row then has to be FROZEN, or it is reordered a
         // second time -- measured: each Hebrew run reversed in place while the
         // runs never move, so a menu bar's items came out in the wrong order.
-        return $this->terminalBidi ? $reorder->markBoundaries($row, $runs) : $row;
+        return $this->terminalBidi ? $reorder->freezeRow($row) : $row;
     }
 
     /**

@@ -96,43 +96,35 @@ final class PaneReorder
      * these cells in this order. Verified by running a UAX#9 reorder over the
      * rows Porta actually emits: all forty come back identical.
      *
-     * The pair SPENDS one padding cell at each end of a pane, so the row's width
-     * never changes and the over-wide guard cannot fire. A pane without padding
-     * at both ends is skipped rather than grown, and a verbatim ({@see
-     * \Porta\Ui\LtrPane}) pane is never wrapped.
-     *
-     * @param list<array{start: int, width: int, ltr: bool}> $runs
+     * It SPENDS the row's first cell, so the width never changes and the
+     * over-wide guard cannot fire. A row that does not begin with padding is
+     * left alone rather than grown.
      */
-    public function markBoundaries(string $line, array $runs): string
+    public function freezeRow(string $line): string
     {
-        return $this->wrapPanes($line, $runs, Bidi::LTR_OVERRIDE, Bidi::POP_DIRECTIONAL);
-    }
-
-    /**
-     * Wrap each non-verbatim pane in a directional pair, spending one padding
-     * cell at each end so the row's width never changes.
-     *
-     * @param list<array{start: int, width: int, ltr: bool}> $runs
-     */
-    private function wrapPanes(string $line, array $runs, string $open, string $close): string
-    {
-        // Spend the widgets' own direction marks first. They exist to steer
-        // PORTA's reorder, which is not running here, and the terminal renders
-        // them as nothing — so left in place they cost the row a visible column
-        // each while Porta still counts them as one. Spending them for spaces
-        // is exactly what Bidi::serialize() does on the other path.
+        // ONE override at column zero, and no pop: an override runs to the end
+        // of the paragraph, and a terminal treats a row as a paragraph. So the
+        // whole composed row is frozen, whatever is on it.
+        //
+        // The earlier version spent a pair per PANE, and that was wrong twice
+        // over once floating surfaces were in play. It ran after the dropdown
+        // had been stamped onto the row but spent cells by PANE geometry, so it
+        // wrote override characters into the dropdown's own cells and shifted
+        // its border a column; and on the rows where the dropdown reached the
+        // last column there was no trailing padding, so those rows were skipped
+        // and got no freeze at all. Measured on the reported screen: three
+        // override characters at columns 176, 199 and 200 on alternate rows,
+        // and none on the rest.
+        // Spend the widgets' own direction marks on the way. They steer PORTA's
+        // reorder, which has already run, and a terminal renders them as
+        // nothing while Porta still counts them as a column each — so left in
+        // place they cost the row a visible column apiece.
         $line = strtr($line, [Bidi::LTR_MARK => ' ', Bidi::RTL_MARK => ' ', "\u{061C}" => ' ']);
-        $width = AnsiUtils::visibleWidth($line);
-        foreach ($runs as $run) {
-            $last = $run['start'] + $run['width'] - 1;
-            if ($run['ltr'] || $last >= $width || !self::isPadding($line, $run['start']) || !self::isPadding($line, $last)) {
-                continue; // nothing to spend, or a pane that must stay verbatim
-            }
-            $line = self::replaceColumn($line, $run['start'], $open);
-            $line = self::replaceColumn($line, $last, $close);
+        if (!self::isPadding($line, column: 0)) {
+            return $line; // nothing to spend; growing the row is not an option
         }
 
-        return $line;
+        return self::replaceColumn($line, column: 0, with: Bidi::LTR_OVERRIDE);
     }
 
     private static function isPadding(string $line, int $column): bool

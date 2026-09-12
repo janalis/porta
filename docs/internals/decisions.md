@@ -8078,3 +8078,48 @@ downstream still reorders. That is exactly the question `.porta/frame.txt`
 answers, and it cannot be settled from here: the git plugin does not load in the
 scratch fixture, so the reporter's menu bar cannot be reproduced end to end.
 Recorded as open rather than guessed at again.
+
+## The freeze belongs to the ROW, not to the panes (2026-09-12)
+
+`.porta/frame.txt` earned its keep on its first use. The reporter narrowed it to
+"it's the dropdown that is broken", and a frame captured with the app menu open
+showed exactly what that meant:
+
+| row | overrides | box columns |
+| --- | --- | --- |
+| 1, 3, 5 | 0 | 189..225 |
+| 2, 4, 6 | **3** (at 176, 199, 200) | 188..222 |
+
+Alternate rows of one dropdown had their border a column apart, and three
+override characters were sitting INSIDE the box.
+
+The per-pane freeze was wrong twice over once a floating surface was on the row.
+It ran AFTER the dropdown had been stamped on but spent cells by PANE geometry,
+so it wrote overrides into the dropdown's own cells and shifted its border; and
+on the rows where the dropdown reached the last column there was no trailing
+padding, so the pane was skipped and those rows got no freeze at all.
+
+A freeze has no business knowing about panes. One `U+202D` at column zero, and
+no pop: an override runs to the end of the paragraph and a terminal treats a row
+as a paragraph, so the whole composed row is frozen whatever is on it. It costs
+ONE cell instead of two per pane, and it cannot disturb anything after column
+zero.
+
+Re-measured from the same capture: every row carries exactly one override, every
+row the same width, and the box aligned at 188..224 on all of them.
+
+### Two things the rewrite nearly lost
+
+- The widgets' own direction marks were being spent by the old method. Dropping
+  it silently cost every settings row a column; the test for it failed, which is
+  the only reason it came back. It now happens in `freezeRow()`.
+- `BidiTuiTest`'s fixture needed TRAILING padding, not leading: the freeze runs
+  after the mirror, and mirroring moves a row's trailing padding to its front.
+  The first attempt padded the wrong side and proved nothing.
+
+### Not the dropdown
+
+The stray `×` beside the box is the right-hand tab strip's close button, not
+part of the dropdown: in the LTR reference frame it sits at column 224 while the
+box occupies 0..35. Its RTL placement is a separate question and is not claimed
+as fixed here.

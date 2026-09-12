@@ -424,10 +424,9 @@ final class BidiTuiTest extends TestCase
         // left-to-right override, which makes every character inside strong L
         // so nothing reverses and nothing reorders.
         //
-        // Its own widget, padded at BOTH ends: the freeze spends one cell at
-        // each end of a pane rather than growing the row, and the shared
-        // fixture is deliberately unpadded, which is the one shape that cannot
-        // be frozen. Every real pane has padding.
+        // Its own widget, with leading padding: the freeze SPENDS the row's
+        // first cell rather than growing the row, and the shared fixture is
+        // deliberately unpadded -- the one shape that cannot be frozen.
         $terminal = new VirtualTerminal(columns: 20, rows: 2);
         $renderer = new Renderer(new StyleSheet());
         $this->renderer = $renderer;
@@ -435,9 +434,9 @@ final class BidiTuiTest extends TestCase
         $tui->add(new class extends AbstractWidget {
             public function render(RenderContext $context): array
             {
-                // A FULL row: this bare rig has no layout to pad with, and a
-                // run reaching past the line's end has nothing to spend.
-                return [' '.BidiTuiTest::SHALOM.str_repeat(' ', times: 15)];
+                // TRAILING padding: the freeze runs after the mirror, which
+                // moves a row's trailing padding to its front.
+                return [BidiTuiTest::SHALOM.'  '];
             }
         });
         $this->enableRtl($tui);
