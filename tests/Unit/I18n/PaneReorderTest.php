@@ -8,7 +8,6 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\BaseDirection;
 use Porta\I18n\Bidi;
 use Porta\I18n\PaneReorder;
-use Porta\Ui\Sgr;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\CursorShape;
 
@@ -348,43 +347,51 @@ final class PaneReorderTest extends TestCase
         );
     }
 
-    public function testMarkBoundariesLeavesTheRowLogicalAndEndsEachPanesRun(): void
+    public function testEachPaneIsWrappedInARightToLeftIsolate(): void
     {
-        // For a terminal that runs UAX#9 itself: the row stays logical (it will
-        // do the mirroring), and each pane edge gets a strong left-to-right
-        // character so N1 cannot merge two Hebrew panes into one run and swap
-        // them.
+        // For a terminal that runs UAX#9 itself. Left to itself it resolves the
+        // row's direction from the first strong character and gets one of two
+        // things wrong: a Latin label makes the row left-to-right, so the Hebrew
+        // is merely reversed in place and the labels stay left-aligned; a Hebrew
+        // one makes it right-to-left and reorders runs across the WHOLE row, so
+        // the panes swap. An isolate settles the pane's own direction without
+        // letting it reorder anything outside itself.
         $reorder = new PaneReorder();
         $label = "\u{05E9}\u{05DC}\u{05D5}\u{05DD}";
-        $nav = "\u{05E2}\u{05D1}\u{05E8}";
-        $line = $label.'  |  '.$nav;
+        $line = ' '.$label.'  |  ab ';
         $width = AnsiUtils::visibleWidth($line);
-        $runs = [['start' => 0, 'width' => 6, 'ltr' => false], ['start' => 6, 'width' => $width - 6, 'ltr' => false]];
-
-        $out = $reorder->markBoundaries($line, $runs);
-
-        $this->assertStringContainsString($label, AnsiUtils::stripAnsiCodes($out), 'the text is left in logical order');
-        $this->assertStringContainsString(Bidi::LTR_MARK, $out, 'the pane edge ends the run');
-        $this->assertSame($width, AnsiUtils::visibleWidth($out), 'and the row keeps its exact width');
-    }
-
-    public function testMarkBoundariesSpendsAPaddingSpaceRatherThanGrowingTheRow(): void
-    {
-        // The mark REPLACES a space. Inserting one would make the row wider
-        // than its pane, which is this renderer's worst failure.
-        $reorder = new PaneReorder();
-        $line = 'ab  cd';
-        $runs = [['start' => 0, 'width' => 4, 'ltr' => false], ['start' => 4, 'width' => 2, 'ltr' => false]];
+        $runs = [['start' => 0, 'width' => 7, 'ltr' => false], ['start' => 7, 'width' => $width - 7, 'ltr' => false]];
 
         $out = AnsiUtils::stripAnsiCodes($reorder->markBoundaries($line, $runs));
 
-        $this->assertSame(6, AnsiUtils::visibleWidth($out));
-        $this->assertSame('ab '.Bidi::LTR_MARK.'cd', $out, 'the second padding space became the mark');
+        $this->assertStringContainsString($label, $out, 'the text is left in logical order');
+        $this->assertSame(Bidi::RTL_ISOLATE, AnsiUtils::sliceByColumn($out, startCol: 0, length: 1), 'the pane opens an isolate');
+        $this->assertSame(Bidi::POP_ISOLATE, AnsiUtils::sliceByColumn($out, startCol: 6, length: 1), 'and closes it at its own edge');
+        $this->assertSame($width, AnsiUtils::visibleWidth($out), 'the row keeps its exact width');
     }
 
-    public function testARunWithNoPaddingToSpendIsLeftAlone(): void
+    public function testTheIsolateSpendsPaddingRatherThanGrowingTheRow(): void
     {
-        // Nothing to spend means the row would have to grow, so it does not.
+        // Inserting would make the row wider than its pane, which is this
+        // renderer's worst failure. The two cells are SPENT.
+        $reorder = new PaneReorder();
+        $line = ' ab  cd ';
+        $runs = [['start' => 0, 'width' => 4, 'ltr' => false], ['start' => 4, 'width' => 4, 'ltr' => false]];
+
+        $out = AnsiUtils::stripAnsiCodes($reorder->markBoundaries($line, $runs));
+
+        $this->assertSame(8, AnsiUtils::visibleWidth($out));
+        $this->assertSame(
+            Bidi::RTL_ISOLATE.'ab'.Bidi::POP_ISOLATE.Bidi::RTL_ISOLATE.'cd'.Bidi::POP_ISOLATE,
+            $out,
+            'each pane spends the padding at its own two ends',
+        );
+    }
+
+    public function testAPaneWithoutPaddingAtBothEndsIsLeftAlone(): void
+    {
+        // An isolate needs a cell at EACH end. Without both there is nothing to
+        // spend, and growing the row is not an option.
         $reorder = new PaneReorder();
         $line = 'abcd';
         $runs = [['start' => 0, 'width' => 2, 'ltr' => false], ['start' => 2, 'width' => 2, 'ltr' => false]];
@@ -392,92 +399,36 @@ final class PaneReorderTest extends TestCase
         $out = $reorder->markBoundaries($line, $runs);
 
         $this->assertSame('abcd', AnsiUtils::stripAnsiCodes($out));
-        $this->assertStringNotContainsString(Bidi::LTR_MARK, $out);
+        $this->assertStringNotContainsString(Bidi::RTL_ISOLATE, $out);
     }
 
-    public function testTheLastRunKeepsItsTrailingPadding(): void
+    public function testAVerbatimPaneIsNeverIsolated(): void
     {
-        // Nothing sits to the right of the last pane, so there is no run to
-        // break away from and no reason to spend its padding. Marking it would
-        // put a stray format character at the end of every row.
+        // A code pane renders left-to-right on purpose; forcing it right-to-left
+        // would reverse the source.
         $reorder = new PaneReorder();
-        $line = 'ab  cd ';
-        $runs = [['start' => 0, 'width' => 4, 'ltr' => false], ['start' => 4, 'width' => 3, 'ltr' => false]];
-
-        $out = AnsiUtils::stripAnsiCodes($reorder->markBoundaries($line, $runs));
-
-        $this->assertSame('ab '.Bidi::LTR_MARK.'cd ', $out, 'only the inner edge is marked');
-        $this->assertSame(1, substr_count($out, needle: Bidi::LTR_MARK));
-    }
-
-    public function testTheStyleOfTheRunAfterTheMarkSurvives(): void
-    {
-        // The row is rebuilt around the mark, so the slice that follows has to
-        // re-open the colour running at that column -- otherwise the pane after
-        // the boundary loses its styling, which is the bleed this class exists
-        // to stop.
-        $reorder = new PaneReorder();
-        $line = "ab  \x1b[38;5;110mcd\x1b[39m";
-        $runs = [['start' => 0, 'width' => 4, 'ltr' => false], ['start' => 4, 'width' => 2, 'ltr' => false]];
+        $line = ' ab ';
+        $runs = [['start' => 0, 'width' => 4, 'ltr' => true]];
 
         $out = $reorder->markBoundaries($line, $runs);
 
-        $this->assertStringContainsString('38;5;110', $out, 'the following pane keeps its colour');
-        $this->assertSame('ab '.Bidi::LTR_MARK.'cd', AnsiUtils::stripAnsiCodes($out));
+        $this->assertSame(' ab ', AnsiUtils::stripAnsiCodes($out));
     }
 
-    public function testAPaneWithNoPaddingDoesNotStopTheOnesAfterIt(): void
+    public function testAnUnisolatablePaneDoesNotStopALaterOne(): void
     {
-        // The walk must SKIP a pane it cannot mark, not abandon the row: the
-        // middle pane here has no padding to spend, and the one after it does.
+        // The walk must SKIP a pane it cannot wrap, not abandon the row.
         $reorder = new PaneReorder();
-        $line = 'ab cdef gh';
+        $line = 'ab cd ';
         $runs = [
-            ['start' => 0, 'width' => 3, 'ltr' => false], // 'ab ' -> markable
-            ['start' => 3, 'width' => 4, 'ltr' => false], // 'cdef' -> no padding
-            ['start' => 7, 'width' => 3, 'ltr' => false], // ' gh' -> last, left alone
+            ['start' => 0, 'width' => 2, 'ltr' => false], // 'ab' -> no padding
+            ['start' => 2, 'width' => 4, 'ltr' => false], // ' cd ' -> isolatable
         ];
 
         $out = AnsiUtils::stripAnsiCodes($reorder->markBoundaries($line, $runs));
 
-        $this->assertSame('ab'.Bidi::LTR_MARK.'cdef gh', $out);
-        $this->assertSame(10, AnsiUtils::visibleWidth($out), 'the row keeps its width');
-    }
-
-    public function testAnUnmarkablePaneDoesNotStopALaterMarkableOne(): void
-    {
-        // Four panes, so the one that cannot be marked is NOT also the last:
-        // abandoning the walk there would leave the third pane's edge open and
-        // let it merge with the fourth.
-        $reorder = new PaneReorder();
-        $line = 'ab cdef gh ij';
-        $runs = [
-            ['start' => 0, 'width' => 3, 'ltr' => false], // 'ab ' -> markable
-            ['start' => 3, 'width' => 4, 'ltr' => false], // 'cdef' -> no padding
-            ['start' => 7, 'width' => 4, 'ltr' => false], // ' gh ' -> markable
-            ['start' => 11, 'width' => 2, 'ltr' => false], // 'ij' -> last
-        ];
-
-        $out = AnsiUtils::stripAnsiCodes($reorder->markBoundaries($line, $runs));
-
-        $this->assertSame(2, substr_count($out, needle: Bidi::LTR_MARK), 'both markable edges were taken');
-        $this->assertSame(13, AnsiUtils::visibleWidth($out));
-    }
-
-    public function testTheMarkIsOpenedOnAClearedStyle(): void
-    {
-        // The mark spends a cell that belonged to the pane before it. If the
-        // style running there were still open, that pane's background would
-        // paint the boundary cell -- a stripe between panes, which is the bleed
-        // this class exists to stop.
-        $reorder = new PaneReorder();
-        $line = "\x1b[48;5;236mab  \x1b[49mcd";
-        $runs = [['start' => 0, 'width' => 4, 'ltr' => false], ['start' => 4, 'width' => 2, 'ltr' => false]];
-
-        $out = $reorder->markBoundaries($line, $runs);
-
-        $this->assertStringContainsString(Sgr::RESET.Bidi::LTR_MARK, $out, 'the style is closed before the mark');
-        $this->assertStringEndsWith(Sgr::RESET, $out, 'and the row closes its own state, never the next row\'s');
+        $this->assertSame('ab'.Bidi::RTL_ISOLATE.'cd'.Bidi::POP_ISOLATE, $out);
+        $this->assertSame(6, AnsiUtils::visibleWidth($out), 'the row keeps its width');
     }
 
     public function testAFloatingBoxIsMirroredWithTheFrame(): void

@@ -83,12 +83,18 @@ final class PaneReorder
      * so visual order becomes logical order. What such a terminal needs is the
      * logical row, which it then mirrors correctly by itself.
      *
-     * What it cannot get right unaided is WHERE to stop. A row is
-     * `[label][spaces][│][spaces][nav]`; N1 gives the neutrals between two
-     * right-to-left runs the right-to-left level, so label, separator and nav
-     * become ONE run and L2 reverses the lot as a block — the two panes swap.
-     * A strong left-to-right character at each pane edge ends the run there, so
-     * each pane mirrors within its own span.
+     * What it cannot get right unaided is the PANE. Left alone it resolves the
+     * row's direction from the first strong character it finds, which decides
+     * two things wrongly at once: with a Latin label the paragraph reads
+     * left-to-right and each Hebrew run is merely reversed IN PLACE, so the
+     * glyphs are right but the labels stay left-aligned; with a Hebrew one it
+     * reads right-to-left and reorders runs across the WHOLE row, so the panes
+     * swap. Both were reported, in that order.
+     *
+     * Each pane is therefore wrapped in a right-to-left ISOLATE. Inside it the
+     * pane lays itself out right-to-left — labels to the right, the menu bar's
+     * items from the right — and from the outside the whole span counts as one
+     * neutral object, so the panes never reorder against each other.
      *
      * The mark SPENDS a padding space rather than being inserted, so the row's
      * width never changes and the over-wide guard in
@@ -101,18 +107,27 @@ final class PaneReorder
     {
         $width = AnsiUtils::visibleWidth($line);
         foreach ($runs as $run) {
-            $end = $run['start'] + $run['width'];
-            if ($end >= $width) {
-                continue; // the last run: nothing to its right to merge with
+            $last = $run['start'] + $run['width'] - 1;
+            if ($run['ltr'] || $last >= $width || !self::isPadding($line, $run['start']) || !self::isPadding($line, $last)) {
+                continue; // nothing to spend, or a pane that must stay verbatim
             }
-            $last = $end - 1;
-            if (' ' !== AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($line, $last, length: 1, strict: true))) {
-                continue; // no padding to spend, so the row keeps its width
-            }
-            $line = AnsiUtils::sliceByColumn($line, startCol: 0, length: $last, strict: true).Sgr::RESET.Bidi::LTR_MARK.AnsiUtils::sliceByColumn($line, $end, $width - $end, strict: true).Sgr::RESET;
+            $line = self::replaceColumn($line, $run['start'], Bidi::RTL_ISOLATE);
+            $line = self::replaceColumn($line, $last, Bidi::POP_ISOLATE);
         }
 
         return $line;
+    }
+
+    private static function isPadding(string $line, int $column): bool
+    {
+        return ' ' === AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($line, $column, length: 1, strict: true));
+    }
+
+    private static function replaceColumn(string $line, int $column, string $with): string
+    {
+        $width = AnsiUtils::visibleWidth($line);
+
+        return AnsiUtils::sliceByColumn($line, startCol: 0, length: $column, strict: true).Sgr::RESET.$with.AnsiUtils::sliceByColumn($line, $column + 1, $width - $column - 1, strict: true).Sgr::RESET;
     }
 
     /**

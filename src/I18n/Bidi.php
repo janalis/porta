@@ -39,6 +39,19 @@ final class Bidi
     public const string RTL_MARK = "\u{200F}";
 
     /**
+     * A right-to-left ISOLATE and its terminator.
+     *
+     * An isolate is the only construct that says "lay this span out
+     * right-to-left" WITHOUT letting it reorder anything around it: from the
+     * outside the whole span counts as one neutral object. That is exactly a
+     * pane. An embedding (RLE) or a bare mark would set the paragraph direction
+     * and reorder the panes against each other instead — which is the bug these
+     * are being added to avoid.
+     */
+    public const string RTL_ISOLATE = "\u{2067}";
+    public const string POP_ISOLATE = "\u{2069}";
+
+    /**
      * Zero-width directional marks, replaced by a space once they have been
      * read. They measure one column and draw none, so leaving one in the output
      * shortens the rendered row by exactly that much — and the RTL width
@@ -49,6 +62,8 @@ final class Bidi
     private const array SPENT = [
         self::LTR_MARK => true,
         self::RTL_MARK => true,
+        self::RTL_ISOLATE => true,
+        self::POP_ISOLATE => true,
         "\u{061C}" => true,
     ];
 

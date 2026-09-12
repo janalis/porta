@@ -7933,3 +7933,39 @@ but empty, and that must not strand a cmux user.
 Verified end to end in a real pty with nothing set: the mode came on by itself,
 the frame is logical (`כללי — 5 הגדרות`), and the boundary mark is at column 206
 against a separator at 207.
+
+## Each pane is a right-to-left isolate, not a marked boundary (2026-09-12)
+
+Handing the reorder back to cmux made the Hebrew READABLE — reported, and
+visible: menu bar, nav and form all in correct order top to bottom. It did not
+make the LAYOUT right, and the two reports that followed say precisely why.
+
+Left to itself the terminal resolves each row's direction from the first strong
+character it finds, and that decides two different things wrongly:
+
+- With a Latin label (`< .porta.json >`) the row reads left-to-right. Each
+  Hebrew run is reversed IN PLACE: the glyphs come out right, but the labels
+  stay LEFT-aligned inside their pane. Reported as the form being left-aligned.
+- With a Hebrew one the row reads right-to-left and L2 reorders runs across the
+  WHOLE row. Reported as "the main app menu bar is broken" — its items came out
+  in the wrong order.
+
+A single left-to-right mark at the pane edge cannot fix either: it ends a run,
+it does not say which way the pane should be laid out.
+
+An ISOLATE does both. `U+2067 … U+2069` around a pane settles the direction
+INSIDE it — labels to the right, menu items from the right — while from the
+outside the whole span counts as one neutral object, so the panes never reorder
+against each other. An embedding (`RLE`) or a bare mark would have set the
+paragraph direction and swapped the panes, which is the bug being avoided.
+
+The two cells are SPENT from the pane's own padding, one at each end, so the row
+keeps its exact width and `ScreenWriter`'s over-wide guard cannot fire. A pane
+without padding at both ends is skipped rather than grown, and a verbatim
+(`LtrPane`) pane is never isolated — forcing a code pane right-to-left would
+reverse the source.
+
+Verified in a real pty at 226x67: the menu bar pane wrapped as `RLI@0 PDI@225`,
+the settings form as `RLI@0 PDI@206` and the nav as `RLI@208 PDI@225` — the
+one-column separator between them correctly skipped, having no padding to spend
+— and all 65 written rows still exactly 226 columns.
