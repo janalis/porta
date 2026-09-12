@@ -530,4 +530,76 @@ final class PaneReorderTest extends TestCase
         $this->assertSame(AnsiUtils::stripAnsiCodes($without), AnsiUtils::stripAnsiCodes($withBox), 'the row is untouched');
         $this->assertSame(4, AnsiUtils::visibleWidth(AnsiUtils::stripAnsiCodes($withBox)));
     }
+
+    public function testAClickInsideAMirroredBoxMapsThroughTheBox(): void
+    {
+        // Reported as "click not working": the box moves with the frame, so the
+        // inverse mapping has to follow it. Mapping the visual column through
+        // the PANE underneath a mirrored dropdown lands somewhere else entirely
+        // and the menu item is never hit.
+        $reorder = new PaneReorder();
+        $line = '[AB]'.str_repeat(' ', times: 6);
+        $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
+        $region = [['start' => 0, 'width' => 4, 'ltr' => true]];
+
+        // The box is stamped at columns 6..9; column 7 is its second cell.
+        $this->assertSame(1, $reorder->logicalColumn($line, visualCol: 7, runs: $pane, regions: $region));
+        $this->assertSame(0, $reorder->logicalColumn($line, visualCol: 6, runs: $pane, regions: $region));
+    }
+
+    public function testAClickOutsideTheBoxStillMapsThroughThePane(): void
+    {
+        $reorder = new PaneReorder();
+        $line = '[AB]'.str_repeat(' ', times: 6);
+        $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
+        $region = [['start' => 0, 'width' => 4, 'ltr' => true]];
+
+        $outside = $reorder->logicalColumn($line, visualCol: 0, runs: $pane, regions: $region);
+
+        $this->assertSame($reorder->logicalColumn($line, visualCol: 0, runs: $pane), $outside, 'the pane still answers for its own cells');
+    }
+
+    public function testTheTopmostBoxOwnsACellTwoBoxesShare(): void
+    {
+        // Surfaces paint in order, so the LAST one drawn owns the click.
+        $reorder = new PaneReorder();
+        $line = str_repeat('x', times: 10);
+        $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
+        $regions = [
+            ['start' => 0, 'width' => 4, 'ltr' => true], // mirrors to 6..9
+            ['start' => 2, 'width' => 4, 'ltr' => true], // mirrors to 4..7, painted later
+        ];
+
+        $this->assertSame(5, $reorder->logicalColumn($line, visualCol: 7, runs: $pane, regions: $regions));
+    }
+
+    public function testAClickIgnoresABoxThatIsNotInThisRow(): void
+    {
+        // A surface starting past the row owns no cell here, so the pane must
+        // still answer — otherwise a stale box would swallow every click.
+        $reorder = new PaneReorder();
+        $line = str_repeat('x', times: 10);
+        $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
+
+        $this->assertSame(
+            $reorder->logicalColumn($line, visualCol: 3, runs: $pane),
+            $reorder->logicalColumn($line, visualCol: 3, runs: $pane, regions: [['start' => 40, 'width' => 4, 'ltr' => true]]),
+        );
+    }
+
+    public function testAClickInAMirroredBoxOfHebrewMapsThroughItsOwnReorder(): void
+    {
+        // A box whose own contents were mirrored has to invert that mirror too,
+        // not just its position: the menu items inside a dropdown are Hebrew.
+        $reorder = new PaneReorder();
+        $hebrew = "\u{05D0}\u{05D1}\u{05D2}\u{05D3}";
+        $line = $hebrew.str_repeat(' ', times: 6);
+        $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
+        $region = [['start' => 0, 'width' => 4, 'ltr' => false]];
+
+        // The box is stamped at 6..9 and its four Hebrew cells are reversed
+        // inside it, so its leftmost visual cell is the LAST logical one.
+        $this->assertSame(3, $reorder->logicalColumn($line, visualCol: 6, runs: $pane, regions: $region));
+        $this->assertSame(0, $reorder->logicalColumn($line, visualCol: 9, runs: $pane, regions: $region));
+    }
 }

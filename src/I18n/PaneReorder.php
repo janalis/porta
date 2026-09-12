@@ -217,9 +217,34 @@ final class PaneReorder
      * logical space, so the column selects the same run either way.
      *
      * @param list<array{start: int, width: int, ltr: bool}> $runs
+     * @param list<array{start: int, width: int, ltr: bool}> $regions
      */
-    public function logicalColumn(string $line, int $visualCol, array $runs): int
+    public function logicalColumn(string $line, int $visualCol, array $runs, array $regions = []): int
     {
+        // The surfaces first, and in reverse: they are painted over the panes
+        // in order, so the LAST one drawn owns the cell a click lands on.
+        // Without this a click inside a mirrored dropdown was mapped through
+        // the pane underneath it and hit nothing — the box moved with the
+        // frame and the mouse did not follow it.
+        $width = AnsiUtils::visibleWidth($line);
+        foreach (array_reverse($regions) as $region) {
+            $keep = max(0, min($region['width'], $width - $region['start']));
+            if (0 === $keep) {
+                continue;
+            }
+            $start = max(0, $width - $region['start'] - $keep);
+            if ($visualCol < $start || $visualCol >= ($start + $keep)) {
+                continue;
+            }
+            $offset = $visualCol - $start;
+            if ($region['ltr']) {
+                return $region['start'] + $offset;
+            }
+            $slice = AnsiUtils::sliceByColumn($line, $region['start'], $keep, strict: true);
+
+            return $region['start'] + Bidi::visualToLogicalColumn($slice, $offset, BaseDirection::Rtl);
+        }
+
         foreach ($runs as $run) {
             if ($visualCol >= ($run['start'] + $run['width'])) {
                 continue;

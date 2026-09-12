@@ -72,6 +72,9 @@ final class BidiTui extends Tui implements FrameHooks
     /** The terminal reorders bidi text itself, so this one must not. */
     private bool $terminalBidi = false;
 
+    /** @var array<int, list<array{start: int, width: int, ltr: bool}>> the last frame's floating boxes, for click mapping */
+    private array $lastRegions = [];
+
     /** Minimum seconds between generated frames while pacing is wired (60fps). */
     public const float MIN_FRAME_INTERVAL = 1 / 60;
 
@@ -232,7 +235,7 @@ final class BidiTui extends Tui implements FrameHooks
             return $visualCol;
         }
 
-        return $this->reorder->logicalColumn($this->lastLines[$row], $visualCol, $this->lastRuns[$row]);
+        return $this->reorder->logicalColumn($this->lastLines[$row], $visualCol, $this->lastRuns[$row], $this->lastRegions[$row] ?? []);
     }
 
     /**
@@ -395,6 +398,7 @@ final class BidiTui extends Tui implements FrameHooks
             // the pane runs they truncated whatever they covered, and the
             // shortened span re-aligned the pane's whole row.
             $regions = $segmenter->segmentRegions($columns, $rows);
+            $this->lastRegions = $regions; // a click inside a box maps through it, not the pane under it
             $out = [];
             foreach ($lines as $row => $line) {
                 // Both maps are filled for the same 0..rows-1, so one guard

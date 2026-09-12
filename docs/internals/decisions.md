@@ -7861,3 +7861,40 @@ where `sliceByColumn()` clamps, and the zero-width early return, which is
 equivalent because rebuilding a row around an empty middle reproduces it. The
 positional claims — the box mirrors, it lands in its own hole, it is stamped
 once, it is clamped, a box entirely off-row changes nothing — are each pinned.
+
+## Mirroring the box moved the mouse away from it (2026-09-12)
+
+Reported straight after the dropdown fix: "the drop downs shadows are misplaced
++ click not working". Both fall out of the same change, and the second is the
+serious one.
+
+### Click
+
+`PaneReorder::logicalColumn()` is the inverse of the frame mirror, and it knew
+only about PANES. Once a floating box moves with the frame, a click inside it
+was still mapped through the pane underneath — landing somewhere else entirely,
+so no menu item was ever hit. It now checks the surfaces first and in REVERSE
+order, because they paint over each other and the last one drawn owns the cell;
+inside a box the offset maps back through the box's own reorder, since a
+dropdown's items are Hebrew and were mirrored within it.
+
+The lesson is the one this codebase keeps relearning: the thing that escaped was
+not the feature but the invariant beside it. Moving a box is half a change — the
+other half is that every mapping INTO it has to move as well.
+
+### Shadow
+
+`shadowWidened()` widens the region one column to the RIGHT, where the shadow
+falls. Mirrored with the frame, that column lands on the LEFT of the box and
+pushes the box a column off the title it hangs from. Under a right-to-left
+locale the widening now goes left instead, so the mirror puts both back.
+
+That is only a partial repair and is recorded as such. For a menu at column 0 —
+`File`, the common case — there is no column to the left to widen into, so the
+rectangle keeps its shadow cell and the mirrored box still ends one column past
+its title. Closing that properly means `paintRegion()` mirroring the BOX rather
+than the shadow-widened rectangle, which needs the region to carry its shadow
+extent; it is a shape change, not a tweak, and it has not been made here.
+
+`MenuOverlayController` gained a `Translator` (defaulted, so its single direct
+construction site in the tests is untouched).

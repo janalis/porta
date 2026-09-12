@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Overlay\State;
 
 use Porta\Container\AsIdeService;
+use Porta\I18n\Translator;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\Region\FloatingRegions;
 use Porta\Overlay\Region\PaneBounds;
@@ -50,6 +51,7 @@ final class MenuOverlayController implements FloatingRegions
         private readonly MenuBarWidget $menuBar,
         private readonly ContextMenu $contextMenu,
         private readonly MenuOverlayPanes $panes,
+        private readonly Translator $translator = new Translator(),
         ?Styles $styles = null,
     ) {
         $this->initStyles($styles);
@@ -167,8 +169,14 @@ final class MenuOverlayController implements FloatingRegions
     private function shadowWidened(int $top, int $col, int $width, int $rows): DropdownRegion
     {
         [, , $bottom, $right] = PaneBounds::union($this->panes->current(), $this->renderer) ?? [0, 0, 0, 0];
+        // The shadow falls one column past the box. Under a right-to-left
+        // locale the whole rectangle is mirrored with the frame, so widening to
+        // the RIGHT would land the shadow on the left AND push the box a column
+        // off the title it hangs from. Widen to the left instead and the mirror
+        // puts both back where they belong.
+        $left = $this->translator->isRtl() ? max(0, $col - 1) : $col;
 
-        return new DropdownRegion($top, $col, max(1, min($width + 1, $right - $col)), max(1, min($rows + 1, $bottom - $top)));
+        return new DropdownRegion($top, $left, max(1, min($width + 1, $right - $left)), max(1, min($rows + 1, $bottom - $top)));
     }
 
     /** @param list<AbstractWidget&MenuOverlayHost> $panes */
