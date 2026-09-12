@@ -30,6 +30,7 @@ use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\Services;
+use Porta\Tests\Support\Toasts;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Render\Renderer;
@@ -113,6 +114,90 @@ final class IdeHelpersTest extends TestCase
             Services::resolve($ide, ViewRegistry::class)->closeAll();
             Services::resolve($ide, Notifier::class)->dismissAll();
         }
+    }
+
+    public function testASaveWillNotSilentlyOverwriteAnotherWritersWork(): void
+    {
+        // The reconciler flashes when a file changes under an unsaved buffer,
+        // and that flash is gone in seconds -- so a save a minute later used to
+        // discard the other writer's work without a word. Reproduced end to end
+        // before the fix: a second process rewrote the open file, Porta warned,
+        // Ctrl+S overwrote it, and the colleague's line was gone from disk.
+        //
+        // First save refuses and says so; a second within three seconds is the
+        // user's decision and goes through. Ctrl+Q uses the same shape for
+        // unsaved buffers.
+        $path = $this->project->write('over.php', "<?php\n// theirs\n");
+        /** @var \Porta\Editor\BufferService $buffers */
+        $buffers = Services::resolve($this->ide, BufferService::class);
+        $buffers->openFile($path);
+        /** @var \Porta\Editor\BufferManager $manager */
+        $manager = Services::resolve($this->ide, BufferManager::class);
+        $buffer = $manager->active();
+        self::assertNotNull($buffer);
+
+        $buffer->document->replaceAll("<?php\n// mine\n");
+        self::assertTrue($buffer->isDirty());
+        $buffer->diskChangedUnderEdit = true; // what the reconciler records
+
+        self::assertFalse($buffers->saveBuffer($buffer), 'the first save refuses');
+        self::assertStringContainsString('theirs', (string) file_get_contents($path), 'their work is still on disk');
+        // The refusal has to SAY so, and name the file: a save that silently
+        // does nothing is its own kind of data loss.
+        self::assertStringContainsString('Ctrl+S again to overwrite', Toasts::last($this->ide));
+        self::assertStringContainsString('over.php', Toasts::last($this->ide));
+
+        // The confirming press is a WINDOW, not a latch. A press that arrives
+        // long after the warning has scrolled by warns again rather than
+        // overwriting on the strength of something the user has forgotten.
+        Probe::set($buffers, 'lastOverwritePress', [$path => 0.0]);
+        self::assertFalse($buffers->saveBuffer($buffer), 'a stale confirmation is not a confirmation');
+
+        self::assertTrue($buffers->saveBuffer($buffer), 'a confirming second save goes through');
+        self::assertStringContainsString('mine', (string) file_get_contents($path));
+        self::assertFalse($buffer->diskChangedUnderEdit, 'and the warning is spent');
+    }
+
+    public function testReloadingAFileSpendsTheOverwriteWarning(): void
+    {
+        // A clean buffer reloads instead of warning, and the buffer then IS the
+        // disk -- so the warning must not survive into the next save. Leaving it
+        // set would make an ordinary Ctrl+S refuse once for no reason, which
+        // teaches people to press twice out of habit and defeats the guard.
+        $path = $this->project->write('reload.php', "<?php\n// v1\n");
+        /** @var \Porta\Editor\BufferService $buffers */
+        $buffers = Services::resolve($this->ide, BufferService::class);
+        $buffers->openFile($path);
+        /** @var \Porta\Editor\BufferManager $manager */
+        $manager = Services::resolve($this->ide, BufferManager::class);
+        $buffer = $manager->active();
+        self::assertNotNull($buffer);
+        $buffer->diskChangedUnderEdit = true; // as if an edit had been warned about
+
+        // A different LENGTH: the stamp is mtime:size, and two writes in the
+        // same second with the same size are indistinguishable.
+        $this->project->write('reload.php', "<?php\n// version two, longer\n");
+        $buffers->pollFilesystem();
+
+        self::assertFalse($buffer->diskChangedUnderEdit, 'the reload spent the warning');
+        self::assertTrue($buffers->saveBuffer($buffer), 'and the next save is ordinary');
+    }
+
+    public function testAnUndisturbedFileSavesOnTheFirstPress(): void
+    {
+        // The guard must cost nothing when nobody else touched the file.
+        $path = $this->project->write('calm.php', "<?php\n");
+        /** @var \Porta\Editor\BufferService $buffers */
+        $buffers = Services::resolve($this->ide, BufferService::class);
+        $buffers->openFile($path);
+        /** @var \Porta\Editor\BufferManager $manager */
+        $manager = Services::resolve($this->ide, BufferManager::class);
+        $buffer = $manager->active();
+        self::assertNotNull($buffer);
+        $buffer->document->replaceAll("<?php\n// edited\n");
+
+        self::assertTrue($buffers->saveBuffer($buffer), 'no warning, no second press');
+        self::assertStringContainsString('edited', (string) file_get_contents($path));
     }
 
     public function testTheLastFrameIsLeftBehindForDiagnosis(): void

@@ -3062,6 +3062,10 @@
         <source>Tree: Paste</source>
         <target>עץ: הדבק</target>
       </trans-unit>
+      <trans-unit id="858">
+        <source>%file% changed on disk — Ctrl+S again to overwrite</source>
+        <target>%file% השתנה בדיסק — Ctrl+S שוב כדי לדרוס</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

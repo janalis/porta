@@ -114,6 +114,10 @@ final class FilesystemReconciler
             return; // unreadable / too large / binary now — leave the buffer untouched
         }
         if ($buffer->isDirty()) {
+            // Remember it, not just flash it. The flash is gone in seconds and
+            // the stamp above now matches disk, so without this the save that
+            // follows cannot tell anyone else ever wrote here.
+            $buffer->diskChangedUnderEdit = true;
             $this->notifier->flash($this->translator->trans('%file% changed on disk', ['%file%' => $this->paths->relative($buffer->path)]));
 
             return;
@@ -153,6 +157,7 @@ final class FilesystemReconciler
     {
         $buffer->document->replaceAll($content);
         $buffer->document->markSaved();
+        $buffer->diskChangedUnderEdit = false; // the buffer now IS the disk
         $this->lsp->notifyFullChange($buffer->path, $buffer->document); // no-op when no server is running
         $this->events->dispatch(new BufferReloaded($buffer));
         $this->notifier->flash($this->translator->trans('Reloaded %file%', ['%file%' => $this->paths->relative($buffer->path)]));

@@ -8379,3 +8379,52 @@ reported the second as a defect.
    `setsid`: with it the same run resized correctly.
 
 Both look exactly like "the application ignores resizes". Neither is.
+
+## A save could silently discard another writer's work (2026-09-12)
+
+Reproduced end to end before it was written down. A second process rewrote an
+open file while the buffer held unsaved edits; Porta flashed "changed on disk"
+and did NOT reload, which is right. Two seconds later, Ctrl+S:
+
+```
+file on disk after the save:
+   contains the colleague's work : False
+   contains my edit              : True
+```
+
+Their line was gone, with no warning at save time. The IDE knew — it had said so
+— and the knowledge did not survive the two seconds to the keystroke that
+mattered.
+
+`FilesystemReconciler::pollBuffer()` records the new stamp when it notices a
+change ("so we react once"), so by save time the buffer's stamp MATCHES disk and
+`saveBuffer()` has nothing to compare against. The fact has to be carried
+deliberately: `Buffer::$diskChangedUnderEdit`, set beside that flash, cleared by
+a reload (the buffer then IS the disk) and by a successful save.
+
+`saveBuffer()` now refuses the first Ctrl+S on a file someone else wrote to and
+says so, naming the file; a second press within three seconds goes through. That
+is the shape `WorkbenchActions::quit()` already uses for unsaved buffers — a
+flash and a confirming second press — rather than a modal nothing else in this
+app has. Verified end to end: one press keeps their work, two presses write mine.
+
+### What the tests had to be taught
+
+- The refusal must SAY so. A save that silently does nothing is its own data
+  loss, so the toast text and the file name are both asserted.
+- The confirmation is a WINDOW, not a latch: a press arriving long after the
+  warning has scrolled by warns again instead of overwriting on the strength of
+  something the user has forgotten.
+- A reload must SPEND the warning, or an ordinary Ctrl+S refuses once for no
+  reason and teaches people to press twice out of habit — which defeats the
+  guard entirely.
+
+That last test failed first for a reason worth keeping: the stamp is
+`mtime:size`, and `// v1` → `// v2` is the same length in the same second, so
+nothing was detected at all. Two writes a test means to distinguish must differ
+in LENGTH, not just content.
+
+Two mutants survive on the three-second window (`<=` → `<`, and the literal).
+Both need a controllable clock, and `BufferService`'s is a readonly promoted
+property that reflection cannot replace after construction. Recorded, not
+claimed.

@@ -3062,6 +3062,10 @@
         <source>Tree: Paste</source>
         <target>Albero: incolla</target>
       </trans-unit>
+      <trans-unit id="858">
+        <source>%file% changed on disk — Ctrl+S again to overwrite</source>
+        <target>%file% è cambiato su disco — Ctrl+S di nuovo per sovrascrivere</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

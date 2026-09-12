@@ -19,6 +19,7 @@ use Porta\Lsp\BufferReopener;
 use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\Uri;
+use Porta\Support\Clocks;
 use Porta\Support\DiagnosticLog;
 use Porta\Support\Files;
 use Porta\Support\ProjectPaths;
@@ -26,7 +27,9 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Workbench\Notifier;
+use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
@@ -79,7 +82,17 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         private readonly ViewerProviderSource $viewers,
         private readonly EditorPanes $panes,
         private readonly Filesystem $fs = new Filesystem(),
+        private readonly ClockInterface $clock = new NativeClock(),
     ) {}
+
+    /**
+     * When each path last refused a save because the file had changed
+     * underneath it — the confirming second press, as Ctrl+Q does for unsaved
+     * buffers.
+     *
+     * @var array<string, float>
+     */
+    private array $lastOverwritePress = [];
 
     /**
      * The project tree's Enter/click. Focus moves to the editor, which is what
@@ -639,6 +652,40 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         // "Save failed: %file%" error via saveBuffer() — nothing to add.
     }
 
+    /**
+     * Whether this save may overwrite a file someone else wrote to.
+     *
+     * The reconciler flashes when a file changes under an unsaved buffer, and
+     * that flash is gone in seconds — so a save a minute later discarded the
+     * other writer's work silently. Reproduced end to end: a second process
+     * rewrote the open file, Porta warned, Ctrl+S overwrote it, and the
+     * colleague's line was simply gone from disk.
+     *
+     * The first Ctrl+S now refuses and says so; a second within three seconds
+     * goes through. That is the shape Ctrl+Q already uses for unsaved buffers,
+     * rather than a modal nobody else in this app has.
+     */
+    private function overwriteConfirmed(Buffer $buffer): bool
+    {
+        if (!$buffer->diskChangedUnderEdit) {
+            return true;
+        }
+        $now = Clocks::seconds($this->clock);
+        if (($now - ($this->lastOverwritePress[$buffer->path] ?? 0.0)) <= 3.0) {
+            return true;
+        }
+        $this->lastOverwritePress[$buffer->path] = $now;
+        $this->notifier->flash(
+            $this->translator->trans(
+                '%file% changed on disk — Ctrl+S again to overwrite',
+                ['%file%' => $this->paths->relative($buffer->path)],
+            ),
+            3.0,
+        );
+
+        return false;
+    }
+
     public function saveBuffer(Buffer $buffer): bool
     {
         if ($buffer->isViewer()) {
@@ -654,6 +701,9 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         if ($buffer->document->hasByteOrderMark()) {
             $bytes = Document::BOM.$bytes;
         }
+        if (!$this->overwriteConfirmed($buffer)) {
+            return false;
+        }
         try {
             $this->fs->dumpFile($buffer->path, $bytes);
         } catch (IOExceptionInterface) {
@@ -663,6 +713,8 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         }
         $buffer->document->markSaved();
         $buffer->stampFromDisk(); // our own save must not look external
+        $buffer->diskChangedUnderEdit = false;
+        unset($this->lastOverwritePress[$buffer->path]);
         $this->dispatcher->dispatch(new BufferSaved($buffer));
 
         return true;

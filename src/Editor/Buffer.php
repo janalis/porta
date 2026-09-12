@@ -78,6 +78,16 @@ final class Buffer
     }
 
     /**
+     * The file changed on disk while this buffer held unsaved edits.
+     *
+     * The reconciler records the new stamp when it notices, so by save time the
+     * stamp matches disk again and the save has no way to tell. This is what
+     * carries "someone else wrote here" forward to the save that would
+     * otherwise overwrite them without a word.
+     */
+    public bool $diskChangedUnderEdit = false;
+
+    /**
      * The file's on-disk fingerprint right now, or null when it is not a file.
      *
      * The cache is cleared first, for this path only. PHP caches stat results
