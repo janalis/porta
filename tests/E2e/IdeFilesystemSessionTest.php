@@ -341,6 +341,19 @@ final class IdeFilesystemSessionTest extends TestCase
         $this->assertStringContainsString("\x1b[?1049l", $out, 'left the alternate screen on quit');
         $this->assertGreaterThan(strpos($out, needle: "\x1b[?1049h"), strrpos($out, needle: "\x1b[?1049l"), 'leave comes after enter');
         $this->assertStringContainsString("\x1b[?1000l", $out, 'mouse tracking disabled on quit');
+
+        // And the cursor is homed the moment the alternate screen is entered.
+        // `CSI ?1049h` does not reset the cursor ROW, the first frame is
+        // APPENDED from wherever it is, and ScreenWriter counts rows from zero
+        // while repainting relatively — so launching from a prompt partway down
+        // the screen costs that many rows off the top and puts every later
+        // repaint the same distance off, for the whole session. Measured in a
+        // real pty with eight lines printed first: nine rows of scroll without
+        // this, none with it.
+        $entered = strpos($out, needle: "\x1b[?1049h");
+        $homed = strpos($out, needle: "\x1b[2J\x1b[H");
+        $this->assertNotFalse($homed, 'the screen is cleared and the cursor homed');
+        $this->assertGreaterThan($entered, $homed, 'and that happens after entering the alternate screen');
     }
 
     public function testSigtermStopsTheSessionAndRestoresTheTerminal(): void

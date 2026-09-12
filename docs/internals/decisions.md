@@ -7787,3 +7787,37 @@ result is stripped, and `$width - $end`→`$width + $end` where `sliceByColumn()
 clamps. The behavioural ones — the last run keeping its padding, an unmarkable
 pane not abandoning the walk, the style being closed before the mark, the row
 closing its own state — are each pinned by a case.
+
+## The cursor is not homed when the alternate screen opens (2026-09-12)
+
+`CSI ?1049h` switches buffers; it does NOT reset the cursor row. The first frame
+is APPENDED from wherever the cursor is — `ScreenWriter::fullRender()` is called
+with `clear: false` — while its own bookkeeping starts from row zero. Launch
+Porta from a prompt partway down the screen and that many rows go off the top,
+and because every later repaint is positioned RELATIVELY against that
+bookkeeping, the screen stays that far out of step for the rest of the session.
+
+Measured in a real pty at 226x67, with eight lines printed before launch:
+
+| | scrolls |
+| --- | --- |
+| without the home | **9** |
+| with it | **1** (the teardown's own `CSI 1B` + newline) |
+
+`Ide::run()` now calls `clearScreen()` (`CSI 2J` + `CSI H`) straight after
+entering the alternate screen. `IdeFilesystemSessionTest` pins the ordering, and
+removing the call fails it.
+
+This is the second defect of the same shape as the kitty splice: the frame
+writer never repositions absolutely, so ANY disagreement about where row zero is
+lasts the whole session. The first one desynchronised it by a stray byte; this
+one starts it desynchronised.
+
+### How the earlier readings misled
+
+Replays of captured sessions kept showing the menu bar scrolled off the top, and
+that was read as evidence of corruption. It was not: the teardown emits
+`CSI 1B` and a newline after the final frame, so replaying the WHOLE stream
+always ends one row down. Stop the replay at the last `CSI ?2026l` before
+grading a screen. The startup scroll is real; the one in those replays was the
+teardown.

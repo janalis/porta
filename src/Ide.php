@@ -394,6 +394,14 @@ final class Ide
             // highlighting) and 1006 (SGR coordinates). VirtualTerminal records
             // these; tests feed synthetic seqs. Paired teardown is in the finally.
             $this->tui->getTerminal()->write("\x1b[?1049h\x1b[?1000h\x1b[?1003h\x1b[?1006h");
+            // Home the cursor the alternate screen just handed us. The first
+            // frame is appended FROM the cursor, not written to an absolute
+            // origin, and ScreenWriter's row bookkeeping starts from zero -- so
+            // a cursor left anywhere below row 0 costs that many rows off the
+            // top and desynchronises every RELATIVE repaint after it, for the
+            // rest of the session. Measured in a real pty: one row of scroll,
+            // and the menu bar gone.
+            $this->tui->getTerminal()->clearScreen();
 
             $this->layout->applyLayout();
 
