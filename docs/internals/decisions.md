@@ -8342,3 +8342,40 @@ The two tests now say what they actually demonstrate rather than describing a
 user-facing failure that does not occur. The lesson is the one this codebase
 keeps teaching: a failing unit test proves the unit fails, not that the product
 does. The end-to-end check was cheap and I ran it only after writing the claim.
+
+## The real SIGWINCH path, verified (2026-09-12)
+
+`IdeRtlLocaleTest::testRtlSurvivesATerminalResize` resizes through
+`VirtualTerminal::simulateResize()`, which sets the size directly. Nothing
+exercised the path a user actually takes: the kernel delivering SIGWINCH because
+the terminal window changed.
+
+Driven for real — a pty whose MASTER this side owns, resized with `TIOCSWINSZ`
+six seconds in, Hebrew locale, frame graded from `.porta/frame.txt`:
+
+| | rows | widths | Hebrew rows unfrozen |
+| --- | --- | --- | --- |
+| 140x34 → 96x28 | 28 | all 96 | none |
+| 80x24 → 200x50 | 50 | all 200 | none |
+| 200x50 → 60x20 | 20 | all 60 | none |
+| 120x30 → 40x12 | 12 | all 40 | none |
+
+Including the shrink to 40x12, where the sidebar collapses and a side tab strip
+is rescued to the top. No defect: the resize path, the exact-width contract and
+the right-to-left freeze all hold through a real resize.
+
+### Two harness traps, both of which faked a bug
+
+Worth recording because each produced a convincing false positive, and I nearly
+reported the second as a defect.
+
+1. **`stty` from a background subshell does nothing.** It exits silently — no
+   error, empty `stty size` — and the terminal keeps its old dimensions. The
+   first run "showed" Porta ignoring a resize when no resize had happened.
+2. **A child in a new session gets no SIGWINCH.** `posix_setsid()` (Python's
+   `os.setsid`) detaches from the controlling terminal, so the kernel has
+   nothing to signal. `TIOCSWINSZ` on the master then changes the size and the
+   child never hears. The fix is `TIOCSCTTY` on the slave in the child, after
+   `setsid`: with it the same run resized correctly.
+
+Both look exactly like "the application ignores resizes". Neither is.
