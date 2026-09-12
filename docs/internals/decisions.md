@@ -8312,3 +8312,33 @@ event loop, which is a process that was not scheduled rather than a slow disk.
 The slicing added earlier is working: the traces come through
 `pollFilesystemSlice()`, which bounds how MANY stats a tick makes, and cannot
 bound how long one takes. Attributed to contention.
+
+### Correction: that entry over-claimed (2026-09-12)
+
+The entry above says external edits "were never detected". **That is false in
+practice, and the claim was published before it was checked end to end.**
+
+PHP's stat cache is effectively SINGLE-ENTRY: stat-ing any other path evicts the
+previous one. Measured:
+
+| | result |
+| --- | --- |
+| path A after an external change, nothing else stat-ed | **stale** |
+| path A after stat-ing one other path | fresh |
+
+The running IDE stats many paths every tick — every polled tree directory, the
+logs — so a buffer's entry is always evicted before the next poll. Driven end to
+end in a real pty, with an external process editing the open file six seconds in,
+the reload happens **with or without** the `clearstatcache()` calls. The unit
+tests fail without them only because they stat one path and nothing else.
+
+So this fixed a LATENT hazard, not a live bug. Keeping it, for one reason that
+is not "defensive code is nice": the reconciler promises to notice external
+edits, and that promise currently rests on the accident that something else
+happens to stat in between. Nothing in `pollSlice()` guarantees it. The cost is
+5.8µs per stamp against 0.13µs — about 93µs per second at four buffers and 4Hz.
+
+The two tests now say what they actually demonstrate rather than describing a
+user-facing failure that does not occur. The lesson is the one this codebase
+keeps teaching: a failing unit test proves the unit fails, not that the product
+does. The end-to-end check was cheap and I ran it only after writing the claim.

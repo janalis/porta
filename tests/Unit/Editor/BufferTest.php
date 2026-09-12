@@ -78,16 +78,17 @@ final class BufferTest extends TestCase
 
     public function testTheDiskStampSeesAChangeMadeByANOTHERProcess(): void
     {
-        // The whole point of the stamp is to notice an edit Porta did not make.
-        // PHP caches stat results per path for the life of the process and
-        // clears that cache only for writes IT performs -- so a stamp taken
-        // before an external edit keeps answering with the old one, and the
-        // reconciler polls forever without seeing anything.
+        // The stamp must notice an edit Porta did not make. PHP caches stat
+        // results and clears them only for writes IT performs, so a stamp taken
+        // before an external edit can keep answering with the old one.
         //
-        // Every existing test wrote the file IN-PROCESS, which clears the cache
-        // as a side effect and hides this completely. The writer here is a
-        // separate process, which is the case that actually happens: another
-        // editor, a formatter, git checkout.
+        // In the running IDE this is MASKED: the cache is effectively
+        // single-entry, and the poll stats other paths (tree directories, logs)
+        // between ticks, which evicts the buffer's entry. Measured end to end,
+        // an external edit reloads with or without the clearstatcache() below.
+        // What this pins is that the guarantee does not DEPEND on that
+        // accident -- the isolated case below is stale without it, and nothing
+        // in the reconciler promises another path will be stat-ed in between.
         $project = new TempProject(['a.php' => "one\n"]);
         $path = $project->path('a.php');
         $buffer = new Buffer($path, new Document(''));
