@@ -120,11 +120,53 @@ final class PaneReorder
         // nothing while Porta still counts them as a column each — so left in
         // place they cost the row a visible column apiece.
         $line = strtr($line, [Bidi::LTR_MARK => ' ', Bidi::RTL_MARK => ' ', "\u{061C}" => ' ']);
-        if (!self::isPadding($line, column: 0)) {
-            return $line; // nothing to spend; growing the row is not an option
+        $column = self::freezePoint($line);
+
+        return null === $column ? $line : self::replaceColumn($line, $column, with: Bidi::LTR_OVERRIDE);
+    }
+
+    /**
+     * The cell to spend on the override, or null when the row has none to give.
+     *
+     * Column zero when it is padding — it costs the least and covers the whole
+     * row. Otherwise the first padding cell that still comes BEFORE any
+     * right-to-left character, because an override only governs what follows
+     * it: the help viewer renders prose against a left-hand gutter, so its rows
+     * begin with a border and column zero is never free, and without this those
+     * rows went to the terminal unfrozen.
+     *
+     * Null when the row's right-to-left text starts before any padding does.
+     * Growing the row is not an option — an over-wide row is this renderer's
+     * worst failure — so such a row is left alone and recorded as a known gap
+     * rather than quietly widened.
+     */
+    private static function freezePoint(string $line): ?int
+    {
+        if (self::isPadding($line, column: 0)) {
+            return 0;
         }
 
-        return self::replaceColumn($line, column: 0, with: Bidi::LTR_OVERRIDE);
+        $column = 0;
+        $glyphs = preg_split('//u', AnsiUtils::stripAnsiCodes($line), flags: \PREG_SPLIT_NO_EMPTY);
+        \assert(false !== $glyphs, description: 'a composed row always splits into glyphs');
+        foreach ($glyphs as $glyph) {
+            if (' ' === $glyph) {
+                return $column;
+            }
+            if (self::isRightToLeft($glyph)) {
+                return null; // the text got here first
+            }
+            $column += max(1, AnsiUtils::visibleWidth($glyph));
+        }
+
+        return null;
+    }
+
+    private static function isRightToLeft(string $glyph): bool
+    {
+        $cp = mb_ord($glyph, encoding: 'UTF-8');
+
+        return false !== $cp && ($cp >= 0x0590 && $cp <= 0x05FF || $cp >= 0x0600 && $cp <= 0x08FF || $cp >= 0xFB1D && $cp <= 0xFDFF || $cp >= 0xFE70 && $cp <= 0xFEFF);
     }
 
     private static function isPadding(string $line, int $column): bool

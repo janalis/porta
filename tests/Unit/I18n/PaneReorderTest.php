@@ -540,4 +540,42 @@ final class PaneReorderTest extends TestCase
         $this->assertSame(Bidi::LTR_OVERRIDE.'ab  cd ', $out, 'both marks became spaces; column zero became the override');
         $this->assertSame(8, AnsiUtils::visibleWidth($out), 'and the row keeps its width');
     }
+
+    public function testARowWithAGutterIsFrozenAtItsFirstPadding(): void
+    {
+        // The help viewer renders prose against a left-hand border, so column
+        // zero is never free. An override only governs what FOLLOWS it, so the
+        // first padding cell before the Hebrew will do — and without this those
+        // rows reached the terminal unfrozen, which the RTL sweep caught.
+        $reorder = new PaneReorder();
+        $line = '│ '."\u{05E9}\u{05DC}\u{05D5}\u{05DD}".' ';
+
+        $out = AnsiUtils::stripAnsiCodes($reorder->freezeRow($line));
+
+        $this->assertSame('│'.Bidi::LTR_OVERRIDE."\u{05E9}\u{05DC}\u{05D5}\u{05DD}".' ', $out);
+        $this->assertSame(AnsiUtils::visibleWidth($line), AnsiUtils::visibleWidth($out), 'the row keeps its width');
+    }
+
+    public function testARowWhoseTextBeatsItsPaddingIsLeftAlone(): void
+    {
+        // Right-to-left text before any padding: an override placed after it
+        // would not govern it, and growing the row past its pane is this
+        // renderer's worst failure. Left alone, and recorded as a known gap.
+        $reorder = new PaneReorder();
+        $line = "\u{05E9}\u{05DC}".' ab';
+
+        $out = $reorder->freezeRow($line);
+
+        $this->assertStringNotContainsString(Bidi::LTR_OVERRIDE, $out);
+        $this->assertSame($line, AnsiUtils::stripAnsiCodes($out));
+    }
+
+    public function testARowWithNoPaddingAndNoTextIsLeftAlone(): void
+    {
+        $reorder = new PaneReorder();
+
+        $out = $reorder->freezeRow('abcd');
+
+        $this->assertSame('abcd', AnsiUtils::stripAnsiCodes($out));
+    }
 }

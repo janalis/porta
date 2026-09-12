@@ -167,6 +167,69 @@ final class IdeRtlLocaleTest extends TestCase
         );
     }
 
+    public function testOnABidiApplyingTerminalEveryHebrewRowIsFrozen(): void
+    {
+        // On a terminal that runs UAX#9 itself, a row Porta has already ordered
+        // is ordered a SECOND time unless it is frozen with an override. A row
+        // carrying Hebrew and NO override is one the terminal will rearrange —
+        // which is what the whole RTL investigation was about.
+        //
+        // Swept across the app's surfaces by hand at 226x67; this pins the
+        // invariant for the two that render the most Hebrew.
+        putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            '.porta.json' => json_encode(['settings' => ['language' => 'he']]),
+            'demo.php' => "<?php\necho \$name;\n",
+        ]);
+
+        $assertFrozen = function ($tui, $ide): void {
+            $tui->tick();
+            $renderer = Probe::get($tui, 'renderer');
+            $root = Probe::get($tui, 'root');
+            $segmenter = Services::resolve($ide, \Porta\Ui\PaneSegmenter::class);
+            $reorder = Services::resolve($ide, \Porta\I18n\PaneReorder::class);
+            $terminal = $tui->getTerminal();
+            $columns = $terminal->getColumns();
+            $rows = $terminal->getRows();
+            $lines = array_values($renderer->render($root, $columns, $rows));
+            $runs = $segmenter->segment($root, $columns, $rows);
+            $regions = $segmenter->segmentRegions($columns, $rows);
+            foreach ($lines as $row => $line) {
+                $frozen = $reorder->freezeRow($reorder->reorderRow($line, $runs[$row], $regions[$row]));
+                $this->assertSame($columns, AnsiUtils::visibleWidth($frozen), "row {$row} kept its width");
+                if (1 === preg_match('/[\x{0590}-\x{05FF}]/u', AnsiUtils::stripAnsiCodes($frozen))) {
+                    $this->assertStringContainsString(
+                        \Porta\I18n\Bidi::LTR_OVERRIDE,
+                        $frozen,
+                        "row {$row} carries Hebrew and would be reordered again",
+                    );
+                }
+            }
+        };
+
+        $this->runIde(
+            $project,
+            $project->path('demo.php'),
+            [
+                300 => static function ($tui, $terminal, $ide) use ($assertFrozen): void {
+                    $assertFrozen($tui, $ide);
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+                },
+                400 => static function ($tui, $terminal, $ide) use ($assertFrozen): void {
+                    $assertFrozen($tui, $ide);
+                    // The help viewer renders prose against a left-hand border,
+                    // so its rows do NOT begin with padding — the one surface
+                    // the sweep found unfrozen, and the only one here that
+                    // exercises the search for a later cell to spend.
+                    Services::resolve($ide, CommandRegistry::class)->run('ide_help');
+                },
+                500 => static function ($tui, $terminal, $ide) use ($assertFrozen): void {
+                    $assertFrozen($tui, $ide);
+                },
+            ],
+        );
+    }
+
     public function testRtlEveryPaneRowKeepsItsWidth(): void
     {
         // The garble that broke RTL was over-wide rows bleeding across panes.

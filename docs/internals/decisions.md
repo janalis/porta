@@ -8123,3 +8123,46 @@ The stray `×` beside the box is the right-hand tab strip's close button, not
 part of the dropdown: in the LTR reference frame it sits at column 224 while the
 box occupies 0..35. Its RTL placement is a separate question and is not claimed
 as fixed here.
+
+## Sweeping the rest of the app for the same defect (2026-09-12)
+
+With the dropdown fixed, the question was what else carried it. Rather than wait
+for reports, every surface was driven in a real pty at 226x67 under a Hebrew
+locale (actions bound to `alt+<letter>` through `.porta.json`'s keymap, since
+most of their real chords are not encodable without the kitty protocol), and its
+`.porta/frame.txt` graded on three invariants:
+
+- every row exactly the terminal width,
+- no row carrying Hebrew without an override — such a row is one the terminal
+  will rearrange,
+- never more than one override on a row.
+
+Swept: editor, app menu, settings, git view, help viewer, find in project,
+command palette, problems panel, terminal panel, notifications, structure, local
+history, search everywhere, todo, context menu. Fifteen surfaces.
+
+**One real defect**, in the help viewer: it renders prose against a left-hand
+border, so column zero is never padding and those rows went out unfrozen.
+`freezeRow()` now falls back to the first padding cell that still precedes the
+row's first right-to-left character — an override only governs what FOLLOWS it,
+so a later cell is only useful while the text has not started. A row whose
+right-to-left text beats its padding is left alone and recorded as a known gap:
+growing the row past its pane is this renderer's worst failure and is not worth
+trading for.
+
+### A metric that lied first
+
+The first pass flagged the editor and the app menu as BAD on "uniform row
+width". They were not: a frozen row measures one column less once the override
+is stripped, so a frame with some rows frozen and some not looks ragged while
+being correct. Counting the override as the cell it occupies, both were fine.
+The invariant that matters is the second one — Hebrew without an override — and
+it was the only one that ever pointed at a real defect.
+
+### What guards it now
+
+`IdeRtlLocaleTest` asserts the freeze across the editor, the settings view and
+the help viewer. The gutter fallback is NOT guarded there — an injected "give up
+if column zero is taken" survives that test, because at the E2e's width those
+rows still begin with padding. It is guarded by the unit case, which the same
+mutant fails. Recorded rather than left to look covered.
