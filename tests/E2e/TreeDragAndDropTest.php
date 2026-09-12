@@ -10,6 +10,7 @@ use Porta\Editor\Bookmarks;
 use Porta\Event\TreeDropRequested;
 use Porta\Event\WorkingTreeChanged;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
@@ -824,5 +825,63 @@ final class TreeDragAndDropTest extends TestCase
         }
 
         return $rows;
+    }
+
+    public function testACopyRenamedOntoAnotherTakenNameDoesNotOverwriteIt(): void
+    {
+        // The drop asks before overwriting a name that is taken, and answering
+        // "Rename..." with a name that is ALSO taken slips past that answer.
+        // The MOVE branch still refuses there -- rename() without permission
+        // throws -- but the COPY branch ignored the permission entirely and
+        // always passed `overwriteNewerFiles: true`, so the second file was
+        // destroyed without a word.
+        $this->project = new TempProject([
+            'src/keep.php' => "<?php\n// SOURCE\n",
+            'dest/keep.php' => "<?php\n// FIRST\n",
+            'dest/other.php' => "<?php\n// PRECIOUS\n",
+        ]);
+        $project = $this->project;
+
+        $this->runIde(
+            $project,
+            $project->path('src/keep.php'),
+            [
+                200 => function ($tui, $terminal, $ide) use ($project): void {
+                    $this->frame($tui);
+                    Services::resolve($ide, EventDispatcherInterface::class)->dispatch(new TreeDropRequested(
+                        [$project->path('src/keep.php')],
+                        $project->path('dest'),
+                        copy: true,
+                    ));
+                    $this->await(static fn (): bool => EditorState::pickerOpen($tui->getById('editor')), what: 'the name-clash chooser');
+
+                    $tui->handleInput("\x1b[B"); // Overwrite -> Rename...
+                    $tui->handleInput("\r");
+                    $this->frame($tui);
+
+                    // The prompt is pre-filled with the source's name, so clear
+                    // it before typing or the two run together and there is no
+                    // clash left to test.
+                    foreach (str_split(str_repeat("\x7f", times: 12)) as $bs) {
+                        $tui->handleInput($bs);
+                    }
+                    foreach (str_split('other.php') as $ch) {
+                        $tui->handleInput($ch);
+                    }
+                    $tui->handleInput("\r");
+                    $this->frame($tui);
+
+                    $this->assertStringContainsString(
+                        'PRECIOUS',
+                        (string) file_get_contents($project->path('dest/other.php')),
+                        'a rename onto a second taken name destroyed it',
+                    );
+                    // And it SAYS so: a copy that silently does nothing is its
+                    // own kind of loss, the same rule the save guard follows.
+                    $this->assertStringContainsString('Cannot copy', Toasts::last($ide));
+                },
+            ],
+            columns: 120,
+        );
     }
 }

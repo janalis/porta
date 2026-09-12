@@ -8428,3 +8428,53 @@ Two mutants survive on the three-second window (`<=` → `<`, and the literal).
 Both need a controllable clock, and `BufferService`'s is a readonly promoted
 property that reflection cannot replace after construction. Recorded, not
 claimed.
+
+## The copy that ignored the answer it had just asked for (2026-09-13)
+
+Same sweep as the save guard above — "check everywhere else" — and the same
+shape of defect: a permission the code asks for and then does not honour.
+
+Dropping files onto a folder whose name is already taken raises the overwrite
+prompt. `TreeOperations` carries that answer as `$overwrite` all the way down to
+`moveOne()`, where the MOVE branch honours it. The COPY branch read it, passed it
+to nothing, and always called
+
+```php
+$this->fs->copy($source, $target, overwriteNewerFiles: true);
+```
+
+so the one path that reaches the copy without an answer destroyed a file
+silently. That path is narrow, which is why it survived: choose `Rename…`,
+and type a name that is ALSO taken. The prompt has been answered — about the
+FIRST collision — and nothing asks again about the second. A move refuses there
+by accident, because `rename()` throws onto an existing path; a copy overwrites,
+because `copy()` is defined to.
+
+The fix is one guard at the top of the copy closure, throwing `IOException` so it
+lands in the `withFs()` wrapper already there and reports through the same
+`Cannot copy %file%` toast as every other copy failure. No new message, no new
+prompt: the user already answered a question about a name, and the honest
+response to a name they did not answer about is to refuse and say why.
+
+### Why the second half of the first draft came back out
+
+The draft also threaded the flag into `copy()` itself
+(`overwriteNewerFiles: $overwrite`). That reads careful and is unkillable: past
+the new guard either the target does not exist — nothing to overwrite — or the
+answer was yes, and then a target NEWER than its source is precisely the one that
+must still be written. Two spellings of one decision, one of which no test can
+ever distinguish. The flag went back to `true` and the comment says why, so the
+guard is the whole permission.
+
+### Grading it
+
+`composer mutate` generates ZERO mutants for this diff: the case is an E2e test
+and infection runs `--testsuite=Unit`. So the guard was graded by hand instead —
+`!$overwrite &&` → `false &&`, and the test fails on the assertion it should,
+`'Copied other.php'` where `Cannot copy` was required.
+
+That assertion is the test's second draft. The first passed with the guard
+reverted, because `overwriteNewerFiles: true` on its own already spared a target
+with an equal mtime; it was asserting the filesystem, not the refusal. A
+data-loss test has to assert BOTH halves: the neighbour file still holds its own
+bytes, and the IDE said out loud that it would not write.
