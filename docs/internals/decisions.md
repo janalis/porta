@@ -8231,3 +8231,32 @@ is on.
 
 Full suites after the change: 6024 unit, 401 E2e, 40 integration, plugins at
 100%. Zero escaped mutants over the diff.
+
+### The sweep finished: nineteen surfaces
+
+The remaining ones — run panel, debug panel, welcome modal and the settings
+keybindings page — are clean too: exact row widths, one override per row, no
+Hebrew row left unfrozen.
+
+One harness lesson. The run panel first reported NO FRAME, which reads as a
+crash; it was the sweep's own 25-second timeout cutting the session off before
+shutdown could write the file. Re-run with room, it was fine and its error log
+was empty. A missing artifact is not evidence of a failure until the harness has
+been cleared of producing it.
+
+### Nothing else in the logs
+
+The round began where this project says to begin — the user's own diagnostics —
+and neither points anywhere:
+
+- `error.log`: two entries, both 2026-09-09, a `ClockInterface` locator miss
+  that no longer reproduces.
+- `perf.log`: 371 entries today, paint p50 between 0.4ms and 3.1ms. Healthy.
+- `freeze.log`: 121 loop stalls, up to 12.68s — and **120 of them inside a
+  single hour**, 2026-09-11 15:00, which is exactly when `composer verify` runs
+  had this machine at load 32. Every backtrace is a `stat` on the event loop
+  (`is_file` in `Buffer::diskStampNow()`, `is_dir` in
+  `FileTreeWidget::refreshIfChanged()`), including one inside the watchdog's own
+  `DiagnosticLog::append()`. A twelve-second `stat` on a local SSD is not
+  filesystem latency, it is a process that was not scheduled. Attributed to
+  contention rather than turned into a fix — see [[e2e-flake-under-machine-load]].
