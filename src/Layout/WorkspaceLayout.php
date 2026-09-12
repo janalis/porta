@@ -100,6 +100,9 @@ final class WorkspaceLayout
 
     private bool $narrowTabs = false;
 
+    /** The workspace reads right-to-left, so a side strip seats on the other edge. */
+    private bool $mirrored = false;
+
     public function setTabBarPosition(TabBarPosition $position): void
     {
         // Remembered, because the responsive rule may be showing something else
@@ -137,8 +140,27 @@ final class WorkspaceLayout
         return $this->narrowTabs && $this->configuredTabs->isSide();
     }
 
+    /**
+     * Tell the workspace which way it reads, and re-seat the tab strip.
+     *
+     * A side strip is placed by CHILD ORDER, which is physical, so a mirrored
+     * workspace has to swap left for right — otherwise a right-hand strip stays
+     * on the editor's right and lands between the editor and the (now
+     * right-hand) file tree. Found by sweeping the surfaces in Hebrew.
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain: "this workspace reads right-to-left", one fact with two values, exactly as setNarrowTabs() above.
+    public function setMirrored(bool $mirrored): void
+    {
+        if ($mirrored === $this->mirrored) {
+            return;
+        }
+        $this->mirrored = $mirrored;
+        $this->seatTabBar($this->narrowTabs ? TabBarPosition::Top : $this->configuredTabs);
+    }
+
     private function seatTabBar(TabBarPosition $position): void
     {
+        $position = $this->mirrored ? $position->mirrored() : $position;
         $this->tabBar->setPosition($position);
         $this->editorPane->setStyle($position->isSide() ? new Style(flex: 1, direction: Direction::Horizontal) : new Style(flex: 1));
         $this->editorPane->clear();

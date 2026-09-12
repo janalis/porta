@@ -74,6 +74,36 @@ final class WorkspaceLayoutTest extends TestCase
         $this->assertSame(['tabs', 'editor-body'], $this->ids(Probe::get($layout, 'editorPane')));
     }
 
+    public function testAMirroredWorkspaceSeatsASideStripOnTheOtherEdge(): void
+    {
+        // Child order is PHYSICAL: first child, leftmost column. So a strip the
+        // user put on the RIGHT has to become the FIRST child once the
+        // workspace mirrors, or it ends up between the editor and the
+        // (now right-hand) file tree instead of at the far edge. Found by
+        // sweeping the app's surfaces in Hebrew, where the tab strip sat at
+        // columns 175..198 with the tree at 200.
+        $layout = $this->layout();
+        $layout->setTabBarPosition(TabBarPosition::Right);
+        $this->assertSame(['editor-body', 'tabs'], $this->ids(Probe::get($layout, 'editorPane')), 'left-to-right: strip after the body');
+
+        $layout->setMirrored(true);
+        $this->assertSame(['tabs', 'editor-body'], $this->ids(Probe::get($layout, 'editorPane')), 'mirrored: the right-hand strip seats first');
+
+        $layout->setMirrored(false);
+        $this->assertSame(['editor-body', 'tabs'], $this->ids(Probe::get($layout, 'editorPane')), 'and back again');
+    }
+
+    public function testMirroringLeavesATopStripAlone(): void
+    {
+        // Mirroring is horizontal; top and bottom have no side to swap.
+        $layout = $this->layout();
+        $layout->setTabBarPosition(TabBarPosition::Bottom);
+
+        $layout->setMirrored(true);
+
+        $this->assertSame(['editor-body', 'tabs'], $this->ids(Probe::get($layout, 'editorPane')));
+    }
+
     public function testTheConstructedContainersCarryTheirExactFlexAndGap(): void
     {
         // Pins the layout constants themselves: every sibling of `main` (the

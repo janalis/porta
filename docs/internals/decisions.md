@@ -8166,3 +8166,41 @@ the help viewer. The gutter fallback is NOT guarded there — an injected "give 
 if column zero is taken" survives that test, because at the E2e's width those
 rows still begin with padding. It is guarded by the unit case, which the same
 mutant fails. Recorded rather than left to look covered.
+
+## Two open items closed: one was not a defect, one was (2026-09-12)
+
+### The dropdown's column, retracted
+
+Recorded twice as "the box ends one column past its title". Measured properly in
+both directions:
+
+| | box edge | nearest menu-item glyph | offset |
+| --- | --- | --- | --- |
+| left-to-right | left = 0 | 1 | −1 |
+| right-to-left | right = 224 | 223 | +1 |
+
+The box aligns with the menu item's CELL, which carries a leading space, not
+with its glyphs — and the right-to-left case is the exact mirror of the
+left-to-right one. There was never anything to fix. It was flagged from a single
+measurement with nothing to compare against, which is how a correct behaviour
+gets recorded as a bug for two rounds.
+
+### The tab strip, real
+
+Sweeping the surfaces turned up the editor itself. With `tabBarPosition: right`
+under Hebrew, the layout came out `[editor][strip][tree]` — the strip stranded
+between the editor and the file tree instead of at the far left.
+
+`PaneLayout::applyDirection()` reverses the editor area's panes, but a SIDE tab
+strip is not one of them: it is seated inside the editor pane by child order, in
+`WorkspaceLayout::seatTabBar()`, which knew nothing about direction. Child order
+is physical — first child, leftmost column — so a right-hand strip must become
+the first child once the workspace mirrors.
+
+`TabBarPosition::mirrored()` swaps the two sides and leaves top and bottom alone
+(mirroring is horizontal), and `WorkspaceLayout::setMirrored()` re-seats. Wired
+from `applyDirection()`, so it follows a live locale switch and not just boot.
+Measured after: the strip at columns 0..25 with its close button at column 0 —
+the exact mirror of 224 in the left-to-right frame — and the tree at 200.
+
+Zero escaped mutants over the diff.

@@ -122,6 +122,10 @@ final class PaneLayout implements EditorAreaPanes
         $this->translator->isRtl()
             ? $this->bidi->setPaneReorder($this->segmenter, $this->reorder)
             : $this->bidi->setPaneReorder(null, null);
+        // A side tab strip is placed by child order, which is physical: tell the
+        // workspace which way it reads so a right-hand strip moves to the far
+        // left rather than sitting between the editor and the file tree.
+        $this->layout->setMirrored($this->translator->isRtl());
         $this->arrangeViewAreas();
         if (!$this->views->isAnyOpen()) {
             $this->arrangeEditorArea();

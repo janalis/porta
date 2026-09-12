@@ -26,4 +26,21 @@ enum TabBarPosition: string
     {
         return self::Top === $this || self::Left === $this;
     }
+
+    /**
+     * The same placement seen in a right-to-left workspace.
+     *
+     * Child order is PHYSICAL — first child, leftmost column — so a strip the
+     * user put on the right has to become the first child once the workspace
+     * mirrors, or it ends up between the editor and the file tree instead of at
+     * the far edge. Top and bottom are unaffected: mirroring is horizontal.
+     */
+    public function mirrored(): self
+    {
+        return match ($this) {
+            self::Left => self::Right,
+            self::Right => self::Left,
+            default => $this,
+        };
+    }
 }
