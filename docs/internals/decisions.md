@@ -8204,3 +8204,30 @@ Measured after: the strip at columns 0..25 with its close button at column 0 —
 the exact mirror of 224 in the left-to-right frame — and the tree at 200.
 
 Zero escaped mutants over the diff.
+
+## The RTL sweep, widened (2026-09-12)
+
+The first sweep was one geometry and one configuration. Widened, because a bug
+that only appears at 226 columns with the tabs on the right is not a bug that has
+been looked for.
+
+| | overrides | rows exact width | Hebrew rows unfrozen |
+| --- | --- | --- | --- |
+| LTR 226x67, tabs right | **0** | yes | — |
+| LTR 120x40, tabs top | **0** | yes | — |
+| RTL 226x67, tabs right | 67 (one per row) | yes | none |
+| RTL 120x40, tabs left | 40 | yes | none |
+| RTL 80x24, tabs top | 24 | yes | none |
+
+Plus the settings view, the app menu, the git view and the help viewer at 80x24
+and 120x40 — the narrow widths, where clamping and the "no padding to spend"
+path are reachable.
+
+The LTR rows matter as much as the RTL ones: **zero** overrides means the
+left-to-right path is untouched by any of this. `BidiTui::processRender()` skips
+the whole mirrored branch when no reorder is installed, so the freeze cannot run
+there — measured rather than assumed, since that is the path almost every user
+is on.
+
+Full suites after the change: 6024 unit, 401 E2e, 40 integration, plugins at
+100%. Zero escaped mutants over the diff.
