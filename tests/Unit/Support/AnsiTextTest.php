@@ -266,4 +266,60 @@ final class AnsiTextTest extends TestCase
         $this->assertStringContainsString($marker, $dimmed);
         $this->assertSame(4, AnsiUtils::visibleWidth($dimmed), 'zero-width codes only');
     }
+
+    /**
+     * A double-width glyph that STRADDLES the window's right edge is dropped,
+     * not half-kept.
+     *
+     * `sliceByColumn` is non-strict by default: it keeps a grapheme that starts
+     * inside the range and ends past it. The window then measured one column
+     * more than it was asked for, {@see AnsiText::scrollLineToCaret()} finished
+     * with a pad that is a floor and never truncates, and the over-wide row
+     * reached the renderer, which throws — from a find bar or a settings field
+     * with one CJK character in it.
+     *
+     * The existing wide-character case above puts the caret at the END of the
+     * text, where the window starts at column 0 and nothing straddles anything;
+     * this one scrolls the window so the wide glyph lands ON the cut.
+     */
+    public function testCaretWindowDropsAWideGlyphStraddlingTheRightEdge(): void
+    {
+        $m = AnsiUtils::cursorMarker(CursorShape::Bar);
+        $out = AnsiText::caretWindow('aaaaaaaaaa漢bbbb', 10, 5, $m);
+
+        $this->assertSame('aaaa'.$m, $out, 'the straddling 漢 is dropped whole');
+        $this->assertSame(4, AnsiUtils::visibleWidth($out), 'four columns, never five-plus-one');
+    }
+
+    /**
+     * The control, starting from the opposite value: the same geometry with a
+     * single-width character at the cut keeps it and fills the window exactly.
+     * Without this, a caretWindow that returned '' would pass the case above.
+     */
+    public function testCaretWindowKeepsANarrowGlyphAtTheSameRightEdge(): void
+    {
+        $m = AnsiUtils::cursorMarker(CursorShape::Bar);
+        $out = AnsiText::caretWindow('aaaaaaaaaaXbbbb', 10, 5, $m);
+
+        $this->assertSame('aaaa'.$m.'X', $out);
+        $this->assertSame(5, AnsiUtils::visibleWidth($out), 'the full window');
+    }
+
+    /**
+     * The whole reason the slice has to be exact: this is the caller that used
+     * to hand the renderer a row one column too wide.
+     */
+    public function testScrollLineToCaretNeverExceedsItsWidthAroundAWideGlyph(): void
+    {
+        $m = AnsiUtils::cursorMarker(CursorShape::Bar);
+        $line = 'aaaaaaaaaa'.$m.'漢bbbb';
+
+        foreach ([3, 4, 5, 6, 7, 8] as $width) {
+            $this->assertSame(
+                $width,
+                AnsiUtils::visibleWidth(AnsiText::scrollLineToCaret($line, $width)),
+                "exactly {$width} columns",
+            );
+        }
+    }
 }
