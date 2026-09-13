@@ -8603,3 +8603,60 @@ so rows past the terminal's last have no panes to reorder within and go out in
 logical order. Now tested, with TWO such rows, because that is what separates
 `continue` from `break`: `break` drops every row after the first unmapped one
 from the frame, and the escaped mutant said so.
+
+## A slice bound does not bound a blocking stat (2026-09-13)
+
+`.porta/freeze.log` from the user's own sessions holds 163 `loop stalled` lines
+and **41 full backtraces of the loop blocked five seconds or more**. Grouped by
+their top frame, the answer is not spread around:
+
+| frames blocked in | count |
+| --- | --- |
+| `Buffer::diskStampNow()` → `is_file()` | **35** |
+| `DiagnosticLog` (`file_put_contents`/`is_file`/`is_dir`/`filesize`) | 5 |
+| `FileTreeWidget::dirChangedSince()` → `is_dir()` | 1 |
+
+Every one of the 35 is the reconciliation poll, and the longest stalls beside
+them are 8.85s and 12.12s. The poll was ALREADY sliced — four buffers and eight
+directories a tick — because the full pass had been the proven stall. The slicing
+is not wrong; it is answering a different question. A bound on the NUMBER of
+stats says nothing about a single stat that blocks for twelve seconds, and at
+4Hz the same blocking stat is asked for again a quarter of a second later.
+
+`Editor/PollBackoff` times each slice and stands the poll down when one overruns
+50ms: one tick, then two, four, eight, up to 120 (30s at the poll's own rate),
+back to every tick the moment a slice is quick again. Over the five minutes the
+log covers that turns ~163 stalls into ~18. The freeze itself is not made
+shorter — nothing in PHP can make a blocking `stat(2)` return — and the cost is
+slower DETECTION of external edits, which the reconciler's own docblock already
+names as the acceptable trade.
+
+Doubling from one rather than jumping to the cap: a single slow slice is as
+likely to be a busy moment as a sick disk, and standing down for thirty seconds
+over one of those hides an external edit for no reason.
+
+### Why it is its own class
+
+A stopwatch with a memory is not what reconciling buffers is about, and there is
+a testing reason that decided it: `FilesystemReconciler` is an inlined service,
+so no test can hand ITS clock a `MockClock` after the container has built it —
+`private readonly` defeats reflection, which is exactly what left two mutants
+alive on `BufferService`'s save window earlier. A small class with a clock can be
+constructed directly, and the reconciler's own test then proves only the wiring:
+that a stood-down tick reaches no filesystem, and that a slice which really does
+overrun arms the next gap. The second half is driven by making the slice
+genuinely slow through the one collaborator a test can lengthen from outside — a
+listener on the reload the slice performs.
+
+### Two mutants that changed the design
+
+- `<=` → `<` on the budget **escaped**. The boundary test slept exactly the
+  budget, and float seconds cannot land there: the epoch lives in the mantissa,
+  so `now - started` is a hair either side of 0.05 and both spellings agree by
+  accident. Durations are compared in whole microseconds now
+  (`Clocks::microseconds()`, beside the existing `seconds()` so the cast stays in
+  one place), and the boundary is exact — so the mutant dies.
+- `$this->gap = 0` → `-1` **escaped**, because `min(MAX, max(1, 2 * $gap))`
+  papers over every non-positive value. The counter is now "what the NEXT
+  overrun costs", starting and resetting at 1, and the `max()` is gone: the
+  reset is a value with meaning, and mutating it kills the ladder's first rung.

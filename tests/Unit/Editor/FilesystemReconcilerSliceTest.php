@@ -9,12 +9,15 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\CloseMode;
 use Porta\Editor\OpenFocus;
+use Porta\Editor\PollBackoff;
+use Porta\Event\BufferReloaded;
 use Porta\Ide;
 use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\Toasts;
 use Porta\Widget\FileTreeWidget;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * The poll timer's amortized reconciliation path: bounded slices of buffers
@@ -54,6 +57,69 @@ final class FilesystemReconcilerSliceTest extends TestCase
         $manager = Services::resolve($this->ide, BufferManager::class);
         \assert($manager instanceof BufferManager, description: 'the locator serves the buffer manager');
         $this->assertSame("<?php // b v2\n", $manager->get($b)?->document->getText(), 'one slice covered both open buffers');
+    }
+
+    public function testAStoodDownPollStatsNothingUntilItsGapHasPassed(): void
+    {
+        // The pacer's own arithmetic is {@see PollBackoffTest}'s; this is the
+        // wiring — that a stood-down tick reaches no filesystem at all, and that
+        // the detection it costs comes back on its own.
+        $a = (string) realpath($this->project->write('a.php', "<?php // a\n"));
+        $buffers = $this->buffers();
+        $buffers->openFile($a, focus: OpenFocus::Editor);
+        $manager = Services::resolve($this->ide, BufferManager::class);
+        \assert($manager instanceof BufferManager, description: 'the locator serves the buffer manager');
+
+        $backoff = Probe::object(Probe::object($buffers, 'reconciler'), 'backoff');
+        Probe::set($backoff, 'skips', 2); // as a slow slice would have left it
+
+        file_put_contents($a, data: "<?php // a v2 is longer\n");
+        touch($a, time() + 2);
+        $buffers->pollFilesystemSlice();
+        $this->assertSame("<?php // a\n", $manager->get($a)?->document->getText(), 'the first stood-down tick polled nothing');
+        $buffers->pollFilesystemSlice();
+        $this->assertSame("<?php // a\n", $manager->get($a)?->document->getText(), 'nor the second');
+
+        $buffers->pollFilesystemSlice();
+
+        $this->assertSame("<?php // a v2 is longer\n", $manager->get($a)?->document->getText(), 'and the tick after the gap picked the edit up');
+    }
+
+    public function testASliceThatOverrunsStandsTheNextTickDown(): void
+    {
+        // The other half of the wiring: the slice is actually TIMED. Made slow
+        // the way a real one is — by work inside it — using the one collaborator
+        // a test can lengthen from outside, a listener on the reload the slice
+        // performs. A plugin listener this slow is not hypothetical; it is the
+        // shape of every freeze.log backtrace, with a stat in place of the
+        // listener.
+        $a = (string) realpath($this->project->write('a.php', "<?php // a\n"));
+        $b = (string) realpath($this->project->write('b.php', "<?php // b\n"));
+        $buffers = $this->buffers();
+        $buffers->openFile($a, focus: OpenFocus::Editor);
+        $buffers->openFile($b, focus: OpenFocus::Editor);
+        $manager = Services::resolve($this->ide, BufferManager::class);
+        \assert($manager instanceof BufferManager, description: 'the locator serves the buffer manager');
+        Services::resolve($this->ide, EventDispatcherInterface::class)->addListener(
+            BufferReloaded::class,
+            // Twenty percent over the budget: enough that no machine reads this
+            // slice as a quick one.
+            static function (): void {
+                usleep((int) (1.2 * PollBackoff::BUDGET_MICROS));
+            },
+        );
+
+        file_put_contents($a, data: "<?php // a v2 is longer\n");
+        touch($a, time() + 2);
+        $buffers->pollFilesystemSlice(); // reloads a.php, and overruns doing it
+
+        file_put_contents($b, data: "<?php // b v2 is longer\n");
+        touch($b, time() + 2);
+        $buffers->pollFilesystemSlice();
+
+        $this->assertSame("<?php // b\n", $manager->get($b)?->document->getText(), 'the tick after the slow slice polled nothing');
+        $buffers->pollFilesystemSlice();
+        $this->assertSame("<?php // b v2 is longer\n", $manager->get($b)?->document->getText(), 'the one after it did');
     }
 
     public function testASliceChecksTheFirstFourBuffersAndLeavesTheFifth(): void

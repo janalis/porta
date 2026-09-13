@@ -48,6 +48,7 @@ final class FilesystemReconciler
         private readonly LspSessionPool $lsp,
         private readonly EventDispatcherInterface $events,
         private readonly ProjectPaths $paths,
+        private readonly PollBackoff $backoff,
     ) {}
 
     /** Reconcile every open buffer and the file tree with the on-disk state. */
@@ -69,9 +70,19 @@ final class FilesystemReconciler
      * ticks at typical sizes; a huge tree degrades to slower DETECTION, not a
      * longer stall. Paths are re-resolved through the manager so a buffer
      * closed mid-cycle is skipped — never stat'd or flashed for.
+     *
+     * The bound is a COUNT, and a count is only half of it: a single `is_file()`
+     * can block for twelve seconds on a loaded box, which is what 35 of the 41
+     * blocked-loop backtraces in the user's freeze.log are stopped inside. So
+     * {@see PollBackoff} times each slice and stands the poll down when the
+     * filesystem stops answering — the freeze cannot be made shorter, but it can
+     * stop happening four times a second.
      */
     public function pollSlice(): void
     {
+        if (!$this->backoff->mayRun()) {
+            return;
+        }
         if ([] === $this->pendingPaths) {
             $this->pendingPaths = array_map(static fn (Buffer $buffer): string => $buffer->path, $this->buffers->all());
         }
@@ -84,6 +95,7 @@ final class FilesystemReconciler
         if ($this->tree->refreshDirsSlice(self::TREE_SLICE)) {
             $this->tui->requestRender();
         }
+        $this->backoff->finished();
     }
 
     /** Detect and act on an external change to a single buffer's file. */

@@ -21,4 +21,21 @@ final class Clocks
 
         return (float) $seconds;
     }
+
+    /**
+     * The same instant as whole microseconds — exact, where seconds are not.
+     *
+     * A float second carries the epoch in its mantissa, so the difference of two
+     * of them lands a hair either side of the value asked for: a duration cannot
+     * be compared to a threshold it is meant to sit exactly on, which is a
+     * boundary no test can then pin. `Uu` is a digit string of microseconds and
+     * an integer holds it outright, so `elapsed <= budget` means what it says.
+     */
+    public static function microseconds(ClockInterface $clock): int
+    {
+        /** @var numeric-string $micros 'Uu' always yields digits */
+        $micros = $clock->now()->format('Uu');
+
+        return (int) $micros;
+    }
 }

@@ -17,6 +17,17 @@ degrades to slower change *detection*, never a longer loop stall. The
 synchronous full pass (`Ide::pollFilesystem()`) remains the seam tests drive
 when they need an external edit's effect observable immediately.
 
+A slice count is only half of it: **one `is_file()` can block for twelve
+seconds** on a loaded box — 35 of the 41 blocked-loop backtraces in the user's
+own `freeze.log` are stopped inside exactly that. So `Editor/PollBackoff` times
+every slice and stands the poll down when one overruns 50ms, doubling the gap on
+each further overrun up to 30s and dropping back to every tick as soon as a
+slice is quick again. The freeze cannot be made shorter; it can stop happening
+four times a second. Durations there are compared in whole **microseconds**
+(`Clocks::microseconds()`), because a float second carries the epoch in its
+mantissa and a duration built from two of them lands a hair either side of the
+threshold it is meant to sit on.
+
 ## Rendering
 
 Widgets render to `string[]` measured in **display columns**
