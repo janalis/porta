@@ -260,7 +260,15 @@ final class AbstractSubprocessHighlighterTest extends TestCase
         $this->assertSame(['second'], $this->delivered, 'the in-flight answer for an older version is dropped');
     }
 
-    public function testTheConcurrencyCeilingDeclinesTheThirdRun(): void
+    /**
+     * The ceiling holds at two — and the run it turns away still lands.
+     *
+     * This asserted "the third run never started" when it was written, which was
+     * the implementation rather than the invariant: the ceiling exists so a
+     * highlighter cannot become a fork bomb, not so that a keystroke can lose
+     * its colours. The companion test below is what the old shape cost.
+     */
+    public function testTheCeilingHoldsAtTwoAndTheRunItTurnsAwayStillLands(): void
     {
         $highlight = $this->backend(<<<'PHP'
             usleep(250_000);
@@ -269,18 +277,55 @@ final class AbstractSubprocessHighlighterTest extends TestCase
 
         // One per language, so debouncing cannot collapse them into one.
         $highlight('one', language: 'rust');
-        $this->pump(0.05);
+        $this->await(fn (): bool => 1 === Probe::get($this->plugin, 'running'), what: 'the first process to start');
         $highlight('two', language: 'go');
-        $this->pump(0.05);
+        $this->await(fn (): bool => 2 === Probe::get($this->plugin, 'running'), what: 'the second process to start');
         $highlight('three', language: 'zig');
 
-        $this->awaitDelivery(2);
-        $this->await(fn (): bool => 0 === Probe::get($this->plugin, 'running'), what: 'both processes to drain');
-        // Two concurrent processes finish in whichever order the OS gives them,
-        // so the claim is the SET: 'three' was declined, the other two ran.
+        $peak = 0;
+        $this->await(function () use (&$peak): bool {
+            $running = Probe::get($this->plugin, 'running');
+            $peak = max($peak, \is_int($running) ? $running : 0);
+
+            return 3 === \count($this->delivered);
+        }, what: 'all three to land');
+
+        $this->assertSame(2, $peak, 'never more than two processes at once');
         $delivered = $this->delivered;
         sort($delivered);
-        $this->assertSame(['one', 'two'], $delivered, 'the third run never started');
+        $this->assertSame(['one', 'three', 'two'], $delivered, 'and the third ran when a slot came free');
+    }
+
+    /**
+     * A run the ceiling declines must not take the paint down with it.
+     *
+     * Two guards meet here and the meeting was never graded. Latest-wins drops
+     * every answer but the newest dispatch's; the ceiling declines a dispatch
+     * outright when two processes are already out. Do both to the same language
+     * and the newest dispatch is the one that never ran, so its sequence
+     * invalidates the two answers that DID arrive and nothing is ever painted —
+     * the buffer keeps its plain text until the user types again.
+     *
+     * Not hypothetical: this is the shape behind a 1-in-10 E2e flake whose
+     * reason was the chroma paint never landing at all.
+     */
+    public function testARunTheCeilingDeclinesStillGetsPainted(): void
+    {
+        $highlight = $this->backend(<<<'PHP'
+            usleep(200_000);
+            echo json_encode([["type" => "Text", "value" => (string) stream_get_contents(STDIN)]]);
+            PHP);
+
+        // Three dispatches of the SAME language, each past the one before it:
+        // two go out, the third meets the ceiling.
+        $highlight('one');
+        $this->await(fn (): bool => 1 === Probe::get($this->plugin, 'running'), what: 'the first process to start');
+        $highlight('two');
+        $this->await(fn (): bool => 2 === Probe::get($this->plugin, 'running'), what: 'the second process to start');
+        $highlight('three');
+
+        $this->awaitDelivery(1);
+        $this->assertSame(['three'], $this->delivered, 'the newest text is what the buffer shows');
     }
 
     /**

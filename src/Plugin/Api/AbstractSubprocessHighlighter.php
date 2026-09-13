@@ -49,6 +49,12 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin implemen
     /** @var array<string, int> language => newest dispatched sequence */
     private array $latest = [];
 
+    /**
+     * @var array<string, \Closure(): void> language => the dispatch the ceiling
+     *                                     turned away, newest only
+     */
+    private array $pending = [];
+
     private int $sequence = 0;
 
     private int $running = 0;
@@ -113,6 +119,9 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin implemen
         }
         $this->timers = [];
         $this->latest = [];
+        // A dispatch waiting for a slot would spawn for a plugin the user has
+        // just turned off, exactly like an armed debounce timer would.
+        $this->pending = [];
     }
 
     /** Debounce this request, replacing any pending one for the same language. */
@@ -141,7 +150,24 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin implemen
     private function run(PluginApi $api, TerminalTheme $theme, string $text, string $language, \Closure $deliver, int $sequence): void
     {
         $binary = $this->binary($api);
-        if (null === $binary || $this->running >= self::MAX_CONCURRENT) {
+        if (null === $binary) {
+            return;
+        }
+        if ($this->running >= self::MAX_CONCURRENT) {
+            // Turned away, not thrown away. These two guards meet here, and
+            // dropping the dispatch is what that meeting used to mean: latest-
+            // wins has already recorded THIS sequence as the newest, so the
+            // answers of the two runs that are out will be discarded when they
+            // arrive — and if this one never runs, nothing is painted at all.
+            // The buffer keeps its plain text until the next keystroke, which
+            // on a machine slow enough to have two runs out is exactly when the
+            // colours are wanted. One entry per language, replaced rather than
+            // queued, for the same reason the debounce replaces: intermediate
+            // versions are worthless once a later one exists.
+            $this->pending[$language] = function () use ($api, $theme, $text, $language, $deliver, $sequence): void {
+                $this->run($api, $theme, $text, $language, $deliver, $sequence);
+            };
+
             return;
         }
 
@@ -149,6 +175,9 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin implemen
         $started = new AsyncProcess([$binary, ...$this->lexerArgs($language)], $api->projectRoot(), stdin: $text, timeout: AsyncProcess::INTERACTIVE_TOOL_TIMEOUT)
             ->start(function (int $code, string $stdout) use ($theme, $language, $deliver, $sequence): void {
                 --$this->running;
+                // Before any early return: a slot has come free and something
+                // may be waiting for it, whatever this answer turns out to be.
+                $this->dispatchPending();
                 if (0 !== $code || ($this->latest[$language] ?? 0) !== $sequence) {
                     return; // failed, or a newer version superseded this run
                 }
@@ -166,7 +195,27 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin implemen
             // retries, where a flash per debounce on a fork-starved machine
             // would be its own denial of service.
             --$this->running;
+            $this->dispatchPending();
         }
+    }
+
+    /**
+     * Send one dispatch the ceiling turned away, now that a slot is free.
+     *
+     * One per freed slot, so the ceiling still holds: every exit frees exactly
+     * one and releases exactly one. Which language goes first is insertion
+     * order, which is the order they were turned away in — nothing better is
+     * available, and a frame is one paint per language either way.
+     */
+    private function dispatchPending(): void
+    {
+        $language = array_key_first($this->pending);
+        if (null === $language) {
+            return;
+        }
+        $next = $this->pending[$language];
+        unset($this->pending[$language]);
+        $next();
     }
 
     /**

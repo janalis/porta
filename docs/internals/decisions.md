@@ -8938,3 +8938,45 @@ hat.
 `#!/nonexistent/interpreter` with the executable bit: resolvable, executable, and
 unspawnable — the same answer `posix_spawn` gives a machine out of processes. No
 mocking, and it exercises the real `proc_open` return.
+
+## The ceiling turned a keystroke's colours away for good (2026-09-13)
+
+Found while hunting the chroma flake, reproduced deterministically, and **not**
+that flake's cause — the scan still says 2/12 after it. Recorded that way round
+because the temptation to call a plausible fix the answer is exactly what the
+last three rounds have been about.
+
+Two guards in `AbstractSubprocessHighlighter` meet in `run()`, and the meeting had
+never been graded:
+
+- **latest-wins** — every dispatch carries a sequence, and an answer for anything
+  but the newest is dropped;
+- **the concurrency ceiling** — a dispatch is declined outright when
+  `MAX_CONCURRENT` (2) processes are already out.
+
+Decline the NEWEST dispatch and its sequence is already recorded as the latest, so
+the two answers that do arrive are both discarded as superseded — by a run that
+never happened. Nothing is painted at all, and the buffer keeps its plain text
+until the next keystroke. Which, on a machine slow enough to have two runs out at
+once, is precisely when the colours were wanted.
+
+A declined dispatch is now HELD — one per language, replaced rather than queued,
+for the same reason the debounce replaces — and released by the next exit, so
+every freed slot dispatches exactly one. The ceiling still holds at two, which is
+what the old test should have been asserting: it claimed "the third run never
+started", which is the implementation, where the invariant is "never more than two
+processes at once". It now samples `running` across the drain and asserts the peak,
+plus that all three texts land.
+
+The unit test that reproduces the loss fails with the same sentence as the E2e
+flake — `timed out … waiting for the backend to deliver` — which is how one was
+mistaken for the other. The E2e case makes ONE dispatch, so the ceiling cannot be
+its cause; that hunt continues.
+
+### A test I deleted without noticing
+
+Rewriting the ceiling test with a slice-and-splice edit removed two committed
+tests from the same region. The suite went green with 12 tests where it had had
+14, and nothing said so — the COVERAGE gate did, two lines uncovered in the
+branch those tests were the only cover for. Restored from `git show HEAD:`. A
+count is worth asserting when an edit rewrites a region rather than a line.
