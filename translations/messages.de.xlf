@@ -206,10 +206,6 @@
         <source>File Structure</source>
         <target>Dateistruktur</target>
       </trans-unit>
-      <trans-unit id="59">
-        <source>File too large (&gt; 2 MB)</source>
-        <target>Datei zu groß (&gt; 2 MB)</target>
-      </trans-unit>
       <trans-unit id="60">
         <source>Find in Project</source>
         <target>Im Projekt suchen</target>
@@ -3089,6 +3085,18 @@
       <trans-unit id="864">
         <source>Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit</source>
         <target>Ctrl+S speichern  Ctrl+T Panel  Ctrl+Space vervollständigen  Ctrl+Q beenden</target>
+      </trans-unit>
+      <trans-unit id="865">
+        <source>Read-only preview  %shown% of %total%</source>
+        <target>Schreibgeschützte Vorschau  %shown% von %total%</target>
+      </trans-unit>
+      <trans-unit id="866">
+        <source>Read-only: %file% is %total%, showing the first %shown%</source>
+        <target>Schreibgeschützt: %file% ist %total% groß, die ersten %shown% werden angezeigt</target>
+      </trans-unit>
+      <trans-unit id="867">
+        <source>Read-only: %file% is %total%, too large to edit</source>
+        <target>Schreibgeschützt: %file% ist %total% groß und damit zu groß zum Bearbeiten</target>
       </trans-unit>
     </body>
   </file>

@@ -10,6 +10,7 @@ use Porta\Editor\EditorPanes;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\HelpViewerWidget;
+use Porta\Widget\TextPreviewWidget;
 
 final class CorePanesTest extends TestCase
 {
@@ -17,7 +18,7 @@ final class CorePanesTest extends TestCase
     {
         $panes = new EditorPanes();
         $helpViewer = new HelpViewerWidget();
-        new CorePanes($panes, $helpViewer, new Translator())->register();
+        new CorePanes($panes, $helpViewer, new TextPreviewWidget(new Translator()), new Translator())->register();
 
         $project = new TempProject(['help.md' => "# Hi\n"]);
 
@@ -28,7 +29,7 @@ final class CorePanesTest extends TestCase
     {
         $panes = new EditorPanes();
         $helpViewer = new HelpViewerWidget();
-        new CorePanes($panes, $helpViewer, new Translator())->register();
+        new CorePanes($panes, $helpViewer, new TextPreviewWidget(new Translator()), new Translator())->register();
 
         $this->assertSame('', $panes->load($helpViewer->paneId(), '/does/not/exist.md'));
     }

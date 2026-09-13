@@ -26,6 +26,7 @@ use Porta\Support\ProjectPaths;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\HelpViewerWidget;
+use Porta\Widget\TextPreviewWidget;
 use Porta\Workbench\Notifier;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -180,7 +181,13 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             return;
         }
         if ((int) filesize($path) > Files::MAX_TEXT_BYTES) {
-            $this->notifier->flash($this->translator->trans('File too large (> 2 MB)'));
+            // Not a refusal any more. This used to flash "File too large" and
+            // stop, so a grown composer.lock, a log or a bundled asset was
+            // simply unopenable and you left the IDE to look at it. It opens
+            // read-only instead — the pane holds a bounded prefix and says so.
+            // Ahead of the OpenAs::Text bypass on purpose: "open as text" on a
+            // file this size has nowhere else to go.
+            $this->openInPane($path, TextPreviewWidget::PANE_ID, $focus);
 
             return;
         }

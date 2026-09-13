@@ -10,6 +10,7 @@ use Porta\Config\KeybindingRow;
 use Porta\Container\AsIdeService;
 use Porta\Editor\Document;
 use Porta\Editor\FindMode;
+use Porta\Editor\TextPreview;
 use Porta\History\SearchHistoryStore;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsRow;
@@ -37,6 +38,7 @@ use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Porta\Widget\TerminalPanelWidget;
+use Porta\Widget\TextPreviewWidget;
 use Porta\Workbench\Dock\DockTab;
 use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\Menu\MenuItem;
@@ -201,6 +203,19 @@ final class NarrowPaneRenderTest extends TestCase
         $help = new HelpViewerWidget();
         $help->show('/docs/help.md', "# Heading\n\nSome help text that is long enough to need truncating.\n");
         yield 'help viewer' => [$help];
+
+        // The read-only preview shows ARBITRARY bytes, so one enormous line is
+        // ordinary rather than exceptional — a minified bundle is megabytes on
+        // a single line. Its banner is built from a translated string with a
+        // file name and two sizes interpolated, which is the other row here
+        // that has no natural ceiling.
+        $preview = new TextPreviewWidget(new Translator('en'));
+        $preview->show('/tmp/a-long-file-name-that-crowds-the-banner.log', new TextPreview(
+            str_repeat('x', times: 400)."\nshort\n",
+            bytes: 9_000_000,
+            truncated: true,
+        ));
+        yield 'text preview' => [$preview];
     }
 
     #[DataProvider('paneWidgets')]

@@ -206,10 +206,6 @@
         <source>File Structure</source>
         <target>File Structure</target>
       </trans-unit>
-      <trans-unit id="59">
-        <source>File too large (&gt; 2 MB)</source>
-        <target>File too large (&gt; 2 MB)</target>
-      </trans-unit>
       <trans-unit id="60">
         <source>Find in Project</source>
         <target>Find in Project</target>
@@ -3089,6 +3085,18 @@
       <trans-unit id="864">
         <source>Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit</source>
         <target>Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit</target>
+      </trans-unit>
+      <trans-unit id="865">
+        <source>Read-only preview  %shown% of %total%</source>
+        <target>Read-only preview  %shown% of %total%</target>
+      </trans-unit>
+      <trans-unit id="866">
+        <source>Read-only: %file% is %total%, showing the first %shown%</source>
+        <target>Read-only: %file% is %total%, showing the first %shown%</target>
+      </trans-unit>
+      <trans-unit id="867">
+        <source>Read-only: %file% is %total%, too large to edit</source>
+        <target>Read-only: %file% is %total%, too large to edit</target>
       </trans-unit>
     </body>
   </file>

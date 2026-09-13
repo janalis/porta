@@ -306,7 +306,9 @@ Add these to your project's `.gitignore`:
   round-trips through load and save unchanged. Tabs render at 4-cell stops, and
   `Tab` / auto-indent insert the file's own indent unit (a tab in a tab-indented
   file, four spaces otherwise).
-- Files larger than 2 MB and non-UTF-8 files are refused.
+- Files larger than 2 MB open **read-only**: a scrollable preview of the first
+  2 MB, with a banner naming the file's real size. Nothing about that tab can be
+  edited or saved. Non-UTF-8 files are still refused.
 - Git change marks are recomputed from `HEAD` on open, save, reload and buffer
   switch, and follow your edits in between: they move with the lines below an
   insertion or deletion, and the line under the caret lights as you type. The

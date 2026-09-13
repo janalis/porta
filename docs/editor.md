@@ -79,9 +79,13 @@ dropped rather than offered, and one that has been renamed follows the rename
 the way bookmarks and breakpoints do. Help pages and images are never
 recorded — reopening a help page as editable source is not a switch.
 
-Files larger than 2 MB and non-UTF-8 files are refused. Clean buffers that
-change on disk (e.g. rewritten by a formatter) reload automatically within
-a second.
+A file larger than 2 MB opens **read-only** instead of being refused: a
+scrollable preview of its first 2 MB, cut at a line break, with a banner naming
+the file's real size. `↑`/`↓`, `PageUp`/`PageDown` and `Home`/`End` move through
+it and the wheel scrolls it; nothing about that tab can be edited or saved,
+because it is a viewer pane rather than a buffer. Non-UTF-8 files are still
+refused. Clean buffers that change on disk (e.g. rewritten by a formatter)
+reload automatically within a second.
 
 ## Editing
 

@@ -206,10 +206,6 @@
         <source>File Structure</source>
         <target>מבנה הקובץ</target>
       </trans-unit>
-      <trans-unit id="59">
-        <source>File too large (&gt; 2 MB)</source>
-        <target>הקובץ גדול מדי (&gt; 2 MB)</target>
-      </trans-unit>
       <trans-unit id="60">
         <source>Find in Project</source>
         <target>חפש בפרויקט</target>
@@ -3089,6 +3085,18 @@
       <trans-unit id="864">
         <source>Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit</source>
         <target>Ctrl+S שמור  Ctrl+T פאנל  Ctrl+Space השלמה  Ctrl+Q יציאה</target>
+      </trans-unit>
+      <trans-unit id="865">
+        <source>Read-only preview  %shown% of %total%</source>
+        <target>תצוגה מקדימה לקריאה בלבד  %shown% מתוך %total%</target>
+      </trans-unit>
+      <trans-unit id="866">
+        <source>Read-only: %file% is %total%, showing the first %shown%</source>
+        <target>לקריאה בלבד: %file% בגודל %total%, מוצגים %shown% הראשונים</target>
+      </trans-unit>
+      <trans-unit id="867">
+        <source>Read-only: %file% is %total%, too large to edit</source>
+        <target>לקריאה בלבד: %file% בגודל %total%, גדול מדי לעריכה</target>
       </trans-unit>
     </body>
   </file>
