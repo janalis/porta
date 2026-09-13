@@ -9194,3 +9194,99 @@ kind from the one below it: with two alike, dropping a mark and shifting it onto
 its neighbour both write the same value to the same line. That is this file's
 own "the fixture has all its elements alike" rule, arrived at from the mutation
 side.
+
+## A file too large to edit is still a file you can look at (2026-09-13)
+
+Over `Files::MAX_TEXT_BYTES` the IDE flashed "File too large (> 2 MB)" and did
+nothing else. A composer.lock that had grown, a log, a database dump, a bundled
+asset — the answer was to leave the IDE. It opens read-only now: a scrollable
+preview of the first cap's worth, cut at a line break, with a banner naming the
+file's real size.
+
+### A pane, not a read-only buffer
+
+The decision worth recording, because the other option looks cheaper and is not.
+
+"Read-only" would be a new state that every mutation path in the editor has to
+respect — the document's ten mutators, the save path, autosave, the LSP
+`didOpen` — and one missed path silently lets you edit a file that cannot be
+written back, which is worse than refusing to open it. A PANE buffer already
+carries a permanently-empty document that is never dirty with its cursor pinned
+at 0:0, so the guarantee comes from the SHAPE rather than from a flag somebody
+has to remember to check. The test asserts that shape rather than a flag.
+
+It registers through `PaneRegistrar`, the same extension point a plugin's
+`registerPane()` reaches — the second pane core owns, beside the help browser.
+`BufferService`'s size branch stopped flashing and calls `openInPane()`, ahead
+of the `OpenAs::Text` bypass on purpose: "open as text" on a file this size has
+nowhere else to go.
+
+### The prefix is bounded, which is the whole point
+
+Reading all of it would reintroduce one layer down the exact problem the cap
+exists to avoid — a dump is bounded by nothing, and `file_get_contents` on it
+takes the session. One cap's worth is read and the banner says so.
+
+Cut at the last NEWLINE inside the cap, not at the byte: a prefix ending
+mid-line shows a half-line the file does not contain, and cutting mid-CHARACTER
+fails the UTF-8 check over bytes that are fine in the whole file. A cap's worth
+with no newline at all — a minified bundle is megabytes on one line — keeps the
+raw prefix, because there is nothing better to cut at and the alternative is an
+empty pane for a file the user asked to see.
+
+A huge file that is not UTF-8 is still refused, by the loader throwing: the
+preview is a way to LOOK at a large file, not a way to render one as mojibake.
+
+### It binds core's verbs rather than minting its own
+
+The help viewer mints `help_*` ids because it has verbs of its own — links,
+history, find. This has nothing but scrolling, so it binds `cursor_up`,
+`page_down`, `document_end` and the rest. No new catalog entries, no new label
+translations, and rebinding "page down" moves it here too, which is what a user
+rebinding "page down" means.
+
+### Three of this repo's own gates fired on it
+
+Worth listing, because the round's value is as much in these as in the feature.
+
+`NarrowPaneRenderTest`'s honesty gate refused to let a new `#[AsIdeService]`
+widget exist unswept — and the moment it was added to the sweep, the sweep found
+an uninitialised `$styles` at every width: the constructor had not called
+`initStyles()`, which is a fatal on the first frame.
+
+`KeybindingsDocTest` caught `ctrl+home`/`ctrl+end` as undocumented. Dropped
+rather than documented, matching the help viewer's plain Home/End.
+
+`CatalogCoverageTest` caught the now-orphaned "File too large (> 2 MB)" unit
+left behind in all seven catalogs.
+
+### A note on the gate itself
+
+`composer coverage:check` DEADLOCKED twice on this change — 27 minutes elapsed
+on 50 seconds of CPU, 0% utilisation, stuck at 99% in paratest's coverage merge.
+It completed three times earlier the same afternoon at the same settings, so it
+is intermittent rather than anything about the diff, and the documented
+`PORTA_TEST_PROCESSES=4` mitigation did not prevent it.
+
+What unblocked it is worth keeping: the question was never "is the tree at
+100%", it was "is any NEW line unexercised". A clover report over just the
+affected test classes answers that in seconds —
+
+    php -d pcov.enabled=1 vendor/bin/phpunit --testsuite=Unit \
+      --filter '<the classes that touch it>' --coverage-clover /tmp/c.xml
+
+then read the `count="0"` statement lines out of it. That named six uncovered
+lines (the four tab-management arms, the `default` arm, and the zero-size early
+return), each of which got a case. `--coverage-filter` on the command line does
+NOT narrow the report — `phpunit.xml.dist`'s own coverage config wins — so grep
+the classes out of the XML rather than trying to scope the run.
+
+### And a bug only a mutation found
+
+`document_end` asks to scroll to `PHP_INT_MAX`, the idiom the help viewer uses.
+Adding that to a non-zero scroll overflows the int to a float, and the clamp
+takes an `int` — a TypeError. It is invisible if a frame is drawn between the
+two keys, because the render re-clamps, and the first test did exactly that. End
+followed by Down is an ordinary burst from ONE read of stdin. `scrollTo()` is
+split from `scrollBy()` so a jump clamps without an addition, and the case that
+pins it deliberately skips the frame.
