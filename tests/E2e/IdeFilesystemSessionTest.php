@@ -117,14 +117,21 @@ final class IdeFilesystemSessionTest extends TestCase
                     $tui->handleInput("\x14"); // focus tree: entries exactly.bin, huge.bin, latin1.txt, ok.php, secret.php
                     $tui->handleInput("\x1b[B"); // skip past exactly.bin
                     $tui->handleInput("\r"); // huge.bin
-                    $tui->tick(); // render the flash before it is replaced
+                    $tui->tick();
+                    // huge.bin is no longer REFUSED: it opens read-only, which
+                    // takes focus into the preview pane. Every keystroke below
+                    // is meant for the tree, so take focus back — before this,
+                    // they went to the pane and the walk never reached
+                    // secret.php at all.
+                    $this->awaitPainted($tui, $terminal, 'Read-only');
+                    $tui->handleInput("\x14");
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\r"); // latin1.txt
                     $tui->tick();
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\r"); // secret.php
-                    // Last of the three refusals the post-run assertions read.
+                    // Last of the two refusals the post-run assertions read.
                     $this->awaitPainted($tui, $terminal, 'Cannot read secret.php');
                 },
             ],
@@ -132,7 +139,11 @@ final class IdeFilesystemSessionTest extends TestCase
 
         chmod($unreadable, permissions: 0o644);
         $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-        $this->assertStringContainsString('File too large', $screen);
+        // Too large is no longer a refusal: the file opens read-only, and the
+        // banner naming its real size is what the user gets instead of a flash.
+        $this->assertStringContainsString('Read-only', $screen);
+        $this->assertStringContainsString('huge.bin', $screen);
+        $this->assertStringNotContainsString('File too large', $screen, 'the old refusal is gone');
         $this->assertStringContainsString('Not a UTF-8 text file', $screen);
         $this->assertStringContainsString('Cannot read secret.php', $screen);
     }
