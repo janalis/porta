@@ -9026,3 +9026,171 @@ half without this afternoon's archaeology.
 
 This is also the documented rule the test was breaking: *awaits must be
 terminal-state, not success-only*. It awaited success and reported a bare timeout.
+
+## The gutter marks move, and two rows that were one column too wide (2026-09-13)
+
+An improvements-led round: the UI treated as sound, the time spent on polish
+and affordances, and only the defects that blocked those fixed on the way.
+
+### Picking the work
+
+`.porta/` again, the way the find-surfaces round did. It holds **five saved
+search scopes** (one pinned), a search history and a `scope: module` pref — and
+**no `bookmarks.json` at all**, with two local-history snapshots. So bookmark
+mnemonics stayed unbuilt for the second round running, on the same evidence.
+
+The crash logs were read first and are **exhausted**: `error.log`'s twenty-one
+undated traces and its two dated ones were both settled by the previous
+commit, and `freeze.log`'s bad day predates the poll and diagnostic-write
+fixes. `perf.log` since is healthy — paintMs p50 1–3 ms, no slow-paint lines.
+
+### Two rows a column too wide, which is a crash
+
+Both found by sweeping for one defect class — *a widget emitting a line whose
+visible width can exceed the region it was handed* — and both reproduced before
+being touched.
+
+**`AnsiText::caretWindow()`.** `AnsiUtils::sliceByColumn()` defaults to
+NON-strict: `$fits = !$strict || ($currentCol + $w <= $endCol)`, so a grapheme
+that starts inside the range and ends past it is kept whole. One double-width
+character landing on the window's last column therefore came back one column
+over. Nothing downstream caught it, because `scrollLineToCaret()` finishes with
+`padRight()` — a floor that never truncates. That helper is behind every
+single-line input in the IDE: the find bar, the settings field being edited, the
+Search Everywhere query row, `TextField`, `MultilineInput`. One CJK or emoji
+character in any of them ended the session.
+
+Measured after the fix over 888 cases — CJK, emoji, combining marks, RTL and
+tabs, every caret position against every width 1..12 — zero over-wide. The case
+that pins it scrolls the window so the wide glyph lands ON the cut; the existing
+wide-character case has the caret at the END of the text, which is exactly where
+nothing straddles anything.
+
+**`TabBarWidget::indicatorRow()`.** `renderVertical()` computes
+`min(VERTICAL_WIDTH, columns)` and says in a comment why — a widget may not emit
+a line wider than its pane. The two ▲/▼ rows then padded to the CONSTANT anyway,
+and registered a click zone of that width too. Reproduced at every width from 1
+to 23: one row of 24 among rows of 16. The blank fallbacks beside both call
+sites had used `AnsiText::blank($width)` all along; the indicators were the two
+lines that never asked.
+
+### Silence is not a refusal
+
+`AbstractLspController::ready()` returns null when no initialized server serves
+the file, and every user-invoked site answered with a bare `return;`. In a
+Markdown, JSON or JavaScript buffer — or any buffer before a PHP server
+finishes starting — twelve verbs did nothing at all, with no message. Rename was
+the one that already flashed, which is what made the other twelve look
+deliberate.
+
+Guarded from both ends, because neither half is enough. `LspRefusalTest` is
+STRUCTURAL: no `ready()` call site in `src/Lsp` may refuse in silence unless the
+allowlist names it with a reason. That protects the verb someone adds next month
+behind a sixth request helper, which a per-verb test cannot. It also cannot see
+whether the helper actually flashes, so `AbstractLspControllerTest` asserts that
+behaviourally, with a ready server as the control.
+
+Completion and signature help stay silent and now say so: Ctrl+Space and the
+`->`/`::` trigger reach the same method, as do Ctrl+Shift+P and `(`/`,`, so a
+flash there fires on ordinary keystrokes.
+
+**And `when` was only half a gate.** `CommandRegistry`'s docblock described the
+hole rather than closing it: "the palette and menus still run the handler, which
+must self-guard". `MenuModel::item()` composed in a PLUGIN item's `when` and
+never a core command's, so the Run menu shipped seven debugger verbs enabled
+with no session — four of them `$this->session?->step…()`, doing nothing in
+silence, two rows from `runToCursor()` and `restart()`, which both flash.
+`evaluatePrompt()` was worse than silent: Find Action lists a command whether or
+not its `when` holds, the guard sat inside the prompt's callback, and the
+expression the user typed was dropped without a word. It refuses before
+prompting now, and the test asserts the prompt never opens — a guard that still
+prompts and then discards passes a flash-only check.
+
+### A key the keymap page offers is a key that dispatches
+
+`open_as_text` (Ctrl+Alt+X) and `ide_notifications` (Alt+9) carried default
+chords in `ActionCatalog` and were registered without `keyBound:
+KeyDispatch::Bound`, so `keyBoundIds()` — the only list `InputDispatcher` walks
+— omitted both. Settings ▸ Keymap displayed the chord and let the user rebind
+it; neither the default nor the rebinding did anything.
+
+`ActionCatalogTest` could not see this: it asks whether an entry is
+default-BOUND, which is a different question from whether the binding is
+REACHABLE. Every test of those two verbs drove them through
+`CommandRegistry::run()`, the one path that cannot notice.
+`KeyDispatchReachabilityTest` asks the reachability question against a booted
+IDE's real registry, and named exactly these two.
+
+### The gutter marks follow the edit
+
+The round's feature. Change marks describe the file ON DISK and were recomputed
+only on a save, a reload or a buffer switch; between those they sat still while
+the lines under them moved. Three lines added at the top of a changed file left
+every mark below pointing three lines wrong, in the marker column and the stripe
+together, for as long as the editing went on. Both `README.md` and `git.md`
+documented it as a limitation.
+
+**It is core's, and nothing grew an API.** `notifyChange()` is the one place
+core hears about every edit and the mark map is core's own, so the whole feature
+is `DecorationStore` plus one line in the widget. The plugin API has no per-edit
+hook — `onFileOpened`, `onFileSaved`, `onFileReloaded`, `onBufferSwitched` is
+the entire list — and adding one, or widening the buffer layer's roles to carry
+an edit position through twenty-three `notifyChange()` call sites, would both
+have been real surface for a feature that needs neither.
+
+**Both numbers are derived**, because nothing reports either: the delta from the
+document's line count against the last one the store saw, and the position from
+the caret less that delta. Insert three lines and the caret sits three below the
+line the edit began on; delete a selection and the caret is left at its start,
+which is that line already. Exact for a single caret, which is every ordinary
+edit.
+
+**The baseline travels with the marks.** `setVcsMarks($marks, $lineCount)` —
+they are one fact, "this map describes a document of this many lines". That is
+what closes the RELOAD hole: the reconciler replaces a clean buffer's text with
+`Document::replaceAll()` and no `showDocument()` to rebase through, so the
+producer's fresh marks landed against a pre-reload count and the next keystroke
+read the whole difference as its own edit. A caller merely CLEARING the marks
+passes no count and must not rebase, or switching the gutter off would make the
+next keystroke paint the entire file.
+
+Deliberately an approximation, and a self-correcting one: it tracks the active
+caret, and every save, reload and switch replaces all of it with git's answer.
+What it buys is that the marks are never silently stale in the state a user
+spends most of their time in.
+
+### Two findings that were not findings
+
+Worth recording so neither is re-planned.
+
+**The editor gutter's mouse affordances already ship.** A sweep reported them
+missing on the evidence that `EditorMouse::positionAt()` collapses every click
+left of the text to column 0 and the file has no breakpoint or fold branch — all
+true. The routing is one layer up, in `MouseRouter::dispatchEditorPress()`,
+which tests `$rel['col'] < $editor->gutterWidth()` and calls `gutterClick()`;
+both halves have real-SGR E2e cases. A file-scoped read is evidence about that
+file and never about a feature: grep the dispatcher and `tests/E2e/` before
+recording a gap.
+
+**The status bar's vanishing click spans are correct.** They are dropped while a
+flash is showing and while a viewer pane owns the right side. Both are
+deliberate with the reason in the code — a flash replaces the left and truncates
+the right, so every offset is wrong, and a pane's segment is not core's to
+route. Only the third report was real: the `ide_lsp_log` span covered the whole
+legend, so clicking "Ctrl+S save" opened the server log. The existing case
+asserted `assertStringStartsWith('LSP:', …)` on the span's own slice — just as
+true of the whole legend, which is how a span four times too wide passed a test
+written to catch exactly this.
+
+### What the mutation checks cost, again
+
+Nine on the marks feature, and two lied first. One was the old anchor trap:
+`composer format` had added parentheses, the replace matched nothing, and the
+mutant reported SURVIVED. The other was new — the control called `setVcsMarks`
+again AFTER the call it was testing, putting the baseline back before the
+assertion, so a control has to END on the mutated state rather than pass
+through it. And the deletion fixture needed its doomed mark to be a DIFFERENT
+kind from the one below it: with two alike, dropping a mark and shifting it onto
+its neighbour both write the same value to the same line. That is this file's
+own "the fixture has all its elements alike" rule, arrived at from the mutation
+side.
