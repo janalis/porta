@@ -8548,3 +8548,58 @@ They are gone: an unclocked rig stamps `0.0` four times, every difference is
 `0.0` on its own, and the three splits are asserted individually — the total
 alone was satisfied by one stage a second long and the next a second short,
 which is precisely what the surviving `OneZeroFloat` mutants did.
+
+## The RTL mirror is memoised per row (2026-09-13)
+
+The finding the entry above left open, closed with a number. `bidiMs` existing is
+what made it measurable: booting a real Ide over an `he` project at 226×67 and
+driving 30 forced frames, the mirror is **2.96ms a frame** against 0.17ms of
+widget tree and 0.10ms of terminal write. In a right-to-left session the mirror
+IS the frame — 95% of a steady-state repaint.
+
+Nothing about that work is per-frame. `reorderRow()`/`freezeRow()` are pure
+functions of (line, pane runs, floating boxes), and a repaint changes a row or
+two: the differential writer one stage downstream is built on exactly that
+observation. So `BidiTui` now keeps the previous frame's mirror row by row and
+reuses a row whose three inputs are all unchanged.
+
+Measured A/B/A/B in one process, the memo disabled by clearing it before each
+frame:
+
+| | pass 1 | pass 2 |
+| --- | --- | --- |
+| no memo | 2.96ms | 2.96ms |
+| every row reused | 0.56ms | 0.55ms |
+| full cache, every row missing at the LAST byte | 2.93ms | 2.94ms |
+
+**5.4× on the steady state, and the pathological case pays nothing measurable.**
+The residual 0.55ms is `segment()` + `segmentRegions()`, which still run every
+frame; memoising those means deciding when a layout has changed, which is a
+harder question than string equality and is NOT attempted here.
+
+### What the tests had to pin
+
+A cache that serves a stale row is a rendering defect, so each input is a test:
+the row's text, its pane runs (the same text under a resized pane mirrors
+elsewhere — a run reorders within its own span) and its floating boxes (a
+dropdown opening over a row whose text did not change). Each is proved by
+replacing what the previous frame's mirror produced with a marker and asking
+whether the marker reaches the screen: shown, the row was reused; absent, it was
+recomputed. That also proves the reuse itself, which no timing assertion could.
+
+The cache is REBUILT whole each frame rather than written through, so a
+shrinking terminal leaves no row behind to be served to a later, taller frame —
+pinned by planting a row 99 and watching it go. And both setters that change how
+a row would be mirrored (`setTerminalBidi()`, `setPaneReorder()`) drop it:
+the freeze is part of what each remembered row carries.
+
+### A coverage phantom the change exposed
+
+`$out[] = array_key_exists(...) ? $this->arrange(...) : $line;` was one covered
+line hiding an untested branch. Split into a statement, its fallback showed up as
+the only two uncovered lines in `src/`. It is not dead code: the vendor renderer
+does **not** clip an over-tall widget — asked for two rows it returns five —
+so rows past the terminal's last have no panes to reorder within and go out in
+logical order. Now tested, with TWO such rows, because that is what separates
+`continue` from `break`: `break` drops every row after the first unmapped one
+from the frame, and the escaped mutant said so.

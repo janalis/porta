@@ -30,6 +30,9 @@ final class BidiTuiTest extends TestCase
     public const string SHALOM = "\u{05E9}\u{05DC}\u{05D5}\u{05DD}";
     private const string SHALOM_VISUAL = "\u{05DD}\u{05D5}\u{05DC}\u{05E9}";
 
+    /** Stands in for a mirrored row, so reuse is visible on the screen. */
+    private const string MARKER = 'REMEMBERED';
+
     private Renderer $renderer;
 
     private function tuiWith(TerminalInterface $terminal): BidiTui
@@ -83,6 +86,177 @@ final class BidiTuiTest extends TestCase
         $out = $terminal->getOutput();
         self::assertStringContainsString(self::SHALOM_VISUAL, $out, 'the Hebrew word is reversed to visual order');
         self::assertStringNotContainsString(self::SHALOM, $out, 'the logical-order form is not written');
+    }
+
+    /**
+     * Render one mirrored frame, then replace what row 0's mirror produced with
+     * a marker, leaving the inputs that produced it alone.
+     *
+     * Whether the next frame shows the marker is the whole question: shown, the
+     * remembered row was reused; recomputed, it was not.
+     *
+     * @param array{in?: string, runs?: list<array{start: int, width: int, ltr: bool}>, regions?: list<array{start: int, width: int, ltr: bool}>} $perturb
+     */
+    private function markRememberedRow(BidiTui $tui, array $perturb = []): void
+    {
+        $tui->requestRender();
+        $tui->processRender();
+        $arranged = Probe::get($tui, 'arranged');
+        self::assertIsArray($arranged);
+        self::assertArrayHasKey(0, $arranged, 'the first frame remembered what it mirrored');
+        self::assertIsArray($arranged[0]);
+        Probe::set($tui, 'arranged', [0 => [...$arranged[0], ...$perturb, 'out' => self::MARKER]]);
+    }
+
+    public function testARowPastTheTerminalsLastIsWrittenUnmirrored(): void
+    {
+        // The vendor renderer does NOT clip an over-tall widget: asked for two
+        // rows it will hand back five. The segmenter maps 0..rows-1 only, so
+        // those extra rows have no panes to reorder within and go out as they
+        // came — verified rather than assumed, because this branch spent its
+        // life inside a ternary where line coverage could not see it.
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $this->renderer = new Renderer(new StyleSheet());
+        $tui = new BidiTui(terminal: $terminal, renderer: $this->renderer);
+        $tui->add(new class extends AbstractWidget {
+            public function render(RenderContext $context): array
+            {
+                return ['x', 'y', BidiTuiTest::SHALOM, 'tail'];
+            }
+        });
+        $this->enableRtl($tui);
+        $tui->requestRender();
+        $tui->processRender();
+
+        $out = $terminal->getOutput();
+        self::assertStringContainsString(self::SHALOM, $out, 'the unmapped row went out in logical order');
+        // TWO of them, and the second is why this is `continue` and not `break`:
+        // every row after the first unmapped one would be dropped from the
+        // frame, which is a line the terminal never hears about.
+        self::assertStringContainsString('tail', $out, 'and so did the one after it');
+        $arranged = Probe::get($tui, 'arranged');
+        self::assertIsArray($arranged);
+        self::assertSame([0, 1], array_keys($arranged), 'and it is not remembered as a mirrored row');
+    }
+
+    public function testAnUnchangedRowIsMirroredOnceAndReused(): void
+    {
+        // Mirroring is what a right-to-left frame spends its time on: measured
+        // through the real pipeline at 226x67, 2.9ms a frame against 0.17ms of
+        // widget tree and 0.10ms of terminal write. A repaint changes a row or
+        // two, which is the observation the differential writer downstream is
+        // already built on.
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $this->enableRtl($tui);
+        $this->markRememberedRow($tui);
+
+        $tui->requestRender();
+        $tui->processRender();
+
+        self::assertStringContainsString(self::MARKER, $terminal->getOutput(), 'the unchanged row was not mirrored a second time');
+    }
+
+    public function testARowWhoseTextChangedIsMirroredAgain(): void
+    {
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $this->enableRtl($tui);
+        $this->markRememberedRow($tui, ['in' => 'something else entirely']);
+
+        $tui->requestRender();
+        $tui->processRender();
+
+        $out = $terminal->getOutput();
+        self::assertStringNotContainsString(self::MARKER, $out, 'a row whose text moved on is stale, not reusable');
+        self::assertStringContainsString(self::SHALOM_VISUAL, $out, 'it was mirrored again');
+    }
+
+    public function testARowWhosePanesChangedIsMirroredAgain(): void
+    {
+        // The same text under a different pane layout mirrors to something else:
+        // a run reorders within its own span, so the span is an input.
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $this->enableRtl($tui);
+        $this->markRememberedRow($tui, ['runs' => [['start' => 0, 'width' => 4, 'ltr' => true]]]);
+
+        $tui->requestRender();
+        $tui->processRender();
+
+        $out = $terminal->getOutput();
+        self::assertStringNotContainsString(self::MARKER, $out, 'a resized pane invalidates the row');
+        self::assertStringContainsString(self::SHALOM_VISUAL, $out);
+    }
+
+    public function testARowWhoseFloatingBoxesChangedIsMirroredAgain(): void
+    {
+        // A dropdown opening over a row it does not change the text of: the box
+        // is stamped over the mirrored panes, so it is an input too.
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $this->enableRtl($tui);
+        $this->markRememberedRow($tui, ['regions' => [['start' => 2, 'width' => 3, 'ltr' => true]]]);
+
+        $tui->requestRender();
+        $tui->processRender();
+
+        $out = $terminal->getOutput();
+        self::assertStringNotContainsString(self::MARKER, $out, 'a box appearing over the row invalidates it');
+        self::assertStringContainsString(self::SHALOM_VISUAL, $out);
+    }
+
+    public function testTheRememberedFrameHoldsOnlyTheRowsTheLastFrameHad(): void
+    {
+        // Rebuilt whole rather than written through: a terminal that shrinks
+        // must not leave rows behind to be served to a later, taller frame.
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $this->enableRtl($tui);
+        $tui->requestRender();
+        $tui->processRender();
+        $arranged = Probe::get($tui, 'arranged');
+        self::assertIsArray($arranged);
+        Probe::set($tui, 'arranged', [...$arranged, 99 => $arranged[0]]);
+
+        $tui->requestRender();
+        $tui->processRender();
+
+        $after = Probe::get($tui, 'arranged');
+        self::assertIsArray($after);
+        // One row: this rig's widget renders a single line, and the frame is
+        // exactly as tall as what the tree produced.
+        self::assertSame([0], array_keys($after), 'only the rows this frame had');
+    }
+
+    public function testTheTerminalBidiSwitchForgetsTheMirroredRows(): void
+    {
+        // The freeze is part of what each remembered row carries, so answering
+        // this question differently makes every one of them wrong.
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $this->enableRtl($tui);
+        $tui->requestRender();
+        $tui->processRender();
+        self::assertNotSame([], Probe::get($tui, 'arranged'));
+
+        $tui->setTerminalBidi(true);
+
+        self::assertSame([], Probe::get($tui, 'arranged'), 'the frozen and unfrozen forms are not interchangeable');
+    }
+
+    public function testInstallingAReorderForgetsTheMirroredRows(): void
+    {
+        $terminal = new VirtualTerminal(columns: 20, rows: 2);
+        $tui = $this->tuiWith($terminal);
+        $this->enableRtl($tui);
+        $tui->requestRender();
+        $tui->processRender();
+        self::assertNotSame([], Probe::get($tui, 'arranged'));
+
+        $this->enableRtl($tui); // a live locale switch replaces the reorder
+
+        self::assertSame([], Probe::get($tui, 'arranged'), 'rows the previous reorder mirrored are not this one\'s work');
     }
 
     public function testAFrameWithNothingPendingIsANoOp(): void

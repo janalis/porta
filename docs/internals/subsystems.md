@@ -77,7 +77,11 @@ path (byte-equivalent to the vendor's, verified) so the three phases can be
 timed separately. **`bidiMs` is not decoration**: reordering one 226x67 frame
 costs ~8ms, so until it had its own number an RTL session's own mirror read as
 8ms of terminal write on a tty whose `pend=0` said it was keeping up — and
-`slow-paint` named the tty for work the tty had not done. The first painted frame also stamps a one-shot `boot` line
+`slow-paint` named the tty for work the tty had not done. The mirror is
+**memoised per row** against the previous frame (line + pane runs + floating
+boxes, all three, rebuilt whole each frame): a repaint changes a row or two, so
+a steady-state RTL frame costs 0.55ms where it cost 2.96ms, and an all-miss
+frame costs what it always did. The first painted frame also stamps a one-shot `boot` line
 from `Support/BootTrace` (created in the console entrypoint, published as a
 synthetic like IdeConfig): cumulative `prelude`/`container`/`plugins`/
 `eager`/`wired`/`firstPaint` milliseconds, so a "starts slowly" report

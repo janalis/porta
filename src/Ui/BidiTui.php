@@ -72,6 +72,27 @@ final class BidiTui extends Tui implements FrameHooks
     /** The terminal reorders bidi text itself, so this one must not. */
     private bool $terminalBidi = false;
 
+    /**
+     * The PREVIOUS frame's mirror, row for row: the inputs that produced each
+     * arranged row beside the row itself.
+     *
+     * Mirroring a frame is the most expensive thing a right-to-left session
+     * does — measured through the real pipeline at 226x67, 3.7ms a frame
+     * against 0.17ms of widget tree and 0.10ms of terminal write. And a repaint
+     * changes a row or two: the differential writer downstream is built on
+     * exactly that observation, and this is the same observation applied one
+     * stage earlier. A row whose line, panes and floating boxes are all
+     * unchanged mirrors to the same string it did last frame, so it is reused
+     * rather than recomputed.
+     *
+     * Rebuilt whole each frame rather than written through, which is what keeps
+     * it honest: it holds the rows of the LAST frame and nothing else, so a
+     * shrinking terminal leaves no stale rows behind to be served later.
+     *
+     * @var array<int, array{in: string, runs: list<array{start: int, width: int, ltr: bool}>, regions: list<array{start: int, width: int, ltr: bool}>, out: string}>
+     */
+    private array $arranged = [];
+
     /** @var array<int, list<array{start: int, width: int, ltr: bool}>> the last frame's floating boxes, for click mapping */
     private array $lastRegions = [];
 
@@ -113,6 +134,9 @@ final class BidiTui extends Tui implements FrameHooks
     public function setTerminalBidi(bool $terminalBidi): void
     {
         $this->terminalBidi = $terminalBidi;
+        // The freeze is part of what {@see $arranged} remembers, so every
+        // remembered row was mirrored under the OLD answer to this question.
+        $this->arranged = [];
     }
 
     /**
@@ -217,6 +241,9 @@ final class BidiTui extends Tui implements FrameHooks
     {
         $this->segmenter = $segmenter;
         $this->reorder = $reorder;
+        // A live locale switch replaces the reorder, and rows mirrored by the
+        // previous one are not this one's work.
+        $this->arranged = [];
         if (null === $reorder) {
             $this->lastLines = [];
             $this->lastRuns = [];
@@ -416,11 +443,29 @@ final class BidiTui extends Tui implements FrameHooks
             $regions = $segmenter->segmentRegions($columns, $rows);
             $this->lastRegions = $regions; // a click inside a box maps through it, not the pane under it
             $out = [];
+            $arranged = [];
             foreach ($lines as $row => $line) {
                 // Both maps are filled for the same 0..rows-1, so one guard
                 // covers both; a `?? []` on the regions could never fire.
-                $out[] = array_key_exists($row, $this->lastRuns) ? $this->arrange($reorder, $line, $this->lastRuns[$row], $regions[$row]) : $line;
+                if (!array_key_exists($row, $this->lastRuns)) {
+                    $out[] = $line;
+
+                    continue;
+                }
+                $runs = $this->lastRuns[$row];
+                $region = $regions[$row];
+                $hit = $this->arranged[$row] ?? null;
+                // All three, because all three are inputs: the same text under
+                // a resized pane, or under a dropdown that has just opened over
+                // it, mirrors to something else entirely.
+                $line =
+                    null !== $hit && $hit['in'] === $line && $hit['runs'] === $runs && $hit['regions'] === $region
+                        ? $hit['out']
+                        : $this->arrange($reorder, $line, $runs, $region);
+                $arranged[$row] = ['in' => $lines[$row], 'runs' => $runs, 'regions' => $region, 'out' => $line];
+                $out[] = $line;
             }
+            $this->arranged = $arranged;
             $lines = $out;
         }
         // Before the frame sink, which belongs to neither stage and costs
