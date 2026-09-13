@@ -146,7 +146,7 @@ final class NavigationController extends AbstractLspController implements Editor
      */
     private function requestGoTo(string $method, string $notFound, int $line, int $utf16Col, NavigationMode $mode = NavigationMode::Jump): void
     {
-        if (null === ($path = $this->ready(flush: FlushMode::Keep))) {
+        if (null === ($path = $this->readyOrExplain(flush: FlushMode::Keep))) {
             return;
         }
 
@@ -306,7 +306,7 @@ final class NavigationController extends AbstractLspController implements Editor
      */
     private function requestAt(string $method, int $line, int $col, \Closure $handle, \Closure $notFound, array $extra = []): void
     {
-        if (null === ($path = $this->ready())) {
+        if (null === ($path = $this->readyOrExplain())) {
             return;
         }
         $this->send($method, $this->positionParams($path, $line, $col, $extra), $handle, $notFound);
@@ -320,7 +320,7 @@ final class NavigationController extends AbstractLspController implements Editor
      */
     private function requestForDocument(string $method, \Closure $handle, \Closure $notFound): void
     {
-        if (null === ($path = $this->ready())) {
+        if (null === ($path = $this->readyOrExplain())) {
             return;
         }
         $this->send($method, ['textDocument' => ['uri' => $this->uri($path)]], $handle, $notFound);

@@ -72,6 +72,11 @@ final class CompletionController extends AbstractLspController implements Editor
     #[\Override]
     public function requestCompletion(int $line, int $utf16Col): void
     {
+        // Deliberately `ready()` and not `readyOrExplain()`: this path is
+        // reached both from Ctrl+Space and from the automatic trigger after
+        // `->` and `::`, and the two are indistinguishable here. A flash would
+        // fire on ordinary keystrokes in every buffer without a server.
+        // Pinned as an allowlisted silent site by LspRefusalTest.
         if (null === ($path = $this->ready())) {
             return;
         }
@@ -240,6 +245,10 @@ final class CompletionController extends AbstractLspController implements Editor
     #[\Override]
     public function requestSignatureHelp(int $line, int $col): void
     {
+        // Silent for the same reason as requestCompletion() above: Ctrl+Shift+P
+        // and the automatic trigger on `(` and `,` arrive here identically, and
+        // typing an argument list in a buffer with no server must not flash on
+        // every comma. Allowlisted in LspRefusalTest.
         if (null === ($path = $this->ready())) {
             return;
         }

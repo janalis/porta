@@ -63,6 +63,11 @@ final class AbstractLspControllerTest extends TestCase
                 return $this->ready($flush);
             }
 
+            public function readyOrExplainPublic(FlushMode $flush = FlushMode::Flush): ?string
+            {
+                return $this->readyOrExplain($flush);
+            }
+
             public function uriPublic(string $path): string
             {
                 return $this->uri($path);
@@ -103,5 +108,37 @@ final class AbstractLspControllerTest extends TestCase
         $this->controller()->flashPublic('hello there');
 
         $this->assertSame('hello there', $this->flashText($this->statusBar));
+    }
+
+    /**
+     * The half {@see LspRefusalTest} cannot assert: that the explaining variant
+     * actually explains. That test is structural — it proves every user-invoked
+     * site CALLS this — and would stay green if the flash were dropped from the
+     * body.
+     */
+    public function testReadyOrExplainSaysWhyWhenNoServerIsReady(): void
+    {
+        $controller = $this->controller();
+        $doc = new Document("<?php\n");
+        $this->editor->showDocument('/tmp/proj/a.php', $doc);
+
+        $this->assertNull($controller->readyOrExplainPublic(), 'no session for the file yet');
+        $this->assertSame('No language server ready for this file', $this->flashText($this->statusBar));
+    }
+
+    /**
+     * And the control, from the opposite value: with a session ready it returns
+     * the path and says NOTHING. A variant that flashed unconditionally would
+     * pass the case above.
+     */
+    public function testReadyOrExplainIsSilentOnceAServerIsReady(): void
+    {
+        $controller = $this->controller();
+        $doc = new Document("<?php\n");
+        $this->editor->showDocument('/tmp/proj/a.php', $doc);
+        $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), 'php', 1);
+
+        $this->assertSame('/tmp/proj/a.php', $controller->readyOrExplainPublic());
+        $this->assertSame('', $this->flashText($this->statusBar), 'nothing to explain');
     }
 }

@@ -3082,6 +3082,10 @@
         <source>Evaluate needs a paused debugger</source>
         <target>評価には一時停止中のデバッガが必要です</target>
       </trans-unit>
+      <trans-unit id="863">
+        <source>No language server ready for this file</source>
+        <target>このファイルに対応する言語サーバーがありません</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -205,7 +205,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
      */
     private function requestActions(int $line, int $col, ?array $only, \Closure $present, string $empty = 'No quick fixes here'): void
     {
-        if (null === ($path = $this->ready())) {
+        if (null === ($path = $this->readyOrExplain())) {
             return;
         }
 
@@ -456,7 +456,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
     #[\Override]
     public function requestReformat(): void
     {
-        if (null === ($path = $this->ready())) {
+        if (null === ($path = $this->readyOrExplain())) {
             return;
         }
 

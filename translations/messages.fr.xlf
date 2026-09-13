@@ -3082,6 +3082,10 @@
         <source>Evaluate needs a paused debugger</source>
         <target>Évaluer requiert un débogueur en pause</target>
       </trans-unit>
+      <trans-unit id="863">
+        <source>No language server ready for this file</source>
+        <target>Aucun serveur de langage prêt pour ce fichier</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
