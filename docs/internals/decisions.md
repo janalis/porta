@@ -8729,3 +8729,61 @@ Six escaped on the first pass, three of them on lines this round only MOVED
 - `mkdir(0o755)` survived being changed to 0o756 and 0o754. Now asserted — with
   the umask pinned inside the test, because the mode asked for is masked and a
   test that let the machine choose would pass or fail on the machine.
+
+## A frame taller than the screen scrolls it, once, for good (2026-09-13)
+
+`.porta/error.log` was the evidence this time, and it took two readings.
+
+Its two DATED entries are a `ServiceNotFoundException` for
+`Psr\Clock\ClockInterface` out of the `porta.ide` locator, from
+`Ide::run()` on 2026-09-09. They are **not a live defect**:
+`git log -S 'service(ClockInterface::class)' -- src/Ide.php` returns nothing, and
+neither the version current that day nor today's mentions the class at all. The
+user ran the IDE while a working tree was mid-round, and the crash log dutifully
+recorded code that never existed in a commit. Worth knowing: a dated crash is
+evidence of a RUN, not of a release.
+
+Above them sit ~860 undated lines of one repeating trace —
+`RenderException: Widget "CodeEditorWidget" rendered line 0 with width 8,
+exceeding the available 1 columns`. Undated, so unplaceable in time, but they say
+where to look: a terminal one column wide. Rendered the real workbench across six
+geometries from 1×1 up, and the width exception is gone. What is not gone is the
+other axis:
+
+| terminal | rows the frame had | rows the writer emitted |
+| --- | --- | --- |
+| 1 × 1 | 3 | 4 |
+| 5 × 3 | 4 | 4 |
+| 10 × 4 | 4 | 4 |
+| 80 × 24 | 24 | 24 |
+
+The menu bar, the main area and the status bar are three rows of fixed height,
+and the vendor layout gives a `flex:0` child its intrinsic height whatever the
+terminal has. The renderer does not clip, and `ScreenWriter` writes what it is
+given — so a one-row terminal was sent three rows and a three-row terminal four.
+
+**One row past the last scrolls the alternate screen.** After the first frame the
+writer addresses rows with RELATIVE cursor moves (`CSI nA`/`CSI nB`) and emits no
+`CSI H` and no `CSI 2J` ever again, so every repaint for the rest of the session
+lands one row out. That is the same permanent-garble mechanism this project has
+chased from the other end twice, arriving by a different road.
+
+`BidiTui` clips the frame to the terminal's rows. At one row the menu bar is all
+there is to see, which is the honest answer for a one-row terminal; what must not
+happen is a screen that never comes back.
+
+### It also removed a branch
+
+The per-row guard `array_key_exists($row, $this->lastRuns)` — the fallback that
+wrote an unmapped row unmirrored, tested only last commit and for good reason
+then — is now unreachable: the segmenter maps `0..rows-1` and the frame is
+clipped to `$rows`. Gone, with an `assert()` in its place, which is what this
+codebase does with a guard that can no longer fire. Its test is now the clip's
+test, which is a stronger statement about the same rows.
+
+Pinned across four geometries, and both halves are asserted separately: what
+Porta COMPOSED (the frame kept for `.porta/frame.txt`) and what the writer
+EMITTED (counted by its row separators). The first is the bug's cause and the
+second is its consequence, and a clip in the wrong place would satisfy one
+without the other. Verified red first: widening the clip to 99 rows fails four of
+the eight cases.

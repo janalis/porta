@@ -108,13 +108,15 @@ final class BidiTuiTest extends TestCase
         Probe::set($tui, 'arranged', [0 => [...$arranged[0], ...$perturb, 'out' => self::MARKER]]);
     }
 
-    public function testARowPastTheTerminalsLastIsWrittenUnmirrored(): void
+    public function testAFrameTallerThanTheTerminalIsClippedToIt(): void
     {
         // The vendor renderer does NOT clip an over-tall widget: asked for two
-        // rows it will hand back five. The segmenter maps 0..rows-1 only, so
-        // those extra rows have no panes to reorder within and go out as they
-        // came — verified rather than assumed, because this branch spent its
-        // life inside a ternary where line coverage could not see it.
+        // rows it hands back four. The real workbench does exactly this at small
+        // sizes — menu bar, main and status bar are three fixed rows, so a
+        // one-row terminal was sent three of them and a three-row terminal four.
+        // Those extra rows SCROLL the alternate screen, and every differential
+        // repaint after that addresses rows one out with relative cursor moves,
+        // in a session that emits no `CSI H` or `CSI 2J` ever again.
         $terminal = new VirtualTerminal(columns: 20, rows: 2);
         $this->renderer = new Renderer(new StyleSheet());
         $tui = new BidiTui(terminal: $terminal, renderer: $this->renderer);
@@ -129,14 +131,12 @@ final class BidiTuiTest extends TestCase
         $tui->processRender();
 
         $out = $terminal->getOutput();
-        self::assertStringContainsString(self::SHALOM, $out, 'the unmapped row went out in logical order');
-        // TWO of them, and the second is why this is `continue` and not `break`:
-        // every row after the first unmapped one would be dropped from the
-        // frame, which is a line the terminal never hears about.
-        self::assertStringContainsString('tail', $out, 'and so did the one after it');
+        self::assertStringContainsString('x', $out, 'the rows the terminal has are written');
+        self::assertStringNotContainsString(self::SHALOM, $out, 'and the rows it does not have are not');
+        self::assertStringNotContainsString('tail', $out);
         $arranged = Probe::get($tui, 'arranged');
         self::assertIsArray($arranged);
-        self::assertSame([0, 1], array_keys($arranged), 'and it is not remembered as a mirrored row');
+        self::assertSame([0, 1], array_keys($arranged), 'only the rows that exist were mirrored at all');
     }
 
     public function testAnUnchangedRowIsMirroredOnceAndReused(): void

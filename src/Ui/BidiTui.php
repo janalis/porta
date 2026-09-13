@@ -429,6 +429,16 @@ final class BidiTui extends Tui implements FrameHooks
         $clock = $this->clock;
         $t0 = null !== $clock ? Clocks::seconds($clock) : 0.0;
         $lines = array_values($renderer->render($root, $columns, $rows));
+        // A frame is never taller than the screen. The renderer does not clip:
+        // a flex:0 child gets its intrinsic height whatever the terminal has, so
+        // the real workbench composes THREE rows — menu bar, main, status bar —
+        // into a one-row terminal, and four into three. Writing the extra one
+        // scrolls the alternate screen, and from then on every differential
+        // repaint addresses rows with RELATIVE cursor moves that are all one out:
+        // a session with no `CSI H` and no `CSI 2J` after its first frame can
+        // never recover, which is the permanent-garble report this project has
+        // chased from the other end twice.
+        $lines = \array_slice($lines, offset: 0, length: $rows);
         $t1 = null !== $clock ? Clocks::seconds($clock) : 0.0;
 
         $segmenter = $this->segmenter;
@@ -445,13 +455,12 @@ final class BidiTui extends Tui implements FrameHooks
             $out = [];
             $arranged = [];
             foreach ($lines as $row => $line) {
-                // Both maps are filled for the same 0..rows-1, so one guard
-                // covers both; a `?? []` on the regions could never fire.
-                if (!array_key_exists($row, $this->lastRuns)) {
-                    $out[] = $line;
-
-                    continue;
-                }
+                // Both maps are filled for the same 0..rows-1, and the frame is
+                // clipped to $rows above, so every row has both. The guard that
+                // used to stand here — write the row unmirrored — was reachable
+                // only through an over-tall frame, which is the thing the clip
+                // now makes impossible.
+                \assert(array_key_exists($row, $this->lastRuns), description: 'a clipped frame has no row the segmenter did not map');
                 $runs = $this->lastRuns[$row];
                 $region = $regions[$row];
                 $hit = $this->arranged[$row] ?? null;

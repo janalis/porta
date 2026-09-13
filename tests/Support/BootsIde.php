@@ -34,18 +34,34 @@ trait BootsIde
 
     private Ide $ide;
 
+    /**
+     * The booted terminal, for the tests that read what was WRITTEN rather than
+     * what a widget composed. Its geometry is a property rather than a parameter
+     * so a class can pin it once in its own setUp, the way the rest of this rig
+     * is configured.
+     */
+    private VirtualTerminal $terminal;
+
+    private int $columns = 80;
+
+    private int $rows = 24;
+
     /** Whether {@see bootIde()} ran — a typed property cannot be asked. */
     private bool $booted = false;
 
-    /** @param array<string, string> $files the project fixture; the composer.json makes it a project root */
-    private function bootIde(array $files = ['composer.json' => '{}']): Ide
+    /**
+     * @param array<string, string> $files    the project fixture; the composer.json makes it a project root
+     * @param string|null           $openFile absolute path to open at boot, as the console entrypoint does
+     */
+    private function bootIde(array $files = ['composer.json' => '{}'], ?string $openFile = null): Ide
     {
         $this->project = new TempProject($files);
         new OnboardingState($this->project->dir)->markWelcomeSeen();
 
         $this->booted = true;
+        $this->terminal = new VirtualTerminal($this->columns, $this->rows);
 
-        return $this->ide = new Ide($this->project->dir, null, new VirtualTerminal(columns: 80, rows: 24));
+        return $this->ide = new Ide($this->project->dir, $openFile, $this->terminal);
     }
 
     /** Guarded: a setUp that threw before booting must not fail again in the hook. */
