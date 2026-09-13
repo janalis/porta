@@ -149,4 +149,42 @@ final class ProjectSwitcherTest extends TestCase
         $this->assertSame([], $this->requested);
         $this->assertSame('', $this->flashText($this->statusBar), 'and says nothing either');
     }
+
+    /**
+     * The list always ends with a way to name a project it does not contain —
+     * otherwise the switcher can only ever return you somewhere you have been,
+     * and the first time you want a NEW project is exactly when the list is
+     * least likely to hold it.
+     */
+    public function testTheListOffersAPathPromptAsItsLastEntry(): void
+    {
+        $other = new TempProject(['composer.json' => '{}']);
+        $switcher = $this->switcher($other->dir);
+
+        $switcher->open();
+        $this->editor->handleInput("\x1b[B"); // past the one recent project
+        $this->editor->handleInput("\r"); // onto "Open a path…"
+
+        $this->assertSame([], $this->requested, 'choosing it opens no project by itself');
+        $this->assertTrue(EditorState::promptOpen($this->editor), 'it asks for a path');
+    }
+
+    /**
+     * `~` is what a person types. Nothing else expands it here — the shell is
+     * not involved, because the prompt is inside the IDE.
+     */
+    public function testATildePathIsExpandedAgainstTheHome(): void
+    {
+        $switcher = $this->switcher();
+        $target = $this->home->dir.'/projects/alpha';
+        mkdir($target, permissions: 0o755, recursive: true);
+
+        $switcher->open(); // nothing recent → the prompt
+        foreach (str_split('~/projects/alpha') as $ch) {
+            $this->editor->handleInput($ch);
+        }
+        $this->editor->handleInput("\r");
+
+        $this->assertSame([(string) realpath($target)], $this->requested);
+    }
 }
