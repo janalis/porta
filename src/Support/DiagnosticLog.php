@@ -43,6 +43,35 @@ final class DiagnosticLog
     /** Generous for a post-mortem, harmless on disk. */
     public const int MAX_BYTES = 262_144;
 
+    /**
+     * The directory is known to exist and to have taken a write.
+     *
+     * Cleared again by a failed write, which is the only thing that can mean it
+     * has gone: see {@see append()}.
+     */
+    private bool $dirReady = false;
+
+    /**
+     * What this writer believes the file holds, null until it has looked once.
+     *
+     * Counted rather than stat'd because of who calls this and when. Five of the
+     * 41 blocked-loop backtraces in the user's `freeze.log` are inside THIS
+     * method, and every one of them was reached from {@see
+     * \Porta\Support\FreezeWatchdog} — the instrument writing the stall line was
+     * itself blocked on the filesystem, lengthening the stall it had just
+     * measured, up to four times a second while the disk was slow. An append
+     * used to cost `is_dir` + `is_file` + `filesize` + the write; it costs the
+     * write now.
+     *
+     * The count is what THIS writer put there, plus whatever the file held when
+     * it first looked. A second session appending to the same log is invisible
+     * to it, so the cap holds per writer rather than absolutely — a bound of
+     * `sessions × maxBytes` instead of `maxBytes`, which is the same promise for
+     * the case that matters (one session, growing without limit) and harmless in
+     * the case it gives up.
+     */
+    private ?int $bytes = null;
+
     public function __construct(
         private readonly string $path,
         private readonly int $maxBytes = self::MAX_BYTES,
@@ -63,26 +92,59 @@ final class DiagnosticLog
     /** Append one entry under the current time, creating the parent directory on first use. */
     public function append(string $entry): void
     {
-        $entry = $this->clock->now()->format('Y-m-d H:i:s').' '.$entry;
+        $line = $this->clock->now()->format('Y-m-d H:i:s').' '.$entry."\n";
         set_error_handler(static fn (): bool => true);
         try {
-            $dir = \dirname($this->path);
-            if (!is_dir($dir) && is_dir(\dirname($dir))) {
-                mkdir($dir, permissions: 0o755, recursive: true);
-            }
-            if (!is_dir($dir)) {
+            if (!$this->directoryReady()) {
                 return; // unwritable location: stay silent by contract
             }
-            $oversized = is_file($this->path) && (int) filesize($this->path) > $this->maxBytes;
-            if ($oversized) {
-                file_put_contents($this->path, $this->recentTail().$entry."\n");
+            // No `is_file()` in front of it: a missing file warns and returns
+            // false, the handler above swallows the warning, and `(int) false`
+            // is the 0 the guard would have produced — one syscall instead of
+            // two, and one branch instead of two. The cast is load-bearing:
+            // `false` into a typed `?int` is a TypeError, and this method is
+            // contractually unable to throw.
+            $this->bytes ??= (int) filesize($this->path);
+            $held = $this->bytes;
+            $trimming = $held > $this->maxBytes;
+            $written = $trimming
+                ? file_put_contents($this->path, $this->recentTail().$line)
+                : file_put_contents($this->path, $line, \FILE_APPEND);
+            if (false === $written) {
+                // The one thing a failed write can mean that a retry would fix:
+                // the directory has gone since it was last checked. Cheaper to
+                // find out here, once, than to ask before every line — at the
+                // price of losing THIS line, where asking every time would have
+                // recreated the directory and kept it.
+                $this->dirReady = false;
 
                 return;
             }
-            file_put_contents($this->path, $entry."\n", \FILE_APPEND);
+            // A trim REWROTE the file, so what it wrote is what the file holds;
+            // an append added to what was already there. Either way the answer
+            // comes from the write's own return value, so this path needs no
+            // stat either.
+            $this->bytes = $trimming ? $written : $held + $written;
         } finally {
             restore_error_handler();
         }
+    }
+
+    /**
+     * Whether the log's directory exists — asked once per session, and again
+     * after a write has failed.
+     */
+    private function directoryReady(): bool
+    {
+        if ($this->dirReady) {
+            return true;
+        }
+        $dir = \dirname($this->path);
+        if (!is_dir($dir) && is_dir(\dirname($dir))) {
+            mkdir($dir, permissions: 0o755, recursive: true);
+        }
+
+        return $this->dirReady = is_dir($dir);
     }
 
     /**

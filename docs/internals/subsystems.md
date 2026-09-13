@@ -23,7 +23,11 @@ own `freeze.log` are stopped inside exactly that. So `Editor/PollBackoff` times
 every slice and stands the poll down when one overruns 50ms, doubling the gap on
 each further overrun up to 30s and dropping back to every tick as soon as a
 slice is quick again. The freeze cannot be made shorter; it can stop happening
-four times a second. Durations there are compared in whole **microseconds**
+four times a second. `Support/DiagnosticLog` is the same lesson one layer down:
+an append is ONE filesystem call (the write), because the directory check is
+memoised and the size cap is counted from each write's return value — five of
+those 41 backtraces were the watchdog's own stall line blocking on the very
+stat it did not need. Durations there are compared in whole **microseconds**
 (`Clocks::microseconds()`), because a float second carries the epoch in its
 mantissa and a duration built from two of them lands a hair either side of the
 threshold it is meant to sit on.

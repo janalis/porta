@@ -8660,3 +8660,72 @@ listener on the reload the slice performs.
   papers over every non-positive value. The counter is now "what the NEXT
   overrun costs", starting and resetting at 1, and the `max()` is gone: the
   reset is a value with meaning, and mutating it kills the ladder's first rung.
+
+## The freeze watchdog was lengthening the freezes it reported (2026-09-13)
+
+The other six of the 41 blocked-loop backtraces, read properly. Five are inside
+`DiagnosticLog::append()` — and every one of those five was reached from
+`FreezeWatchdog`, at its own lines 76 and 95. The instrument writing "loop
+stalled for 4.71s" was itself blocked on the filesystem, inside the stall it had
+just measured, and the watchdog beats every 0.25s: up to four of those a second
+while the disk is slow.
+
+An append cost four filesystem calls, any of which can block:
+
+```
+is_dir(dir)  [+ is_dir(parent)]     — the directory check, every line
+is_file(path) + filesize(path)      — the size cap, every line
+file_put_contents(path, …, APPEND)  — the write
+```
+
+They are not cached away, either: this process's own `file_put_contents`
+invalidates PHP's stat cache for that path, so the next line re-stats for real.
+The freeze.log evidence is spread across exactly those calls — `is_dir` once,
+`is_file` once, `filesize` once, `file_put_contents` twice. **Three of those five
+freezes were in calls that did not need to happen.**
+
+Now: the directory is checked once per session, the size is COUNTED (seeded from
+one `filesize()` on the first line, then advanced by each write's own return
+value), and an append is one call — the write.
+
+### What it costs
+
+- **The cap holds per writer, not absolutely.** A second session appending to the
+  same log is invisible to this one's counter, so the bound is
+  `sessions × maxBytes` rather than `maxBytes`. Pinned by a test rather than
+  hidden: the promise that matters — one session cannot grow the file without
+  limit — is unchanged.
+- **A directory removed mid-session costs the line that discovers it.** A failed
+  write clears the memo, so the NEXT line recreates the directory. Asking before
+  every line would have kept that one line, at three syscalls for every line
+  ever written.
+
+### What it does not buy
+
+**Nothing measurable when the disk is healthy.** A/B/A/B over 4000 appends:
+26.05µs vs 26.66µs, then 27.05µs vs 23.93µs — noise, because the write dominates
+and a warm stat is cheap. The change is not a speedup and must not be described
+as one: it removes three chances per line to block for seconds, which is a
+property of the bad case only. Had the benchmark not been run, this entry would
+have claimed a 4× saving that does not exist.
+
+### Mutants that found real gaps
+
+Six escaped on the first pass, three of them on lines this round only MOVED
+(they had never been in a diff before, so nothing had ever graded them):
+
+- `is_file($p) ? (int) filesize($p) : 0` → the cast and the `: 0` both survived,
+  being unreachable spellings of the same thing. Collapsed to
+  `(int) filesize($p)`: a missing file warns, the handler already installed
+  swallows it, `false` casts to the 0 the guard produced — one syscall fewer,
+  one branch fewer, and the cast is now load-bearing (`false` into `?int` is a
+  TypeError, which this method may not throw), so the mutant dies.
+- The trim's `recentTail().$line` survived being reversed, because the tests
+  asserted CONTAINS. A log whose newest line is in the middle is not a log; the
+  assertion is `assertStringEndsWith` now.
+- `!is_dir($dir) && is_dir(dirname($dir))` survived being turned into `||`,
+  which makes `mkdir(recursive: true)` mint a whole missing tree. Pinned: a log
+  path under a directory that is not there creates nothing.
+- `mkdir(0o755)` survived being changed to 0o756 and 0o754. Now asserted — with
+  the umask pinned inside the test, because the mode asked for is masked and a
+  test that let the machine choose would pass or fail on the machine.

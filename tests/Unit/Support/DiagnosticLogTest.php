@@ -127,7 +127,7 @@ final class DiagnosticLogTest extends TestCase
         $log->append('newest');
 
         $kept = (string) file_get_contents($log->path());
-        $this->assertStringContainsString('newest', $kept, 'the entry that crossed the cap is there');
+        $this->assertStringEndsWith(self::STAMP." newest\n", $kept, 'the entry that crossed the cap is there, and LAST — a log whose newest line is in the middle is not a log');
         $this->assertStringContainsString($last, $kept, 'and so is the one before it — the file was trimmed, not emptied');
         $this->assertStringNotContainsString('entry 1'."\n", $kept, 'while the oldest was dropped to make room');
         $this->assertLessThanOrEqual(2 * 120, \strlen($kept), 'and the file stays bounded');
@@ -144,6 +144,72 @@ final class DiagnosticLogTest extends TestCase
         $this->assertSame(self::STAMP." 0123\n".self::STAMP." 456\n", file_get_contents($log->path()));
     }
 
+    /**
+     * The size is COUNTED, not stat'd — which is the whole point of this round.
+     *
+     * Five of the 41 blocked-loop backtraces in the user's freeze.log are inside
+     * append(), all of them reached from the freeze watchdog: the instrument
+     * writing the stall line was blocked on the filesystem, making the stall it
+     * had just measured longer, up to four times a second while the disk was
+     * slow. Three of the four syscalls an append used to make were the size and
+     * directory checks, and neither is needed twice.
+     *
+     * Observable as the consequence it buys: bytes another writer adds are not
+     * seen, so the cap holds per writer. Pinned rather than hidden — that is
+     * what the counter costs.
+     */
+    public function testTheSizeIsCountedRatherThanStattedAgainEachTime(): void
+    {
+        $project = new TempProject();
+        $log = $this->log($project->dir.'/.porta/diag.log', maxBytes: 60);
+        $log->append('first');
+
+        // Another writer pushes the file far past the cap between appends.
+        file_put_contents($log->path(), str_repeat('x', times: 500), \FILE_APPEND);
+        $log->append('second');
+
+        $kept = (string) file_get_contents($log->path());
+        $this->assertStringContainsString('first', $kept, 'no trim happened: this writer has not written that much');
+        $this->assertStringContainsString(self::STAMP.' second', $kept);
+        $this->assertGreaterThan(500, \strlen($kept), 'and the other writer\'s bytes are all still there');
+    }
+
+    public function testAnExistingLogIsSizedOnceBeforeTheFirstAppend(): void
+    {
+        // The counter starts from what is already on disk, or a session that
+        // opens a log left oversized by the last one would never trim it.
+        $project = new TempProject();
+        mkdir($project->dir.'/.porta', permissions: 0o755, recursive: true);
+        file_put_contents($project->dir.'/.porta/diag.log', self::STAMP." old\n".str_repeat('y', times: 200)."\n");
+        $log = $this->log($project->dir.'/.porta/diag.log', maxBytes: 60);
+
+        $log->append('fresh');
+
+        $kept = (string) file_get_contents($log->path());
+        $this->assertStringContainsString('fresh', $kept);
+        $this->assertLessThanOrEqual((2 * 60) + \strlen(self::STAMP.' fresh'), \strlen($kept), 'the inherited size was read and the file trimmed');
+    }
+
+    public function testAFailedWriteMakesTheNextAppendLookForTheDirectoryAgain(): void
+    {
+        // The price of asking once: a directory removed mid-session costs the
+        // line that discovers it. What must not happen is costing every line
+        // after that one too.
+        $project = new TempProject();
+        $log = $this->log($project->dir.'/.porta/diag.log');
+        $log->append('before');
+        exec('rm -rf '.escapeshellarg($project->dir.'/.porta'));
+
+        $log->append('lost with the directory');
+        $this->assertFileDoesNotExist($log->path(), 'the write failed and the line went with it');
+
+        $log->append('after');
+
+        $kept = (string) file_get_contents($log->path());
+        $this->assertStringContainsString('after', $kept, 'the directory was recreated for the next line');
+        $this->assertStringNotContainsString('lost', $kept);
+    }
+
     public function testAnUnwritableLocationStaysSilent(): void
     {
         $project = new TempProject(['blocker' => 'a regular file where the log dir should go']);
@@ -152,6 +218,41 @@ final class DiagnosticLogTest extends TestCase
         $log->append('lost'); // the parent is a file: nothing to create, nothing thrown
 
         $this->assertFileDoesNotExist($log->path());
+    }
+
+    public function testAMissingParentTreeIsNotCreated(): void
+    {
+        // Only the `.porta` directory itself is ever created, and only inside a
+        // directory that already exists. A log path under a tree that is not
+        // there is a misconfiguration, and quietly minting the whole chain for
+        // it would scatter empty directories wherever a path was fat-fingered.
+        $project = new TempProject();
+        $log = $this->log($project->dir.'/absent/deeper/.porta/diag.log');
+
+        $log->append('lost');
+
+        $this->assertDirectoryDoesNotExist($project->dir.'/absent', 'nothing above the log directory is minted');
+        $this->assertFileDoesNotExist($log->path());
+    }
+
+    public function testTheLogDirectoryIsCreatedGroupAndWorldReadable(): void
+    {
+        // 0755, not 0777: the diagnostics are readable by whoever is helping
+        // (and by a CI step collecting them), and writable only by their owner.
+        // The umask is pinned because it is what decides the answer — the mode
+        // asked for is masked, so a test that let the environment choose would
+        // pass or fail on the machine rather than on the code.
+        $project = new TempProject();
+        $log = $this->log($project->dir.'/.porta/diag.log');
+        $previous = umask(0o022);
+
+        try {
+            $log->append('first');
+        } finally {
+            umask($previous);
+        }
+
+        $this->assertSame(0o755, 0o777 & (int) fileperms($project->dir.'/.porta'));
     }
 
     /**
