@@ -3586,8 +3586,12 @@ was tried, and `composer analyze` refuses both. That is the distinction worth
 keeping: a line mutation cannot kill is not automatically a line to delete, and
 the way to tell is to delete it and run the gate.
 
-**Still open:** bookmark mnemonics, and Go to Super method (no LSP request
-answers it; see the capability table). *Complete Current Statement* was filed
+**Still open:** bookmark mnemonics. ~~and Go to Super method (no LSP request
+answers it; see the capability table)~~ — **Go to Super method SHIPPED**
+(corrected 2026-09-13): `SearchActions::goToSuperMethod()` on `Ctrl+U`, answered
+by `Porta\Search\SuperMethodNavigator` reading the source itself rather than by
+a server, which is why the capability table's verdict stopped being the whole
+story. The entry stood as open for long enough to be quoted as a gap. *Complete Current Statement* was filed
 here as needing a per-language table before it could ship — it has one now, see
 below.
 
@@ -6560,6 +6564,15 @@ the two would have stayed indistinguishable.
 *Still confirmed and unfixed on the census:* `PaneSegmenter:99/108`,
 `TabBarWidget:189/209/287`, `LineDecorator:104/130`. Named so the next pass
 starts from a verified list rather than the raw one.
+
+> **Stale as of 2026-09-13.** `PaneSegmenter` is closed —
+> `PaneSegmenterTest::testARegionThatMissesTheRowDoesNotStopTheWalk` puts a
+> non-covering region BEFORE a covering one, which is exactly the ordering the
+> mutant needs. The other two were re-read rather than re-run and the line
+> numbers no longer point where they did, so treat all three as a list to
+> re-derive with `vendor/bin/infection --filter=<file>` before writing anything
+> against it. A census entry is a claim with a date on it, and this one has
+> outlived two of its three subjects.
 
 ## A highlight that bled to the end of the line (2026-09-11)
 
