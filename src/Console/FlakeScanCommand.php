@@ -106,6 +106,8 @@ final class FlakeScanCommand extends Command
 
         /** @var array<string, int> $failures test id => how many runs it failed in */
         $failures = [];
+        /** @var array<string, string> $reasons test id => the first reason it gave */
+        $reasons = [];
         /** @var list<float> $durations */
         $durations = [];
         $red = 0;
@@ -125,8 +127,12 @@ final class FlakeScanCommand extends Command
             if ([] !== $failed || 0 !== $exit) {
                 ++$red;
             }
-            foreach ($failed as $test) {
+            foreach ($failed as $test => $reason) {
                 $failures[$test] = ($failures[$test] ?? 0) + 1;
+                // The FIRST reason a test gave, kept rather than overwritten: a
+                // flake that fails two different ways is two findings, and the
+                // later run's message would hide the earlier one.
+                $reasons[$test] ??= $reason;
             }
 
             $io->writeln(\sprintf(
@@ -147,7 +153,7 @@ final class FlakeScanCommand extends Command
             ));
         }
 
-        $this->report($io, $failures, $durations, $runs, $red, $leaks, $leakLog);
+        $this->report($io, $failures, $reasons, $durations, $runs, $red, $leaks, $leakLog);
 
         // Always 0: this is an instrument, not a gate. A rate is a measurement
         // to compare, and failing the command would make it unusable as the
@@ -249,9 +255,17 @@ final class FlakeScanCommand extends Command
     }
 
     /**
-     * The ids of tests that failed or errored in a JUnit log.
+     * The tests that failed or errored in a JUnit log, each with the reason it
+     * gave.
      *
-     * @return list<string>
+     * Collected as pairs and keyed in a second pass, which is not ceremony: keyed
+     * directly from the `'' === $class ? … : …` expression, the analyzer widens
+     * the key to `non-negative-int|string` (PHP coerces a numeric-looking string
+     * key to an int, and it cannot rule that out of a ternary). Keying off the
+     * destructured variable, whose type it has already settled, says the same
+     * thing in a way it can follow.
+     *
+     * @return array<string, string>
      */
     private function failedTests(string $log): array
     {
@@ -276,17 +290,72 @@ final class FlakeScanCommand extends Command
         foreach (\is_array($cases) ? $cases : [] as $case) {
             $class = (string) ($case['class'] ?? '');
             $name = (string) ($case['name'] ?? '');
-            $failed[] = '' === $class ? $name : $class.'::'.$name;
+            $failed[] = ['' === $class ? $name : $class.'::'.$name, self::reason($case)];
+        }
+        $out = [];
+        foreach ($failed as [$id, $reason]) {
+            $out[$id] = $reason;
         }
 
-        return array_values(array_unique($failed));
+        return $out;
     }
 
     /**
-     * @param array<string, int> $failures
-     * @param list<float>        $durations
+     * One failing test's cell: its id, and BENEATH it the reason it gave.
+     *
+     * Its own method because the rendered table cannot be asserted on this
+     * shape. `SymfonyStyle` wraps a long cell at the terminal width, so a cell
+     * with the newline taken out comes back wrapped at very nearly the same
+     * place — measured: every concat mutation of this expression survived a
+     * regex over the rendered output, and one survived an assertion that the
+     * reason's line does not also carry the test's name. The composition is the
+     * contract; the wrap is a coincidence that cannot be asked about.
      */
-    private function report(SymfonyStyle $io, array $failures, array $durations, int $runs, int $red, int $leaks, string $leakLog): void
+    private static function testCell(string $test, ?string $reason): string
+    {
+        return $test."\n  <comment>".($reason ?? 'no message in the log').'</comment>';
+    }
+
+    /**
+     * The first meaningful line of a failed case's message.
+     *
+     * The scan used to keep the NAME and delete the log, which is half an
+     * instrument: a 2-in-6 intermittent tells you where to look and nothing
+     * about what happened, and the next thing anyone does is try to reproduce it
+     * — four suite runs and a load experiment, in the session that added this,
+     * none of which reproduced anything. The reason was in the log the scan had
+     * already thrown away.
+     *
+     * Trimmed to one line because the shape is what matters at this level: a
+     * timeout, an assertion on a screen, a subprocess that never answered. The
+     * frames belong to whoever reproduces it next.
+     */
+    private static function reason(\SimpleXMLElement $case): string
+    {
+        // xpath rather than `$case->failure`: a SimpleXMLElement's children are
+        // dynamic properties, which the analyzer can only call ambiguous, and
+        // one expression reads both element names PHPUnit uses anyway.
+        $nodes = $case->xpath('failure|error');
+        $body = trim((string) (\is_array($nodes) ? $nodes[0] ?? '' : ''));
+        foreach (explode("\n", $body) as $line) {
+            $line = trim($line);
+            // PHPUnit opens with `Class::method` and its data-set suffix, which
+            // the row beside this already says; the line after it is the one
+            // carrying the message.
+            if ('' !== $line && !str_contains($line, '::')) {
+                return $line;
+            }
+        }
+
+        return '' === $body ? 'no message in the log' : $body;
+    }
+
+    /**
+     * @param array<string, int>    $failures
+     * @param array<string, string> $reasons
+     * @param list<float>           $durations
+     */
+    private function report(SymfonyStyle $io, array $failures, array $reasons, array $durations, int $runs, int $red, int $leaks, string $leakLog): void
     {
         $io->newLine();
         // Keyed on RED RUNS, not on named failures. A wedged or crashed run
@@ -304,10 +373,10 @@ final class FlakeScanCommand extends Command
                     // The distinction the doctrine draws: every run is a
                     // regression, some runs is load.
                     $count === $runs ? 'every run' : 'intermittent',
-                    $test,
+                    self::testCell($test, $reasons[$test] ?? null),
                 ];
             }
-            $io->table(['failed', 'shape', 'test'], $rows);
+            $io->table(['failed', 'shape', 'test and the first reason it gave'], $rows);
         }
 
         sort($durations);

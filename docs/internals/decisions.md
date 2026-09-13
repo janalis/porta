@@ -8827,3 +8827,57 @@ mago matches the NAME, and `$token` here is a key chord (`f12`, `ctrl+d`).
 Suppressed with the reason rather than renamed — renaming a variable used
 throughout the method to dodge a heuristic leaves the next reader with no idea
 why it is called something else.
+
+## A flake scan that deleted the answer (2026-09-13)
+
+`bin/porta-dev flake:scan --testsuite=E2e --runs=6` found one:
+
+```
+  2/6   intermittent   ChromaPluginTest::testChromaColorsTheBufferAfterTheSubprocessAnswers
+```
+
+and the failing runs were the SLOW ones — 27s and 29s against 19–21s for the
+four green — so the shape is load, not a regression. Then the trail went cold:
+eight isolated runs of that test, four full E2e suites and one deliberate
+sixteen-`yes` load experiment (at load average 19) all came back green.
+
+The reason was in the JUnit log, and the scan had **deleted it**. It read the log
+for the NAMES of failed cases, `unlink()`ed it, and reported a rate. Half an
+instrument: a rate says where to look and nothing about what happened, which is
+precisely the question the next hour is spent on.
+
+It now keeps the first reason each failing test gave — one trimmed line, printed
+under the test in the same cell — and the frames stay out, because they belong to
+whoever reproduces it.
+
+### Where the mutants sent the tests
+
+Seven escaped, every one on the reporting, and chasing them taught the actual
+lesson:
+
+**The rendered table cannot be asserted on the cell's shape.** `SymfonyStyle`
+wraps a long cell at the terminal width. Take the newline out of
+`$test."\n  ".$reason` and the cell comes back wrapped at very nearly the same
+place — measured: a regex for "name, newline, two spaces, reason" stayed green
+against the mutant, and so did an assertion that the reason's line does not also
+carry the name. Tabs vanish the same way, so "the message was trimmed" could not
+be asserted from the display either.
+
+So the composition became `testCell()` and the extraction is the point: the shape
+is a contract asserted with `assertSame()`, and the wrap is a coincidence nothing
+asks about. `reason()` is asserted the same way, against a `SimpleXMLElement`.
+
+**And one mutant survived because an edit never landed.** The script that added
+the header assertions aborted on a later `assert` and wrote nothing, so the file
+still held the version before it — green, and silent about the change I believed
+I had made. The mutant is what noticed. Verified by hand afterwards: with
+`'failed'` dropped, `shape` sits over the rate column and the table still renders
+perfectly well.
+
+### The flake stays open
+
+Recorded rather than guessed at: `ChromaPluginTest` fails ~2/6 at the composer
+default process count, on the slow runs. `await()` counts TURNS (0.02s nominal
+each), not wall time, so a loaded box gets a longer budget rather than a shorter
+one — which argues against a plain timeout and for something lost. The next scan
+that catches it will say which, and that is the whole point of this commit.

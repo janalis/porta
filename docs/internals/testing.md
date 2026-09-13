@@ -158,7 +158,10 @@ requested. Prefer setting a sentinel and asserting nothing replaced it.
 tell a real barrier from one that merely happens to be satisfied. The instrument
 is a serial `--filter` loop under CPU burners — harsher than `flake:scan`, which
 shares the machine between paratest workers and so gives each test *more*
-headroom, not less:
+headroom, not less. `flake:scan` prints **the first reason each failing test
+gave** beneath its name; take that reason to the reproduction rather than
+starting from the name, because a rate on its own says where to look and nothing
+about what happened:
 
 ```bash
 cleanup() { pkill -x yes >/dev/null 2>&1; }; trap cleanup EXIT INT TERM

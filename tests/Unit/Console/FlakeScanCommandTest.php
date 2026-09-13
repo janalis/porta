@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Console;
 use PHPUnit\Framework\TestCase;
 use Porta\Console\FlakeScanCommand;
 use Porta\Tests\Support\LeakLog;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -44,6 +45,183 @@ final class FlakeScanCommandTest extends TestCase
                 return [] === ($failuresPerRun[$run - 1] ?? []) ? $exit : 1;
             },
         ));
+    }
+
+    /**
+     * A runner whose runs fail with the exact JUnit bodies given.
+     *
+     * @param list<array<string, string>> $bodiesPerRun one entry per run: `Class::method` => the case's failure body
+     * @param string                      $element      `failure` or `error` — PHPUnit writes both, and a scan has to read both
+     */
+    private function testerWithBodies(array $bodiesPerRun, string $element = 'failure'): CommandTester
+    {
+        $run = 0;
+
+        return new CommandTester(new FlakeScanCommand(
+            static function (string $log, ?int $processes, ?string $testsuite, int $timeout) use (&$run, $bodiesPerRun, $element): int {
+                $cases = '';
+                foreach ($bodiesPerRun[$run] ?? [] as $test => $body) {
+                    [$class, $method] = explode('::', $test);
+                    $cases .= \sprintf(
+                        '<testcase class="%s" name="%s"><%s>%s</%s></testcase>',
+                        $class,
+                        $method,
+                        $element,
+                        htmlspecialchars($body, \ENT_XML1),
+                        $element,
+                    );
+                }
+                file_put_contents($log, '<?xml version="1.0"?><testsuites><testsuite>'.$cases.'</testsuite></testsuites>');
+                ++$run;
+
+                return [] === ($bodiesPerRun[$run - 1] ?? []) ? 0 : 1;
+            },
+        ));
+    }
+
+    /**
+     * The cell's composition, asserted where it can be seen.
+     *
+     * Not a detour into private state for its own sake: the rendered table
+     * cannot answer this question. SymfonyStyle wraps a long cell at the
+     * terminal width, so a cell built without the newline comes back wrapped at
+     * nearly the same place, and every mutation of that expression survived
+     * both a regex over the display and a "the reason's line does not carry the
+     * name" assertion.
+     */
+    public function testTheCellPutsTheReasonOnItsOwnIndentedLineUnderTheName(): void
+    {
+        $cell = Probe::invokeStatic(FlakeScanCommand::class, 'testCell', 'A\Test::testOne', 'Timed out');
+
+        $this->assertSame("A\Test::testOne\n  <comment>Timed out</comment>", $cell);
+    }
+
+    public function testTheCellSaysSoWhenThereIsNoReason(): void
+    {
+        $cell = Probe::invokeStatic(FlakeScanCommand::class, 'testCell', 'A\Test::testOne', null);
+
+        $this->assertSame("A\Test::testOne\n  <comment>no message in the log</comment>", $cell);
+    }
+
+    /** The reason itself, trimmed line by line — the display's own padding hides this. */
+    public function testTheReasonIsTrimmedOfTheWhitespacePhpunitIndentsItWith(): void
+    {
+        $case = new \SimpleXMLElement('<testcase><failure>A\Test::testOne'."\n   \tFailed asserting that 4 is less than 3   \n".'</failure></testcase>');
+
+        $reason = Probe::invokeStatic(FlakeScanCommand::class, 'reason', $case);
+
+        $this->assertSame('Failed asserting that 4 is less than 3', $reason);
+    }
+
+    /** The first display line holding $needle, or '' — the table's own padding included. */
+    private function lineContaining(string $display, string $needle): string
+    {
+        foreach (explode("\n", $display) as $line) {
+            if (str_contains($line, $needle)) {
+                return $line;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * The reason a test gave is reported beside it.
+     *
+     * The scan used to keep the name and delete the log, which is half an
+     * instrument: a 2-in-6 intermittent says where to look and nothing about
+     * what happened. In the session that added this, the next four suite runs
+     * and a deliberate load experiment reproduced nothing at all — and the
+     * answer had been in the log the scan deleted.
+     */
+    public function testItReportsWhyTheTestFailed(): void
+    {
+        $tester = $this->testerWithBodies([
+            ['A\Test::testAwaits' => "A\Test::testAwaits\nTimed out after 5.0s awaiting chroma keyword coloring to land\n\n/app/tests/E2e/X.php:71"],
+        ]);
+
+        $tester->execute(['--runs' => 1]);
+
+        $display = $tester->getDisplay();
+        $this->assertStringContainsString('Timed out after 5.0s awaiting chroma keyword coloring to land', $display);
+        $this->assertStringNotContainsString('/app/tests/E2e/X.php:71', $display, 'the frames belong to whoever reproduces it, not to a rate table');
+        // Every column keeps its name. Dropping one shifts what the reader
+        // thinks each column is — with `failed` gone, `shape` sits over the rate
+        // — and the table still renders, so nothing else would notice.
+        $header = $this->lineContaining($display, 'shape');
+        $this->assertStringContainsString('failed', $header);
+        $this->assertStringContainsString('test and the first reason it gave', $header, 'the column says what it holds');
+    }
+
+    public function testTheReasonSkipsThePhpunitHeaderLineThatOnlyRepeatsTheTestName(): void
+    {
+        // PHPUnit's message opens with `Class::method` (plus any data-set
+        // suffix), which the row already says; the line after it is the message.
+        $tester = $this->testerWithBodies([
+            ['A\Test::testOne' => "A\Test::testOne with data set \"three rows\"\nFailed asserting that 4 is less than 3"],
+        ]);
+
+        $tester->execute(['--runs' => 1]);
+
+        $this->assertStringContainsString('Failed asserting that 4 is less than 3', $tester->getDisplay());
+    }
+
+    public function testAnErrorIsReadTheSameWayAsAFailure(): void
+    {
+        $tester = $this->testerWithBodies([
+            ['A\Test::testThrows' => "A\Test::testThrows\nRuntimeException: the pty went away"],
+        ], element: 'error');
+
+        $tester->execute(['--runs' => 1]);
+
+        $this->assertStringContainsString('RuntimeException: the pty went away', $tester->getDisplay());
+    }
+
+    public function testACaseWithNoMessageSaysSoRatherThanShowingNothing(): void
+    {
+        $tester = $this->testerWithBodies([['A\Test::testMute' => '']]);
+
+        $tester->execute(['--runs' => 1]);
+
+        $this->assertStringContainsString('no message in the log', $tester->getDisplay());
+    }
+
+    public function testACaseWhoseMessageIsOnlyWhitespaceCountsAsNoMessage(): void
+    {
+        // A body of blank lines is what a crashed worker can leave behind, and
+        // reporting it verbatim prints a row with an empty second line.
+        $tester = $this->testerWithBodies([['A\Test::testBlank' => "  \n\t\n  "]]);
+
+        $tester->execute(['--runs' => 1]);
+
+        $this->assertStringContainsString('no message in the log', $tester->getDisplay());
+    }
+
+    public function testACaseWhoseWholeMessageLooksLikeATestNameIsStillShown(): void
+    {
+        // Every line contains `::`, so the skip rule would leave nothing. Saying
+        // the raw body beats saying nothing about a failure that happened.
+        $tester = $this->testerWithBodies([['A\Test::testOdd' => 'A\Test::testOdd']]);
+
+        $tester->execute(['--runs' => 1]);
+
+        $this->assertStringContainsString('A\Test::testOdd', $tester->getDisplay());
+    }
+
+    public function testTheFirstReasonIsKeptWhenAFlakeFailsTwoDifferentWays(): void
+    {
+        // Two shapes is two findings; the later run's message would hide the
+        // first one, and the first is the one the scan can still be asked about.
+        $tester = $this->testerWithBodies([
+            ['A\Test::testTwoWays' => "A\Test::testTwoWays\nTimed out awaiting the frame"],
+            ['A\Test::testTwoWays' => "A\Test::testTwoWays\nFailed asserting that '' contains 'fn main()'"],
+        ]);
+
+        $tester->execute(['--runs' => 2]);
+
+        $display = $tester->getDisplay();
+        $this->assertStringContainsString('Timed out awaiting the frame', $display);
+        $this->assertStringNotContainsString('contains', $display, 'the first reason is the one kept');
     }
 
     public function testAGreenSuiteReportsEveryRunGreen(): void
