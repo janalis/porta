@@ -306,7 +306,14 @@ final class StatusBarProviderTest extends TestCase
 
         $this->assertSame(Glyphs::SEVERITY_ERROR.' 1', $byAction['ide_problems']);
         $this->assertSame('1:1', $byAction['goto_line']);
+        // The LSP cell and NOTHING after it. `assertStringStartsWith('LSP:')`
+        // was true of the whole legend too, which is how a span covering
+        // "Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit" passed
+        // this case for as long as it existed: clicking the printed reminder
+        // that Ctrl+S saves opened the language-server log.
         $this->assertStringStartsWith('LSP:', $byAction['ide_lsp_log']);
+        $this->assertStringNotContainsString('Ctrl+', $byAction['ide_lsp_log'], 'the key hints are not a control');
+        $this->assertStringContainsString('Ctrl+S', $plain, 'and they are still ON the bar, just not clickable');
     }
 
     public function testWithNoProblemsThereIsNoProblemsCellToClick(): void

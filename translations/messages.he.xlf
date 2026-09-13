@@ -247,8 +247,8 @@
         <target>שרת LSP</target>
       </trans-unit>
       <trans-unit id="70">
-        <source>LSP:%status%  Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit</source>
-        <target>LSP:%status%  Ctrl+S שמור  Ctrl+T פאנל  Ctrl+Space השלמה  Ctrl+Q יציאה</target>
+        <source>LSP:%status%</source>
+        <target>LSP:%status%</target>
       </trans-unit>
       <trans-unit id="71">
         <source>Last commit undone (changes kept staged)</source>
@@ -3085,6 +3085,10 @@
       <trans-unit id="863">
         <source>No language server ready for this file</source>
         <target>אין שרת שפה מוכן עבור קובץ זה</target>
+      </trans-unit>
+      <trans-unit id="864">
+        <source>Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit</source>
+        <target>Ctrl+S שמור  Ctrl+T פאנל  Ctrl+Space השלמה  Ctrl+Q יציאה</target>
       </trans-unit>
     </body>
   </file>

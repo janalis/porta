@@ -109,9 +109,17 @@ final class StatusBarProvider
         }
 
         $location = \sprintf('%d:%d', $doc->getCursorLine() + 1, $doc->getCursorDisplayCol() + 1);
-        $legend = $this->translator->trans('LSP:%status%  Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit', [
+        // Two strings, not one, because only the FIRST of them is clickable.
+        // As a single legend the `ide_lsp_log` span below covered the whole of
+        // it, so clicking the words "Ctrl+S save" opened the LSP log — the key
+        // hints are a printed reminder, and nothing about them says "log".
+        // Every locale already put `LSP:%status%` first and separated it by two
+        // spaces, so the split costs the catalogs nothing but a cut.
+        $lspCell = $this->translator->trans('LSP:%status%', [
             '%status%' => $this->lsp->statusFor($this->editor->getFilePath()),
         ]);
+        $hints = $this->translator->trans('Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit');
+        $legend = $lspCell.'  '.$hints;
         // What the server is busy doing, ahead of the counts: it is the most
         // perishable thing on the bar, and until now the IDE never said it at
         // all. Carries no glyph — every glyph here must be one display column
@@ -135,7 +143,9 @@ final class StatusBarProvider
         $clicks[] = new StatusClickSpan($at, $at + $locationWidth, 'goto_line');
         // +2 for the gap between the caret position and the legend.
         $at += $locationWidth + 2;
-        $clicks[] = new StatusClickSpan($at, $at + AnsiUtils::visibleWidth($legend), 'ide_lsp_log');
+        // The LSP cell ALONE, not the legend it leads: the hints after it are
+        // not a control, and a click landing on one used to open the server log.
+        $clicks[] = new StatusClickSpan($at, $at + AnsiUtils::visibleWidth($lspCell), 'ide_lsp_log');
 
         return ['left' => $left, 'right' => $right, 'menus' => $menus, 'rightClicks' => $clicks];
     }

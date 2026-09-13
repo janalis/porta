@@ -247,8 +247,8 @@
         <target>LSP-Server</target>
       </trans-unit>
       <trans-unit id="70">
-        <source>LSP:%status%  Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit</source>
-        <target>LSP:%status%  Ctrl+S speichern  Ctrl+T Panel  Ctrl+Space vervollständigen  Ctrl+Q beenden</target>
+        <source>LSP:%status%</source>
+        <target>LSP:%status%</target>
       </trans-unit>
       <trans-unit id="71">
         <source>Last commit undone (changes kept staged)</source>
@@ -3085,6 +3085,10 @@
       <trans-unit id="863">
         <source>No language server ready for this file</source>
         <target>Kein Sprachserver für diese Datei bereit</target>
+      </trans-unit>
+      <trans-unit id="864">
+        <source>Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit</source>
+        <target>Ctrl+S speichern  Ctrl+T Panel  Ctrl+Space vervollständigen  Ctrl+Q beenden</target>
       </trans-unit>
     </body>
   </file>
