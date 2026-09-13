@@ -9290,3 +9290,48 @@ two keys, because the render re-clamps, and the first test did exactly that. End
 followed by Down is an ordinary burst from ONE read of stdin. `scrollTo()` is
 split from `scrollBy()` so a jump clamps without an addition, and the case that
 pins it deliberately skips the frame.
+
+## Two orphaned IDEs that were not an IDE defect (2026-09-13)
+
+Two `bin/porta` processes were found alive after **1 day 11 hours**, left by an
+RTL sweep script of the form
+
+    ( sleep 4; printf "$keys"; … ) | timeout 25 script -q /dev/null \
+      /bin/sh -c "stty cols 226 rows 67; cd $S && exec bin/porta"
+
+The first reading was that Porta had not noticed its terminal go away: the
+`timeout` had long since fired, so the pty's owner should have been gone, and a
+process polling the filesystem at 4 Hz into a dead tty forever is exactly the
+"session that never comes back" shape this round had been fixing elsewhere.
+
+**That reading was wrong, and the evidence is unambiguous in both directions.**
+
+*It exits when the pty owner dies.* Reproduced five ways — the bare shape, the
+piped-keystroke shape the sweep actually used, and four concurrent runs, every
+one with a `timeout` shorter than the session. Survivors each time: zero.
+
+*It handles the signal and unwinds properly.* The orphans' own
+`.porta/session.json` carries the timestamp of the `SIGTERM` that ended them,
+which only the ordinary teardown writes. `Ide::run()`'s
+`EventLoop::onSignal(SIGTERM|SIGINT|SIGHUP)` did its job 35 hours after boot.
+
+*And they were not frozen.* `.porta/freeze.log` shows "loop stalled … recovered"
+lines right up to the last hour, the loop alive throughout, and `perf.log` grew
+to 197 KB.
+
+So Porta kept running because **it had not been orphaned**: nothing signalled
+it, and its pty was still open. The leak is the harness's — that afternoon's
+`timeout 25 script …` did not take the tree down, and a wrapper that fails to
+kill what it wraps leaves a perfectly healthy program running.
+
+**The mechanism by which the harness failed is NOT established**, and it is
+deliberately not guessed at here. `script` outliving the signal is plausible and
+so are three other stories; this file's own rule is that a plausible mechanism
+is not a diagnosis. What IS established is where the fault is not.
+
+*If it matters later:* the fix belongs in the harness — kill the process GROUP,
+or `timeout -k`, rather than trusting a single `SIGTERM` to a `script` that has
+a child of its own. And capture a backtrace BEFORE killing a long-lived orphan;
+the processes here were killed for hygiene before anyone thought to ask them
+what they were doing, and the on-disk logs are the only reason the question
+could be answered at all.
