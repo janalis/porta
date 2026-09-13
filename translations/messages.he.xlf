@@ -3074,6 +3074,14 @@
         <source>%tool% could not be started</source>
         <target>לא ניתן היה להפעיל את %tool%</target>
       </trans-unit>
+      <trans-unit id="861">
+        <source>No paused debugger to step</source>
+        <target>אין מנפה שגיאות מושהה לביצוע צעד</target>
+      </trans-unit>
+      <trans-unit id="862">
+        <source>Evaluate needs a paused debugger</source>
+        <target>הערכה דורשת מנפה שגיאות מושהה</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

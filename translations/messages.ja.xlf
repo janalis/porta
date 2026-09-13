@@ -3074,6 +3074,14 @@
         <source>%tool% could not be started</source>
         <target>%tool% を起動できませんでした</target>
       </trans-unit>
+      <trans-unit id="861">
+        <source>No paused debugger to step</source>
+        <target>ステップ実行できる一時停止中のデバッガがありません</target>
+      </trans-unit>
+      <trans-unit id="862">
+        <source>Evaluate needs a paused debugger</source>
+        <target>評価には一時停止中のデバッガが必要です</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -24,9 +24,11 @@ final class CommandRegistry
     private array $byId = [];
 
     /**
-     * @param (\Closure(): bool)|null $when gates KEY dispatch only (a false `when` lets the key
-     *                                      fall through to the focused widget); the palette and
-     *                                      menus still run the handler, which must self-guard
+     * @param (\Closure(): bool)|null $when gates KEY dispatch (a false `when` lets the key fall
+     *                                      through to the focused widget) and MENU items, which
+     *                                      grey out on it. The palette still runs the handler
+     *                                      directly, so a gated handler must also refuse for
+     *                                      itself — and must do so BEFORE it prompts, not after.
      */
     public function add(
         string $id,

@@ -279,22 +279,54 @@ final class DebugController implements DebugSessionObserver, StatusSegment
 
     public function stepOver(): void
     {
+        if (!$this->steppable()) {
+            return;
+        }
         $this->session?->stepOver();
     }
 
     public function stepIn(): void
     {
+        if (!$this->steppable()) {
+            return;
+        }
         $this->session?->stepIn();
     }
 
     public function stepOut(): void
     {
+        if (!$this->steppable()) {
+            return;
+        }
         $this->session?->stepOut();
     }
 
     public function continueRun(): void
     {
+        if (!$this->steppable()) {
+            return;
+        }
         $this->session?->continueRun();
+    }
+
+    /**
+     * Whether a step verb can act, saying so when it cannot.
+     *
+     * The four steppers were `$this->session?->stepOver()` and nothing else, so
+     * Run ▸ Step Over with no debugger did absolutely nothing, in silence —
+     * while their two neighbours on the same menu, {@see restart()} and {@see
+     * runToCursor()}, both flashed. The KEY is gated by `when` and correctly
+     * falls through to the focused widget; it is the palette and the menu that
+     * reach the handler, and the handler that has to answer.
+     */
+    private function steppable(): bool
+    {
+        if ($this->isPaused()) {
+            return true;
+        }
+        $this->notifier->flash($this->translator->trans('No paused debugger to step'));
+
+        return false;
     }
 
     /** Ctrl+F2 and the `run()` teardown: end the session. Idempotent. */
@@ -508,6 +540,15 @@ final class DebugController implements DebugSessionObserver, StatusSegment
     /** The palette's one-shot evaluate (paused only): result lands in a flash. */
     public function evaluatePrompt(): void
     {
+        // BEFORE the prompt, not inside its callback. Find Action lists this
+        // verb whether or not `when` holds, and the guard used to sit on the
+        // far side of the input: the prompt opened, the user typed an
+        // expression, and it was dropped on the floor without a word.
+        if (!$this->isPaused()) {
+            $this->notifier->flash($this->translator->trans('Evaluate needs a paused debugger'));
+
+            return;
+        }
         $this->tui->setFocus($this->editor); // drivable from a focused dock panel too
         $this->editor->openPrompt($this->translator->trans('Evaluate expression'), '', function (string $expression): void {
             $expression = trim($expression);

@@ -588,4 +588,53 @@ final class MenuModelTest extends TestCase
 
         $this->assertCount(1, $items, "an 'e:' spec is never skipped by the adoptable-id rule, even sharing an adoptable id's name");
     }
+
+    /**
+     * A core command's OWN `when` greys its menu item, the way a plugin item's
+     * always did.
+     *
+     * Only `$pluginWhen` was ever composed into `isEnabled`, so the Run menu
+     * shipped seven debugger verbs fully enabled with no session behind them —
+     * and four of them were silent no-ops when chosen. `CommandRegistry`'s own
+     * docblock said this was the contract ("the palette and menus still run the
+     * handler, which must self-guard"), which made it a documented hole rather
+     * than an unnoticed one.
+     */
+    public function testACoreCommandsOwnWhenGreysItsMenuItem(): void
+    {
+        $paused = false;
+        $editor = new CodeEditorWidget();
+        $editor->openFile('x.php', "<?php\n");
+        $commands = $this->gitCommands()
+            ->add(
+                'debug_step_over',
+                static function (): void {},
+                when: static function () use (&$paused): bool {
+                    return $paused;
+                },
+            );
+
+        $menus = $this->build($commands, $editor);
+        $item = $this->item($menus, 'Run', 'Step Over');
+
+        $this->assertFalse($item->enabled(), 'no session → greyed');
+        $paused = true;
+        $this->assertTrue($item->enabled(), 'paused → live');
+    }
+
+    /**
+     * The control, from the opposite value: a command registered with NO `when`
+     * stays enabled. Without it, a gate that greyed every IDE item would pass
+     * the case above.
+     */
+    public function testACommandWithNoWhenIsUntouchedByTheGate(): void
+    {
+        $editor = new CodeEditorWidget();
+        $editor->openFile('x.php', "<?php\n");
+        $commands = $this->gitCommands()->add('debug_step_over', static function (): void {});
+
+        $menus = $this->build($commands, $editor);
+
+        $this->assertTrue($this->item($menus, 'Run', 'Step Over')->enabled(), 'no gate → enabled');
+    }
 }

@@ -3074,6 +3074,14 @@
         <source>%tool% could not be started</source>
         <target>%tool% n’a pas pu démarrer</target>
       </trans-unit>
+      <trans-unit id="861">
+        <source>No paused debugger to step</source>
+        <target>Aucun débogueur en pause pour exécuter pas à pas</target>
+      </trans-unit>
+      <trans-unit id="862">
+        <source>Evaluate needs a paused debugger</source>
+        <target>Évaluer requiert un débogueur en pause</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

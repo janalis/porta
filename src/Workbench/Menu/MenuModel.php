@@ -333,6 +333,19 @@ final class MenuModel
                 null !== $activeView && null !== ($activeViewId = $activeView()) => 'i' === $scope && \in_array($id, $viewSafe[$activeViewId] ?? [], strict: true),
                 default => !$requiresFile || null !== $editor->getFilePath(),
             };
+        if ('i' === $scope) {
+            // A core command's OWN `when` gate, which this item used to ignore:
+            // only a plugin item's was ever composed in, so the Run menu offered
+            // seven debugger verbs fully enabled with no session behind them.
+            // `isEnabled()` answers true for a registered command carrying no
+            // gate, so this is a no-op for all but the thirteen that have one.
+            //
+            // Unregistered ids keep today's answer rather than greying: an
+            // adoptable id whose plugin is off is already dropped upstream, and
+            // nothing else in the menus depends on a registry being populated.
+            $base = $isEnabled;
+            $isEnabled = static fn (): bool => (null === $base || $base()) && (!$commands->has($id) || $commands->isEnabled($id));
+        }
         if (null !== $pluginWhen) {
             $base = $isEnabled;
             $isEnabled = static fn (): bool => (null === $base || $base()) && $pluginWhen();

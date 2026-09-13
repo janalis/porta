@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Debug;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Debug\BreakpointStore;
 use Porta\Debug\DapClientFactory;
@@ -1113,5 +1114,68 @@ final class DebugControllerTest extends TestCase
         $controller->exceptionBreakpointsOverlay();
         $this->assertStringContainsString('no exception breakpoint filters', $this->flashed());
         $this->assertFalse(EditorState::pickerOpen($this->editor), 'the guard stops before an empty overlay opens');
+    }
+
+    /**
+     * The four step verbs say why they will not act.
+     *
+     * They were `$this->session?->stepOver()` and nothing more, so Run ▸ Step
+     * Over with no debugger did absolutely nothing, in silence — while
+     * `runToCursor()` and `restart()`, two rows away on the same menu, both
+     * flashed. The KEY is `when`-gated and correctly falls through to the
+     * focused widget; it is the MENU and the palette that reach the handler.
+     *
+     * @param \Closure(DebugController): void $step
+     */
+    #[DataProvider('stepVerbs')]
+    public function testAStepVerbWithNoPausedDebuggerSaysSo(\Closure $step, string $command): void
+    {
+        $controller = $this->controller();
+
+        $step($controller);
+
+        $this->assertStringContainsString('No paused debugger to step', $this->flashed());
+        $this->assertNotContains($command, $this->client->commands(), 'nothing reached the wire');
+    }
+
+    /** @return iterable<string, array{\Closure(DebugController): void, string}> */
+    public static function stepVerbs(): iterable
+    {
+        yield 'step over' => [static fn (DebugController $c) => $c->stepOver(), 'next'];
+        yield 'step into' => [static fn (DebugController $c) => $c->stepIn(), 'stepIn'];
+        yield 'step out' => [static fn (DebugController $c) => $c->stepOut(), 'stepOut'];
+        yield 'continue' => [static fn (DebugController $c) => $c->continueRun(), 'continue'];
+    }
+
+    /** And the control: paused, the same four verbs reach the adapter. */
+    public function testTheSameStepVerbsActWhenTheDebuggerIsPaused(): void
+    {
+        $controller = $this->controller();
+        $this->pauseAtBreakpoint($controller);
+
+        $controller->stepOver();
+
+        $this->assertContains('next', $this->client->commands(), 'paused, the step goes through');
+        $this->assertStringNotContainsString('No paused debugger to step', $this->flashed());
+    }
+
+    /**
+     * Evaluate refuses BEFORE it prompts.
+     *
+     * Find Action lists a command whether or not its `when` holds, and this
+     * guard used to sit on the far side of the input: the prompt opened, the
+     * user typed an expression, and the callback dropped it on the floor
+     * without a word. The assertion that matters is the prompt never opening —
+     * a guard that still prompts and then discards passes a flash-only check.
+     */
+    public function testEvaluateWithNoPausedDebuggerRefusesBeforeOpeningThePrompt(): void
+    {
+        $controller = $this->controller();
+
+        $controller->evaluatePrompt();
+
+        $this->assertStringContainsString('Evaluate needs a paused debugger', $this->flashed());
+        $this->assertFalse(EditorState::promptOpen($this->editor), 'the guard stops before a prompt ever opens');
+        $this->assertNotContains('evaluate', $this->client->commands());
     }
 }

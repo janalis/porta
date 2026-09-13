@@ -3074,6 +3074,14 @@
         <source>%tool% could not be started</source>
         <target>Impossibile avviare %tool%</target>
       </trans-unit>
+      <trans-unit id="861">
+        <source>No paused debugger to step</source>
+        <target>Nessun debugger in pausa per l’esecuzione passo passo</target>
+      </trans-unit>
+      <trans-unit id="862">
+        <source>Evaluate needs a paused debugger</source>
+        <target>Valuta richiede un debugger in pausa</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -3074,6 +3074,14 @@
         <source>%tool% could not be started</source>
         <target>%tool% could not be started</target>
       </trans-unit>
+      <trans-unit id="861">
+        <source>No paused debugger to step</source>
+        <target>No paused debugger to step</target>
+      </trans-unit>
+      <trans-unit id="862">
+        <source>Evaluate needs a paused debugger</source>
+        <target>Evaluate needs a paused debugger</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
