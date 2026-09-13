@@ -8478,3 +8478,73 @@ reverted, because `overwriteNewerFiles: true` on its own already spared a target
 with an equal mtime; it was asserting the filesystem, not the refusal. A
 data-loss test has to assert BOTH halves: the neighbour file still holds its own
 bytes, and the IDE said out loud that it would not write.
+
+## perf.log blamed the terminal for Porta's own mirror (2026-09-13)
+
+This round started by reading the user's own `.porta/perf.log` and nearly ended
+with the wrong subsystem. 433 of its ~1020 beat lines carry `writeMs p50` at 5ms
+or worse, peaking at **38.2ms**, in contiguous ten-second stretches — and
+several of the worst have `renderMs p50=0.0` beside them. A frame whose widget
+tree cost nothing and whose terminal write cost 35ms reads as one thing only:
+the tty stopped draining.
+
+It had not. `pend=0` on those same lines, and the real answer is that `writeMs`
+was never only the write.
+
+### What the number actually contained
+
+`BidiTui` stamps `$t0` before `Renderer::render()`, `$t1` after it, and `$t2`
+after `ScreenWriter::writeLines()`. When the RTL work landed in that method, it
+landed BETWEEN `$t1` and `$t2` — `segment()`, `segmentRegions()`, and a
+`reorderRow()`/`freezeRow()` pair per row. All of it was reported as terminal
+write time.
+
+Measured, at the user's own 226×67 with their own frame as input
+(`.porta/frame.txt`, padded to width, three pane runs), A/B/A/B:
+
+| stage | ms per frame |
+| --- | --- |
+| `reorderRow` × 67 rows | 7.9 |
+| the same plus `freezeRow` | 8.2 |
+| of which `AnsiUtils::sliceByColumn` (201 slices) | 4.1 |
+| of which `Bidi::reorder` | 2.2 |
+| the borrowed-caret `strpos` scan | 0.005 |
+
+So ~8ms of every "terminal write" in a Hebrew session was Porta mirroring the
+frame, and `slow-paint render=Xms write=Yms` — whose whole purpose is to name
+the layer — named the tty for work the tty had not done. The comment above that
+line said "write-heavy = the tty". It was wrong in exactly the subsystem that
+has now cost five rounds.
+
+`bidiMs p50/p95` is now its own pair in the beat line, `bidi=%.0fms` its own
+field in `slow-paint`, and the frame total is the sum of three stages.
+
+### What it does NOT excuse
+
+The 8ms is real, and an RTL frame therefore costs ~13ms against a 16.7ms cap —
+half the LTR headroom. That is a separate finding and is deliberately left as
+one: it wants a benchmark and its own commit, not a speculative edit inside the
+round that discovered it.
+
+### Two candidates measured and dropped
+
+- **The always-on frame sink.** It runs `array_map(stripAnsiCodes, $lines)` on
+  every frame to keep one copy for shutdown, which looked like exactly the kind
+  of self-inflicted per-frame cost worth reverting. Measured on 67 SGR-dense
+  226-column rows: **0.061ms**. Not a cost. It stays, and the timer boundary
+  puts it on the write side of the split with a comment saying why.
+- **A third boundary around the sink.** Refused for the same number.
+
+### The guards that could not fire
+
+Splitting the window added a fourth timestamp, and mutation put the old shape on
+trial: SEVEN escaped mutants, every one on a
+`null !== $tN && null !== $tM ? … : 0.0` pair. They escaped because a mixed
+state does not exist — all four stamps are read under one `null !== $clock`,
+so either all are set or none are. Dead guards, and the pairwise form hid that
+until a mutant asked.
+
+They are gone: an unclocked rig stamps `0.0` four times, every difference is
+`0.0` on its own, and the three splits are asserted individually — the total
+alone was satisfied by one stage a second long and the next a second short,
+which is precisely what the surviving `OneZeroFloat` mutants did.

@@ -376,8 +376,11 @@ final class BidiTui extends Tui implements FrameHooks
         // The manual path runs for LTR too — the vendor's processRender does
         // exactly this (clear the flag, render, writeLines; verified, nothing
         // else) and delegating to it hides where a slow frame spends its time.
-        // Timing render and write separately is what lets a real session's
-        // perf.log say "widget tree" vs "terminal write" for a 350ms paint.
+        // Timing the three stages separately is what lets a real session's
+        // perf.log say "widget tree" vs "RTL reorder" vs "terminal write" for a
+        // 350ms paint. The middle one earned its own number the hard way: it
+        // costs ~8ms at 226x67 and, counted as part of the write, read as a tty
+        // that had stopped draining while `pendingBytes` said it had not.
         $privates['requested']->setValue($this, false);
 
         /** @var ContainerWidget $root */
@@ -390,9 +393,16 @@ final class BidiTui extends Tui implements FrameHooks
         $terminal = $this->getTerminal();
         $rows = $terminal->getRows();
 
-        $t0 = null !== $this->clock ? Clocks::seconds($this->clock) : null;
+        // Four stamps under ONE condition, and an unclocked rig stamps 0.0 four
+        // times so every stage measures zero on its own — the documented "no
+        // clock wired: paints count with a zero duration". The pairwise
+        // `null !== $tN && null !== $tM` guards this replaced could not fire:
+        // the stamps are taken together, so a mixed state does not exist, and
+        // every mutation of those guards escaped because nothing could tell.
+        $clock = $this->clock;
+        $t0 = null !== $clock ? Clocks::seconds($clock) : 0.0;
         $lines = array_values($renderer->render($root, $columns, $rows));
-        $t1 = null !== $this->clock ? Clocks::seconds($this->clock) : null;
+        $t1 = null !== $clock ? Clocks::seconds($clock) : 0.0;
 
         $segmenter = $this->segmenter;
         $reorder = $this->reorder;
@@ -413,16 +423,17 @@ final class BidiTui extends Tui implements FrameHooks
             }
             $lines = $out;
         }
+        // Before the frame sink, which belongs to neither stage and costs
+        // 0.06ms at 226x67 (measured) — small enough to leave with the write
+        // rather than mint a third boundary for it.
+        $t1b = null !== $clock ? Clocks::seconds($clock) : 0.0;
         if (null !== $this->frameSink) {
             ($this->frameSink)($lines);
         }
         $screenWriter->writeLines($lines);
-        $t2 = null !== $this->clock ? Clocks::seconds($this->clock) : null;
+        $t2 = null !== $clock ? Clocks::seconds($clock) : 0.0;
 
-        $this->framePainted(
-            null !== $t0 && null !== $t1 ? $t1 - $t0 : 0.0,
-            null !== $t1 && null !== $t2 ? $t2 - $t1 : 0.0,
-        );
+        $this->framePainted($t1 - $t0, $t2 - $t1b, $t1b - $t1);
     }
 
     /** The trailing-edge wakeup: the cap window elapsed, repaint the pending state. */
@@ -433,13 +444,13 @@ final class BidiTui extends Tui implements FrameHooks
     }
 
     /** A frame reached the terminal: stamp the cap window and feed the sink. */
-    private function framePainted(float $renderSeconds, float $writeSeconds): void
+    private function framePainted(float $renderSeconds, float $writeSeconds, float $bidiSeconds): void
     {
         $this->forceRequested = false;
         if (null !== $this->clock) {
             $this->lastFrameAt = Clocks::seconds($this->clock);
         }
-        $this->perf?->paintMark($renderSeconds, $writeSeconds);
+        $this->perf?->paintMark($renderSeconds, $writeSeconds, $bidiSeconds);
     }
 
     #[\Override]

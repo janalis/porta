@@ -60,7 +60,8 @@ always lands. An idle→event frame still paints immediately, and
 cap. Pacing is wired by `Ide` via `setFramePacing()`; bare test rigs that skip
 the call are uncapped. `Support/PerfCollector` (always on) logs per-second
 frame/input evidence to `.porta/perf.log`, with the paint time split into
-`renderMs` (widget tree) and `writeMs` (ScreenWriter/tty), the editor
+`renderMs` (widget tree), `bidiMs` (the RTL reorder — zero in an LTR session)
+and `writeMs` (ScreenWriter/tty), the editor
 widget's own share as `edMs`, the syntax-parse kind counters
 (`hlFull`/`hlSplice` — whole-document re-parses vs incremental splices, fed
 by the highlighter's `onParse` seam), the terminal backlog and the 1-minute
@@ -72,8 +73,11 @@ load average per beat — and any single frame over 100ms gets an immediate
 rendered). Reading a real log as though `edMs p50=0.0` meant "the editor is
 free" is how you conclude the frame's time is elsewhere in the tree when the
 log never said so. BidiTui always runs the manual render
-path (byte-equivalent to the vendor's, verified) so the two phases can be
-timed separately. The first painted frame also stamps a one-shot `boot` line
+path (byte-equivalent to the vendor's, verified) so the three phases can be
+timed separately. **`bidiMs` is not decoration**: reordering one 226x67 frame
+costs ~8ms, so until it had its own number an RTL session's own mirror read as
+8ms of terminal write on a tty whose `pend=0` said it was keeping up — and
+`slow-paint` named the tty for work the tty had not done. The first painted frame also stamps a one-shot `boot` line
 from `Support/BootTrace` (created in the console entrypoint, published as a
 synthetic like IdeConfig): cumulative `prelude`/`container`/`plugins`/
 `eager`/`wired`/`firstPaint` milliseconds, so a "starts slowly" report

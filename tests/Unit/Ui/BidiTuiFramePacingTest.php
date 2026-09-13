@@ -283,6 +283,56 @@ final class BidiTuiFramePacingTest extends TestCase
         $tui->stop();
     }
 
+    public function testTheReorderIsTimedApartFromTheTerminalWrite(): void
+    {
+        // perf.log's whole promise is "render-heavy = the widget tree,
+        // write-heavy = the tty", and the RTL reorder sits between the two with
+        // no name of its own: measured at the user's 226x67, reordering one
+        // frame costs ~8ms, which was reported as eight milliseconds of
+        // terminal write on a tty holding zero pending bytes. So the stage that
+        // has cost this project five rounds was invisible in the one log that
+        // would have shown it.
+        $tui = new BidiTui(terminal: $this->terminal, renderer: $this->renderer);
+        $tui->add(new class extends AbstractWidget {
+            public function render(RenderContext $context): array
+            {
+                return ['x'];
+            }
+        });
+        $clock = $this->clock;
+        // The regions are asked for INSIDE the reorder stage, so a sleep here is
+        // time genuinely spent between the widget tree and the terminal.
+        $tui->setPaneReorder(new PaneSegmenter($this->renderer, new class($clock) implements \Porta\Overlay\Region\FloatingRegions {
+            public function __construct(
+                private readonly MockClock $clock,
+            ) {}
+
+            public function regions(): array
+            {
+                $this->clock->sleep(0.004); // simulated reorder cost
+
+                return [];
+            }
+        }), new PaneReorder());
+        $tui->setFramePacing($this->clock, $this->scheduler);
+        $perfProject = new TempProject(); // held: its destructor removes the dir
+        $perf = new PerfCollector($perfProject->dir, $this->clock);
+        $tui->setPerfSink($perf);
+        $tui->start();
+        $this->microTurn();
+
+        $bidi = Probe::get($perf, 'bidiDurations');
+        self::assertIsArray($bidi);
+        self::assertEqualsWithDelta(0.004, $bidi[0], 0.0001, 'the reorder time lands in its own split');
+        $writes = Probe::get($perf, 'writeDurations');
+        self::assertIsArray($writes);
+        self::assertEqualsWithDelta(0.0, $writes[0], 0.0001, 'and NOT in the terminal write, which cost nothing');
+        $totals = Probe::get($perf, 'paintDurations');
+        self::assertIsArray($totals);
+        self::assertEqualsWithDelta(0.004, $totals[0], 0.0001, 'the frame total still counts it');
+        $tui->stop();
+    }
+
     public function testASlowRenderWritesTheSlowPaintLineThroughTheRealPaintPath(): void
     {
         $tui = new BidiTui(terminal: $this->terminal, renderer: $this->renderer);
@@ -307,7 +357,7 @@ final class BidiTuiFramePacingTest extends TestCase
         $this->microTurn();
 
         $log = (string) file_get_contents($perf->logFile());
-        self::assertStringContainsString('slow-paint render=150ms write=0ms', $log, 'the bad frame named its layer on the spot');
+        self::assertStringContainsString('slow-paint render=150ms bidi=0ms write=0ms', $log, 'the bad frame named its layer on the spot');
         $tui->stop();
     }
 
@@ -327,6 +377,12 @@ final class BidiTuiFramePacingTest extends TestCase
         $this->microTurn();
 
         self::assertSame([0.0], Probe::get($perf, 'paintDurations'), 'no clock wired: paints count with a zero duration');
+        // Every stage, not just the total: the stamps are all 0.0 on this path,
+        // and a single wrong one would leave the total right and the splits
+        // nonsense — one stage a second long and the next a second short.
+        self::assertSame([0.0], Probe::get($perf, 'renderDurations'));
+        self::assertSame([0.0], Probe::get($perf, 'bidiDurations'));
+        self::assertSame([0.0], Probe::get($perf, 'writeDurations'));
         $tui->stop();
     }
 

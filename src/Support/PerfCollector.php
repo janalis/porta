@@ -49,11 +49,17 @@ final class PerfCollector
     /** @var list<float> seconds between consecutive render passes */
     private array $passGaps = [];
 
-    /** @var list<float> seconds spent generating each painted frame (render + write) */
+    /** @var list<float> seconds spent generating each painted frame (render + bidi + write) */
     private array $paintDurations = [];
 
     /** @var list<float> seconds spent in Renderer::render per painted frame */
     private array $renderDurations = [];
+
+    /**
+     * @var list<float> seconds spent mirroring each painted frame — the RTL
+     *                  reorder only, zero in an LTR session
+     */
+    private array $bidiDurations = [];
 
     /** @var list<float> seconds spent in ScreenWriter::writeLines per painted frame */
     private array $writeDurations = [];
@@ -145,8 +151,18 @@ final class PerfCollector
         }
     }
 
-    /** A frame actually painted: how long the widget tree and the terminal write took. */
-    public function paintMark(float $renderSeconds, float $writeSeconds = 0.0): void
+    /**
+     * A frame actually painted: how long the widget tree, the RTL reorder and
+     * the terminal write each took.
+     *
+     * The reorder is its own number because it is neither of the other two and
+     * is bigger than both: measured on the reported 226x67 screen it costs
+     * ~8ms a frame, and while it was folded into the write it read as eight
+     * milliseconds of terminal on a tty with zero bytes pending. The parameter
+     * is LAST rather than in pipeline order so the two original positional
+     * arguments keep their meaning; the log prints them in pipeline order.
+     */
+    public function paintMark(float $renderSeconds, float $writeSeconds = 0.0, float $bidiSeconds = 0.0): void
     {
         if (!$this->bootLogged && null !== $this->bootTrace) {
             // Once, before any slow-paint line this same frame could add: the
@@ -157,19 +173,22 @@ final class PerfCollector
             $this->log->append($this->bootTrace->line());
         }
         ++$this->paints;
-        $total = $renderSeconds + $writeSeconds;
+        $total = $renderSeconds + $bidiSeconds + $writeSeconds;
         if (\count($this->paintDurations) < self::MAX_SAMPLES) {
             $this->paintDurations[] = $total;
             $this->renderDurations[] = $renderSeconds;
+            $this->bidiDurations[] = $bidiSeconds;
             $this->writeDurations[] = $writeSeconds;
         }
         if ($total >= self::SLOW_PAINT_SECONDS) {
             // One immediate line per bad frame, naming the layer on the spot:
-            // render-heavy = the widget tree, write-heavy = the tty, both tiny
-            // while the wall clock stalled = the machine's scheduler.
+            // render-heavy = the widget tree, bidi-heavy = the RTL reorder,
+            // write-heavy = the tty, all three tiny while the wall clock
+            // stalled = the machine's scheduler.
             $this->log->append(\sprintf(
-                'slow-paint render=%.0fms write=%.0fms pendingBytes=%d load=%.1f',
+                'slow-paint render=%.0fms bidi=%.0fms write=%.0fms pendingBytes=%d load=%.1f',
                 1000 * $renderSeconds,
+                1000 * $bidiSeconds,
                 1000 * $writeSeconds,
                 null !== $this->pendingBytes ? (int) ($this->pendingBytes)() : 0,
                 ($this->loadAvg)(),
@@ -228,7 +247,7 @@ final class PerfCollector
             return;
         }
         $this->log->append(\sprintf(
-            'in=%d wheel=%d passes=%d paints=%d paceSkip=%d capSkip=%d coalesced=%d gapMs p50=%s p95=%s max=%s paintMs p50=%s p95=%s busy=%d renderMs p50=%s p95=%s writeMs p50=%s p95=%s edMs p50=%s p95=%s hlFull=%d hlSplice=%d pend=%d load=%.1f',
+            'in=%d wheel=%d passes=%d paints=%d paceSkip=%d capSkip=%d coalesced=%d gapMs p50=%s p95=%s max=%s paintMs p50=%s p95=%s busy=%d renderMs p50=%s p95=%s bidiMs p50=%s p95=%s writeMs p50=%s p95=%s edMs p50=%s p95=%s hlFull=%d hlSplice=%d pend=%d load=%.1f',
             $this->inputs,
             $this->wheels,
             $this->passes,
@@ -244,6 +263,8 @@ final class PerfCollector
             (int) (1000 * array_sum($this->paintDurations)),
             self::ms($this->renderDurations, 0.50),
             self::ms($this->renderDurations, 0.95),
+            self::ms($this->bidiDurations, 0.50),
+            self::ms($this->bidiDurations, 0.95),
             self::ms($this->writeDurations, 0.50),
             self::ms($this->writeDurations, 0.95),
             self::ms($this->editorDurations, 0.50),
@@ -320,6 +341,7 @@ final class PerfCollector
         $this->passGaps = [];
         $this->paintDurations = [];
         $this->renderDurations = [];
+        $this->bidiDurations = [];
         $this->writeDurations = [];
         $this->editorDurations = [];
         // A fresh window starts gap-free: an idle stretch between windows must

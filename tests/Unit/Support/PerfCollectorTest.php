@@ -182,22 +182,23 @@ final class PerfCollectorTest extends TestCase
         $this->assertStringContainsString('passes=1', $this->log($perf));
     }
 
-    public function testRenderAndWriteSplitsKeepTheirOwnPercentiles(): void
+    public function testRenderBidiAndWriteSplitsKeepTheirOwnPercentiles(): void
     {
         $perf = $this->collector();
 
         $perf->passMark();
         // Distinct, rounding-hostile values: an argument swap cannot hide, and
         // a 1000-vs-999 ms multiplier mutant shifts the first decimal.
-        $perf->paintMark(0.0505, 0.0705);
+        $perf->paintMark(0.0505, 0.0705, bidiSeconds: 0.0305);
 
         $perf->beat();
 
         $log = $this->log($perf);
         $this->assertStringContainsString('renderMs p50=50.5 p95=50.5', $log);
+        $this->assertStringContainsString('bidiMs p50=30.5 p95=30.5', $log, 'the reorder has its own pair');
         $this->assertStringContainsString('writeMs p50=70.5 p95=70.5', $log);
-        $this->assertStringContainsString('paintMs p50=121.0', $log, 'the total stays the sum');
-        $this->assertStringContainsString('busy=121', $log);
+        $this->assertStringContainsString('paintMs p50=151.5', $log, 'the total stays the sum of all three');
+        $this->assertStringContainsString('busy=151', $log);
     }
 
     public function testASlowPaintAppendsAnImmediateLineNamingTheLayer(): void
@@ -211,25 +212,35 @@ final class PerfCollectorTest extends TestCase
 
         // Values whose 999x multiple crosses a rounding boundary (150.51 vs
         // 150.36; 100.51 vs 100.41), so a 1000-vs-999 mutant changes the digit.
-        $perf->paintMark(0.150_51, 0.100_51);
+        $perf->paintMark(0.150_51, 0.100_51, bidiSeconds: 0.020_51);
 
         $log = $this->log($perf);
-        $this->assertStringContainsString('slow-paint render=151ms write=101ms pendingBytes=7 load=12.3', $log);
+        $this->assertStringContainsString('slow-paint render=151ms bidi=21ms write=101ms pendingBytes=7 load=12.3', $log);
 
         // The complementary rounding boundary (149.49 vs 149.64) catches a
         // 1001x mutant the first pair cannot.
-        $perf->paintMark(0.149_49, 0.100_49);
-        $this->assertStringContainsString('slow-paint render=149ms write=100ms', $this->log($perf));
+        $perf->paintMark(0.149_49, 0.100_49, bidiSeconds: 0.020_49);
+        $this->assertStringContainsString('slow-paint render=149ms bidi=20ms write=100ms', $this->log($perf));
 
         $perf->paintMark(0.1, 0.0); // exactly the threshold still fires
-        $this->assertStringContainsString('render=100ms write=0ms', $this->log($perf));
+        $this->assertStringContainsString('render=100ms bidi=0ms write=0ms', $this->log($perf));
+
+        // The RTL frame this split exists for: neither the widget tree nor the
+        // tty is slow on its own, and the frame is still a bad one. Before the
+        // reorder counted, a paint like this was 20ms of render and 130ms of
+        // "terminal write" — a layer that had done nothing.
+        $perf->paintMark(0.02, 0.01, bidiSeconds: 0.13);
+        $this->assertStringContainsString('slow-paint render=20ms bidi=130ms write=10ms', $this->log($perf));
     }
 
     public function testAPaintJustUnderTheThresholdStaysQuiet(): void
     {
         $perf = $this->collector();
 
-        $perf->paintMark(0.0989, 0.001); // 0.0999 total: under the 0.1 threshold
+        // 0.0999 across all three stages: under the 0.1 threshold. The
+        // reorder's share is part of that sum, which the companion test above
+        // proves by crossing the threshold on the reorder alone.
+        $perf->paintMark(0.0489, 0.001, bidiSeconds: 0.05);
 
         $this->assertFileDoesNotExist($perf->logFile());
     }
@@ -257,7 +268,7 @@ final class PerfCollectorTest extends TestCase
 
         // A probe-less slow paint reports the same zero-backlog fallback.
         $perf->paintMark(0.2, 0.0);
-        $this->assertMatchesRegularExpression('/slow-paint render=200ms write=0ms pendingBytes=0 load=\d+\.\d$/m', $this->log($perf));
+        $this->assertMatchesRegularExpression('/slow-paint render=200ms bidi=0ms write=0ms pendingBytes=0 load=\d+\.\d$/m', $this->log($perf));
     }
 
     public function testHighlightParsesAndEditorTimeLandInTheBeatAndReset(): void
