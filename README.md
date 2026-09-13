@@ -307,8 +307,11 @@ Add these to your project's `.gitignore`:
   `Tab` / auto-indent insert the file's own indent unit (a tab in a tab-indented
   file, four spaces otherwise).
 - Files larger than 2 MB and non-UTF-8 files are refused.
-- Git change marks reflect the last saved state (recomputed on open and
-  save); they are not live-remapped during unsaved edits.
+- Git change marks are recomputed from `HEAD` on open, save, reload and buffer
+  switch, and follow your edits in between: they move with the lines below an
+  insertion or deletion, and the line under the caret lights as you type. The
+  in-between state is an approximation around the active caret; each recompute
+  replaces it with git's own answer.
 - Highlighting is incremental on files ≥ 2000 lines: local edits re-parse
   only the touched lines (~0.2 ms per keystroke at 10k lines), with a full
   repair parse every 25 edits to restore multi-line token colors.

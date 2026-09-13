@@ -5,7 +5,12 @@ Git support is silently disabled outside a git working tree.
 ## In the editor
 
 - **Change markers** in the gutter: added / modified / deleted vs `HEAD`,
-  refreshed on open and save (not live-remapped during unsaved edits).
+  recomputed against the working tree on open, save, reload and buffer switch.
+  Between those they follow your edits: marks move with the lines below an
+  insertion or deletion, the line you are typing on lights as modified, and
+  lines you add light as added. That in-between state is an approximation —
+  it tracks the caret, so a multi-caret edit only moves the marks around the
+  active one — and every recompute above replaces it with git's own answer.
 - **File-tree marks**: `▎` for a file git does not track yet, `┆` for one that
   differs from `HEAD`. Unlike the gutter these cover the whole working tree, so
   a changed file you have never opened is still marked. They refresh when the

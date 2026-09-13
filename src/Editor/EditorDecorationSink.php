@@ -35,7 +35,7 @@ interface EditorDecorationSink
     /**
      * @param array<int, ChangeMarkKind> $byLine 0-based line => kind
      */
-    public function setVcsMarks(array $byLine): void;
+    public function setVcsMarks(array $byLine, ?int $lineCount = null): void;
 
     /**
      * @param array<int, string> $byLine 0-based line => trailing annotation (blame); [] clears

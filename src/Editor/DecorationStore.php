@@ -21,6 +21,15 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     /** @var array<int, ChangeMarkKind> 0-based line => kind */
     private array $vcsMarks = [];
 
+    /**
+     * The document's line count as of the last edit, for {@see
+     * remapVcsMarksForEdit()} — nothing reports how many lines an edit added or
+     * removed, so it is the difference from this. Rebased by {@see
+     * resetForBuffer()}, since another buffer's count would read as an edit of
+     * the difference on this one's first keystroke.
+     */
+    private int $vcsMarkLineCount = 0;
+
     /** @var array<int, string> 0-based line => trailing annotation (blame) */
     private array $lineAnnotations = [];
 
@@ -69,8 +78,9 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
      *
      * @param array<int, list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> $diagnostics
      */
-    public function resetForBuffer(array $diagnostics): void
+    public function resetForBuffer(array $diagnostics, int $lineCount = 0): void
     {
+        $this->vcsMarkLineCount = $lineCount;
         $this->diagnostics = $diagnostics;
         $this->recountDiagnostics();
         $this->inlayHints = [];
@@ -98,10 +108,23 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         return $this->searchMatches;
     }
 
-    /** @param array<int, ChangeMarkKind> $byLine 0-based line => kind */
-    public function setVcsMarks(array $byLine): void
+    /**
+     * @param array<int, ChangeMarkKind> $byLine    0-based line => kind
+     * @param int|null                   $lineCount the document these marks describe, which REBASES the
+     *                                              remap baseline; null leaves it, for a caller that is
+     *                                              clearing the marks rather than answering about a file
+     */
+    public function setVcsMarks(array $byLine, ?int $lineCount = null): void
     {
         $this->vcsMarks = $byLine;
+        if (null !== $lineCount) {
+            // These marks describe a document of this many lines, so they are
+            // the baseline the next edit is measured from. Without it a RELOAD
+            // — which replaces the text in place, with no showDocument() to
+            // rebase through — left the count from before the reload, and the
+            // next keystroke read the whole difference as its own edit.
+            $this->vcsMarkLineCount = $lineCount;
+        }
         ($this->invalidate)();
     }
 
@@ -109,6 +132,75 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     public function vcsMarks(): array
     {
         return $this->vcsMarks;
+    }
+
+    /**
+     * Move the gutter marks with an edit, so they keep pointing at the lines
+     * they describe between one `git diff` and the next.
+     *
+     * The marks are computed from the file ON DISK, by a producer that only
+     * hears about saves, reloads and buffer switches. Everything between those
+     * left them frozen: add three lines at the top of a changed file and every
+     * mark below still sat where the saved file had put it, so the gutter
+     * pointed three lines wrong and stayed that way for as long as the editing
+     * went on. The stripe and the marker column read the same map, so both were
+     * wrong together.
+     *
+     * $atLine is where the edit happened and $lineDelta how many lines it added
+     * (positive) or removed (negative):
+     *
+     *  - marks BELOW the edit shift by the delta — the point of the exercise;
+     *  - lines the edit REMOVED lose their marks rather than shifting onto a
+     *    line that no longer exists;
+     *  - the edited line becomes Modified, and lines the edit ADDED become
+     *    Added, unless they already carry a mark. That is what makes the
+     *    gutter answer a keystroke at all: typing on an unmarked line lights
+     *    it immediately instead of at the next save.
+     *
+     * An APPROXIMATION, deliberately, and a self-correcting one: the producer
+     * re-runs on every save, reload and buffer switch, and its answer replaces
+     * all of this. What it buys is that the marks are never silently stale in
+     * between, which is the state a user spends most of their time in.
+     */
+    public function remapVcsMarksForEdit(int $cursorLine, int $lineCount): void
+    {
+        $delta = $lineCount - $this->vcsMarkLineCount;
+        $this->vcsMarkLineCount = $lineCount;
+        // WHERE the edit happened is not reported either, so it is derived: the
+        // caret is on the edit, and the count of lines it added tells us how far
+        // the caret has already moved past the line the edit STARTED on. Insert
+        // three lines and the caret sits three below the first of them; delete a
+        // selection and the caret is left at its start, which is that line
+        // already. Exact for a single caret, which is every ordinary edit.
+        $this->remapVcsMarks(max(0, $cursorLine - max(0, $delta)), $delta);
+    }
+
+    private function remapVcsMarks(int $atLine, int $lineDelta): void
+    {
+        if ([] === $this->vcsMarks && 0 === $lineDelta) {
+            return; // nothing to move and nothing to light
+        }
+
+        $moved = [];
+        foreach ($this->vcsMarks as $line => $kind) {
+            if ($line <= $atLine) {
+                $moved[$line] = $kind;
+
+                continue;
+            }
+            if ($lineDelta < 0 && $line <= ($atLine - $lineDelta)) {
+                continue; // inside the removed region: the line is gone
+            }
+            $moved[$line + $lineDelta] = $kind;
+        }
+        $moved[$atLine] ??= ChangeMarkKind::Modified;
+        for ($line = $atLine + 1; $line <= ($atLine + $lineDelta); ++$line) {
+            $moved[$line] ??= ChangeMarkKind::Added;
+        }
+        ksort($moved);
+
+        $this->vcsMarks = $moved;
+        ($this->invalidate)();
     }
 
     /**

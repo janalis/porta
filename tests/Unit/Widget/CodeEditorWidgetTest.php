@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\Document;
 use Porta\Editor\FindMode;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\OccurrenceHighlights;
@@ -1555,5 +1557,59 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->handleInput(''); // the empty remainder this guard exists for
 
         $this->assertSame($before, $editor->getDocument()->getLine(1), 'an empty chunk mid-paste must be a no-op');
+    }
+
+    /**
+     * The join: a REAL edit moves the gutter marks, without anything reporting
+     * where it happened.
+     *
+     * `notifyChange()` is the one place core hears about every edit and it
+     * carries no position, so the widget derives it — the caret is on the edit,
+     * and the lines it added say how far the caret has already moved past the
+     * line the edit started on. A unit test of the store alone would pin the
+     * arithmetic and say nothing about that derivation, which is the half that
+     * can be wrong.
+     */
+    public function testAnEditCarriesTheGitGutterMarksWithIt(): void
+    {
+        $widget = new CodeEditorWidget();
+        $document = new Document("a\nb\nc\nd\ne\n");
+        $widget->showDocument('/tmp/x.php', $document);
+        $widget->decorations()->setVcsMarks([3 => ChangeMarkKind::Modified]);
+
+        $document->setCursor(1, 1);
+        $document->insertNewLine();
+        $widget->notifyChange();
+
+        $this->assertSame(
+            [1 => ChangeMarkKind::Modified, 2 => ChangeMarkKind::Added, 4 => ChangeMarkKind::Modified],
+            $widget->decorations()->vcsMarks(),
+            'the split line is Modified, the line it made is Added, and the mark below moved down one',
+        );
+    }
+
+    /**
+     * And a new buffer starts from its OWN line count. Carrying the previous
+     * document's over would read as an edit of the difference on the first
+     * keystroke, moving every mark in the new file by that many lines.
+     */
+    public function testShowingAnotherDocumentRebasesTheRemap(): void
+    {
+        $widget = new CodeEditorWidget();
+        $widget->showDocument('/tmp/long.php', new Document(str_repeat("x\n", times: 40)));
+
+        $short = new Document("a\nb\nc\n");
+        $widget->showDocument('/tmp/short.php', $short);
+        $widget->decorations()->setVcsMarks([2 => ChangeMarkKind::Added]);
+
+        $short->setCursor(0, 1);
+        $short->insert('!');
+        $widget->notifyChange();
+
+        $this->assertSame(
+            [0 => ChangeMarkKind::Modified, 2 => ChangeMarkKind::Added],
+            $widget->decorations()->vcsMarks(),
+            'the 37-line difference between the two buffers is not an edit',
+        );
     }
 }

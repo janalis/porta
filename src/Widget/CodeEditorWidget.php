@@ -317,7 +317,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         if (null === $highlighter) {
             $this->highlighter->setFile($path);
         }
-        $this->decorations->resetForBuffer($diagnostics);
+        $this->decorations->resetForBuffer($diagnostics, $document->getLineCount());
         $this->multiCaret = $this->newMultiCaret($document);
         // Let undo/redo snapshots capture and restore this document's secondary
         // carets (bound to this specific MultiCaret, not whichever is active later).
@@ -1078,6 +1078,13 @@ final class CodeEditorWidget extends AbstractWidget implements
     #[\Override]
     public function notifyChange(): void
     {
+        // The one place core hears about every edit, which is what the git
+        // gutter marks needed: they describe the file on DISK and are
+        // recomputed only on a save, a reload or a buffer switch, so between
+        // those they used to sit still while the lines under them moved. The
+        // store works out where and by how much from these two numbers — see
+        // {@see DecorationStore::remapVcsMarksForEdit()}.
+        $this->decorations->remapVcsMarksForEdit($this->document->getCursorLine(), $this->document->getLineCount());
         $this->invalidate();
         $this->callbacks->completion?->scheduleDidChange($this->document);
     }
