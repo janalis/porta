@@ -38,6 +38,9 @@ final class ChromaPluginTest extends TestCase
      * *different* case, covered separately below.
      */
     private const string STUB_OK = <<<'PHP'
+        // A sentinel beside the project, so a failure can say whether the
+        // subprocess ever ran — see the await below.
+        file_put_contents(dirname(__DIR__, 2).'/stub.ran', "1\n", FILE_APPEND);
         $src = (string) stream_get_contents(STDIN);
         echo json_encode([
             ['type' => 'Keyword', 'value' => substr($src, 0, 2)],
@@ -70,11 +73,30 @@ final class ChromaPluginTest extends TestCase
         $captured = '';
 
         $this->runIde($project, $project->path('a.rs'), [
-            60 => function ($tui, $terminal) use (&$captured): void {
-                $this->await(
-                    static fn (): bool => str_contains($terminal->getOutput(), "\x1b[38;5;176m"),
-                    what: 'chroma keyword coloring to land',
-                );
+            60 => function ($tui, $terminal) use (&$captured, $project): void {
+                // A bare timeout here says nothing, and this test has a history
+                // of failing about 1 run in 10 under a full parallel suite and
+                // never once on its own — 24 serial runs under sixteen CPU
+                // burners, a whole suite run serially in one process, and a dozen
+                // parallel suites all green. Whoever catches it next needs to
+                // know which half broke: the subprocess never ran, or it ran and
+                // its paint never landed.
+                try {
+                    $this->await(
+                        static fn (): bool => str_contains($terminal->getOutput(), "\x1b[38;5;176m"),
+                        what: 'chroma keyword coloring to land',
+                    );
+                } catch (\RuntimeException $timeout) {
+                    self::fail(
+                        $timeout->getMessage()
+                        .' — the stub '
+                        .(
+                            is_file($project->path('stub.ran'))
+                                ? 'DID run, so the answer or the repaint was lost'
+                                : 'never ran, so the dispatch or the spawn was lost'
+                        ),
+                    );
+                }
                 $captured = $terminal->getOutput();
             },
         ]);

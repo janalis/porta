@@ -8980,3 +8980,36 @@ tests from the same region. The suite went green with 12 tests where it had had
 14, and nothing said so — the COVERAGE gate did, two lines uncovered in the
 branch those tests were the only cover for. Restored from `git show HEAD:`. A
 count is worth asserting when an edit rewrites a region rather than a line.
+
+### The flake's own account, for whoever catches it next
+
+The chroma E2e case is still open, and the state of the hunt is worth more than a
+guess. Rates at the scan's own process count (paratest's default, all cores — NOT
+`composer test`'s half, which is why a `composer test` loop never reproduces it):
+
+| | runs | failures |
+| --- | --- | --- |
+| before the ceiling fix | 28 | 4 (~14%) |
+| after it | 46 | 2 (~4%) |
+
+Ruled out, each by measurement rather than argument:
+
+- **Load.** 24 serial runs of that test alone under sixteen CPU burners: green.
+- **In-process contamination.** The whole E2e suite run serially in one process,
+  randomised: green.
+- **A plain timeout.** `await()` counts TURNS at 0.02s nominal, so a busy box gets
+  a LONGER budget, not a shorter one. Ten seconds of loop time elapsed.
+- **The concurrency ceiling.** Real, fixed above, and not this: the E2e case makes
+  a single dispatch.
+- **Fork starvation.** `ulimit -n` is 1,048,576 and `maxproc` 8,000 on this
+  machine; a spawn refusal is not plausible at eight workers.
+
+What remains: the subprocess answered and the paint was lost, or it never ran at
+all. The test now SAYS WHICH. Its stub drops a sentinel beside the project and the
+timeout appends `— the stub DID run, so the answer or the repaint was lost` or
+`— the stub never ran, so the dispatch or the spawn was lost`. That message rides
+into `flake:scan`'s reason column, so the next catch — anyone's, in CI — names the
+half without this afternoon's archaeology.
+
+This is also the documented rule the test was breaking: *awaits must be
+terminal-state, not success-only*. It awaited success and reported a bare timeout.
