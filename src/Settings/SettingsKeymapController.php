@@ -70,11 +70,20 @@ final class SettingsKeymapController
         $overrides = IdeConfig::load($this->files->rootDir())->keymap;
         $rows = [];
         foreach ($this->actions->labels() as $action => $label) {
-            $binding = $this->editor->getKeybindings()->getBindings($action)[0] ?? $this->paneBinding($action) ?? $this->ideKeys->getBindings($action)[0] ?? '';
-            $rows[] = new KeybindingRow($action, $this->translator->trans($label), $binding, array_key_exists($action, $overrides));
+            $rows[] = new KeybindingRow($action, $this->translator->trans($label), $this->effectiveBinding($action), array_key_exists($action, $overrides));
         }
 
         return $rows;
+    }
+
+    /**
+     * The key $action actually fires on — the same three tiers {@see rows()}
+     * shows, shared because {@see rebind()} has to answer the same question
+     * before it writes anything.
+     */
+    private function effectiveBinding(string $action): string
+    {
+        return $this->editor->getKeybindings()->getBindings($action)[0] ?? $this->paneBinding($action) ?? $this->ideKeys->getBindings($action)[0] ?? '';
     }
 
     /** $action's key on the first registered pane that binds it, or null. */
@@ -104,7 +113,27 @@ final class SettingsKeymapController
         }
 
         $token = $parsed['key'];
-        $persisted = $this->writer->persistKeymap($this->scope->current(), $action, [$token]);
+        $scope = $this->scope->current();
+        // An override is not only a binding: it PINS the action against every
+        // future change to the default, silently and for good. So one that
+        // restates the key the action ALREADY fires on is pure cost, and this
+        // is how a `.porta.json` ends up carrying `cursor_left: ["left"]` —
+        // the entry sitting in the author's own config, put there by pressing
+        // Enter on a row and then the key it was already bound to.
+        //
+        // Only when this file does not bind the action yet: once an override is
+        // there, rewriting it is an ordinary rebind, and Del ({@see
+        // resetBinding()}) is the way to take one back.
+        // @mago-expect lint:no-insecure-comparison -- `$token` is a key chord ("f12", "ctrl+d"), not a secret; the rule matches the NAME, and there is nothing here to time an attack against.
+        if (!array_key_exists($action, self::fileKeymap($this->files->path($scope))) && $token === $this->effectiveBinding($action)) {
+            $this->notifier->flash($this->translator->trans('%action% already uses %key%', [
+                '%action%' => $this->translator->trans($this->actions->label($action)),
+                '%key%' => ShortcutFormatter::format($token),
+            ]));
+
+            return;
+        }
+        $persisted = $this->writer->persistKeymap($scope, $action, [$token]);
         if ($persisted) {
             // The file is the keymap's truth: re-merge it into the live map,
             // then rebake the menus' shortcut labels from the fresh map.

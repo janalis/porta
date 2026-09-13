@@ -3066,6 +3066,10 @@
         <source>%file% changed on disk — Ctrl+S again to overwrite</source>
         <target>%file% cambió en el disco — Ctrl+S de nuevo para sobrescribir</target>
       </trans-unit>
+      <trans-unit id="859">
+        <source>%action% already uses %key%</source>
+        <target>%action% ya usa %key%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

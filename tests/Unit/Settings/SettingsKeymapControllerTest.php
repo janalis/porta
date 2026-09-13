@@ -129,6 +129,59 @@ final class SettingsKeymapControllerTest extends TestCase
     }
 
     /**
+     * Binding an action to the key it ALREADY fires on writes nothing.
+     *
+     * This is the entry sitting in the user's own `.porta.json` —
+     * `"cursor_left": ["left"]`, which is precisely the shipped default. An
+     * override is not only a binding: it PINS the action against every future
+     * change to that default, silently and for good. Writing one for a key that
+     * already works buys nothing and costs that.
+     */
+    public function testBindingAnActionToTheKeyItAlreadyUsesWritesNothing(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
+
+        // Left is cursor_left's shipped editor default, and nothing overrides it.
+        $controller->rebind('cursor_left', "\x1b[D");
+
+        $this->assertSame([], IdeConfig::load($project->dir)->keymap, 'no override was created');
+        $this->assertStringContainsString(
+            'Move Caret Left already uses '.\Porta\Ui\ShortcutFormatter::format('left'),
+            $this->flashText($status),
+            'and it says why, rather than reporting a save that did not happen',
+        );
+    }
+
+    public function testTheKeyThatAlreadyFiresCountsWhicheverTierGivesIt(): void
+    {
+        // The editor tier answers for the case above; this is the IDE-level map,
+        // which is where a plugin's or a command's key comes from. An override
+        // restating one of those is the same redundant pin.
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings(['copy_path' => ['f12']]));
+
+        $controller->rebind('copy_path', "\x1b[24~"); // F12, which it already fires on
+
+        $this->assertSame([], IdeConfig::load($project->dir)->keymap, 'nothing was written');
+        $this->assertStringContainsString('already uses F12', $this->flashText($status));
+    }
+
+    public function testRebindingAnActionThisFileAlreadyOverridesStillWrites(): void
+    {
+        // The other half is deliberately NOT done here: once an override exists,
+        // rewriting it is an ordinary rebind, and Del is the documented way to
+        // take it back — {@see testResetDropsTheOverrideAndRebuildsTheLiveMap}.
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new StatusBarWidget(), new Keybindings());
+        $controller->rebind('copy_path', "\x1b[24~"); // F12
+
+        $controller->rebind('copy_path', "\x1b[23~"); // F11
+
+        $this->assertSame(['f11'], IdeConfig::load($project->dir)->keymap['copy_path']);
+    }
+
+    /**
      * The counterpart the page never had: a rebind could be made and never
      * unmade. Pressing Enter on a row and then any key wrote an override —
      * even one identical to the default — and nothing short of hand-editing

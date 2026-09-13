@@ -8787,3 +8787,43 @@ EMITTED (counted by its row separators). The first is the bug's cause and the
 second is its consequence, and a clip in the wrong place would satisfy one
 without the other. Verified red first: widening the clip to 99 rows fails four of
 the eight cases.
+
+## The override that pinned a key to its own default (2026-09-13)
+
+Evidence: the author's own `.porta.json`, which carries
+
+```json
+"keymap": { "cursor_left": ["left"] }
+```
+
+`left` IS `cursor_left`'s shipped default. `SettingsKeymapController`'s own
+docblock already named the mechanism when `resetBinding()` was added — "pressing
+Enter on a row and then any key wrote an override, **even one identical to the
+default**, which is how a `.porta.json` ends up carrying `cursor_left: ["left"]`"
+— and gave the user Del to take one back. The writing half was left alone.
+
+It is not cosmetic, for the reason that same docblock gives: an override is not
+only a binding, it **pins** the action against every future change to the default,
+silently and for good. Change `cursor_left`'s default in a release and this
+config keeps the old one, with nothing on screen to say why.
+
+So a rebind onto the key an action ALREADY fires on now writes nothing and says
+`%action% already uses %key%`. "Already fires on" is the effective binding across
+all three tiers — editor, then panes, then the IDE map — which `rows()` was
+computing inline and `rebind()` now shares as `effectiveBinding()`.
+
+### The half deliberately not done
+
+Rebinding an action that this file ALREADY overrides still writes, even when the
+new key is the shipped default. Removing the override there is Del's job and says
+so on screen; doing it silently inside a rebind would mean this method deciding
+that an override the user placed is no longer wanted. Pinned by a test so the
+asymmetry is a decision rather than an oversight.
+
+### A lint rule that reads names
+
+`$token === $this->effectiveBinding($action)` is `error[no-insecure-comparison]`:
+mago matches the NAME, and `$token` here is a key chord (`f12`, `ctrl+d`).
+Suppressed with the reason rather than renamed — renaming a variable used
+throughout the method to dodge a heuristic leaves the next reader with no idea
+why it is called something else.

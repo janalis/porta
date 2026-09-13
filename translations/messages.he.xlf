@@ -3066,6 +3066,10 @@
         <source>%file% changed on disk — Ctrl+S again to overwrite</source>
         <target>%file% השתנה בדיסק — Ctrl+S שוב כדי לדרוס</target>
       </trans-unit>
+      <trans-unit id="859">
+        <source>%action% already uses %key%</source>
+        <target>%action% כבר משתמש ב-%key%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
