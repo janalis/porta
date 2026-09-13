@@ -38,7 +38,7 @@ final class FileCommands implements CommandProvider
             ->add('copy_reference', fn () => $this->references->copyReference(), keyBound: KeyDispatch::Bound)
             ->add('reformat', fn () => $this->refactor->requestReformat())
             ->add('ide_undo_refactoring', fn () => $this->refactor->undoLastRefactoring(), keyBound: KeyDispatch::Bound)
-            ->add('open_as_text', $this->openActiveAsText(...), when: fn (): bool => true === $this->buffers->active()?->isViewer());
+            ->add('open_as_text', $this->openActiveAsText(...), keyBound: KeyDispatch::Bound, when: fn (): bool => true === $this->buffers->active()?->isViewer());
     }
 
     /**

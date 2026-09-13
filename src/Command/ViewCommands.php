@@ -113,7 +113,7 @@ final class ViewCommands implements CommandProvider
                 label: 'Close Other Tabs',
             )
             ->add('close_all_tabs', fn () => $this->bufferService->closeTabsExcept(null), label: 'Close All Tabs')
-            ->add('ide_notifications', fn () => $this->workbench->showNotificationLog(), label: 'Notification Log')
+            ->add('ide_notifications', fn () => $this->workbench->showNotificationLog(), keyBound: KeyDispatch::Bound, label: 'Notification Log')
             ->add('ide_lsp_log', fn () => $this->workbench->showLspLog(), label: 'LSP: Show Server Log')
             ->add('toggle_inline_diagnostics', fn () => $this->settings->toggle('inlineDiagnostics'), label: 'Toggle Inline Diagnostics')
             ->add('cycle_line_numbers', fn () => $this->settings->cycleLineNumbers(), keyBound: KeyDispatch::Bound)
