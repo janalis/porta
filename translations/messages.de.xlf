@@ -3070,6 +3070,10 @@
         <source>%action% already uses %key%</source>
         <target>%action% verwendet %key% bereits</target>
       </trans-unit>
+      <trans-unit id="860">
+        <source>%tool% could not be started</source>
+        <target>%tool% konnte nicht gestartet werden</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

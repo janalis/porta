@@ -103,6 +103,40 @@ final class FlakeScanCommandTest extends TestCase
         $this->assertSame("A\Test::testOne\n  <comment>no message in the log</comment>", $cell);
     }
 
+    /**
+     * A message that CONTAINS `::` is still the message.
+     *
+     * The first version of this skipped any line containing `::`, and the first
+     * flake it caught for real was reported as a stack frame: the message named
+     * a closure in `LoopErrors::{closure…}`, the rule skipped it, and the line
+     * after it was a vendor path. A rate with a frame beside it is no better
+     * than a rate.
+     */
+    public function testAMessageNamingAClassIsNotMistakenForPhpunitsHeader(): void
+    {
+        $body =
+            "Porta\Tests\E2e\ChromaPluginTest::testChromaColors\n"
+            ."Revolt\EventLoop\UncaughtThrowable: Uncaught RuntimeException: boom thrown in event loop error handler Porta\Tests\Support\LoopErrors::{closure}\n"
+            ."\n/app/vendor/revolt/src/EventLoop/UncaughtThrowable.php:22";
+        $case = new \SimpleXMLElement('<testcase><failure>'.htmlspecialchars($body, \ENT_XML1).'</failure></testcase>');
+
+        $reason = Probe::invokeStatic(FlakeScanCommand::class, 'reason', $case);
+
+        $this->assertSame(
+            'Revolt\EventLoop\UncaughtThrowable: Uncaught RuntimeException: boom thrown in event loop error handler Porta\Tests\Support\LoopErrors::{closure}',
+            $reason,
+        );
+    }
+
+    public function testPhpunitsHeaderLineIsSkippedWithOrWithoutADataSetSuffix(): void
+    {
+        foreach (['A\Test::testOne', 'A\Test::testOne with data set "three rows"'] as $header) {
+            $case = new \SimpleXMLElement('<testcase><failure>'.htmlspecialchars($header."\nthe message", \ENT_XML1).'</failure></testcase>');
+
+            $this->assertSame('the message', Probe::invokeStatic(FlakeScanCommand::class, 'reason', $case), $header.' was skipped');
+        }
+    }
+
     /** The reason itself, trimmed line by line — the display's own padding hides this. */
     public function testTheReasonIsTrimmedOfTheWhitespacePhpunitIndentsItWith(): void
     {

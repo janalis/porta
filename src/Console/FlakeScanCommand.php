@@ -317,6 +317,22 @@ final class FlakeScanCommand extends Command
     }
 
     /**
+     * PHPUnit's opening line: the whole line is a test id, with the data-set
+     * suffix it prints for a provider case.
+     *
+     * Anchored at both ends, and that is the point. The first version of this
+     * skipped any line CONTAINING `::`, which is how the first flake it caught
+     * for real reported a stack frame instead of a message: the message was
+     *
+     *     Revolt\EventLoop\UncaughtThrowable: Uncaught RuntimeException … thrown
+     *     in event loop error handler Porta\Tests\Support\LoopErrors::{closure…}
+     *
+     * and a rule that skips every `::` skips that, then lands on the first
+     * frame — which has no `::` in it and says nothing.
+     */
+    private const string TEST_ID_LINE = '/^[\w\\\\]+::\w+(?: with data set .*)?$/';
+
+    /**
      * The first meaningful line of a failed case's message.
      *
      * The scan used to keep the NAME and delete the log, which is half an
@@ -339,10 +355,7 @@ final class FlakeScanCommand extends Command
         $body = trim((string) (\is_array($nodes) ? $nodes[0] ?? '' : ''));
         foreach (explode("\n", $body) as $line) {
             $line = trim($line);
-            // PHPUnit opens with `Class::method` and its data-set suffix, which
-            // the row beside this already says; the line after it is the one
-            // carrying the message.
-            if ('' !== $line && !str_contains($line, '::')) {
+            if ('' !== $line && 1 !== preg_match(self::TEST_ID_LINE, $line)) {
                 return $line;
             }
         }

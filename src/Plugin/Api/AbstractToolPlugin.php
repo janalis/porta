@@ -199,13 +199,25 @@ abstract class AbstractToolPlugin extends AbstractPlugin
             return;
         }
         $before = null === $formatted ? null : $this->textBefore($api, $formatted);
-        new AsyncProcess([$binary, ...$arguments], $api->projectRoot(), timeout: AsyncProcess::INTERACTIVE_TOOL_TIMEOUT)->start(function (int $code) use ($api, $success, $formatted, $before): void {
+        $started = new AsyncProcess([$binary, ...$arguments], $api->projectRoot(), timeout: AsyncProcess::INTERACTIVE_TOOL_TIMEOUT)->start(function (int $code) use (
+            $api,
+            $success,
+            $formatted,
+            $before,
+        ): void {
             $this->release();
             if (null !== $formatted) {
                 $this->applyFormatted($api, $formatted, $before);
             }
             $this->flashExit($api, $code, $success);
         });
+        if (!$started) {
+            // Never spawned: nothing will release the slot this run took, and
+            // the tool would answer "already running" for the rest of the
+            // session about a run that never started.
+            $this->release();
+            $api->flash($api->trans('%tool% could not be started', ['%tool%' => $this->name()]));
+        }
     }
 
     /**

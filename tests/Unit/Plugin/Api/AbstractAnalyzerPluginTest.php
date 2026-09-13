@@ -316,6 +316,35 @@ final class AbstractAnalyzerPluginTest extends TestCase
         $this->assertFalse(Probe::get($this->plugin, 'running'), 'the chain released the slot at its end');
     }
 
+    /**
+     * A spawn that fails must release the single-flight slot.
+     *
+     * The slot is taken before `start()` and released only in the exit callback,
+     * which a failed spawn never reaches — so one unspawnable run left the tool
+     * answering "already running" for the rest of the session, for a run that
+     * never started.
+     */
+    public function testASpawnThatFailsReleasesTheSlot(): void
+    {
+        $api = $this->withShim('{"rows":[]}', code: 0);
+        $this->buffers->open($this->project->path('a.php'), "<?php\n");
+        $analyse = $this->handler($api, 'analyse');
+        $working = (string) file_get_contents($this->project->path('vendor/bin/demo'));
+        // Executable, resolvable, unspawnable — what a fork-starved machine, a
+        // deleted binary or a bad interpreter all look like to proc_open.
+        file_put_contents($this->project->path('vendor/bin/demo'), data: "#!/nonexistent/interpreter\n");
+        chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
+
+        $analyse();
+        $this->pump(0.05);
+        file_put_contents($this->project->path('vendor/bin/demo'), data: $working);
+        chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
+        $analyse();
+
+        $this->await(fn (): bool => [] !== $this->sink->published, what: 'the run after the failed spawn');
+        $this->assertStringNotContainsString('already running', $this->flashText($this->status), 'the slot was never stuck');
+    }
+
     public function testASecondRunIsRefusedWhileOneIsInFlight(): void
     {
         $api = $this->withShim('{"rows":[]}', code: 0);

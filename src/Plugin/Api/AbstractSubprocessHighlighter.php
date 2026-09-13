@@ -146,7 +146,7 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin implemen
         }
 
         ++$this->running;
-        new AsyncProcess([$binary, ...$this->lexerArgs($language)], $api->projectRoot(), stdin: $text, timeout: AsyncProcess::INTERACTIVE_TOOL_TIMEOUT)
+        $started = new AsyncProcess([$binary, ...$this->lexerArgs($language)], $api->projectRoot(), stdin: $text, timeout: AsyncProcess::INTERACTIVE_TOOL_TIMEOUT)
             ->start(function (int $code, string $stdout) use ($theme, $language, $deliver, $sequence): void {
                 --$this->running;
                 if (0 !== $code || ($this->latest[$language] ?? 0) !== $sequence) {
@@ -157,6 +157,16 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin implemen
                     $deliver($markup);
                 }
             });
+        if (!$started) {
+            // The child was never spawned, so the exit callback above will never
+            // run and the slot it decrements would be gone for good: two of
+            // these and the ceiling is reached forever, with highlighting for
+            // this language silently dead for the rest of the session. Said
+            // nowhere on purpose — a paint is best-effort and the next keystroke
+            // retries, where a flash per debounce on a fork-starved machine
+            // would be its own denial of service.
+            --$this->running;
+        }
     }
 
     /**

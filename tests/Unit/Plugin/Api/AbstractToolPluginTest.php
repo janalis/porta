@@ -131,6 +131,11 @@ final class AbstractToolPluginTest extends TestCase
             {
                 $this->flashCount($api, $count, $noun, $file);
             }
+
+            public function callRunAndApply(PluginApi $api, array $arguments, string $success): void
+            {
+                $this->runAndApply($api, $arguments, $success);
+            }
         };
     }
 
@@ -325,6 +330,32 @@ final class AbstractToolPluginTest extends TestCase
 
         $this->assertSame('empty = demo_lsp on PATH', $api->bufferedSettings()[0]['hint']);
         $this->assertSame('demo_lsp binary', $api->bufferedSettings()[0]['label']);
+    }
+
+    /**
+     * A spawn that fails must release the single-flight slot and say so.
+     *
+     * The slot is taken by `acquire()` before `start()` and released only in the
+     * exit callback, which a failed spawn never reaches — so one unspawnable run
+     * left the tool answering "already running" for the whole session about a run
+     * that never started. Format-on-save would simply stop, permanently, with
+     * the wrong explanation.
+     */
+    public function testASpawnThatFailsReleasesTheSlotAndSaysSo(): void
+    {
+        $this->project = new TempProject(['vendor/bin/demo' => "#!/nonexistent/interpreter\n"]);
+        chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
+        $api = $this->api();
+        $plugin = $this->plugin();
+        $plugin->activate($api);
+        $this->manager->commit($api);
+
+        $plugin->callRunAndApply($api, ['--version'], 'demo: done');
+
+        $this->assertStringContainsString('demo could not be started', $this->flashText($this->status));
+        // The slot is free: acquire() answers with the binary rather than
+        // refusing, which is what "already running" would have done forever.
+        $this->assertNotNull($plugin->callAcquire($api), 'the slot was handed back');
     }
 
     public function testTheExitAndCountReports(): void

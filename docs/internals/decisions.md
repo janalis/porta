@@ -8881,3 +8881,60 @@ default process count, on the slow runs. `await()` counts TURNS (0.02s nominal
 each), not wall time, so a loaded box gets a longer budget rather than a shorter
 one — which argues against a plain timeout and for something lost. The next scan
 that catches it will say which, and that is the whole point of this commit.
+
+## A failed spawn kept the slot it never used (2026-09-13)
+
+The flake from the entry above, chased to the end, and it was a real defect in
+`src/` — not a test problem.
+
+### Getting the reason
+
+Once `flake:scan` kept reasons, the scan said it:
+
+```
+timed out after 10.0s waiting for chroma keyword coloring to land
+```
+
+`await()` counts TURNS (0.02s nominal each), not wall time, so a loaded box gets
+a LONGER budget, not a shorter one — ten seconds of loop time with nothing
+arriving means the answer was lost, not late. What failed to reproduce is as
+telling as what did: **24 serial runs under sixteen CPU burners, green. A whole
+E2e suite run serially in one process, green. Eight parallel suite runs, green.**
+Not load, not in-process contamination — concurrent PROCESSES.
+
+The first reason line the new code printed was itself wrong, and that is recorded
+in the commit: skipping every line containing `::` skipped the message (which
+named a closure) and reported the first stack frame instead. The rule is anchored
+now — a line that IS a test id, not a line that mentions one.
+
+### The defect
+
+`AsyncProcess::start()` returns **false** when the child cannot be spawned at
+all: the array form resolves the program itself, so a missing interpreter, a
+deleted binary or a fork-starved machine never reaches the exit callback. Three
+call sites took a latch before calling it and released it only inside that
+callback, ignoring the answer:
+
+| site | what leaked | what the user sees |
+| --- | --- | --- |
+| `AbstractSubprocessHighlighter::run()` | one of two `MAX_CONCURRENT` slots | two failed spawns and syntax highlighting for that language is dead for the session |
+| `AbstractToolPlugin::runAndApply()` | the single-flight slot | every later run answers `already running` — format-on-save simply stops |
+| `AbstractAnalyzerPlugin::analyseWith()` | the same slot | the analyzer refuses for the rest of the session |
+
+Each is permanent, silent, and about a run that never started.
+`ToolInstaller` and `PluginInstaller` already check the return — the pattern was
+in the tree, and these three had drifted from it.
+
+### Two different answers, on purpose
+
+The highlighter releases the slot and says **nothing**: a paint is best-effort,
+the next keystroke retries, and a flash per debounce on a fork-starved machine
+would be its own denial of service. The two tool paths release **and flash** —
+they are user-initiated actions, and silence there is the bug wearing a smaller
+hat.
+
+### Reproducing a failed spawn in a test
+
+`#!/nonexistent/interpreter` with the executable bit: resolvable, executable, and
+unspawnable — the same answer `posix_spawn` gives a machine out of processes. No
+mocking, and it exercises the real `proc_open` return.

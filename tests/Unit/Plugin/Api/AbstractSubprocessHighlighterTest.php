@@ -283,6 +283,60 @@ final class AbstractSubprocessHighlighterTest extends TestCase
         $this->assertSame(['one', 'two'], $delivered, 'the third run never started');
     }
 
+    /**
+     * A spawn that FAILS must give the ceiling slot back.
+     *
+     * `AsyncProcess::start()` answers false when the child cannot be spawned at
+     * all — the array form resolves the program itself, so an unusable
+     * interpreter, a deleted binary or a system out of processes never reaches
+     * the exit callback. The counter was raised before the call and lowered only
+     * inside that callback, so every failed spawn leaked a slot: two of them and
+     * `MAX_CONCURRENT` is reached forever, with syntax highlighting for that
+     * language silently dead for the rest of the session and nothing anywhere
+     * saying so.
+     *
+     * Found from the other end — a 1-in-10 E2e flake whose reason, once the
+     * flake scan started keeping reasons, was the chroma paint never landing at
+     * all under a suite's worth of concurrent subprocesses.
+     */
+    public function testASpawnThatFailsGivesTheCeilingSlotBack(): void
+    {
+        $highlight = $this->backend('echo "[]";');
+        // Executable, resolvable, and unspawnable: posix_spawn cannot exec an
+        // interpreter that is not there, which is what proc_open reports false
+        // for. The same answer a fork-starved machine gives.
+        file_put_contents($this->project->path('vendor/bin/demo'), data: "#!/nonexistent/interpreter\n");
+        chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
+
+        $highlight('one');
+        $this->pump(0.1);
+
+        $this->assertSame(0, Probe::get($this->plugin, 'running'), 'the slot was handed back');
+        $this->assertSame([], $this->delivered, 'and nothing was painted from a run that never happened');
+    }
+
+    public function testTheHighlighterKeepsWorkingAfterAFailedSpawn(): void
+    {
+        // The consequence that matters: two failed spawns used to reach the
+        // ceiling and stop the backend for good, so this asserts the recovery
+        // rather than the counter.
+        $highlight = $this->backend('echo json_encode([["type" => "Text", "value" => (string) stream_get_contents(STDIN)]]);');
+        $working = (string) file_get_contents($this->project->path('vendor/bin/demo'));
+        file_put_contents($this->project->path('vendor/bin/demo'), data: "#!/nonexistent/interpreter\n");
+        chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
+
+        $highlight('one');
+        $this->pump(0.1);
+        $highlight('two');
+        $this->pump(0.1);
+        file_put_contents($this->project->path('vendor/bin/demo'), data: $working);
+        chmod($this->project->path('vendor/bin/demo'), permissions: 0o755);
+        $highlight('three');
+
+        $this->awaitDelivery(1);
+        $this->assertSame(['three'], $this->delivered, 'the backend recovered instead of staying at the ceiling');
+    }
+
     public function testDeactivateKillsThePendingDebounceTimer(): void
     {
         // A live disable drops the highlighter from the registry, but a timer

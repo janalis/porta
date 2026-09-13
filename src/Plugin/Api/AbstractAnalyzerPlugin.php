@@ -147,12 +147,19 @@ abstract class AbstractAnalyzerPlugin extends AbstractToolPlugin
      */
     final protected function analyseWith(PluginApi $api, string $binary, string $file): void
     {
-        new AsyncProcess($this->command($binary, $file), $api->projectRoot(), timeout: AsyncProcess::INTERACTIVE_TOOL_TIMEOUT)->start(
+        $started = new AsyncProcess($this->command($binary, $file), $api->projectRoot(), timeout: AsyncProcess::INTERACTIVE_TOOL_TIMEOUT)->start(
             function (int $code, string $stdout) use ($api, $file): void {
                 $this->release();
                 $this->publish($api, $file, $code, $stdout);
             },
         );
+        if (!$started) {
+            // Never spawned: the exit callback that releases the slot cannot
+            // run, and without this the tool answers "already running" for the
+            // rest of the session about a run that never started.
+            $this->release();
+            $api->flash($api->trans('%tool% could not be started', ['%tool%' => $this->name()]));
+        }
     }
 
     /**

@@ -3070,6 +3070,10 @@
         <source>%action% already uses %key%</source>
         <target>%action% はすでに %key% を使用しています</target>
       </trans-unit>
+      <trans-unit id="860">
+        <source>%tool% could not be started</source>
+        <target>%tool% を起動できませんでした</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
