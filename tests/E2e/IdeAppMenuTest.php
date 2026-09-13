@@ -71,7 +71,12 @@ final class IdeAppMenuTest extends TestCase
                     // Tree row 0 carries the frame's top border; the first item
                     // row sits one below it.
                     $treeTop = AnsiUtils::stripAnsiCodes($tui->getById('tree')->render(new \Symfony\Component\Tui\Render\RenderContext(30, 20))[1]);
-                    $this->assertStringContainsString('Save File', $treeTop, "File's dropdown composites over the tree");
+                    // The File menu's FIRST item, whatever it is — the row is
+                    // read by index, so this names what the menu opens with
+                    // rather than what it happens to contain. It was Save File
+                    // until Open Project… took the top slot, the way File menus
+                    // conventionally lead with opening something.
+                    $this->assertStringContainsString('Open Project', $treeTop, "File's dropdown composites over the tree");
                 },
             ],
         );

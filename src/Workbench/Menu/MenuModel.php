@@ -30,6 +30,8 @@ final class MenuModel
      */
     private const array DEFS = [
         'File' => [
+            'i:ide_open_project',
+            self::SEP,
             'e:save',
             'e:save_all',
             'e:recent_files',

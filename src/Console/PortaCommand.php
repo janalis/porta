@@ -158,18 +158,39 @@ final class PortaCommand extends Command
      */
     private static function launchIde(Workspace $workspace, ?string $lspCommand, LspMode $lsp, Ansi $ansi, \Closure $onBooted): void
     {
-        $ide = new Ide(
-            rootDir: $workspace->rootDir,
-            initialFile: $workspace->initialFile,
-            initialLine: $workspace->line,
-            lspCommand: $lspCommand,
-            lspDisabled: LspMode::Disabled === $lsp,
-            ansi: Ansi::Enabled === $ansi,
-            // REQUEST_TIME_FLOAT is the interpreter's own start: the trace's
-            // prelude covers PHP + autoload, which no later clock can see.
-            bootTrace: new BootTrace($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true)),
-        );
-        $onBooted();
-        $ide->run();
+        $root = $workspace->rootDir;
+        $file = $workspace->initialFile;
+        $line = $workspace->line;
+        // Each project is its own Ide with its own container, run one after the
+        // other in the one process. Switching project is therefore an ordinary
+        // QUIT — buffers saved, terminal restored, plugins shut down — followed
+        // by an ordinary boot, which is why nothing here has to know what a
+        // project holds. The alternative, rebuilding a live container under a
+        // running event loop, would have to.
+        while (true) {
+            $ide = new Ide(
+                rootDir: $root,
+                initialFile: $file,
+                initialLine: $line,
+                lspCommand: $lspCommand,
+                lspDisabled: LspMode::Disabled === $lsp,
+                ansi: Ansi::Enabled === $ansi,
+                // REQUEST_TIME_FLOAT is the interpreter's own start: the trace's
+                // prelude covers PHP + autoload, which no later clock can see.
+                bootTrace: new BootTrace($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true)),
+            );
+            $onBooted();
+            $ide->run();
+
+            $next = $ide->reopenAt();
+            if (null === $next) {
+                return;
+            }
+            // The next project opens on whatever its own session restored, the
+            // way a fresh launch with no file argument does.
+            $root = $next;
+            $file = null;
+            $line = null;
+        }
     }
 }

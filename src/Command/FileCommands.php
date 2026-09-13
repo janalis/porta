@@ -13,6 +13,7 @@ use Porta\Editor\OpenFocus;
 use Porta\Editor\ReferenceCopier;
 use Porta\Editor\ScratchFiles;
 use Porta\Lsp\RefactorController;
+use Porta\Workbench\ProjectSwitcher;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
 /** File-level palette commands: saving, LSP reformat, and the viewer escape hatch. */
@@ -25,6 +26,7 @@ final class FileCommands implements CommandProvider
         private readonly BufferManager $buffers,
         private readonly ScratchFiles $scratches,
         private readonly ReferenceCopier $references,
+        private readonly ProjectSwitcher $projects,
     ) {}
 
     #[\Override]
@@ -34,6 +36,7 @@ final class FileCommands implements CommandProvider
             ->add('save', fn () => $this->bufferService->saveCurrentFile())
             ->add('save_all', fn () => $this->bufferService->saveAllBuffers())
             ->add('ide_new_scratch', fn () => $this->scratches->open(), keyBound: KeyDispatch::Bound)
+            ->add('ide_open_project', fn () => $this->projects->open(), keyBound: KeyDispatch::Bound)
             ->add('copy_path', fn () => $this->references->copyPath(), keyBound: KeyDispatch::Bound)
             ->add('copy_reference', fn () => $this->references->copyReference(), keyBound: KeyDispatch::Bound)
             ->add('reformat', fn () => $this->refactor->requestReformat())

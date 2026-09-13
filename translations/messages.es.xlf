@@ -3098,6 +3098,30 @@
         <source>Read-only: %file% is %total%, too large to edit</source>
         <target>Solo lectura: %file% ocupa %total%, demasiado grande para editarlo</target>
       </trans-unit>
+      <trans-unit id="868">
+        <source>Open Project…</source>
+        <target>Abrir proyecto…</target>
+      </trans-unit>
+      <trans-unit id="869">
+        <source>Open Project</source>
+        <target>Abrir proyecto</target>
+      </trans-unit>
+      <trans-unit id="870">
+        <source>Open a path…</source>
+        <target>Abrir una ruta…</target>
+      </trans-unit>
+      <trans-unit id="871">
+        <source>Open project (path)</source>
+        <target>Abrir proyecto (ruta)</target>
+      </trans-unit>
+      <trans-unit id="872">
+        <source>Not a directory: %path%</source>
+        <target>No es un directorio: %path%</target>
+      </trans-unit>
+      <trans-unit id="873">
+        <source>Already open</source>
+        <target>Ya está abierto</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

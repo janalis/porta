@@ -168,6 +168,7 @@ final class ArchitectureCheckCommand extends Command
         'Highlight>Event',
         'Highlight>Support',
         'Highlight>Ui',
+        'History>Config', // RecentProjectsStore is GLOBAL: PortaHome names the only place a cross-project list can live
         'History>Container',
         'History>Editor',
         'History>Event',
@@ -322,6 +323,7 @@ final class ArchitectureCheckCommand extends Command
         'Workbench>Config',
         'Workbench>Container',
         'Workbench>Editor',
+        'Workbench>History', // ProjectSwitcher reads the recent-projects list
         'Workbench>Event',
         'Workbench>Input',
         'Workbench>Layout',

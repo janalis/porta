@@ -22,6 +22,7 @@ use Porta\Editor\PaneRegistrar;
 use Porta\Event\IdeReady;
 use Porta\Event\IdeShuttingDown;
 use Porta\History\BookmarkPersistence;
+use Porta\History\RecentProjectsStore;
 use Porta\History\SessionRestorer;
 use Porta\I18n\Translator;
 use Porta\Input\InputDispatcher;
@@ -51,6 +52,7 @@ use Porta\Workbench\EditorArea;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Menu\MenuRegistrar;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\ReopenRequest;
 use Porta\Workbench\TerminalStateRefresher;
 use Porta\Workbench\View\ViewRegistrar;
 use Porta\Workbench\View\ViewRegistry;
@@ -363,6 +365,18 @@ final class Ide
         return $service;
     }
 
+    /**
+     * Where to reopen once this session ends, or null on an ordinary quit.
+     *
+     * Read by the console entrypoint AFTER {@see run()} returns, which is the
+     * only moment it can be acted on: the terminal is restored, the buffers are
+     * saved, and this process is free to become an IDE for somewhere else.
+     */
+    public function reopenAt(): ?string
+    {
+        return $this->service(ReopenRequest::class)->root();
+    }
+
     public function run(): void
     {
         $this->lspBootstrapper->start();
@@ -442,6 +456,14 @@ final class Ide
             // paints restored breakpoints into the gutter for free.
             $this->debugState->restore();
             $this->bookmarkState->restore();
+
+            // This project is now the most recent one, for the switcher's list.
+            // Recorded HERE rather than from an IdeReady listener: core does not
+            // listen to the lifecycle moments — they exist for observers, and a
+            // gate holds them to it — and recorded at READY rather than at
+            // construction so a project that fails to boot never displaces a
+            // working one at the top of the list.
+            $this->service(RecentProjectsStore::class)->record($this->rootDir);
 
             // Same reason, for observers: IdeReady lands before the first
             // BufferOpened instead of racing it.

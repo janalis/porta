@@ -3098,6 +3098,30 @@
         <source>Read-only: %file% is %total%, too large to edit</source>
         <target>読み取り専用: %file% は %total% で、編集するには大きすぎます</target>
       </trans-unit>
+      <trans-unit id="868">
+        <source>Open Project…</source>
+        <target>プロジェクトを開く…</target>
+      </trans-unit>
+      <trans-unit id="869">
+        <source>Open Project</source>
+        <target>プロジェクトを開く</target>
+      </trans-unit>
+      <trans-unit id="870">
+        <source>Open a path…</source>
+        <target>パスを開く…</target>
+      </trans-unit>
+      <trans-unit id="871">
+        <source>Open project (path)</source>
+        <target>プロジェクトを開く (パス)</target>
+      </trans-unit>
+      <trans-unit id="872">
+        <source>Not a directory: %path%</source>
+        <target>ディレクトリではありません: %path%</target>
+      </trans-unit>
+      <trans-unit id="873">
+        <source>Already open</source>
+        <target>すでに開いています</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
