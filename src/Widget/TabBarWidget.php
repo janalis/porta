@@ -301,7 +301,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             }
             $start = $this->scroll;
             if ($overflow) {
-                $lines[] = $start > 0 ? $this->indicatorRow(Glyphs::SCROLL_UP, step: -3, row: 0) : AnsiText::blank($width);
+                $lines[] = $start > 0 ? $this->indicatorRow(Glyphs::SCROLL_UP, step: -3, row: 0, width: $width) : AnsiText::blank($width);
             }
             // ' name…    ●× ': the dirty ● and the close × are right-aligned.
             $nameWidth = $width - 5;
@@ -321,7 +321,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
                 ];
             }
             if ($overflow) {
-                $lines[] = ($start + $budget) < \count($tabs) ? $this->indicatorRow(Glyphs::SCROLL_DOWN, step: 3, row: $rows - 1) : AnsiText::blank($width);
+                $lines[] = ($start + $budget) < \count($tabs) ? $this->indicatorRow(Glyphs::SCROLL_DOWN, step: 3, row: $rows - 1, width: $width) : AnsiText::blank($width);
             }
         }
         while (\count($lines) < $rows) {
@@ -333,13 +333,23 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
         return $this->memoLines = $this->withMenuOverlay($lines, $width);
     }
 
-    /** One clickable full-width ▲/▼ scroll row of the vertical list. */
-    private function indicatorRow(string $glyph, int $step, int $row): string
+    /**
+     * One clickable full-width ▲/▼ scroll row of the vertical list.
+     *
+     * $width is the pane's, NOT {@see self::VERTICAL_WIDTH}: this row used to
+     * pad to the constant while every other row in the same strip took the
+     * clamped width {@see renderVertical()} computes for exactly this reason.
+     * A strip in a pane narrower than the constant then emitted one row of 24
+     * columns among rows of 16, the renderer threw, and the exception escaped
+     * the render loop — the blank fallbacks beside both call sites had it right
+     * with `AnsiText::blank($width)` all along.
+     */
+    private function indicatorRow(string $glyph, int $step, int $row, int $width): string
     {
-        $this->indicatorZones[] = ['row' => $row, 'col' => 0, 'width' => self::VERTICAL_WIDTH, 'step' => $step];
-        $left = str_repeat(' ', times: max(0, intdiv(self::VERTICAL_WIDTH, num2: 2) - 1));
+        $this->indicatorZones[] = ['row' => $row, 'col' => 0, 'width' => $width, 'step' => $step];
+        $left = str_repeat(' ', times: max(0, intdiv($width, num2: 2) - 1));
 
-        return $this->styles->of(Role::Faint)->apply(AnsiText::padRight($left.$glyph, self::VERTICAL_WIDTH));
+        return $this->styles->of(Role::Faint)->apply(AnsiText::truncate($left.$glyph, $width, pad: true, ellipsis: ''));
     }
 
     /**

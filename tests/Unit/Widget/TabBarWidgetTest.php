@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Widget;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\Probe;
 use Porta\Ui\Glyphs;
@@ -813,5 +814,44 @@ final class TabBarWidgetTest extends TestCase
         array_pop($tabs);
         $bar->beforeRender();
         $this->assertStringNotContainsString("\x1b[48;5;240m", $bar->render(new RenderContext(60, 1))[0], 'nothing is tinted where the removed tab was');
+    }
+
+    /**
+     * Every row of the side strip is the PANE's width, including the ▲/▼ rows.
+     *
+     * `renderVertical()` clamps to `min(VERTICAL_WIDTH, columns)` and says in a
+     * comment why — a widget may not emit a line wider than the pane, the
+     * renderer throws, and the exception escapes the render loop. The two
+     * indicator rows then padded to the CONSTANT anyway, so a strip in a pane
+     * narrower than 24 emitted one 24-column row among its 16-column
+     * neighbours. The blank fallbacks beside both call sites had it right.
+     *
+     * Driven at widths either side of the constant, and with more tabs than
+     * rows so BOTH indicators are drawn: at 24 and above the bug is invisible,
+     * which is where every other vertical case in this file sits.
+     */
+    #[DataProvider('narrowStripWidths')]
+    public function testEveryVerticalRowFitsThePaneIncludingTheScrollIndicators(int $columns): void
+    {
+        $tabs = [];
+        for ($i = 0; $i < 10; ++$i) {
+            $tabs[] = ['name' => "f{$i}.php", 'dirty' => false, 'active' => 4 === $i];
+        }
+        $bar = $this->verticalBar($tabs);
+
+        $lines = $bar->render(new RenderContext($columns, 5));
+
+        self::assertNotSame([], $lines);
+        foreach ($lines as $row => $line) {
+            self::assertSame($columns, AnsiUtils::visibleWidth($line), "row {$row} fills the pane exactly");
+        }
+    }
+
+    /** @return iterable<string, array{int}> */
+    public static function narrowStripWidths(): iterable
+    {
+        yield 'narrower than the constant' => [16];
+        yield 'one short of the constant' => [23];
+        yield 'the constant itself' => [24];
     }
 }
