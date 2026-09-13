@@ -9260,7 +9260,26 @@ rather than documented, matching the help viewer's plain Home/End.
 `CatalogCoverageTest` caught the now-orphaned "File too large (> 2 MB)" unit
 left behind in all seven catalogs.
 
-### A note on the gate itself
+### A note on the gate itself — RETRACTED, see below
+
+> **This section was wrong and is kept only so the correction has something to
+> point at.** The gate was not deadlocking; it was catching a regression this
+> change introduced, and the timeline says so plainly: `coverage:check`
+> completed cleanly TWICE before the preview feature existed and stalled THREE
+> times after it, every time at 99%. What stalls there is
+> `IdeFilesystemSessionTest::testUnopenableFiles`, an E2e case that walks the
+> file tree opening five files — a file over the cap used to be REFUSED, so
+> focus stayed in the tree, and once it started opening read-only the pane took
+> focus and every later keystroke went to the wrong widget. Fixed in the commit
+> after this one.
+>
+> The lesson is not about paratest. It is that the feature commit ran Unit and
+> Plugins and NOT E2e, and E2e is the only suite that covers the path the
+> feature changed. Then three separate mechanisms were proposed for the
+> "hang" — a coverage merge, a lost terminal, a stretched turn budget — and all
+> three were wrong, because each started from "the tooling is broken" rather
+> than from "what did I just change". A gate that starts failing right after a
+> change is evidence about the change.
 
 `composer coverage:check` DEADLOCKED twice on this change — 27 minutes elapsed
 on 50 seconds of CPU, 0% utilisation, stuck at 99% in paratest's coverage merge.
