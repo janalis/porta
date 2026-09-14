@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Event\DockTabActivationRequested;
 use Porta\Event\DockTabCloseRequested;
 use Porta\Event\DockTabMoveRequested;
+use Porta\Tests\Support\Probe;
 use Porta\Ui\Glyphs;
 use Porta\Widget\DockTabsWidget;
 use Porta\Workbench\Dock\DockTab;
@@ -85,6 +86,80 @@ final class DockTabsWidgetTest extends TestCase
             $selected,
         );
         $this->assertFalse($bar->handleTabClick(70), 'the empty tail misses (resize grab)');
+    }
+
+    /**
+     * Every hit-test is half-open, [start, start + width): the first cell of
+     * a zone is in it and the cell just past its end is not. The label-click
+     * test above hits the middle of each zone, which is why flipping any of
+     * those comparisons to their inclusive/exclusive twin stayed green.
+     */
+    public function testEveryZoneIncludesItsFirstCellAndExcludesTheCellPastItsEnd(): void
+    {
+        $activated = [];
+        $closed = [];
+        $events = new EventDispatcher();
+        $events->addListener(DockTabActivationRequested::class, static function (DockTabActivationRequested $event) use (&$activated): void {
+            $activated[] = $event->tab;
+        });
+        $events->addListener(DockTabCloseRequested::class, static function (DockTabCloseRequested $event) use (&$closed): void {
+            $closed[] = $event->tab;
+        });
+        $bar = self::strip([
+            ['tab' => DockTab::Terminal, 'label' => 'Terminal', 'active' => true, 'key' => '', 'status' => ''],
+            ['tab' => DockTab::Debug, 'label' => 'Debug', 'active' => false, 'key' => '', 'status' => ''],
+        ], $events);
+        $bar->render(new RenderContext(80, 1));
+        /** @var list<array{start: int, width: int, closeStart: int, closeWidth: int}> $layout */
+        $layout = Probe::get($bar, 'lastTabLayout');
+        [$first, $second] = $layout;
+        $firstEnd = $first['start'] + $first['width'];
+        $this->assertLessThanOrEqual($second['start'], $firstEnd, 'sanity: the zones do not overlap');
+        $lastEnd = $second['start'] + $second['width'];
+
+        // The body, through every lookup that asks "which tab is here".
+        $this->assertSame(DockTab::Terminal, $bar->tabAt($first['start'])['tab'] ?? null, "a tab's first cell is the tab");
+        $this->assertSame(DockTab::Terminal, $bar->tabAt($firstEnd - 1)['tab'] ?? null, 'and so is its last');
+        $this->assertNotSame(DockTab::Terminal, $bar->tabAt($firstEnd)['tab'] ?? null, 'the cell past its end is not');
+        $this->assertSame(DockTab::Debug, $bar->familyIndexAt($second['start'])['tab'] ?? null);
+        $this->assertNull($bar->familyIndexAt($lastEnd), 'past the last tab is the empty tail');
+        $this->assertTrue($bar->isOnTab($first['start']), 'the very first cell of the strip is on a tab');
+        $this->assertTrue($bar->isOnTab($lastEnd - 1));
+        $this->assertFalse($bar->isOnTab($lastEnd));
+
+        // The close zone: both its edges close, the cell after it does not.
+        $closeEnd = $first['closeStart'] + $first['closeWidth'];
+        $this->assertNull($bar->dragSourceAt($closeEnd - 1), 'the last close cell cannot arm a drag');
+        $this->assertLessThan($firstEnd, $closeEnd, 'sanity: the × is followed by more of the tab body');
+        $this->assertSame(DockTab::Terminal, $bar->dragSourceAt($closeEnd)['tab'] ?? null, 'the body cell right after the × arms one again');
+        $bar->handleTabClick($first['closeStart']);
+        $bar->handleTabClick($closeEnd - 1);
+        $this->assertSame([DockTab::Terminal, DockTab::Terminal], $closed, 'both edges of the × close');
+        $bar->handleTabClick($closeEnd);
+        $this->assertSame([DockTab::Terminal, DockTab::Terminal], $closed, 'the cell after the × does not');
+        $bar->handleTabClick($second['closeStart']);
+        $this->assertSame([DockTab::Terminal, DockTab::Terminal, DockTab::Debug], $closed, "a LATER tab's × is reached too — the scan does not stop at the first zone it misses");
+
+        // Activation, on the second tab's first cell and the cell past its end.
+        $activated = [];
+        $this->assertTrue($bar->handleTabClick($second['start']));
+        $this->assertSame([DockTab::Debug], $activated);
+        $this->assertFalse($bar->handleTabClick($lastEnd), 'past the last tab misses');
+    }
+
+    /** A strip built without a dispatcher still answers clicks and reorders; it just tells no one. */
+    public function testAStripWithoutADispatcherStaysInert(): void
+    {
+        $bar = self::strip([
+            ['tab' => DockTab::Terminal, 'label' => 'Terminal', 'active' => true, 'key' => '', 'status' => ''],
+        ]);
+        $bar->render(new RenderContext(80, 1));
+        /** @var list<array{start: int, closeStart: int}> $layout */
+        $layout = Probe::get($bar, 'lastTabLayout');
+
+        $this->assertTrue($bar->handleTabClick($layout[0]['closeStart']), 'a close click still lands');
+        $this->assertTrue($bar->handleTabClick($layout[0]['start']), 'an activation click still lands');
+        $bar->moveTab(DockTab::Terminal, 0, 0);
     }
 
     public function testBeforeRenderRepaintsOnlyWhenTheTabsChange(): void
