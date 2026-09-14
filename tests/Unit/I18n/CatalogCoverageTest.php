@@ -155,7 +155,7 @@ final class CatalogCoverageTest extends TestCase
                     continue;
                 }
                 $previous = $tokens[$i - 1];
-                if (!(\is_array($previous) && \in_array($previous[0], [\T_OBJECT_OPERATOR, \T_NULLSAFE_OBJECT_OPERATOR], strict: true))) {
+                if (!\is_array($previous) || !\in_array($previous[0], [\T_OBJECT_OPERATOR, \T_NULLSAFE_OBJECT_OPERATOR], strict: true)) {
                     continue;
                 }
                 $j = $this->nextMeaningful($tokens, $i + 1);

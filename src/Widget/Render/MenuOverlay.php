@@ -24,7 +24,7 @@ final class MenuOverlay
     public static function apply(array $lines, array $spans, int $columns): array
     {
         foreach ($spans as $span) {
-            if (!($span['row'] >= 0 && $span['row'] < \count($lines))) {
+            if ($span['row'] < 0 || $span['row'] >= \count($lines)) {
                 continue;
             }
             // Clip to the widget's LIVE width: a span sliced against a

@@ -85,7 +85,9 @@ final class SearchHistoryStoreTest extends TestCase
             $store->add('x'); // dumpFile throws → caught, in-memory list still updated
             $this->assertSame(['x'], $store->all());
         } finally {
-            \is_file($file) && \unlink($file);
+            if (\is_file($file)) {
+                \unlink($file);
+            }
         }
     }
 

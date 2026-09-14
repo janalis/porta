@@ -79,7 +79,7 @@ final class UseScanner
 
             switch ($token) {
                 case '{':
-                    if ('use' === $collecting && \strlen($buffer) > 0) {
+                    if ('use' === $collecting && '' !== $buffer) {
                         $groupPrefix = $buffer; // `use A\{ …`
                         $buffer = '';
                         break;

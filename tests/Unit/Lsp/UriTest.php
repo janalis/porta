@@ -47,7 +47,9 @@ final class UriTest extends TestCase
         try {
             $this->assertSame(\realpath($file), Uri::toPath(Uri::fromPath($file)));
         } finally {
-            \is_file($file) && \unlink($file);
+            if (\is_file($file)) {
+                \unlink($file);
+            }
         }
     }
 }

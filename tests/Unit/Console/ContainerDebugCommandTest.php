@@ -113,7 +113,7 @@ final class ContainerDebugCommandTest extends TestCase
         /** @var array<string, mixed> $saved */
         $saved = [];
         foreach ($_ENV as $key => $value) {
-            if (!(\is_string($key) && \str_starts_with($key, 'PORTA_'))) {
+            if (!\is_string($key) || !\str_starts_with($key, 'PORTA_')) {
                 continue;
             }
 
@@ -126,7 +126,7 @@ final class ContainerDebugCommandTest extends TestCase
             new IdeContainerFactory()->build('/tmp/porta-env-contract-test', IdeConfig::load('/tmp/porta-env-contract-test'), Ansi::Enabled);
             $seeded = [];
             foreach (\array_keys($_ENV) as $key) {
-                if (!(\is_string($key) && \str_starts_with($key, 'PORTA_'))) {
+                if (!\is_string($key) || !\str_starts_with($key, 'PORTA_')) {
                     continue;
                 }
 

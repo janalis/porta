@@ -45,7 +45,7 @@ final class CoveragePluginsCommandTest extends TestCase
         return static function (array $paths, string $cloverPath) use (&$seen, $exit, $script): Process {
             $seen[\basename($cloverPath)] = $paths;
 
-            return new Process([\PHP_BINARY, '-r', ('' === $script ? '' : $script).' exit('.$exit.');']);
+            return new Process([\PHP_BINARY, '-r', $script.' exit('.$exit.');']);
         };
     }
 

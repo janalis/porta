@@ -70,7 +70,7 @@ final class TokenClassifierTest extends TestCase
         $offset = (int) \strpos($src, needle: 'needle');
         $inside = false;
         foreach ($spans as $span) {
-            if (!($offset >= $span['start'] && $offset < $span['end'])) {
+            if ($offset < $span['start'] || $offset >= $span['end']) {
                 continue;
             }
 

@@ -78,7 +78,9 @@ final class SearchPrefsStoreTest extends TestCase
             $this->assertSame('*.php', $store->lastMask());
             $this->assertSame(['*.php'], Probe::get($store, 'recentMasks'));
         } finally {
-            \is_file($file) && \unlink($file);
+            if (\is_file($file)) {
+                \unlink($file);
+            }
         }
     }
 

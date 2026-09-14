@@ -115,7 +115,7 @@ final readonly class InputDispatcher
         }
 
         foreach ($this->commands->keyBoundIds() as $id) {
-            if (!($this->keybindings->matches($data, $id) && $this->commands->isEnabled($id))) {
+            if (!$this->keybindings->matches($data, $id) || !$this->commands->isEnabled($id)) {
                 continue;
             }
 

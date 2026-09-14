@@ -432,8 +432,12 @@ final class NavigationControllerTest extends TestCase
             $this->buffers->open($path, "buffer line 0\nbuffer line 1\n");
             $this->assertSame('buffer line 1', Probe::invoke($controller, 'lineAt', $path, 1), 'the live (unsaved) buffer wins over the on-disk file');
         } finally {
-            \is_file($project.'/a.php') && \unlink($project.'/a.php');
-            \is_dir($project) && \rmdir($project);
+            if (\is_file($project.'/a.php')) {
+                \unlink($project.'/a.php');
+            }
+            if (\is_dir($project)) {
+                \rmdir($project);
+            }
         }
     }
 
@@ -448,8 +452,12 @@ final class NavigationControllerTest extends TestCase
             $controller = $this->controller();
             $this->assertSame('on-disk line 1', Probe::invoke($controller, 'lineAt', $path, 1));
         } finally {
-            \is_file($project.'/a.php') && \unlink($project.'/a.php');
-            \is_dir($project) && \rmdir($project);
+            if (\is_file($project.'/a.php')) {
+                \unlink($project.'/a.php');
+            }
+            if (\is_dir($project)) {
+                \rmdir($project);
+            }
         }
     }
 
@@ -471,8 +479,12 @@ final class NavigationControllerTest extends TestCase
             $controller = $this->controller();
             $this->assertSame('', Probe::invoke($controller, 'lineAt', $path, 5));
         } finally {
-            \is_file($project.'/a.php') && \unlink($project.'/a.php');
-            \is_dir($project) && \rmdir($project);
+            if (\is_file($project.'/a.php')) {
+                \unlink($project.'/a.php');
+            }
+            if (\is_dir($project)) {
+                \rmdir($project);
+            }
         }
     }
 

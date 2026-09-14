@@ -53,7 +53,7 @@ final readonly class RecentProjectsStore
         $entries = $data['roots'];
         $roots = [];
         foreach ($entries as $entry) {
-            if (!(\is_string($entry) && '' !== $entry)) {
+            if (!\is_string($entry) || '' === $entry) {
                 continue;
             }
 

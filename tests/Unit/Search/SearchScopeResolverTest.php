@@ -54,7 +54,9 @@ final class SearchScopeResolverTest extends TestCase
 
             $this->assertSame(['a.php'], $resolver->resolve(ScopeKind::OpenFiles), 'a buffer outside the project tree is excluded');
         } finally {
-            \is_file($outside) && \unlink($outside);
+            if (\is_file($outside)) {
+                \unlink($outside);
+            }
         }
     }
 
@@ -94,7 +96,9 @@ final class SearchScopeResolverTest extends TestCase
 
             $this->assertSame(['.'], $resolver->resolve(ScopeKind::CurrentFile));
         } finally {
-            \is_file($outside) && \unlink($outside);
+            if (\is_file($outside)) {
+                \unlink($outside);
+            }
         }
     }
 

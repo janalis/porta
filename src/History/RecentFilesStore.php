@@ -123,7 +123,7 @@ final class RecentFilesStore
         $entries = $data['paths'];
         $paths = [];
         foreach ($entries as $entry) {
-            if (!(\is_string($entry) && '' !== $entry)) {
+            if (!\is_string($entry) || '' === $entry) {
                 continue;
             }
 

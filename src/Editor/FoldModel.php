@@ -126,7 +126,7 @@ final class FoldModel
         do {
             $moved = false;
             foreach ($this->folds as $start => $end) {
-                if (!($start < $line && $line <= $end)) {
+                if ($start >= $line || $line > $end) {
                     continue;
                 }
 
@@ -189,7 +189,7 @@ final class FoldModel
     {
         $caret = $this->document->getCursorLine();
         foreach ($this->folds as $start => $end) {
-            if (!($start < $caret && $caret <= $end)) {
+            if ($start >= $caret || $caret > $end) {
                 continue;
             }
 

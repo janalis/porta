@@ -164,7 +164,7 @@ final class BreadcrumbScanner
         $line = $caretLine + 1; // scopes are 1-based (token space)
         $trail = [];
         foreach ($scopes as $scope) {
-            if (!($scope['startLine'] <= $line && $line <= $scope['endLine'])) {
+            if ($scope['startLine'] > $line || $line > $scope['endLine']) {
                 continue;
             }
 

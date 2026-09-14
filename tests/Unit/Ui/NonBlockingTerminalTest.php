@@ -318,7 +318,9 @@ final class NonBlockingTerminalTest extends TestCase
             \proc_close($process); // waits for the child, so the sink is complete
         }
         $this->assertSame($first.$second, (string) \file_get_contents($sink), 'nothing was dropped across the blocking fallback');
-        \is_file($sink) && \unlink($sink);
+        if (\is_file($sink)) {
+            \unlink($sink);
+        }
     }
 
     public function testPendingBytesReportsTheBacklogLifecycle(): void

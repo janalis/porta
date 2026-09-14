@@ -52,7 +52,7 @@ final readonly class SessionStore
         /** @var list<array<string, mixed>|scalar|null> $entries */
         $entries = $data['buffers'];
         foreach ($entries as $buffer) {
-            if (!(\is_array($buffer) && \is_string($buffer['path'] ?? null))) {
+            if (!\is_array($buffer) || !\is_string($buffer['path'] ?? null)) {
                 continue;
             }
 

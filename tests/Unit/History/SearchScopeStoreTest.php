@@ -244,7 +244,9 @@ final class SearchScopeStoreTest extends TestCase
             $store->addRecent('src', ['src']); // dumpFile throws → caught, in-memory list still updated
             $this->assertSame(['src'], \array_column($store->all(), 'label'));
         } finally {
-            \is_file($file) && \unlink($file);
+            if (\is_file($file)) {
+                \unlink($file);
+            }
         }
     }
 

@@ -559,7 +559,7 @@ final class MultiCaret
         }
 
         foreach ($this->extraCarets as $i => $caret) {
-            if (!($caret->line === $line && $caret->col === $col)) {
+            if ($caret->line !== $line || $caret->col !== $col) {
                 continue;
             }
 

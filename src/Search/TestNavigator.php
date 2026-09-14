@@ -38,7 +38,7 @@ final readonly class TestNavigator
         $this->files->refresh();
         $candidates = [];
         foreach ($this->files->entries() as $entry) {
-            if (!(\basename($entry['path']) === $target && !\str_starts_with($entry['path'], 'vendor/'))) {
+            if (\basename($entry['path']) !== $target || \str_starts_with($entry['path'], 'vendor/')) {
                 continue;
             }
 

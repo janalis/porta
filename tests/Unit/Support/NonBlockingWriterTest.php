@@ -166,7 +166,9 @@ final class NonBlockingWriterTest extends TestCase
             \proc_close($process); // waits for the child, so the sink is complete
         }
         $this->assertSame($payload, (string) \file_get_contents($sink), 'bytes intact and in order');
-        \is_file($sink) && \unlink($sink);
+        if (\is_file($sink)) {
+            \unlink($sink);
+        }
     }
 
     public function testFlushBlockingIsANoOpWhenIdleClosedOrDead(): void

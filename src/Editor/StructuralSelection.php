@@ -66,7 +66,7 @@ final class StructuralSelection
 
                 continue;
             }
-            if (!($open < $start && $close >= $end)) {
+            if ($open >= $start || $close < $end) {
                 continue;
             }
 

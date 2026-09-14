@@ -493,11 +493,7 @@ final class MouseRouter
 
         // The Welcome modal, after the menus (the menu bar stays reachable over
         // it): ×/drag/select inside the box, swallowed everywhere else.
-        if ($this->welcome->press($mouse)) {
-            return true;
-        }
-
-        return false;
+        return $this->welcome->press($mouse);
     }
 
     /** A left press on the panes, tried front-to-back; the editor is the final target. */

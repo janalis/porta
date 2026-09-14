@@ -236,7 +236,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
     public function handleTabClick(int $col): bool
     {
         foreach ($this->lastTabLayout as $entry) {
-            if (!($col >= $entry['closeStart'] && $col < ($entry['closeStart'] + $entry['closeWidth']))) {
+            if ($col < $entry['closeStart'] || $col >= ($entry['closeStart'] + $entry['closeWidth'])) {
                 continue;
             }
 
@@ -245,7 +245,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
             return true;
         }
         foreach ($this->lastTabLayout as $entry) {
-            if (!($col >= $entry['start'] && $col < ($entry['start'] + $entry['width']))) {
+            if ($col < $entry['start'] || $col >= ($entry['start'] + $entry['width'])) {
                 continue;
             }
 

@@ -57,7 +57,7 @@ final class SearchHistoryStore
         $entries = $data['queries'];
         $queries = [];
         foreach ($entries as $entry) {
-            if (!(\is_string($entry) && '' !== $entry)) {
+            if (!\is_string($entry) || '' === $entry) {
                 continue;
             }
 

@@ -453,7 +453,7 @@ final class NavigationController extends AbstractLspController implements Editor
                         /** @var list<array<string, mixed>|scalar|null> $callList */
                         $callList = \is_array($calls) ? $calls : [];
                         foreach ($callList as $call) {
-                            if (!(\is_array($call) && \is_array($call[$side] ?? null))) {
+                            if (!\is_array($call) || !\is_array($call[$side] ?? null)) {
                                 continue;
                             }
 

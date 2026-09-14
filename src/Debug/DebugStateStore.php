@@ -83,7 +83,7 @@ final readonly class DebugStateStore
         /** @var list<scalar|array<array-key, mixed>|null> $rawWatches */
         $rawWatches = \is_array($data['watches'] ?? null) ? $data['watches'] : [];
         foreach ($rawWatches as $watch) {
-            if (!(\is_string($watch) && '' !== $watch)) {
+            if (!\is_string($watch) || '' === $watch) {
                 continue;
             }
 

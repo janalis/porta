@@ -22,7 +22,7 @@ final class GraphCellGrid
     private array $cells;
 
     /** @var array<string, \Closure(string): string> styleKey => run painter */
-    private array $painters;
+    private array $painters = [];
 
     private readonly float $scale;
 
@@ -38,7 +38,6 @@ final class GraphCellGrid
         $this->cells = \array_fill(0, \max(1, $rows), \array_fill(0, \max(1, $cols), [' ', '']));
         $this->scale = $view->effectiveScale($cols, 2 * $rows);
         $this->rect = $view->visibleRect($cols, 2 * $rows);
-        $this->painters = [];
     }
 
     public function colOf(float $x): int

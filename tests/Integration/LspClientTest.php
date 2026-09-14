@@ -536,7 +536,9 @@ final class LspClientTest extends TestCase
             $this->assertSame(1, $messages[0]['id'] ?? null, 'the first id ever allocated');
             $this->assertSame(['jsonrpc' => '2.0', 'method' => 'initialized', 'params' => []], $messages[1] ?? null, 'the initialized notify()');
         } finally {
-            \is_file($log) && \unlink($log);
+            if (\is_file($log)) {
+                \unlink($log);
+            }
         }
     }
 
@@ -580,7 +582,9 @@ final class LspClientTest extends TestCase
             $this->assertSame(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'shutdown', 'params' => null], $messages[0] ?? null, 'shutdown is sent first, with its own id');
             $this->assertSame(['jsonrpc' => '2.0', 'method' => 'exit', 'params' => null], $messages[1] ?? null, 'exit follows, as a notification (no id)');
         } finally {
-            \is_file($log) && \unlink($log);
+            if (\is_file($log)) {
+                \unlink($log);
+            }
         }
     }
 

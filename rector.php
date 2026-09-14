@@ -3,8 +3,16 @@
 declare(strict_types=1);
 
 use Rector\Php80\Rector\Class_\ClassPropertyAssignToConstructorPromotionRector;
+use Rector\CodeQuality\Rector\BooleanNot\SimplifyDeMorganBinaryRector;
+use Rector\CodeQuality\Rector\ClassMethod\LocallyCalledStaticMethodToNonStaticRector;
+use Rector\CodeQuality\Rector\Concat\DirnameDirConcatStringToDirectStringPathRector;
+use Rector\CodeQuality\Rector\For_\ForRepeatedCountToOwnVariableRector;
+use Rector\CodeQuality\Rector\FuncCall\SortCallLikeNamedArgsRector;
+use Rector\CodeQuality\Rector\Catch_\ThrowWithPreviousExceptionRector;
+use Rector\CodeQuality\Rector\Identical\FlipTypeControlToUseExclusiveTypeRector;
 use Rector\CodingStyle\Rector\ArrowFunction\ArrowFunctionDelegatingCallToFirstClassCallableRector;
 use Rector\Config\RectorConfig;
+use Rector\Instanceof_\Rector\Ternary\FlipNegatedTernaryInstanceofRector;
 use Rector\Php55\Rector\String_\StringClassNameToClassConstantRector;
 use Rector\Php74\Rector\Closure\ClosureToArrowFunctionRector;
 use Rector\Php53\Rector\Ternary\TernaryToElvisRector;
@@ -49,6 +57,33 @@ return RectorConfig::configure()
         // `\is_string(...)` filters exactly like the arrow function, but mago
         // cannot narrow through a first-class callable: the list goes back to
         // list<mixed> and the declared return shape stops holding.
+        // `null === $x` becomes `!$x instanceof Foo`: not how Symfony writes a
+        // null check, no longer yoda, and each one imports a class — new
+        // namespace edges for the arch gate to record, for no behaviour.
+        FlipTypeControlToUseExclusiveTypeRector::class,
+        FlipNegatedTernaryInstanceofRector::class,
+        // A private static helper is static so a `static fn` can call it;
+        // making it an instance method would force `$this` into closures
+        // that must not capture it.
+        LocallyCalledStaticMethodToNonStaticRector::class,
+        // Reordering named arguments to declaration order also reorders
+        // their evaluation, and the order they are written in is often the
+        // order a reader should meet them.
+        SortCallLikeNamedArgsRector::class,
+        // Hoists the count into a variable named `$counter`, which reads as
+        // a counter; the loop bound was clearer inline.
+        ForRepeatedCountToOwnVariableRector::class,
+        // `\dirname(__DIR__).'/docs'` becomes `__DIR__.'/../docs'`: a different
+        // string for the same directory, and paths here are compared, hashed
+        // into cache keys and shown to the user.
+        DirnameDirConcatStringToDirectStringPathRector::class,
+        // `!(a || b)` becomes `!a && !b`, and next to an `||` the parentheses
+        // were what made the grouping readable.
+        SimplifyDeMorganBinaryRector::class,
+        // Threads `$e->getCode()` into the rethrow, but a Throwable's code is
+        // int|string and the exception constructor takes int; `previous:`
+        // already carries the cause.
+        ThrowWithPreviousExceptionRector::class,
         ArrowFunctionDelegatingCallToFirstClassCallableRector::class => [
             __DIR__.'/src/Debug/DebugStateStore.php',
         ],
@@ -62,5 +97,5 @@ return RectorConfig::configure()
     // Docblocks are prose here and are left alone.
     ->withImportNames(importNames: true, importDocBlockNames: false, importShortClasses: false, removeUnusedImports: false)
     ->withPhpSets(php85: true)
-    ->withPreparedSets(typeDeclarations: true)
+    ->withPreparedSets(typeDeclarations: true, codeQuality: true)
     ->withParallel();
