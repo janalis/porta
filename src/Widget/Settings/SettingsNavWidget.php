@@ -92,6 +92,9 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
 
     /** Non-entry rows the last render put above the list: the ▲ slot, or none. */
     private int $indicatorRows = 0;
+
+    /** Entry rows the last render actually drew, so the trailing ▼ is not mistaken for one. */
+    private int $bodyRows = 0;
     private readonly ListSelection $list;
 
     /** @var (callable(string): void)|null selection moved to this entry id */
@@ -338,6 +341,18 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
      */
     private function rowIndexAt(int $relRow): ?int
     {
+        // The TRAILING indicator row is not an entry. `indicatorRows` counts
+        // only the leading ▲, while an overflowing render reserves the last row
+        // for ▼ as well — and `ListSelection::rowIndexAt()` bounds by the total
+        // entry count, not by what is visible, so a click on ▼ mapped to
+        // `scroll + budget`: the first entry BELOW the window, which is exactly
+        // the entry whose existence puts the ▼ there. Clicking "scroll down"
+        // navigated to a page you could not see, and hover tinted a row that is
+        // never drawn.
+        if ($relRow >= ($this->indicatorRows + $this->bodyRows)) {
+            return null;
+        }
+
         return $this->list->rowIndexAt($relRow, \count($this->entries), $this->indicatorRows);
     }
 
@@ -402,6 +417,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         // for a render-time measurement a later click needs.
         $this->indicatorRows = $overflow ? 1 : 0;
         $budget = $overflow ? $rows - 2 : $rows;
+        $this->bodyRows = $budget;
         $scroll = $this->list->follow($budget);
         $lines = [];
         if ($overflow) {

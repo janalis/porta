@@ -450,4 +450,43 @@ final class SettingsNavWidgetTest extends TestCase
         $rows = $widget->render(new RenderContext(24, 6));
         $this->assertStringContainsString("\x1b[48;5;236m", $rows[2], 'the tinted line is the one under the pointer');
     }
+
+    /**
+     * Clicking the ▼ indicator selects NOTHING.
+     *
+     * `indicatorRows` counts only the leading ▲, while an overflowing render
+     * reserves the last row for ▼ as well — and `ListSelection::rowIndexAt()`
+     * bounds by the total entry count rather than by what is visible. So the ▼
+     * row mapped to `scroll + budget`: the first entry BELOW the window, which
+     * is precisely the entry whose existence puts the ▼ there. Clicking "there
+     * is more below" navigated to a page you could not see.
+     *
+     * The sibling case above covers the LEADING indicator, which was fixed; the
+     * trailing one was never clicked by a test.
+     */
+    public function testClickingTheTrailingScrollIndicatorSelectsNothing(): void
+    {
+        $widget = $this->widget();
+        $widget->setPluginEntries(['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta']);
+        $rows = $widget->render(new RenderContext(24, 6));
+        $this->assertStringContainsString(Glyphs::SCROLL_DOWN, end($rows), 'the list overflows, so the ▼ is drawn');
+        $before = $widget->selectedId();
+
+        $widget->handleClick(5); // the last row of a six-row pane: the ▼ itself
+
+        $this->assertSame($before, $widget->selectedId(), 'the indicator is not an entry');
+    }
+
+    /** And hover takes the same path, so it was wrong in the same way. */
+    public function testHoveringTheTrailingScrollIndicatorTintsNothing(): void
+    {
+        $widget = $this->widget();
+        $widget->setPluginEntries(['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta']);
+        $widget->render(new RenderContext(24, 6));
+
+        $widget->hoverRow(5);
+
+        $rows = $widget->render(new RenderContext(24, 6));
+        $this->assertStringNotContainsString("\x1b[48;5;236m", implode('', $rows), 'nothing was tinted by hovering the indicator');
+    }
 }
