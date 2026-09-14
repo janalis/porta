@@ -6565,7 +6565,40 @@ the two would have stayed indistinguishable.
 `TabBarWidget:189/209/287`, `LineDecorator:104/130`. Named so the next pass
 starts from a verified list rather than the raw one.
 
-> **Stale as of 2026-09-13.** `PaneSegmenter` is closed —
+> **CLOSED 2026-09-14, by running it rather than reading it.** All three
+> entries are EQUIVALENT mutants, and the census can drop them.
+>
+> `infection --filter` over the three files: 343 mutants killed, 71 escaped —
+> 36 in `TabBarWidget`, 20 in `PaneSegmenter`, 15 in `LineDecorator`. Of those,
+> exactly three are the loop-skip class the entry names: one `Continue_`
+> (`LineDecorator:130`) and two `Break_` (`TabBarWidget:189` and `:287`).
+> `PaneSegmenter` has neither, which is the half of the note below that was
+> right.
+>
+> **`TabBarWidget:189/287`** — a tab is active by IDENTITY against the one
+> active buffer (`$b === $this->buffers->active()`), so two actives is
+> unreachable and "first" and "last" name the same tab.
+>
+> **`LineDecorator:130`** — `$bounds` is deduplicated through an array KEY and
+> sorted, so it is strictly increasing; only the final iteration can reach the
+> guard, where continuing and breaking are the same act. Measured, not argued:
+> 21,000 span configurations over seven lines, mutant and original
+> byte-identical.
+>
+> The reasoning is in the code at all three sites now, which is what this file
+> does with an equivalent mutant — a census entry with no note beside the line
+> gets re-confirmed by hand every round, which is what happened here three
+> times.
+>
+> The other 68 escapes are mostly `IncrementInteger`/`DecrementInteger` and
+> comparator mutants, which `infection.json5` already says are almost always
+> equivalent. They are UNEXAMINED, and saying so is the point: this closes the
+> three entries it measured and claims nothing about the rest.
+>
+> ---
+>
+> *Superseded, kept for the correction it contains —* **stale as of
+> 2026-09-13.** `PaneSegmenter` is closed —
 > `PaneSegmenterTest::testARegionThatMissesTheRowDoesNotStopTheWalk` puts a
 > non-covering region BEFORE a covering one, which is exactly the ordering the
 > mutant needs. The other two were re-read rather than re-run and the line

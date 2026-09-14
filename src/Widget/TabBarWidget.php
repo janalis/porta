@@ -186,6 +186,11 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             }
 
             $activeIndex = $i;
+            // `continue` here is an EQUIVALENT mutant — carried by the loop-skip
+            // census as a gap. A tab is active by IDENTITY against the one active
+            // buffer (`$b === $this->buffers->active()` in TabListProvider), so
+            // two actives is not a reachable state and "first" and "last" name
+            // the same tab. The break is an early exit, not a tiebreak.
             break;
         }
         // The overflow window (reserve ‹/› cells, clamp, follow-active-on-change)
@@ -284,7 +289,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
                 }
 
                 $activeIndex = $i;
-                break;
+                break; // equivalent mutant, for the reason given on the horizontal strip above
             }
             // An overflowing list reserves its first and last rows for the
             // ▲/▼ scroll indicators (blank when that side is not clipped).
