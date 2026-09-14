@@ -16,17 +16,11 @@ use Porta\Editor\ChangeMarkKind;
 final class FileStatuses implements FileStatusSink
 {
     /** @var array<string, ChangeMarkKind> absolute path => kind */
-    private array $statuses = [];
+    public private(set) array $statuses = [];
 
     #[\Override]
     public function applyFileStatuses(array $statuses): void
     {
         $this->statuses = $statuses;
-    }
-
-    /** @return array<string, ChangeMarkKind> */
-    public function all(): array
-    {
-        return $this->statuses;
     }
 }

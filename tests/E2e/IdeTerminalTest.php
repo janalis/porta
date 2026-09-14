@@ -36,7 +36,7 @@ final class IdeTerminalTest extends TestCase
     {
         $sessions = Probe::get(Services::resolve($ide, RunController::class), 'sessions');
 
-        return $sessions->all();
+        return $sessions->sessions;
     }
 
     private function bufferText(TerminalSession $session): string
@@ -137,7 +137,7 @@ final class IdeTerminalTest extends TestCase
                 600 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
                     $this->assertCount(2, $this->sessions($ide));
-                    $sessionTwoProcess = $this->sessions($ide)[1]->process();
+                    $sessionTwoProcess = $this->sessions($ide)[1]->process;
 
                     // Click the × of the first (inactive) session tab on the dock strip.
                     $renderer = Services::resolve($ide, Renderer::class);
@@ -287,7 +287,7 @@ final class IdeTerminalTest extends TestCase
                     $this->assertInstanceOf(TerminalSession::class, $run);
                     $this->await(fn (): bool => \str_contains($this->bufferText($run), 'RAN-'));
                     $firstOutput = $this->bufferText($run);
-                    $this->await(fn (): bool => \str_contains($this->bufferText($run), '(0)') || null === $run->process() || !$run->isRunning());
+                    $this->await(fn (): bool => \str_contains($this->bufferText($run), '(0)') || null === $run->process || !$run->isRunning());
 
                     // Re-run: only this session's process is replaced (its buffer clears).
                     $countBefore = \count($this->sessions($ide));

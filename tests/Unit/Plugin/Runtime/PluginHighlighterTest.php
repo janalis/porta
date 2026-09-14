@@ -157,7 +157,7 @@ final class PluginHighlighterTest extends TestCase
         $this->assertFalse($provider->supports('php'));
         $this->assertFalse($provider->supports('php'), 'still declines on the second ask');
 
-        $warnings = $manager->warnings();
+        $warnings = $manager->warnings;
         $this->assertCount(1, $warnings, 'reported once, not once per keystroke');
         $this->assertSame('nope', $warnings[0]->params['%message%']);
     }
@@ -186,7 +186,7 @@ final class PluginHighlighterTest extends TestCase
             }
         }
 
-        $this->assertCount(1, $manager->warnings(), 'reported once across repeated failures');
+        $this->assertCount(1, $manager->warnings, 'reported once across repeated failures');
     }
 
     public function testDeactivateRemovesTheBackend(): void

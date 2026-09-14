@@ -53,7 +53,7 @@ final class KeybindingsFactoryTest extends TestCase
         $keys = $factory->create();
 
         $this->assertSame(['f6'], $keys->getBindings('demo_zoom'));
-        $this->assertSame([], $host->manager->warnings(), 'a declared action is not a mystery');
+        $this->assertSame([], $host->manager->warnings, 'a declared action is not a mystery');
     }
 
     public function testAnIdNothingDeclaresIsDroppedAndReportedOnce(): void
@@ -65,13 +65,13 @@ final class KeybindingsFactoryTest extends TestCase
 
         $this->assertSame([], $keys->getBindings('nobody_declares_this'));
         $this->assertSame(['f8'], $keys->getBindings('save'), "core's own actions still bind");
-        $this->assertEquals([new ConfigWarning('Unknown keymap action "%action%" in .porta.json', ['%action%' => 'nobody_declares_this'])], $host->manager->warnings());
+        $this->assertEquals([new ConfigWarning('Unknown keymap action "%action%" in .porta.json', ['%action%' => 'nobody_declares_this'])], $host->manager->warnings);
 
         // LiveKeybindings::rebuild() re-enters this on every keymap edit, and
         // the boot warnings are flashed from one array — reporting per call
         // would grow it without bound.
         $factory->create();
-        $this->assertCount(1, $host->manager->warnings(), 'reported once, not once per rebuild');
+        $this->assertCount(1, $host->manager->warnings, 'reported once, not once per rebuild');
     }
 
     public function testANamespacedPluginCommandIdIsNeverChecked(): void
@@ -83,7 +83,7 @@ final class KeybindingsFactoryTest extends TestCase
         [$factory, $host] = $this->factory($project);
 
         $this->assertSame(['f9'], $factory->create()->getBindings('demo:hello'));
-        $this->assertSame([], $host->manager->warnings());
+        $this->assertSame([], $host->manager->warnings);
     }
 
     public function testAFresherKeymapIsJudgedToo(): void
@@ -97,7 +97,7 @@ final class KeybindingsFactoryTest extends TestCase
 
         $this->assertSame([], $keys->getBindings('still_nothing'));
         $this->assertSame(['f5'], $keys->getBindings('save'));
-        $this->assertEquals([new ConfigWarning('Unknown keymap action "%action%" in .porta.json', ['%action%' => 'still_nothing'])], $host->manager->warnings());
+        $this->assertEquals([new ConfigWarning('Unknown keymap action "%action%" in .porta.json', ['%action%' => 'still_nothing'])], $host->manager->warnings);
     }
 
     public function testMultipleDeclaredActionsAreAllKept(): void

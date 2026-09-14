@@ -18,7 +18,7 @@ final class EditorScroll
     /** Cap on rows the sticky-scroll band may pin at the top of the viewport. */
     public const int MAX_STICKY_ROWS = 5;
 
-    private int $vScroll = 0;
+    public private(set) int $vScroll = 0;
 
     /**
      * How many rows of the TOP line are hidden above the viewport — always 0
@@ -26,9 +26,9 @@ final class EditorScroll
      * than the pane. Every plain `$vScroll` write resets it, because moving to
      * a different line means starting at that line's first row.
      */
-    private int $vScrollSegment = 0;
-    private int $hScroll = 0;
-    private int $contentRows = 24; // rows available for scrolled content (viewport minus the sticky band)
+    public private(set) int $vScrollSegment = 0;
+    public private(set) int $hScroll = 0;
+    public int $contentRows = 24; // rows available for scrolled content (viewport minus the sticky band)
 
     /** Wheel-scrolled away from the caret: the viewport is free until the caret moves. */
     private bool $detached = false;
@@ -47,34 +47,13 @@ final class EditorScroll
         private readonly \Closure $invalidate,
     ) {}
 
-    /** Rows of the top line hidden above the viewport; 0 unless wrapping. */
-    public function vScrollSegment(): int
-    {
-        return $this->vScrollSegment;
-    }
-
-    public function vScroll(): int
-    {
-        return $this->vScroll;
-    }
-
-    public function hScroll(): int
-    {
-        return $this->hScroll;
-    }
-
-    public function contentRows(): int
-    {
-        return $this->contentRows;
-    }
-
     /** Record the content rows of the last render (viewport minus sticky band). */
     /**
      * The last rendered content width, kept for the same reason
      * {@see $contentRows} is: soft-wrap caret motion has to know how wide a
      * visual row is, and that is a render-time value nothing else retains.
      */
-    private int $contentWidth = 0;
+    public private(set) int $contentWidth = 0;
 
     /**
      * Rows one document line occupies — wrapped segments plus code-lens rows.
@@ -83,27 +62,11 @@ final class EditorScroll
      *
      * @var (\Closure(int): int)|null
      */
-    private ?\Closure $rowsForLine = null;
-
-    /** @param (\Closure(int): int)|null $rowsForLine */
-    public function setRowsForLine(?\Closure $rowsForLine): void
-    {
-        $this->rowsForLine = $rowsForLine;
-    }
-
-    public function contentWidth(): int
-    {
-        return $this->contentWidth;
-    }
+    public ?\Closure $rowsForLine = null;
 
     public function setContentWidth(int $width): void
     {
         $this->contentWidth = \max(0, $width);
-    }
-
-    public function setContentRows(int $rows): void
-    {
-        $this->contentRows = $rows;
     }
 
     /** Centre the viewport on a line (the stripe-jump target). */

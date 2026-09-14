@@ -203,7 +203,7 @@ final class SearchEverywhereController
         // Ctrl+E switcher shows, so the two trays cannot disagree about what
         // "recent" means. Gone from disk means gone from the tray.
         $openPaths = \array_fill_keys($paths, value: true);
-        foreach ($this->recentFiles->all() as $path) {
+        foreach ($this->recentFiles->paths as $path) {
             if (($openPaths[$path] ?? null) !== null || !\is_file($path)) {
                 continue;
             }

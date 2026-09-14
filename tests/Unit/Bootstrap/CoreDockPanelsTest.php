@@ -29,7 +29,7 @@ final class CoreDockPanelsTest extends TestCase
         $panel = new DebugPanelWidget();
         new CoreDockPanels($panels, $panel, new Translator('en'))->register();
 
-        $entries = $panels->all();
+        $entries = $panels->panels;
         $this->assertCount(1, $entries, 'core registers exactly the one panel it ships');
         $this->assertSame(DockTab::Debug, $entries[0]['tab'], 'under its own mode, so core reaches it by enum');
         $this->assertSame('debug', $entries[0]['id']);

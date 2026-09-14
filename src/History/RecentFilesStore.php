@@ -31,7 +31,7 @@ final class RecentFilesStore
 
     private readonly string $file;
     /** @var list<string> absolute paths, most-recent-first */
-    private array $paths;
+    public private(set) array $paths;
 
     public function __construct(
         string $rootDir,
@@ -39,12 +39,6 @@ final class RecentFilesStore
     ) {
         $this->file = $rootDir.'/.porta/recent-files.json';
         $this->paths = $this->load();
-    }
-
-    /** @return list<string> absolute paths, most-recent-first */
-    public function all(): array
-    {
-        return $this->paths;
     }
 
     /** Record a path as the most recent (dedup, capped), and persist. */

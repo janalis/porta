@@ -113,7 +113,7 @@ final readonly class BufferNavigator implements BufferNavigationHandler, ViewerT
         // usually one you just closed. Gone from disk means gone from the list
         // rather than an entry that opens an empty buffer.
         $openPaths = \array_fill_keys(\array_map(static fn (Buffer $b): string => $b->path, $open), value: true);
-        foreach ($this->recentFiles->all() as $path) {
+        foreach ($this->recentFiles->paths as $path) {
             if (($openPaths[$path] ?? null) !== null || !\is_file($path)) {
                 continue;
             }

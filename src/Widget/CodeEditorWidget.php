@@ -528,7 +528,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     #[\Override]
     public function contentRows(): int
     {
-        return $this->scroll->contentRows();
+        return $this->scroll->contentRows;
     }
 
     #[\Override]
@@ -647,8 +647,8 @@ final class CodeEditorWidget extends AbstractWidget implements
      */
     public function caretScreenCell(): array
     {
-        $row = \max(0, $this->foldModel->screenRowFor($this->scroll->vScroll(), $this->document->getCursorLine())) + \count($this->stickyLines);
-        $col = \max($this->lastGutterWidth, $this->lastGutterWidth + $this->document->getCursorDisplayCol() - $this->scroll->hScroll());
+        $row = \max(0, $this->foldModel->screenRowFor($this->scroll->vScroll, $this->document->getCursorLine())) + \count($this->stickyLines);
+        $col = \max($this->lastGutterWidth, $this->lastGutterWidth + $this->document->getCursorDisplayCol() - $this->scroll->hScroll);
 
         return ['row' => $row, 'col' => $col];
     }
@@ -661,7 +661,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             return $this->stickyLines[$relRow];
         }
 
-        return $this->foldModel->docLineAtRow($this->scroll->vScroll(), \max(0, $relRow - $stickyCount));
+        return $this->foldModel->docLineAtRow($this->scroll->vScroll, \max(0, $relRow - $stickyCount));
     }
 
     /** Begin a mouse selection: place the caret at the press and drop the anchor there. */
@@ -713,15 +713,15 @@ final class CodeEditorWidget extends AbstractWidget implements
         // trailing space); with no gutter at all this goes negative, which no
         // click column can equal.
         return new EditorViewport(
-            $this->scroll->vScroll(),
-            $this->scroll->hScroll(),
+            $this->scroll->vScroll,
+            $this->scroll->hScroll,
             $this->lastGutterWidth,
             $this->lastGutterWidth - 2,
             $this->lastStripeCol,
             $this->lastRenderRows,
             $this->stickyLines,
             $this->wrapWidth(),
-            $this->scroll->vScrollSegment(),
+            $this->scroll->vScrollSegment,
         );
     }
 
@@ -752,9 +752,9 @@ final class CodeEditorWidget extends AbstractWidget implements
     public function scrollHBy(int $cols): void
     {
         $doc = $this->document;
-        $vScroll = $this->scroll->vScroll();
+        $vScroll = $this->scroll->vScroll;
         $widest = 0;
-        $last = \min($doc->getLineCount() - 1, $vScroll + $this->scroll->contentRows() - 1);
+        $last = \min($doc->getLineCount() - 1, $vScroll + $this->scroll->contentRows - 1);
         for ($line = $vScroll; $line <= $last; ++$line) {
             $widest = \max($widest, $doc->lineDisplayWidth($line));
         }
@@ -893,7 +893,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     #[\Override]
     public function wrapWidth(): ?int
     {
-        $width = $this->scroll->contentWidth();
+        $width = $this->scroll->contentWidth;
 
         return $this->display->softWrap() && $width > 0 ? $width : null;
     }
@@ -1199,26 +1199,24 @@ final class CodeEditorWidget extends AbstractWidget implements
             // sit off screen for one paint after every Down.
             $this->scroll->setContentWidth($geo->contentWidth);
             $wrapLayout = $this->display->softWrap() ? new WrapLayout($doc) : null;
-            $this->scroll->setRowsForLine(
-                null === $wrapLayout && !$this->decorations->hasCodeLenses()
-                    ? null // one row per line, and the old arithmetic exactly
-                    : fn (int $line): int => \count($this->decorations->codeLensesAt($line)) + ($wrapLayout?->rowsFor($line, $geo->contentWidth) ?? 1),
-            );
+            $this->scroll->rowsForLine = null === $wrapLayout && !$this->decorations->hasCodeLenses()
+                ? null // one row per line, and the old arithmetic exactly
+                : fn (int $line): int => \count($this->decorations->codeLensesAt($line)) + ($wrapLayout?->rowsFor($line, $geo->contentWidth) ?? 1);
 
             // Clamp scroll to cursor: the caret must stay visible below whatever
             // sticky-scroll band the settled scroll position pins at the top.
             $cursorLine = $doc->getCursorLine();
             $this->scroll->clampToCaret($rows, fn (int $vScroll): int => \count($this->stickyHeadersAt($vScroll, $rows)));
-            $vScroll = $this->scroll->vScroll();
+            $vScroll = $this->scroll->vScroll;
 
             // The pinned headers for the settled scroll position.
             $sticky = $this->stickyHeadersAt($vScroll, $rows);
             $this->stickyLines = \array_map(static fn (array $h): int => $h['line'], $sticky);
             $contentRows = $rows - \count($sticky);
-            $this->scroll->setContentRows($contentRows);
+            $this->scroll->contentRows = $contentRows;
 
             $cursorDisplayCol = $this->followCaret($doc, $cursorLine, $geo->contentWidth);
-            $hScroll = $this->scroll->hScroll();
+            $hScroll = $this->scroll->hScroll;
 
             // Highlight/render tab-expanded lines so widths line up with the
             // display-column math; the buffer keeps its raw tabs.
@@ -1274,7 +1272,7 @@ final class CodeEditorWidget extends AbstractWidget implements
                 $cursorLine,
                 $cursorDisplayCol,
                 $this->display->softWrap() ? 0 : $hScroll,
-                $this->scroll->vScrollSegment(),
+                $this->scroll->vScrollSegment,
             );
 
             $result = $this->composePopups($result, new EditorPopupGeometry(

@@ -109,7 +109,7 @@ final class ProjectSearchController
         $modal->setScopes($this->scopeLabels(), $this->scopeIndex);
         $modal->setOptions($this->searchOptions->panelState());
         $modal->setMaskValue($this->mask);
-        $modal->setHistory($this->history->all());
+        $modal->setHistory($this->history->queries);
         $this->tui->requestRender();
     }
 
@@ -173,7 +173,7 @@ final class ProjectSearchController
         foreach (self::BUILT_INS as $kind) {
             $choices[] = ScopeChoice::builtin($kind);
         }
-        foreach ($this->scopeStore->all() as $saved) {
+        foreach ($this->scopeStore->scopes as $saved) {
             $choices[] = ScopeChoice::saved($saved['label'], $saved['paths']);
         }
         $this->scopeChoices = $choices;

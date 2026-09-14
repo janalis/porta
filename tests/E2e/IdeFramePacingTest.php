@@ -54,7 +54,7 @@ final class IdeFramePacingTest extends TestCase
                     // scrolled viewport must still paint without any forcing.
                     $editor = $tui->getById('editor');
                     $scroll = EditorState::scroll($editor);
-                    $this->assertSame(6, $scroll->vScroll(), 'both notches scrolled the model immediately');
+                    $this->assertSame(6, $scroll->vScroll, 'both notches scrolled the model immediately');
                     $this->await(
                         static fn (): bool => false === (bool) Probe::get($tui, 'renderRequested'),
                         what: 'the capped frame to land via the trailing wakeup',

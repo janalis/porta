@@ -17,9 +17,9 @@ use Porta\Config\EditorConfig\ResolvedEditorConfig;
 final class IndentModel
 {
     public function __construct(
-        private bool $usesTabs,
-        private int $indentSize,
-        private int $tabWidth,
+        public private(set) bool $usesTabs,
+        public private(set) int $indentSize,
+        public private(set) int $tabWidth,
     ) {}
 
     /**
@@ -79,11 +79,6 @@ final class IndentModel
         return \array_key_first($steps);
     }
 
-    public function usesTabs(): bool
-    {
-        return $this->usesTabs;
-    }
-
     /**
      * Force the effective indentation: the unit (tabs vs spaces) and its size —
      * one indent level is $size spaces, or one hard tab displayed $size columns
@@ -100,18 +95,6 @@ final class IndentModel
     public function unit(): string
     {
         return $this->usesTabs ? "\t" : \str_repeat(' ', \max(0, $this->indentSize));
-    }
-
-    /** Spaces per indent level (EditorConfig indent_size). */
-    public function indentSize(): int
-    {
-        return $this->indentSize;
-    }
-
-    /** Display columns per hard tab (EditorConfig tab_width). */
-    public function tabWidth(): int
-    {
-        return $this->tabWidth;
     }
 
     /** Display width of one indent level: the tab width for tabbed files, else the indent size. */

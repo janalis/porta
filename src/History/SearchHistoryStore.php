@@ -18,7 +18,7 @@ final class SearchHistoryStore
 
     private readonly string $file;
     /** @var list<string> most-recent-first */
-    private array $queries;
+    public private(set) array $queries;
 
     public function __construct(
         string $rootDir,
@@ -26,12 +26,6 @@ final class SearchHistoryStore
     ) {
         $this->file = $rootDir.'/.porta/search-history.json';
         $this->queries = $this->load();
-    }
-
-    /** @return list<string> most-recent-first */
-    public function all(): array
-    {
-        return $this->queries;
     }
 
     /** Record a query as the most recent (dedup, capped), and persist. */

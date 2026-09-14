@@ -62,7 +62,7 @@ final class PluginManager implements
     /** @var list<array{plugin: string, id: string, label: string, handler: \Closure(): void, keys: list<string>}> */
     private array $commands = [];
     /** @var array<string, list<string>> namespaced command id => default key specs */
-    private array $keys = [];
+    public private(set) array $defaultKeys = [];
     /** @var list<PluginMenuSpec> Plugins-menu entries */
     private array $menuSpecs = [];
     /** @var list<array{plugin: string, languageId: string, name: string, resolve: \Closure(): (list<string>|null), initOptions: (\Closure(): array<string, mixed>)|null}> committed LSP providers, in load order */
@@ -92,13 +92,13 @@ final class PluginManager implements
     /** @var list<array{plugin: string, languageId: string, resolve: \Closure(): (list<string>|null)}> committed debug adapters, in load order */
     private array $debugAdapters = [];
     /** @var list<ConfigWarning> */
-    private array $warnings = [];
+    public private(set) array $warnings = [];
 
     /** @var list<string> enabled plugins whose composer packages are missing */
-    private array $pendingInstalls = [];
+    public private(set) array $pendingInstalls = [];
 
     /** @var list<string> plugins held out of boot only because a PENDING one is what they require */
-    private array $deferred = [];
+    public private(set) array $deferred = [];
     /** @var array<string, true> loaded plugin names */
     private array $names = [];
     /**
@@ -177,7 +177,7 @@ final class PluginManager implements
         foreach ($api->bufferedCommands() as $command) {
             $this->commands[] = $command;
             if ([] !== $command['keys']) {
-                $this->keys[$command['id']] = $command['keys'];
+                $this->defaultKeys[$command['id']] = $command['keys'];
             }
         }
         foreach ($api->bufferedMenuItems() as $item) {
@@ -339,7 +339,7 @@ final class PluginManager implements
                 return true;
             }
             $removed[] = $command['id'];
-            unset($this->keys[$command['id']]);
+            unset($this->defaultKeys[$command['id']]);
 
             return false;
         }));
@@ -384,44 +384,10 @@ final class PluginManager implements
         $this->pendingInstalls[] = $name;
     }
 
-    /**
-     * The enabled plugins boot could not load because their packages are not
-     * installed, in discovery order.
-     *
-     * @return list<string>
-     */
-    public function pendingInstalls(): array
-    {
-        return $this->pendingInstalls;
-    }
-
     /** Record a plugin whose only obstacle is a requirement that is being installed. */
     public function addDeferred(string $name): void
     {
         $this->deferred[] = $name;
-    }
-
-    /**
-     * Plugins that were skipped at boot ONLY because something they require is
-     * being installed — they load as soon as it does.
-     *
-     * @return list<string>
-     */
-    public function deferred(): array
-    {
-        return $this->deferred;
-    }
-
-    /** @return list<ConfigWarning> */
-    public function warnings(): array
-    {
-        return $this->warnings;
-    }
-
-    /** @return array<string, list<string>> merged under the user keymap at Keybindings construction */
-    public function defaultKeys(): array
-    {
-        return $this->keys;
     }
 
     /**

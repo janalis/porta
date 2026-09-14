@@ -195,7 +195,7 @@ final class CodeEditorInputRoutingTest extends TestCase
         $foldModel = Probe::get($editor, 'foldModel');
         $stickyCount = \count(Probe::get($editor, 'stickyLines'));
         $this->assertGreaterThan(0, $stickyCount, 'sanity: sticky header pinned');
-        $expectedRow = \max(0, $foldModel->screenRowFor($scroll->vScroll(), 38)) + $stickyCount;
+        $expectedRow = \max(0, $foldModel->screenRowFor($scroll->vScroll, 38)) + $stickyCount;
 
         $editor->setSignatureHint('f(): void');
         $rendered = $editor->render(new RenderContext(80, 10));
@@ -243,7 +243,7 @@ final class CodeEditorInputRoutingTest extends TestCase
         $editor->getDocument()->setCursor(1, \strlen($prefix) + 9); // end of "fooBarBaz"
         $editor->render(new RenderContext(30, 10)); // narrow enough to force hScroll > 0
         $scroll = Probe::get($editor, 'scroll');
-        $this->assertGreaterThan(0, $scroll->hScroll(), 'sanity: horizontally scrolled');
+        $this->assertGreaterThan(0, $scroll->hScroll, 'sanity: horizontally scrolled');
         $this->assertSame('fooBarBaz', $editor->getDocument()->getWordBeforeCursor(), 'sanity: word boundary lands where expected');
 
         Probe::get($editor, 'completion')->show([new CompletionItem(label: 'fooBarBazQux', insertText: 'fooBarBazQux', kind: 'fn', detail: '')]);

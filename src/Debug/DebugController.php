@@ -252,14 +252,14 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         $this->currentFrameId = null;
         $session = $this->sessions->find('debug') ?? $this->sessions->create('debug', '');
         $session->buffer->clear();
-        $session->setTitle($this->translator->trans('Debug: %label%', ['%label%' => \basename($path)]));
+        $session->title = $this->translator->trans('Debug: %label%', ['%label%' => \basename($path)]);
         // The debuggee's output session is created and made active but NOT
         // shown — the dock shows the debug panel; the output sits one
         // terminal-toggle away (ctrl+`).
         $this->sessions->makeActive($session);
         $this->panelTitle = \basename($path);
         $this->panel->open($this->panelTitle);
-        $this->panel->setWatches($this->watches->all());
+        $this->panel->setWatches($this->watches->expressions);
 
         $this->session = new DapSession(
             $this->clients->create($config->adapterArgv),
@@ -446,7 +446,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
     {
         if (!$this->panel->isOpen()) {
             $this->panel->open($this->panelTitle);
-            $this->panel->setWatches($this->watches->all());
+            $this->panel->setWatches($this->watches->expressions);
 
             return;
         }
@@ -503,7 +503,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
     public function onWatchRemoved(DebugWatchRemovalRequested $event): void
     {
         $this->watches->remove($event->index);
-        $this->panel->setWatches($this->watches->all());
+        $this->panel->setWatches($this->watches->expressions);
         $this->reevaluateWatches();
         $this->tui->requestRender();
     }
@@ -531,7 +531,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
                 return;
             }
             $this->watches->add($expression);
-            $this->panel->setWatches($this->watches->all());
+            $this->panel->setWatches($this->watches->expressions);
             $this->reevaluateWatches();
         });
         $this->tui->requestRender();
@@ -568,7 +568,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         if (null === $session || DebugState::Paused !== $session->state()) {
             return;
         }
-        foreach ($this->watches->all() as $index => $expression) {
+        foreach ($this->watches->expressions as $index => $expression) {
             $session->evaluate($expression, $this->currentFrameId, 'watch', function (array $result) use ($index): void {
                 $this->panel->setWatchResult($index, $result['result'], $result['variablesReference'], $result['error']);
                 $this->tui->requestRender();

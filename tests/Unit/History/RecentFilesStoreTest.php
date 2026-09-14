@@ -22,7 +22,7 @@ final class RecentFilesStoreTest extends TestCase
         $store->record('/b.php');
         $store->record('/a.php'); // revisited: back to the front, not twice
 
-        $this->assertSame(['/a.php', '/b.php'], $store->all());
+        $this->assertSame(['/a.php', '/b.php'], $store->paths);
     }
 
     public function testRESHOWINGTheSameFileIsNotAVisit(): void
@@ -40,7 +40,7 @@ final class RecentFilesStoreTest extends TestCase
         \clearstatcache();
         $store->record('/b.php');
 
-        $this->assertSame(['/b.php', '/a.php'], $store->all());
+        $this->assertSame(['/b.php', '/a.php'], $store->paths);
         $this->assertSame(1_000_000_000, \filemtime($file), 'no rewrite for a re-show');
     }
 
@@ -50,7 +50,7 @@ final class RecentFilesStoreTest extends TestCase
         $store = new RecentFilesStore($project->dir);
         $store->record('');
 
-        $this->assertSame([], $store->all());
+        $this->assertSame([], $store->paths);
     }
 
     public function testCapsAtThirtyTwoEntries(): void
@@ -61,9 +61,9 @@ final class RecentFilesStoreTest extends TestCase
             $store->record("/f{$i}.php");
         }
 
-        $this->assertCount(32, $store->all());
-        $this->assertSame('/f39.php', $store->all()[0], 'newest first');
-        $this->assertSame('/f8.php', $store->all()[31], 'oldest of the kept 32');
+        $this->assertCount(32, $store->paths);
+        $this->assertSame('/f39.php', $store->paths[0], 'newest first');
+        $this->assertSame('/f8.php', $store->paths[31], 'oldest of the kept 32');
     }
 
     public function testARenamedFileIsFOLLOWEDNotLost(): void
@@ -78,8 +78,8 @@ final class RecentFilesStoreTest extends TestCase
 
         $store->rename('/a.php', '/renamed.php');
 
-        $this->assertSame(['/b.php', '/renamed.php'], $store->all(), 'in place, not moved to the front');
-        $this->assertSame(['/b.php', '/renamed.php'], new RecentFilesStore($project->dir)->all(), 'and written down');
+        $this->assertSame(['/b.php', '/renamed.php'], $store->paths, 'in place, not moved to the front');
+        $this->assertSame(['/b.php', '/renamed.php'], new RecentFilesStore($project->dir)->paths, 'and written down');
     }
 
     public function testRenamingONTOAPathAlreadyListedLeavesOneEntry(): void
@@ -93,7 +93,7 @@ final class RecentFilesStoreTest extends TestCase
 
         $store->rename('/old.php', '/target.php');
 
-        $this->assertSame(['/target.php'], $store->all());
+        $this->assertSame(['/target.php'], $store->paths);
     }
 
     public function testRenamingAFileTheListNeverSawChangesNothing(): void
@@ -111,7 +111,7 @@ final class RecentFilesStoreTest extends TestCase
 
         $store->rename('/elsewhere.php', '/other.php');
 
-        $this->assertSame(['/a.php'], $store->all());
+        $this->assertSame(['/a.php'], $store->paths);
         \clearstatcache();
         $this->assertSame($backdated, \filemtime($file), 'and nothing was rewritten');
     }
@@ -123,26 +123,26 @@ final class RecentFilesStoreTest extends TestCase
         $first->record('/a.php');
         $first->record('/b.php');
 
-        $this->assertSame(['/b.php', '/a.php'], new RecentFilesStore($project->dir)->all());
+        $this->assertSame(['/b.php', '/a.php'], new RecentFilesStore($project->dir)->paths);
     }
 
     public function testAMissingOrJUNKFileReadsAsAnEmptyList(): void
     {
         $project = new TempProject();
-        $this->assertSame([], new RecentFilesStore($project->dir)->all(), 'nothing written yet');
+        $this->assertSame([], new RecentFilesStore($project->dir)->paths, 'nothing written yet');
 
         $project->write('.porta/recent-files.json', '{"paths": "nope"}');
-        $this->assertSame([], new RecentFilesStore($project->dir)->all(), 'wrong shape');
+        $this->assertSame([], new RecentFilesStore($project->dir)->paths, 'wrong shape');
 
         $project->write('.porta/recent-files.json', '{"paths": ["/a.php", 7, "", null, "/b.php"]}');
-        $this->assertSame(['/a.php', '/b.php'], new RecentFilesStore($project->dir)->all(), 'non-strings dropped');
+        $this->assertSame(['/a.php', '/b.php'], new RecentFilesStore($project->dir)->paths, 'non-strings dropped');
 
         // A hand-edited object rather than an array: the keys go, the string
         // values stay. Deliberately tolerant — the alternative is throwing away
         // a whole list over one malformed edit, and every path is checked
         // against the disk before it is offered anyway.
         $project->write('.porta/recent-files.json', '{"paths": {"1": "/a.php", "2": "/b.php"}}');
-        $this->assertSame(['/a.php', '/b.php'], new RecentFilesStore($project->dir)->all());
+        $this->assertSame(['/a.php', '/b.php'], new RecentFilesStore($project->dir)->paths);
     }
 
     public function testALongSAVEDListIsCappedOnTheWayIn(): void
@@ -153,7 +153,7 @@ final class RecentFilesStoreTest extends TestCase
         $paths = \array_map(static fn (int $i): string => "/f{$i}.php", \range(start: 0, end: 49));
         $project->write('.porta/recent-files.json', \json_encode(['paths' => $paths], flags: \JSON_THROW_ON_ERROR));
 
-        $this->assertCount(32, new RecentFilesStore($project->dir)->all());
+        $this->assertCount(32, new RecentFilesStore($project->dir)->paths);
     }
 
     public function testForgetDropsADeletedFileAndPersistsTheChange(): void
@@ -169,8 +169,8 @@ final class RecentFilesStoreTest extends TestCase
 
         $store->forget('/p/gone.php');
 
-        $this->assertSame(['/p/newest.php', '/p/oldest.php'], $store->all());
-        $this->assertSame(['/p/newest.php', '/p/oldest.php'], new RecentFilesStore($project->dir)->all(), 'and the next session agrees');
+        $this->assertSame(['/p/newest.php', '/p/oldest.php'], $store->paths);
+        $this->assertSame(['/p/newest.php', '/p/oldest.php'], new RecentFilesStore($project->dir)->paths, 'and the next session agrees');
     }
 
     public function testForgetTakesEveryFileUnderADeletedDirectory(): void
@@ -182,7 +182,7 @@ final class RecentFilesStoreTest extends TestCase
 
         $store->forget('/p/old');
 
-        $this->assertSame(['/p/olden/b.php'], $store->all());
+        $this->assertSame(['/p/olden/b.php'], $store->paths);
     }
 
     public function testForgettingAPathThatIsNotListedDoesNotRewriteTheFile(): void
@@ -201,7 +201,7 @@ final class RecentFilesStoreTest extends TestCase
 
         $store->forget('/p/b.php');
 
-        $this->assertSame(['/p/a.php'], $store->all());
+        $this->assertSame(['/p/a.php'], $store->paths);
         $this->assertSame(1_000_000_000, \filemtime($file), 'no write for a delete that changed nothing');
     }
 
@@ -214,7 +214,7 @@ final class RecentFilesStoreTest extends TestCase
 
         $store->rename('/p/old', '/p/new');
 
-        $this->assertSame(['/p/new/a.php', '/p/olden/b.php'], $store->all());
+        $this->assertSame(['/p/new/a.php', '/p/olden/b.php'], $store->paths);
     }
 
     public function testARenameThatMovesNothingHereDoesNotRewriteTheFile(): void
@@ -229,7 +229,7 @@ final class RecentFilesStoreTest extends TestCase
 
         $store->rename('/p/elsewhere.php', '/p/moved.php');
 
-        $this->assertSame(['/p/a.php'], $store->all());
+        $this->assertSame(['/p/a.php'], $store->paths);
         $this->assertSame(1_000_000_000, \filemtime($file), 'no write for a rename that changed nothing');
     }
 }

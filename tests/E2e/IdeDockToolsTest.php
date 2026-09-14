@@ -292,7 +292,7 @@ final class IdeDockToolsTest extends TestCase
                         $dock($ide)->closeTab($entry['tab'], $entry['key']);
                     }
                     $tui->tick();
-                    $this->assertContains('beta', new SearchHistoryStore($project->dir)->all(), '×ing a search tab records its query');
+                    $this->assertContains('beta', new SearchHistoryStore($project->dir)->queries, '×ing a search tab records its query');
                     $labels = \array_column($dock($ide)->aliveTabs(), 'label');
                     $this->assertNotContains('Find in Project: beta', $labels);
                     $this->assertContains('Find in Project: alpha', $labels, 'the alpha tab survives');

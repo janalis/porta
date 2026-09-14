@@ -21,7 +21,7 @@ final class SearchScopeStore
 
     private readonly string $file;
     /** @var list<array{label: string, paths: list<string>, pinned: bool}> */
-    private array $scopes;
+    public private(set) array $scopes;
 
     public function __construct(
         string $rootDir,
@@ -29,12 +29,6 @@ final class SearchScopeStore
     ) {
         $this->file = $rootDir.'/.porta/search-scopes.json';
         $this->scopes = $this->load();
-    }
-
-    /** @return list<array{label: string, paths: list<string>, pinned: bool}> most-recent-first */
-    public function all(): array
-    {
-        return $this->scopes;
     }
 
     /** @param list<string> $paths */

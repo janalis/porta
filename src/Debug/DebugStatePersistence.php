@@ -44,6 +44,6 @@ final readonly class DebugStatePersistence
 
     public function save(): void
     {
-        $this->store->save($this->breakpoints->all(), $this->watches->all(), $this->filters->selection());
+        $this->store->save($this->breakpoints->all(), $this->watches->expressions, $this->filters->selection());
     }
 }

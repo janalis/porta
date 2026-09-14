@@ -166,10 +166,10 @@ final class FindBarWidgetTest extends TestCase
         $bar->open(new FakeFindTarget(new Document("foo\n")), mode: FindMode::Find);
 
         $this->type($bar, 'foo');
-        $this->assertSame([], $history->all(), 'typing records nothing');
+        $this->assertSame([], $history->queries, 'typing records nothing');
 
         $bar->handleInput("\r");
-        $this->assertSame(['foo'], $history->all());
+        $this->assertSame(['foo'], $history->queries);
     }
 
     /**

@@ -100,7 +100,7 @@ final class PluginTokenSpansTest extends TestCase
         $manager->commit($api);
 
         $this->assertNull($manager->commentStringSpans('x', 'php'));
-        $this->assertCount(1, $manager->warnings());
+        $this->assertCount(1, $manager->warnings);
     }
 
     /** A throwing provider seen through TokenClassifier still yields the built-in result. */

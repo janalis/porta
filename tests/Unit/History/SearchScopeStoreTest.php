@@ -50,7 +50,7 @@ final class SearchScopeStoreTest extends TestCase
     public function testEmptyByDefault(): void
     {
         $tempProject = new TempProject();
-        $this->assertSame([], new SearchScopeStore($tempProject->dir)->all());
+        $this->assertSame([], new SearchScopeStore($tempProject->dir)->scopes);
     }
 
     public function testRecentScopesAreMostRecentFirstAndDeduplicated(): void
@@ -61,7 +61,7 @@ final class SearchScopeStoreTest extends TestCase
         $store->addRecent('tests', ['tests']);
         $store->addRecent('src', ['src']); // moves src to the front
 
-        $this->assertSame(['src', 'tests'], \array_column($store->all(), 'label'));
+        $this->assertSame(['src', 'tests'], \array_column($store->scopes, 'label'));
     }
 
     public function testUnpinnedScopesEvictPastTheCap(): void
@@ -72,8 +72,8 @@ final class SearchScopeStoreTest extends TestCase
             $store->addRecent("dir{$i}", ["dir{$i}"]);
         }
 
-        $this->assertCount(10, $store->all(), 'recent scopes cap at 10');
-        $this->assertSame('dir11', $store->all()[0]['label'], 'newest first');
+        $this->assertCount(10, $store->scopes, 'recent scopes cap at 10');
+        $this->assertSame('dir11', $store->scopes[0]['label'], 'newest first');
     }
 
     public function testPinnedScopesAreKeptFirstAndNeverEvicted(): void
@@ -85,14 +85,14 @@ final class SearchScopeStoreTest extends TestCase
             $store->addRecent("dir{$i}", ["dir{$i}"]);
         }
 
-        $labels = \array_column($store->all(), 'label');
+        $labels = \array_column($store->scopes, 'label');
         $this->assertContains('lib', $labels, 'the pinned scope survives eviction');
         $this->assertSame('lib', $labels[0], 'pinned scopes come first');
         $this->assertCount(11, $labels, '10 recent + 1 pinned');
 
         // A pin sticks even when the same label is later recorded as recent.
         $store->addRecent('lib', ['lib']);
-        $lib = \array_first(\array_filter($store->all(), static fn (array $s): bool => 'lib' === $s['label']));
+        $lib = \array_first(\array_filter($store->scopes, static fn (array $s): bool => 'lib' === $s['label']));
         $this->assertTrue($lib['pinned']);
     }
 
@@ -114,7 +114,7 @@ final class SearchScopeStoreTest extends TestCase
 
         new SearchScopeStore($project->dir)->addRecent('target', ['t2']);
 
-        $reloaded = new SearchScopeStore($project->dir)->all();
+        $reloaded = new SearchScopeStore($project->dir)->scopes;
         $target = $reloaded[\array_search('target', \array_column($reloaded, 'label'), strict: true)];
         $this->assertTrue($target['pinned'], 'a pin sticks even when re-recorded as recent');
     }
@@ -137,7 +137,7 @@ final class SearchScopeStoreTest extends TestCase
 
         new SearchScopeStore($project->dir)->addRecent('dup', ['new']);
 
-        $reloaded = new SearchScopeStore($project->dir)->all();
+        $reloaded = new SearchScopeStore($project->dir)->scopes;
         $this->assertFalse($reloaded[0]['pinned'], 'the first (unpinned) match won, not the second');
     }
 
@@ -148,7 +148,7 @@ final class SearchScopeStoreTest extends TestCase
         $project = new TempProject([]);
         $project->write('.porta/search-scopes.json', (string) \json_encode(['scopes' => 'not-an-array']));
 
-        $this->assertSame([], new SearchScopeStore($project->dir)->all());
+        $this->assertSame([], new SearchScopeStore($project->dir)->scopes);
     }
 
     public function testAnInvalidScopeEntryDoesNotAbortTheRestOfTheList(): void
@@ -166,7 +166,7 @@ final class SearchScopeStoreTest extends TestCase
             ]),
         );
 
-        $this->assertSame(['ok'], \array_column(new SearchScopeStore($project->dir)->all(), 'label'));
+        $this->assertSame(['ok'], \array_column(new SearchScopeStore($project->dir)->scopes, 'label'));
     }
 
     public function testLoadedPathsStayContiguouslyIndexedAfterFilteringInvalidOnes(): void
@@ -183,7 +183,7 @@ final class SearchScopeStoreTest extends TestCase
             ]),
         );
 
-        $loaded = new SearchScopeStore($project->dir)->all();
+        $loaded = new SearchScopeStore($project->dir)->scopes;
         $this->assertSame(['src'], $loaded[0]['paths']);
         $this->assertSame('["src"]', \json_encode($loaded[0]['paths']), 'stays a JSON array, not an object');
     }
@@ -201,7 +201,7 @@ final class SearchScopeStoreTest extends TestCase
             ]),
         );
 
-        $this->assertSame(['a', 'b'], \array_column(new SearchScopeStore($project->dir)->all(), 'label'));
+        $this->assertSame(['a', 'b'], \array_column(new SearchScopeStore($project->dir)->scopes, 'label'));
     }
 
     public function testPersistsAcrossInstancesAndToleratesBadFiles(): void
@@ -209,7 +209,7 @@ final class SearchScopeStoreTest extends TestCase
         $project = new TempProject([]);
         new SearchScopeStore($project->dir)->addPinned('api', ['api', 'api-tests']);
 
-        $reloaded = new SearchScopeStore($project->dir)->all();
+        $reloaded = new SearchScopeStore($project->dir)->scopes;
         $this->assertSame('api', $reloaded[0]['label']);
         $this->assertSame(['api', 'api-tests'], $reloaded[0]['paths']);
         $this->assertTrue($reloaded[0]['pinned']);
@@ -217,7 +217,7 @@ final class SearchScopeStoreTest extends TestCase
         // Malformed / partial entries are dropped.
         $bad = new TempProject([]);
         $bad->write('.porta/search-scopes.json', 'not json');
-        $this->assertSame([], new SearchScopeStore($bad->dir)->all());
+        $this->assertSame([], new SearchScopeStore($bad->dir)->scopes);
 
         $mixed = new TempProject([]);
         $mixed->write(
@@ -231,7 +231,7 @@ final class SearchScopeStoreTest extends TestCase
                 ],
             ]),
         );
-        $kept = new SearchScopeStore($mixed->dir)->all();
+        $kept = new SearchScopeStore($mixed->dir)->scopes;
         $this->assertSame([['label' => 'ok', 'paths' => ['src'], 'pinned' => true]], $kept);
     }
 
@@ -242,7 +242,7 @@ final class SearchScopeStoreTest extends TestCase
         try {
             $store = new SearchScopeStore($file);
             $store->addRecent('src', ['src']); // dumpFile throws → caught, in-memory list still updated
-            $this->assertSame(['src'], \array_column($store->all(), 'label'));
+            $this->assertSame(['src'], \array_column($store->scopes, 'label'));
         } finally {
             if (\is_file($file)) {
                 \unlink($file);
@@ -257,7 +257,7 @@ final class SearchScopeStoreTest extends TestCase
 
         $store->addRecent("scope\xB1", ['/p/src']);
 
-        $this->assertCount(1, $store->all(), 'the live list keeps the scope');
+        $this->assertCount(1, $store->scopes, 'the live list keeps the scope');
         $this->assertFalse(\is_file($project->path('.porta/search-scopes.json')), 'the file write degraded silently');
     }
 
@@ -277,8 +277,8 @@ final class SearchScopeStoreTest extends TestCase
             ['label' => 'tests', 'paths' => ['tests'], 'pinned' => true],
             ['label' => 'lib', 'paths' => ['lib'], 'pinned' => true],
         ];
-        $this->assertSame($expected, $store->all(), 'the label was the path, so it moved; the untouched scope kept its place');
-        $this->assertSame($expected, new SearchScopeStore($tempProject->dir)->all(), 'and the next session agrees');
+        $this->assertSame($expected, $store->scopes, 'the label was the path, so it moved; the untouched scope kept its place');
+        $this->assertSame($expected, new SearchScopeStore($tempProject->dir)->scopes, 'and the next session agrees');
     }
 
     public function testARenamedFolderMovesTheScopesNESTEDUnderItAndLeavesItsLabelAlone(): void
@@ -293,7 +293,7 @@ final class SearchScopeStoreTest extends TestCase
             [
                 ['label' => 'the widgets', 'paths' => ['lib/Widget', 'srcery/x'], 'pinned' => true],
             ],
-            $store->all(),
+            $store->scopes,
             'a label the user chose is not a path and does not move; a prefix-sharing sibling is a different folder',
         );
     }
@@ -309,7 +309,7 @@ final class SearchScopeStoreTest extends TestCase
 
         $store->rename('tests', 'spec');
 
-        $this->assertSame(['src'], \array_column($store->all(), 'label'));
+        $this->assertSame(['src'], \array_column($store->scopes, 'label'));
         $this->assertSame(1_000_000_000, \filemtime($file), 'no write for a rename that changed nothing');
     }
 
@@ -329,8 +329,8 @@ final class SearchScopeStoreTest extends TestCase
             ['label' => 'both', 'paths' => ['tests'], 'pinned' => true],
             ['label' => 'kept', 'paths' => ['src/Older'], 'pinned' => false],
         ];
-        $this->assertSame($expected, $store->all());
-        $this->assertSame($expected, new SearchScopeStore($tempProject->dir)->all(), 'and the next session agrees');
+        $this->assertSame($expected, $store->scopes);
+        $this->assertSame($expected, new SearchScopeStore($tempProject->dir)->scopes, 'and the next session agrees');
     }
 
     public function testADeleteThatTouchesNoScopeDoesNotRewriteTheFile(): void
@@ -344,7 +344,7 @@ final class SearchScopeStoreTest extends TestCase
 
         $store->forget('tests');
 
-        $this->assertSame(['src'], \array_column($store->all(), 'label'));
+        $this->assertSame(['src'], \array_column($store->scopes, 'label'));
         $this->assertSame(1_000_000_000, \filemtime($file), 'no write for a delete that changed nothing');
     }
 }

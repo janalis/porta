@@ -13,7 +13,7 @@ namespace Porta\Debug;
 final class WatchStore
 {
     /** @var list<string> */
-    private array $expressions = [];
+    public private(set) array $expressions = [];
 
     public function add(string $expression): void
     {
@@ -25,11 +25,5 @@ final class WatchStore
         if (($this->expressions[$index] ?? null) !== null) {
             \array_splice($this->expressions, $index, length: 1);
         }
-    }
-
-    /** @return list<string> */
-    public function all(): array
-    {
-        return $this->expressions;
     }
 }

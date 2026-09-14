@@ -689,7 +689,7 @@ final class IdeContextMenusTest extends TestCase
                     $renamed = (string) \realpath($project->path('renamed.php'));
                     $this->assertContains(
                         $renamed,
-                        Services::resolve($ide, RecentFilesStore::class)->all(),
+                        Services::resolve($ide, RecentFilesStore::class)->paths,
                         'the recent-files list followed the rename',
                     );
                     $this->assertSame(
@@ -792,7 +792,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput('X'); // an edit, so the history has a site to lose
 
                     $this->assertSame([$a => [0]], Services::resolve($ide, Bookmarks::class)->all(), 'marked before deleting');
-                    $this->assertContains($a, Services::resolve($ide, RecentFilesStore::class)->all());
+                    $this->assertContains($a, Services::resolve($ide, RecentFilesStore::class)->paths);
                 },
                 250 => static function ($tui): void {
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php
@@ -810,7 +810,7 @@ final class IdeContextMenusTest extends TestCase
                 520 => function ($tui, $terminal, Ide $ide) use ($a): void {
                     $this->assertStringNotContainsString('A.php', (string) $tui->getById('editor')->getFilePath(), 'the deleted file is not still open');
                     $this->assertSame([], Services::resolve($ide, Bookmarks::class)->all(), 'the bookmark went with the file');
-                    $this->assertNotContains($a, Services::resolve($ide, RecentFilesStore::class)->all(), 'the switcher stopped offering it');
+                    $this->assertNotContains($a, Services::resolve($ide, RecentFilesStore::class)->paths, 'the switcher stopped offering it');
                     $this->assertNull(Services::resolve($ide, EditHistory::class)->walkBack(), 'and there is nowhere to walk back to');
                 },
             ],

@@ -23,7 +23,7 @@ final class RecentFilesRecorderTest extends TestCase
         $recorder->onBufferSwitched(new BufferSwitched(new Buffer('/a.php', new Document(''))));
         $recorder->onBufferSwitched(new BufferSwitched(new Buffer('/b.php', new Document(''))));
 
-        $this->assertSame(['/b.php', '/a.php'], $store->all());
+        $this->assertSame(['/b.php', '/a.php'], $store->paths);
     }
 
     public function testAVIEWERTabIsNot(): void
@@ -38,6 +38,6 @@ final class RecentFilesRecorderTest extends TestCase
         $recorder->onBufferSwitched(new BufferSwitched(new Buffer('/docs/editor.md', new Document(''), paneId: 'help')));
         $recorder->onBufferSwitched(new BufferSwitched(new Buffer('/logo.png', new Document(''), paneId: 'image')));
 
-        $this->assertSame([], $store->all());
+        $this->assertSame([], $store->paths);
     }
 }

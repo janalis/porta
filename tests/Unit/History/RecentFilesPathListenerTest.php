@@ -21,6 +21,6 @@ final class RecentFilesPathListenerTest extends TestCase
 
         new RecentFilesPathListener($store)->onFileDeleted(new FileDeleted('/p/gone.php'));
 
-        $this->assertSame(['/p/kept.php'], $store->all());
+        $this->assertSame(['/p/kept.php'], $store->paths);
     }
 }

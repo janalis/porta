@@ -138,7 +138,7 @@ final class RunController
         $found = $this->sessions->find('run:'.$title);
         if (null !== $found) {
             $found->buffer->clear();
-            $found->setTitle($title); // drop any stale exit-code "(N)" suffix
+            $found->title = $title; // drop any stale exit-code "(N)" suffix
             $this->sessions->makeActive($found);
         }
         $session = $found ?? $this->sessions->create('run:'.$title, $title);
@@ -164,7 +164,7 @@ final class RunController
                 $this->tui->requestRender();
             })
             ->onExit(function (int $code) use ($session): void {
-                $session->setTitle(\sprintf('%s (%d)', $session->title(), $code));
+                $session->title = \sprintf('%s (%d)', $session->title, $code);
                 $this->tui->requestRender();
             });
         $session->attach($process);
@@ -202,7 +202,7 @@ final class RunController
 
     public function closeSession(int $index): void
     {
-        $target = -1 === $index ? $this->sessions->activeIndex() : $index;
+        $target = -1 === $index ? $this->sessions->activeIndex : $index;
         $survivor = $this->sessions->close($target);
         if (null === $survivor) {
             $this->terminalPanel->close();
@@ -215,7 +215,7 @@ final class RunController
     /** Show a session in the panel and focus it. */
     private function showActive(TerminalSession $session): void
     {
-        $this->terminalPanel->open($session->title(), $session->buffer);
+        $this->terminalPanel->open($session->title, $session->buffer);
         $this->tui->setFocus($this->terminalPanel);
         $this->tui->requestRender();
     }
@@ -225,7 +225,7 @@ final class RunController
     {
         $bytes = $this->terminalKeys->encode($data);
         if ('' !== $bytes) {
-            $this->sessions->active()?->process()?->write($bytes);
+            $this->sessions->active()?->process?->write($bytes);
         }
     }
 

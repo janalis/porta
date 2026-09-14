@@ -16,15 +16,15 @@ use Porta\Support\IntMath;
 final class TerminalSessions
 {
     /** @var list<TerminalSession> */
-    private array $sessions = [];
+    public private(set) array $sessions = [];
 
-    private int $active = 0;
+    public private(set) int $activeIndex = 0;
 
     public function create(string $id, string $title): TerminalSession
     {
         $session = new TerminalSession($id, $title, new TerminalBuffer());
         $this->sessions[] = $session;
-        $this->active = \count($this->sessions) - 1;
+        $this->activeIndex = \count($this->sessions) - 1;
 
         return $session;
     }
@@ -45,7 +45,7 @@ final class TerminalSessions
     {
         $index = \array_search($session, $this->sessions, strict: true);
         if (false !== $index) {
-            $this->active = $index;
+            $this->activeIndex = $index;
         }
     }
 
@@ -59,14 +59,8 @@ final class TerminalSessions
         if (null === $to) {
             return;
         }
-        $this->active = IndexMove::reindexActive($this->active, $from, $to);
+        $this->activeIndex = IndexMove::reindexActive($this->activeIndex, $from, $to);
         $this->sessions = IndexMove::apply($this->sessions, $from, $to);
-    }
-
-    /** @return list<TerminalSession> */
-    public function all(): array
-    {
-        return $this->sessions;
     }
 
     public function isEmpty(): bool
@@ -76,12 +70,7 @@ final class TerminalSessions
 
     public function active(): ?TerminalSession
     {
-        return $this->sessions[$this->active] ?? null;
-    }
-
-    public function activeIndex(): int
-    {
-        return $this->active;
+        return $this->sessions[$this->activeIndex] ?? null;
     }
 
     /** Activate the session at $index (clamped); returns the now-active session. */
@@ -90,9 +79,9 @@ final class TerminalSessions
         if ([] === $this->sessions) {
             return null;
         }
-        $this->active = IntMath::clamp($index, 0, \count($this->sessions) - 1);
+        $this->activeIndex = IntMath::clamp($index, 0, \count($this->sessions) - 1);
 
-        return $this->sessions[$this->active];
+        return $this->sessions[$this->activeIndex];
     }
 
     public function next(): ?TerminalSession
@@ -100,9 +89,9 @@ final class TerminalSessions
         if ([] === $this->sessions) {
             return null;
         }
-        $this->active = ($this->active + 1) % \count($this->sessions);
+        $this->activeIndex = ($this->activeIndex + 1) % \count($this->sessions);
 
-        return $this->sessions[$this->active];
+        return $this->sessions[$this->activeIndex];
     }
 
     public function prev(): ?TerminalSession
@@ -111,9 +100,9 @@ final class TerminalSessions
             return null;
         }
         $count = \count($this->sessions);
-        $this->active = ($this->active - 1 + $count) % $count;
+        $this->activeIndex = ($this->activeIndex - 1 + $count) % $count;
 
-        return $this->sessions[$this->active];
+        return $this->sessions[$this->activeIndex];
     }
 
     /**
@@ -129,13 +118,13 @@ final class TerminalSessions
         $this->sessions[$index]->stop();
         \array_splice($this->sessions, $index, length: 1);
         if ([] === $this->sessions) {
-            $this->active = 0;
+            $this->activeIndex = 0;
 
             return null;
         }
-        $this->active = \min($this->active, \count($this->sessions) - 1);
+        $this->activeIndex = \min($this->activeIndex, \count($this->sessions) - 1);
 
-        return $this->sessions[$this->active];
+        return $this->sessions[$this->activeIndex];
     }
 
     public function stopAll(): void

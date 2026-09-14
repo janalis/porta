@@ -155,7 +155,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
 
         $line = $editor->render(new RenderContext(80, 3))[0];
 
-        $this->assertGreaterThan(0, EditorState::scroll($editor)->hScroll(), 'a caret near end-of-line scrolls horizontally');
+        $this->assertGreaterThan(0, EditorState::scroll($editor)->hScroll, 'a caret near end-of-line scrolls horizontally');
         $this->assertSame(1, \substr_count($line, needle: "\x1b[48;5;24m"));
     }
 

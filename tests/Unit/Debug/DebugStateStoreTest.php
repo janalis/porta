@@ -136,7 +136,7 @@ final class DebugStateStoreTest extends TestCase
         $this->assertSame([0], $breakpoints->linesFor($real));
         $this->assertSame(['condition' => '$x', 'hitCondition' => null, 'logMessage' => null], $breakpoints->conditionAt($real, 0));
         $this->assertSame([], $breakpoints->linesFor($project->path('gone.php')), 'vanished files are skipped');
-        $this->assertSame(['$watched'], $watches->all());
+        $this->assertSame(['$watched'], $watches->expressions);
         $this->assertSame(['exception'], $filters->selection());
 
         // Save round-trips through the live stores (the vanished file is gone for good).

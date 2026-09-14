@@ -96,7 +96,7 @@ final class PluginManagerTest extends TestCase
 
         $this->assertTrue($manager->hasPlugin('demo'));
         $this->assertSame(['demo'], \array_keys(Probe::get($manager, 'names')));
-        $this->assertSame(['demo:hello' => ['ctrl+alt+y']], $manager->defaultKeys(), 'keyless commands contribute no defaults');
+        $this->assertSame(['demo:hello' => ['ctrl+alt+y']], $manager->defaultKeys, 'keyless commands contribute no defaults');
         $this->assertEquals([new PluginMenuSpec('demo', 'i:demo:hello')], $manager->menuSpecs());
 
         $registry = new CommandRegistry();
@@ -189,7 +189,7 @@ final class PluginManagerTest extends TestCase
         $this->assertSame(['bystander'], \array_keys(Probe::get($manager, 'names')), 'the other plugin is untouched');
         $this->assertContains('bystander:stay', $registry->keyBoundIds());
         $this->assertSame([], $manager->menuSpecs());
-        $this->assertSame([], $manager->defaultKeys());
+        $this->assertSame([], $manager->defaultKeys);
         $this->assertNotContains('demo:hi', $registry->keyBoundIds(), 'key dispatch died');
         $this->assertContains('core:stay', $registry->keyBoundIds(), 'core commands survive');
         $this->assertNotContains('Say Hi', \array_column($registry->paletteCommands(), 'label'), 'palette entry died');
@@ -246,7 +246,7 @@ final class PluginManagerTest extends TestCase
         $this->assertFalse($manager->hasPlugin('demo'));
         $this->assertNotContains('demo:hi', $registry->keyBoundIds(), 'the registries emptied despite the throw');
         $this->assertSame([], $manager->menuSpecs());
-        $this->assertStringContainsString('teardown exploded', $manager->warnings()[0]->params['%message%'] ?? '', 'the throw is reported, not swallowed');
+        $this->assertStringContainsString('teardown exploded', $manager->warnings[0]->params['%message%'] ?? '', 'the throw is reported, not swallowed');
     }
 
     public function testACommitWithoutAnInstanceDeactivatesUntouched(): void
@@ -368,7 +368,7 @@ final class PluginManagerTest extends TestCase
         $manager->commit($bad);
 
         $this->assertSame([], $manager->languageServers());
-        $this->assertNotEmpty($manager->warnings(), 'the failure is reported like a throwing command resolver');
+        $this->assertNotEmpty($manager->warnings, 'the failure is reported like a throwing command resolver');
     }
 
     public function testNonEncodableInitializationOptionsAreAReportedFailureNotARenderFault(): void
@@ -384,7 +384,7 @@ final class PluginManagerTest extends TestCase
         $manager->commit($bad);
 
         $this->assertSame([], $manager->languageServers(), 'the language stays unserved rather than carrying poison');
-        $this->assertNotEmpty($manager->warnings());
+        $this->assertNotEmpty($manager->warnings);
     }
 
     public function testLanguageServersReportAThrowingResolverAndDeactivateDropsProviders(): void
@@ -398,7 +398,7 @@ final class PluginManagerTest extends TestCase
         $boom->registerLanguageServer('php', 'boom-ls', static fn (): array => throw new \RuntimeException('bad binary'));
         $manager->commit($boom);
         $this->assertSame([], $manager->languageServers(), 'a throwing resolver leaves the language unserved');
-        $this->assertNotEmpty($manager->warnings(), 'and reports a boot warning');
+        $this->assertNotEmpty($manager->warnings, 'and reports a boot warning');
 
         $ok = new PluginApi('ok', $manager, '/p', $settings);
         $ok->registerLanguageServer('php', 'ok-ls', static fn (): array => ['/bin/ok']);
@@ -510,7 +510,7 @@ final class PluginManagerTest extends TestCase
         // Before the runtime exists, failures collect as boot warnings instead.
         $cold = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         $cold->reportFailure('demo', new \RuntimeException('early'));
-        $this->assertEquals([new ConfigWarning('Plugin "%name%" failed: %message%', ['%name%' => 'demo', '%message%' => 'early'])], $cold->warnings());
+        $this->assertEquals([new ConfigWarning('Plugin "%name%" failed: %message%', ['%name%' => 'demo', '%message%' => 'early'])], $cold->warnings);
     }
 
     private function renderedStatus(): string

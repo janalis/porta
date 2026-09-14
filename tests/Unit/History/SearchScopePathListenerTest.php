@@ -32,7 +32,7 @@ final class SearchScopePathListenerTest extends TestCase
 
         $this->listener($project, $store)->onFileRenamed(new FileRenamed($from, (string) \realpath($project->path('lib'))));
 
-        $this->assertSame([['label' => 'lib', 'paths' => ['lib'], 'pinned' => true]], $store->all());
+        $this->assertSame([['label' => 'lib', 'paths' => ['lib'], 'pinned' => true]], $store->scopes);
     }
 
     public function testAnAbsoluteDeleteReachesTheScopeInRelativeTerms(): void
@@ -43,7 +43,7 @@ final class SearchScopePathListenerTest extends TestCase
 
         $this->listener($project, $store)->onFileDeleted(new FileDeleted($project->path('src')));
 
-        $this->assertSame([], $store->all());
+        $this->assertSame([], $store->scopes);
     }
 
     public function testAPathOUTSIDETheProjectIsNotAScopeAndIsIgnored(): void
@@ -59,7 +59,7 @@ final class SearchScopePathListenerTest extends TestCase
         $listener->onFileRenamed(new FileRenamed('/elsewhere/old', '/elsewhere/new'));
         $listener->onFileDeleted(new FileDeleted('/elsewhere/gone'));
 
-        $this->assertSame([['label' => 'src', 'paths' => ['src'], 'pinned' => true]], $store->all());
+        $this->assertSame([['label' => 'src', 'paths' => ['src'], 'pinned' => true]], $store->scopes);
     }
 
     public function testARenameWithONLYONEEndInsideTheProjectIsIgnoredToo(): void
@@ -73,7 +73,7 @@ final class SearchScopePathListenerTest extends TestCase
 
         $this->listener($project, $store)->onFileRenamed(new FileRenamed((string) \realpath($project->path('src')), '/elsewhere/lib'));
 
-        $this->assertSame([['label' => 'src', 'paths' => ['src'], 'pinned' => true]], $store->all());
+        $this->assertSame([['label' => 'src', 'paths' => ['src'], 'pinned' => true]], $store->scopes);
     }
 
     private function listener(TempProject $project, SearchScopeStore $store): SearchScopePathListener

@@ -80,8 +80,8 @@ final class DockPanelsTest extends TestCase
             DockTab::Debug,
         );
 
-        $this->assertSame('first', $panels->all()[0]['label']());
+        $this->assertSame('first', $panels->panels[0]['label']());
         $title = 'second';
-        $this->assertSame('second', $panels->all()[0]['label'](), 'the strip reads the label per frame');
+        $this->assertSame('second', $panels->panels[0]['label'](), 'the strip reads the label per frame');
     }
 }

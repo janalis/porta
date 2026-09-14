@@ -15,7 +15,7 @@ final class WatchStoreTest extends TestCase
         $store->add('$a');
         $store->add('$b');
 
-        $this->assertSame(['$a', '$b'], $store->all());
+        $this->assertSame(['$a', '$b'], $store->expressions);
     }
 
     public function testRemoveDropsOnlyTheIndexedExpression(): void
@@ -27,7 +27,7 @@ final class WatchStoreTest extends TestCase
 
         $store->remove(1);
 
-        $this->assertSame(['$a', '$c'], $store->all(), 'only $b, and only one item, is removed');
+        $this->assertSame(['$a', '$c'], $store->expressions, 'only $b, and only one item, is removed');
     }
 
     public function testRemoveAnEmptyStringExpressionStillRemoves(): void
@@ -41,7 +41,7 @@ final class WatchStoreTest extends TestCase
 
         $store->remove(0);
 
-        $this->assertSame(['$b'], $store->all());
+        $this->assertSame(['$b'], $store->expressions);
     }
 
     public function testRemoveOutOfRangeIsANoOp(): void
@@ -51,6 +51,6 @@ final class WatchStoreTest extends TestCase
 
         $store->remove(5);
 
-        $this->assertSame(['$a'], $store->all());
+        $this->assertSame(['$a'], $store->expressions);
     }
 }

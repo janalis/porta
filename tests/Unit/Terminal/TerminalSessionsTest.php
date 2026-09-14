@@ -27,7 +27,7 @@ final class TerminalSessionsTest extends TestCase
         $b = $sessions->create('run:build', 'build');
         $this->assertCount(2, Probe::get($sessions, 'sessions'));
         $this->assertSame($b, $sessions->active(), 'create activates the newest');
-        $this->assertSame(1, $sessions->activeIndex());
+        $this->assertSame(1, $sessions->activeIndex);
         $this->assertSame($a, $sessions->find('shell:1'));
         $this->assertNull($sessions->find('nope'));
     }
@@ -85,7 +85,7 @@ final class TerminalSessionsTest extends TestCase
         $sessions->close(0); // drop 'a'
         $this->assertNull($sessions->close(0), 'closing the last empties the collection');
         $this->assertTrue($sessions->isEmpty());
-        $this->assertSame(0, $sessions->activeIndex());
+        $this->assertSame(0, $sessions->activeIndex);
         $this->assertNotSame($c, $sessions->active());
     }
 
@@ -112,7 +112,7 @@ final class TerminalSessionsTest extends TestCase
         $b = $sessions->create('b', 'b');
         $sessions->create('c', 'c');
         $d = $sessions->create('d', 'd'); // active
-        $order = static fn (): array => \array_map(static fn (TerminalSession $s): string => $s->id, $sessions->all());
+        $order = static fn (): array => \array_map(static fn (TerminalSession $s): string => $s->id, $sessions->sessions);
 
         $sessions->move(9, 0);
         $this->assertSame(['a', 'b', 'c', 'd'], $order(), 'an out-of-range source is a no-op');

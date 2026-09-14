@@ -25,7 +25,7 @@ final class SearchHistoryStoreTest extends TestCase
         \mkdir($project->dir.'/.porta', permissions: 0o755, recursive: true);
         \file_put_contents($project->dir.'/.porta/search-history.json', \json_encode(['queries' => $queries]));
 
-        $all = new SearchHistoryStore($project->dir)->all();
+        $all = new SearchHistoryStore($project->dir)->queries;
 
         $this->assertLessThanOrEqual(20, \count($all), 'the cap applies to what arrives, not only to what leaves');
         $this->assertSame('query 1', $all[0] ?? null, 'and it keeps the newest end of the file');
@@ -39,7 +39,7 @@ final class SearchHistoryStoreTest extends TestCase
         $store->add('bar');
         $store->add('foo'); // moves foo back to the front
 
-        $this->assertSame(['foo', 'bar'], $store->all());
+        $this->assertSame(['foo', 'bar'], $store->queries);
     }
 
     public function testBlankQueriesAreIgnored(): void
@@ -49,7 +49,7 @@ final class SearchHistoryStoreTest extends TestCase
         $store->add('   ');
         $store->add('');
 
-        $this->assertSame([], $store->all());
+        $this->assertSame([], $store->queries);
     }
 
     public function testCapsAtTwentyEntries(): void
@@ -60,9 +60,9 @@ final class SearchHistoryStoreTest extends TestCase
             $store->add("q{$i}");
         }
 
-        $this->assertCount(20, $store->all());
-        $this->assertSame('q24', $store->all()[0], 'newest first');
-        $this->assertSame('q5', $store->all()[19], 'oldest of the kept 20');
+        $this->assertCount(20, $store->queries);
+        $this->assertSame('q24', $store->queries[0], 'newest first');
+        $this->assertSame('q5', $store->queries[19], 'oldest of the kept 20');
     }
 
     public function testPersistsAcrossInstances(): void
@@ -72,7 +72,7 @@ final class SearchHistoryStoreTest extends TestCase
         $first->add('alpha');
         $first->add('beta');
 
-        $this->assertSame(['beta', 'alpha'], new SearchHistoryStore($project->dir)->all());
+        $this->assertSame(['beta', 'alpha'], new SearchHistoryStore($project->dir)->queries);
     }
 
     public function testAddToleratesAnUnwritableLocation(): void
@@ -83,7 +83,7 @@ final class SearchHistoryStoreTest extends TestCase
         try {
             $store = new SearchHistoryStore($file);
             $store->add('x'); // dumpFile throws → caught, in-memory list still updated
-            $this->assertSame(['x'], $store->all());
+            $this->assertSame(['x'], $store->queries);
         } finally {
             if (\is_file($file)) {
                 \unlink($file);
@@ -95,17 +95,17 @@ final class SearchHistoryStoreTest extends TestCase
     {
         // Absent file → empty.
         $tempProject = new TempProject();
-        $this->assertSame([], new SearchHistoryStore($tempProject->dir)->all());
+        $this->assertSame([], new SearchHistoryStore($tempProject->dir)->queries);
 
         // Malformed JSON → empty.
         $bad = new TempProject([]);
         $bad->write('.porta/search-history.json', 'not json');
-        $this->assertSame([], new SearchHistoryStore($bad->dir)->all());
+        $this->assertSame([], new SearchHistoryStore($bad->dir)->queries);
 
         // Non-string entries are filtered out.
         $mixed = new TempProject([]);
         $mixed->write('.porta/search-history.json', (string) \json_encode(['queries' => ['ok', 123, '', null]]));
-        $this->assertSame(['ok'], new SearchHistoryStore($mixed->dir)->all());
+        $this->assertSame(['ok'], new SearchHistoryStore($mixed->dir)->queries);
     }
 
     public function testAnInvalidEntryDoesNotAbortTheRestOfTheList(): void
@@ -116,7 +116,7 @@ final class SearchHistoryStoreTest extends TestCase
         $project = new TempProject([]);
         $project->write('.porta/search-history.json', (string) \json_encode(['queries' => [123, 'ok']]));
 
-        $this->assertSame(['ok'], new SearchHistoryStore($project->dir)->all());
+        $this->assertSame(['ok'], new SearchHistoryStore($project->dir)->queries);
     }
 
     public function testANonArrayQueriesValueOnAPresentFileIsIgnoredNotFatal(): void
@@ -126,7 +126,7 @@ final class SearchHistoryStoreTest extends TestCase
         $project = new TempProject([]);
         $project->write('.porta/search-history.json', (string) \json_encode(['queries' => 'not-an-array']));
 
-        $this->assertSame([], new SearchHistoryStore($project->dir)->all());
+        $this->assertSame([], new SearchHistoryStore($project->dir)->queries);
     }
 
     public function testAnUnencodableQueryStaysLiveAndPersistenceDegradesSilently(): void
@@ -139,7 +139,7 @@ final class SearchHistoryStoreTest extends TestCase
 
         $store->add("needle\xB1");
 
-        $this->assertSame(["needle\xB1"], $store->all(), 'the live list keeps the query');
+        $this->assertSame(["needle\xB1"], $store->queries, 'the live list keeps the query');
         $this->assertFalse(\is_file($project->path('.porta/search-history.json')), 'the file write degraded silently');
     }
 }

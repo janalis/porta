@@ -82,7 +82,7 @@ final class CodeEditorGeometryTest extends TestCase
 
         $scroll = Probe::get($editor, 'scroll');
         $foldModel = Probe::get($editor, 'foldModel');
-        $expectedBase = \max(0, $foldModel->screenRowFor($scroll->vScroll(), 38));
+        $expectedBase = \max(0, $foldModel->screenRowFor($scroll->vScroll, 38));
 
         $cell = $editor->caretScreenCell();
         // Exact formula: max(0, screenRowFor(...)) + stickyCount. A
@@ -117,7 +117,7 @@ final class CodeEditorGeometryTest extends TestCase
 
         $scroll = Probe::get($editor, 'scroll');
         $foldModel = Probe::get($editor, 'foldModel');
-        $expected = $foldModel->docLineAtRow($scroll->vScroll(), 0);
+        $expected = $foldModel->docLineAtRow($scroll->vScroll, 0);
 
         // relRow == stickyCount: not caught by the early sticky-line branch
         // (relRow &lt; stickyCount is false), so relRow-stickyCount == 0 exactly.
@@ -137,12 +137,12 @@ final class CodeEditorGeometryTest extends TestCase
         $editor = $this->editor($lines);
         $editor->render(new RenderContext(40, 10));
         $scroll = Probe::get($editor, 'scroll');
-        $before = $scroll->vScroll();
+        $before = $scroll->vScroll;
 
         // The stripe is the rightmost rendered column.
         $editor->clickAt(5, 39);
 
-        $this->assertNotSame($before, $scroll->vScroll(), 'a stripe click must actually move the viewport (centerOnLine wired through)');
+        $this->assertNotSame($before, $scroll->vScroll, 'a stripe click must actually move the viewport (centerOnLine wired through)');
     }
 
     // --- scrollHBy widest-visible-line scan boundary ---------------------------
@@ -158,7 +158,7 @@ final class CodeEditorGeometryTest extends TestCase
 
         $editor->scrollHBy(1000); // scroll far right; clamp caps at (widest VISIBLE line - 10)
         $scroll = Probe::get($editor, 'scroll');
-        $this->assertSame(40, $scroll->hScroll(), 'the clamp must be driven by exactly the 3 visible lines (widest 50), not a truncated or over-extended scan');
+        $this->assertSame(40, $scroll->hScroll, 'the clamp must be driven by exactly the 3 visible lines (widest 50), not a truncated or over-extended scan');
     }
 
     public function testScrollHByLastVisibleLineBoundaryUsesLineCountNotContentRowsWhenTheDocumentIsShort(): void
@@ -173,7 +173,7 @@ final class CodeEditorGeometryTest extends TestCase
 
         $editor->scrollHBy(1000);
         $scroll = Probe::get($editor, 'scroll');
-        $this->assertSame(90, $scroll->hScroll(), 'the scan must reach the last real document line (widest 100), not stop one short of it');
+        $this->assertSame(90, $scroll->hScroll, 'the scan must reach the last real document line (widest 100), not stop one short of it');
     }
 
     // --- insertText / jumpTo side effects ---------------------------------------
@@ -199,12 +199,12 @@ final class CodeEditorGeometryTest extends TestCase
         $editor->showCompletions([new CompletionItem(label: 'foo', insertText: 'foo', kind: 'fn', detail: '')]);
         $this->assertTrue($editor->isCompletionOpen(), 'sanity: completion open');
         $scroll = Probe::get($editor, 'scroll');
-        $before = $scroll->vScroll();
+        $before = $scroll->vScroll;
         $beforeRev = $editor->getRenderRevision();
 
         $editor->jumpTo(80, 0);
 
-        $this->assertNotSame($before, $scroll->vScroll(), 'jumpTo must center the target line');
+        $this->assertNotSame($before, $scroll->vScroll, 'jumpTo must center the target line');
         $this->assertFalse($editor->isCompletionOpen(), 'jumpTo must close any open completion popup');
         $this->assertGreaterThan($beforeRev, $editor->getRenderRevision(), 'jumpTo must invalidate');
     }
@@ -274,7 +274,7 @@ final class CodeEditorGeometryTest extends TestCase
             $editor->render(new RenderContext(80, $rows));
             $scroll = Probe::get($editor, 'scroll');
             $foldModel = Probe::get($editor, 'foldModel');
-            $top = $foldModel->docLineAtRow($scroll->vScroll(), 0) ?? 0;
+            $top = $foldModel->docLineAtRow($scroll->vScroll, 0) ?? 0;
             $budget = IntMath::clamp($rows - 4, 0, EditorScroll::MAX_STICKY_ROWS);
             $expected = BreadcrumbScanner::stickyHeaders($editor->scopes(), $top, $budget);
 
@@ -348,7 +348,7 @@ final class CodeEditorGeometryTest extends TestCase
         $editor = $this->editor("<?php\nline1\nline2\n");
         $editor->render(new RenderContext(80, 10));
 
-        $this->assertSame($editor->contentRows(), Probe::get($editor, 'scroll')->contentRows());
+        $this->assertSame($editor->contentRows(), Probe::get($editor, 'scroll')->contentRows);
         $this->assertGreaterThan(0, $editor->contentRows(), 'setContentRows must actually have run, not left the default');
     }
 
@@ -489,7 +489,7 @@ final class CodeEditorGeometryTest extends TestCase
         $narrow->render(new RenderContext(15, 10));
         $scroll = Probe::get($narrow, 'scroll');
 
-        $this->assertGreaterThan(0, $scroll->hScroll(), 'the inlay hint widens the followed column, forcing a scroll in a narrow pane');
+        $this->assertGreaterThan(0, $scroll->hScroll, 'the inlay hint widens the followed column, forcing a scroll in a narrow pane');
     }
 
     // --- renderEmptyState centering math -----------------------------------

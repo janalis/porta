@@ -37,7 +37,7 @@ final readonly class FileDecorations
     public function snapshot(): array
     {
         $out = [];
-        foreach ($this->statuses->all() as $path => $status) {
+        foreach ($this->statuses->statuses as $path => $status) {
             $out[$path] = ['dirty' => false, 'severity' => null, 'status' => $status];
         }
         foreach ($this->buffers->all() as $buffer) {

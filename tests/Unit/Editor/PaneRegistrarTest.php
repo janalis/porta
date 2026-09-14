@@ -118,7 +118,7 @@ final class PaneRegistrarTest extends TestCase
         $this->drain()->register();
 
         $this->assertNull($this->registry->paneFor('demo'));
-        $this->assertStringContainsString('EditorPaneWidget', $this->manager->warnings()[0]->params['%message%'] ?? '');
+        $this->assertStringContainsString('EditorPaneWidget', $this->manager->warnings[0]->params['%message%'] ?? '');
     }
 
     public function testAThrowingFactoryCostsOnlyItsOwnPane(): void
@@ -130,7 +130,7 @@ final class PaneRegistrarTest extends TestCase
         $this->drain()->register();
 
         $this->assertNull($this->registry->paneFor('demo'));
-        $this->assertNotSame([], $this->manager->warnings(), 'the failure is reported, not swallowed');
+        $this->assertNotSame([], $this->manager->warnings, 'the failure is reported, not swallowed');
     }
 
     public function testAFailingRegistrationDoesNotStopLaterOnesFromLanding(): void
@@ -219,7 +219,7 @@ final class PaneRegistrarTest extends TestCase
 
         $this->assertNull($this->registry->paneFor('bad'));
         $this->assertSame($good, $this->registry->paneFor('good'), 'the sibling still lands after the failure');
-        $this->assertNotSame([], $this->manager->warnings());
+        $this->assertNotSame([], $this->manager->warnings);
     }
 
     public function testAWronglyTypedFactoryDoesNotStopLaterOnesFromLanding(): void

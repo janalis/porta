@@ -75,7 +75,7 @@ final class PluginViewerTest extends TestCase
 
         $this->assertSame('image', $manager->viewerFor('/p/a.png'), 'the throw declines, the next route still answers');
         $this->assertNull($manager->viewerFor('/p/b.txt'));
-        $warnings = $manager->warnings();
+        $warnings = $manager->warnings;
         $this->assertCount(1, $warnings, 'reported once, not per open');
         $this->assertSame('broken', $warnings[0]->params['%name%']);
     }
@@ -211,7 +211,7 @@ final class PluginViewerTest extends TestCase
         $tools[0]['rerun']();
         $line = 1;
         $tools[0]['activate']('a.php', $line);
-        $this->assertCount(2, $manager->warnings(), 'both faults were reported, neither escaped');
+        $this->assertCount(2, $manager->warnings, 'both faults were reported, neither escaped');
 
         $manager->deactivate('demo', new CommandRegistry());
         $this->assertSame([], $manager->listTools(), 'a removed plugin takes its tools with it');
@@ -254,7 +254,7 @@ final class PluginViewerTest extends TestCase
 
         $this->assertSame('Show TODOs', $registry->label('ide_todo'), "core's label, not the plugin's");
         $this->assertContains('ide_todo', $registry->keyBoundIds(), 'and it dispatches under the bare id');
-        $this->assertSame([], $manager->defaultKeys(), 'no plugin default keys: the catalog already binds alt+8');
+        $this->assertSame([], $manager->defaultKeys, 'no plugin default keys: the catalog already binds alt+8');
 
         // The guarantee: only ids core has marked adoptable can be taken, so a
         // third-party plugin cannot quietly become "save".
@@ -295,11 +295,11 @@ final class PluginViewerTest extends TestCase
         $manager->commit($api);
 
         $this->assertSame(['building'], $manager->statusSegments(), 'null and empty contribute nothing');
-        $this->assertCount(1, $manager->warnings(), 'the throwing one was reported');
+        $this->assertCount(1, $manager->warnings, 'the throwing one was reported');
 
         $state = 'done';
         $this->assertSame(['done'], $manager->statusSegments(), 'the closure is re-evaluated, not memoised');
-        $this->assertCount(1, $manager->warnings(), 'and the same fault is not reported again');
+        $this->assertCount(1, $manager->warnings, 'and the same fault is not reported again');
 
         $manager->deactivate('demo', new CommandRegistry());
         $this->assertSame([], $manager->statusSegments(), 'a removed plugin takes its segment with it');
@@ -370,7 +370,7 @@ final class PluginViewerTest extends TestCase
         $manager->notifySettingChanged('vcs', 'gutterMarks', false);
 
         $this->assertSame(1, $seen, 'the second listener still ran');
-        $this->assertCount(1, $manager->warnings(), 'and the fault was reported');
+        $this->assertCount(1, $manager->warnings, 'and the fault was reported');
     }
 
     public function testARemovedPluginTakesItsSettingListenerWithIt(): void
@@ -435,7 +435,7 @@ final class PluginViewerTest extends TestCase
         $manager->commit($second);
 
         $this->assertSame(['php' => ['php', '-dxdebug.mode=debug', 'adapter']], $manager->debugAdapters(), 'unavailable and throwing resolvers contribute nothing; first plugin wins the language');
-        $this->assertCount(1, $manager->warnings());
+        $this->assertCount(1, $manager->warnings);
 
         $manager->deactivate('php-debug', new CommandRegistry());
         $this->assertSame(['php' => ['mine', 'instead']], $manager->debugAdapters(), 'removing the first hands the language to the next');

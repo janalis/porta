@@ -131,10 +131,10 @@ final class IdeMousePrimitivesTest extends TestCase
                     // moving the caret; shift+wheel-up brings it back.
                     $tui->handleInput("\x1b[<67;45;6M");
                     $scroll = EditorState::scroll($editor);
-                    $this->assertSame(6, $scroll->hScroll(), 'wheel-right scrolled the editor sideways');
+                    $this->assertSame(6, $scroll->hScroll, 'wheel-right scrolled the editor sideways');
                     $this->assertSame(2, $editor->getDocument()->getCursorLine(), 'the caret stayed put');
                     $tui->handleInput("\x1b[<68;45;6M");
-                    $this->assertSame(0, $scroll->hScroll(), 'shift+wheel-up scrolled back');
+                    $this->assertSame(0, $scroll->hScroll, 'shift+wheel-up scrolled back');
                     // Wheel down over the editor scrolls the viewport.
                     $tui->handleInput("\x1b[<65;45;6M");
                     $tui->handleInput("\x1b[<65;45;6M");
@@ -154,7 +154,7 @@ final class IdeMousePrimitivesTest extends TestCase
                         function () use ($tui, $scroll): bool {
                             $this->frame($tui);
 
-                            return $scroll->vScroll() <= 3;
+                            return $scroll->vScroll <= 3;
                         },
                         what: 'the viewport to snap back to the caret',
                     );

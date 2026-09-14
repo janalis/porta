@@ -122,7 +122,7 @@ final readonly class PluginLoader
         }
 
         ['order' => $order, 'skipped' => $skipped] = PluginOrder::resolve($manifests);
-        $pending = $manager->pendingInstalls();
+        $pending = $manager->pendingInstalls;
         // Walked over the MANIFESTS rather than over $skipped, so each name's
         // requires are in hand without a lookup that could miss.
         foreach ($manifests as $manifest) {

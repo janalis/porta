@@ -354,12 +354,12 @@ final class DebugControllerTest extends TestCase
         $this->assertTrue($requested);
         $this->assertSame(
             [$debugSession],
-            \array_values(\array_filter($this->sessions->all(), static fn (object $s): bool => 'debug' === $s->id)),
+            \array_values(\array_filter($this->sessions->sessions, static fn (object $s): bool => 'debug' === $s->id)),
             'the same debug terminal session is reused, not duplicated',
         );
         $this->assertSame(1, $debugSession->buffer->lineCount(), 'a fresh launch clears stale output');
         $this->assertSame($debugSession, $this->sessions->active(), 'the debug session becomes active again');
-        $this->assertStringContainsString('prog.php', $debugSession->title());
+        $this->assertStringContainsString('prog.php', $debugSession->title);
 
         // Before the panel opens (which resets its DebugState to Starting),
         // it was left at Paused by the first session — a skipped open() would
@@ -1001,7 +1001,7 @@ final class DebugControllerTest extends TestCase
 
         // Closing the debug tab outright: output must still be harmless (no session to feed).
         $this->sessions->makeActive($debugSession);
-        $index = \array_search($debugSession, $this->sessions->all(), strict: true);
+        $index = \array_search($debugSession, $this->sessions->sessions, strict: true);
         $this->sessions->close($index);
         $this->client->emit('output', ['category' => 'stdout', 'output' => "gone\n"]);
         $this->assertSame(3, Probe::get($this->terminalPanel, 'scrollBack'), 'no session — the panel is untouched');

@@ -26,7 +26,7 @@ use Porta\Widget\DockPanelWidget;
 final class DockPanels
 {
     /** @var list<array{panel: DockPanelWidget, tab: ?DockTab, id: string, label: \Closure(): string}> */
-    private array $panels = [];
+    public private(set) array $panels = [];
 
     /**
      * @param \Closure(): string $label the strip entry's text, read per frame
@@ -41,12 +41,6 @@ final class DockPanels
             throw new \InvalidArgumentException('a dock panel needs a non-empty id');
         }
         $this->panels[] = ['panel' => $panel, 'tab' => $tab, 'id' => $id, 'label' => $label];
-    }
-
-    /** @return list<array{panel: DockPanelWidget, tab: ?DockTab, id: string, label: \Closure(): string}> */
-    public function all(): array
-    {
-        return $this->panels;
     }
 
     /**

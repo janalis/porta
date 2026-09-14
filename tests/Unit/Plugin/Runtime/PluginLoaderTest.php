@@ -60,15 +60,15 @@ final class PluginLoaderTest extends TestCase
     public function testLoadsAValidPluginAndMissingDirsAreSilent(): void
     {
         $empty = $this->load(new TempProject());
-        $this->assertSame([], $empty->warnings());
-        $this->assertSame([], $empty->defaultKeys());
+        $this->assertSame([], $empty->warnings);
+        $this->assertSame([], $empty->defaultKeys);
 
         $project = new TempProject(['.porta/plugins/demo/plugin.php' => $this->pluginSource('demo')]);
         $manager = $this->load($project);
 
         $this->assertTrue($manager->hasPlugin('demo'));
-        $this->assertSame(['demo:hello' => ['f8']], $manager->defaultKeys());
-        $this->assertSame([], $manager->warnings());
+        $this->assertSame(['demo:hello' => ['f8']], $manager->defaultKeys);
+        $this->assertSame([], $manager->warnings);
     }
 
     public function testProjectBeatsGlobalOnDirectoryNameAndGlobalOnlyLoads(): void
@@ -112,7 +112,7 @@ final class PluginLoaderTest extends TestCase
 
         $this->assertTrue($manager->hasPlugin('alpha'), 'the healthy one loaded');
         $this->assertFalse($manager->hasPlugin('zulu'), 'and the other could not');
-        $this->assertStringContainsString('"zulu"', self::renderAll($manager->warnings()), 'the user is told which one, and why');
+        $this->assertStringContainsString('"zulu"', self::renderAll($manager->warnings), 'the user is told which one, and why');
     }
 
     public function testAnUnmetPlatformRequirementDeclinesByNameAndTakesDependentsAlong(): void
@@ -125,7 +125,7 @@ final class PluginLoaderTest extends TestCase
         ]);
         $manager = $this->load($project);
 
-        $warnings = self::renderAll($manager->warnings());
+        $warnings = self::renderAll($manager->warnings);
         $this->assertFalse($manager->hasPlugin('future'), 'a plugin this host cannot run never loads');
         $this->assertStringContainsString('Plugin "future" needs PHP >=99.0 (this is '.\PHP_VERSION.'), ext-porta_nonexistent — not loaded', $warnings);
         $this->assertFalse($manager->hasPlugin('rider'), 'its dependents skip like any absent requirement');
@@ -143,7 +143,7 @@ final class PluginLoaderTest extends TestCase
         $manager = $this->load($project);
 
         $this->assertFalse($manager->hasPlugin('oldapi'));
-        $this->assertStringContainsString('Plugin "oldapi" needs plugin API 999 (this Porta speaks 1) — not loaded', self::renderAll($manager->warnings()));
+        $this->assertStringContainsString('Plugin "oldapi" needs plugin API 999 (this Porta speaks 1) — not loaded', self::renderAll($manager->warnings));
         $this->assertTrue($manager->hasPlugin('current'), 'a met platform and a matching API major load normally');
     }
 
@@ -201,7 +201,7 @@ final class PluginLoaderTest extends TestCase
         ]);
         $manager = $this->load($project);
 
-        $warnings = self::renderAll($manager->warnings());
+        $warnings = self::renderAll($manager->warnings);
         $this->assertStringContainsString('Plugin "typo" has an unreadable composer.json', $warnings);
         $this->assertStringContainsString('Syntax error', $warnings, 'the decoder names the reason');
         $this->assertTrue($manager->hasPlugin('typo'), 'the plugin still loads on the defaults');
@@ -220,18 +220,18 @@ final class PluginLoaderTest extends TestCase
         ]);
         $manager = $this->load($project);
 
-        $warnings = self::renderAll($manager->warnings());
+        $warnings = self::renderAll($manager->warnings);
         $this->assertStringContainsString('Plugin "a-parse-error" failed to load', $warnings);
         $this->assertStringContainsString('Plugin "b-wrong-return" failed to load: plugin.php must return a PortaPlugin instance', $warnings);
         $this->assertStringContainsString('invalid plugin name "bad:name"', $warnings);
         $this->assertStringContainsString('Plugin "d-activate-throws" failed to load: mid-activate', $warnings);
         $this->assertStringContainsString('unavailable during activate()', $warnings);
         $this->assertStringContainsString('duplicate plugin name "good"', $warnings);
-        $this->assertCount(6, $manager->warnings());
+        $this->assertCount(6, $manager->warnings);
 
         $this->assertTrue($manager->hasPlugin('good'), 'the healthy sibling loaded');
         $this->assertFalse($manager->hasPlugin('thrower'));
-        $this->assertSame(['good:hello' => ['f8']], $manager->defaultKeys(), 'atomicity: failed plugins contributed nothing');
+        $this->assertSame(['good:hello' => ['f8']], $manager->defaultKeys, 'atomicity: failed plugins contributed nothing');
     }
 
     public function testACorruptedVendorAutoloadDumpDoesNotCrashBootAndSiblingsStillLoad(): void
@@ -251,7 +251,7 @@ final class PluginLoaderTest extends TestCase
         $manager = $this->load($project);
 
         $this->assertFalse($manager->hasPlugin('corrupt'), 'a corrupted autoload dump degrades to a warning, not a crash');
-        $this->assertStringContainsString('Plugin "corrupt" failed to load', self::renderAll($manager->warnings()));
+        $this->assertStringContainsString('Plugin "corrupt" failed to load', self::renderAll($manager->warnings));
         $this->assertTrue($manager->hasPlugin('good'), 'the sibling still loads');
     }
 
@@ -286,7 +286,7 @@ final class PluginLoaderTest extends TestCase
 
         $error = $loader->loadFile($project->path('.porta/plugins/broken/plugin.php'), $manager);
         $this->assertEquals(new ConfigWarning('Plugin "%name%" failed to load: %message%', ['%name%' => 'broken', '%message%' => 'plugin.php must return a PortaPlugin instance']), $error);
-        $this->assertSame([], $manager->warnings(), 'the caller owns the failure, no warning is queued');
+        $this->assertSame([], $manager->warnings, 'the caller owns the failure, no warning is queued');
     }
 
     public function testEmbeddedDirResolvesTheEnvOverrideThenThePackage(): void
@@ -374,8 +374,8 @@ final class PluginLoaderTest extends TestCase
         $this->assertFalse($manager->hasPlugin('needy'));
         $this->assertFalse($manager->hasPlugin('dependent'), 'the skip propagates');
         $this->assertTrue($manager->hasPlugin('unrelated'), 'and stops there');
-        $this->assertSame(['needy'], $manager->pendingInstalls(), 'recorded for the drain that runs once the IDE is up');
-        $this->assertSame([], $manager->warnings(), 'and not complained about — boot is going to fix it');
+        $this->assertSame(['needy'], $manager->pendingInstalls, 'recorded for the drain that runs once the IDE is up');
+        $this->assertSame([], $manager->warnings, 'and not complained about — boot is going to fix it');
     }
 
     public function testAPluginOwedOnlyItsAutoloadDumpIsPendingToo(): void
@@ -391,7 +391,7 @@ final class PluginLoaderTest extends TestCase
         $manager = $this->load($project);
 
         $this->assertFalse($manager->hasPlugin('undumped'));
-        $this->assertSame(['undumped'], $manager->pendingInstalls());
+        $this->assertSame(['undumped'], $manager->pendingInstalls);
     }
 
     public function testAPlatformOnlyRequirementIsNotAnUninstalledDependency(): void
@@ -406,7 +406,7 @@ final class PluginLoaderTest extends TestCase
         $manager = $this->load($project);
 
         $this->assertTrue($manager->hasPlugin('modern'), 'it loads');
-        $this->assertSame([], $manager->warnings(), 'and is not warned about');
+        $this->assertSame([], $manager->warnings, 'and is not warned about');
     }
 
     public function testVendoringAPackagePortaShipsIsNamedAtBoot(): void
@@ -423,7 +423,7 @@ final class PluginLoaderTest extends TestCase
         $manager = $this->load($project);
 
         $this->assertTrue($manager->hasPlugin('shadowy'), 'it still loads — this is a warning, not a refusal');
-        $warnings = self::renderAll($manager->warnings(), ' | ');
+        $warnings = self::renderAll($manager->warnings, ' | ');
         $this->assertStringContainsString('Plugin "shadowy" vendors symfony/clock, which Porta ships', $warnings);
         $this->assertStringNotContainsString('vend/lib', $warnings, 'a package Porta does not ship is not its business');
     }
@@ -458,7 +458,7 @@ final class PluginLoaderTest extends TestCase
         $manager = $this->load($project);
 
         $this->assertTrue($manager->hasPlugin('legacy'));
-        $warnings = self::renderAll($manager->warnings(), ' | ');
+        $warnings = self::renderAll($manager->warnings, ' | ');
         $this->assertStringContainsString('Plugin "legacy" still has a plugin.json', $warnings);
         $this->assertStringContainsString('autoload.psr-4', $warnings, 'and says where the fields went');
     }

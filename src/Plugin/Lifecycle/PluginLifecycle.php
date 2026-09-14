@@ -377,7 +377,7 @@ final class PluginLifecycle implements PluginLifecycleOps
      */
     public function installPending(): void
     {
-        $pending = $this->plugins->pendingInstalls();
+        $pending = $this->plugins->pendingInstalls;
         if ([] !== $pending) {
             $this->activateQueue($this->depsFirst($pending), name: null, required: [], progress: new EnableProgress());
         }
@@ -441,7 +441,7 @@ final class PluginLifecycle implements PluginLifecycleOps
      */
     private function activateDeferred(): void
     {
-        $waiting = $this->plugins->deferred();
+        $waiting = $this->plugins->deferred;
         do {
             $stillWaiting = [];
             foreach ($waiting as $name) {

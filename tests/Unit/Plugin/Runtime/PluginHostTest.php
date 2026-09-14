@@ -42,7 +42,7 @@ final class PluginHostTest extends TestCase
 
         $host->ensureLoaded(); // idempotent: a second call must not re-activate
         $this->assertTrue($host->manager->hasPlugin('greeter'));
-        $this->assertSame([], $host->manager->warnings(), 'a second load must not even attempt to re-discover, let alone warn about a "duplicate" plugin');
+        $this->assertSame([], $host->manager->warnings, 'a second load must not even attempt to re-discover, let alone warn about a "duplicate" plugin');
         $this->assertSame($host->settings, $host->settings);
         $this->assertSame($host->loader, $host->loader);
     }

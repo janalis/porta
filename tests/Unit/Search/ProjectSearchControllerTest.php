@@ -238,7 +238,7 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->search('needle');
         $controller->cancel(); // panel closed → history recorded
 
-        $this->assertSame(['needle'], new SearchHistoryStore($project->dir)->all());
+        $this->assertSame(['needle'], new SearchHistoryStore($project->dir)->queries);
     }
 
     /**
@@ -709,7 +709,7 @@ final class ProjectSearchControllerTest extends TestCase
 
         $controller->closeSearch(new SearchTabState('kept-query', new SearchOptions(), ['.'], '*.tpl', ScopeKind::Project));
 
-        $this->assertContains('kept-query', new SearchHistoryStore($project->dir)->all(), '×ing a search tab records its query');
+        $this->assertContains('kept-query', new SearchHistoryStore($project->dir)->queries, '×ing a search tab records its query');
         $this->assertContains('*.tpl', Probe::get(new SearchPrefsStore($project->dir), 'recentMasks'), 'and its mask');
     }
 

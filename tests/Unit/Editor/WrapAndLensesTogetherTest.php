@@ -91,7 +91,7 @@ final class WrapAndLensesTogetherTest extends TestCase
         $this->rows(5);
 
         $this->assertStringContainsString('last', \implode("\n", $this->rows(5)), 'the caret line is on screen');
-        $this->assertGreaterThan(0, Probe::get($editor, 'scroll')->vScroll() + Probe::get($editor, 'scroll')->vScrollSegment(), 'which took scrolling');
+        $this->assertGreaterThan(0, Probe::get($editor, 'scroll')->vScroll + Probe::get($editor, 'scroll')->vScrollSegment, 'which took scrolling');
     }
 
     /** @return array{int, int} line, display column */

@@ -19,7 +19,7 @@ use Porta\Widget\Support\ResultsPanelFields;
 final class DockToolTabs
 {
     /** @var list<DockToolTab> creation order */
-    private array $tabs = [];
+    public private(set) array $tabs = [];
 
     private int $active = 0;
 
@@ -104,12 +104,6 @@ final class DockToolTabs
         }
         $this->active = IndexMove::reindexActive($this->active, $from, $to);
         $this->tabs = IndexMove::apply($this->tabs, $from, $to);
-    }
-
-    /** @return list<DockToolTab> */
-    public function all(): array
-    {
-        return $this->tabs;
     }
 
     public function active(): ?DockToolTab

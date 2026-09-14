@@ -14,25 +14,10 @@ final class TerminalSession
 {
     public function __construct(
         public readonly string $id,
-        private string $title,
+        public string $title,
         public readonly TerminalBuffer $buffer,
-        private ?PtyProcess $process = null,
+        public private(set) ?PtyProcess $process = null,
     ) {}
-
-    public function title(): string
-    {
-        return $this->title;
-    }
-
-    public function setTitle(string $title): void
-    {
-        $this->title = $title;
-    }
-
-    public function process(): ?PtyProcess
-    {
-        return $this->process;
-    }
 
     /** Attach a fresh process, stopping any previous one (a re-run replaces it). */
     public function attach(PtyProcess $process): void

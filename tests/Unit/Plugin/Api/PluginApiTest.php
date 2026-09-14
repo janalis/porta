@@ -531,7 +531,7 @@ final class PluginApiTest extends TestCase
                 '/p/b.php' => ChangeMarkKind::Modified,
                 '/p/c.php' => ChangeMarkKind::Deleted,
             ],
-            $this->fileStatuses->all(),
+            $this->fileStatuses->statuses,
             'an unknown kind and a pathless entry are both dropped at the boundary',
         );
     }
@@ -544,7 +544,7 @@ final class PluginApiTest extends TestCase
         $api->setFileStatuses(['/p/a.php' => 'modified']);
         $api->setFileStatuses(['/p/b.php' => 'added']);
 
-        $this->assertSame(['/p/b.php' => ChangeMarkKind::Added], $this->fileStatuses->all());
+        $this->assertSame(['/p/b.php' => ChangeMarkKind::Added], $this->fileStatuses->statuses);
     }
 
     public function testHidingTheChangeMarkGutterDropsWhatWasShowingInIt(): void

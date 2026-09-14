@@ -159,7 +159,7 @@ final class Document
 
     public function usesTabs(): bool
     {
-        return $this->indent->usesTabs();
+        return $this->indent->usesTabs;
     }
 
     /**
@@ -182,13 +182,13 @@ final class Document
     /** Spaces per indent level (EditorConfig indent_size). */
     public function indentSize(): int
     {
-        return $this->indent->indentSize();
+        return $this->indent->indentSize;
     }
 
     /** Display columns per hard tab (EditorConfig tab_width). */
     public function tabWidth(): int
     {
-        return $this->indent->tabWidth();
+        return $this->indent->tabWidth;
     }
 
     /** Display width of one indent level: the tab width for tabbed files, else the indent size. */

@@ -113,7 +113,7 @@ final class BottomDock
         // Esc is a soft hide — the tool stays alive one tab away.
         $this->terminalPanel->onDismiss($this->hide(...));
         $this->resultsPanel->onDismiss($this->hide(...));
-        foreach ($this->panelRegistry->all() as $entry) {
+        foreach ($this->panelRegistry->panels as $entry) {
             $entry['panel']->onDismiss($this->hide(...));
         }
         $this->dockTabs->setProvider($this->aliveTabs(...));
@@ -138,18 +138,18 @@ final class BottomDock
         $tabs = [];
         $terminalShown = $visible === $this->terminalPanel;
         $activeSession = $this->sessions->active();
-        foreach ($this->sessions->all() as $session) {
+        foreach ($this->sessions->sessions as $session) {
             $active = $terminalShown && $session === $activeSession;
             $tabs[] = [
                 'tab' => DockTab::Terminal,
                 'key' => $session->id,
-                'label' => $session->title().($session->isRunning() || null === $session->process() ? '' : ' '.Glyphs::SESSION_STOPPED),
+                'label' => $session->title.($session->isRunning() || null === $session->process ? '' : ' '.Glyphs::SESSION_STOPPED),
                 'active' => $active,
                 'status' => $active ? $this->terminalPanel->statusText() : '',
             ];
         }
         $resultsShown = $visible === $this->resultsPanel;
-        foreach ($this->tools->all() as $tool) {
+        foreach ($this->tools->tabs as $tool) {
             $active = $resultsShown && $tool === $this->tools->active();
             $tabs[] = [
                 'tab' => DockTab::Results,
@@ -159,7 +159,7 @@ final class BottomDock
                 'status' => $active ? $this->resultsPanel->statusText() : '',
             ];
         }
-        foreach ($this->panelRegistry->all() as $entry) {
+        foreach ($this->panelRegistry->panels as $entry) {
             if (!$entry['panel']->isOpen()) {
                 continue;
             }
@@ -260,7 +260,7 @@ final class BottomDock
     public function closeTab(?DockTab $tab, string $key = ''): void
     {
         if (DockTab::Terminal === $tab) {
-            foreach ($this->sessions->all() as $index => $session) {
+            foreach ($this->sessions->sessions as $index => $session) {
                 if ($session->id !== $key) {
                     continue;
                 }
@@ -521,7 +521,7 @@ final class BottomDock
     /** @return list<DockPanelWidget> */
     private function panels(): array
     {
-        return [$this->terminalPanel, $this->resultsPanel, ...\array_map(static fn (array $e): DockPanelWidget => $e['panel'], $this->panelRegistry->all())];
+        return [$this->terminalPanel, $this->resultsPanel, ...\array_map(static fn (array $e): DockPanelWidget => $e['panel'], $this->panelRegistry->panels)];
     }
 
     /** A panel opened (or re-opened): it takes the dock slot; the others park behind it. */

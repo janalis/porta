@@ -24,7 +24,7 @@ final class EditorScrollTest extends TestCase
         $this->scroll = new EditorScroll($this->document, $this->foldModel, function (): void {
             ++$this->invalidations;
         });
-        $this->scroll->setContentRows(24);
+        $this->scroll->contentRows = 24;
     }
 
     /** One render pass with the caret attached, recording the caret key. */
@@ -37,7 +37,7 @@ final class EditorScrollTest extends TestCase
     {
         $this->scroll->scrollBy(30);
 
-        $this->assertSame(30, $this->scroll->vScroll());
+        $this->assertSame(30, $this->scroll->vScroll);
         $this->assertSame(0, $this->document->getCursorLine());
         $this->assertSame(1, $this->invalidations);
     }
@@ -58,7 +58,7 @@ final class EditorScrollTest extends TestCase
 
         $this->settle();
 
-        $this->assertSame(30, $this->scroll->vScroll());
+        $this->assertSame(30, $this->scroll->vScroll);
     }
 
     public function testACaretLineChangeSnapsTheViewportBackToTheCaret(): void
@@ -70,7 +70,7 @@ final class EditorScrollTest extends TestCase
         $this->document->setCursor(1, 0);
         $this->settle();
 
-        $this->assertSame(1, $this->scroll->vScroll());
+        $this->assertSame(1, $this->scroll->vScroll);
     }
 
     public function testACaretColumnChangeAloneReattachesTheViewport(): void
@@ -82,7 +82,7 @@ final class EditorScrollTest extends TestCase
         $this->document->setCursor(0, 3);
         $this->settle();
 
-        $this->assertSame(0, $this->scroll->vScroll());
+        $this->assertSame(0, $this->scroll->vScroll);
     }
 
     public function testADocumentVersionChangeAloneReattachesTheViewport(): void
@@ -96,7 +96,7 @@ final class EditorScrollTest extends TestCase
         $this->settle();
 
         $this->assertSame(0, $this->document->getCursorLine());
-        $this->assertSame(0, $this->scroll->vScroll());
+        $this->assertSame(0, $this->scroll->vScroll);
     }
 
     public function testADetachedViewportSnapsOffAFoldInteriorWithoutUnfoldingIt(): void
@@ -108,7 +108,7 @@ final class EditorScrollTest extends TestCase
         $this->scroll->scrollBy(20); // lands inside the folded 11..40 interior
         $this->settle();
 
-        $this->assertSame(10, $this->scroll->vScroll());
+        $this->assertSame(10, $this->scroll->vScroll);
         $this->assertSame(40, $this->foldModel->foldEndAt(10));
     }
 
@@ -117,21 +117,21 @@ final class EditorScrollTest extends TestCase
         $this->settle();
         $this->scroll->scrollBy(50);
         $this->settle();
-        $this->assertSame(50, $this->scroll->vScroll());
+        $this->assertSame(50, $this->scroll->vScroll);
 
         $this->scroll->centerOnLine(80);
-        $this->assertSame(68, $this->scroll->vScroll()); // 80 - 24/2
+        $this->assertSame(68, $this->scroll->vScroll); // 80 - 24/2
 
         // Re-attached: the next render clamp brings the line-0 caret back into view.
         $this->settle();
-        $this->assertSame(0, $this->scroll->vScroll());
+        $this->assertSame(0, $this->scroll->vScroll);
     }
 
     public function testScrollByClampsToTheDocumentEnd(): void
     {
         $this->scroll->scrollBy(1000);
 
-        $this->assertSame(99, $this->scroll->vScroll());
+        $this->assertSame(99, $this->scroll->vScroll);
     }
 
     public function testAOneLineDocumentCannotScrollAtAll(): void
@@ -141,7 +141,7 @@ final class EditorScrollTest extends TestCase
 
         $scroll->scrollBy(5);
 
-        $this->assertSame(0, $scroll->vScroll());
+        $this->assertSame(0, $scroll->vScroll);
     }
 
     public function testAnAttachedViewportKeepsClampingWhenTheViewportShrinks(): void
@@ -154,6 +154,6 @@ final class EditorScrollTest extends TestCase
         // would hold vScroll and hide the caret).
         $this->scroll->clampToCaret(5, static fn (int $vScroll): int => 0);
 
-        $this->assertSame(26, $this->scroll->vScroll());
+        $this->assertSame(26, $this->scroll->vScroll);
     }
 }

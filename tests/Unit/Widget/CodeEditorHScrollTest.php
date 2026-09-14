@@ -32,7 +32,7 @@ final class CodeEditorHScrollTest extends TestCase
 
     private function hScroll(CodeEditorWidget $editor): int
     {
-        return EditorState::scroll($editor)->hScroll();
+        return EditorState::scroll($editor)->hScroll;
     }
 
     public function testScrollHBySlidesTheViewAndSurvivesRenders(): void

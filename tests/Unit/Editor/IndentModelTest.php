@@ -25,18 +25,18 @@ final class IndentModelTest extends TestCase
     {
         $model = IndentModel::detect(['<?php', '', 'class A', '{', '  public $x;', '    public $y;'], 4);
 
-        $this->assertSame(2, $model->indentSize(), 'the two-space step below the blank line was still seen');
-        $this->assertFalse($model->usesTabs());
+        $this->assertSame(2, $model->indentSize, 'the two-space step below the blank line was still seen');
+        $this->assertFalse($model->usesTabs);
     }
 
     public function testUnitAndDisplayWidthForSpaces(): void
     {
         $indent = new IndentModel(usesTabs: false, indentSize: 2, tabWidth: 8);
 
-        $this->assertFalse($indent->usesTabs());
+        $this->assertFalse($indent->usesTabs);
         $this->assertSame('  ', $indent->unit());
-        $this->assertSame(2, $indent->indentSize());
-        $this->assertSame(8, $indent->tabWidth());
+        $this->assertSame(2, $indent->indentSize);
+        $this->assertSame(8, $indent->tabWidth);
         $this->assertSame(2, $indent->displayWidth(), 'space files display the indent size');
     }
 
@@ -53,8 +53,8 @@ final class IndentModelTest extends TestCase
         $indent = new IndentModel(usesTabs: false, indentSize: 4, tabWidth: 4);
         $indent->set(IndentKind::Spaces, 0);
 
-        $this->assertSame(1, $indent->indentSize());
-        $this->assertSame(1, $indent->tabWidth());
+        $this->assertSame(1, $indent->indentSize);
+        $this->assertSame(1, $indent->tabWidth);
     }
 
     public function testSetWithTabsKindSwitchesToTabs(): void
@@ -62,7 +62,7 @@ final class IndentModelTest extends TestCase
         $indent = new IndentModel(usesTabs: false, indentSize: 4, tabWidth: 4);
         $indent->set(IndentKind::Tabs, 4);
 
-        $this->assertTrue($indent->usesTabs());
+        $this->assertTrue($indent->usesTabs);
     }
 
     public function testUnitForAZeroIndentSizeIsEmpty(): void
@@ -86,9 +86,9 @@ final class IndentModelTest extends TestCase
         $indent = new IndentModel(usesTabs: false, indentSize: 4, tabWidth: 4);
         $indent->applyEditorConfig(ResolvedEditorConfig::fromProps(['tab_width' => '8']));
 
-        $this->assertFalse($indent->usesTabs(), 'unspecified style untouched');
-        $this->assertSame(4, $indent->indentSize(), 'unspecified indent size untouched');
-        $this->assertSame(8, $indent->tabWidth());
+        $this->assertFalse($indent->usesTabs, 'unspecified style untouched');
+        $this->assertSame(4, $indent->indentSize, 'unspecified indent size untouched');
+        $this->assertSame(8, $indent->tabWidth);
     }
 
     public function testApplyEditorConfigSetsStyleAndIndentSize(): void
@@ -96,8 +96,8 @@ final class IndentModelTest extends TestCase
         $indent = new IndentModel(usesTabs: false, indentSize: 4, tabWidth: 4);
         $indent->applyEditorConfig(ResolvedEditorConfig::fromProps(['indent_style' => 'tab', 'indent_size' => '3']));
 
-        $this->assertTrue($indent->usesTabs());
-        $this->assertSame(3, $indent->indentSize());
+        $this->assertTrue($indent->usesTabs);
+        $this->assertSame(3, $indent->indentSize);
     }
 
     public function testApplyEditorConfigNoneLeavesEverythingUntouched(): void
@@ -105,8 +105,8 @@ final class IndentModelTest extends TestCase
         $indent = new IndentModel(usesTabs: true, indentSize: 2, tabWidth: 6);
         $indent->applyEditorConfig(ResolvedEditorConfig::none());
 
-        $this->assertTrue($indent->usesTabs());
-        $this->assertSame(2, $indent->indentSize());
-        $this->assertSame(6, $indent->tabWidth());
+        $this->assertTrue($indent->usesTabs);
+        $this->assertSame(2, $indent->indentSize);
+        $this->assertSame(6, $indent->tabWidth);
     }
 }

@@ -262,7 +262,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         // The QUERY field only, whichever is focused. Recalling a past search
         // into the REPLACEMENT is never what the chord means, and the modal
         // gates it the same way.
-        $queries = $this->history?->all() ?? [];
+        $queries = $this->history->queries ?? [];
         $next = $this->historyCursor + $step;
         if (0 !== $this->activeField || $next < -1 || $next >= \count($queries)) {
             return;

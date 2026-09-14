@@ -214,7 +214,7 @@ final class WrapCaretMotionTest extends TestCase
         $editor->getDocument()->setCursor(1, 0);
         $painted = $screen();
 
-        $this->assertSame(0, Probe::get($editor, 'scroll')->vScroll(), 'everything fits, so the viewport stays at the top');
+        $this->assertSame(0, Probe::get($editor, 'scroll')->vScroll, 'everything fits, so the viewport stays at the top');
         $this->assertStringContainsString('aaa', $painted, 'and the first line is still there');
         $this->assertStringContainsString('BBB', $painted);
         $this->assertStringContainsString('lens two', $painted);
@@ -238,14 +238,14 @@ final class WrapCaretMotionTest extends TestCase
         $editor->render(new RenderContext(30, 4));
 
         $scroll = Probe::get($editor, 'scroll');
-        $this->assertSame(0, $scroll->vScroll(), 'still the same document line — there is no other');
+        $this->assertSame(0, $scroll->vScroll, 'still the same document line — there is no other');
         // Exactly, not merely "some": a 120-column line at width 22 is six
         // segments, the caret at column 110 is in the sixth (index 5), and four
         // rows hold segments 2..5 — so two rows are hidden above.
-        $this->assertSame(2, $scroll->vScrollSegment(), 'scrolled exactly far enough to show the caret, not further');
+        $this->assertSame(2, $scroll->vScrollSegment, 'scrolled exactly far enough to show the caret, not further');
 
         // The caret's own segment is the last one shown, not one below it.
-        $hidden = $scroll->vScrollSegment();
+        $hidden = $scroll->vScrollSegment;
         $caretSegment = \intdiv(110, (int) $editor->wrapWidth());
         $this->assertGreaterThanOrEqual($hidden, $caretSegment, 'the caret is at or below the first visible row');
         $this->assertLessThan($hidden + 4, $caretSegment, 'and within the four rows on screen');
@@ -261,12 +261,12 @@ final class WrapCaretMotionTest extends TestCase
         $editor->render(new RenderContext(30, 4));
         $editor->getDocument()->setCursor(0, 110);
         $editor->render(new RenderContext(30, 4));
-        $this->assertGreaterThan(0, Probe::get($editor, 'scroll')->vScrollSegment());
+        $this->assertGreaterThan(0, Probe::get($editor, 'scroll')->vScrollSegment);
 
         $editor->getDocument()->setCursor(0, 0);
         $editor->render(new RenderContext(30, 4));
 
-        $this->assertSame(0, Probe::get($editor, 'scroll')->vScrollSegment(), 'back to the line\'s first row');
+        $this->assertSame(0, Probe::get($editor, 'scroll')->vScrollSegment, 'back to the line\'s first row');
     }
 
     /** A viewport scrolled INTO a tall line, for the reset tests below. */
@@ -279,7 +279,7 @@ final class WrapCaretMotionTest extends TestCase
         $editor->render(new RenderContext(30, 4));
         $editor->getDocument()->setCursor(0, 110);
         $editor->render(new RenderContext(30, 4));
-        $this->assertGreaterThan(0, Probe::get($editor, 'scroll')->vScrollSegment(), 'the fixture must actually be scrolled into the line');
+        $this->assertGreaterThan(0, Probe::get($editor, 'scroll')->vScrollSegment, 'the fixture must actually be scrolled into the line');
 
         return $editor;
     }
@@ -294,7 +294,7 @@ final class WrapCaretMotionTest extends TestCase
 
         $scroll->scrollBy(1);
 
-        $this->assertSame(0, $scroll->vScrollSegment());
+        $this->assertSame(0, $scroll->vScrollSegment);
     }
 
     /** And so does centring on a line, for the same reason. */
@@ -304,6 +304,6 @@ final class WrapCaretMotionTest extends TestCase
 
         $scroll->centerOnLine(2);
 
-        $this->assertSame(0, $scroll->vScrollSegment());
+        $this->assertSame(0, $scroll->vScrollSegment);
     }
 }

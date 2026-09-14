@@ -34,7 +34,7 @@ final class KeybindingsFactory
         $this->plugins->ensureLoaded();
         $keymap ??= $this->config->keymap;
 
-        return new Keybindings(\array_merge(ActionCatalog::ideDefaults(), $this->plugins->manager->defaultKeys(), $this->known($keymap)), $parser);
+        return new Keybindings(\array_merge(ActionCatalog::ideDefaults(), $this->plugins->manager->defaultKeys, $this->known($keymap)), $parser);
     }
 
     /**
