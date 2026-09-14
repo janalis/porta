@@ -137,7 +137,8 @@ integrations = ["symfony", "phpunit"]
 # code; the round-5 test split retired the E2e monolith that pinned two rules;
 # all nine re-bisected again under mago 1.45, where exactly one moved):
 #
-#   cyclomatic-complexity   147  Input/MouseRouter — still on top. It gained the
+#   cyclomatic-complexity   145  Input/MouseRouter — still on top (see the
+#                                Rector round below for 147 → 145). It gained the
 #                                file-tree drag: one entry in route()'s `||`
 #                                chain and one `ctrl || shift` in the arm, +2.
 #                                The drag ITSELF is Tree/TreeDragRouter, which
@@ -279,13 +280,25 @@ integrations = ["symfony", "phpunit"]
 # Both floors verified by bisection, not assumed: at 144 and at 22 respectively,
 # `composer lint` reports exactly one finding each.
 #
+# The PHP 8.5 / Rector round (Symfony-style lint, then the PHP ≤8.5, type,
+# code-quality, dead-code and PHPUnit sets) re-bisected all nine and moved ONE:
+#   cyclomatic-complexity   147 -> 145. The pin had drifted: bisected on main
+#                                before the round, the floor was already 146
+#                                (at 145 MouseRouter fires). The round's own
+#                                -1 is code-quality's if-return-bool collapse
+#                                of the Welcome press, one `if` fewer in the
+#                                class. The other eight hold their exact values,
+#                                including IdeTest's volume — which is why
+#                                Rector's (string)-cast assertion rule is
+#                                skipped: it tipped that one.
+#
 # Re-bisect and lower again after the next structural change — AND after a mago
 # upgrade, which can change how a metric is counted without a line of code
 # moving (1.45 did exactly that to too-many-methods). A threshold far above the
 # real maximum is not a gate. Verified failing: injecting 60 dummy
 # properties into Ui/Notifier trips too-many-properties and lint exits 1.
 [linter.rules]
-cyclomatic-complexity = { threshold = 147 }
+cyclomatic-complexity = { threshold = 145 }
 too-many-methods = { threshold = 86 }
 too-many-properties = { threshold = 31 }
 too-many-enum-cases = { threshold = 61 }

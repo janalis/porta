@@ -9512,3 +9512,52 @@ state. This one put two scratch roots into `~/.porta/recent-projects.json` and
 they had to be cleaned out by hand. Point `PORTA_HOME` at a temp directory
 first.
 
+## PHP 8.5, Symfony-style lint, Rector as a gate (2026-09-14)
+
+**The floor is PHP 8.5.** Nothing in the code needed changing for it: `mago
+analyze` and `mago lint` were already clean at `php-version = "8.5"`, and the
+suite already ran on 8.5 with `failOnAllIssues`, so the bump is manifests, CI,
+the two `bin/` guards and prose.
+
+**mago has no Symfony preset; the formatter was already one, so the linter is
+the change.** mago 1.47's presets are default, psr-12, pint, tempest, hack and
+drupal. What @Symfony adds that mago can grade: yoda comparisons, fully
+qualified native functions and constants, and `$this->assert*()`. The native
+call rule cannot be scoped to php-cs-fixer's `@compiler_optimized` list, so it
+covers every native function — 8,496 sites, inserted at mago's reported byte
+offsets so every changed line stayed one line. All four rules sit at `warning`
+explicitly: at their default `help`, `--minimum-fail-level=note` never fails.
+
+**Rector is a gate, `composer rector:check`, and its skip list is the
+decision record.** Every skipped rule carries its reason in `rector.php`;
+what follows is the pattern behind them, measured by applying each set and
+reading the diff grouped by rule before trusting it.
+
+- **By-reference captures defeat phpstan's inference.** Three rules read
+  `use (&$x)` as the value `$x` starts with: always-true ifs, unreachable
+  statements, and wide-union return narrowing. The first two gutted
+  `AsyncHighlightTest`'s intermittent-failure branch in the diff; the third
+  passed `composer test` and failed two `MenuModelTest` cases under
+  `coverage:check` — `?string` narrowed to `string` on a closure that returns
+  null once the captured flag flips.
+- **mago is the analyser here, not phpstan.** `@var mixed` tags that
+  acknowledge a mixed assignment, inline `@var` on returns, and casts over
+  `string|false` natives all look useless to Rector and are what mago narrows
+  from. Two first-class-callable rewrites (`\is_string(...)` in a filter, typed
+  array constants without a shape) lost mago inference outright.
+- **Some rewrites are behaviour.** `\dirname(__DIR__)` → `__DIR__.'/..'` is a
+  different path string; sorting named arguments reorders evaluation;
+  constructor promotion renames parameters out from under named-argument
+  callers; dropping an unused public parameter unwires a listener, which the
+  dispatcher matches by parameter type; flipping assert arguments swapped a
+  deliberate needle into the haystack.
+- **Some fight the house style.** `?:` (mago's no-shorthand-ternary), null
+  checks as `instanceof` (not Symfony's spelling, not yoda, and one import —
+  one arch edge candidate — each), private static helpers made instance methods
+  (static closures call them).
+
+Rector imports the class names it adds, classes only and only in files it
+already changes; importing functions would undo the qualified calls.
+
+**One metric floor moved:** cyclomatic-complexity 147 → 145 (`mago.toml` has
+the note). The pin had already drifted to 146 on `main`.
