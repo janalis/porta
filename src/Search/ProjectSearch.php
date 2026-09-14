@@ -301,7 +301,7 @@ final class ProjectSearch
      * whose relative paths are prefixed back on so every result stays
      * root-relative.
      *
-     * @param list<string> $globs basename globs, mirroring grep --include (dir scopes only)
+     * @param list<string> $globs basename globs, mirroring grep --include
      *
      * @return iterable<string, string>
      */
@@ -309,7 +309,16 @@ final class ProjectSearch
     {
         $abs = '.' === $scope ? $this->rootDir : $this->rootDir.'/'.$scope;
         if (is_file($abs)) {
-            yield $scope => $abs; // an explicit file is searched regardless of the mask
+            // The mask narrows an explicitly named file too, because grep does:
+            // `--include` is a filter on every candidate, not just on the ones
+            // the walk turned up, and both greps this runs on (BSD and ugrep)
+            // answer "no match" for `grep --include='*.php' needle a.txt`. grep
+            // is the primary engine, so this branch is what a handful of users
+            // without it on PATH see — aligning it toward what everyone else
+            // already experiences is the change that surprises nobody.
+            if ([] === $globs || self::matchesAnyGlob(basename($abs), $globs)) {
+                yield $scope => $abs;
+            }
 
             return;
         }
@@ -327,6 +336,24 @@ final class ProjectSearch
         foreach ($finder as $file) {
             yield $prefix.$file->getRelativePathname() => $file->getPathname();
         }
+    }
+
+    /**
+     * Whether a basename satisfies at least one of the mask's globs — the OR
+     * Finder's `->name()` applies to the walk, applied by hand to the one file
+     * a file scope names.
+     *
+     * @param list<string> $globs
+     */
+    private static function matchesAnyGlob(string $name, array $globs): bool
+    {
+        foreach ($globs as $glob) {
+            if (fnmatch($glob, $name)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

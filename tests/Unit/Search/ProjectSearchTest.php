@@ -283,6 +283,42 @@ final class ProjectSearchTest extends TestCase
         $this->assertSame(['src/A.php', 'src/B.js'], $this->maskedPaths(SearchBackend::PhpFallback, '*.{php,js}'), 'brace mask via Finder');
     }
 
+    /**
+     * A scope entry that names one FILE rather than a directory, under a mask.
+     *
+     * @return list<string> the result paths
+     */
+    private function fileScopePaths(SearchBackend $backend, string $scope, string $mask): array
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\n// needle\n",
+            'src/B.js' => "// needle\n",
+        ]);
+        if (SearchBackend::PhpFallback === $backend) {
+            putenv('PATH=/nonexistent');
+        }
+
+        return array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle', scope: $scope, mask: $mask), 'path');
+    }
+
+    /**
+     * The two engines used to disagree here: grep's `--include` filters every
+     * candidate including one named on the command line, while the fallback
+     * yielded a named file whatever the mask said. Same fixture, same scope,
+     * same mask, both engines — asserted together so the next divergence fails
+     * rather than being discovered by a user whose PATH has no grep on it.
+     */
+    public function testAMaskNarrowsAnExplicitFileScopeInBothEngines(): void
+    {
+        foreach ([SearchBackend::Grep, SearchBackend::PhpFallback] as $backend) {
+            $name = $backend->name;
+            $this->assertSame(['src/A.php'], $this->fileScopePaths($backend, 'src/A.php', '*.php'), $name.': the mask admits the named file');
+            $this->assertSame([], $this->fileScopePaths($backend, 'src/B.js', '*.php'), $name.': the mask excludes the named file');
+            $this->assertSame(['src/B.js'], $this->fileScopePaths($backend, 'src/B.js', ''), $name.': no mask, so the named file is searched');
+            $this->assertSame(['src/B.js'], $this->fileScopePaths($backend, 'src/B.js', '*.{php,js}'), $name.': a later glob in the mask admits it');
+        }
+    }
+
     public function testEmptyQueryReturnsNothing(): void
     {
         $project = $this->fixtures();
