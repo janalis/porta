@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\TextPreview;
 use Porta\I18n\Translator;
+use Porta\Support\Files;
 use Porta\Tests\Support\RecordingViewerTabHandler;
 use Porta\Widget\TextPreviewWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -59,6 +60,45 @@ final class TextPreviewWidgetTest extends TestCase
 
         $this->assertStringContainsString('too large to edit', $banner);
         $this->assertStringNotContainsString('showing the first', $banner);
+    }
+
+    /**
+     * The cap is exactly 2 MiB, so at one decimal a file just over it read
+     * "is 2.0 MB, showing the first 2.0 MB" — a banner whose two halves say the
+     * same thing while existing to say they differ.
+     */
+    public function testABannerNeverSaysTheWholeFileIsTheSizeOfThePrefix(): void
+    {
+        $cap = Files::MAX_TEXT_BYTES;
+        $widget = $this->widget(new TextPreview(str_repeat('x', times: $cap), bytes: $cap + 30_000, truncated: true));
+
+        $banner = $this->plain($widget, cols: 90)[0];
+
+        // Anchored at the start: the banner is inset one column, like every
+        // other header row in the IDE.
+        $this->assertStringStartsWith(' Read-only: huge.log is 2.03 MB, showing the first 2.00 MB', $banner);
+        $this->assertSame('Read-only preview  2.00 MB of 2.03 MB', $widget->statusRight());
+    }
+
+    /**
+     * The widening stops at two decimals. A file a hundred bytes over the cap
+     * really is the size of its own preview to any precision worth printing,
+     * and there the repetition is simply true.
+     */
+    public function testSizesThatStayEqualAtTwoDecimalsKeepTheShortForm(): void
+    {
+        $cap = Files::MAX_TEXT_BYTES;
+        $widget = $this->widget(new TextPreview(str_repeat('x', times: $cap), bytes: $cap + 100, truncated: true));
+
+        $this->assertStringContainsString('is 2.00 MB, showing the first 2.00 MB', $this->plain($widget, cols: 90)[0]);
+    }
+
+    /** Sizes that already differ are left alone: one decimal is what a size reads as. */
+    public function testDistinctSizesKeepOneDecimal(): void
+    {
+        $widget = $this->widget(new TextPreview(str_repeat('a', times: 2048), bytes: 1_073_741_824, truncated: true));
+
+        $this->assertSame('Read-only preview  2.0 KB of 1.0 GB', $widget->statusRight());
     }
 
     public function testScrollingStopsAtTheLastBodyFullOfLines(): void

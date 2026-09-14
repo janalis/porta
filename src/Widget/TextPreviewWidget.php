@@ -132,9 +132,11 @@ final class TextPreviewWidget extends EditorPaneWidget
             return '';
         }
 
+        [$shown, $total] = self::distinctSizes(\strlen($preview->text), $preview->bytes);
+
         return $this->translator->trans('Read-only preview  %shown% of %total%', [
-            '%shown%' => self::humanBytes(\strlen($preview->text)),
-            '%total%' => self::humanBytes($preview->bytes),
+            '%shown%' => $shown,
+            '%total%' => $total,
         ]);
     }
 
@@ -214,6 +216,7 @@ final class TextPreviewWidget extends EditorPaneWidget
     private function bannerLine(int $cols): string
     {
         $preview = $this->preview;
+        [$shown, $total] = null === $preview ? ['', ''] : self::distinctSizes(\strlen($preview->text), $preview->bytes);
         $text = null === $preview
             ? ''
             : ' '
@@ -223,8 +226,8 @@ final class TextPreviewWidget extends EditorPaneWidget
                     : 'Read-only: %file% is %total%, too large to edit',
                 [
                     '%file%' => basename((string) $this->path),
-                    '%total%' => self::humanBytes($preview->bytes),
-                    '%shown%' => self::humanBytes(\strlen($preview->text)),
+                    '%total%' => $total,
+                    '%shown%' => $shown,
                 ],
             );
 
@@ -237,8 +240,30 @@ final class TextPreviewWidget extends EditorPaneWidget
         return IntMath::clamp($top, 0, max(0, \count($this->lines) - $this->bodyRows));
     }
 
-    /** Sizes the way a user reads them; the cap is megabytes, so one decimal is enough. */
-    private static function humanBytes(int $bytes): string
+    /**
+     * The pair of sizes for the banner, at a precision that tells them apart.
+     *
+     * The cap is exactly 2 MiB, so a file a little over it read "is 2.0 MB,
+     * showing the first 2.0 MB" — a sentence that answers its own question
+     * wrong. A second decimal separates them. Two is where it stops: a file a
+     * hundred bytes over the cap really IS the same size as the preview to any
+     * precision worth printing, and there the repetition is simply true.
+     *
+     * @return array{string, string}
+     */
+    private static function distinctSizes(int $shown, int $total): array
+    {
+        $pair = [self::humanBytes($shown), self::humanBytes($total)];
+
+        return (
+            $pair[0] === $pair[1] && $shown !== $total
+                ? [self::humanBytes($shown, decimals: 2), self::humanBytes($total, decimals: 2)]
+                : $pair
+        );
+    }
+
+    /** Sizes the way a user reads them; the cap is megabytes, so one decimal is usually enough. */
+    private static function humanBytes(int $bytes, int $decimals = 1): string
     {
         if ($bytes < 1024) {
             return $bytes.' B';
@@ -251,6 +276,6 @@ final class TextPreviewWidget extends EditorPaneWidget
             ++$unit;
         }
 
-        return \sprintf('%.1f %s', $value, $units[$unit]);
+        return \sprintf('%.'.$decimals.'f %s', $value, $units[$unit]);
     }
 }
