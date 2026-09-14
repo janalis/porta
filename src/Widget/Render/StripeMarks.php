@@ -6,6 +6,7 @@ namespace Porta\Widget\Render;
 
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\DecorationStore;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\DiagnosticStyle;
 
 /**
@@ -20,7 +21,7 @@ use Porta\Editor\DiagnosticStyle;
 final readonly class StripeMarks
 {
     /**
-     * @param array<int, int>            $severityByLine  0-based line => worst severity present (1..4)
+     * @param array<int, DiagnosticSeverity> $severityByLine 0-based line => worst severity present
      * @param array<int, ChangeMarkKind> $vcsByLine       0-based line => version-control change kind
      * @param list<int>                  $searchLines     0-based lines carrying at least one search match
      * @param list<int>                  $breakpointLines 0-based lines carrying a breakpoint

@@ -47,7 +47,7 @@ final readonly class ProblemRows
             $rel = $this->paths->relative($buffer->path);
             foreach ($buffer->diagnostics as $line => $list) {
                 foreach ($list as $diag) {
-                    $marker = DiagnosticStyle::glyph($diag['severity']);
+                    $marker = $diag['severity']->glyph();
                     // Cast now, where it IS observable: the shape says
                     // `int|string` and the field is a string, so a numeric
                     // code from a server that sends one has to arrive as text

@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Editor;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\DecorationStore;
+use Porta\Editor\DiagnosticSeverity;
 
 final class DecorationStoreTest extends TestCase
 {
@@ -20,13 +21,13 @@ final class DecorationStoreTest extends TestCase
 
         $store->setDiagnostics([
             3 => [
-                ['severity' => 1, 'message' => 'boom', 'col' => 0],
-                ['severity' => 2, 'message' => 'meh', 'col' => 4],
+                ['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0],
+                ['severity' => DiagnosticSeverity::Warning, 'message' => 'meh', 'col' => 4],
             ],
         ]);
         $this->assertSame(['errors' => 1, 'warnings' => 1], $store->diagnosticCounts());
 
-        $store->resetForBuffer([5 => [['severity' => 2, 'message' => 'other file', 'col' => 0]]]);
+        $store->resetForBuffer([5 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'other file', 'col' => 0]]]);
         $this->assertSame(['errors' => 0, 'warnings' => 1], $store->diagnosticCounts(), 'a buffer switch recounts');
 
         $store->setDiagnostics([]);

@@ -10,6 +10,7 @@ use Porta\Config\IndentStyle;
 use Porta\Config\LanguageIndent;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\LineNumberMode;
 use Porta\Highlight\CodeHighlighter;
@@ -669,7 +670,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testDiagnosticSpanningToLineEnd(): void
     {
         $editor = $this->editor("<?php\nbroken line here\n");
-        $editor->decorations()->setDiagnostics([1 => [['severity' => 2, 'message' => 'multi-line issue', 'col' => 2, 'endCol' => \PHP_INT_MAX]]]);
+        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'multi-line issue', 'col' => 2, 'endCol' => \PHP_INT_MAX]]]);
 
         $rendered = $editor->render(new RenderContext(60, 5));
         $this->assertStringContainsString("\x1b[4:5m\x1b[58;5;179m", $rendered[1], 'dashed amber underline to line end');
@@ -731,7 +732,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testInlineDiagnosticRendersAndCanBeDisabled(): void
     {
         $editor = $this->editor("<?php\n\$x = 1;\n");
-        $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => 'undefined variable', 'col' => 0, 'endCol' => 2]]]);
+        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'undefined variable', 'col' => 0, 'endCol' => 2]]]);
 
         $rendered = $editor->render(new RenderContext(80, 5));
         $this->assertStringContainsString('undefined variable', AnsiUtils::stripAnsiCodes($rendered[1]));
@@ -745,7 +746,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testDiagnosticAndRelativeNumberTogglesAreIdempotentBothWays(): void
     {
         $editor = $this->editor("<?php\n\$x = 1;\n");
-        $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => 'undefined variable', 'col' => 0, 'endCol' => 2]]]);
+        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'undefined variable', 'col' => 0, 'endCol' => 2]]]);
 
         // inlineDiagnostics defaults on: disable (set), disable again (skip), enable (set), enable again (skip).
         $editor->display()->setInlineDiagnostics(false);
@@ -794,7 +795,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         // after the *display* width of the code, not its byte/character width
         // (which would overprint the code's tail).
         $editor = $this->editor("<?php\n\t\t\$x = 1;\n");
-        $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => 'undefined variable', 'col' => 0]]]);
+        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'undefined variable', 'col' => 0]]]);
 
         $rendered = $editor->render(new RenderContext(80, 5));
         $plain = AnsiUtils::stripAnsiCodes($rendered[1]);
@@ -815,7 +816,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $message = 'undefined variable';
         $editor = $this->editor("<?php\n\$x = 1;\n");
         $editor->decorations()->setInlayHints([1 => [['col' => 7, 'text' => $hint]]]);
-        $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => $message, 'col' => 0]]]);
+        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => $message, 'col' => 0]]]);
 
         $plain = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(80, 5))[1]);
         $this->assertStringContainsString('$x = 1;', $plain, 'the code itself is intact');
@@ -832,7 +833,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $long = \str_repeat('x', times: 70);
         $editor = $this->editor("<?php\n{$long}\n");
         $editor->getDocument()->setCursor(1, 0);
-        $editor->decorations()->setDiagnostics([1 => [['severity' => 2, 'message' => 'a warning here', 'col' => 0]]]);
+        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'a warning here', 'col' => 0]]]);
 
         $rendered = $editor->render(new RenderContext(40, 5));
         $this->assertStringNotContainsString('a warning here', AnsiUtils::stripAnsiCodes($rendered[1]));
@@ -842,7 +843,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testInlineDiagnosticWithEmptyMessageRendersNothingExtra(): void
     {
         $editor = $this->editor("<?php\n\$x = 1;\n");
-        $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => '', 'col' => 0]]]);
+        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => '', 'col' => 0]]]);
 
         $rendered = $editor->render(new RenderContext(80, 5));
         // Still an exact-width line, just no message text appended.

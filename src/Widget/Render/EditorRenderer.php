@@ -7,6 +7,7 @@ namespace Porta\Widget\Render;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionBox;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Support\AnsiText;
@@ -331,7 +332,7 @@ final class EditorRenderer
      *                                                                                                 inlay hints and the collapsed-fold marker),
      *                                                                                                 not the raw doc line's width, or the message
      *                                                                                                 would slice into those decorations
-     * @param list<array{message?: string, severity?: int, col?: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}> $diags
+     * @param list<array{message?: string, severity?: DiagnosticSeverity, col?: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}> $diags
      */
     public static function appendInlineDiagnostic(int $hScroll, int $textDisplayWidth, array $diags, string $content, int $contentWidth, Styles $styles): string
     {
@@ -340,7 +341,7 @@ final class EditorRenderer
         $worst = DiagnosticStyle::worst($diags);
         $message = '';
         foreach ($diags as $diag) {
-            if (DiagnosticStyle::normalize($diag['severity'] ?? 1) !== $worst) {
+            if (($diag['severity'] ?? DiagnosticSeverity::Error) !== $worst) {
                 continue;
             }
 
@@ -361,10 +362,10 @@ final class EditorRenderer
 
         $extra = \count($diags) > 1 ? ' +'.(\count($diags) - 1) : '';
         // Severity glyph prefix, so error vs warning reads without color.
-        $label = AnsiText::truncate('‹ '.DiagnosticStyle::glyph($worst).' '.(string) \preg_replace('/\s+/', replacement: ' ', subject: $message).$extra.' ›', $available);
+        $label = AnsiText::truncate('‹ '.$worst->glyph().' '.(string) \preg_replace('/\s+/', replacement: ' ', subject: $message).$extra.' ›', $available);
         $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
 
-        return AnsiText::padRight($head.$styles->of(DiagnosticStyle::dimRole($worst))->apply($label), $contentWidth);
+        return AnsiText::padRight($head.$styles->of($worst->dimRole())->apply($label), $contentWidth);
     }
 
     /**

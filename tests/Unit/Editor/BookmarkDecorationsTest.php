@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BookmarkDecorations;
 use Porta\Editor\Bookmarks;
 use Porta\Editor\Buffer;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Event\BufferSwitched;
 use Porta\Ui\Glyphs;
@@ -55,14 +56,14 @@ final class BookmarkDecorationsTest extends TestCase
         $bookmarks->toggle('/p/a.php', 1);
         new BookmarkDecorations($bookmarks, $editor->decorations())->apply('/p/a.php');
 
-        $editor->decorations()->setDiagnostics([1 => [['col' => 0, 'endCol' => 3, 'message' => 'unused', 'severity' => 4]]]);
+        $editor->decorations()->setDiagnostics([1 => [['col' => 0, 'endCol' => 3, 'message' => 'unused', 'severity' => DiagnosticSeverity::Hint]]]);
 
         $lines = $editor->render(new RenderContext(40, 8));
         $this->assertStringContainsString(Glyphs::BOOKMARK, $lines[1], 'the mark is still there under a hint');
 
         // And an ERROR does not take it either — the strongest severity is the
         // case someone would reach for to argue the other way.
-        $editor->decorations()->setDiagnostics([1 => [['col' => 0, 'endCol' => 3, 'message' => 'broken', 'severity' => 1]]]);
+        $editor->decorations()->setDiagnostics([1 => [['col' => 0, 'endCol' => 3, 'message' => 'broken', 'severity' => DiagnosticSeverity::Error]]]);
 
         $this->assertStringContainsString(
             Glyphs::BOOKMARK,

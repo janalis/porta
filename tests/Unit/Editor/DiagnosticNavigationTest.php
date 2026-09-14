@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Editor;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\DiagnosticNavigation;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
@@ -21,7 +22,7 @@ final class DiagnosticNavigationTest extends TestCase
     private CodeEditorWidget $editor;
     private StatusBarWidget $status;
 
-    /** @param array<int, list<array{severity: int, message: string, col: int}>> $diagnostics */
+    /** @param array<int, list<array{severity: DiagnosticSeverity, message: string, col: int}>> $diagnostics */
     private function navigation(array $diagnostics, int $caret = 0, ?string $paneId = null): DiagnosticNavigation
     {
         $this->buffers = new BufferManager();
@@ -38,13 +39,13 @@ final class DiagnosticNavigationTest extends TestCase
         return new DiagnosticNavigation($this->buffers, $this->editor, new Notifier($this->status, TestTui::create(80, 24)), new Translator('en'));
     }
 
-    /** @return array<int, list<array{severity: int, message: string, col: int}>> */
+    /** @return array<int, list<array{severity: DiagnosticSeverity, message: string, col: int}>> */
     private static function threeProblems(): array
     {
         return [
-            2 => [['severity' => 1, 'message' => 'first boom', 'col' => 0]],
-            6 => [['severity' => 2, 'message' => 'middle warn', 'col' => 0]],
-            9 => [['severity' => 1, 'message' => 'last boom', 'col' => 0]],
+            2 => [['severity' => DiagnosticSeverity::Error, 'message' => 'first boom', 'col' => 0]],
+            6 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'middle warn', 'col' => 0]],
+            9 => [['severity' => DiagnosticSeverity::Error, 'message' => 'last boom', 'col' => 0]],
         ];
     }
 
@@ -126,7 +127,7 @@ final class DiagnosticNavigationTest extends TestCase
     /** A line whose diagnostics were cleared to [] is not a problem to stop on. */
     public function testAnEmptiedLineIsSkipped(): void
     {
-        $navigation = $this->navigation([2 => [], 6 => [['severity' => 1, 'message' => 'real', 'col' => 0]]], caret: 0);
+        $navigation = $this->navigation([2 => [], 6 => [['severity' => DiagnosticSeverity::Error, 'message' => 'real', 'col' => 0]]], caret: 0);
 
         $navigation->next();
 

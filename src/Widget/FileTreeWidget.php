@@ -6,7 +6,7 @@ namespace Porta\Widget;
 
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
-use Porta\Editor\DiagnosticStyle;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Event\TreeDropRequested;
 use Porta\Event\TreeFileActivated;
 use Porta\Layout\ResizableSidebar;
@@ -112,7 +112,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      * render revision, which an edit in the EDITOR never bumps — so the marks
      * are compared here and the memo dropped when they move.
      *
-     * @var array<string, array{dirty: bool, severity: int, status: \Porta\Editor\ChangeMarkKind|null}>
+     * @var array<string, array{dirty: bool, severity: DiagnosticSeverity|null, status: \Porta\Editor\ChangeMarkKind|null}>
      */
     private array $fileMarks = [];
 
@@ -801,7 +801,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
 
         // A file with nothing to say is absent from the snapshot entirely, so
         // reaching here means at least one glyph follows the separating space.
-        return ' '.($mark['status']?->glyph() ?? '').(0 === $mark['severity'] ? '' : DiagnosticStyle::glyph($mark['severity'])).($mark['dirty'] ? Glyphs::DIRTY : '');
+        return ' '.($mark['status']?->glyph() ?? '').($mark['severity']?->glyph() ?? '').($mark['dirty'] ? Glyphs::DIRTY : '');
     }
 
     /**

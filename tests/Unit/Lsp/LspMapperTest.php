@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Lsp;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Lsp\LspMapper;
 
@@ -390,7 +391,7 @@ final class LspMapperTest extends TestCase
 
         $this->assertSame('worse.unused_import', $byLine[4][0]['code']);
         $this->assertSame('phpactor', $byLine[4][0]['source']);
-        $this->assertSame(2, $byLine[4][0]['severity'], 'and the fields that always worked still do');
+        $this->assertSame(DiagnosticSeverity::Warning, $byLine[4][0]['severity'], 'and the fields that always worked still do');
     }
 
     public function testADiagnosticWithoutThemCarriesNoEmptyKeys(): void

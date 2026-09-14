@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Caret;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\DarkTheme;
@@ -31,7 +32,7 @@ final class LineSpansTest extends TestCase
                 brackets: [[0, 4]],
             ),
             [['start' => 6, 'end' => 11, 'current' => true]],
-            [['severity' => 1, 'message' => 'boom', 'col' => 0, 'endCol' => 5]],
+            [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0, 'endCol' => 5]],
             $styles,
         );
 
@@ -127,7 +128,7 @@ final class LineSpansTest extends TestCase
             0,
             new EditorDecorations(multiActive: false, selection: null, carets: [], occurrences: [], brackets: null),
             [],
-            [['severity' => 1, 'message' => 'x', 'col' => 2]], // no endCol
+            [['severity' => DiagnosticSeverity::Error, 'message' => 'x', 'col' => 2]], // no endCol
             new Styles(DarkTheme::definition()),
         );
 
@@ -146,7 +147,7 @@ final class LineSpansTest extends TestCase
             0,
             new EditorDecorations(multiActive: false, selection: null, carets: [], occurrences: [], brackets: null),
             [],
-            [['severity' => 1, 'message' => 'x', 'col' => 2, 'endCol' => 2]],
+            [['severity' => DiagnosticSeverity::Error, 'message' => 'x', 'col' => 2, 'endCol' => 2]],
             new Styles(DarkTheme::definition()),
         );
 

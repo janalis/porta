@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferService;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\JumpHistory;
 use Porta\Editor\OpenFocus;
 use Porta\Editor\SelectionMode;
@@ -215,7 +216,7 @@ final class IdeLspFeaturesTest extends TestCase
                         ->getById('editor')
                         ->decorations()
                         ->setDiagnostics([
-                            1 => [['severity' => 2, 'message' => 'unused variable', 'col' => 0, 'endCol' => 2]],
+                            1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'unused variable', 'col' => 0, 'endCol' => 2]],
                         ]);
                     $tui->requestRender(); // what Ide::handleDiagnostics does after mutating
                     // requestRender only ASKS; the post-run assertion below needs

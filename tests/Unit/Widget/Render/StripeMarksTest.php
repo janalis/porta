@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget\Render;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\DecorationStore;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Widget\Render\StripeMarks;
 
 final class StripeMarksTest extends TestCase
@@ -21,26 +22,26 @@ final class StripeMarksTest extends TestCase
         $store = $this->store();
         $store->setDiagnostics([
             4 => [
-                ['severity' => 3, 'message' => 'info', 'col' => 0],
-                ['severity' => 1, 'message' => 'err', 'col' => 0],
+                ['severity' => DiagnosticSeverity::Information, 'message' => 'info', 'col' => 0],
+                ['severity' => DiagnosticSeverity::Error, 'message' => 'err', 'col' => 0],
             ],
-            9 => [['severity' => 2, 'message' => 'warn', 'col' => 0]],
+            9 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'warn', 'col' => 0]],
         ]);
 
         $marks = StripeMarks::from($store, vcsGutter: true);
 
-        $this->assertSame([4 => 1, 9 => 2], $marks->severityByLine);
+        $this->assertSame([4 => DiagnosticSeverity::Error, 9 => DiagnosticSeverity::Warning], $marks->severityByLine);
     }
 
     /** An empty list is not a diagnostic — it must not put a mark on the stripe. */
     public function testALineWithAnEmptyDiagnosticListCarriesNoSeverity(): void
     {
         $store = $this->store();
-        $store->setDiagnostics([4 => [], 9 => [['severity' => 1, 'message' => 'e', 'col' => 0]]]);
+        $store->setDiagnostics([4 => [], 9 => [['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 0]]]);
 
         $marks = StripeMarks::from($store, vcsGutter: true);
 
-        $this->assertSame([9 => 1], $marks->severityByLine);
+        $this->assertSame([9 => DiagnosticSeverity::Error], $marks->severityByLine);
     }
 
     /** Likewise a line whose match list emptied out: the line keeps its key, but it is no longer a hit. */

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
-use Porta\Editor\DiagnosticStyle;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Support\IntMath;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
@@ -37,11 +37,12 @@ final class ErrorStripe
     {
         $width = \max(0, $rows);
 
-        // Worst severity landing on each stripe row (0 = none).
-        $severity = \array_fill(0, $width, value: 0);
+        // Worst severity landing on each stripe row (null = none).
+        /** @var list<DiagnosticSeverity|null> $severity */
+        $severity = \array_fill(0, $width, value: null);
         foreach ($marks->severityByLine as $line => $worst) {
             $r = self::rowOf($line, $rows, $lineCount);
-            $severity[$r] = 0 === $severity[$r] ? $worst : \min($severity[$r], $worst);
+            $severity[$r] = $severity[$r]?->worse($worst) ?? $worst;
         }
 
         $breakpoints = \array_fill(0, $width, value: false);
@@ -78,8 +79,9 @@ final class ErrorStripe
             $change = $changes[$r];
             $changeMark = null === $change ? null : [$change->glyph(), $change->role()];
 
+            $lineSeverity = $severity[$r];
             $mark = match (true) {
-                0 !== $severity[$r] => [DiagnosticStyle::mark($severity[$r]), DiagnosticStyle::role($severity[$r])],
+                null !== $lineSeverity => [$lineSeverity->mark(), $lineSeverity->role()],
                 $breakpoints[$r] => [Glyphs::BREAKPOINT, Role::Breakpoint],
                 null !== $changeMark => $changeMark,
                 $hits[$r] => [Glyphs::STRIPE_SEARCH, Role::SearchBg],

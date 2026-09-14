@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\FindMode;
 use Porta\Editor\LineNumberMode;
@@ -848,7 +849,7 @@ final class CodeEditorWidgetTest extends TestCase
     public function testDiagnostics(): void
     {
         $editor = $this->editor();
-        $editor->decorations()->setDiagnostics([2 => [['severity' => 1, 'message' => 'Boom', 'col' => 0]]]);
+        $editor->decorations()->setDiagnostics([2 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0]]]);
 
         $counts = $editor->getDiagnosticCounts();
         $this->assertSame(1, $counts['errors']);
@@ -946,7 +947,7 @@ final class CodeEditorWidgetTest extends TestCase
     public function testDiagnosticRangeUnderline(): void
     {
         $editor = $this->editor("<?php\nfunction f(array \$a): void\n{\n}\n", 'diag.php');
-        $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => 'Bad type', 'col' => 11, 'endCol' => 16]]]);
+        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Bad type', 'col' => 11, 'endCol' => 16]]]);
 
         $rendered = $editor->render(new RenderContext(80, 10));
         $this->assertStringContainsString("\x1b[4:3m", $rendered[1], 'curly underline');
@@ -963,8 +964,8 @@ final class CodeEditorWidgetTest extends TestCase
         $editor
             ->decorations()
             ->setDiagnostics([
-                1 => [['severity' => 2, 'message' => 'Unused import', 'col' => 4, 'endCol' => 14, 'tags' => [1]]],
-                2 => [['severity' => 2, 'message' => 'Deprecated', 'col' => 0, 'endCol' => 12, 'tags' => [2]]],
+                1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'Unused import', 'col' => 4, 'endCol' => 14, 'tags' => [1]]],
+                2 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'Deprecated', 'col' => 0, 'endCol' => 12, 'tags' => [2]]],
             ]);
 
         $rendered = $editor->render(new RenderContext(80, 10));
@@ -985,7 +986,7 @@ final class CodeEditorWidgetTest extends TestCase
         // rather than replace it — at both ends, because a close that drops one
         // leaves it bleeding down the rest of the line.
         $editor = $this->editor("<?php\nuse App\\Old;\n", 'both.php');
-        $editor->decorations()->setDiagnostics([1 => [['severity' => 2, 'message' => 'Unused deprecated import', 'col' => 4, 'endCol' => 11, 'tags' => [1, 2]]]]);
+        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'Unused deprecated import', 'col' => 4, 'endCol' => 11, 'tags' => [1, 2]]]]);
 
         $row = $editor->render(new RenderContext(80, 10))[1];
 
@@ -1003,7 +1004,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor("<?php
 \$a = f();
 ", 'plain.php');
-        $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => 'Boom', 'col' => 0, 'endCol' => 2]]]);
+        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 2]]]);
 
         $rendered = $editor->render(new RenderContext(80, 10));
 
@@ -1024,7 +1025,7 @@ final class CodeEditorWidgetTest extends TestCase
             ->decorations()
             ->setDiagnostics(LspMapper::diagnosticsByLine([
                 'diagnostics' => [[
-                    'severity' => 2,
+                    'severity' => DiagnosticSeverity::Warning,
                     'message' => 'Name "Thing" is imported but not used',
                     'code' => 'worse.unused_import',
                     'source' => 'phpactor',
@@ -1045,11 +1046,11 @@ final class CodeEditorWidgetTest extends TestCase
             ->decorations()
             ->setDiagnostics([
                 1 => [
-                    ['severity' => 2, 'message' => 'maybe null', 'col' => 5, 'endCol' => 8],
-                    ['severity' => 1, 'message' => 'undefined f', 'col' => 5, 'endCol' => 8],
+                    ['severity' => DiagnosticSeverity::Warning, 'message' => 'maybe null', 'col' => 5, 'endCol' => 8],
+                    ['severity' => DiagnosticSeverity::Error, 'message' => 'undefined f', 'col' => 5, 'endCol' => 8],
                 ],
-                2 => [['severity' => 3, 'message' => 'unused', 'col' => 0, 'endCol' => 2]],
-                3 => [['severity' => 4, 'message' => 'style', 'col' => 0, 'endCol' => 2]],
+                2 => [['severity' => DiagnosticSeverity::Information, 'message' => 'unused', 'col' => 0, 'endCol' => 2]],
+                3 => [['severity' => DiagnosticSeverity::Hint, 'message' => 'style', 'col' => 0, 'endCol' => 2]],
             ]);
 
         $rendered = $editor->render(new RenderContext(80, 10));
@@ -1089,8 +1090,8 @@ final class CodeEditorWidgetTest extends TestCase
         $editor
             ->decorations()
             ->setDiagnostics([
-                5 => [['severity' => 1, 'message' => 'err', 'col' => 0, 'endCol' => 2]],
-                55 => [['severity' => 2, 'message' => 'warn', 'col' => 0, 'endCol' => 2]],
+                5 => [['severity' => DiagnosticSeverity::Error, 'message' => 'err', 'col' => 0, 'endCol' => 2]],
+                55 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'warn', 'col' => 0, 'endCol' => 2]],
                 30 => [], // an empty list marks nothing (defensive)
             ]);
 
@@ -1453,7 +1454,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         // A diagnostic on line 0 wins the trailing slot; line 1 keeps its blame.
         $editor->display()->setInlineDiagnostics(true);
-        $editor->decorations()->setDiagnostics([0 => [['severity' => 1, 'message' => 'Boom', 'col' => 0]]]);
+        $editor->decorations()->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0]]]);
         $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
         $this->assertStringContainsString('Boom', $screen);
         $this->assertSame(1, \substr_count($screen, needle: 'abc12345 tester'), 'the diagnosed line dropped its annotation');

@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Tree;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\ChangeMarkKind;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Tree\FileDecorations;
 use Porta\Tree\FileStatuses;
 
@@ -22,15 +23,15 @@ final class FileDecorationsTest extends TestCase
     }
 
     /**
-     * @param list<int> $severities one per line
+     * @param list<int> $severities one per line, on the LSP scale
      *
-     * @return array<int, list<array{severity: int, message: string, col: int}>>
+     * @return array<int, list<array{severity: DiagnosticSeverity, message: string, col: int}>>
      */
     private function diagnostics(array $severities): array
     {
         $out = [];
         foreach ($severities as $line => $severity) {
-            $out[$line] = [['severity' => $severity, 'message' => 'm', 'col' => 0]];
+            $out[$line] = [['severity' => DiagnosticSeverity::from($severity), 'message' => 'm', 'col' => 0]];
         }
 
         return $out;
@@ -71,12 +72,12 @@ final class FileDecorationsTest extends TestCase
     {
         [$decorations, $buffers] = $this->make();
         $buffer = $buffers->open('/p/a.php', "<?php\n");
-        $buffer->diagnostics = [0 => [], 5 => [['severity' => 2, 'message' => 'm', 'col' => 0]]];
+        $buffer->diagnostics = [0 => [], 5 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'm', 'col' => 0]]];
 
         $snapshot = $decorations->snapshot();
 
         $this->assertArrayHasKey('/p/a.php', $snapshot, 'the diagnostic below the empty line counts');
-        $this->assertSame(2, $snapshot['/p/a.php']['severity']);
+        $this->assertSame(DiagnosticSeverity::Warning, $snapshot['/p/a.php']['severity']);
     }
 
     public function testAnUntouchedCleanBufferIsAbsentEntirely(): void
@@ -93,7 +94,7 @@ final class FileDecorationsTest extends TestCase
         $buffer = $buffers->open('/p/a.php', "<?php\n");
         $buffer->document->insert('x');
 
-        $this->assertSame(['/p/a.php' => ['dirty' => true, 'severity' => 0, 'status' => null]], $decorations->snapshot());
+        $this->assertSame(['/p/a.php' => ['dirty' => true, 'severity' => null, 'status' => null]], $decorations->snapshot());
     }
 
     public function testItReportsTheWorstSeverityAcrossEveryLine(): void
@@ -104,7 +105,7 @@ final class FileDecorationsTest extends TestCase
         // one it found would report the warning.
         $buffer->diagnostics = $this->diagnostics([2, 2, 1, 2]);
 
-        $this->assertSame(['/p/a.php' => ['dirty' => false, 'severity' => 1, 'status' => null]], $decorations->snapshot());
+        $this->assertSame(['/p/a.php' => ['dirty' => false, 'severity' => DiagnosticSeverity::Error, 'status' => null]], $decorations->snapshot());
     }
 
     /** Info and hint are real diagnostics but not worth a file-row mark. */
@@ -136,8 +137,8 @@ final class FileDecorationsTest extends TestCase
 
         $this->assertSame(
             [
-                '/p/a.php' => ['dirty' => false, 'severity' => 2, 'status' => null],
-                '/p/b.php' => ['dirty' => true, 'severity' => 0, 'status' => null],
+                '/p/a.php' => ['dirty' => false, 'severity' => DiagnosticSeverity::Warning, 'status' => null],
+                '/p/b.php' => ['dirty' => true, 'severity' => null, 'status' => null],
             ],
             $decorations->snapshot(),
         );
@@ -154,7 +155,7 @@ final class FileDecorationsTest extends TestCase
         $statuses->applyFileStatuses(['/p/never-opened.php' => ChangeMarkKind::Modified]);
 
         $this->assertSame(
-            ['/p/never-opened.php' => ['dirty' => false, 'severity' => 0, 'status' => ChangeMarkKind::Modified]],
+            ['/p/never-opened.php' => ['dirty' => false, 'severity' => null, 'status' => ChangeMarkKind::Modified]],
             $decorations->snapshot(),
         );
     }
@@ -167,7 +168,7 @@ final class FileDecorationsTest extends TestCase
         $buffers->open('/p/a.php', "<?php\n")->document->insert('x');
 
         $this->assertSame(
-            ['/p/a.php' => ['dirty' => true, 'severity' => 0, 'status' => ChangeMarkKind::Added]],
+            ['/p/a.php' => ['dirty' => true, 'severity' => null, 'status' => ChangeMarkKind::Added]],
             $decorations->snapshot(),
         );
     }

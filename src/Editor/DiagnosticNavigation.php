@@ -83,7 +83,7 @@ final readonly class DiagnosticNavigation
      * rather than only "you have arrived". Numbered the way the gutter numbers
      * it, which is one-based.
      *
-     * @param list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}> $onLine
+     * @param list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}> $onLine
      */
     private static function problemText(array $onLine, int $line): string
     {

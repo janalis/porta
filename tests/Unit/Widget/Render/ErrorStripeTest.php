@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget\Render;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\ChangeMarkKind;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Sgr;
@@ -25,7 +26,7 @@ final class ErrorStripeTest extends TestCase
     }
 
     /**
-     * @param array<int, list<array{severity: int, message: string, col: int}>> $diagnostics
+     * @param array<int, list<array{severity: DiagnosticSeverity, message: string, col: int}>> $diagnostics
      *
      * @return list<string>
      */
@@ -45,29 +46,44 @@ final class ErrorStripeTest extends TestCase
     public function testMarksLandOnTheirProportionalRowWithTheWorstSeverityWinning(): void
     {
         $diagnostics = [
-            0 => [['severity' => 2, 'message' => 'warn', 'col' => 0]],
+            0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'warn', 'col' => 0]],
             // The same stripe row as line 0 on this scale: the error must win.
-            1 => [['severity' => 1, 'message' => 'err', 'col' => 0]],
+            1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'err', 'col' => 0]],
             80 => [], // an empty list contributes nothing
         ];
 
         $cells = $this->cells($diagnostics, rows: 10, lineCount: 100);
         $this->assertCount(10, $cells);
-        $this->assertSame(Glyphs::STRIPE_ERROR, AnsiUtils::stripAnsiCodes($cells[0]), 'severity 1 beat the warning on the shared row');
+        $this->assertSame(Glyphs::STRIPE_ERROR, AnsiUtils::stripAnsiCodes($cells[0]), 'the error beat the warning on the shared row');
         $this->assertSame(' ', AnsiUtils::stripAnsiCodes($cells[8]), 'line 80 painted nothing');
+    }
+
+    /** The worst wins in either order: a later, milder line on the same row must not overwrite an earlier error. */
+    public function testALaterMilderLineDoesNotOverwriteTheRowsError(): void
+    {
+        $cells = $this->cells(
+            [
+                0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'err', 'col' => 0]],
+                1 => [['severity' => DiagnosticSeverity::Hint, 'message' => 'hint', 'col' => 0]],
+            ],
+            rows: 10,
+            lineCount: 100,
+        );
+
+        $this->assertSame(Glyphs::STRIPE_ERROR, AnsiUtils::stripAnsiCodes($cells[0]));
     }
 
     /** A diagnostic on a stale line number past the current lineCount still clamps onto the last row. */
     public function testAnOutOfRangeLineClampsOntoTheLastRow(): void
     {
-        $cells = $this->cells([10 => [['severity' => 1, 'message' => 'e', 'col' => 0]]], rows: 10, lineCount: 5, vScroll: 0);
+        $cells = $this->cells([10 => [['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 0]]], rows: 10, lineCount: 5, vScroll: 0);
 
         $this->assertSame(Glyphs::STRIPE_ERROR, AnsiUtils::stripAnsiCodes($cells[9]), 'clamped onto the last row, not silently dropped or off the end');
     }
 
     public function testShortFileCollapsesToRowZeroAndShowsNoThumb(): void
     {
-        $cells = $this->cells([0 => [['severity' => 2, 'message' => 'w', 'col' => 0]]], rows: 8, lineCount: 1);
+        $cells = $this->cells([0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'w', 'col' => 0]]], rows: 8, lineCount: 1);
 
         $this->assertSame(Glyphs::STRIPE_WARNING, AnsiUtils::stripAnsiCodes($cells[0]));
         foreach (\array_slice($cells, offset: 1) as $cell) {
@@ -78,7 +94,7 @@ final class ErrorStripeTest extends TestCase
     public function testThumbCoversTheVisibleRangeAndMergesWithMarks(): void
     {
         // 100 lines in 10 rows, viewing lines 50-79: thumb rows 5-7.
-        $diagnostics = [55 => [['severity' => 1, 'message' => 'e', 'col' => 0]]];
+        $diagnostics = [55 => [['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 0]]];
         $cells = $this->cells($diagnostics, rows: 10, lineCount: 100, vScroll: 50, lastVisible: 79);
 
         $this->assertSame(' ', AnsiUtils::stripAnsiCodes($cells[6]), 'a plain thumb row: no mark');
@@ -122,7 +138,7 @@ final class ErrorStripeTest extends TestCase
     public static function precedenceCases(): \Generator
     {
         yield 'a diagnostic outranks a breakpoint' => [
-            new StripeMarks([0 => 1], [], [], [0]),
+            new StripeMarks([0 => DiagnosticSeverity::Error], [], [], [0]),
             Glyphs::STRIPE_ERROR,
         ];
         yield 'a breakpoint outranks a change mark' => [
@@ -155,7 +171,7 @@ final class ErrorStripeTest extends TestCase
         foreach (self::precedenceCases() as $case) {
             $glyphs[] = AnsiUtils::stripAnsiCodes($this->stripe($case[0], rows: 10, lineCount: 100, styles: $mono)[0]);
         }
-        $glyphs[] = AnsiUtils::stripAnsiCodes($this->stripe(new StripeMarks([0 => 2], [], [], []), rows: 10, lineCount: 100, styles: $mono)[0]);
+        $glyphs[] = AnsiUtils::stripAnsiCodes($this->stripe(new StripeMarks([0 => DiagnosticSeverity::Warning], [], [], []), rows: 10, lineCount: 100, styles: $mono)[0]);
 
         $this->assertSame($glyphs, \array_unique($glyphs), 'two marks collapsed onto the same glyph: one of them is invisible in monochrome');
     }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -66,7 +67,7 @@ final class CodeEditorDebugTest extends TestCase
     {
         $editor = $this->editor();
         $editor->decorations()->setBreakpointLines([1]);
-        $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => 'boom', 'col' => 0]]]);
+        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]]);
 
         $editor->decorations()->setDebugLine(1);
         $lines = $this->render($editor);

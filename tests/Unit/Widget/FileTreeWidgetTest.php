@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\ChangeMarkKind;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Event\TreeFileActivated;
 use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\PagesThroughRows;
@@ -60,7 +61,7 @@ final class FileTreeWidgetTest extends TestCase
     {
         $project = new TempProject(['clean.php' => "<?php\n", 'broken.php' => "<?php\n", 'edited.php' => "<?php\n"]);
         $buffers = new BufferManager();
-        $buffers->open((string) \realpath($project->dir.'/broken.php'), "<?php\n")->diagnostics = [0 => [['severity' => 1, 'message' => 'boom', 'col' => 0]]];
+        $buffers->open((string) \realpath($project->dir.'/broken.php'), "<?php\n")->diagnostics = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]];
         $buffers->open((string) \realpath($project->dir.'/edited.php'), "<?php\n")->document->insert('x');
         $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
 
@@ -78,7 +79,7 @@ final class FileTreeWidgetTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n"]);
         $buffers = new BufferManager();
         $buffer = $buffers->open((string) \realpath($project->dir.'/a.php'), "<?php\n");
-        $buffer->diagnostics = [0 => [['severity' => 2, 'message' => 'hmm', 'col' => 0]]];
+        $buffer->diagnostics = [0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'hmm', 'col' => 0]]];
         $buffer->document->insert('x');
         $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses()));
 
@@ -218,7 +219,7 @@ final class FileTreeWidgetTest extends TestCase
         $statuses->applyFileStatuses([$path => ChangeMarkKind::Modified]);
         $buffers = new BufferManager();
         $buffer = $buffers->open($path, "<?php\n");
-        $buffer->diagnostics = [0 => [['severity' => 1, 'message' => 'boom', 'col' => 0]]];
+        $buffer->diagnostics = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]];
         $buffer->document->insert('x');
         $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, $statuses));
 

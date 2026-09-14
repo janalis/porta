@@ -11,6 +11,7 @@ use Porta\Config\ConfigScope;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\OpenFocus;
 use Porta\Event\BufferRepointRequested;
@@ -841,11 +842,11 @@ final class IdeHelpersTest extends TestCase
     {
         $buffers = Services::resolve($this->ide, BufferManager::class);
         $b = $buffers->open($this->project->path('src/B.php'), "<?php\n");
-        $b->diagnostics = [5 => [['severity' => 2, 'message' => 'warn here', 'col' => 0]]];
+        $b->diagnostics = [5 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'warn here', 'col' => 0]]];
         $a = $buffers->open($this->project->path('src/A.php'), "<?php\n");
         $a->diagnostics = [
-            2 => [['severity' => 1, 'message' => 'error here', 'col' => 0]],
-            0 => [['severity' => 1, 'message' => 'top error', 'col' => 0]],
+            2 => [['severity' => DiagnosticSeverity::Error, 'message' => 'error here', 'col' => 0]],
+            0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'top error', 'col' => 0]],
         ];
 
         Services::resolve($this->ide, SearchActions::class)->showProblems();

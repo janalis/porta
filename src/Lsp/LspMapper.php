@@ -6,6 +6,7 @@ namespace Porta\Lsp;
 
 use Porta\Editor\CodeScopeKind;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 
 /**
@@ -488,7 +489,7 @@ final class LspMapper
      *     }>,
      * } $params
      *
-     * @return array<int, list<array{severity: int, message: string, col: int, endCol: int, code?: int|string, source?: string, tags?: list<int>}>>
+     * @return array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol: int, code?: int|string, source?: string, tags?: list<int>}>>
      */
     public static function diagnosticsByLine(array $params): array
     {
@@ -497,7 +498,7 @@ final class LspMapper
             $line = $diag['range']['start']['line'] ?? 0;
             $sameLine = ($diag['range']['end']['line'] ?? $line) === $line;
             $mapped = [
-                'severity' => (int) ($diag['severity'] ?? 1),
+                'severity' => DiagnosticSeverity::fromWire($diag['severity'] ?? null),
                 'message' => \trim((string) \preg_replace('/\s+/', replacement: ' ', subject: $diag['message'] ?? '')),
                 'col' => $diag['range']['start']['character'] ?? 0,
                 'endCol' => $sameLine ? $diag['range']['end']['character'] ?? 0 : \PHP_INT_MAX,

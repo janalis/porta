@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Editor;
 
 use Porta\Lsp\DiagnosticTag;
-use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
@@ -13,82 +12,26 @@ use Porta\Ui\Theme\Styles;
 /**
  * Severity → styling for diagnostics, shared by the gutter, the in-editor
  * squiggle underlines, the inline end-of-line message and the right-margin error
- * stripe so they all read consistently. LSP severities: 1=error, 2=warning,
- * 3=info, 4=hint; anything else is treated as a hint. The concrete colors live
- * in the theme ({@see Styles}); this maps severity to the semantic {@see Role}.
+ * stripe so they all read consistently. The per-severity glyphs and roles live
+ * on {@see DiagnosticSeverity}; what is left here combines severity with a
+ * palette ({@see Styles}) or with diagnostic tags.
  */
 final class DiagnosticStyle
 {
     /**
-     * The severity glyph shown in the gutter marker column and as the inline
-     * message prefix, so severity reads without color (matches the status bar's
-     * ✗/▲ problem counts). All glyphs are one display column wide.
-     */
-    public static function glyph(int $severity): string
-    {
-        return match (self::normalize($severity)) {
-            1 => Glyphs::SEVERITY_ERROR,
-            2 => Glyphs::SEVERITY_WARNING,
-            3 => Glyphs::SEVERITY_INFO,
-            default => Glyphs::SEVERITY_HINT,
-        };
-    }
-
-    /**
-     * The severity marker drawn in the right stripe: block density mirrors
-     * severity so the stripe stays readable without color.
-     */
-    public static function mark(int $severity): string
-    {
-        return match (self::normalize($severity)) {
-            1 => Glyphs::STRIPE_ERROR,
-            2 => Glyphs::STRIPE_WARNING,
-            3 => Glyphs::STRIPE_INFO,
-            default => Glyphs::STRIPE_HINT,
-        };
-    }
-
-    /**
-     * The worst (lowest-numbered) severity present; 4 (hint) when the list is empty.
+     * The worst severity present; a hint when the list is empty. A diagnostic
+     * carrying no severity counts as an error, the LSP default.
      *
-     * @param list<array{severity?: int, ...}> $diags
+     * @param list<array{severity?: DiagnosticSeverity, ...}> $diags
      */
-    public static function worst(array $diags): int
+    public static function worst(array $diags): DiagnosticSeverity
     {
-        $worst = 4;
+        $worst = DiagnosticSeverity::Hint;
         foreach ($diags as $diag) {
-            $worst = \min($worst, self::normalize($diag['severity'] ?? 1));
+            $worst = $worst->worse($diag['severity'] ?? DiagnosticSeverity::Error);
         }
 
         return $worst;
-    }
-
-    /** Clamp any severity int to the known 1..4 range (unknown → hint). */
-    public static function normalize(int $severity): int
-    {
-        return $severity >= 1 && $severity <= 4 ? $severity : 4;
-    }
-
-    /** The foreground role for a severity (gutter line number, stripe mark). */
-    public static function role(int $severity): Role
-    {
-        return match (self::normalize($severity)) {
-            1 => Role::DiagError,
-            2 => Role::DiagWarn,
-            3 => Role::DiagInfo,
-            default => Role::DiagHint,
-        };
-    }
-
-    /** The dimmer foreground role for a severity (inline end-of-line message). */
-    public static function dimRole(int $severity): Role
-    {
-        return match (self::normalize($severity)) {
-            1 => Role::DiagErrorDim,
-            2 => Role::DiagWarnDim,
-            3 => Role::DiagInfoDim,
-            default => Role::DiagHintDim,
-        };
     }
 
     /**
@@ -98,13 +41,13 @@ final class DiagnosticStyle
      * falls back to a plain underline and the `58;5` underline color is simply
      * ignored (the text's own color is used).
      */
-    public static function underlineOpen(int $severity, Styles $styles): string
+    public static function underlineOpen(DiagnosticSeverity $severity, Styles $styles): string
     {
-        [$style, $role] = match (self::normalize($severity)) {
-            1 => ['4:3', Role::DiagErrorUnderline],
-            2 => ['4:5', Role::DiagWarnUnderline],
-            3 => ['4:4', Role::DiagInfoUnderline],
-            default => ['4:1', Role::DiagHintUnderline],
+        [$style, $role] = match ($severity) {
+            DiagnosticSeverity::Error => ['4:3', Role::DiagErrorUnderline],
+            DiagnosticSeverity::Warning => ['4:5', Role::DiagWarnUnderline],
+            DiagnosticSeverity::Information => ['4:4', Role::DiagInfoUnderline],
+            DiagnosticSeverity::Hint => ['4:1', Role::DiagHintUnderline],
         };
 
         return "\x1b[{$style}m".$styles->underline($role);

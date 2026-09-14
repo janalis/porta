@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferService;
 use Porta\Editor\ChangeMarkKind;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\OpenFocus;
 use Porta\History\BookmarkPersistence;
 use Porta\History\BookmarkStore;
@@ -77,8 +78,8 @@ final class IdeDockToolsTest extends TestCase
                         ->applyDiagnostics(
                             Uri::fromPath($project->path('a.php')),
                             [
-                                0 => [['severity' => 1, 'message' => 'first', 'col' => 0, 'endCol' => 3]],
-                                1 => [['severity' => 1, 'message' => 'second', 'col' => 0, 'endCol' => 3]],
+                                0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'first', 'col' => 0, 'endCol' => 3]],
+                                1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'second', 'col' => 0, 'endCol' => 3]],
                             ],
                         );
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '✗ second'));
@@ -177,7 +178,7 @@ final class IdeDockToolsTest extends TestCase
                     self::bufferService($ide)
                         ->applyDiagnostics(
                             Uri::fromPath($project->path('a.php')),
-                            [1 => [['severity' => 1, 'message' => 'live boom', 'col' => 0, 'endCol' => 3]]],
+                            [1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'live boom', 'col' => 0, 'endCol' => 3]]],
                         );
                     // The row and the strip count are two paints; the count
                     // follows, so it is the one to await.
@@ -195,8 +196,8 @@ final class IdeDockToolsTest extends TestCase
                         ->applyDiagnostics(
                             Uri::fromPath($project->path('a.php')),
                             [
-                                0 => [['severity' => 2, 'message' => 'warn zero', 'col' => 0, 'endCol' => 3]],
-                                1 => [['severity' => 1, 'message' => 'live boom', 'col' => 0, 'endCol' => 3]],
+                                0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'warn zero', 'col' => 0, 'endCol' => 3]],
+                                1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'live boom', 'col' => 0, 'endCol' => 3]],
                             ],
                         );
                     $tui->tick();
@@ -211,8 +212,8 @@ final class IdeDockToolsTest extends TestCase
                         ->applyDiagnostics(
                             Uri::fromPath($project->path('a.php')),
                             [
-                                0 => [['severity' => 2, 'message' => 'warn one', 'col' => 0, 'endCol' => 3]],
-                                1 => [['severity' => 1, 'message' => 'live boom', 'col' => 0, 'endCol' => 3]],
+                                0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'warn one', 'col' => 0, 'endCol' => 3]],
+                                1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'live boom', 'col' => 0, 'endCol' => 3]],
                             ],
                         );
                     $tui->tick();
@@ -388,7 +389,7 @@ final class IdeDockToolsTest extends TestCase
                     self::bufferService($ide)
                         ->applyDiagnostics(
                             Uri::fromPath($project->path('src/Main.php')),
-                            [0 => [['severity' => 1, 'message' => 'background boom', 'col' => 0, 'endCol' => 3]]],
+                            [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'background boom', 'col' => 0, 'endCol' => 3]]],
                         );
                     $tui->tick();
                     $this->assertSame('LSP Server Log', $tui->getById('results')->getTitle(), 'the displayed tool is untouched');
@@ -831,8 +832,8 @@ final class IdeDockToolsTest extends TestCase
                         ->applyDiagnostics(
                             Uri::fromPath($project->path('a.php')),
                             [
-                                2 => [['severity' => 1, 'message' => 'first boom', 'col' => 0, 'endCol' => 3]],
-                                5 => [['severity' => 1, 'message' => 'second boom', 'col' => 0, 'endCol' => 3]],
+                                2 => [['severity' => DiagnosticSeverity::Error, 'message' => 'first boom', 'col' => 0, 'endCol' => 3]],
+                                5 => [['severity' => DiagnosticSeverity::Error, 'message' => 'second boom', 'col' => 0, 'endCol' => 3]],
                             ],
                         );
                     $tui->getById('editor')->getDocument()->setCursor(0, 0);

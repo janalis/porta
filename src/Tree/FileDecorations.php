@@ -7,6 +7,7 @@ namespace Porta\Tree;
 use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
 use Porta\Editor\ChangeMarkKind;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\DiagnosticStyle;
 
 /**
@@ -23,29 +24,26 @@ use Porta\Editor\DiagnosticStyle;
 #[AsIdeService]
 final readonly class FileDecorations
 {
-    /** Severities worth a tree mark: an error or a warning. Info and hint would be noise on a file row. */
-    private const int WORST_UNMARKED = 3;
-
     public function __construct(
         private BufferManager $buffers,
         private FileStatuses $statuses,
     ) {}
 
     /**
-     * @return array<string, array{dirty: bool, severity: int, status: ChangeMarkKind|null}> absolute path =>
-     *                                                                                       state; severity 0 means "nothing worth marking".
+     * @return array<string, array{dirty: bool, severity: DiagnosticSeverity|null, status: ChangeMarkKind|null}> absolute path =>
+     *                                                                                       state; a null severity means "nothing worth marking".
      *                                                                                       A file with nothing to say is absent entirely
      */
     public function snapshot(): array
     {
         $out = [];
         foreach ($this->statuses->all() as $path => $status) {
-            $out[$path] = ['dirty' => false, 'severity' => 0, 'status' => $status];
+            $out[$path] = ['dirty' => false, 'severity' => null, 'status' => $status];
         }
         foreach ($this->buffers->all() as $buffer) {
             $dirty = $buffer->isDirty();
             $severity = $this->worstMarkable($buffer->diagnostics);
-            if (!$dirty && 0 === $severity) {
+            if (!$dirty && null === $severity) {
                 continue;
             }
             $out[$buffer->path] = [
@@ -60,25 +58,26 @@ final readonly class FileDecorations
     }
 
     /**
-     * The worst severity in the file, or 0 when none is worth a mark. Stops at
-     * the first error: nothing outranks it, and this runs every frame over every
-     * open buffer's whole diagnostic set.
+     * The worst severity in the file when it is worth a mark — an error or a
+     * warning; information and hints would be noise on a file row — else null.
+     * Stops at the first error: nothing outranks it, and this runs every frame
+     * over every open buffer's whole diagnostic set.
      *
-     * @param array<int, list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> $byLine
+     * @param array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> $byLine
      */
-    private function worstMarkable(array $byLine): int
+    private function worstMarkable(array $byLine): ?DiagnosticSeverity
     {
-        $worst = self::WORST_UNMARKED;
+        $worst = DiagnosticSeverity::Information;
         foreach ($byLine as $diagnostics) {
             if ([] === $diagnostics) {
                 continue;
             }
-            $worst = \min($worst, DiagnosticStyle::worst($diagnostics));
-            if (1 === $worst) {
+            $worst = $worst->worse(DiagnosticStyle::worst($diagnostics));
+            if (DiagnosticSeverity::Error === $worst) {
                 break;
             }
         }
 
-        return self::WORST_UNMARKED === $worst ? 0 : $worst;
+        return $worst->outranks(DiagnosticSeverity::Information) ? $worst : null;
     }
 }

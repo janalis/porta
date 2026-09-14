@@ -54,7 +54,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     /** The debugger's stopped line (full-width band), or null when not paused here. */
     private ?int $debugLine = null;
 
-    /** @var array<int, list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> keyed by 0-based line */
+    /** @var array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> keyed by 0-based line */
     private array $diagnostics = [];
 
     /** @var array{errors: int, warnings: int} maintained by {@see recountDiagnostics} on every diagnostics change */
@@ -76,7 +76,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
      * theirs per buffer). Git marks and search matches are replaced by their
      * own follow-up pushes.
      *
-     * @param array<int, list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> $diagnostics
+     * @param array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> $diagnostics
      */
     public function resetForBuffer(array $diagnostics, int $lineCount = 0): void
     {
@@ -295,7 +295,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         return $this->debugLine;
     }
 
-    /** @param array<int, list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> $byLine */
+    /** @param array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> $byLine */
     public function setDiagnostics(array $byLine): void
     {
         $this->diagnostics = $byLine;
@@ -314,13 +314,13 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         $errors = 0;
         foreach ($this->diagnostics as $list) {
             foreach ($list as $d) {
-                1 === $d['severity'] ? ++$errors : ++$warnings;
+                DiagnosticSeverity::Error === $d['severity'] ? ++$errors : ++$warnings;
             }
         }
         $this->counts = ['errors' => $errors, 'warnings' => $warnings];
     }
 
-    /** @return array<int, list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> */
+    /** @return array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> */
     public function diagnostics(): array
     {
         return $this->diagnostics;

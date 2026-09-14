@@ -11,6 +11,7 @@ use Porta\Config\IdeConfig;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\ChangeMarkKind;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferOpened;
@@ -606,10 +607,10 @@ final class PluginApiTest extends TestCase
         $this->assertSame(
             [
                 2 => [
-                    ['severity' => 1, 'message' => 'boom', 'col' => 0, 'endCol' => 0],
-                    ['severity' => 2, 'message' => 'warn', 'col' => 4, 'endCol' => 4],
+                    ['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0, 'endCol' => 0],
+                    ['severity' => DiagnosticSeverity::Warning, 'message' => 'warn', 'col' => 4, 'endCol' => 4],
                 ],
-                0 => [['severity' => 1, 'message' => 'clamped', 'col' => 0, 'endCol' => 0]],
+                0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'clamped', 'col' => 0, 'endCol' => 0]],
             ],
             $this->diagnostics->published[0]['byLine'],
         );
@@ -633,9 +634,9 @@ final class PluginApiTest extends TestCase
 
         $this->assertSame(
             [
-                0 => [['severity' => 1, 'message' => 'boom', 'col' => 0, 'endCol' => 0, 'code' => 'no-empty-catch-clause']],
-                1 => [['severity' => 1, 'message' => 'no rule', 'col' => 0, 'endCol' => 0]],
-                2 => [['severity' => 1, 'message' => 'blank rule', 'col' => 0, 'endCol' => 0]],
+                0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0, 'endCol' => 0, 'code' => 'no-empty-catch-clause']],
+                1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'no rule', 'col' => 0, 'endCol' => 0]],
+                2 => [['severity' => DiagnosticSeverity::Error, 'message' => 'blank rule', 'col' => 0, 'endCol' => 0]],
             ],
             $this->diagnostics->published[0]['byLine'],
         );

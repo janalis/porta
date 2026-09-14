@@ -6,6 +6,7 @@ namespace Porta\Plugin\Api;
 
 use Porta\Config\ActionCatalog;
 use Porta\Editor\ChangeMarkKind;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\OpenFocus;
 use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferOpened;
@@ -1229,7 +1230,7 @@ final class PluginApi
      * and replace any previous set for that file, so an empty list clears
      * them. A path with no open buffer is a silent no-op.
      *
-     * @param list<array{line: int, message: string, severity?: int, column?: int, code?: string}> $diagnostics 0-based line; severity 1 = error (default), 2 = warning; `code` names the rule that fired
+     * @param list<array{line: int, message: string, severity?: int, column?: int, code?: string}> $diagnostics 0-based line; severity is the LSP scale, 1 = error (default), 2 = warning, 3 = information, 4 = hint; `code` names the rule that fired
      */
     public function setDiagnostics(string $path, array $diagnostics): void
     {
@@ -1238,7 +1239,7 @@ final class PluginApi
         foreach ($diagnostics as $diagnostic) {
             $column = \max(0, $diagnostic['column'] ?? 0);
             $row = [
-                'severity' => $diagnostic['severity'] ?? 1,
+                'severity' => DiagnosticSeverity::fromWire($diagnostic['severity'] ?? null),
                 'message' => $diagnostic['message'],
                 'col' => $column,
                 'endCol' => $column,

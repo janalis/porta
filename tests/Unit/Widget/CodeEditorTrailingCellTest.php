@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Tests\Support\RendersExactWidth;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -45,7 +46,7 @@ final class CodeEditorTrailingCellTest extends TestCase
         // their other surfaces: the diagnostic has its squiggle, its gutter
         // mark, its stripe cell and the Problems panel; blame has Alt+B.
         $editor = $this->editor("<?php\n\$count = 41;\n", 'debug.php');
-        $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
+        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
         $editor->decorations()->setLineAnnotations([1 => 'you, 3 days ago']);
         $editor->decorations()->setDebugValues([1 => '$count = 41']);
 
@@ -64,7 +65,7 @@ final class CodeEditorTrailingCellTest extends TestCase
         // debugger running takes this path, and a precedence chain that got the
         // empty case wrong would blank the inline diagnostics everywhere.
         $editor = $this->editor("<?php\n\$count = 41;\n\$other = 1;\n", 'debug.php');
-        $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
+        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
         $editor->decorations()->setLineAnnotations([2 => 'you, 3 days ago']);
         $editor->decorations()->setDebugValues([]);
 
@@ -80,7 +81,7 @@ final class CodeEditorTrailingCellTest extends TestCase
         // Per line, not per file: stopping on line 2 must not silence a
         // diagnostic on line 1.
         $editor = $this->editor("<?php\n\$count = 41;\n\$other = 1;\n", 'debug.php');
-        $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
+        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
         $editor->decorations()->setDebugValues([2 => '$other = 1']);
 
         $rows = $editor->render(new RenderContext(80, 10));

@@ -19,6 +19,7 @@ use Porta\Editor\CodeScopeKind;
 use Porta\Editor\CommentSyntax;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\DecorationStore;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\EditorActions;
 use Porta\Editor\EditorCompletion;
@@ -303,7 +304,7 @@ final class CodeEditorWidget extends AbstractWidget implements
      * Display an existing document (buffer switch: cursor, undo history and
      * diagnostics are preserved by the caller's Buffer).
      *
-     * @param array<int, list<array{severity: int, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> $diagnostics
+     * @param array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>}>> $diagnostics
      * @param CodeHighlighter|null                                                            $highlighter buffer-owned highlighter
      *                                                                                                     whose cache survives switches
      * @param ResolvedEditorConfig|null                                                       $editorConfig the file's resolved

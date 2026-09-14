@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\EditorConfig\ResolvedEditorConfig;
 use Porta\Editor\BufferManager;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\SelectionMode;
 use Porta\I18n\Translator;
@@ -180,7 +181,7 @@ final class RefactorControllerTest extends TestCase
     public function testWithoutASelectionADiagnosticRangeIsUsed(): void
     {
         [$controller] = $this->ready();
-        $this->buffers->active()->diagnostics = [1 => [['severity' => 1, 'message' => 'boom', 'col' => 2, 'endCol' => 5]]];
+        $this->buffers->active()->diagnostics = [1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 2, 'endCol' => 5]]];
 
         $controller->requestCodeActions(1, 0);
 
@@ -269,7 +270,7 @@ final class RefactorControllerTest extends TestCase
         [$controller] = $this->ready();
         $this->buffers->active()->diagnostics = [
             1 => [
-                ['severity' => 1, 'message' => 'boom', 'col' => 0, 'endCol' => 1, 'code' => 'PHP0420', 'data' => ['fix' => 'import'], 'tags' => [1]],
+                ['severity' => DiagnosticSeverity::Warning, 'message' => 'boom', 'col' => 0, 'endCol' => 1, 'code' => 'PHP0420', 'data' => ['fix' => 'import'], 'tags' => [1]],
             ],
         ];
 
@@ -277,6 +278,7 @@ final class RefactorControllerTest extends TestCase
 
         $diagnostic = \end($this->client->requests)['params']['context']['diagnostics'][0];
         $this->assertSame('PHP0420', $diagnostic['code']);
+        $this->assertSame(2, $diagnostic['severity'], 'the wire takes the LSP int back, and this one is a warning');
         $this->assertSame(['fix' => 'import'], $diagnostic['data']);
         // The context is meant to hand back the diagnostic the server
         // published, not a summary of it — and "remove this unused import" is

@@ -291,7 +291,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
                     'start' => ['line' => $line, 'character' => $diag['col']],
                     'end' => ['line' => $line, 'character' => $endCol],
                 ],
-                'severity' => $diag['severity'],
+                'severity' => $diag['severity']->value,
                 'message' => $diag['message'],
             ];
             foreach (['code', 'source', 'data', 'tags'] as $key) {

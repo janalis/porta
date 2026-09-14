@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Search;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Search\ProblemRows;
 use Porta\Support\ProjectPaths;
 
@@ -18,14 +19,14 @@ final class ProblemRowsTest extends TestCase
         $a = $buffers->open('/p/src/A.php', "<?php\n");
         $b->diagnostics = [
             0 => [
-                ['severity' => 2, 'message' => 'warn here', 'col' => 0, 'endCol' => 1],
-                ['severity' => 3, 'message' => 'info here', 'col' => 0, 'endCol' => 1],
-                ['severity' => 4, 'message' => 'hint here', 'col' => 0, 'endCol' => 1],
+                ['severity' => DiagnosticSeverity::Warning, 'message' => 'warn here', 'col' => 0, 'endCol' => 1],
+                ['severity' => DiagnosticSeverity::Information, 'message' => 'info here', 'col' => 0, 'endCol' => 1],
+                ['severity' => DiagnosticSeverity::Hint, 'message' => 'hint here', 'col' => 0, 'endCol' => 1],
             ],
         ];
         $a->diagnostics = [
-            2 => [['severity' => 1, 'message' => 'later error', 'col' => 0, 'endCol' => 1]],
-            0 => [['severity' => 1, 'message' => 'top error', 'col' => 0, 'endCol' => 1]],
+            2 => [['severity' => DiagnosticSeverity::Error, 'message' => 'later error', 'col' => 0, 'endCol' => 1]],
+            0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'top error', 'col' => 0, 'endCol' => 1]],
         ];
 
         $rows = new ProblemRows($buffers, new ProjectPaths('/p'))->build();
@@ -58,8 +59,8 @@ final class ProblemRowsTest extends TestCase
         $buffers = new BufferManager();
         $buffer = $buffers->open('/p/src/A.php', "<?php\n");
         $buffer->diagnostics = [
-            0 => [['severity' => 2, 'message' => 'Name "Other" is imported but not used', 'col' => 0, 'endCol' => 1, 'code' => 'worse.unused_import']],
-            1 => [['severity' => 1, 'message' => 'no rule given', 'col' => 0, 'endCol' => 1]],
+            0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'Name "Other" is imported but not used', 'col' => 0, 'endCol' => 1, 'code' => 'worse.unused_import']],
+            1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'no rule given', 'col' => 0, 'endCol' => 1]],
         ];
 
         $rows = new ProblemRows($buffers, new ProjectPaths('/p'))->build();
@@ -79,7 +80,7 @@ final class ProblemRowsTest extends TestCase
         // "worse.unused_import" — a numeric one must not be mistaken for absent.
         $buffers = new BufferManager();
         $buffer = $buffers->open('/p/src/A.php', "<?php\n");
-        $buffer->diagnostics = [0 => [['severity' => 1, 'message' => 'boom', 'col' => 0, 'endCol' => 1, 'code' => 1005]]];
+        $buffer->diagnostics = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0, 'endCol' => 1, 'code' => 1005]]];
 
         // Cast where it is now observable: the field is a string, so a
         // numeric code has to arrive as text rather than as an int.

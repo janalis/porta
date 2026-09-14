@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Ui\Glyphs;
@@ -350,8 +351,8 @@ final class EditorRendererTest extends TestCase
     {
         $content = \str_pad('code', length: 30);
         $diags = [
-            ['message' => 'first error', 'severity' => 1],
-            ['message' => 'second error', 'severity' => 1],
+            ['message' => 'first error', 'severity' => DiagnosticSeverity::Error],
+            ['message' => 'second error', 'severity' => DiagnosticSeverity::Error],
         ];
         $result = EditorRenderer::appendInlineDiagnostic(hScroll: 0, textDisplayWidth: 4, diags: $diags, content: $content, contentWidth: 30, styles: $this->styles());
         $plain = AnsiUtils::stripAnsiCodes($result);
@@ -367,7 +368,7 @@ final class EditorRendererTest extends TestCase
         $result = EditorRenderer::appendInlineDiagnostic(
             hScroll: 0,
             textDisplayWidth: 8,
-            diags: [['message' => 'oops', 'severity' => 1]],
+            diags: [['message' => 'oops', 'severity' => DiagnosticSeverity::Error]],
             content: $content,
             contentWidth: 10,
             styles: $this->styles(),
@@ -384,7 +385,7 @@ final class EditorRendererTest extends TestCase
         $result = EditorRenderer::appendInlineDiagnostic(
             hScroll: 15,
             textDisplayWidth: 20,
-            diags: [['message' => 'oops', 'severity' => 1]],
+            diags: [['message' => 'oops', 'severity' => DiagnosticSeverity::Error]],
             content: $content,
             contentWidth: 30,
             styles: $this->styles(),
@@ -402,7 +403,7 @@ final class EditorRendererTest extends TestCase
         $result = EditorRenderer::appendInlineDiagnostic(
             hScroll: 5,
             textDisplayWidth: 0,
-            diags: [['message' => 'oops', 'severity' => 1]],
+            diags: [['message' => 'oops', 'severity' => DiagnosticSeverity::Error]],
             content: $content,
             contentWidth: 20,
             styles: $this->styles(),
@@ -417,7 +418,14 @@ final class EditorRendererTest extends TestCase
         // contentWidth(10) - start(2) = 8 available: the boundary between
         // "not enough room" and "just enough".
         $content = \str_pad('', length: 10);
-        $result = EditorRenderer::appendInlineDiagnostic(hScroll: 0, textDisplayWidth: 0, diags: [['message' => 'x', 'severity' => 1]], content: $content, contentWidth: 10, styles: $this->styles());
+        $result = EditorRenderer::appendInlineDiagnostic(
+            hScroll: 0,
+            textDisplayWidth: 0,
+            diags: [['message' => 'x', 'severity' => DiagnosticSeverity::Error]],
+            content: $content,
+            contentWidth: 10,
+            styles: $this->styles(),
+        );
         $this->assertNotSame($content, $result);
     }
 

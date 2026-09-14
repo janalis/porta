@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Workbench\Dock;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Event\DiagnosticsChanged;
 use Porta\Event\LspLogAppended;
 use Porta\Event\NotificationLogged;
@@ -63,7 +64,7 @@ final class DockLiveRefreshListenerTest extends TestCase
         $this->assertStringContainsString('0 results', $this->results->statusText());
 
         $buffer = $this->buffers->open('/p/src/A.php', "<?php\n");
-        $buffer->diagnostics = [0 => [['severity' => 1, 'message' => 'boom', 'col' => 0, 'endCol' => 1]]];
+        $buffer->diagnostics = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0, 'endCol' => 1]]];
         $listener->onDiagnosticsChanged(new DiagnosticsChanged());
 
         $this->assertStringContainsString('✗ boom', $this->plainPanel(), 'the open Problems tab picked up the new diagnostic');
@@ -77,7 +78,7 @@ final class DockLiveRefreshListenerTest extends TestCase
         $this->dock->hide(); // concealed, still alive
 
         $buffer = $this->buffers->open('/p/src/A.php', "<?php\n");
-        $buffer->diagnostics = [0 => [['severity' => 2, 'message' => 'warn', 'col' => 0, 'endCol' => 1]]];
+        $buffer->diagnostics = [0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'warn', 'col' => 0, 'endCol' => 1]]];
         $listener->onDiagnosticsChanged(new DiagnosticsChanged());
 
         $this->assertFalse($this->results->isVisible());
@@ -110,7 +111,7 @@ final class DockLiveRefreshListenerTest extends TestCase
     {
         $listener = $this->listener();
         $buffer = $this->buffers->open('/p/src/A.php', "<?php\n");
-        $buffer->diagnostics = [0 => [['severity' => 1, 'message' => 'boom', 'col' => 0, 'endCol' => 1]]];
+        $buffer->diagnostics = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0, 'endCol' => 1]]];
 
         $listener->onDiagnosticsChanged(new DiagnosticsChanged()); // closed panel: a no-op
         $this->assertFalse($this->results->isOpen());
@@ -151,13 +152,16 @@ final class DockLiveRefreshListenerTest extends TestCase
         $this->dock->showList(ResultsPanelMode::Problems, 'Problems', []);
 
         $a = $this->buffers->open('/p/src/A.php', "<?php\n\n");
-        $a->diagnostics = [0 => [['severity' => 1, 'message' => 'first', 'col' => 0, 'endCol' => 1]], 1 => [['severity' => 1, 'message' => 'second', 'col' => 0, 'endCol' => 1]]];
+        $a->diagnostics = [
+            0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'first', 'col' => 0, 'endCol' => 1]],
+            1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'second', 'col' => 0, 'endCol' => 1]],
+        ];
         $listener->onDiagnosticsChanged(new DiagnosticsChanged());
         $this->results->handleInput("\x1b[B"); // select the second diagnostic
 
         // A new buffer's diagnostics land ABOVE ours in the rebuilt rows.
         $before = $this->buffers->open('/p/src/0Aaa.php', "<?php\n");
-        $before->diagnostics = [0 => [['severity' => 1, 'message' => 'earlier', 'col' => 0, 'endCol' => 1]]];
+        $before->diagnostics = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'earlier', 'col' => 0, 'endCol' => 1]]];
         $listener->onDiagnosticsChanged(new DiagnosticsChanged());
 
         $state = $this->results->captureViewState();

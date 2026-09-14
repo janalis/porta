@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Render;
 
 use Porta\Editor\DecorationStore;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
@@ -322,12 +323,12 @@ final readonly class EditorRowAssembler
      * The gutter cell for one document line: git strip, line number colored by
      * the line's worst diagnostic (or highlighted on the caret line), marker.
      *
-     * @param list<array{col: int, endCol?: int, message: string, severity: int, code?: int|string, source?: string, tags?: list<int>}> $lineDiags
+     * @param list<array{col: int, endCol?: int, message: string, severity: DiagnosticSeverity, code?: int|string, source?: string, tags?: list<int>}> $lineDiags
      */
     private function gutterCell(int $lineIndex, CaretLine $isCursorLine, array $lineDiags, int $numberWidth): string
     {
         $numStyle = match (true) {
-            [] !== $lineDiags => $this->styles->of(DiagnosticStyle::role(DiagnosticStyle::worst($lineDiags))),
+            [] !== $lineDiags => $this->styles->of(DiagnosticStyle::worst($lineDiags)->role()),
             CaretLine::Current === $isCursorLine => $this->styles->of(Role::CurrentLineNumber),
             default => $this->styles->of(Role::Gutter),
         };
@@ -348,7 +349,7 @@ final readonly class EditorRowAssembler
             ($this->conditionalBreakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT_CONDITIONAL),
             ($this->breakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT),
             $this->store->isBookmarked($lineIndex) => $this->styles->of(Role::TabAccent)->apply(Glyphs::BOOKMARK),
-            [] !== $lineDiags => $numStyle->apply(DiagnosticStyle::glyph(DiagnosticStyle::worst($lineDiags))),
+            [] !== $lineDiags => $numStyle->apply(DiagnosticStyle::worst($lineDiags)->glyph()),
             default => ' ',
         };
         // The number label: empty when hidden (so str_pad to the 0-width column
@@ -388,7 +389,7 @@ final readonly class EditorRowAssembler
      * layered selection/caret/search/occurrence/bracket/diagnostic spans,
      * inlay hints, and the collapsed-fold marker.
      *
-     * @param list<array{col: int, endCol?: int, message: string, severity: int, code?: int|string, source?: string, tags?: list<int>}> $lineDiags
+     * @param list<array{col: int, endCol?: int, message: string, severity: DiagnosticSeverity, code?: int|string, source?: string, tags?: list<int>}> $lineDiags
      */
     /**
      * The display column a member separator's rule starts at on this ROW, or
@@ -421,7 +422,7 @@ final readonly class EditorRowAssembler
      * site until this method grew a parameter, and mago then read it as
      * `array<array-key, mixed>`.
      *
-     * @param list<array{col: int, endCol?: int, message: string, severity: int, code?: int|string, source?: string, tags?: list<int>}> $lineDiags
+     * @param list<array{col: int, endCol?: int, message: string, severity: DiagnosticSeverity, code?: int|string, source?: string, tags?: list<int>}> $lineDiags
      */
     private function decoratedLine(
         int $lineIndex,

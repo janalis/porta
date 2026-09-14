@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget\Render;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\SelectionMode;
 use Porta\Widget\CodeEditorWidget;
@@ -119,12 +120,12 @@ final class EditorRenderGoldenTest extends TestCase
                     $e->setFocused(true);
                     $e->decorations()->setDiagnostics([
                         2 => [
-                            ['severity' => 1, 'message' => 'bad type', 'col' => 9, 'endCol' => 14],
-                            ['severity' => 2, 'message' => 'weak warning', 'col' => 0, 'endCol' => 3],
+                            ['severity' => DiagnosticSeverity::Error, 'message' => 'bad type', 'col' => 9, 'endCol' => 14],
+                            ['severity' => DiagnosticSeverity::Warning, 'message' => 'weak warning', 'col' => 0, 'endCol' => 3],
                         ],
-                        4 => [['severity' => 2, 'message' => 'to end', 'col' => 4, 'endCol' => \PHP_INT_MAX]],
-                        5 => [['severity' => 3, 'message' => 'info note', 'col' => 4, 'endCol' => 8]],
-                        6 => [['severity' => 4, 'message' => 'hint', 'col' => 0, 'endCol' => 2]],
+                        4 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'to end', 'col' => 4, 'endCol' => \PHP_INT_MAX]],
+                        5 => [['severity' => DiagnosticSeverity::Information, 'message' => 'info note', 'col' => 4, 'endCol' => 8]],
+                        6 => [['severity' => DiagnosticSeverity::Hint, 'message' => 'hint', 'col' => 0, 'endCol' => 2]],
                     ]);
                 },
                 80,
