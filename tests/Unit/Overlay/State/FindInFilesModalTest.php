@@ -9,6 +9,7 @@ use Porta\I18n\Translator;
 use Porta\Overlay\Region\ModalBox;
 use Porta\Overlay\State\FindInFilesModal;
 use Porta\Overlay\State\FindModalCallbacks;
+use Porta\Search\SearchOption;
 use Porta\Tests\Support\ComposesFindModal;
 use Porta\Tests\Support\Probe;
 use Porta\Ui\CaretVisibility;
@@ -231,7 +232,7 @@ final class FindInFilesModalTest extends TestCase
             onScopeCycle: static function (int $i) use (&$scopeIdx): void {
                 $scopeIdx[] = $i;
             },
-            onToggleOption: static function (string $n) use (&$toggled): void {
+            onToggleOption: static function (SearchOption $n) use (&$toggled): void {
                 $toggled[] = $n;
             },
             onMaskChanged: static function (string $m) use (&$masks): void {
@@ -254,7 +255,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->handleInput("\x1bv", $this->kb); // alt+v preserve
         $modal->handleInput("\x1bt", $this->kb); // alt+t tokens
         $this->assertSame([1], $scopeIdx);
-        $this->assertSame(['regex', 'case', 'word', 'preserve', 'tokens'], $toggled);
+        $this->assertSame(SearchOption::cases(), $toggled);
         $this->assertStringContainsString('Scope: Directory', $this->screen($modal), 'scope label advanced');
 
         $modal->handleInput("\t", $this->kb); // tab → replace field
@@ -494,7 +495,7 @@ final class FindInFilesModalTest extends TestCase
             onJump: static function (string $p, int $l) use (&$jumped): void {
                 $jumped = [$p, $l];
             },
-            onToggleOption: static function (string $n) use (&$toggled): void {
+            onToggleOption: static function (SearchOption $n) use (&$toggled): void {
                 $toggled[] = $n;
             },
             onClose: static function () use (&$closed): void {
@@ -510,7 +511,7 @@ final class FindInFilesModalTest extends TestCase
 
         // Click the first option tag (options row is windowTop() - 3; inner col 1 sits past the rail and padding).
         $this->assertTrue($modal->clickAt($box->windowTop() - 3, $box->col + 3));
-        $this->assertSame(['regex'], $toggled);
+        $this->assertSame([SearchOption::Regex], $toggled);
 
         // Hover the second match row (previewRow + 2; the first match is already selected).
         $this->assertTrue($modal->hoverAt($box->windowTop() + 2, $box->col + 3));
@@ -1833,7 +1834,7 @@ final class FindInFilesModalTest extends TestCase
             onScopeCycle: static function (int $i) use (&$scopeIdx): void {
                 $scopeIdx[] = $i;
             },
-            onToggleOption: static function (string $n) use (&$toggled): void {
+            onToggleOption: static function (SearchOption $n) use (&$toggled): void {
                 $toggled[] = $n;
             },
         ));

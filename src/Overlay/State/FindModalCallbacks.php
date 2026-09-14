@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Overlay\State;
 
+use Porta\Search\SearchOption;
+
 /**
  * The Find-in-Files modal's outbound hooks, wired in one call instead of nine
  * fluent setters. Modelled on {@see \Porta\Widget\EditorCallbacks}, the same
@@ -18,7 +20,7 @@ final readonly class FindModalCallbacks
      * @param (callable(string): void)|null            $onQuery            the query text changed
      * @param (callable(string): void)|null            $onMaskChanged      the file mask changed
      * @param (callable(int): void)|null               $onScopeCycle       the scope choice index
-     * @param (callable(string): void)|null            $onToggleOption     option short key
+     * @param (callable(SearchOption): void)|null      $onToggleOption    the option to flip
      * @param (callable(string, int): void)|null       $onJump             path, line
      * @param (callable(): void)|null                  $onOpenInFindWindow promote the dialog to the results pane
      * @param (callable(string, list<int>): void)|null $onReplaceAll       replace kept matches (excluding the given indices)

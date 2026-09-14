@@ -8,9 +8,8 @@ namespace Porta\Search;
  * The matching flags a project search carries together — regex, case sensitivity,
  * whole-word, preserve-case (during replace), and the language-aware token scope —
  * as one immutable value instead of a tuple threaded through every {@see ProjectSearch}
- * method. The results panel toggles them by its short keys ('regex' | 'case' | 'word' |
- * 'preserve' | 'tokens'), which {@see toggled()} and {@see panelState()} translate to
- * and from this object.
+ * method. The modal toggles them by {@see SearchOption}, and reads them back as
+ * {@see panelState()}, keyed by each option's value.
  */
 final readonly class SearchOptions
 {
@@ -23,18 +22,17 @@ final readonly class SearchOptions
     ) {}
 
     /**
-     * A copy with the option under the panel key flipped: the booleans toggle,
-     * and 'tokens' cycles the {@see TokenScope} (any → in → except → any).
+     * A copy with the option flipped: the booleans toggle, and
+     * {@see SearchOption::Tokens} cycles the {@see TokenScope} (any → in → except → any).
      */
-    public function toggled(string $key): self
+    public function toggled(SearchOption $option): self
     {
-        return match ($key) {
-            'regex' => new self(!$this->regex, $this->caseSensitive, $this->wholeWord, $this->preserveCase, $this->tokenScope),
-            'case' => new self($this->regex, !$this->caseSensitive, $this->wholeWord, $this->preserveCase, $this->tokenScope),
-            'word' => new self($this->regex, $this->caseSensitive, !$this->wholeWord, $this->preserveCase, $this->tokenScope),
-            'preserve' => new self($this->regex, $this->caseSensitive, $this->wholeWord, !$this->preserveCase, $this->tokenScope),
-            'tokens' => new self($this->regex, $this->caseSensitive, $this->wholeWord, $this->preserveCase, $this->tokenScope->next()),
-            default => $this,
+        return match ($option) {
+            SearchOption::Regex => new self(!$this->regex, $this->caseSensitive, $this->wholeWord, $this->preserveCase, $this->tokenScope),
+            SearchOption::CaseSensitive => new self($this->regex, !$this->caseSensitive, $this->wholeWord, $this->preserveCase, $this->tokenScope),
+            SearchOption::WholeWord => new self($this->regex, $this->caseSensitive, !$this->wholeWord, $this->preserveCase, $this->tokenScope),
+            SearchOption::PreserveCase => new self($this->regex, $this->caseSensitive, $this->wholeWord, !$this->preserveCase, $this->tokenScope),
+            SearchOption::Tokens => new self($this->regex, $this->caseSensitive, $this->wholeWord, $this->preserveCase, $this->tokenScope->next()),
         };
     }
 

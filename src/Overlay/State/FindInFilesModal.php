@@ -7,6 +7,7 @@ namespace Porta\Overlay\State;
 use Porta\I18n\Translator;
 use Porta\Overlay\Region\ModalBox;
 use Porta\Overlay\Region\ModalHotspot;
+use Porta\Search\SearchOption;
 use Porta\Search\TokenScope;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
@@ -350,11 +351,11 @@ final class FindInFilesModal
                 $modal->notifyField();
             },
             'cycle_scope' => static fn (self $modal) => $modal->cycleScope(),
-            'toggle_regex' => static fn (self $modal) => $modal->fireToggle('regex'),
-            'toggle_case' => static fn (self $modal) => $modal->fireToggle('case'),
-            'toggle_word' => static fn (self $modal) => $modal->fireToggle('word'),
-            'toggle_preserve' => static fn (self $modal) => $modal->fireToggle('preserve'),
-            'toggle_tokens' => static fn (self $modal) => $modal->fireToggle('tokens'),
+            'toggle_regex' => static fn (self $modal) => $modal->fireToggle(SearchOption::Regex),
+            'toggle_case' => static fn (self $modal) => $modal->fireToggle(SearchOption::CaseSensitive),
+            'toggle_word' => static fn (self $modal) => $modal->fireToggle(SearchOption::WholeWord),
+            'toggle_preserve' => static fn (self $modal) => $modal->fireToggle(SearchOption::PreserveCase),
+            'toggle_tokens' => static fn (self $modal) => $modal->fireToggle(SearchOption::Tokens),
             'delete_char_backward' => static function (self $modal): void {
                 if ($modal->activeTextField()->backspace()) {
                     $modal->notifyField();
@@ -468,10 +469,10 @@ final class FindInFilesModal
         }
     }
 
-    private function fireToggle(string $name): void
+    private function fireToggle(SearchOption $option): void
     {
         if (null !== $this->callbacks->onToggleOption) {
-            ($this->callbacks->onToggleOption)($name);
+            ($this->callbacks->onToggleOption)($option);
         }
     }
 
@@ -925,8 +926,9 @@ final class FindInFilesModal
 
                 return true;
             }
-            if (null !== $zone) {
-                $this->fireToggle($zone);
+            $option = null === $zone ? null : SearchOption::tryFrom($zone);
+            if (null !== $option) {
+                $this->fireToggle($option);
             }
 
             return true;

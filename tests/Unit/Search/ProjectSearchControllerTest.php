@@ -16,6 +16,7 @@ use Porta\Lsp\LspSessionPool;
 use Porta\Search\LanguageFilter;
 use Porta\Search\ProjectSearch;
 use Porta\Search\ProjectSearchController;
+use Porta\Search\SearchOption;
 use Porta\Search\SearchOptions;
 use Porta\Search\SearchScopeResolver;
 use Porta\Search\SearchTabState;
@@ -254,7 +255,7 @@ final class ProjectSearchControllerTest extends TestCase
         $project = new TempProject(['src/A.php' => \str_repeat('a', times: 30)."!\nz\n"]);
         $controller = $this->controller($project->dir);
         $controller->open();
-        $controller->toggleOption('regex');
+        $controller->toggleOption(SearchOption::Regex);
 
         $controller->search("(a+)+\nz");
         $this->await(fn (): bool => \str_contains($this->flashed(), 'too complex'), 3.0, 'the too-complex flash');
@@ -354,7 +355,7 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->search('needle');
         $this->awaitModalShows('NEEDLE');
 
-        $controller->toggleOption('case');
+        $controller->toggleOption(SearchOption::CaseSensitive);
         $this->await(fn (): bool => \str_contains($this->modal(), '0 results'), what: 'the case-sensitive re-run to drop the mismatched-case hit');
         $this->assertStringNotContainsString('NEEDLE', $this->modal());
         // The panel checkbox reflects the new option, independent of the re-run.
@@ -397,7 +398,7 @@ final class ProjectSearchControllerTest extends TestCase
         $project = new TempProject(['src/A.php' => "<?php\n\$foo = 'foo';\n"]);
         $controller = $this->controller($project->dir);
         $controller->open();
-        $controller->toggleOption('tokens'); // any → in comments/strings
+        $controller->toggleOption(SearchOption::Tokens); // any → in comments/strings
         $controller->search('foo');
         $this->awaitModalShows("\$foo = 'foo';");
 
@@ -412,8 +413,8 @@ final class ProjectSearchControllerTest extends TestCase
         $project = new TempProject(['src/A.php' => "<?php\n\$foo = 'foo';\n"]);
         $controller = $this->controller($project->dir);
         $controller->open();
-        $controller->toggleOption('tokens'); // → in
-        $controller->toggleOption('tokens'); // → except
+        $controller->toggleOption(SearchOption::Tokens); // → in
+        $controller->toggleOption(SearchOption::Tokens); // → except
         $controller->search('foo');
         $this->awaitModalShows("\$foo = 'foo';");
 
@@ -436,7 +437,7 @@ final class ProjectSearchControllerTest extends TestCase
         $project = new TempProject(['src/A.php' => "<?php\n\$foo = 'foo' . 'foo';\n"]);
         $controller = $this->controller($project->dir);
         $controller->open();
-        $controller->toggleOption('tokens'); // in comments/strings
+        $controller->toggleOption(SearchOption::Tokens); // in comments/strings
         $controller->search('foo');
         $this->awaitModalShows("\$foo = 'foo' . 'foo';");
 

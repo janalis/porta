@@ -213,8 +213,8 @@ final class SearchUiWiring
                 onScopeCycle: function (int $index): void {
                     $this->projectSearch->setScopeIndex($index);
                 },
-                onToggleOption: function (string $name): void {
-                    $this->projectSearch->toggleOption($name);
+                onToggleOption: function (SearchOption $option): void {
+                    $this->projectSearch->toggleOption($option);
                 },
                 onJump: function (string $relativePath, int $line): void {
                     $this->editor->findModal()->close();

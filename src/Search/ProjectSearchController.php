@@ -326,9 +326,9 @@ final class ProjectSearchController
     }
 
     /** Toggle a search option (from the modal), reflect it there, and re-run. */
-    public function toggleOption(string $name): void
+    public function toggleOption(SearchOption $option): void
     {
-        $this->searchOptions = $this->searchOptions->toggled($name);
+        $this->searchOptions = $this->searchOptions->toggled($option);
         $this->editor->findModal()->setOptions($this->searchOptions->panelState());
         $this->run($this->lastSearchQuery);
         $this->tui->requestRender();

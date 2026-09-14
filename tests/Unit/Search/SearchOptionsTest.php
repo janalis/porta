@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Search;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Search\SearchOption;
 use Porta\Search\SearchOptions;
 use Porta\Search\TokenScope;
 
@@ -24,29 +25,23 @@ final class SearchOptionsTest extends TestCase
 
     public function testToggledFlipsTheKeyedFlagAndLeavesTheRest(): void
     {
-        $this->assertTrue(new SearchOptions()->toggled('regex')->regex);
-        $this->assertTrue(new SearchOptions()->toggled('case')->caseSensitive);
-        $this->assertTrue(new SearchOptions()->toggled('word')->wholeWord);
-        $this->assertTrue(new SearchOptions()->toggled('preserve')->preserveCase);
+        $this->assertTrue(new SearchOptions()->toggled(SearchOption::Regex)->regex);
+        $this->assertTrue(new SearchOptions()->toggled(SearchOption::CaseSensitive)->caseSensitive);
+        $this->assertTrue(new SearchOptions()->toggled(SearchOption::WholeWord)->wholeWord);
+        $this->assertTrue(new SearchOptions()->toggled(SearchOption::PreserveCase)->preserveCase);
 
         // Toggling one leaves the others untouched.
-        $onlyWord = new SearchOptions()->toggled('word');
+        $onlyWord = new SearchOptions()->toggled(SearchOption::WholeWord);
         $this->assertFalse($onlyWord->regex);
         $this->assertFalse($onlyWord->caseSensitive);
 
         // Toggling twice returns to off.
-        $this->assertFalse(new SearchOptions()->toggled('regex')->toggled('regex')->regex);
+        $this->assertFalse(new SearchOptions()->toggled(SearchOption::Regex)->toggled(SearchOption::Regex)->regex);
 
         // 'tokens' cycles the three-way token scope: any → in → except → any.
-        $this->assertSame(TokenScope::InCommentsStrings, new SearchOptions()->toggled('tokens')->tokenScope);
-        $this->assertSame(TokenScope::ExceptCommentsStrings, new SearchOptions()->toggled('tokens')->toggled('tokens')->tokenScope);
-        $this->assertSame(TokenScope::Any, new SearchOptions()->toggled('tokens')->toggled('tokens')->toggled('tokens')->tokenScope);
-    }
-
-    public function testAnUnknownKeyIsANoOp(): void
-    {
-        $options = new SearchOptions(regex: true);
-        $this->assertEquals($options, $options->toggled('nonsense'));
+        $this->assertSame(TokenScope::InCommentsStrings, new SearchOptions()->toggled(SearchOption::Tokens)->tokenScope);
+        $this->assertSame(TokenScope::ExceptCommentsStrings, new SearchOptions()->toggled(SearchOption::Tokens)->toggled(SearchOption::Tokens)->tokenScope);
+        $this->assertSame(TokenScope::Any, new SearchOptions()->toggled(SearchOption::Tokens)->toggled(SearchOption::Tokens)->toggled(SearchOption::Tokens)->tokenScope);
     }
 
     public function testPanelStateMapsFieldsToTheShortKeys(): void
