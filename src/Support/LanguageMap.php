@@ -128,6 +128,7 @@ final class LanguageMap
     /** The Tempest highlighting grammar for a path, or null when unknown. */
     public static function highlightForPath(string $path): ?string
     {
+        $path = self::withoutDistSuffix($path);
         $name = \strtolower(\basename($path));
         $mapped = self::FILENAMES[$name] ?? self::EXTENSIONS[ProjectPaths::extension($path)][0] ?? null;
         if (null !== $mapped) {
@@ -142,6 +143,7 @@ final class LanguageMap
     /** The LSP languageId for a path; `plaintext` when no server speaks it. */
     public static function lspForPath(string $path): string
     {
+        $path = self::withoutDistSuffix($path);
         $mapped = self::EXTENSIONS[ProjectPaths::extension($path)][1] ?? null;
         if (null !== $mapped) {
             return $mapped;
@@ -180,5 +182,18 @@ final class LanguageMap
         \sort($names);
 
         return $names;
+    }
+
+    /**
+     * A `.dist` file is the file it will be copied to: `phpunit.xml.dist` is
+     * XML, `services.yaml.dist` is YAML, `.env.dist` is a dotenv file. The
+     * suffix is a packaging convention, not a language — resolved by it, such a
+     * file had the extension `dist` and rendered as plain text. Only a trailing
+     * suffix counts, and only on the file name (a `vendor.dist/` DIRECTORY
+     * changes nothing), so `a.dist` alone is still a file with no language.
+     */
+    private static function withoutDistSuffix(string $path): string
+    {
+        return \str_ends_with(\strtolower(\basename($path)), '.dist') ? \substr($path, offset: 0, length: -5) : $path;
     }
 }

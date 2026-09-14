@@ -83,6 +83,17 @@ final class LanguageMapTest extends TestCase
         yield 'cpp' => ['a.hpp', 'cpp', 'plaintext'];
         yield 'toml' => ['a.toml', 'toml', 'plaintext'];
 
+        // A `.dist` file is resolved as the file it will be copied to.
+        yield 'xml dist' => ['phpunit.xml.dist', 'xml', 'xml'];
+        yield 'yaml dist' => ['config/services.yaml.dist', 'yaml', 'yaml'];
+        yield 'neon dist' => ['phpstan.neon.dist', 'ini', 'plaintext'];
+        yield 'php dist' => ['config.php.dist', 'php', 'php'];
+        yield 'dist upper case' => ['PHPUNIT.XML.DIST', 'xml', 'xml'];
+        yield 'dist keeps the basename rules' => ['tsconfig.json.dist', 'jsonc', 'json'];
+        yield 'dotenv dist' => ['.env.dist', 'dotenv', 'dotenv'];
+        yield 'bare dist has no language' => ['a.dist', null, 'plaintext'];
+        yield 'a dist directory is not a dist file' => ['/proj/app.dist/README', null, 'plaintext'];
+
         yield 'unknown' => ['a.wat', null, 'plaintext'];
         yield 'no extension' => ['README', null, 'plaintext'];
     }
