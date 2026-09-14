@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Lsp;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Buffer;
+use Porta\Editor\CodeScopeKind;
 use Porta\Editor\Document;
 use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferSaved;
@@ -99,7 +100,7 @@ final class DocumentScopeControllerTest extends TestCase
         \end($this->client->requests)['respond']([self::symbol('Svc', 5, 0, 9)]);
 
         $this->assertSame(
-            [['label' => 'Svc', 'startLine' => 1, 'endLine' => 10, 'kind' => 'type']],
+            [['label' => 'Svc', 'startLine' => 1, 'endLine' => 10, 'kind' => CodeScopeKind::Type]],
             $this->scopes->forPath('/p/a.ts'),
         );
     }

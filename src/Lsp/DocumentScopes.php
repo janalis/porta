@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Lsp;
 
 use Porta\Container\AsIdeService;
+use Porta\Editor\CodeScopeKind;
 
 /**
  * The enclosing scopes of the file on screen, as the language server sees them.
@@ -21,11 +22,11 @@ final class DocumentScopes
 {
     private string $path = '';
 
-    /** @var list<array{label: string, startLine: int, endLine: int, kind: string}> */
+    /** @var list<array{label: string, startLine: int, endLine: int, kind: CodeScopeKind}> */
     private array $scopes = [];
 
     /**
-     * @param list<array{label: string, startLine: int, endLine: int, kind: string}> $scopes
+     * @param list<array{label: string, startLine: int, endLine: int, kind: CodeScopeKind}> $scopes
      */
     public function set(string $path, array $scopes): void
     {
@@ -37,7 +38,7 @@ final class DocumentScopes
      * The scopes for $path, or [] when the stored answer belongs to another
      * file — a stale trail naming another file's classes is worse than none.
      *
-     * @return list<array{label: string, startLine: int, endLine: int, kind: string}>
+     * @return list<array{label: string, startLine: int, endLine: int, kind: CodeScopeKind}>
      */
     public function forPath(?string $path): array
     {

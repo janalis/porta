@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Search;
 
 use Porta\Editor\BreadcrumbScanner;
+use Porta\Editor\CodeScopeKind;
 use Porta\Support\ProjectPaths;
 
 /**
@@ -58,10 +59,10 @@ final readonly class SuperMethodNavigator
             if ($scope['startLine'] > ($caretLine + 1) || $scope['endLine'] < ($caretLine + 1)) {
                 continue;
             }
-            if ('function' === $scope['kind']) {
+            if (CodeScopeKind::Function === $scope['kind']) {
                 $method = $scope['label'];
             }
-            if ('type' === $scope['kind']) {
+            if (CodeScopeKind::Type === $scope['kind']) {
                 $type = $scope['label'];
             }
         }

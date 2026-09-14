@@ -24,7 +24,7 @@ final class BreadcrumbScanner
      * All named scopes in the source, as 1-based line spans. `kind` is
      * `namespace` / `type` (class/interface/trait/enum) / `function`.
      *
-     * @return list<array{label: string, startLine: int, endLine: int, kind: string}>
+     * @return list<array{label: string, startLine: int, endLine: int, kind: CodeScopeKind}>
      */
     public static function scan(string $source): array
     {
@@ -39,17 +39,17 @@ final class BreadcrumbScanner
         $tokens = \token_get_all($source);
         \restore_error_handler();
 
-        /** @var list<array{label: string, startLine: int, endLine: int, kind: string}> $scopes */
+        /** @var list<array{label: string, startLine: int, endLine: int, kind: CodeScopeKind}> $scopes */
         $scopes = [];
-        /** @var list<array{label: string, startLine: int, kind: string}> $namespaces */
+        /** @var list<array{label: string, startLine: int, kind: CodeScopeKind}> $namespaces */
         $namespaces = [];
-        /** @var list<array{label: string, startLine: int, kind: string}|null> $stack open scopes (null = anonymous block) */
+        /** @var list<array{label: string, startLine: int, kind: CodeScopeKind}|null> $stack open scopes (null = anonymous block) */
         $stack = [];
-        /** @var array{label: string, startLine: int, kind: string}|null $pending a captured decl name awaiting its `{` */
+        /** @var array{label: string, startLine: int, kind: CodeScopeKind}|null $pending a captured decl name awaiting its `{` */
         $pending = null;
-        /** @var array{label: string, startLine: int, kind: string}|null $nsPending a namespace name being collected */
+        /** @var array{label: string, startLine: int, kind: CodeScopeKind}|null $nsPending a namespace name being collected */
         $nsPending = null;
-        /** @var 'type'|'function'|null $declKind armed for exactly the next name token */
+        /** @var CodeScopeKind::Type|CodeScopeKind::Function|null $declKind armed for exactly the next name token */
         $declKind = null;
         $prev = null; // previous significant token id (int) or single char (string)
         $maxLine = 1;
@@ -77,16 +77,16 @@ final class BreadcrumbScanner
                 }
 
                 if (\T_NAMESPACE === $id) {
-                    $nsPending = ['label' => '', 'startLine' => $tokLine, 'kind' => 'namespace'];
+                    $nsPending = ['label' => '', 'startLine' => $tokLine, 'kind' => CodeScopeKind::Namespace];
                 }
                 if (\T_CLASS === $id && \T_DOUBLE_COLON !== $prev && \T_NEW !== $prev) {
-                    $declKind = 'type';
+                    $declKind = CodeScopeKind::Type;
                 }
                 if (\T_INTERFACE === $id || \T_TRAIT === $id || \T_ENUM === $id) {
-                    $declKind = 'type';
+                    $declKind = CodeScopeKind::Type;
                 }
                 if (\T_FUNCTION === $id && \T_USE !== $prev) {
-                    $declKind = 'function';
+                    $declKind = CodeScopeKind::Function;
                 }
 
                 $prev = $id;
@@ -142,7 +142,7 @@ final class BreadcrumbScanner
                 'label' => $ns['label'],
                 'startLine' => $ns['startLine'],
                 'endLine' => \array_key_exists($i + 1, $namespaces) ? $namespaces[$i + 1]['startLine'] - 1 : $maxLine,
-                'kind' => 'namespace',
+                'kind' => CodeScopeKind::Namespace,
             ];
         }
 
@@ -155,7 +155,7 @@ final class BreadcrumbScanner
      * The enclosing scopes at a 0-based caret line, outermost first, each mapped
      * to a 0-based jump line (the scope's declaration line).
      *
-     * @param list<array{label: string, startLine: int, endLine: int, kind: string}> $scopes
+     * @param list<array{label: string, startLine: int, endLine: int, kind: CodeScopeKind}> $scopes
      *
      * @return list<array{label: string, line: int}>
      */
@@ -180,7 +180,7 @@ final class BreadcrumbScanner
      * scrolled off the top, outermost-first, capped at $max. Each maps to its
      * 0-based declaration line.
      *
-     * @param list<array{label: string, startLine: int, endLine: int, kind: string}> $scopes
+     * @param list<array{label: string, startLine: int, endLine: int, kind: CodeScopeKind}> $scopes
      *
      * @return list<array{label: string, line: int}>
      */
@@ -190,7 +190,7 @@ final class BreadcrumbScanner
         $headers = [];
         foreach ($scopes as $scope) {
             $header = $scope['startLine'] - 1; // 0-based declaration line
-            if ('namespace' !== $scope['kind'] && $scope['startLine'] <= $line && $line <= $scope['endLine'] && $header < $topLine) {
+            if (CodeScopeKind::Namespace !== $scope['kind'] && $scope['startLine'] <= $line && $line <= $scope['endLine'] && $header < $topLine) {
                 $headers[] = ['label' => $scope['label'], 'line' => $header];
             }
         }

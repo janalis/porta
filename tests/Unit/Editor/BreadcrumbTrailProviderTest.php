@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BreadcrumbTrailProvider;
+use Porta\Editor\CodeScopeKind;
 use Porta\Editor\Document;
 use Porta\Lsp\DocumentScopes;
 use Porta\Widget\CodeEditorWidget;
@@ -36,8 +37,8 @@ final class BreadcrumbTrailProviderTest extends TestCase
         $provider = $this->provider();
         $this->editor->showDocument('/p/a.ts', new Document("class Svc {\n  run() {\n    let x = 1;\n  }\n}\n"));
         $this->scopes->set('/p/a.ts', [
-            ['label' => 'Svc', 'startLine' => 1, 'endLine' => 5, 'kind' => 'type'],
-            ['label' => 'run', 'startLine' => 2, 'endLine' => 4, 'kind' => 'function'],
+            ['label' => 'Svc', 'startLine' => 1, 'endLine' => 5, 'kind' => CodeScopeKind::Type],
+            ['label' => 'run', 'startLine' => 2, 'endLine' => 4, 'kind' => CodeScopeKind::Function],
         ]);
         $this->editor->getDocument()->setCursor(2, 0);
 
@@ -53,7 +54,7 @@ final class BreadcrumbTrailProviderTest extends TestCase
         // a trail mentioning it would prove PHP had taken the LSP path.
         $provider = $this->provider();
         $this->editor->showDocument('/p/a.php', new Document("<?php\n\nclass Real\n{\n    public function go(): void\n    {\n    }\n}\n"));
-        $this->scopes->set('/p/a.php', [['label' => 'FromTheServer', 'startLine' => 1, 'endLine' => 99, 'kind' => 'type']]);
+        $this->scopes->set('/p/a.php', [['label' => 'FromTheServer', 'startLine' => 1, 'endLine' => 99, 'kind' => CodeScopeKind::Type]]);
         $this->editor->getDocument()->setCursor(5, 0);
 
         $labels = \array_column($provider->trail(), 'label');

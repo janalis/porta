@@ -78,7 +78,7 @@ final readonly class ReferenceCopier
      * own names the file's neighbourhood, not a place in it, and the caller has
      * a better answer than that.
      *
-     * @param list<array{label: string, startLine: int, endLine: int, kind: string}> $scopes
+     * @param list<array{label: string, startLine: int, endLine: int, kind: CodeScopeKind}> $scopes
      */
     private static function symbolAt(array $scopes, int $line, string $languageId): ?string
     {
@@ -92,10 +92,10 @@ final readonly class ReferenceCopier
             if ($scope['startLine'] > ($line + 1) || ($line + 1) > $scope['endLine']) {
                 continue;
             }
-            if ('function' !== $scope['kind']) {
+            if (CodeScopeKind::Function !== $scope['kind']) {
                 // Everything that is not a member builds the qualifier; only a
                 // TYPE in it earns the `::` below.
-                if ('type' === $scope['kind']) {
+                if (CodeScopeKind::Type === $scope['kind']) {
                     $hasType = true;
                 }
                 $qualifier .= ('' === $qualifier ? '' : $qualifierJoin).$scope['label'];

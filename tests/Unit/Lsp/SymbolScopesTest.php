@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Lsp;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BreadcrumbScanner;
+use Porta\Editor\CodeScopeKind;
 use Porta\Lsp\LspMapper;
 
 /**
@@ -45,7 +46,7 @@ final class SymbolScopesTest extends TestCase
     {
         $scopes = LspMapper::symbolScopes([null, 'not a symbol', self::symbol('Svc', 5, 4, 40)]);
 
-        $this->assertSame([['label' => 'Svc', 'startLine' => 5, 'endLine' => 41, 'kind' => 'type']], $scopes);
+        $this->assertSame([['label' => 'Svc', 'startLine' => 5, 'endLine' => 41, 'kind' => CodeScopeKind::Type]], $scopes);
     }
 
     public function testTheFULLRangeIsKeptNotTheNameSSelectionRange(): void
@@ -54,7 +55,7 @@ final class SymbolScopesTest extends TestCase
         // line long, so every crumb would vanish the moment you moved.
         $scopes = LspMapper::symbolScopes([self::symbol('Svc', 5, 4, 40)]);
 
-        $this->assertSame([['label' => 'Svc', 'startLine' => 5, 'endLine' => 41, 'kind' => 'type']], $scopes);
+        $this->assertSame([['label' => 'Svc', 'startLine' => 5, 'endLine' => 41, 'kind' => CodeScopeKind::Type]], $scopes);
     }
 
     public function testLinesAreConvertedFromLspSZeroBaseToTheScopesOneBase(): void
@@ -78,7 +79,7 @@ final class SymbolScopesTest extends TestCase
         ]);
 
         $this->assertSame(['App', 'Svc', 'run'], \array_column($scopes, 'label'));
-        $this->assertSame(['namespace', 'type', 'function'], \array_column($scopes, 'kind'));
+        $this->assertSame([CodeScopeKind::Namespace, CodeScopeKind::Type, CodeScopeKind::Function], \array_column($scopes, 'kind'));
     }
 
     public function testMembersThatAreNotContainersAreNotCrumbs(): void
@@ -125,7 +126,7 @@ final class SymbolScopesTest extends TestCase
         // check has to accept an empty span, not merely a growing one.
         $scopes = LspMapper::symbolScopes([self::symbol('f', 12, 7, 7)]);
 
-        $this->assertSame([['label' => 'f', 'startLine' => 8, 'endLine' => 8, 'kind' => 'function']], $scopes);
+        $this->assertSame([['label' => 'f', 'startLine' => 8, 'endLine' => 8, 'kind' => CodeScopeKind::Function]], $scopes);
     }
 
     public function testARangeMissingItsSTARTIsSkipped(): void
@@ -173,7 +174,7 @@ final class SymbolScopesTest extends TestCase
             'location' => ['range' => ['start' => ['line' => 2], 'end' => ['line' => 8]]],
         ]]);
 
-        $this->assertSame([['label' => 'Legacy', 'startLine' => 3, 'endLine' => 9, 'kind' => 'type']], $scopes);
+        $this->assertSame([['label' => 'Legacy', 'startLine' => 3, 'endLine' => 9, 'kind' => CodeScopeKind::Type]], $scopes);
     }
 
     public function testTheREALSelectorReadsTheMappedScopes(): void

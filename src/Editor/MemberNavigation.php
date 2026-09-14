@@ -97,7 +97,7 @@ final readonly class MemberNavigation
      * dead code no test could kill — the raw stack order (a class pops AFTER
      * its methods) is exactly what that sort exists to fix, at the source.
      *
-     * @param list<array{label: string, startLine: int, endLine: int, kind: string}> $scopes
+     * @param list<array{label: string, startLine: int, endLine: int, kind: CodeScopeKind}> $scopes
      *
      * @return list<array{label: string, line: int}>
      */
@@ -105,7 +105,7 @@ final readonly class MemberNavigation
     {
         $members = [];
         foreach ($scopes as $scope) {
-            if ('namespace' === $scope['kind']) {
+            if (CodeScopeKind::Namespace === $scope['kind']) {
                 continue;
             }
 

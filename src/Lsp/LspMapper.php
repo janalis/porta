@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Editor\CodeScopeKind;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\Document;
 
@@ -388,16 +389,16 @@ final class LspMapper
      * would make every line of a class body its own crumb.
      */
     private const array SCOPE_KINDS = [
-        2 => 'namespace', // module
-        3 => 'namespace',
-        4 => 'namespace', // package
-        5 => 'type', // class
-        10 => 'type', // enum
-        11 => 'type', // interface
-        23 => 'type', // struct
-        6 => 'function', // method
-        9 => 'function', // constructor
-        12 => 'function',
+        2 => CodeScopeKind::Namespace, // module
+        3 => CodeScopeKind::Namespace,
+        4 => CodeScopeKind::Namespace, // package
+        5 => CodeScopeKind::Type, // class
+        10 => CodeScopeKind::Type, // enum
+        11 => CodeScopeKind::Type, // interface
+        23 => CodeScopeKind::Type, // struct
+        6 => CodeScopeKind::Function, // method
+        9 => CodeScopeKind::Function, // constructor
+        12 => CodeScopeKind::Function,
     ];
 
     /**
@@ -414,7 +415,7 @@ final class LspMapper
      *
      * @param list<array<array-key, mixed>|scalar|null> $symbols
      *
-     * @return list<array{label: string, startLine: int, endLine: int, kind: string}>
+     * @return list<array{label: string, startLine: int, endLine: int, kind: CodeScopeKind}>
      */
     public static function symbolScopes(array $symbols): array
     {
@@ -426,7 +427,7 @@ final class LspMapper
 
     /**
      * @param list<array<array-key, mixed>|scalar|null>                              $symbols
-     * @param list<array{label: string, startLine: int, endLine: int, kind: string}> $scopes
+     * @param list<array{label: string, startLine: int, endLine: int, kind: CodeScopeKind}> $scopes
      */
     private static function collectScopes(array $symbols, array &$scopes): void
     {

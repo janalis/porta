@@ -24,7 +24,7 @@ namespace Porta\Editor;
 final class MemberSeparators
 {
     /**
-     * @param list<array{label: string, startLine: int, endLine: int, kind: string}> $scopes
+     * @param list<array{label: string, startLine: int, endLine: int, kind: CodeScopeKind}> $scopes
      *
      * @return array<int, true> 0-based lines to rule, keyed for a per-row lookup
      */
@@ -34,7 +34,7 @@ final class MemberSeparators
         foreach ($scopes as $scope) {
             // Functions and methods only. A rule under every class would just
             // underline the file's last brace, and under a namespace, nothing.
-            if ('function' !== $scope['kind']) {
+            if (CodeScopeKind::Function !== $scope['kind']) {
                 continue;
             }
 

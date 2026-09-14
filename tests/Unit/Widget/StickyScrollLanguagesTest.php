@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\CodeScopeKind;
 use Porta\Editor\Document;
 use Porta\Lsp\DocumentScopes;
 use Porta\Ui\Sgr;
@@ -38,8 +39,8 @@ final class StickyScrollLanguagesTest extends TestCase
     private static function serverScopes(string $path, DocumentScopes $scopes): void
     {
         $scopes->set($path, [
-            ['label' => 'Service', 'startLine' => 1, 'endLine' => 24, 'kind' => 'type'],
-            ['label' => 'handle', 'startLine' => 2, 'endLine' => 23, 'kind' => 'function'],
+            ['label' => 'Service', 'startLine' => 1, 'endLine' => 24, 'kind' => CodeScopeKind::Type],
+            ['label' => 'handle', 'startLine' => 2, 'endLine' => 23, 'kind' => CodeScopeKind::Function],
         ]);
     }
 

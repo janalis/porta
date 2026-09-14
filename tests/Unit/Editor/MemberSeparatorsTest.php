@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BreadcrumbScanner;
+use Porta\Editor\CodeScopeKind;
 use Porta\Editor\MemberSeparators;
 
 /**
@@ -18,7 +19,7 @@ final class MemberSeparatorsTest extends TestCase
     {
         // 1-based scopes in, 0-based document lines out: a member closing on
         // scanner line 9 rules document line 8.
-        $scopes = [['label' => 'run', 'startLine' => 5, 'endLine' => 9, 'kind' => 'function']];
+        $scopes = [['label' => 'run', 'startLine' => 5, 'endLine' => 9, 'kind' => CodeScopeKind::Function]];
 
         $this->assertSame([8 => true], MemberSeparators::linesFor($scopes));
     }
@@ -28,8 +29,8 @@ final class MemberSeparatorsTest extends TestCase
         // Under a class is the file's last brace, and under a namespace,
         // nothing at all — neither separates one member from another.
         $scopes = [
-            ['label' => 'App', 'startLine' => 3, 'endLine' => 40, 'kind' => 'namespace'],
-            ['label' => 'Svc', 'startLine' => 5, 'endLine' => 39, 'kind' => 'type'],
+            ['label' => 'App', 'startLine' => 3, 'endLine' => 40, 'kind' => CodeScopeKind::Namespace],
+            ['label' => 'Svc', 'startLine' => 5, 'endLine' => 39, 'kind' => CodeScopeKind::Type],
         ];
 
         $this->assertSame([], MemberSeparators::linesFor($scopes));
@@ -39,8 +40,8 @@ final class MemberSeparatorsTest extends TestCase
     {
         // A one-line function nested in another: a set, not a count.
         $scopes = [
-            ['label' => 'outer', 'startLine' => 3, 'endLine' => 7, 'kind' => 'function'],
-            ['label' => 'inner', 'startLine' => 5, 'endLine' => 7, 'kind' => 'function'],
+            ['label' => 'outer', 'startLine' => 3, 'endLine' => 7, 'kind' => CodeScopeKind::Function],
+            ['label' => 'inner', 'startLine' => 5, 'endLine' => 7, 'kind' => CodeScopeKind::Function],
         ];
 
         $this->assertSame([6 => true], MemberSeparators::linesFor($scopes));

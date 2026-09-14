@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\CodeScopeKind;
 use Porta\Editor\ReferenceCopier;
 use Porta\I18n\Translator;
 use Porta\Lsp\DocumentScopes;
@@ -204,8 +205,8 @@ final class ReferenceCopierTest extends TestCase
         $scopes = new DocumentScopes();
         $path = $this->project(['src/a.ts' => "class Service {\n  handle() {\n    let x = 1;\n  }\n}\n"], 'src/a.ts');
         $scopes->set($path, [
-            ['label' => 'Service', 'startLine' => 1, 'endLine' => 5, 'kind' => 'type'],
-            ['label' => 'handle', 'startLine' => 2, 'endLine' => 4, 'kind' => 'function'],
+            ['label' => 'Service', 'startLine' => 1, 'endLine' => 5, 'kind' => CodeScopeKind::Type],
+            ['label' => 'handle', 'startLine' => 2, 'endLine' => 4, 'kind' => CodeScopeKind::Function],
         ]);
         $copier = $this->copierFor($path, $scopes);
         $this->editor->getDocument()->setCursor(2, 4);

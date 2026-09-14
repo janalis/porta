@@ -14,6 +14,7 @@ use Porta\Editor\AutoPairService;
 use Porta\Editor\BreadcrumbScanner;
 use Porta\Editor\CaretMotion;
 use Porta\Editor\ClipboardRing;
+use Porta\Editor\CodeScopeKind;
 use Porta\Editor\CommentSyntax;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\DecorationStore;
@@ -142,7 +143,7 @@ final class CodeEditorWidget extends AbstractWidget implements
 
     /** @var list<int> 0-based doc lines pinned by sticky scroll at the top of the last render */
     private array $stickyLines = [];
-    /** @var list<array{label: string, startLine: int, endLine: int, kind: string}> memoized structure scan, keyed by document identity + version */
+    /** @var list<array{label: string, startLine: int, endLine: int, kind: CodeScopeKind}> memoized structure scan, keyed by document identity + version */
     private array $scopeCache = [];
     private string $scopeKey = '';
 
@@ -555,7 +556,7 @@ final class CodeEditorWidget extends AbstractWidget implements
      * by document identity + version. Empty for non-PHP files. Shared by the
      * breadcrumbs bar and sticky scroll.
      *
-     * @return list<array{label: string, startLine: int, endLine: int, kind: string}>
+     * @return list<array{label: string, startLine: int, endLine: int, kind: CodeScopeKind}>
      */
     public function scopes(): array
     {

@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BreadcrumbScanner;
+use Porta\Editor\CodeScopeKind;
 
 final class BreadcrumbScannerTest extends TestCase
 {
@@ -96,9 +97,9 @@ final class BreadcrumbScannerTest extends TestCase
         foreach ($scopes as $s) {
             $kinds[$s['label']] = $s['kind'];
         }
-        $this->assertSame('namespace', $kinds['N']);
-        $this->assertSame('type', $kinds['C']);
-        $this->assertSame('function', $kinds['m']);
+        $this->assertSame(CodeScopeKind::Namespace, $kinds['N']);
+        $this->assertSame(CodeScopeKind::Type, $kinds['C']);
+        $this->assertSame(CodeScopeKind::Function, $kinds['m']);
     }
 
     public function testStickyHeadersPinScrolledOffScopesExceptNamespace(): void
@@ -136,7 +137,7 @@ final class BreadcrumbScannerTest extends TestCase
 
         $this->assertCount(1, $scopes);
         $this->assertSame('A\\X', $scopes[0]['label']);
-        $this->assertSame('namespace', $scopes[0]['kind']);
+        $this->assertSame(CodeScopeKind::Namespace, $scopes[0]['kind']);
     }
 
     public function testUnclosedSingleLineScopeEndsOnItsOwnLineNotLineTwo(): void
@@ -145,7 +146,7 @@ final class BreadcrumbScannerTest extends TestCase
         // 1, not rely on a token pushing it there.
         $scopes = BreadcrumbScanner::scan('<?php class A{');
 
-        $this->assertSame(['label' => 'A', 'startLine' => 1, 'endLine' => 1, 'kind' => 'type'], $scopes[0]);
+        $this->assertSame(['label' => 'A', 'startLine' => 1, 'endLine' => 1, 'kind' => CodeScopeKind::Type], $scopes[0]);
     }
 
     public function testCommentBetweenClassKeywordAndNameDoesNotBreakCapture(): void
@@ -178,9 +179,9 @@ final class BreadcrumbScannerTest extends TestCase
     {
         $src = "<?php\nnamespace A;\nclass X {}\nnamespace B;\nclass Y {}\n";
         $scopes = BreadcrumbScanner::scan($src);
-        $namespaces = \array_values(\array_filter($scopes, static fn (array $s): bool => 'namespace' === $s['kind']));
+        $namespaces = \array_values(\array_filter($scopes, static fn (array $s): bool => CodeScopeKind::Namespace === $s['kind']));
 
-        $this->assertSame(['label' => 'A', 'startLine' => 2, 'endLine' => 3, 'kind' => 'namespace'], $namespaces[0]);
+        $this->assertSame(['label' => 'A', 'startLine' => 2, 'endLine' => 3, 'kind' => CodeScopeKind::Namespace], $namespaces[0]);
         $this->assertSame('B', $namespaces[1]['label']);
         $this->assertSame(4, $namespaces[1]['startLine']);
     }
