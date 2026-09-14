@@ -3134,6 +3134,10 @@
         <source>Deleted %file% — unsaved changes in it are gone</source>
         <target>%file% を削除しました — 未保存の変更は失われました</target>
       </trans-unit>
+      <trans-unit id="877">
+        <source>Alt+A again to DELETE every match — the replacement is empty</source>
+        <target>もう一度 Alt+A ですべての一致を削除します — 置換文字列が空です</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

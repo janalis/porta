@@ -369,6 +369,149 @@ final class ProjectSearchControllerTest extends TestCase
         $this->assertStringContainsString('$needle = 1;', (string) file_get_contents($project->path('src/A.php')), 'an open buffer is edited in memory, not written straight to disk');
     }
 
+    /**
+     * A replace may not touch the occurrences the token scope excluded.
+     *
+     * `LanguageFilter` keeps a line when AT LEAST ONE occurrence falls in the
+     * requested class, and the replace then rewrote the WHOLE line — so
+     * `$foo = 'foo';` searched for `foo` "in strings" came back with its
+     * VARIABLE renamed as well, by the filter that existed to protect it.
+     * Silent source corruption, and the one line that shows it does both
+     * directions.
+     */
+    public function testReplaceAllUnderATokenScopeLeavesTheExcludedOccurrencesAlone(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$foo = 'foo';\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->toggleOption('tokens'); // any → in comments/strings
+        $controller->search('foo');
+        $this->awaitModalShows("\$foo = 'foo';");
+
+        $controller->replaceAll('bar');
+
+        $this->assertSame("<?php\n\$foo = 'bar';\n", (string) file_get_contents($project->path('src/A.php')), 'the string changed, the variable did not');
+    }
+
+    /** And the mirror image, so a fix that simply replaced nothing cannot pass. */
+    public function testReplaceAllExceptCommentsStringsLeavesTheStringAlone(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$foo = 'foo';\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->toggleOption('tokens'); // → in
+        $controller->toggleOption('tokens'); // → except
+        $controller->search('foo');
+        $this->awaitModalShows("\$foo = 'foo';");
+
+        $controller->replaceAll('bar');
+
+        $this->assertSame("<?php\n\$bar = 'foo';\n", (string) file_get_contents($project->path('src/A.php')), 'the variable changed, the string did not');
+    }
+
+    /**
+     * TWO approved occurrences on one line, replaced by something of a
+     * different length — which is what makes the splice ORDER matter.
+     *
+     * With one span per line, right-to-left and left-to-right agree, and both
+     * of the cases above have exactly one: they passed against a splice that
+     * walked forwards and shifted every later offset by the length difference
+     * as it went. The fixture has to hold two before it can tell them apart.
+     */
+    public function testTwoOccurrencesOnOneLineAreBothReplacedCorrectly(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$foo = 'foo' . 'foo';\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->toggleOption('tokens'); // in comments/strings
+        $controller->search('foo');
+        $this->awaitModalShows("\$foo = 'foo' . 'foo';");
+
+        $controller->replaceAll('barbaz'); // longer than the match, so offsets move
+
+        $this->assertSame(
+            "<?php\n\$foo = 'barbaz' . 'barbaz';\n",
+            (string) file_get_contents($project->path('src/A.php')),
+            'both strings replaced, the variable untouched',
+        );
+    }
+
+    /**
+     * An EMPTY replacement deletes every match across open buffers and on disk,
+     * and the modal closes afterwards. It is a legitimate operation and stays
+     * available — refusing would make a real verb a dead key — but it is the one
+     * replace-all nothing on that screen can protect you from: the per-match
+     * exclude checkboxes render only once a replacement is non-empty, and the
+     * footer advertises Alt+A before anything has been typed.
+     *
+     * The assertion that matters is that the FILE is untouched by the first
+     * ask. A flash-only check passes against code that warns and deletes
+     * anyway.
+     */
+    public function testAnEmptyReplacementDeletesNothingUntilItIsConfirmed(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$needle = 1;\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search('needle');
+        $this->awaitModalShows('$needle = 1;');
+
+        $controller->replaceAll('');
+
+        $this->assertSame("<?php\n\$needle = 1;\n", (string) file_get_contents($project->path('src/A.php')), 'nothing was deleted');
+        $this->assertStringContainsString('Alt+A again to DELETE', $this->flashed());
+
+        $controller->replaceAll('');
+
+        $this->assertSame("<?php\n\$ = 1;\n", (string) file_get_contents($project->path('src/A.php')), 'the confirmed ask deletes');
+
+        // And the arm is SPENT. Without clearing it, one confirmation would
+        // stand for the rest of the session and every later empty replace-all
+        // would delete on its first ask.
+        $project->write('src/A.php', "<?php\n\$needle = 2;\n");
+        $controller->open(); // finishReplace() closed the modal behind the first one
+        $controller->search('needle');
+        $this->awaitModalShows('$needle = 2;');
+
+        $controller->replaceAll('');
+
+        $this->assertSame("<?php\n\$needle = 2;\n", (string) file_get_contents($project->path('src/A.php')), 'the next one asks again');
+    }
+
+    /**
+     * With NOTHING to replace, the empty-replacement confirm must not speak
+     * first: offering to confirm the deletion of nothing is worse than the
+     * silence it replaced. The guard sits AFTER the "Nothing to replace" check
+     * for that reason, and an E2e case caught it sitting before.
+     */
+    public function testAnEmptyReplacementWithNoResultsSaysNothingToReplace(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search('nomatch');
+        $this->await(fn (): bool => str_contains($this->modal(), '0 results'), what: 'the empty search to complete');
+
+        $controller->replaceAll('');
+
+        $this->assertStringContainsString('Nothing to replace', $this->flashed());
+        $this->assertStringNotContainsString('DELETE every match', $this->flashed());
+    }
+
+    /** A NON-empty replacement needs no confirmation — the control for the case above. */
+    public function testANonEmptyReplacementAppliesOnTheFirstAsk(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$needle = 1;\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search('needle');
+        $this->awaitModalShows('$needle = 1;');
+
+        $controller->replaceAll('found');
+
+        $this->assertStringContainsString('$found = 1;', (string) file_get_contents($project->path('src/A.php')));
+    }
+
     public function testReplaceAllWritesAClosedFileToDisk(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n\$needle = 1;\n"]);

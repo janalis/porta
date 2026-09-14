@@ -3134,6 +3134,10 @@
         <source>Deleted %file% — unsaved changes in it are gone</source>
         <target>%file% eliminado — los cambios sin guardar se han perdido</target>
       </trans-unit>
+      <trans-unit id="877">
+        <source>Alt+A again to DELETE every match — the replacement is empty</source>
+        <target>Alt+A de nuevo para ELIMINAR todas las coincidencias — el reemplazo está vacío</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

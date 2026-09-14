@@ -36,6 +36,9 @@ final class ProjectSearchController
     private const array BUILT_INS = [ScopeKind::Project, ScopeKind::Directory, ScopeKind::CurrentFile, ScopeKind::OpenFiles, ScopeKind::Module];
 
     private SearchOptions $searchOptions;
+
+    /** Whether an empty-replacement replace-all has been asked for once and awaits its confirming second ask. */
+    private bool $armedEmptyReplace = false;
     private string $lastSearchQuery = '';
     private ScopeKind $scopeKind = ScopeKind::Project;
     /** @var list<ScopeChoice> the Alt+S choices (built-in kinds + saved scopes), rebuilt on open */
@@ -363,14 +366,38 @@ final class ProjectSearchController
 
             return;
         }
+        // AFTER the check above, not before it: with no query and no results
+        // there is nothing to destroy, and offering to confirm the deletion of
+        // nothing is worse than the silence it replaced. "Nothing to replace"
+        // wins, and this only speaks when there is something to lose.
+        //
+        // An EMPTY replacement DELETES every match, across open buffers and on
+        // disk, and the modal closes afterwards. It stays available — refusing
+        // would make a real verb a dead key — but it is the one replace-all
+        // nothing on that screen can protect you from: the per-match exclude
+        // checkboxes render only once a replacement is non-empty, and the
+        // footer advertises Alt+A before anything has been typed. So it
+        // confirms, the way quitting with unsaved buffers does, and the confirm
+        // lives beside the code that deletes rather than in the modal that asks.
+        if ('' === $replacement && !$this->armedEmptyReplace) {
+            $this->armedEmptyReplace = true;
+            $this->statusBar->flash($this->translator->trans('Alt+A again to DELETE every match — the replacement is empty'));
+            $this->tui->requestRender();
+
+            return;
+        }
+        $this->armedEmptyReplace = false;
 
         $touched = 0;
         foreach ($keptLinesByPath as $relPath => $lineIndices) {
+            // Narrowed once per FILE, not per line: it classifies the whole
+            // content, and a replace over a file touches many lines of it.
+            $approved = $this->languageFilter->approvedSpans($relPath, $this->lastSearchQuery, $this->searchOptions);
             $abs = $this->paths->absolute($relPath);
             $buffer = $this->buffers->get($abs) ?? $this->buffers->get(($real = realpath($abs)) ? $real : $abs);
             if (null !== $buffer) {
                 $old = $buffer->document->getText();
-                $new = $this->replaceLines($old, $lineIndices, $replacement);
+                $new = $this->replaceLines($old, $lineIndices, $replacement, $approved);
                 if ($this->replacer->replace($buffer, $new)) {
                     ++$touched;
                 }
@@ -379,7 +406,7 @@ final class ProjectSearchController
             }
             $old = Files::readWritable($abs);
             if (null !== $old) {
-                $new = $this->replaceLines($old, $lineIndices, $replacement);
+                $new = $this->replaceLines($old, $lineIndices, $replacement, $approved);
                 if ($new !== $old) {
                     $this->fs->dumpFile($abs, $new);
                     ++$touched;
@@ -440,13 +467,27 @@ final class ProjectSearchController
      * $content, leaving every other line — including excluded matches and
      * non-matching lines — byte-for-byte unchanged.
      *
-     * @param list<int> $lineIndices
+     * And, when the token scope narrows them, to only the OCCURRENCES it
+     * approves within those lines. A line is kept when at least one occurrence
+     * falls in the requested token class, so rewriting the whole line rewrote
+     * the rest too: `$foo = 'foo';` under "in strings" had its variable renamed
+     * by a replace that existed to protect it.
+     *
+     * @param list<int>                                             $lineIndices
+     * @param array<int, list<array{start: int, length: int}>>|null $approved    the spans the token
+     *                                                                           scope allows, or null
+     *                                                                           when it narrows nothing
      */
-    private function replaceLines(string $content, array $lineIndices, string $replacement): string
+    private function replaceLines(string $content, array $lineIndices, string $replacement, ?array $approved = null): string
     {
         $lines = explode("\n", $content);
         foreach ($lineIndices as $index) {
             if (($lines[$index] ?? null) === null) {
+                continue;
+            }
+            if (null !== $approved) {
+                $lines[$index] = self::spliceSpans($lines[$index], $approved[$index] ?? [], $replacement);
+
                 continue;
             }
 
@@ -454,6 +495,25 @@ final class ProjectSearchController
         }
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * Rewrite only $spans of $line, right-to-left so the earlier offsets stay
+     * valid as the string changes length under them.
+     *
+     * @param list<array{start: int, length: int}> $spans
+     */
+    private static function spliceSpans(string $line, array $spans, string $replacement): string
+    {
+        usort($spans, static fn (array $a, array $b): int => $b['start'] <=> $a['start']);
+        foreach ($spans as $span) {
+            // max(0,…) on both: the analyzer cannot see that a match offset and
+            // a match length are non-negative by construction, and a negative
+            // either way would splice from the END of the line.
+            $line = substr_replace($line, $replacement, max(0, $span['start']), max(0, $span['length']));
+        }
+
+        return $line;
     }
 
     /**

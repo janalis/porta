@@ -3134,6 +3134,10 @@
         <source>Deleted %file% — unsaved changes in it are gone</source>
         <target>%file% נמחק — שינויים שלא נשמרו בו אבדו</target>
       </trans-unit>
+      <trans-unit id="877">
+        <source>Alt+A again to DELETE every match — the replacement is empty</source>
+        <target>Alt+A שוב כדי למחוק את כל ההתאמות — המחרוזת המחליפה ריקה</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

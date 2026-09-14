@@ -71,6 +71,51 @@ final class LanguageFilter
     }
 
     /**
+     * Which occurrences in $relPath the scope actually APPROVES, line by line.
+     *
+     * {@see apply()} answers a per-LINE question — keep this result or drop it —
+     * because that is all a result list needs. A replace needs the finer one:
+     * `lineKept()` keeps a line when AT LEAST ONE occurrence falls in the
+     * requested token class, so a line can be kept for its string and rewritten
+     * through its variable. `$foo = 'foo';` under "in strings" is the whole bug
+     * in one line.
+     *
+     * Null means "do not narrow" — the scope is Any, or the language is unknown
+     * or the file unreadable, which are exactly the cases where {@see apply()}
+     * keeps everything. The caller then replaces as it always did.
+     *
+     * @return array<int, list<array{start: int, length: int}>>|null line index => approved spans
+     */
+    public function approvedSpans(string $relPath, string $query, SearchOptions $options): ?array
+    {
+        $scope = $options->tokenScope;
+        $language = LanguageMap::highlightForPath($relPath);
+        $content = Files::read($this->paths->absolute($relPath));
+        if (TokenScope::Any === $scope || null === $language || '' === $content) {
+            return null;
+        }
+
+        $spans = $this->classifier->commentStringSpans($content, $language);
+        $lines = explode("\n", $content);
+        $lineStarts = $this->lineStartOffsets($lines);
+        $approved = [];
+        foreach ($lines as $index => $line) {
+            $kept = [];
+            foreach ($this->projectSearch->matchSpans($line, $query, $options) as $span) {
+                $inside = $this->inAnySpan(($lineStarts[$index] ?? 0) + $span['start'], $spans);
+                if ((TokenScope::InCommentsStrings === $scope) === $inside) {
+                    $kept[] = $span;
+                }
+            }
+            if ([] !== $kept) {
+                $approved[$index] = $kept;
+            }
+        }
+
+        return $approved;
+    }
+
+    /**
      * @param list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> $results
      *
      * @return array<string, list<int>> path => result indices

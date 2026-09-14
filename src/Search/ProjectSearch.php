@@ -453,6 +453,20 @@ final class ProjectSearch
      */
     public function matchOffsets(string $line, string $query, SearchOptions $options): array
     {
+        return array_column($this->matchSpans($line, $query, $options), column_key: 'start');
+    }
+
+    /**
+     * The same matches, with their LENGTHS — which a replace needs and an
+     * offset alone cannot give it: under `regex` a match is not
+     * `strlen($query)` long, so splicing at an offset without one rewrites the
+     * wrong span. The results' own `ranges` cannot be reused for this either;
+     * those are offsets into the TRIMMED preview text, not into the file's line.
+     *
+     * @return list<array{start: int, length: int}>
+     */
+    public function matchSpans(string $line, string $query, SearchOptions $options): array
+    {
         $matches = [];
         if ('' === $line) {
             return [];
@@ -465,16 +479,16 @@ final class ProjectSearch
 
             return [];
         }
-        $offsets = [];
+        $spans = [];
         foreach ($matches[0] as $hit) {
             if ('' === $hit[0]) {
                 continue;
             }
 
-            $offsets[] = (int) $hit[1];
+            $spans[] = ['start' => (int) $hit[1], 'length' => \strlen($hit[0])];
         }
 
-        return $offsets;
+        return $spans;
     }
 
     /** Build a PCRE pattern mirroring the grep flags, for the PHP fallback. */
