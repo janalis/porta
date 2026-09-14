@@ -171,6 +171,18 @@ final class SettingsViewController implements ContributedView
 
     private function selectSection(string $id): void
     {
+        // Which content widget is losing the slot, and whether the KEYBOARD is
+        // on it. The `1`/`2` page jumps are pressed while the content has focus,
+        // and the swap below unmounts that widget — so without moving focus the
+        // keys kept going to a widget nobody could see, where Enter and Space
+        // actuate a settings row and WRITE CONFIG. The visible page meanwhile
+        // received nothing and looked frozen.
+        //
+        // Conditional, because the same swap driven from the NAV must not steal
+        // focus from it: the nav is still mounted and is where the user is.
+        $outgoing = 'keybindings' === $this->section ? $this->keymapList : $this->form;
+        $followFocus = $this->host->focused() === $outgoing;
+
         $this->section = $id;
         $this->nav->setActive($id);
         $this->region->content()->clear();
@@ -181,6 +193,9 @@ final class SettingsViewController implements ContributedView
         if ('keybindings' !== $id) {
             $this->form->setRows($this->rowsForSection(), $this->nav->activeLabel());
             $this->region->content()->add($this->form);
+        }
+        if ($followFocus) {
+            $this->host->focus('keybindings' === $id ? $this->keymapList : $this->form);
         }
         $this->host->invalidate();
     }

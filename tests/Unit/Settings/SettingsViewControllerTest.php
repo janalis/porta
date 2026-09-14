@@ -110,6 +110,7 @@ final class SettingsViewControllerTest extends TestCase
     private SettingsNavWidget $nav;
     private SettingsFormWidget $form;
     private KeybindingsListWidget $keymapList;
+    private ViewHost $host;
     private ContainerWidget $main;
     private ContainerWidget $content;
     private CodeEditorWidget $editorWidget;
@@ -311,7 +312,7 @@ final class SettingsViewControllerTest extends TestCase
             $this->form,
             $this->keymapList,
             $regions,
-            new ViewHost(
+            $this->host = new ViewHost(
                 $this->main,
                 $menuBar,
                 new class($editWidget) implements EditorAreaPanes {
@@ -1123,5 +1124,47 @@ final class SettingsViewControllerTest extends TestCase
         $this->keymapList->setFocused(true);
         $this->keymapList->handleInput('1');
         $this->assertSame('general', $this->nav->selectedId(), "the list's advertised '1' key swaps back");
+    }
+
+    /**
+     * The KEYBOARD follows the page it jumped to.
+     *
+     * The case above hand-sets `setFocused(true)` around each press, which is
+     * what let this through: the swap unmounts the widget the key was pressed
+     * on, and nothing moved focus off it. Every later keystroke then went to a
+     * widget nobody could see — where Enter and Space actuate a settings row
+     * and WRITE CONFIG — while the visible page received none and looked
+     * frozen.
+     *
+     * Driven through the real focus, and asserted on it.
+     */
+    public function testTheOneTwoKeysTakeTheKEYBOARDWithThem(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $this->assertSame($this->form, $this->host->focused(), 'the form has focus on open');
+
+        $this->form->handleInput('2');
+        $this->assertSame($this->keymapList, $this->host->focused(), 'focus followed the jump to keybindings');
+
+        $this->keymapList->handleInput('1');
+        $this->assertSame($this->form, $this->host->focused(), 'and back again');
+    }
+
+    /**
+     * The control, from the opposite direction: choosing a page FROM THE NAV
+     * leaves focus on the nav, which is still mounted and is where the user is.
+     * A fix that focused the content unconditionally would take the nav's keys
+     * away and pass the case above while doing it.
+     */
+    public function testChoosingAPageFromTheNavKeepsFocusOnTheNav(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $this->host->focus($this->nav);
+
+        $controller->onSectionRequested(new SettingsSectionRequested('keybindings'));
+
+        $this->assertSame($this->nav, $this->host->focused(), 'the nav kept the keyboard');
     }
 }
