@@ -338,7 +338,7 @@ final class PluginInstallerTest extends TestCase
 
     public function testUrlSourcesRequireGit(): void
     {
-        [$error] = $this->install($this->installer(git: null), 'https://example.com/x/demo.git');
+        [$error] = $this->install($this->installer(), 'https://example.com/x/demo.git');
         $this->assertSame('git is not available', $error);
     }
 

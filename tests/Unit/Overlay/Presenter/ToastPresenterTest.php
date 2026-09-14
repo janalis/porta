@@ -223,7 +223,6 @@ final class ToastPresenterTest extends TestCase
         new ToastPresenter(
             new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane], static fn (): array => []), $this->tui),
             $toasts,
-            frameHooks: null,
         );
 
         $this->frame();
@@ -238,7 +237,7 @@ final class ToastPresenterTest extends TestCase
         // Every other test drives sync() by hand; this one proves the
         // constructor's onBeforeFrame registration is what makes that
         // automatic in the real app.
-        $presenter = $this->presenter();
+        $this->presenter();
         $this->frame();
         $this->toasts->push('hi', ToastSeverity::Info);
 

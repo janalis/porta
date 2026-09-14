@@ -411,7 +411,7 @@ final class IdeFindInProjectTest extends TestCase
     {
         $project = new TempProject(['src/A.php' => "<?php\nfoo\n"]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/A.php'),
             [
@@ -590,7 +590,7 @@ final class IdeFindInProjectTest extends TestCase
             'src/A.php' => "<?php\n// tok here\n",
             'other/B.php' => "<?php\n// tok here\n",
         ]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 16))));
+        static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 16))));
 
         $this->runIde(
             $project,
@@ -645,7 +645,7 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => function (Tui $tui) use ($panelText, $project): void {
+                600 => function (Tui $tui) use ($project): void {
                     $tui->tick();
                     $this->promote($tui); // modal → results pane (F5 rerun lives on the pane)
                     $this->assertStringContainsString('1 result', $tui->getById('results')->statusText());

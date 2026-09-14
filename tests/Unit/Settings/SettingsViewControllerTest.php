@@ -133,7 +133,7 @@ final class SettingsViewControllerTest extends TestCase
      */
     public function testEveryWritingPageLeadsWithTheScopeChooserAndRoutesIt(): void
     {
-        $controller = $this->controller();
+        $this->controller();
 
         foreach (['general', 'interface', 'highlighting', 'plugins', 'lang:php'] as $page) {
             $this->scope->set(ConfigScope::Project);
@@ -536,7 +536,7 @@ final class SettingsViewControllerTest extends TestCase
      */
     public function testResetReachesEveryPagesOwnNotionOfDefault(): void
     {
-        $controller = $this->controller();
+        $this->controller();
 
         // General: a core setting, removed from the file.
         $this->sectionEvents->dispatch(new SettingsSectionRequested('general'));
@@ -579,7 +579,7 @@ final class SettingsViewControllerTest extends TestCase
      */
     public function testASectionRequestCarryingARowLandsOnThatRow(): void
     {
-        $controller = $this->controller();
+        $this->controller();
         AttachedStyles::attach($this->form);
         $this->form->setFocused(true);
 
@@ -613,7 +613,7 @@ final class SettingsViewControllerTest extends TestCase
      */
     public function testARefusedEditKeepsTheEditorOpenWithTheTypedText(): void
     {
-        $controller = $this->controller();
+        $this->controller();
         // As the real view has it: the form owns focus and resolves its shading
         // through the themed sheet, which is what makes the selection findable.
         AttachedStyles::attach($this->form);

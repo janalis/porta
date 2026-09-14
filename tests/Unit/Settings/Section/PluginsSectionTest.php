@@ -37,7 +37,7 @@ final class PluginsSectionTest extends TestCase
         $lifecycle = new FakePluginLifecycle();
         $pluginSettings = new PluginSettings($project->dir, [], null, $scope);
         $plugins = new SettingsPluginsController(
-            new PluginInstaller($project->dir, $project->dir, new Translator('en'), null, null, null),
+            new PluginInstaller($project->dir, $project->dir, new Translator('en'), null),
             $pluginSettings,
             new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
             new Translator('en'),
@@ -77,7 +77,7 @@ final class PluginsSectionTest extends TestCase
             ['key' => 'binary', 'label' => 'Binary', 'kind' => 'text', 'default' => '/stock', 'options' => null, 'hint' => null, 'min' => null, 'max' => null, 'step' => null],
         ]);
         $section = new PluginsSection(new SettingsPluginsController(
-            new PluginInstaller($project->dir, $project->dir, new Translator('en'), null, null, null),
+            new PluginInstaller($project->dir, $project->dir, new Translator('en'), null),
             $pluginSettings,
             new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
             new Translator('en'),
@@ -113,7 +113,7 @@ final class PluginsSectionTest extends TestCase
         $lifecycle->names = ['git', 'todo'];
         $pluginSettings = new PluginSettings($project->dir, [], null, $scope);
         $section = new PluginsSection(new SettingsPluginsController(
-            new PluginInstaller($project->dir, $project->dir, new Translator('en'), null, null, null),
+            new PluginInstaller($project->dir, $project->dir, new Translator('en'), null),
             $pluginSettings,
             new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
             new Translator('en'),

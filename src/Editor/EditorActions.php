@@ -146,7 +146,7 @@ final readonly class EditorActions
         if ($this->tryEditing($keys, $kb)) {
             return;
         }
-        $this->tryTextInput($keys, $kb);
+        $this->tryTextInput($keys);
     }
 
     /** Prompts/completion/caret management, block copy/cut, and the multi-caret path. */
@@ -517,7 +517,7 @@ final readonly class EditorActions
     }
 
     /** Plain text insertion (with auto-pairing), the final fall-through. */
-    private function tryTextInput(string $keys, Keybindings $kb): bool
+    private function tryTextInput(string $keys): bool
     {
         if (!$this->host->isInsertable($keys)) {
             return false;

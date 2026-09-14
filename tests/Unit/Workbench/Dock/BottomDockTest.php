@@ -492,7 +492,7 @@ final class BottomDockTest extends TestCase
     public function testAClosedTabsStateDoesNotLeakOntoItsNeighbour(): void
     {
         $dock = $this->dock();
-        $neighbour = $dock->showList(ResultsPanelMode::Problems, 'Problems', [
+        $dock->showList(ResultsPanelMode::Problems, 'Problems', [
             ['path' => 'p.php', 'line' => 1, 'text' => 'problem'],
             ['path' => 'q.php', 'line' => 2, 'text' => 'quibble'],
         ]);
@@ -628,7 +628,6 @@ final class BottomDockTest extends TestCase
             new ResultsPanelWidget(),
             new DebugPanelWidget(),
             sessions: $sessions,
-            events: null,
         );
 
         $dock->reveal(DockTab::Terminal); // must not crash on the nullsafe dispatch

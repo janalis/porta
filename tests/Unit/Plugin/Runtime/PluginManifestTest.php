@@ -143,9 +143,7 @@ final class PluginManifestTest extends TestCase
         $manifest = PluginManifest::beside($this->pluginDir(
             $project,
             'needs',
-            \sprintf(
-                '{"require": {"php": ">=99.0", "ext-porta_nonexistent": "*", "ext-mbstring": "*", "php-64bit": "*", "lib-icu": "*"}}',
-            ),
+            '{"require": {"php": ">=99.0", "ext-porta_nonexistent": "*", "ext-mbstring": "*", "php-64bit": "*", "lib-icu": "*"}}',
         ));
 
         $unmet = $manifest->unmetPlatform();

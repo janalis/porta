@@ -93,10 +93,10 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      * @var (callable(string, bool|int|string): bool)|null a row's value changed;
      *                                                     false = refused
      */
-    private $onChange = null;
+    private $onChange;
 
     /** @var (callable(string): void)|null a row was put back to its default */
-    private $onReset = null;
+    private $onReset;
 
     /** @param callable(string, bool|int|string): bool $callback returns false to refuse the value */
     public function onChange(callable $callback): self
@@ -375,9 +375,6 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         };
     }
 
-    /**
-     * @param SettingsRow $row
-     */
     private function cycleChoice(SettingsRow $row, int $delta): string
     {
         $options = $row->options ?? [];
@@ -399,9 +396,6 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         return $row->optionLabels[$value] ?? $value;
     }
 
-    /**
-     * @param SettingsRow $row
-     */
     private function stepInt(SettingsRow $row, int $delta): int
     {
         $min = $row->min ?? 1;
@@ -610,8 +604,6 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      * reached any other kind and why it read as a placeholder rather than a
      * description. It lives in the detail column now, for every kind and
      * whether or not the row has a value.
-     *
-     * @param SettingsRow $row
      */
     private function textValue(SettingsRow $row, int $index): string
     {

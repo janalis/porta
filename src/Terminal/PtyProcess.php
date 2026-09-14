@@ -28,9 +28,9 @@ final class PtyProcess
     private int $exitCode = -1;
 
     /** @var (callable(string): void)|null */
-    private $onOutput = null;
+    private $onOutput;
     /** @var (callable(int): void)|null */
-    private $onExit = null;
+    private $onExit;
 
     /**
      * @param list<string> $command

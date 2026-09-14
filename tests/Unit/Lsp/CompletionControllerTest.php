@@ -138,7 +138,7 @@ final class CompletionControllerTest extends TestCase
         $this->readyOn($controller, '/p/a.php', "<?php\n");
 
         $controller->requestInlayHints();
-        $requested = $this->requestedRenderSince(function () use ($controller): void {
+        $requested = $this->requestedRenderSince(function (): void {
             $this->client->requests[0]['respond'](null);
         });
 

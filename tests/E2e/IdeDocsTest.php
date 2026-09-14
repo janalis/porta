@@ -71,22 +71,23 @@ final class IdeDocsTest extends TestCase
                     $this->frame($tui);
                     $this->assertStringNotContainsString('xGuides', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
-                600 => function (Tui $tui, VirtualTerminal $terminal) use ($docs): void {
-                    $tui->handleInput("\t"); // focus the [Editor] link
-                    $tui->handleInput("\r"); // follow it
+                600 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    $tui->handleInput("\t");
+                    // focus the [Editor] link
+                    $tui->handleInput("\r");
+                    // follow it
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Editor guide', $screen, 'the linked page rendered');
                     $this->assertStringContainsString('plain prose here', $screen);
-
-                    $tui->handleInput("\x7f"); // Backspace → back to the README
+                    $tui->handleInput("\x7f");
+                    // Backspace → back to the README
                     $this->awaitPainted($tui, $terminal, 'Guides');
                     $this->assertStringContainsString('Guides', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-
-                    $tui->handleInput("\x7f"); // history exhausted
+                    $tui->handleInput("\x7f");
+                    // history exhausted
                     $this->awaitPainted($tui, $terminal, 'Nowhere to go back to');
                     $this->assertStringContainsString('Nowhere to go back to', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-
                     // Ctrl+Right cycles back to the code tab and Ctrl+Left returns.
                     $tui->handleInput("\x1b[1;5C");
                     $this->awaitPainted($tui, $terminal, '<?php');
@@ -191,23 +192,25 @@ final class IdeDocsTest extends TestCase
                 },
                 // 1100 ms of gap stood here for a rect read that the frame at
                 // the end of the step above already produced.
-                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($captureFile): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // Click the ‹ arrow in the header (row 0, column 1 of the
                     // pane) to go back to the README, then Enter on the https link.
                     $rect = Services::resolve($ide, Renderer::class)
                         ->getWidgetRect($tui->getById('help-viewer'));
                     $this->assertNotNull($rect, 'the help viewer pane is laid out');
-                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 1 + 1, $rect->row + 1)); // 0-based rect → 1-based SGR
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 1 + 1, $rect->row + 1));
+                    // 0-based rect → 1-based SGR
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 1 + 1, $rect->row + 1));
                     $this->awaitPainted($tui, $terminal, 'Guides');
                     $this->assertStringContainsString('Guides', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the ‹ arrow navigated back');
-                    $tui->handleInput("\x1b[Z"); // shift+tab → the last link (Site)
+                    $tui->handleInput("\x1b[Z");
+                    // shift+tab → the last link (Site)
                     $tui->handleInput("\r");
                     $this->frame($tui);
                 },
                 // And 1200 more in front of a step that opens by awaiting its
                 // own effect, so the gap was never what made it safe.
-                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($captureFile, $docs): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($captureFile): void {
                     $this->awaitPainted($tui, $terminal, 'Opened https://example.com/x');
                     $this->assertStringContainsString('Opened https://example.com/x', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // The shim runs as an independent OS process — poll for its

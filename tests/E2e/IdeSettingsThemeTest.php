@@ -83,7 +83,7 @@ final class IdeSettingsThemeTest extends TestCase
         \putenv('PATH=/nonexistent'); // no git/LSP subprocesses needed
         $project = new TempProject(['a.php' => "<?php\n"]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('a.php'),
             [
@@ -199,7 +199,7 @@ final class IdeSettingsThemeTest extends TestCase
         \putenv('PATH=/nonexistent'); // no git/LSP subprocesses needed
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('a.php'),
             [

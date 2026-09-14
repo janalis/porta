@@ -342,7 +342,7 @@ final class IdeFindUiTest extends TestCase
             'src/A.php' => "<?php\n\$needle = 1;\n\$noodle = 2;\n",
         ]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/A.php'),
             [
@@ -416,7 +416,7 @@ final class IdeFindUiTest extends TestCase
             'src/B.php' => "<?php\n\$bar = 2;\n",
         ]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/A.php'),
             [
@@ -446,7 +446,7 @@ final class IdeFindUiTest extends TestCase
     {
         $project = new TempProject(['src/A.php' => "<?php\n"]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/A.php'),
             [

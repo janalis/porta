@@ -117,7 +117,7 @@ final class PlantUmlEngineTest extends TestCase
     public function testWithoutTheToolItErrorsWithoutSpawning(): void
     {
         \putenv('PATH=/nonexistent');
-        $engine = new PlantUmlEngine(\sys_get_temp_dir(), null);
+        $engine = new PlantUmlEngine(\sys_get_temp_dir());
         $error = null;
         $engine->render(
             self::SMALL_UML,

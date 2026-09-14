@@ -87,7 +87,7 @@ final class DockToolTabsTest extends TestCase
     public function testCloseOnTheActiveTabLandsOnItsSuccessorNotItsPredecessor(): void
     {
         $tabs = new DockToolTabs();
-        $a = $tabs->openOrReuse(ResultsPanelMode::Search, 'a', ResultsPanelFields::searchResults());
+        $tabs->openOrReuse(ResultsPanelMode::Search, 'a', ResultsPanelFields::searchResults());
         $b = $tabs->openOrReuse(ResultsPanelMode::Search, 'b', ResultsPanelFields::searchResults());
         $c = $tabs->openOrReuse(ResultsPanelMode::Search, 'c', ResultsPanelFields::searchResults());
         $tabs->openOrReuse(ResultsPanelMode::Search, 'd', ResultsPanelFields::searchResults());

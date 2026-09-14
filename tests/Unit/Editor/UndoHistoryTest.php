@@ -19,7 +19,7 @@ final class UndoHistoryTest extends TestCase
     public function testUndoAndRedoRoundTrip(): void
     {
         $h = new UndoHistory();
-        $h->push($this->snap(1), null);
+        $h->push($this->snap(1));
 
         $this->assertSame($this->snap(1), $h->undo($this->snap(9)));
         $this->assertSame($this->snap(9), $h->redo($this->snap(1)));
@@ -112,8 +112,8 @@ final class UndoHistoryTest extends TestCase
     public function testNullKeyNeverCoalesces(): void
     {
         $h = new UndoHistory(new MockClock('@5.000000'));
-        $h->push($this->snap(1), null);
-        $h->push($this->snap(2), null);
+        $h->push($this->snap(1));
+        $h->push($this->snap(2));
 
         $this->assertSame($this->snap(2), $h->undo($this->snap(9)));
         $this->assertSame($this->snap(1), $h->undo($this->snap(9)));
@@ -160,17 +160,17 @@ final class UndoHistoryTest extends TestCase
     public function testPushClearsRedoStack(): void
     {
         $h = new UndoHistory();
-        $h->push($this->snap(1), null);
+        $h->push($this->snap(1));
         $h->undo($this->snap(2)); // redo now holds snap(2)
 
-        $h->push($this->snap(3), null); // a fresh edit must drop the redo branch
+        $h->push($this->snap(3)); // a fresh edit must drop the redo branch
         $this->assertNull($h->redo($this->snap(9)));
     }
 
     public function testSuppressedCompoundPushAlsoClearsRedo(): void
     {
         $h = new UndoHistory();
-        $h->push($this->snap(1), null);
+        $h->push($this->snap(1));
         $h->undo($this->snap(2)); // redo holds snap(2)
 
         $h->beginCompound();

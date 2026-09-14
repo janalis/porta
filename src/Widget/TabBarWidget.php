@@ -209,7 +209,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost
             $line .= $start > 0 ? $this->indicatorCell(Glyphs::SCROLL_PREV, step: -1, col: 0) : ' ';
             $used = 1;
         }
-        foreach (\array_slice($parts, $start, length: null, preserve_keys: true) as $index => $part) {
+        foreach (\array_slice($parts, $start, preserve_keys: true) as $index => $part) {
             if (($used + $part['width']) > ($overflow ? $columns - 1 : $columns)) {
                 break;
             }

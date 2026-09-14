@@ -17,7 +17,7 @@ namespace Porta\Widget\Support;
 trait ProviderFingerprint
 {
     /** @var (callable(): TProvided)|null */
-    private $provider = null;
+    private $provider;
 
     /** Serialized provider snapshot from the last repaint — content change-detection. */
     private string $lastFingerprint = '';

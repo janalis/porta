@@ -33,7 +33,7 @@ final class NonBlockingTerminalTest extends TestCase
             ) {}
 
             /** @var (callable(): void)|null the kitty callback this inner was handed */
-            public $kitty = null;
+            public $kitty;
 
             public function start(callable $onInput, callable $onResize, callable $onKittyProtocolActivated): void
             {

@@ -304,7 +304,7 @@ final class BidiTest extends TestCase
 
         // Caret inside Hebrew: the marker rides the reversed run to the matching gap.
         $he = self::SHALOM;
-        $withCaret = \mb_substr($he, start: 0, length: 2, encoding: 'UTF-8').$marker.\mb_substr($he, start: 2, length: null, encoding: 'UTF-8');
+        $withCaret = \mb_substr($he, start: 0, length: 2, encoding: 'UTF-8').$marker.\mb_substr($he, start: 2, encoding: 'UTF-8');
         $reordered = Bidi::reorder($withCaret, BaseDirection::Rtl);
         $this->assertSame(1, \substr_count($reordered, $marker));
     }

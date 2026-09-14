@@ -66,7 +66,6 @@ final class TreeOperations
     /**
      * The right-click context-menu items for a tree node.
      *
-     * @param FileTreeNode $node
      *
      * @return list<MenuItem>
      */
@@ -110,7 +109,6 @@ final class TreeOperations
      * The paths a Cut or Copy on this row carries — the same answer a drag
      * gives, so the two gestures cannot disagree about what "this row" means.
      *
-     * @param FileTreeNode $node
      *
      * @return list<string>
      */
@@ -153,13 +151,11 @@ final class TreeOperations
         }
     }
 
-    /** @param FileTreeNode $node */
     private function treeCut(FileTreeNode $node): void
     {
         $this->treeClipboard->cut($this->clipboardSources($node));
     }
 
-    /** @param FileTreeNode $node */
     private function treeCopy(FileTreeNode $node): void
     {
         $this->treeClipboard->copy($this->clipboardSources($node));
@@ -182,8 +178,6 @@ final class TreeOperations
      * An empty clipboard needs no guard here: both doors already refuse one —
      * the menu offers no Paste item and the keybinding is disabled — and a drop
      * of nothing is a no-op at the far end anyway.
-     *
-     * @param FileTreeNode $node
      */
     private function treePaste(FileTreeNode $node): void
     {
@@ -197,15 +191,12 @@ final class TreeOperations
 
     /**
      * Directory a new tree entry is created in: the node itself, or its parent.
-     *
-     * @param FileTreeNode $node
      */
     private function treeTargetDir(FileTreeNode $node): string
     {
         return $node->isDir ? $node->path : \dirname($node->path);
     }
 
-    /** @param FileTreeNode $node */
     private function treeNewFile(FileTreeNode $node): void
     {
         $dir = $this->treeTargetDir($node);
@@ -223,7 +214,6 @@ final class TreeOperations
         });
     }
 
-    /** @param FileTreeNode $node */
     private function treeNewFolder(FileTreeNode $node): void
     {
         $dir = $this->treeTargetDir($node);
@@ -241,7 +231,6 @@ final class TreeOperations
         });
     }
 
-    /** @param FileTreeNode $node */
     private function treeRename(FileTreeNode $node): void
     {
         $old = $node->path;
@@ -363,7 +352,6 @@ final class TreeOperations
         return $moved;
     }
 
-    /** @param FileTreeNode $node */
     private function treeDelete(FileTreeNode $node): void
     {
         $path = $node->path;

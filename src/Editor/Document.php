@@ -77,7 +77,7 @@ final class Document
      * extra file-size of memory per open buffer for a comparison that only
      * ever needs equality.
      */
-    private string $savedDigest = '';
+    private string $savedDigest;
     private int $dirtyCheckedVersion = 0;
 
     /** The joined text of {@see $textMemoVersion}; version identifies content (the PositionMapper invariant). */

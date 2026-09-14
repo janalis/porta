@@ -160,8 +160,6 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     /**
      * The currently selected node, or null when the tree is empty. The keyboard
      * counterpart of {@see nodeAt} for opening the context menu without a click.
-     *
-     * @return FileTreeNode|null
      */
     public function selectedNode(): ?FileTreeNode
     {
@@ -212,8 +210,6 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     /**
      * The tree node under a click at row $relRow (0 = header), selecting it, or
      * null when the click missed every entry. Used to target a right-click.
-     *
-     * @return FileTreeNode|null
      */
     public function nodeAt(int $relRow): ?FileTreeNode
     {

@@ -227,9 +227,9 @@ final class CodeHighlighter implements HighlightSink
 
         try {
             $this->provider->highlight(new HighlightRequest($this->documentId, $language, $text, $version), $this);
-        } catch (\Throwable $error) {
+        } catch (\Throwable) {
             $this->dispatching = false;
-            $this->recordFailure($error);
+            $this->recordFailure();
             $this->inFlightVersion = -1;
             $this->lastRawLines = null;
 
@@ -268,7 +268,7 @@ final class CodeHighlighter implements HighlightSink
         $result = $this->normalize($markup, $lines);
         if (null === $result) {
             // Mangled line structure is a backend fault, not a render error.
-            $this->recordFailure(new \RuntimeException('highlighter changed the line count'));
+            $this->recordFailure();
             $this->inFlightVersion = -1;
             $this->cache = $lines;
             $this->lastRawLines = null;
@@ -302,7 +302,7 @@ final class CodeHighlighter implements HighlightSink
         }
 
         $this->disarmAnswerDeadline();
-        $this->recordFailure($error);
+        $this->recordFailure();
         $this->inFlightVersion = -1;
         $this->inFlightLines = null;
         $this->lastRawLines = null;
@@ -329,7 +329,7 @@ final class CodeHighlighter implements HighlightSink
             if ($version !== $this->inFlightVersion) {
                 return;
             }
-            $this->recordFailure(new \RuntimeException('highlighter did not answer in time'));
+            $this->recordFailure();
             $this->inFlightVersion = -1;
             $this->inFlightLines = null;
         });
@@ -442,7 +442,7 @@ final class CodeHighlighter implements HighlightSink
      * half-open state would make these tests clock-dependent. A successful
      * delivery resets the count; reopening the file gets a fresh backend.
      */
-    private function recordFailure(\Throwable $error): void
+    private function recordFailure(): void
     {
         // No guard for "already tripped": the plain backend echoes its input, so
         // it can neither throw nor change the line count, and cannot strike.
@@ -450,7 +450,6 @@ final class CodeHighlighter implements HighlightSink
         if ($this->strikes < self::MAX_STRIKES) {
             return;
         }
-
         $this->provider = new PlainTextHighlightProvider();
     }
 

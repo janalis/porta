@@ -29,7 +29,7 @@ class FakeLspClient implements LspClientInterface
     /** @var array<string, callable> */
     public array $notificationHandlers = [];
     /** @var (callable(array): bool)|null */
-    public $applyEditHandler = null;
+    public $applyEditHandler;
 
     /** @var list<callable(): void> */
     private array $queued = [];

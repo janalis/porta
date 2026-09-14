@@ -27,7 +27,7 @@ class FakeDapClient implements DapClientInterface
     /** @var array<string, callable(array<string, mixed>): void> */
     private array $eventHandlers = [];
     /** @var (callable(): void)|null */
-    private $onClose = null;
+    private $onClose;
 
     public function start(): bool
     {

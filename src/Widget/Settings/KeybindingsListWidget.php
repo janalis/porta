@@ -71,10 +71,10 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     private ?int $capturingIndex = null;
 
     /** @var (callable(string, string): void)|null a captured key (action, raw key data) to rebind */
-    private $onRebind = null;
+    private $onRebind;
 
     /** @var (callable(string): void)|null an action whose override the user asked to drop */
-    private $onReset = null;
+    private $onReset;
 
     public function __construct(
         private readonly Translator $translator,

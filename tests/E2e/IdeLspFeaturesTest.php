@@ -461,7 +461,7 @@ final class IdeLspFeaturesTest extends TestCase
             'src/Demo.php' => "<?php\n\nclass Demo\n{\n    public function greet(): string\n    {\n        return 'x';\n    }\n}\n".\str_repeat("//\n", times: 100),
         ]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/Demo.php'),
             [
@@ -500,7 +500,7 @@ final class IdeLspFeaturesTest extends TestCase
             'src/Big.php' => "<?php\n".\str_repeat("noop();\n", times: 120),
         ]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/Big.php'),
             [
@@ -543,7 +543,7 @@ final class IdeLspFeaturesTest extends TestCase
             'src/Fmt.php' => "<?php\nmessy( );\nkeep();\n",
         ]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/Fmt.php'),
             [
@@ -578,7 +578,7 @@ final class IdeLspFeaturesTest extends TestCase
             'src/Big.php' => "<?php\n".\str_repeat("noop();\n", times: 120),
         ]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/Big.php'),
             [
@@ -705,7 +705,7 @@ final class IdeLspFeaturesTest extends TestCase
             'src/Q.php' => $tall,
         ]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/Q.php'),
             [
@@ -827,7 +827,7 @@ final class IdeLspFeaturesTest extends TestCase
             'src/Demo.php' => "<?php\n\nclass Demo\n{\n    public function greet(): string { return 'x'; }\n}\n",
         ]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/Demo.php'),
             [
@@ -883,7 +883,7 @@ final class IdeLspFeaturesTest extends TestCase
             'src/Empty.php' => "<?php\n",
         ]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/Empty.php'),
             [
@@ -911,7 +911,7 @@ final class IdeLspFeaturesTest extends TestCase
             'src/Target.php' => "<?php\n\n\nclass Greeter {}\n",
         ]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/Demo.php'),
             [
@@ -961,7 +961,7 @@ final class IdeLspFeaturesTest extends TestCase
             'src/B.php' => "<?php\n\$y = 2;\n",
         ]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/A.php'),
             [
@@ -1018,7 +1018,7 @@ final class IdeLspFeaturesTest extends TestCase
             'src/Messy.php' => "<?php\n   \$a=1  ;\n\n\n",
         ]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/Messy.php'),
             [
@@ -1052,7 +1052,7 @@ final class IdeLspFeaturesTest extends TestCase
             'src/Target.php' => "<?php\n\n// header\nclass Target\n{\n    public int \$x = 1;\n}\n",
         ]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/Demo.php'),
             [
@@ -1098,7 +1098,7 @@ final class IdeLspFeaturesTest extends TestCase
             'src/T.php' => $tall,
         ]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/T.php'),
             [
@@ -1205,7 +1205,7 @@ final class IdeLspFeaturesTest extends TestCase
             'src/Tall.php' => $tall,
         ]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/Tall.php'),
             [
@@ -1251,7 +1251,7 @@ final class IdeLspFeaturesTest extends TestCase
         $captureFile = $project->path('opened-urls.txt');
         $this->shimBrowserOpener($project, $captureFile);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/A.php'),
             [
@@ -1287,7 +1287,7 @@ final class IdeLspFeaturesTest extends TestCase
         $captureFile = $project->path('opened-urls.txt');
         $this->shimBrowserOpener($project, $captureFile);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('app.js'),
             [
@@ -1316,7 +1316,7 @@ final class IdeLspFeaturesTest extends TestCase
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['src/A.php' => "<?php\narray_map('trim', []);\n"]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('src/A.php'),
             [

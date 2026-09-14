@@ -68,18 +68,6 @@ final class IdeHelpersTest extends TestCase
         Services::resolve($this->ide, SettingsScope::class)->set(ConfigScope::Project);
     }
 
-    /**
-     * These tests BUILD an Ide but never run() it, so the teardown in its
-     * finally never happens — and the helpers they invoke arm the same timers
-     * and subprocess watchers a real session would. This is that finally, in
-     * the three parts a non-running IDE can still have armed.
-     */
-
-    private function call(string $method, mixed ...$args): mixed
-    {
-        return Probe::invoke($this->ide, $method, ...$args);
-    }
-
     public function testServicesSeamReturnsLocatorMembersAndSynthetics(): void
     {
         // A porta.ide locator member resolves through the locator branch...

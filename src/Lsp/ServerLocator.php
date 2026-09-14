@@ -48,7 +48,7 @@ final class ServerLocator
             // {languageId: command} map: each entry (a string or argv list) overrides
             // that language, but the rest keep their default (plugin or auto-detected)
             // — so configuring one language never silently unserves the others.
-            $servers = self::effectiveDefaults($rootDir, $pluginServers);
+            $servers = self::effectiveDefaults($pluginServers);
             /** @var mixed $command */
             foreach ($lsp as $language => $command) {
                 if (\is_string($command) && '' !== $command) {
@@ -69,7 +69,7 @@ final class ServerLocator
             return ['*' => $single];
         }
 
-        return self::effectiveDefaults($rootDir, $pluginServers);
+        return self::effectiveDefaults($pluginServers);
     }
 
     /**
@@ -81,9 +81,9 @@ final class ServerLocator
      *
      * @return array<string, array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>
      */
-    private static function effectiveDefaults(string $rootDir, array $pluginServers): array
+    private static function effectiveDefaults(array $pluginServers): array
     {
-        return [...self::defaults($rootDir), ...$pluginServers];
+        return [...self::defaults(), ...$pluginServers];
     }
 
     /**
@@ -120,7 +120,7 @@ final class ServerLocator
      */
     public static function autoDetected(string $rootDir): array
     {
-        return self::defaults($rootDir);
+        return self::defaults();
     }
 
     /**
@@ -129,19 +129,17 @@ final class ServerLocator
      *
      * @return array<string, array{command: list<string>, name: string}>
      */
-    private static function defaults(string $rootDir): array
+    private static function defaults(): array
     {
         // PHP is served by an LSP-provider plugin (phpantom/phpactor), not a
         // hardcoded default — see the phpantom/phpactor bundled plugins.
         $servers = [];
-
         $tls = self::which('typescript-language-server');
         if (null !== $tls) {
             $server = ['command' => [$tls, '--stdio'], 'name' => 'typescript-language-server'];
             $servers['javascript'] = $server;
             $servers['typescript'] = $server;
         }
-
         $pyright = self::which('pyright-langserver');
         $pylsp = self::which('pylsp');
         $python = match (true) {

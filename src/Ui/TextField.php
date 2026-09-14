@@ -158,7 +158,7 @@ final class TextField
         $moved = \strlen($this->value) !== $this->col;
         $this->col = \strlen($this->value);
 
-        return true === $moved;
+        return $moved;
     }
 
     /** Write $text at the caret and leave the caret after it. */

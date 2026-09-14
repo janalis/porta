@@ -169,8 +169,6 @@ final readonly class SuperMethodNavigator
 
     /**
      * The name a `function` token declares, or null for a closure.
-     *
-     * @return string|null
      */
     private static function nextName(string $source, int $index): ?string
     {

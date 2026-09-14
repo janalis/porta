@@ -98,7 +98,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     private readonly ListSelection $list;
 
     /** @var (callable(string): void)|null selection moved to this entry id */
-    private $onSelect = null;
+    private $onSelect;
 
     public function __construct(
         private readonly Translator $translator,

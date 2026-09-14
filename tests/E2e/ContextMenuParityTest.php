@@ -51,12 +51,12 @@ final class ContextMenuParityTest extends TestCase
                     $tui->tick();
 
                     // --- The editor: right-click and Ctrl+F10 agree.
-                    $byMouse = $this->menuFor($tui, $terminal, $ide, static function ($tui, Ide $ide): void {
+                    $byMouse = $this->menuFor($tui, $ide, static function ($tui, Ide $ide): void {
                         $rect = Services::resolve($ide, Renderer::class)
                             ->getWidgetRect($tui->getById('editor'));
                         $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 1));
                     });
-                    $byKeyboard = $this->menuFor($tui, $terminal, $ide, static function ($tui): void {
+                    $byKeyboard = $this->menuFor($tui, $ide, static function ($tui): void {
                         $tui->setFocus($tui->getById('editor'));
                         $tui->handleInput(self::CTRL_F10);
                     });
@@ -64,12 +64,12 @@ final class ContextMenuParityTest extends TestCase
                     $this->assertSame($byMouse, $byKeyboard, 'the editor offers one menu, however you ask for it');
 
                     // --- The tree: right-click a node vs Ctrl+F10 on the selection.
-                    $byMouse = $this->menuFor($tui, $terminal, $ide, static function ($tui, Ide $ide): void {
+                    $byMouse = $this->menuFor($tui, $ide, static function ($tui, Ide $ide): void {
                         $rect = Services::resolve($ide, Renderer::class)
                             ->getWidgetRect($tui->getById('tree'));
                         $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 2, $rect->row + 2));
                     });
-                    $byKeyboard = $this->menuFor($tui, $terminal, $ide, static function ($tui): void {
+                    $byKeyboard = $this->menuFor($tui, $ide, static function ($tui): void {
                         $tui->setFocus($tui->getById('tree'));
                         $tui->handleInput(self::CTRL_F10);
                     });
@@ -144,7 +144,7 @@ final class ContextMenuParityTest extends TestCase
      *
      * @return list<string>
      */
-    private function menuFor(mixed $tui, mixed $terminal, mixed $ide, callable $open): array
+    private function menuFor(mixed $tui, mixed $ide, callable $open): array
     {
         $open($tui, $ide);
         $tui->tick();

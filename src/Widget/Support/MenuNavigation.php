@@ -13,7 +13,7 @@ namespace Porta\Widget\Support;
 trait MenuNavigation
 {
     /** @var (callable(): void)|null fired whenever the open/selection state changes, so the coordinator can re-place the floating dropdown */
-    private $onNavigate = null;
+    private $onNavigate;
 
     /** Satisfied by AbstractWidget. */
     abstract public function invalidate(): void;

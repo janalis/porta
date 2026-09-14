@@ -110,7 +110,7 @@ final class BufferManagerTest extends TestCase
     public function testCloseActiveActivatesMostRecent(): void
     {
         $manager = new BufferManager();
-        $a = $manager->open('/p/a.php', 'A');
+        $manager->open('/p/a.php', 'A');
         $manager->open('/p/b.php', 'B');
         $c = $manager->open('/p/c.php', 'C');
         $manager->setActive('/p/a.php'); // recency: a, c, b

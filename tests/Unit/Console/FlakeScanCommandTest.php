@@ -375,7 +375,7 @@ final class FlakeScanCommandTest extends TestCase
 
         try {
             $tester = new CommandTester(new FlakeScanCommand(
-                static function (string $junit, ?int $processes, ?string $testsuite, int $timeout) use ($log): int {
+                static function (string $junit, ?int $processes, ?string $testsuite, int $timeout): int {
                     \file_put_contents($junit, data: '<?xml version="1.0"?><testsuites/>');
                     // What a leaking test would have appended during the run.
                     LeakLog::append("[loop-leak] A\\Test::testOne: 1 identifier(s) leaked\n");

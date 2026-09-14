@@ -646,7 +646,7 @@ final class FindInFilesModalTest extends TestCase
         $modal = $this->modal();
         $modal->open('Find in Files');
         $normalBar = null;
-        $screen = (function () use ($modal, &$normalBar): string {
+        (function () use ($modal, &$normalBar): string {
             $lines = $this->compose($modal);
             $box = $modal->lastBox();
             \assert(null !== $box, description: 'the modal laid out a box');

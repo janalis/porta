@@ -376,17 +376,19 @@ final class IdeEditingTest extends TestCase
                     // jump, so nothing was pushed onto that stack.
                     $tui->handleInput("\x1b[127;6u");
                 },
-                550 => function ($tui) use ($project): void {
+                550 => function ($tui): void {
                     $editor = $tui->getById('editor');
                     $this->assertStringEndsWith('A.php', (string) $editor->getFilePath());
                     $this->assertSame(30, $editor->getDocument()->getCursorLine());
-
                     // Now edit B.php and delete it. Walking back to a file that
                     // has gone must not move the caret in the file still on
                     // screen — that line number belongs to another file.
-                    $tui->handleInput("\x1b[1;5D"); // ctrl+left: away from the edit, no jump recorded
+                    $tui->handleInput("\x1b[1;5D");
+                    // ctrl+left: away from the edit, no jump recorded
                     $editor->getDocument()->setCursor(2, 0);
-                    $tui->handleInput('Z'); // an edit in A.php at line 2
+                    $tui->handleInput('Z');
+
+                    // an edit in A.php at line 2
                 },
                 650 => static function ($tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, BufferService::class)

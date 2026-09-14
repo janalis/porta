@@ -201,7 +201,7 @@ return new class('graph-viewer') extends AbstractPlugin {
         return (
             null !== DiagramKind::forPath($path)
             && !DotFiles::isDotPath($path)
-            && true === (bool) $this->api?->setting('plantuml')
+            && (bool) $this->api?->setting('plantuml')
             && null !== PlantUmlCommand::tool(self::path($this->api?->setting('plantumlPath') ?? ''))
         );
     }

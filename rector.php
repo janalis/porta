@@ -12,6 +12,15 @@ use Rector\CodeQuality\Rector\Catch_\ThrowWithPreviousExceptionRector;
 use Rector\CodeQuality\Rector\Identical\FlipTypeControlToUseExclusiveTypeRector;
 use Rector\CodingStyle\Rector\ArrowFunction\ArrowFunctionDelegatingCallToFirstClassCallableRector;
 use Rector\Config\RectorConfig;
+use Rector\DeadCode\Rector\Cast\RecastingRemovalRector;
+use Rector\DeadCode\Rector\FunctionLike\NarrowWideUnionReturnTypeRector;
+use Rector\DeadCode\Rector\ClassMethod\RemoveEmptyClassMethodRector;
+use Rector\DeadCode\Rector\ClassMethod\RemoveUnusedPublicMethodParameterRector;
+use Rector\DeadCode\Rector\Concat\RemoveConcatAutocastRector;
+use Rector\DeadCode\Rector\If_\RemoveAlwaysTrueIfConditionRector;
+use Rector\DeadCode\Rector\Node\RemoveNonExistingVarAnnotationRector;
+use Rector\DeadCode\Rector\Property\RemoveUselessVarTagRector;
+use Rector\DeadCode\Rector\Stmt\RemoveUnreachableStatementRector;
 use Rector\Instanceof_\Rector\Ternary\FlipNegatedTernaryInstanceofRector;
 use Rector\Php55\Rector\String_\StringClassNameToClassConstantRector;
 use Rector\Php74\Rector\Closure\ClosureToArrowFunctionRector;
@@ -84,6 +93,32 @@ return RectorConfig::configure()
         // int|string and the exception constructor takes int; `previous:`
         // already carries the cause.
         ThrowWithPreviousExceptionRector::class,
+        // An event listener's parameter is how the dispatcher knows which event
+        // it hears, used in the body or not; and a public signature is API a
+        // plugin may call.
+        RemoveUnusedPublicMethodParameterRector::class,
+        // Both read a variable captured BY REFERENCE as the constant it starts
+        // as — `use (&$fail)` flipped later — and delete the branch the test
+        // exists to take.
+        RemoveAlwaysTrueIfConditionRector::class,
+        RemoveUnreachableStatementRector::class,
+        // The same trap in a return type: `?string` narrowed to `string` on a
+        // closure whose by-reference capture later makes it return null.
+        NarrowWideUnionReturnTypeRector::class,
+        // An empty override is how a test double swallows what its parent
+        // would do.
+        RemoveEmptyClassMethodRector::class,
+        // mago, not phpstan, grades this tree. A `/** @var mixed $x */` is how
+        // a deliberate mixed assignment is acknowledged, and an inline
+        // `/** @var T */` on a return is what mago narrows from; both look
+        // useless to Rector's phpstan and are not.
+        RemoveUselessVarTagRector::class,
+        RemoveNonExistingVarAnnotationRector::class,
+        // Rector trusts phpstan's stubs that a call returns string; mago's say
+        // string|false (mb_convert_encoding, tempnam, json_encode), and the
+        // cast is the narrowing.
+        RecastingRemovalRector::class,
+        RemoveConcatAutocastRector::class,
         ArrowFunctionDelegatingCallToFirstClassCallableRector::class => [
             __DIR__.'/src/Debug/DebugStateStore.php',
         ],
@@ -97,5 +132,5 @@ return RectorConfig::configure()
     // Docblocks are prose here and are left alone.
     ->withImportNames(importNames: true, importDocBlockNames: false, importShortClasses: false, removeUnusedImports: false)
     ->withPhpSets(php85: true)
-    ->withPreparedSets(typeDeclarations: true, codeQuality: true)
+    ->withPreparedSets(typeDeclarations: true, codeQuality: true, deadCode: true)
     ->withParallel();

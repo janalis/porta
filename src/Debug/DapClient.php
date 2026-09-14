@@ -24,7 +24,7 @@ final class DapClient implements DapClientInterface
     /** @var array<string, callable(array<string, mixed>): void> event name => handler */
     private array $eventHandlers = [];
     /** @var (callable(): void)|null */
-    private $onClose = null;
+    private $onClose;
     private bool $closed = false;
 
     /** @param list<string> $command */

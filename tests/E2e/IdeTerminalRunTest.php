@@ -118,7 +118,7 @@ final class IdeTerminalRunTest extends TestCase
         \putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('A.php'),
             [
@@ -153,7 +153,7 @@ final class IdeTerminalRunTest extends TestCase
         \putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('A.php'),
             [
@@ -225,7 +225,7 @@ final class IdeTerminalRunTest extends TestCase
         \putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('A.php'),
             [
@@ -269,7 +269,7 @@ final class IdeTerminalRunTest extends TestCase
         \putenv('SHELL=/bin/sh');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('A.php'),
             [
@@ -299,7 +299,7 @@ final class IdeTerminalRunTest extends TestCase
         \putenv('PATH='.\PORTA_TEST_PRISTINE_PATH); // needs php + a shell
         $project = new TempProject(['hello.php' => "<?php\necho \"run-output-ok\\n\";\n"]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('hello.php'),
             [
@@ -329,7 +329,7 @@ final class IdeTerminalRunTest extends TestCase
     {
         $project = new TempProject(['hello.php' => "<?php\necho \"second-run\\n\";\n"]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('hello.php'),
             [
@@ -362,7 +362,7 @@ final class IdeTerminalRunTest extends TestCase
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['notes.txt' => "plain\n"]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('notes.txt'),
             [

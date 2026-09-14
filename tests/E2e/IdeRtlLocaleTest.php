@@ -536,13 +536,12 @@ final class IdeRtlLocaleTest extends TestCase
             $project,
             $project->path('move.php'),
             [
-                300 => function (object $tui) use ($project): void {
+                300 => function (object $tui): void {
                     $tui->tick();
                     $renderer = Probe::get($tui, 'renderer');
                     $rect = $renderer->getWidgetRect($tui->getById('tree'));
                     $this->assertNotNull($rect);
                     $this->assertGreaterThan(0, $rect->col, 'RTL puts the file tree on the right');
-
                     // Read the rows rather than assume them: directories sort
                     // first, so this fixture is 1 = src/, 2 = .porta.json,
                     // 3 = move.php. The menu bar sits above the tree, so a
@@ -554,9 +553,13 @@ final class IdeRtlLocaleTest extends TestCase
                     $this->assertSame('▸ src/', \trim($rows[1] ?? ''), 'src/ is widget row 1');
                     $this->assertSame('move.php', \trim($rows[3] ?? ''), 'move.php is widget row 3');
                     $col = $rect->col + 6;
-                    $tui->handleInput("\x1b[<0;{$col};5M"); // press move.php (widget row 3)
-                    $tui->handleInput("\x1b[<32;{$col};3M"); // drag onto src/  (widget row 1)
-                    $tui->handleInput("\x1b[<0;{$col};3m"); // release
+                    $tui->handleInput("\x1b[<0;{$col};5M");
+                    // press move.php (widget row 3)
+                    $tui->handleInput("\x1b[<32;{$col};3M");
+                    // drag onto src/  (widget row 1)
+                    $tui->handleInput("\x1b[<0;{$col};3m");
+
+                    // release
                 },
                 500 => function ($tui) use ($project): void {
                     $this->assertFileExists($project->path('src/move.php'), 'the RTL drag dropped on the folder under the pointer');

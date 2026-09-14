@@ -53,7 +53,7 @@ final class SignatureActiveParameterTest extends TestCase
             static function (array $params): void {},
             static fn (array $edit): bool => false,
         );
-        $controller = new CompletionController($pool, $this->editor, $tui, new Notifier(new StatusBarWidget(), $tui), $translator, null);
+        $controller = new CompletionController($pool, $this->editor, $tui, new Notifier(new StatusBarWidget(), $tui), $translator);
 
         $this->editor->showDocument('/p/a.php', new Document("<?php\nfn(1, 2);\n"));
         $this->activeFile->set('/p/a.php');

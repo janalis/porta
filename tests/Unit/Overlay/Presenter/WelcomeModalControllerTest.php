@@ -557,7 +557,6 @@ final class WelcomeModalControllerTest extends TestCase
             $editArea,
             $this->tui,
             $this->views,
-            frameHooks: null,
         );
 
         $this->addToAssertionCount(1);

@@ -13,9 +13,9 @@ namespace Porta\Widget;
 trait PaneNavigationCallbacks
 {
     /** @var (callable(): void)|null Tab: move focus to the next pane */
-    private $onFocusNext = null;
+    private $onFocusNext;
     /** @var (callable(): void)|null Esc: leave the view */
-    private $onExit = null;
+    private $onExit;
 
     public function onFocusNext(callable $callback): self
     {

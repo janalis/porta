@@ -117,7 +117,7 @@ final class SettingsControllerTest extends TestCase
         $dispatcher->addListener(TabBarPositionChanged::class, function (TabBarPositionChanged $e): void {
             $this->tabBarPositionChanges[] = $e->position->value;
         });
-        $t = new Translator('en');
+        new Translator('en');
         $applier = new LiveSettingsApplier(
             Themes::createSwitchable(ColorMode::Ansi, 'dark'),
             new StyleSheetThemer(new Renderer(new StyleSheet())),

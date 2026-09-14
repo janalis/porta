@@ -221,8 +221,6 @@ final class RefactorControllerTest extends TestCase
      * The three ways a code-action answer can be nothing, each of which must
      * flash rather than open an empty picker. They are separate arms of one
      * guard, so a test for only one of them leaves the others free to invert.
-     *
-     * @param mixed $result
      */
     #[DataProvider('emptyAnswers')]
     public function testEveryShapeOfEmptyAnswerFlashesInsteadOfOpeningAPicker(mixed $result, ?array $error): void

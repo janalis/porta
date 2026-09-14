@@ -531,7 +531,7 @@ final class IdeFilesystemSessionTest extends TestCase
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n"]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('A.php'),
             [
@@ -598,7 +598,7 @@ final class IdeFilesystemSessionTest extends TestCase
             $project,
             $project->path('marked.php'),
             [
-                200 => function ($tui) use ($project): void {
+                200 => function ($tui): void {
                     $this->assertSame(
                         '<?php',
                         $tui->getById('editor')->getDocument()->getLine(0),

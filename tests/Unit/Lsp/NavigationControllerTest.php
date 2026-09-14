@@ -50,7 +50,6 @@ final class NavigationControllerTest extends TestCase
     private BufferManager $buffers;
     private FixedActiveFile $activeFile;
     private FakeLspClient $client;
-    private JumpHistory $history;
     private BottomDock $dock;
     /**
      * What the server advertises. Call hierarchy is gated on it, so a test
@@ -107,7 +106,7 @@ final class NavigationControllerTest extends TestCase
                 }
             },
             new DocsUrlOpener($notifier, $translator, '/p'),
-            $this->history = new JumpHistory(),
+            new JumpHistory(),
             new LineTextReader($this->buffers),
         );
     }

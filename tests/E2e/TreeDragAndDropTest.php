@@ -123,7 +123,7 @@ final class TreeDragAndDropTest extends TestCase
             $project,
             $project->path('top.php'),
             [
-                200 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
+                200 => function (Tui $tui, $terminal, Ide $ide): void {
                     $this->frame($tui);
                     Services::resolve($ide, BookmarkActions::class)->toggle();
                 },
@@ -670,7 +670,6 @@ final class TreeDragAndDropTest extends TestCase
             'b.php' => "<?php\n// mine\n",
         ]);
         $project = $this->project;
-        $project = $this->project;
 
         $this->runIde(
             $project,
@@ -707,7 +706,6 @@ final class TreeDragAndDropTest extends TestCase
             'src/dup.php' => "<?php\n// theirs\n",
             'dup.php' => "<?php\n// mine\n",
         ]);
-        $project = $this->project;
         $project = $this->project;
 
         $this->runIde(

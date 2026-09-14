@@ -33,7 +33,7 @@ final class StatusBarWidget extends AbstractWidget
     use StylesDefault;
 
     /** @var (callable(): array{left: string, right: string, menus?: list<StatusMenuSpan>, rightClicks?: list<StatusClickSpan>})|null */
-    private $provider = null;
+    private $provider;
 
     /**
      * The narrowest the left may be squeezed while it still has something to

@@ -101,7 +101,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
     private int $lastPage = 1;
 
     /** @var (callable(): void)|null a step ran, so the view can refresh */
-    private $onRan = null;
+    private $onRan;
 
     public function __construct(
         private readonly Translator $translator,

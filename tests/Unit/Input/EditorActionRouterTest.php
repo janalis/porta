@@ -233,7 +233,7 @@ final class EditorActionRouterTest extends TestCase
     public function testDispatchKeyFiresEveryPositionalHandlerWithTheCaret(): void
     {
         $f = $this->fakes();
-        $callbacks = new EditorCallbacks(null, $f['navigation'], null, $f['refactor'], null);
+        $callbacks = new EditorCallbacks(null, $f['navigation'], null, $f['refactor']);
         $router = new EditorActionRouter(static fn (): EditorCallbacks => $callbacks, static fn (): array => [3, 7]);
         $kb = new Keybindings([
             'peek_definition' => ['a'],
@@ -279,7 +279,7 @@ final class EditorActionRouterTest extends TestCase
     public function testDispatchKeyOpensFindAndFindReplace(): void
     {
         $f = $this->fakes();
-        $callbacks = new EditorCallbacks($f['file'], null, null, null, null);
+        $callbacks = new EditorCallbacks($f['file']);
         $router = new EditorActionRouter(static fn (): EditorCallbacks => $callbacks, static fn (): array => [0, 0]);
         $kb = new Keybindings(['find' => ['n'], 'replace' => ['r']]);
 
@@ -335,7 +335,7 @@ final class EditorActionRouterTest extends TestCase
     public function testRunFiresASimpleActionByIdAndReportsHandled(): void
     {
         $f = $this->fakes();
-        $callbacks = new EditorCallbacks($f['file'], null, null, null, null);
+        $callbacks = new EditorCallbacks($f['file']);
         $router = new EditorActionRouter(static fn (): EditorCallbacks => $callbacks, static fn (): array => [0, 0]);
 
         $this->assertTrue($router->run('save'));
@@ -345,7 +345,7 @@ final class EditorActionRouterTest extends TestCase
     public function testRunFiresAPositionalActionByIdWithTheCaret(): void
     {
         $f = $this->fakes();
-        $callbacks = new EditorCallbacks(null, $f['navigation'], null, null, null);
+        $callbacks = new EditorCallbacks(null, $f['navigation']);
         $router = new EditorActionRouter(static fn (): EditorCallbacks => $callbacks, static fn (): array => [2, 9]);
 
         $this->assertTrue($router->run('quick_doc'));

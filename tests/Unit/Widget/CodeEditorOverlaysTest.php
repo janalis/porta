@@ -389,7 +389,7 @@ final class CodeEditorOverlaysTest extends TestCase
     }
 
     /** @param non-empty-string $doc */
-    private function documentedEditor(string $doc, int $rows = 14): CodeEditorWidget
+    private function documentedEditor(string $doc): CodeEditorWidget
     {
         $editor = $this->editor();
         $editor->getDocument()->setCursor(2, 5);

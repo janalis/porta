@@ -58,7 +58,6 @@ final class DebugControllerTest extends TestCase
     private ExceptionFilterStore $filters;
     private TerminalSessions $sessions;
     private Tui $tui;
-    private BreakpointStore $breakpoints;
     private TerminalPanelWidget $terminalPanel;
     private int $statusEvents = 0;
     /** @var list<string> */
@@ -104,7 +103,6 @@ final class DebugControllerTest extends TestCase
         $dock = TestBottomDock::create($tui, $terminalPanel, new ResultsPanelWidget(), $this->panel, sessions: $this->sessions);
 
         $breakpoints = new BreakpointStore();
-        $this->breakpoints = $breakpoints;
         $state = new DebugSessionState();
         $opened = &$this->opened;
         $this->statusEvents = 0;

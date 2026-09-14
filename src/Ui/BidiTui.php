@@ -49,7 +49,7 @@ final class BidiTui extends Tui implements FrameHooks
     private ?int $lastColumns = null;
 
     /** @var (callable(int): void)|null fired with the new width before the frame renders */
-    private $onColumnsChanged = null;
+    private $onColumnsChanged;
 
     /** @var list<callable(): void> fired before every frame renders (both render paths) */
     private array $onBeforeFrame = [];

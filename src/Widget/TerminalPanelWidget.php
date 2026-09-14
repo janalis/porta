@@ -52,7 +52,7 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
     private int $scrollBack = 0; // lines scrolled up from the bottom
 
     /** @var (callable(string): void)|null forwards input bytes to the process */
-    private $onInputForward = null;
+    private $onInputForward;
 
     public function __construct(
         private readonly CursorStyle $cursorStyle = new CursorStyle(),

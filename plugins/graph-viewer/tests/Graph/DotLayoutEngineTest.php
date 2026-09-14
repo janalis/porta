@@ -126,7 +126,7 @@ final class DotLayoutEngineTest extends TestCase
     public function testMissingBinaryErrorsWithoutSpawning(): void
     {
         \putenv('PATH=/nonexistent');
-        $engine = new DotLayoutEngine(\sys_get_temp_dir(), null);
+        $engine = new DotLayoutEngine(\sys_get_temp_dir());
         $error = null;
         $engine->layout(
             self::SMALL_DOT,
@@ -354,7 +354,7 @@ final class DotLayoutEngineTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $error = null;
-        new DotLayoutEngine(\sys_get_temp_dir(), null)->render(
+        new DotLayoutEngine(\sys_get_temp_dir())->render(
             self::SMALL_DOT,
             72,
             static function (): never {
@@ -371,7 +371,7 @@ final class DotLayoutEngineTest extends TestCase
     public function testRealGraphvizSmokeTest(): void
     {
         $this->skipWithoutDot();
-        $engine = new DotLayoutEngine(\sys_get_temp_dir(), null);
+        $engine = new DotLayoutEngine(\sys_get_temp_dir());
         $this->assertNotNull($engine->binary());
 
         $layout = null;
@@ -400,7 +400,7 @@ final class DotLayoutEngineTest extends TestCase
         $this->skipWithoutDot();
         $png = null;
         $error = null;
-        new DotLayoutEngine(\sys_get_temp_dir(), null)->render(
+        new DotLayoutEngine(\sys_get_temp_dir())->render(
             self::SMALL_DOT,
             72,
             static function (string $bytes) use (&$png): void {

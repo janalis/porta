@@ -697,14 +697,13 @@ final class IdeDockToolsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function (Tui $tui, $terminal) use ($project): void {
+                200 => function (Tui $tui, $terminal): void {
                     $editorScreen = static fn (): string => \implode("\n", $tui->getById('editor')->render(new RenderContext(120, 20)));
                     $tui->getById('editor')->getDocument()->setCursor(1, 0);
-                    $tui->handleInput("\x1b[23~"); // F11 → toggle bookmark
+                    $tui->handleInput("\x1b[23~");
+                    // F11 → toggle bookmark
                     $this->frame($tui);
-
                     $this->assertStringContainsString(Glyphs::BOOKMARK, $editorScreen(), 'F11 painted the mark in the gutter');
-
                     // Alt+2 opens the tool, showing the marked line's own text.
                     $tui->handleInput("\x1b2");
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '// remembered line'));

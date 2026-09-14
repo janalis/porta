@@ -358,7 +358,7 @@ final class IdeAppMenuTest extends TestCase
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\necho 1;\n"]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('A.php'),
             [
@@ -426,7 +426,7 @@ final class IdeAppMenuTest extends TestCase
             'A.php' => "<?php\n\$x = 1;\n",
         ]);
 
-        $terminal = $this->runIde(
+        $this->runIde(
             $project,
             $project->path('A.php'),
             [

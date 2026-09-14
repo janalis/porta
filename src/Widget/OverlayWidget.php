@@ -39,7 +39,7 @@ abstract class OverlayWidget extends AbstractWidget
     private array $onClose = [];
 
     /** @var (callable(): void)|null replaces close() as the Esc gesture when wired */
-    private $onDismiss = null;
+    private $onDismiss;
 
     public function isOpen(): bool
     {

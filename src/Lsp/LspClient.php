@@ -39,7 +39,7 @@ final class LspClient implements LspClientInterface
     private $logger;
 
     /** @var (callable(array): bool)|null handler for server-initiated workspace/applyEdit */
-    private $applyEditHandler = null;
+    private $applyEditHandler;
 
     /**
      * @param list<string>              $command               e.g. ['phpactor', 'language-server']
