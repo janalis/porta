@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit;
 
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\LoopErrors;
 use Porta\Tests\Support\LoopIsolationExtension;
@@ -19,7 +20,13 @@ final class LoopIsolationExtensionTest extends TestCase
      * its production handler and a throwing step became a toast in a passing
      * test. Measured before the fix with a two-test probe (a loop-free test,
      * then a step that throws): the second reported OK.
+     *
+     * In its own process: the swap route only runs when the loop is not
+     * running, and an earlier test in the same process can leave it running —
+     * which sends reset() down the cancel route instead and makes this test
+     * about test ORDER rather than about the swap.
      */
+    #[RunInSeparateProcess]
     public function testTheDriverSwapKeepsTheErrorHandler(): void
     {
         $handler = LoopErrors::rethrow();
