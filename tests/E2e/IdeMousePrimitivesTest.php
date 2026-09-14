@@ -9,6 +9,8 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\CompletionBox;
 use Porta\Editor\CompletionItem;
 use Porta\Ide;
+use Porta\Overlay\Region\DropdownRegion;
+use Porta\Overlay\State\MenuOverlayController;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
@@ -19,6 +21,8 @@ use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Render\WidgetRect;
+use Symfony\Component\Tui\Tui;
 
 /**
  * Raw mouse behavior in the editor: clicks, drags, multi-click
@@ -158,9 +162,14 @@ final class IdeMousePrimitivesTest extends TestCase
                         },
                         what: 'the viewport to snap back to the caret',
                     );
-                    // Wheel over the tree scrolls it (feeds arrow keys).
+                    // Wheel over the tree scrolls it (feeds arrow keys): the
+                    // selection moves down a notch and comes back up with the next.
+                    $tree = $tui->getById('tree');
+                    $before = $tree->selectedNode()?->path;
                     $tui->handleInput("\x1b[<65;6;7M");
+                    $this->assertNotSame($before, $tree->selectedNode()?->path, 'a wheel-down over the tree moved its selection');
                     $tui->handleInput("\x1b[<64;6;7M");
+                    $this->assertSame($before, $tree->selectedNode()?->path, 'and a wheel-up brought it back');
                     // Tree click: focus the tree and open B.php. The menu bar now
                     // lives in the editor pane, so the tree owns the full height:
                     // header row 0, A.php row 1, B.php row 2.
@@ -182,6 +191,84 @@ final class IdeMousePrimitivesTest extends TestCase
 
         // Mouse-enable escape written on startup, disable on shutdown.
         $this->assertStringContainsString("\x1b[?1006h", $terminal->getOutput());
+
+        $this->addToAssertionCount(1);
+    }
+
+    /**
+     * A wheel inside a floating surface moves THAT surface and nothing under it.
+     *
+     * The router returns after each owner handles the notch; take a return out
+     * and the notch falls through to the editor pane behind the surface, which
+     * scrolls as well. Every existing wheel test either had no buffer behind the
+     * surface or never looked at the buffer, so nothing noticed.
+     */
+    public function testAWheelInsideAFloatingSurfaceNeverScrollsTheEditorBehindIt(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $long = "<?php\n".\implode("\n", \array_map(static fn (int $i): string => "// line {$i}", \range(1, end: 80)))."\n";
+        $project = new TempProject(['A.php' => $long]);
+        // The notch goes on the box's lowest inner row: the top of a dropdown
+        // can sit over the tab strip, where a fall-through scrolls nothing
+        // visible, and the point has to be one where it would reach the editor.
+        $wheelInside = static function ($tui, ?DropdownRegion $box, WidgetRect $editorRect): void {
+            Assert::assertInstanceOf(DropdownRegion::class, $box, 'the surface is open and has a box');
+            $row = $box->top + $box->count - 2; // 0-based, just above the bottom border
+            $col = \max($box->col + 2, $editorRect->col); // the app menu's box starts over the tree
+            Assert::assertTrue($box->contains($row, $col) && $col < ($box->col + $box->width - 1), 'sanity: the notch lands inside the box, off its border');
+            Assert::assertTrue($row >= $editorRect->row && $col >= $editorRect->col, 'sanity: and over the editor pane, where a fall-through would scroll it');
+            $tui->handleInput(\sprintf("\x1b[<65;%d;%dM", $col + 1, $row + 1));
+        };
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => function (Tui $tui, $terminal, Ide $ide) use ($wheelInside): void {
+                    $this->frame($tui);
+                    $editor = $tui->getById('editor');
+                    $scroll = EditorState::scroll($editor);
+                    $overlay = Services::resolve($ide, MenuOverlayController::class);
+
+                    // The context menu, opened over the editor.
+                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 12, $rect->row + 3));
+                    $this->frame($tui);
+                    $menu = $tui->getById('context-menu');
+                    $this->assertTrue($menu->isOpen(), 'the right-click opened the context menu');
+                    $before = Probe::get($menu, 'selected');
+                    $wheelInside($tui, $overlay->contextMenuDropdown(), $rect);
+                    $this->assertNotSame($before, Probe::get($menu, 'selected'), 'the notch moved the menu selection');
+                    $this->assertSame(0, $scroll->vScroll, 'and did not scroll the editor behind it');
+                    $tui->handleInput("\x1b"); // close it
+                    $this->frame($tui);
+
+                    // The application menu's dropdown.
+                    $tui->handleInput("\x1b[21~"); // F10
+                    $this->frame($tui);
+                    $bar = $tui->getById('menu');
+                    $this->assertTrue($bar->isOpen(), 'F10 opened the menu dropdown');
+                    $before = Probe::get($bar, 'selected');
+                    $wheelInside($tui, $overlay->menuDropdown(), $rect);
+                    $this->assertNotSame($before, Probe::get($bar, 'selected'), 'the notch moved the dropdown selection');
+                    $this->assertSame(0, $scroll->vScroll, 'and did not scroll the editor behind it');
+                    $tui->handleInput("\x1b");
+                    $this->frame($tui);
+
+                    // The find-in-files modal, which also floats over the editor.
+                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+                    $this->frame($tui);
+                    $box = $editor->findModal->lastBox();
+                    $this->assertNotNull($box, 'the find modal is open and has a box');
+                    $row = $box->startRow + $box->rows - 2;
+                    $col = \max($box->col + 2, $rect->col);
+                    $this->assertTrue($box->contains($row, $col) && $row >= $rect->row, 'sanity: inside the modal and over the editor pane');
+                    $tui->handleInput(\sprintf("\x1b[<65;%d;%dM", $col + 1, $row + 1));
+                    $this->assertSame(0, $scroll->vScroll, 'a notch inside the find modal did not scroll the editor behind it');
+                    $tui->handleInput("\x1b");
+                },
+            ],
+        );
 
         $this->addToAssertionCount(1);
     }
