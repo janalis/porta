@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\Tests\Unit\Input;
+namespace Porta\Tests\Unit\Workbench\View;
 
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
