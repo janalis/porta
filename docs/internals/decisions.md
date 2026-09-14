@@ -9396,3 +9396,81 @@ a child of its own. And capture a backtrace BEFORE killing a long-lived orphan;
 the processes here were killed for hygiene before anyone thought to ask them
 what they were doing, and the on-disk logs are the only reason the question
 could be answered at all.
+
+## One guard, three ways past it (2026-09-14)
+
+A second review round over the same request as the last one, and it found what
+the last one left: the IDE has no autosave, `Ide::run()`'s teardown has never
+written buffer contents, and exactly ONE path checked before ending a session
+with unsaved edits in it.
+
+Quitting asked twice. Switching project — added the previous round — called
+`$this->tui->stop()` directly and asked nothing. An LSP rename closed each moved
+buffer through `BufferManager::close()`, which has no dirty check. An LSP delete
+closed a dirty buffer and removed the file without a word.
+
+Three of the round's five defects were introduced by the round before it, which
+is the uncomfortable part: the switcher shipped a silent data loss and a dead
+key, the two exact classes that round spent itself removing. It also shipped
+three docblocks asserting the teardown "saved buffers", which is what a reviewer
+reads instead of the teardown.
+
+### The guard is per-VERB, and that is not cosmetic
+
+`WorkbenchActions` held one `lastQuitPress`. Extracting it as-is would have made
+a `Ctrl+Q` that warned arm a project switch — the second press confirming
+something the user was never asked about. Keyed by verb, with a case pinning it.
+
+### Where each fix had to go
+
+- The switch confirms in `ProjectSwitcher::requestOpen()`, not beside the
+  `stop()`: refuse before the event, so nothing has begun tearing down when the
+  user is told.
+- The LSP rename CARRIES the unsaved text instead of saving first the way the
+  tree does. It cannot save: by the time `BufferRepointRequested` is dispatched
+  the file has already moved, the old path is gone, and `saveBuffer()` writes to
+  the buffer's own path — saving then would recreate the file the refactoring
+  just moved.
+- The LSP delete warns and proceeds. Refusing would leave the workspace edit
+  HALF APPLIED, which this file has called the worse outcome since the
+  `RenameFile` entry.
+- The empty-replacement confirm lives beside the code that deletes, not in the
+  modal that asks. In the modal it needed a new property (mago refused — the
+  class is at its limit), a new callback and a new dependency; none of that
+  survives the move.
+
+### A replace that rewrote what the filter excluded
+
+`LanguageFilter` keeps a line when AT LEAST ONE occurrence falls in the
+requested token class; the replace rewrote the whole line. `$foo = 'foo';` under
+"in strings" came back as `$bar = 'bar';` — the variable renamed by the filter
+that existed to protect it.
+
+Two things could not be reused, and both were tried first. The results' own
+`ranges` are offsets into the TRIMMED preview text, not the file's line. And
+`matchOffsets()` gives no LENGTH, which a splice needs — under `regex` a match
+is not `strlen($query)` long. Hence `matchSpans()`, with `matchOffsets()`
+delegating to it.
+
+### What E2e caught that 6162 unit tests could not
+
+Twice, and the same shape both times: a new guard placed one step too early.
+
+The project switcher's placement was right by design. The empty-replacement
+confirm was not — it ran BEFORE the "Nothing to replace" check, so Alt+A with no
+query and no results offered to confirm deleting nothing. And the previous
+round's regression was found the same way. The rule earned twice now: run the
+suite that COVERS the path you changed, not the quickest one.
+
+### Tests that stepped over their own subject
+
+Three, all of which passed throughout the defects they covered.
+
+`SettingsViewControllerTest` hand-set `setFocused(true)` around each `1`/`2`
+press and asserted the page changed — true throughout, while every keystroke
+after the swap went to an unmounted widget where Enter WRITES CONFIG. The two
+repoint cases assert the TAB follows a rename and never the TEXT. And
+`FileCommandsTest`'s first version of the dead-key case asserted `pickerOpen()`,
+which reads the overlay host's field whether or not the widget holding it is on
+screen — it passed with the guard removed, and the fix was to assert the EFFECT
+(the editor is back in the slot) instead.
