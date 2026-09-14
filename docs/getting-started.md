@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- PHP ≥ 8.4
+- PHP ≥ 8.5
 - An interactive terminal. Mouse support and heavily modified chords work
   best in terminals with SGR mouse reporting and the Kitty keyboard
   protocol (kitty, WezTerm, iTerm2 3.5+, foot, Ghostty).

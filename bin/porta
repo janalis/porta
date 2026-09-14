@@ -5,8 +5,8 @@ declare(strict_types=1);
 
 // Before anything namespaced loads: under an older PHP the first src/ file
 // would die with a parse error instead of a sentence.
-if (\PHP_VERSION_ID < 80400) {
-    fwrite(STDERR, 'porta: PHP >= 8.4 is required, this is PHP '.\PHP_VERSION.".\n");
+if (\PHP_VERSION_ID < 80500) {
+    fwrite(STDERR, 'porta: PHP >= 8.5 is required, this is PHP '.\PHP_VERSION.".\n");
     exit(1);
 }
 

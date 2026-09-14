@@ -10,7 +10,7 @@
 # NOT to re-wrap: a wide print width plus "preserve breaking" keeps every line
 # exactly where it is and only normalises spacing/braces/imports.
 
-php-version = "8.4"
+php-version = "8.5"
 
 [source]
 # `plugins` is here for the same reason `src` is: a plugin ships code, and code

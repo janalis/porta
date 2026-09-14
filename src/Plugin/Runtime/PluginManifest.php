@@ -14,7 +14,7 @@ use Porta\Support\JsonFile;
  *
  * ```json
  * {
- *     "require": { "php": ">=8.4" },
+ *     "require": { "php": ">=8.5" },
  *     "autoload": { "psr-4": { "Porta\\GraphViewer\\": "src/" } },
  *     "extra": { "porta": { "requires": ["image-viewer"] } }
  * }
@@ -149,7 +149,7 @@ final readonly class PluginManifest
      *
      * "Declares something" is deliberately narrower than "has a composer.json".
      * A PLATFORM requirement (`php`, `ext-*`, `composer-runtime-api`) installs
-     * nothing, so a plugin whose composer.json says only `php: >=8.4` has
+     * nothing, so a plugin whose composer.json says only `php: >=8.5` has
      * nothing missing — which matters because that file is on its way to being
      * every plugin's manifest, not just a vendoring one's. A HOST-SHIPPED
      * package installs nothing either ({@see installablePackages()}), which is

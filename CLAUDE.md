@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Porta is a terminal IDE for PHP projects (namespace `Porta\`, PHP 8.4+), built on the
+Porta is a terminal IDE for PHP projects (namespace `Porta\`, PHP 8.5+), built on the
 experimental `symfony/tui` component with an LSP client, syntax highlighting and
 autocompletion. It runs the whole UI and all async I/O on a single Revolt event loop.
 

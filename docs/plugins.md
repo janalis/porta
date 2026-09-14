@@ -73,7 +73,7 @@ before there was one.
 ```json
 {
     "name": "acme/tools",
-    "require": { "php": ">=8.4" },
+    "require": { "php": ">=8.5" },
     "autoload": {
         "psr-4": { "Acme\\Tools\\": "src/" }
     },
@@ -100,7 +100,7 @@ before there was one.
   and composer would go looking for them on Packagist.
 - **`require`'s platform half is checked, not ignored.** A `php` constraint the
   running PHP does not satisfy, or an `ext-*` that is not loaded, declines the
-  plugin **by name at startup** ("needs PHP >=8.5 (this is 8.4.1) — not
+  plugin **by name at startup** ("needs PHP >=8.6 (this is 8.5.0) — not
   loaded") instead of loading it and fataling on the first missing symbol,
   somewhere far from the cause. Declare what you actually use. A constraint
   Porta cannot parse is trusted rather than refused, and `php-64bit`/`lib-*`

@@ -1,6 +1,6 @@
 # Architecture
 
-A contributor-oriented tour. The codebase is PHP 8.4+, namespace `Porta\`,
+A contributor-oriented tour. The codebase is PHP 8.5+, namespace `Porta\`,
 built on the experimental [symfony/tui](https://github.com/symfony/tui)
 component, with everything — UI, subprocesses, LSP, DAP, timers — on a
 single [Revolt](https://revolt.run) event loop.

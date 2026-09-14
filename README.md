@@ -158,7 +158,7 @@ composer require --dev pierre/porta
 vendor/bin/ide
 ```
 
-Requires PHP ≥ 8.4 and an interactive terminal.
+Requires PHP ≥ 8.5 and an interactive terminal.
 
 ## Language server
 

@@ -19,7 +19,7 @@
     },
     "bin": ["bin/porta"],
     "require": {
-        "php": ">=8.4 <9",
+        "php": ">=8.5 <9",
         "ext-ctype": "*",
         "ext-mbstring": "*",
         "ext-pcntl": "*",
@@ -99,7 +99,7 @@
         "sort-packages": true,
         "optimize-autoloader": true,
         "platform": {
-            "php": "8.4.1"
+            "php": "8.5.0"
         }
     }
 }
