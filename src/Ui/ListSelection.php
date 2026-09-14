@@ -152,6 +152,33 @@ final class ListSelection
     }
 
     /**
+     * How many entries fit in $availableRows starting at $from — the page size
+     * for a variable-height list, and the question {@see followHeights()}
+     * answers from the other end.
+     *
+     * Never fewer than one, which the floor on the way out handles rather than
+     * a guard in the loop: an entry taller than the whole window breaks on its
+     * first step and still has to be reachable, and a page of zero is not a
+     * page — it turns Page Down into a key that does nothing.
+     *
+     * @param list<int> $heights
+     */
+    public function countFitting(array $heights, int $from, int $availableRows): int
+    {
+        $fitting = 0;
+        $used = 0;
+        foreach (\array_slice($heights, $from) as $height) {
+            $used += $height;
+            if ($used > $availableRows) {
+                break;
+            }
+            ++$fitting;
+        }
+
+        return max(1, $fitting);
+    }
+
+    /**
      * Map a widget-relative pointer row to the item index under it, or null
      * when the row is a header or falls past the list. $headerRows is how many
      * non-item rows precede the list (1 for a single title row — the common

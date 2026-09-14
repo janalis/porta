@@ -134,6 +134,38 @@ final class ListSelectionTest extends TestCase
         $this->assertSame(0, $list->followHeights($heights, 7));
     }
 
+    /**
+     * `countFitting()` is `followHeights()`'s question from the other end: how
+     * many entries a window holds, which is what a page is for a list measured
+     * in entries and drawn in rows.
+     */
+    public function testCountFittingCountsTheEntriesAWindowHolds(): void
+    {
+        $list = new ListSelection();
+        $heights = [3, 3, 3, 3];
+
+        $this->assertSame(3, $list->countFitting($heights, from: 0, availableRows: 9), 'three three-row cards in nine rows');
+        $this->assertSame(3, $list->countFitting($heights, from: 0, availableRows: 11), 'and a fourth needs twelve');
+        $this->assertSame(2, $list->countFitting($heights, from: 0, availableRows: 8), 'one row short of the third');
+        $this->assertSame(2, $list->countFitting($heights, from: 2, availableRows: 9), 'counted from where the window starts');
+        $this->assertSame(1, $list->countFitting($heights, from: 3, availableRows: 9), 'and never past the end');
+    }
+
+    /**
+     * Never zero. A card taller than the whole window still has to be
+     * reachable, and a page of zero turns Page Down into a key that does
+     * nothing at all.
+     */
+    public function testCountFittingIsNeverLessThanOne(): void
+    {
+        $list = new ListSelection();
+
+        $this->assertSame(1, $list->countFitting([9], from: 0, availableRows: 4), 'an entry taller than the window');
+        $this->assertSame(1, $list->countFitting([3, 3], from: 0, availableRows: 0), 'no room at all');
+        $this->assertSame(1, $list->countFitting([], from: 0, availableRows: 9), 'nothing to count');
+        $this->assertSame(1, $list->countFitting([3, 3], from: 9, availableRows: 9), 'past the end');
+    }
+
     /** A selection taller than the viewport pins the window to itself. */
     public function testFollowHeightsPinsAnOversizedSelection(): void
     {

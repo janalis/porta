@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Onboarding\WelcomeStep;
 use Porta\Tests\Support\AttachedStyles;
+use Porta\Tests\Support\PagesThroughRows;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Ui\Glyphs;
 use Porta\Widget\Onboarding\WelcomeWidget;
@@ -26,9 +27,91 @@ use Symfony\Component\Tui\Render\RenderContext;
  */
 final class WelcomeWidgetTest extends TestCase
 {
+    use PagesThroughRows;
     use RendersWidget;
 
     private const int FIRST_STEP_ROW = 3;
+
+    /**
+     * The paging sweep left this widget alone on the argument that its page
+     * size cannot matter: a handful of cards, `moveDown()` clamps to the count,
+     * so Page Down is an End key and nothing can be stepped over. That is an
+     * argued rule, and this is the test of it.
+     */
+    public function testPagingDownShowsEveryStepCard(): void
+    {
+        $labels = ['alpha', 'bravo', 'charlie', 'delta', 'echo'];
+        $widget = $this->widget(...array_map($this->step(...), $labels));
+
+        // Every height from "one card fits" upward: the page size only stops
+        // mattering once the whole list is on screen at once.
+        foreach ([4, 5, 6, 7, 9, 12, 20] as $rows) {
+            $widget = $this->widget(...array_map($this->step(...), $labels));
+            self::assertPagingShowsEveryRow(
+                fn (): string => $this->plain($widget->render(new RenderContext(60, $rows))),
+                static fn () => $widget->handleInput("\x1b[6~"),
+                $labels,
+            );
+        }
+    }
+
+    /**
+     * The other half. A page that is too SMALL skips nothing, so it passes the
+     * case above while doing no paging at all — Page Down becomes ↓.
+     *
+     * The geometry is the one this file's header sets out: a three-row hero
+     * (only at HERO_MIN_ROWS = 10 and above) and three rows per card with the
+     * one-line details used here. So the cards that FIT are
+     * `floor((rows - hero) / 3)`, and one Page Down from the top lands on
+     * exactly that index.
+     */
+    public function testPageDownMovesByTheCardsThatFit(): void
+    {
+        $labels = ['alpha', 'bravo', 'charlie', 'delta', 'echo'];
+        // 11 rows is the boundary case on purpose: the hero leaves 8, and two
+        // three-row cards fit in 8 while three do not.
+        foreach ([6 => 2, 9 => 3, 11 => 2, 12 => 3, 15 => 4] as $rows => $expected) {
+            $widget = $this->widget(...array_map($this->step(...), $labels));
+            $widget->render(new RenderContext(60, $rows));
+
+            $widget->handleInput("\x1b[6~");
+
+            $this->assertStringContainsString(
+                $labels[$expected],
+                $this->selectedStep($widget),
+                "at {$rows} rows a page is {$expected} cards",
+            );
+        }
+    }
+
+    /**
+     * The SECOND page has to be measured from where the list now sits, not from
+     * the top — the count runs over the cards from the current scroll.
+     */
+    public function testTheSecondPageIsMeasuredFromTheNewScroll(): void
+    {
+        $labels = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf'];
+        $widget = $this->widget(...array_map($this->step(...), $labels));
+        $widget->render(new RenderContext(60, 9)); // no hero: three cards fit
+
+        $widget->handleInput("\x1b[6~");
+        $widget->render(new RenderContext(60, 9));
+        $widget->handleInput("\x1b[6~");
+
+        $this->assertStringContainsString('golf', $this->selectedStep($widget), 'three cards, then three more');
+    }
+
+    /** The title of the selected card, found by the accent bar down its left edge. */
+    private function selectedStep(WelcomeWidget $widget): string
+    {
+        foreach ($this->rows($widget->render(new RenderContext(60, 40))) as $row) {
+            if (str_contains($row, Glyphs::CARD_ACCENT)) {
+                return trim(str_replace(Glyphs::CARD_ACCENT, replace: '', subject: $row));
+            }
+        }
+
+        return '';
+    }
 
     private function widget(WelcomeStep ...$steps): WelcomeWidget
     {

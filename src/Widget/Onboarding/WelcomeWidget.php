@@ -97,7 +97,8 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
     private array $rowOwner = [];
 
     /** Pane height of the last render, for paging. */
-    private int $lastRows = 12;
+    /** Cards that fitted in the last render — the page size; see {@see body()}. */
+    private int $lastPage = 1;
 
     /** @var (callable(): void)|null a step ran, so the view can refresh */
     private $onRan = null;
@@ -156,7 +157,6 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
     {
         $width = $context->getColumns();
         $rows = max(1, $context->getRows() > 0 ? $context->getRows() : 12);
-        $this->lastRows = $rows;
 
         $lines = [];
         $this->rowOwner = [];
@@ -227,7 +227,14 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
             $cards[] = $this->card($step, $index, $width, $content, $margin);
         }
         $heights = array_map(static fn (array $card): int => \count($card), $cards);
-        $scroll = $this->list->followHeights($heights, max(1, $rows - $chrome));
+        $budget = max(1, $rows - $chrome);
+        $scroll = $this->list->followHeights($heights, $budget);
+        // How many cards FIT from here — which is what a page IS. This list is
+        // measured in cards and drawn in rows, so the pane height is not a page
+        // in any unit: with a three-row card in a six-row pane, Page Down moved
+        // six cards while the screen showed two, and the four in between were
+        // never drawn.
+        $this->lastPage = $this->list->countFitting($heights, $scroll, $budget);
 
         foreach (\array_slice($cards, $scroll) as $card) {
             foreach ($card as $pair) {
@@ -335,7 +342,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
 
             return;
         }
-        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->steps), page: $this->lastRows)) {
+        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->steps), page: $this->lastPage)) {
             $this->invalidate();
 
             return;
