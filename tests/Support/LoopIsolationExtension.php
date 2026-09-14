@@ -81,7 +81,17 @@ final class LoopIsolationExtension implements Extension
             LeakLog::append(\sprintf("[loop-leak] %s: %d identifier(s) leaked%s\n", $testId, \count($leaked), self::describe($leaked)));
         }
         if (!EventLoop::getDriver()->isRunning()) {
+            // The error handler lives ON the driver, so a bare swap drops the
+            // suite's rethrower (tests/bootstrap.php). The next test that runs
+            // an Ide then found no handler, Ide::run() installed its production
+            // one, and a step that threw became a toast in a green test — the
+            // test reported OK with its later assertions never run. Serial runs
+            // (test:serial, the coverage:plugins shards) hit it after the first
+            // test that never ran the loop; paratest's one-test workers rarely
+            // did. Carried across, whatever it currently is.
+            $handler = EventLoop::getErrorHandler();
             EventLoop::setDriver(new StreamSelectDriver());
+            EventLoop::setErrorHandler($handler);
 
             return;
         }
