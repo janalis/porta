@@ -9037,6 +9037,15 @@ guess. Rates at the scan's own process count (paratest's default, all cores — 
 | --- | --- | --- |
 | before the ceiling fix | 28 | 4 (~14%) |
 | after it | 46 | 2 (~4%) |
+| after the affordances round (2026-09-14) | 25 | 0 |
+
+**The 25 clean runs are NOT evidence the flake is gone**, and the row is here so
+nobody reads them that way. At a true 4% rate, 25 runs come back clean 36% of
+the time — a coin-flip dressed as a result. Pooled with the 46, the estimate is
+2 in 71 (~3%), which is the same number with a smaller error bar. Same command
+as the rows above (`flake:scan --testsuite=E2e`, no `--processes`, so paratest's
+own default), because a rate measured at a different worker count is not a
+comparison. Wall time was 18–22s per run.
 
 Ruled out, each by measurement rather than argument:
 
