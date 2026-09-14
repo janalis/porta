@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\DependencyInstall;
 use Porta\Plugin\Lifecycle\DependencyRemoval;
+use Porta\Plugin\Lifecycle\InstallScope;
 use Porta\Plugin\Lifecycle\PluginComposerProject;
 use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Tests\Support\FakeComposer;
@@ -44,7 +45,7 @@ final class PluginInstallerTest extends TestCase
     }
 
     /** Runs install() and pumps the loop until the callback fires; returns [error, file]. */
-    private function install(PluginInstaller $installer, string $source, string $scope = 'project'): array
+    private function install(PluginInstaller $installer, string $source, InstallScope $scope = InstallScope::Project): array
     {
         $result = null;
         $installer->install($source, $scope, static function (?string $error, ?string $file) use (&$result): void {
@@ -62,7 +63,7 @@ final class PluginInstallerTest extends TestCase
     }
 
     /** Runs remove() and pumps the loop until the callback fires; returns the translated error, or null on success. */
-    private function remove(PluginInstaller $installer, string $name, string $scope = 'project'): ?string
+    private function remove(PluginInstaller $installer, string $name, InstallScope $scope = InstallScope::Project): ?string
     {
         $done = false;
         $result = null;
@@ -125,7 +126,7 @@ final class PluginInstallerTest extends TestCase
         $this->assertFileExists((string) $file);
         $this->assertTrue(\is_link($this->project->dir.'/.porta/plugins/demo'), 'a composer-managed install is a symlink');
 
-        [$error, $file] = $this->install($this->installer(composer: $this->fakeComposer()), $source, 'global');
+        [$error, $file] = $this->install($this->installer(composer: $this->fakeComposer()), $source, InstallScope::Global);
         $this->assertNull($error);
         $this->assertSame($this->global->dir.'/.porta/plugins/demo/plugin.php', $file);
     }
@@ -146,7 +147,7 @@ final class PluginInstallerTest extends TestCase
         [$error] = $this->install($this->installer(composer: $this->fakeComposer()), $this->sourceDir('.hidden'));
         $this->assertSame('".hidden" is not a valid plugin name', $error);
 
-        [$error] = $this->install($this->installer(globalBase: null, composer: $this->fakeComposer()), $source, 'global');
+        [$error] = $this->install($this->installer(globalBase: null, composer: $this->fakeComposer()), $source, InstallScope::Global);
         $this->assertSame('Cannot install globally (no home directory)', $error);
     }
 
@@ -398,11 +399,11 @@ final class PluginInstallerTest extends TestCase
 
         $installer = $this->installer(git: $git, composer: $this->fakeComposer());
         $first = null;
-        $installer->install('file://'.$repo, 'project', static function (?string $error, ?string $file) use (&$first): void {
+        $installer->install('file://'.$repo, InstallScope::Project, static function (?string $error, ?string $file) use (&$first): void {
             $first = [$error, $file];
         });
         $second = null;
-        $installer->install('file://'.$repo, 'project', static function (?string $error) use (&$second): void {
+        $installer->install('file://'.$repo, InstallScope::Project, static function (?string $error) use (&$second): void {
             $second = $error;
         });
         $this->assertSame('Another install is already running', $second, 'single-flight while the clone/require runs');
@@ -423,7 +424,7 @@ final class PluginInstallerTest extends TestCase
         $landed = $this->project->dir.'/.porta/vendor/test/demo';
         $this->assertFileExists($landed.'/plugin.php', 'sanity: composer "landed" the package');
 
-        $error = $this->remove($installer, 'demo', 'project');
+        $error = $this->remove($installer, 'demo', InstallScope::Project);
 
         $this->assertNull($error);
         $this->assertFileDoesNotExist($this->project->dir.'/.porta/plugins/demo', 'the symlink is gone');
@@ -438,7 +439,7 @@ final class PluginInstallerTest extends TestCase
 
         // A fresh installer pointed at a composer stub that now fails.
         $installer2 = $this->installer(composer: $this->fakeComposer(3));
-        $error = $this->remove($installer2, 'demo', 'project');
+        $error = $this->remove($installer2, 'demo', InstallScope::Project);
 
         $this->assertSame('Cannot remove "demo"', $error);
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/demo', 'a failed composer remove leaves the plugin standing');
@@ -456,7 +457,7 @@ final class PluginInstallerTest extends TestCase
         \mkdir(\dirname($dest), permissions: 0o777, recursive: true);
         \symlink($target, $dest);
 
-        $error = $this->remove($this->installer(), 'broken', 'project');
+        $error = $this->remove($this->installer(), 'broken', InstallScope::Project);
 
         $this->assertSame('Cannot remove "broken"', $error);
         $this->assertTrue(\is_link($dest), 'left standing — nothing safe to do');
@@ -468,7 +469,7 @@ final class PluginInstallerTest extends TestCase
         $installer = $this->installer(composer: $this->fakeComposer());
         $this->install($installer, $source);
 
-        $error = $this->remove($this->installer(), 'demo', 'project');
+        $error = $this->remove($this->installer(), 'demo', InstallScope::Project);
 
         $this->assertSame('Cannot remove "demo"', $error);
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/demo');
@@ -482,7 +483,7 @@ final class PluginInstallerTest extends TestCase
         \mkdir($dir, permissions: 0o777, recursive: true);
         \file_put_contents($dir.'/plugin.php', data: "<?php\n");
 
-        $error = $this->remove($this->installer(), 'legacy', 'project');
+        $error = $this->remove($this->installer(), 'legacy', InstallScope::Project);
 
         $this->assertNull($error);
         $this->assertDirectoryDoesNotExist($dir);
@@ -501,7 +502,7 @@ final class PluginInstallerTest extends TestCase
         \chmod($this->project->dir.'/.porta/plugins', permissions: 0o555);
 
         try {
-            $error = $this->remove($this->installer(), 'stuck', 'project');
+            $error = $this->remove($this->installer(), 'stuck', InstallScope::Project);
             $this->assertSame('Cannot remove "stuck"', $error);
             $this->assertDirectoryExists($dir);
         } finally {
@@ -511,8 +512,8 @@ final class PluginInstallerTest extends TestCase
 
     public function testRemoveAndItsErrors(): void
     {
-        $this->assertNull($this->remove($this->installer(), 'gone', 'project'), 'removing a missing dir is a quiet success');
-        $this->assertSame('Cannot remove "x"', $this->remove($this->installer(globalBase: null), 'x', 'global'));
+        $this->assertNull($this->remove($this->installer(), 'gone', InstallScope::Project), 'removing a missing dir is a quiet success');
+        $this->assertSame('Cannot remove "x"', $this->remove($this->installer(globalBase: null), 'x', InstallScope::Global));
     }
 
     public function testRemoveFailsClearlyWhenTheScaffoldCannotBeRewritten(): void
@@ -528,7 +529,7 @@ final class PluginInstallerTest extends TestCase
         \unlink($this->project->dir.'/.porta/composer.json');
         \chmod($this->project->dir.'/.porta', permissions: 0o555);
         try {
-            $error = $this->remove($installer, 'demo', 'project');
+            $error = $this->remove($installer, 'demo', InstallScope::Project);
         } finally {
             \chmod($this->project->dir.'/.porta', permissions: 0o755);
         }
@@ -545,13 +546,13 @@ final class PluginInstallerTest extends TestCase
 
         $this->assertSame(
             [
-                ['name' => 'mine', 'scope' => 'project', 'dir' => $this->project->dir.'/.porta/plugins/mine'],
-                ['name' => 'bundled', 'scope' => 'embedded', 'dir' => $embedded->dir.'/bundled'],
+                ['name' => 'mine', 'scope' => InstallScope::Project, 'dir' => $this->project->dir.'/.porta/plugins/mine'],
+                ['name' => 'bundled', 'scope' => InstallScope::Embedded, 'dir' => $embedded->dir.'/bundled'],
             ],
             $installer->installed(),
         );
 
-        $this->assertSame('Built-in plugins cannot be removed', $this->remove($installer, 'bundled', 'embedded'));
+        $this->assertSame('Built-in plugins cannot be removed', $this->remove($installer, 'bundled', InstallScope::Embedded));
         $this->assertDirectoryExists($embedded->dir.'/bundled');
     }
 
@@ -564,7 +565,7 @@ final class PluginInstallerTest extends TestCase
         $installer = new PluginInstaller($this->project->dir, null, new Translator('en'), null, $this->project->dir.'/.porta/plugins');
 
         $this->assertSame(
-            [['name' => 'bundled', 'scope' => 'embedded', 'dir' => $this->project->dir.'/.porta/plugins/bundled']],
+            [['name' => 'bundled', 'scope' => InstallScope::Embedded, 'dir' => $this->project->dir.'/.porta/plugins/bundled']],
             $installer->installed(),
             'listed once, as embedded — not as a removable project plugin',
         );
@@ -577,20 +578,20 @@ final class PluginInstallerTest extends TestCase
 
         $source = $this->sourceDir('both');
         $this->install($this->installer(composer: $this->fakeComposer()), $source);
-        $this->install($this->installer(composer: $this->fakeComposer()), $source, 'global');
-        $this->install($this->installer(composer: $this->fakeComposer()), $this->sourceDir('worldwide'), 'global');
+        $this->install($this->installer(composer: $this->fakeComposer()), $source, InstallScope::Global);
+        $this->install($this->installer(composer: $this->fakeComposer()), $this->sourceDir('worldwide'), InstallScope::Global);
 
         $this->assertSame(
             [
-                ['name' => 'both', 'scope' => 'project', 'dir' => $this->project->dir.'/.porta/plugins/both'],
-                ['name' => 'both', 'scope' => 'global', 'dir' => $this->global->dir.'/.porta/plugins/both'],
-                ['name' => 'worldwide', 'scope' => 'global', 'dir' => $this->global->dir.'/.porta/plugins/worldwide'],
+                ['name' => 'both', 'scope' => InstallScope::Project, 'dir' => $this->project->dir.'/.porta/plugins/both'],
+                ['name' => 'both', 'scope' => InstallScope::Global, 'dir' => $this->global->dir.'/.porta/plugins/both'],
+                ['name' => 'worldwide', 'scope' => InstallScope::Global, 'dir' => $this->global->dir.'/.porta/plugins/worldwide'],
             ],
             $installer->installed(),
         );
 
         $this->assertSame(
-            [['name' => 'both', 'scope' => 'project', 'dir' => $this->project->dir.'/.porta/plugins/both']],
+            [['name' => 'both', 'scope' => InstallScope::Project, 'dir' => $this->project->dir.'/.porta/plugins/both']],
             $this->installer(globalBase: null)->installed(),
             'a null global base lists only the project scope',
         );
@@ -745,7 +746,7 @@ final class PluginInstallerTest extends TestCase
         $installer = $this->installer(git: $this->git(), composer: $this->fakeComposer());
         $repo = $this->repo(Presence::With);
         $done = false;
-        $installer->install('file://'.$repo, 'project', static function (?string $error, ?string $file) use (&$done): void {
+        $installer->install('file://'.$repo, InstallScope::Project, static function (?string $error, ?string $file) use (&$done): void {
             $done = true;
         });
 
@@ -835,7 +836,7 @@ final class PluginInstallerTest extends TestCase
         \file_put_contents($dir.'/'.PluginInstaller::MARKER, data: "x\n");
 
         $done = false;
-        $installer->install('file://'.$this->repo(Presence::With), 'project', static function (?string $error, ?string $file) use (&$done): void {
+        $installer->install('file://'.$this->repo(Presence::With), InstallScope::Project, static function (?string $error, ?string $file) use (&$done): void {
             $done = true;
         });
 

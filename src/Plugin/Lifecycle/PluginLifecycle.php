@@ -94,7 +94,7 @@ final class PluginLifecycle implements PluginLifecycleOps
             break;
         }
 
-        return 'embedded' === $scope;
+        return InstallScope::Embedded === $scope;
     }
 
     /**

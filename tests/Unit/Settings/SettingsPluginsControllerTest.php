@@ -161,6 +161,20 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->assertSame(['demo'], $this->lifecycle->deactivated, 'a successful removal deactivates the plugin live');
     }
 
+    public function testARemoveKeyNamingNoInstallScopeIsInert(): void
+    {
+        $controller = $this->controller();
+        $this->seedPlugin($this->project, 'demo');
+
+        // rows() never builds such a key; a stray one must neither arm a
+        // confirm nor fall through to a removal under some default scope.
+        $controller->change('pluginRemove:nowhere:demo', 'Remove');
+        $controller->change('pluginRemove:nowhere:demo', 'Remove');
+        $this->assertStringNotContainsString('Press Enter again', $this->statusRow($this->status, 120));
+        $this->assertSame([], $this->lifecycle->deactivated);
+        $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/demo');
+    }
+
     public function testPluginSettingsPageRowsAndChanges(): void
     {
         $controller = $this->controller();

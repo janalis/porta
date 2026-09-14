@@ -92,16 +92,4 @@ final class SettingsScopeTest extends TestCase
 
         $this->assertSame(ConfigScope::Project, $scope->current());
     }
-
-    /** The installer speaks `project`/`global`, which is this enum's own value. */
-    public function testTheInstallerScopeIsTheEnumsOwnSpelling(): void
-    {
-        $scope = $this->scope(null);
-
-        $this->assertSame('global', $scope->installerScope());
-
-        $scope->set(ConfigScope::Project);
-
-        $this->assertSame('project', $scope->installerScope());
-    }
 }

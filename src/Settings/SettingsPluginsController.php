@@ -7,6 +7,7 @@ namespace Porta\Settings;
 use Porta\Config\ConfigScope;
 use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\InstallOutcome;
+use Porta\Plugin\Lifecycle\InstallScope;
 use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Plugin\Lifecycle\PluginLifecycleOps;
 use Porta\Plugin\Lifecycle\ToolInstaller;
@@ -70,7 +71,7 @@ final class SettingsPluginsController
             ),
         ]);
         foreach ($this->installer->installed() as $plugin) {
-            $rows[] = 'embedded' === $plugin['scope']
+            $rows[] = InstallScope::Embedded === $plugin['scope']
                 ? new SettingsRow(
                     key: 'pluginInfo:'.$plugin['name'],
                     label: $plugin['name'].' ('.$this->translator->trans('built-in').')',
@@ -79,13 +80,13 @@ final class SettingsPluginsController
                     restart: false,
                 )
                 : new SettingsRow(
-                    key: 'pluginRemove:'.$plugin['scope'].':'.$plugin['name'],
-                    label: $plugin['name'].' ('.$this->translator->trans($plugin['scope']).')',
+                    key: 'pluginRemove:'.$plugin['scope']->value.':'.$plugin['name'],
+                    label: $plugin['name'].' ('.$this->translator->trans($plugin['scope']->value).')',
                     kind: SettingsRowKind::Action,
                     value: $this->translator->trans('Remove'),
                     restart: false,
                     // The armed half of the two-press confirm reads as danger.
-                    danger: $this->armed === 'pluginRemove:'.$plugin['scope'].':'.$plugin['name'],
+                    danger: $this->armed === 'pluginRemove:'.$plugin['scope']->value.':'.$plugin['name'],
                 );
         }
 
@@ -119,7 +120,7 @@ final class SettingsPluginsController
     {
         foreach ($this->installer->installed() as $plugin) {
             if ($plugin['name'] === $name) {
-                return 'embedded' === $plugin['scope'] ? self::BUNDLED_KEY : null;
+                return InstallScope::Embedded === $plugin['scope'] ? self::BUNDLED_KEY : null;
             }
         }
 
@@ -287,7 +288,7 @@ final class SettingsPluginsController
         if ('' === $source) {
             return;
         }
-        $this->installer->install($source, $this->scope->installerScope(), function (?string $error, ?string $file): void {
+        $this->installer->install($source, InstallScope::of($this->scope->current()), function (?string $error, ?string $file): void {
             $message = $error ?? $this->lifecycle->activateInstalled((string) $file) ?? $this->translator->trans('Plugin installed');
             $this->notifier->flash($message, 5.0);
             $this->lifecycle->refreshView();
@@ -297,8 +298,11 @@ final class SettingsPluginsController
     private function removalPressed(string $key): void
     {
         $parts = \explode(':', $key, limit: 3);
-        $scope = $parts[1] ?? '';
+        $scope = InstallScope::tryFrom($parts[1] ?? '');
         $name = $parts[2] ?? '';
+        if (null === $scope) {
+            return; // not a key rows() built
+        }
         if ($this->armed !== $key) {
             $this->armed = $key;
             $this->notifier->flash($this->translator->trans('Press Enter again to remove "%name%"', ['%name%' => $name]));

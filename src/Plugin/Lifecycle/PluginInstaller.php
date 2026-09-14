@@ -88,7 +88,7 @@ final class PluginInstaller
      *
      * @param \Closure(?string, ?string): void $onDone (?error, ?pluginFile)
      */
-    public function install(string $source, string $scope, \Closure $onDone): void
+    public function install(string $source, InstallScope $scope, \Closure $onDone): void
     {
         if (null !== $this->running) {
             $this->fail($onDone, $this->translator->trans('Another install is already running'));
@@ -558,9 +558,9 @@ final class PluginInstaller
      *
      * @param \Closure(?string): void $onDone the translated error, or null on success
      */
-    public function remove(string $name, string $scope, \Closure $onDone): void
+    public function remove(string $name, InstallScope $scope, \Closure $onDone): void
     {
-        if ('embedded' === $scope) {
+        if (InstallScope::Embedded === $scope) {
             $onDone($this->translator->trans('Built-in plugins cannot be removed'));
 
             return;
@@ -618,7 +618,7 @@ final class PluginInstaller
 
     /**
      * Every installed plugin directory in precedence order — project, global,
-     * then the plugins bundled with Porta (scope 'embedded', never removable).
+     * then the plugins bundled with Porta (scope {@see InstallScope::Embedded}, never removable).
      * A name present in several scopes is listed once per copy (the loader's
      * shadowing only affects which one activates). When a scanned dir COINCIDES
      * with the embedded dir (e.g. PORTA_EMBEDDED_PLUGINS pointed at a project's
@@ -626,7 +626,7 @@ final class PluginInstaller
      * overlaps by default), those entries classify as embedded so the bundled
      * plugins stay non-removable there too.
      *
-     * @return list<array{name: string, scope: string, dir: string}>
+     * @return list<array{name: string, scope: InstallScope, dir: string}>
      */
     public function installed(): array
     {
@@ -638,7 +638,10 @@ final class PluginInstaller
 
         $plugins = [];
         $embeddedSeen = [];
-        foreach (['project' => $this->rootDir.'/.porta/plugins', 'global' => null !== $this->globalBase ? $this->globalBase.'/.porta/plugins' : null] as $scope => $pluginsDir) {
+        foreach ([[InstallScope::Project, $this->rootDir.'/.porta/plugins'], [InstallScope::Global, null !== $this->globalBase ? $this->globalBase.'/.porta/plugins' : null]] as [
+            $scope,
+            $pluginsDir,
+        ]) {
             if (null === $pluginsDir) {
                 continue;
             }
@@ -647,7 +650,7 @@ final class PluginInstaller
             foreach (\is_array($scopeFiles) ? $scopeFiles : [] as $file) {
                 $dir = \dirname($file);
                 $name = \basename($dir);
-                $plugins[] = ['name' => $name, 'scope' => $isEmbedded ? 'embedded' : $scope, 'dir' => $dir];
+                $plugins[] = ['name' => $name, 'scope' => $isEmbedded ? InstallScope::Embedded : $scope, 'dir' => $dir];
                 if ($isEmbedded) {
                     $embeddedSeen[$name] = true;
                 }
@@ -659,7 +662,7 @@ final class PluginInstaller
                 $dir = \dirname($file);
                 $name = \basename($dir);
                 if (!\array_key_exists($name, $embeddedSeen)) {
-                    $plugins[] = ['name' => $name, 'scope' => 'embedded', 'dir' => $dir];
+                    $plugins[] = ['name' => $name, 'scope' => InstallScope::Embedded, 'dir' => $dir];
                 }
             }
         }
@@ -668,9 +671,9 @@ final class PluginInstaller
     }
 
     /** The scope's root directory (project root or global base), or null when the global base is unknown. */
-    private function rootFor(string $scope): ?string
+    private function rootFor(InstallScope $scope): ?string
     {
-        return 'global' === $scope ? $this->globalBase : $this->rootDir;
+        return InstallScope::Global === $scope ? $this->globalBase : $this->rootDir;
     }
 
     /**

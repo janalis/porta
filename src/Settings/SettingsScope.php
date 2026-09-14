@@ -58,15 +58,6 @@ final class SettingsScope
         $this->current = $scope;
     }
 
-    /**
-     * The scope's own value as the installer spells it — `project` / `global`,
-     * which is the vocabulary `PluginInstaller` already takes.
-     */
-    public function installerScope(): string
-    {
-        return $this->current->value;
-    }
-
     private function initial(): ConfigScope
     {
         // A project path is never null in practice — only the global one can
