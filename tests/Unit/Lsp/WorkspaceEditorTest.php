@@ -20,16 +20,23 @@ use Porta\Lsp\Uri;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Notifier;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Filesystem\Exception\IOException;
 use Symfony\Component\Filesystem\Filesystem;
 
 final class WorkspaceEditorTest extends TestCase
 {
+    use StatusReads;
+
     private BufferManager $buffers;
     private CodeEditorWidget $editor;
+    private StatusBarWidget $statusBar;
 
     private function workspaceEditor(?EventDispatcher $events = null): WorkspaceEditor
     {
@@ -42,6 +49,7 @@ final class WorkspaceEditorTest extends TestCase
             new LspSessionPool(sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
             $events ?? new EventDispatcher(),
             new RefactoringUndo(new BufferManager(), new EventDispatcher()),
+            notifier: new Notifier($this->statusBar = new StatusBarWidget(), TestTui::create()),
         );
     }
 
@@ -951,5 +959,37 @@ final class WorkspaceEditorTest extends TestCase
             false,
             'the first rename moved it away',
         ];
+    }
+
+    /**
+     * Deleting a file the user has unsaved edits in takes those edits with it,
+     * and there is no autosave to have caught them. It is still applied —
+     * refusing would leave the workspace edit HALF APPLIED, which this codebase
+     * treats as the worse outcome — but it may not happen in silence.
+     */
+    public function testDeletingAFileWithUnsavedEditsSaysSo(): void
+    {
+        $project = new TempProject(['gone.php' => "<?php\n"]);
+        $we = $this->workspaceEditor();
+        $path = (string) realpath($project->path('gone.php'));
+        $this->buffers->open($path, "<?php\n")->document->insert('// edited');
+
+        $we->applyWorkspaceEdit(['documentChanges' => [['kind' => 'delete', 'uri' => Uri::fromPath($path)]]]);
+
+        $this->assertFileDoesNotExist($path, 'the refactoring still applied');
+        $this->assertStringContainsString('unsaved changes in it are gone', $this->flashText($this->statusBar));
+    }
+
+    /** And a CLEAN buffer deleted the same way says nothing — there was nothing to lose. */
+    public function testDeletingAFileWithNoUnsavedEditsIsQuiet(): void
+    {
+        $project = new TempProject(['gone.php' => "<?php\n"]);
+        $we = $this->workspaceEditor();
+        $path = (string) realpath($project->path('gone.php'));
+        $this->buffers->open($path, "<?php\n");
+
+        $we->applyWorkspaceEdit(['documentChanges' => [['kind' => 'delete', 'uri' => Uri::fromPath($path)]]]);
+
+        $this->assertSame('', $this->flashText($this->statusBar));
     }
 }

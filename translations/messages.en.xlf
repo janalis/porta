@@ -3130,6 +3130,10 @@
         <source>Ctrl+Shift+O again to switch project, Ctrl+S to save</source>
         <target>Ctrl+Shift+O again to switch project, Ctrl+S to save</target>
       </trans-unit>
+      <trans-unit id="876">
+        <source>Deleted %file% — unsaved changes in it are gone</source>
+        <target>Deleted %file% — unsaved changes in it are gone</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

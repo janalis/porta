@@ -137,8 +137,28 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             }
         }
         foreach ($moved as $path => $target) {
+            // Carry the UNSAVED text across. `BufferManager::close()` has no
+            // dirty check, so a rename refactoring over an edited file used to
+            // drop the edits and re-read the moved file from disk — silently,
+            // and with no autosave anywhere to have caught them.
+            //
+            // The tree's rename solves the same problem by SAVING first
+            // (TreeOperations::saveDirtyUnder), which it can because it runs
+            // before the move. Here the rename has already happened by the time
+            // this event is dispatched: the old path is gone, and `saveBuffer()`
+            // writes to the buffer's own path, so saving now would recreate the
+            // file the refactoring just moved. Carrying the text instead leaves
+            // the user exactly where they were — same edits, unsaved, at the new
+            // path — and `replaceAll()` is one undoable edit, so Ctrl+Z still
+            // reaches what is on disk.
+            $unsaved = $this->buffers->get($path)?->document;
+            $carried = null !== $unsaved && $unsaved->isDirty() ? $unsaved->getText() : null;
             $this->buffers->close($path);
             $this->openFile($target);
+            if (null !== $carried) {
+                $reopened = $this->buffers->get($target) ?? $this->buffers->get(($real = realpath($target)) ? $real : $target);
+                $reopened?->document->replaceAll($carried);
+            }
         }
     }
 

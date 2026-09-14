@@ -1187,6 +1187,37 @@ final class IdeHelpersTest extends TestCase
         $this->assertContains((string) realpath($outside), $paths, 'a buffer outside the folder was left alone');
     }
 
+    /**
+     * A rename carries the UNSAVED edits with it, not just the tab.
+     *
+     * `BufferManager::close()` has no dirty check, so the repoint used to drop
+     * the edits and re-read the moved file from disk — silently, and with no
+     * autosave anywhere to have caught them. The tree's rename avoids this by
+     * saving first, which it can because it runs BEFORE the move; here the
+     * rename has already happened, so the text is carried instead.
+     *
+     * Asserted on the buffer's TEXT, not on the tab's existence: the previous
+     * two cases already prove the tab follows, and both passed throughout the
+     * years this lost work.
+     */
+    public function testARenamedFileCarriesItsUNSAVEDEditsToo(): void
+    {
+        $service = Services::resolve($this->ide, BufferService::class);
+        $buffers = Services::resolve($this->ide, BufferManager::class);
+        $old = $this->project->write('Before.php', "<?php\n");
+        $new = $this->project->path('After.php');
+        $service->openFile($old);
+        $buffers->get((string) realpath($old))?->document->insert('// edited');
+
+        rename($old, $new);
+        $service->onBufferRepointRequested(new BufferRepointRequested($old, $new));
+
+        $moved = $buffers->get((string) realpath($new));
+        $this->assertNotNull($moved);
+        $this->assertStringContainsString('// edited', $moved->document->getText(), 'the edits followed the file');
+        $this->assertTrue($moved->document->isDirty(), 'and are still unsaved, which is where the user left them');
+    }
+
     /** A rename of a file nobody had open has no buffer to move. */
     public function testARepointForAFileWithNoBufferIsANoOp(): void
     {

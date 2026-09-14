@@ -14,7 +14,9 @@ use Porta\Event\FileDeleted;
 use Porta\Event\FileRenamed;
 use Porta\Event\FileRewritten;
 use Porta\Event\WorkingTreeChanged;
+use Porta\I18n\Translator;
 use Porta\Support\Files;
+use Porta\Workbench\Notifier;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Filesystem\Exception\IOException;
 use Symfony\Component\Filesystem\Filesystem;
@@ -56,6 +58,9 @@ final readonly class WorkspaceEditor
         private EventDispatcherInterface $events,
         private RefactoringUndo $undo,
         private Filesystem $fs = new Filesystem(),
+        /** Nullable so a bare test construction stays one `new`, the FindBarWidget idiom. */
+        private ?Notifier $notifier = null,
+        private Translator $translator = new Translator(),
     ) {}
 
     /**
@@ -281,6 +286,14 @@ final readonly class WorkspaceEditor
         if ('delete' === $kind) {
             $path = $this->pathOf($change['uri'] ?? null);
             \assert(null !== $path, description: 'a delete with no usable path is refused before applying');
+            // A server deleting a file the user has unsaved edits in takes those
+            // edits with it, and there is no autosave to have caught them. It is
+            // still applied: refusing here would leave the workspace edit HALF
+            // APPLIED, which this codebase treats as the worse outcome. What it
+            // may not do is happen in silence.
+            if (true === $this->bufferAt($path)?->isDirty()) {
+                $this->notifier?->error($this->translator->trans('Deleted %file% — unsaved changes in it are gone', ['%file%' => basename($path)]));
+            }
             $this->closeBufferAt($path);
             // Canonical, and resolved BEFORE the removal — afterwards there is
             // nothing left for realpath() to resolve. FileDeleted's contract.

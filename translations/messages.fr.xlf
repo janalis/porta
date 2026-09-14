@@ -3130,6 +3130,10 @@
         <source>Ctrl+Shift+O again to switch project, Ctrl+S to save</source>
         <target>Ctrl+Shift+O à nouveau pour changer de projet, Ctrl+S pour enregistrer</target>
       </trans-unit>
+      <trans-unit id="876">
+        <source>Deleted %file% — unsaved changes in it are gone</source>
+        <target>%file% supprimé — les modifications non enregistrées sont perdues</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
