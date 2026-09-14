@@ -698,4 +698,79 @@ final class ProjectSearchControllerTest extends TestCase
         $this->assertContains('kept-query', new \Porta\History\SearchHistoryStore($project->dir)->all(), '×ing a search tab records its query');
         $this->assertContains('*.tpl', Probe::get(new \Porta\History\SearchPrefsStore($project->dir), 'recentMasks'), 'and its mask');
     }
+
+    /**
+     * A SAVED scope survives a close and reopen — the one scope a user has gone
+     * to the trouble of saving and pinning was the only one the panel could not
+     * bring back.
+     *
+     * `setScopeIndex()` persisted only built-in KINDS, because a saved scope
+     * carries paths instead of one, and `open()` restored by searching the
+     * built-ins — so it could only ever land on a built-in however the user had
+     * left it.
+     */
+    public function testASavedScopeIsRestoredOnReopen(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$needle = 1;\n"]);
+        new \Porta\History\SearchScopeStore($project->dir)->addPinned('src', ['src']);
+        $controller = $this->controller($project->dir);
+
+        $controller->open();
+        // The built-ins come first, so the saved one sits after them.
+        $savedIndex = \count(Probe::getStatic(ProjectSearchController::class, 'BUILT_INS'));
+        $controller->setScopeIndex($savedIndex);
+
+        // A FRESH controller, so the stores are re-read from disk: reopening the
+        // same instance would pass on its in-memory prefs alone and prove
+        // nothing about persistence, which is the whole defect.
+        $reopened = $this->controller($project->dir);
+        $reopened->open();
+
+        $this->assertSame($savedIndex, Probe::get($reopened, 'scopeIndex'), 'the saved scope came back');
+        $this->assertSame(['src'], Probe::get($reopened, 'scope'), 'and resolved to its own paths');
+    }
+
+    /**
+     * Choosing a BUILT-IN afterwards forgets the saved one.
+     *
+     * The two are stored side by side — the kind as the fallback for a saved
+     * scope that disappears — so without clearing it, a user who went back to
+     * "Project" would keep reopening on the saved scope they had moved off,
+     * with no way to make it stop.
+     */
+    public function testChoosingABuiltInAfterASavedScopeForgetsIt(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        new \Porta\History\SearchScopeStore($project->dir)->addPinned('src', ['src']);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->setScopeIndex(\count(Probe::getStatic(ProjectSearchController::class, 'BUILT_INS')));
+
+        $controller->setScopeIndex(0); // back to the first built-in
+
+        $reopened = $this->controller($project->dir);
+        $reopened->open();
+        $this->assertSame(0, Probe::get($reopened, 'scopeIndex'), 'the built-in stuck');
+    }
+
+    /**
+     * And it falls back when the saved scope is gone — deleted or renamed
+     * between sessions — which is why the built-in kind is still recorded
+     * beside it rather than replaced by it.
+     */
+    public function testAVanishedSavedScopeFallsBackToTheBuiltInKind(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        new \Porta\History\SearchScopeStore($project->dir)->addPinned('src', ['src']);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->setScopeIndex(\count(Probe::getStatic(ProjectSearchController::class, 'BUILT_INS')));
+
+        // The scope is removed from the store between sessions.
+        new \Porta\History\SearchScopeStore($project->dir)->forget('src');
+        $reopened = $this->controller($project->dir);
+        $reopened->open();
+
+        $this->assertSame(0, Probe::get($reopened, 'scopeIndex'), 'back to the first built-in');
+    }
 }

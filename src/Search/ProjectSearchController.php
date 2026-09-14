@@ -80,6 +80,19 @@ final class ProjectSearchController
         $this->rebuildScopeChoices();
         $this->scopeKind = $this->prefs->lastScope();
         $this->scopeIndex = (int) array_search($this->scopeKind, self::BUILT_INS, strict: true);
+        // A saved scope wins when it is still there. Gone — renamed, deleted —
+        // and the built-in kind above stands, which is why it is still recorded.
+        $saved = $this->prefs->lastSavedScope();
+        if ('' !== $saved) {
+            foreach ($this->scopeChoices as $index => $choice) {
+                if (null !== $choice->kind || $choice->label !== $saved) {
+                    continue;
+                }
+
+                $this->scopeIndex = $index;
+                break;
+            }
+        }
         $this->scope = $this->resolveChoice($this->scopeChoices[$this->scopeIndex]);
         $this->openModal();
     }
@@ -293,6 +306,15 @@ final class ProjectSearchController
         if (null !== $choice->kind) {
             $this->scopeKind = $choice->kind;
             $this->prefs->setScope($choice->kind);
+        }
+        if (null === $choice->kind) {
+            // A SAVED scope carries paths instead of a kind, so the kind field
+            // cannot hold it — and while only kinds were persisted, the one
+            // scope a user had gone to the trouble of saving and pinning was
+            // the only one a reopened panel could not restore. The previous
+            // KIND is deliberately left untouched as the fallback for when this
+            // saved scope is later deleted.
+            $this->prefs->setSavedScope($choice->label);
         }
         $this->run($this->lastSearchQuery);
     }
