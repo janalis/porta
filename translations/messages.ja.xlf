@@ -483,8 +483,8 @@
         <target>%name% に未保存の変更があります</target>
       </trans-unit>
       <trans-unit id="131">
-        <source>Unsaved changes — %noun% edits. Ctrl+Q again to quit, Ctrl+S to save</source>
-        <target>未保存の変更 — %noun% 変更があります。もう一度 Ctrl+Q で終了、Ctrl+S で保存</target>
+        <source>Unsaved changes — %noun% edits. %repeat%</source>
+        <target>未保存の変更 — %noun% 変更があります。%repeat%</target>
       </trans-unit>
       <trans-unit id="132">
         <source>Unsupported key — try another</source>
@@ -3121,6 +3121,14 @@
       <trans-unit id="873">
         <source>Already open</source>
         <target>すでに開いています</target>
+      </trans-unit>
+      <trans-unit id="874">
+        <source>Ctrl+Q again to quit, Ctrl+S to save</source>
+        <target>もう一度 Ctrl+Q で終了、Ctrl+S で保存</target>
+      </trans-unit>
+      <trans-unit id="875">
+        <source>Ctrl+Shift+O again to switch project, Ctrl+S to save</source>
+        <target>もう一度 Ctrl+Shift+O でプロジェクト切り替え、Ctrl+S で保存</target>
       </trans-unit>
     </body>
   </file>

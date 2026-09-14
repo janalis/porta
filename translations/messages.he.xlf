@@ -483,8 +483,8 @@
         <target>שינויים שלא נשמרו ב-%name%</target>
       </trans-unit>
       <trans-unit id="131">
-        <source>Unsaved changes — %noun% edits. Ctrl+Q again to quit, Ctrl+S to save</source>
-        <target>שינויים שלא נשמרו — ל-%noun% יש עריכות. Ctrl+Q שוב ליציאה, Ctrl+S לשמירה</target>
+        <source>Unsaved changes — %noun% edits. %repeat%</source>
+        <target>שינויים שלא נשמרו — ל-%noun% יש עריכות. %repeat%</target>
       </trans-unit>
       <trans-unit id="132">
         <source>Unsupported key — try another</source>
@@ -3121,6 +3121,14 @@
       <trans-unit id="873">
         <source>Already open</source>
         <target>כבר פתוח</target>
+      </trans-unit>
+      <trans-unit id="874">
+        <source>Ctrl+Q again to quit, Ctrl+S to save</source>
+        <target>Ctrl+Q שוב ליציאה, Ctrl+S לשמירה</target>
+      </trans-unit>
+      <trans-unit id="875">
+        <source>Ctrl+Shift+O again to switch project, Ctrl+S to save</source>
+        <target>Ctrl+Shift+O שוב להחלפת פרויקט, Ctrl+S לשמירה</target>
       </trans-unit>
     </body>
   </file>

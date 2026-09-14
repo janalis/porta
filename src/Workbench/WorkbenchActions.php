@@ -7,11 +7,9 @@ namespace Porta\Workbench;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspLog;
-use Porta\Support\Clocks;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\ResultsPanelMode;
-use Psr\Clock\ClockInterface;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -21,30 +19,21 @@ use Symfony\Component\Tui\Tui;
  */
 final class WorkbenchActions
 {
-    private float $lastQuitPress = 0.0;
-
     public function __construct(
         private readonly BufferManager $buffers,
-        private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly Tui $tui,
         private readonly MenuBarWidget $menuBar,
         private readonly BottomDock $panels,
         private readonly NotificationLog $notificationLog,
         private readonly LspLog $lspLog,
-        private readonly ClockInterface $clock,
+        private readonly UnsavedChangesGuard $guard,
     ) {}
 
     /** Ctrl+Q: quit, unless dirty buffers need a confirming second press within 3s. */
     public function quit(): void
     {
-        $dirty = $this->buffers->dirtyCount();
-        $now = Clocks::seconds($this->clock);
-        if ($dirty > 0 && ($now - $this->lastQuitPress) > 3.0) {
-            $this->lastQuitPress = $now;
-            $noun = $this->translator->trans('1 file has|%count% files have', ['%count%' => $dirty]);
-            $this->notifier->flash($this->translator->trans('Unsaved changes — %noun% edits. Ctrl+Q again to quit, Ctrl+S to save', ['%noun%' => $noun]), 3.0);
-
+        if (!$this->guard->confirmed('quit', $this->translator->trans('Ctrl+Q again to quit, Ctrl+S to save'))) {
             return;
         }
         $this->tui->stop();

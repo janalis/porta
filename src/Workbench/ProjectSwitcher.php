@@ -37,6 +37,7 @@ final readonly class ProjectSwitcher
         private Notifier $notifier,
         private Translator $translator,
         private EventDispatcherInterface $events,
+        private UnsavedChangesGuard $guard,
         private string $rootDir,
     ) {}
 
@@ -109,6 +110,14 @@ final readonly class ProjectSwitcher
         if ($root === (($mine = realpath($this->rootDir)) ? $mine : $this->rootDir)) {
             $this->notifier->flash($this->translator->trans('Already open'));
 
+            return;
+        }
+        // Switching ENDS this session, and the IDE has no autosave: the teardown
+        // writes the session, the debug state and the bookmarks, never buffer
+        // contents. So it needs the same confirm quitting has — and it belongs
+        // HERE rather than beside the `stop()`, so nothing has begun tearing
+        // down at the moment the user is told.
+        if (!$this->guard->confirmed('switch-project', $this->translator->trans('Ctrl+Shift+O again to switch project, Ctrl+S to save'))) {
             return;
         }
 

@@ -369,8 +369,11 @@ final class Ide
      * Where to reopen once this session ends, or null on an ordinary quit.
      *
      * Read by the console entrypoint AFTER {@see run()} returns, which is the
-     * only moment it can be acted on: the terminal is restored, the buffers are
-     * saved, and this process is free to become an IDE for somewhere else.
+     * only moment it can be acted on: the terminal is restored, the session is
+     * written, and this process is free to become an IDE for somewhere else.
+     * Not "the buffers are saved" — this said that, and the teardown has never
+     * written buffer contents. The confirm for what that costs lives in
+     * {@see \Porta\Workbench\ProjectSwitcher}, before the request is made.
      */
     public function reopenAt(): ?string
     {

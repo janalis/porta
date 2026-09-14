@@ -483,8 +483,8 @@
         <target>Modifiche non salvate in %name%</target>
       </trans-unit>
       <trans-unit id="131">
-        <source>Unsaved changes — %noun% edits. Ctrl+Q again to quit, Ctrl+S to save</source>
-        <target>Modifiche non salvate — %noun% modifiche. Ctrl+Q di nuovo per uscire, Ctrl+S per salvare</target>
+        <source>Unsaved changes — %noun% edits. %repeat%</source>
+        <target>Modifiche non salvate — %noun% modifiche. %repeat%</target>
       </trans-unit>
       <trans-unit id="132">
         <source>Unsupported key — try another</source>
@@ -3121,6 +3121,14 @@
       <trans-unit id="873">
         <source>Already open</source>
         <target>Già aperto</target>
+      </trans-unit>
+      <trans-unit id="874">
+        <source>Ctrl+Q again to quit, Ctrl+S to save</source>
+        <target>Ctrl+Q di nuovo per uscire, Ctrl+S per salvare</target>
+      </trans-unit>
+      <trans-unit id="875">
+        <source>Ctrl+Shift+O again to switch project, Ctrl+S to save</source>
+        <target>Ctrl+Shift+O di nuovo per cambiare progetto, Ctrl+S per salvare</target>
       </trans-unit>
     </body>
   </file>

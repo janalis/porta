@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\BufferManager;
 use Porta\Event\ProjectOpenRequested;
 use Porta\History\RecentProjectsStore;
 use Porta\I18n\Translator;
@@ -17,6 +18,8 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\ProjectSwitcher;
+use Porta\Workbench\UnsavedChangesGuard;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
@@ -32,6 +35,8 @@ final class ProjectSwitcherTest extends TestCase
 
     private TempProject $home;
     private TempProject $here;
+    private BufferManager $buffers;
+    private UnsavedChangesGuard $guard;
     private CodeEditorWidget $editor;
     private StatusBarWidget $statusBar;
     /** @var list<string> */
@@ -55,12 +60,16 @@ final class ProjectSwitcherTest extends TestCase
             $this->requested[] = $e->rootDir;
         });
 
+        $notifier = new Notifier($this->statusBar, TestTui::create());
+        $translator = new Translator('en');
+
         return new ProjectSwitcher(
             $store,
             $this->editor,
-            new Notifier($this->statusBar, TestTui::create()),
-            new Translator('en'),
+            $notifier,
+            $translator,
             $events,
+            $this->guard = new UnsavedChangesGuard($this->buffers = new BufferManager(), $notifier, $translator, new MockClock()),
             $this->here->dir,
         );
     }
@@ -186,5 +195,54 @@ final class ProjectSwitcherTest extends TestCase
         $this->editor->handleInput("\r");
 
         $this->assertSame([(string) realpath($target)], $this->requested);
+    }
+
+    /**
+     * A dirty buffer holds the switch until it is confirmed.
+     *
+     * Switching ENDS the session, and the IDE has no autosave: the teardown
+     * writes the session, the debug state and the bookmarks, never buffer
+     * contents. So the edits simply go — and the session IS saved, so coming
+     * back reopens the same tabs clean from disk with nothing to say they went.
+     *
+     * The assertion is that NOTHING WAS REQUESTED, not that a flash appeared: a
+     * switcher that warns and dispatches anyway passes a flash-only check while
+     * losing the work regardless.
+     */
+    public function testADirtyBufferHoldsTheSwitchUntilItIsConfirmed(): void
+    {
+        $other = new TempProject(['composer.json' => '{}']);
+        $switcher = $this->switcher($other->dir);
+        $this->buffers->open($this->here->path('a.php'), "<?php\n")->document->insert('x');
+
+        $switcher->open();
+        $this->editor->handleInput("\r");
+
+        $this->assertSame([], $this->requested, 'the first pick is refused');
+        $this->assertStringContainsString('Unsaved changes', $this->flashText($this->statusBar));
+
+        // The second ask inside the window is the confirmation.
+        $switcher->open();
+        $this->editor->handleInput("\r");
+
+        $this->assertSame([(string) realpath($other->dir)], $this->requested);
+    }
+
+    /**
+     * And the confirm is per-VERB: a press that warned about QUITTING must not
+     * arm a project switch. Two verbs sharing one window would make the second
+     * press confirm something the first was never asked about.
+     */
+    public function testAQuitWarningDoesNotArmTheProjectSwitch(): void
+    {
+        $other = new TempProject(['composer.json' => '{}']);
+        $switcher = $this->switcher($other->dir);
+        $this->buffers->open($this->here->path('a.php'), "<?php\n")->document->insert('x');
+
+        $this->guard->confirmed('quit', 'press again'); // the user pressed Ctrl+Q once
+        $switcher->open();
+        $this->editor->handleInput("\r");
+
+        $this->assertSame([], $this->requested, 'the switch still needs its own confirmation');
     }
 }

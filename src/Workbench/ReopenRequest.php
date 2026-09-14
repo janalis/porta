@@ -21,10 +21,17 @@ use Symfony\Component\Tui\Tui;
  * listener for is an event nobody can reason about.
  *
  * Stopping the Tui is all the "switching" there is. `Ide::run()` then unwinds
- * through its ordinary teardown — buffers saved, plugins shut down, terminal
- * restored — and the console entrypoint reads {@see root()} back afterwards to
- * decide whether to boot again somewhere else. Nothing here knows what a
- * project holds, because nothing here has to.
+ * through its ordinary teardown — the session, the debug state and the
+ * bookmarks written, plugins shut down, terminal restored — and the console
+ * entrypoint reads {@see root()} back afterwards to decide whether to boot
+ * again somewhere else. Nothing here knows what a project holds, because
+ * nothing here has to.
+ *
+ * The teardown does NOT write buffer contents, and this docblock used to say it
+ * did. There is no autosave, so an unsaved edit ends here — which is why the
+ * confirm lives in {@see \Porta\Workbench\ProjectSwitcher}, BEFORE the event
+ * that reaches this listener. By the time anything gets here the user has
+ * already agreed to lose it.
  */
 #[AsIdeService]
 final class ReopenRequest
