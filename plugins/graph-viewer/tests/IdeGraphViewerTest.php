@@ -9,6 +9,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
+use Porta\Ide;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Tests\Support\ClearsPortaLsp;
@@ -18,6 +19,8 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UsesBundledPlugins;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The graph viewer tab: opening a .dot file routes it to the viewer (layout
@@ -102,7 +105,7 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             $project->path('g.dot'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     // A bogus path: the engine reports rather than laying out.
                     $this->await(
                         static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'could not start dot'),
@@ -154,7 +157,7 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             $project->path('g.dot'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function (Tui $tui, $terminal, $ide): void {
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout to land');
                     $this->assertSame('graph-viewer', $tui->getFocus()?->getId());
 
@@ -181,7 +184,7 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             $dotPath,
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function (Tui $tui, $terminal, $ide): void {
                     // The stub answers on the loop: await the layout instead of sleeping.
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout to land');
                     $this->frame($tui);
@@ -193,7 +196,7 @@ final class IdeGraphViewerTest extends TestCase
                     $this->assertStringContainsString('calls', $output, 'the edge label rendered');
                     $tui->handleInput('n'); // select the first node
                 },
-                380 => function ($tui, $terminal): void {
+                380 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, '· A');
                     $this->assertStringContainsString('· A', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'selection surfaces in the status bar');
 
@@ -207,7 +210,7 @@ final class IdeGraphViewerTest extends TestCase
                     $tui->handleInput("\x1b[<0;40;10m"); // …release without motion = click-select
                     $tui->handleInput('0'); // back to fit
                 },
-                560 => function ($tui, $terminal, $ide) use ($dotPath): void {
+                560 => function (Tui $tui, $terminal, Ide $ide) use ($dotPath): void {
                     $this->frame($tui);
                     $this->assertSame('graph-viewer', $tui->getFocus()?->getId(), 'drag interactions keep the viewer focused');
                     // Break the document on disk: the reconciler re-shows it, the
@@ -290,7 +293,7 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function ($tui, $terminal, Ide $ide): void {
                     $terminal->clearOutput();
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:find-node');
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No graph nodes to search'), what: 'the empty-graph flash');
@@ -313,7 +316,7 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             $project->path('g.dot'),
             [
-                200 => function ($tui, $terminal): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // Read the CURRENT grid: the accumulated output still holds
                     // the cell rendering that painted before the bitmap landed.
                     $grid = fn (): string => \implode("\n", $this->screenGrid($tui, $terminal));
@@ -345,7 +348,7 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             $project->path('seq.puml'),
             [
-                200 => function ($tui, $terminal): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $grid = fn (): string => \implode("\n", $this->screenGrid($tui, $terminal));
                     $this->await(static fn (): bool => \str_contains($grid(), '▀'), what: "PlantUML's picture to paint");
 
@@ -370,7 +373,7 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             $project->path('seq.puml'),
             [
-                200 => function ($tui, $terminal): void {
+                200 => function (Tui $tui, $terminal): void {
                     $this->frame($tui);
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'the text path, as before');
                     $this->assertStringContainsString('@startuml', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -391,7 +394,7 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             $project->path('g.dot'),
             [
-                200 => function ($tui, $terminal): void {
+                200 => function (Tui $tui, $terminal): void {
                     $this->frame($tui);
                     $output = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('graphviz not found', $output);
@@ -424,7 +427,7 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             $dotPath,
             [
-                200 => function ($tui, $terminal, $ide) use ($dotPath, $phpPath, $bigPath, $binaryPath, $archPath): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($dotPath, $phpPath, $bigPath, $binaryPath, $archPath): void {
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout');
                     $buffers = Services::resolve($ide, BufferManager::class);
                     $this->assertCount(1, $buffers->all());
@@ -466,7 +469,7 @@ final class IdeGraphViewerTest extends TestCase
                     $service->openFile($dotPath); // reopen for the close step below
                     $this->await(static fn (): bool => true, what: 'noop');
                 },
-                420 => function ($tui, $terminal, $ide) use ($dotPath): void {
+                420 => function (Tui $tui, $terminal, Ide $ide) use ($dotPath): void {
                     $tui->handleInput("\x1bw"); // alt+w: close the graph tab through the handler
                     $this->frame($tui);
                     $buffers = Services::resolve($ide, BufferManager::class);
@@ -491,7 +494,7 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             null,
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the architecture graph');
                     $artifact = $project->path('architecture.dot');
@@ -533,7 +536,7 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             null,
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => \is_file($project->path('docs/arch/architecture.dot')), what: 'the artifact in its configured directory');
                     $this->assertFileDoesNotExist($project->path('architecture.dot'), 'and not in the default one');
@@ -562,7 +565,7 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             null,
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => \is_file($project->path('architecture.dot')), what: 'the generated artifact');
                     $this->assertStringContainsString('FromCommand', (string) \file_get_contents($project->path('architecture.dot')), 'the configured command supplied the DOT');
@@ -585,7 +588,7 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             null,
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'doomed'), what: 'the failure flash');
                     $this->assertFileDoesNotExist($project->path('architecture.dot'));
@@ -608,7 +611,7 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             null,
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'produced no output'), what: 'the empty-output flash');
                     $this->assertFileDoesNotExist($project->path('architecture.dot'));
@@ -633,7 +636,7 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function ($tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Cannot write'), what: 'the unwritable flash');
 

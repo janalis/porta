@@ -26,9 +26,11 @@ use Porta\Widget\MenuBarWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\EditorArea;
+use Porta\Workbench\Menu\ViewMenuSource;
 use Porta\Workbench\View\ContributedView;
 use Porta\Workbench\View\ContributedViewSource;
 use Porta\Workbench\View\ViewHost;
+use Porta\Workbench\View\ViewPointer;
 use Porta\Workbench\View\ViewRegistrar;
 use Porta\Workbench\View\ViewRegistry;
 use Porta\Workbench\View\ViewServices;
@@ -176,12 +178,12 @@ final class ViewRegistrarTest extends TestCase
                 return new CodeEditorWidget();
             }
 
-            public function pointer(): ?\Porta\Workbench\View\ViewPointer
+            public function pointer(): ?ViewPointer
             {
                 return null;
             }
 
-            public function contextMenus(): ?\Porta\Workbench\Menu\ViewMenuSource
+            public function contextMenus(): ?ViewMenuSource
             {
                 return null;
             }

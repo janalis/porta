@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Container;
 
+use Porta\Editor\StructureFollowsCaret;
 use Porta\Layout\ResponsiveLayout;
+use Porta\Lsp\HighlightController;
 use Porta\Overlay\Presenter\FindModalPresenter;
 use Porta\Overlay\Presenter\PickerModalPresenter;
 use Porta\Overlay\Presenter\ToastPresenter;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Settings\SettingsViewController;
+use Porta\Support\PerfCollector;
 
 /**
  * The services EagerServices force-constructs at the ctor tail for their
@@ -58,9 +61,9 @@ final class AsEagerMembershipTest extends ContainerTestCase
         // tag is still the sanctioned way for a CORE service to exist for its
         // side effect, and every one that does is written down here.
         $unordered = [
-            \Porta\Support\PerfCollector::class, // registers its frame hook at construction
-            \Porta\Lsp\HighlightController::class, // watches the caret from the frame hook
-            \Porta\Editor\StructureFollowsCaret::class, // ditto: moves the Structure tab's selection
+            PerfCollector::class, // registers its frame hook at construction
+            HighlightController::class, // watches the caret from the frame hook
+            StructureFollowsCaret::class, // ditto: moves the Structure tab's selection
         ];
 
         $this->assertSame($ordered, \array_slice($actual, offset: 0, length: \count($ordered)), 'the contractual construction order');

@@ -10,10 +10,13 @@ use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\WrapLayout;
+use Porta\Ui\CursorStyle;
+use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\Render\EditorDecorations;
 use Porta\Widget\Render\EditorGeometry;
 use Porta\Widget\Render\EditorRowAssembler;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 
 /**
  * The row walk with a {@see WrapLayout} in hand: one document line occupies as
@@ -54,7 +57,7 @@ final class EditorRowAssemblerWrapTest extends TestCase
             false,
             false,
             null,
-            new \Porta\Ui\CursorStyle(),
+            new CursorStyle(),
             $wrap,
         );
 
@@ -117,13 +120,13 @@ final class EditorRowAssemblerWrapTest extends TestCase
      */
     public function testTheDisplayToggleTurnsWrappingOnAndOffThroughTheWidget(): void
     {
-        $editor = new \Porta\Widget\CodeEditorWidget();
+        $editor = new CodeEditorWidget();
         $long = \str_repeat('a', times: 60);
         $editor->showDocument('/p/a.php', new Document("<?php\n{$long}\nafter\n"));
 
         // Rows carrying the long line, which is what "occupies N rows" means.
         $rowsOfAs = static fn (): int => \count(\array_filter(
-            $editor->render(new \Symfony\Component\Tui\Render\RenderContext(30, 6)),
+            $editor->render(new RenderContext(30, 6)),
             static fn (string $r): bool => \str_contains(AnsiUtils::stripAnsiCodes($r), 'aaaaa'),
         ));
 
@@ -141,14 +144,14 @@ final class EditorRowAssemblerWrapTest extends TestCase
      */
     public function testCodeLensesRenderAboveTheirLineAndCountAsRows(): void
     {
-        $editor = new \Porta\Widget\CodeEditorWidget();
+        $editor = new CodeEditorWidget();
         $editor->showDocument('/p/a.php', new Document("<?php\nclass A {}\nfunction b() {}\n"));
         $lens = static fn (string $title): array => ['title' => $title, 'command' => 'x', 'arguments' => []];
         $editor->decorations()->setCodeLenses([1 => [$lens('3 usages')], 2 => [$lens('1 usage'), $lens('2 implementations')]]);
 
         $rows = \array_map(
             static fn (string $r): string => \trim(AnsiUtils::stripAnsiCodes($r)),
-            $editor->render(new \Symfony\Component\Tui\Render\RenderContext(52, 8)),
+            $editor->render(new RenderContext(52, 8)),
         );
 
         $this->assertSame(

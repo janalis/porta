@@ -85,8 +85,8 @@ final class CommandRegistry
     public function keyBoundIds(): array
     {
         return \array_values(\array_map(
-            static fn (array $c) => $c['id'],
-            \array_filter($this->commands, static fn (array $c) => $c['keyBound']),
+            static fn (array $c): string => $c['id'],
+            \array_filter($this->commands, static fn (array $c): bool => $c['keyBound']),
         ));
     }
 

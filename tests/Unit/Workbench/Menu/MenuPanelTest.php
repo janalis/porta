@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Workbench\Menu;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\BaseDirection;
 use Porta\I18n\Bidi;
@@ -19,19 +20,19 @@ final class MenuPanelTest extends TestCase
     private function items(): array
     {
         return [
-            new MenuItem('Save', 'Ctrl+S', static fn () => null),
+            new MenuItem('Save', 'Ctrl+S', static fn (): null => null),
             MenuItem::separator(),
-            new MenuItem('Quit', 'Ctrl+Q', static fn () => null),
+            new MenuItem('Quit', 'Ctrl+Q', static fn (): null => null),
         ];
     }
 
     public function testDisabledItemsAreSkippedForSelection(): void
     {
         $items = [
-            new MenuItem('a', '', static fn () => null, false, static fn (): bool => false), // disabled
-            new MenuItem('b', '', static fn () => null),
+            new MenuItem('a', '', static fn (): null => null, false, static fn (): bool => false), // disabled
+            new MenuItem('b', '', static fn (): null => null),
             MenuItem::separator(),
-            new MenuItem('c', '', static fn () => null),
+            new MenuItem('c', '', static fn (): null => null),
         ];
 
         $this->assertSame(1, MenuPanel::firstSelectable($items), 'skips the disabled first item');
@@ -41,7 +42,7 @@ final class MenuPanelTest extends TestCase
 
     public function testDisabledItemRendersDimAndIsNeverHighlighted(): void
     {
-        $items = [new MenuItem('Save', 'Ctrl+S', static fn () => null, false, static fn (): bool => false)];
+        $items = [new MenuItem('Save', 'Ctrl+S', static fn (): null => null, false, static fn (): bool => false)];
         $segment = MenuPanel::segments($items, 0, 20, new Styles(DarkTheme::definition()))[0]['segment']; // selected index 0, yet disabled
 
         $this->assertStringContainsString("\x1b[38;5;240m", $segment, 'disabled item uses the dim foreground');
@@ -54,7 +55,7 @@ final class MenuPanelTest extends TestCase
         $width = MenuPanel::width($this->items());
         // 'Quit' + '  ' + 'Ctrl+Q' + padding is wider than the 8-column floor.
         $this->assertGreaterThan(8, $width);
-        $this->assertSame(8, MenuPanel::width([new MenuItem('x', '', static fn () => null)]), 'never narrower than 8');
+        $this->assertSame(8, MenuPanel::width([new MenuItem('x', '', static fn (): null => null)]), 'never narrower than 8');
         $this->assertSame(8, MenuPanel::width([MenuItem::separator()]), 'separators do not drive the width');
     }
 
@@ -79,7 +80,7 @@ final class MenuPanelTest extends TestCase
 
     public function testLongLabelIsTruncatedToFit(): void
     {
-        $items = [new MenuItem('A very long menu item label indeed', 'F2', static fn () => null)];
+        $items = [new MenuItem('A very long menu item label indeed', 'F2', static fn (): null => null)];
         $segments = MenuPanel::segments($items, 0, 20, new Styles(DarkTheme::definition()));
         $this->assertSame(20, AnsiUtils::visibleWidth($segments[0]['segment']));
         $this->assertStringContainsString('…', AnsiUtils::stripAnsiCodes($segments[0]['segment']));
@@ -88,7 +89,7 @@ final class MenuPanelTest extends TestCase
     public function testFirstSelectableSkipsLeadingSeparators(): void
     {
         $this->assertSame(0, MenuPanel::firstSelectable($this->items()));
-        $this->assertSame(1, MenuPanel::firstSelectable([MenuItem::separator(), new MenuItem('X', '', static fn () => null)]));
+        $this->assertSame(1, MenuPanel::firstSelectable([MenuItem::separator(), new MenuItem('X', '', static fn (): null => null)]));
         $this->assertSame(0, MenuPanel::firstSelectable([MenuItem::separator(), MenuItem::separator()]), 'none selectable → 0');
     }
 
@@ -108,10 +109,10 @@ final class MenuPanelTest extends TestCase
         // symmetry that would let a reversed step direction land on the same
         // index as the correct one.
         $items = [
-            new MenuItem('A', '', static fn () => null),
-            new MenuItem('B', '', static fn () => null),
-            new MenuItem('C', '', static fn () => null),
-            new MenuItem('D', '', static fn () => null),
+            new MenuItem('A', '', static fn (): null => null),
+            new MenuItem('B', '', static fn (): null => null),
+            new MenuItem('C', '', static fn (): null => null),
+            new MenuItem('D', '', static fn (): null => null),
         ];
         $this->assertSame(1, MenuPanel::step($items, 0, 1), 'forward from A lands on B, not D');
         $this->assertSame(3, MenuPanel::step($items, 0, -1), 'backward from A lands on D, not B');
@@ -121,13 +122,13 @@ final class MenuPanelTest extends TestCase
     {
         // A separator sits first: measuring must keep scanning past it, not
         // stop the walk there and leave every later item's width unseen.
-        $items = [MenuItem::separator(), new MenuItem('Longlabel', '', static fn () => null)];
+        $items = [MenuItem::separator(), new MenuItem('Longlabel', '', static fn (): null => null)];
         $this->assertSame(13, MenuPanel::width($items), '9-wide label + 4-column chrome, past the leading separator');
     }
 
     public function testWidthWithNoShortcutAddsNoExtraColumns(): void
     {
-        $items = [new MenuItem('Abcdef', '', static fn () => null)]; // 6-wide label, no shortcut
+        $items = [new MenuItem('Abcdef', '', static fn (): null => null)]; // 6-wide label, no shortcut
         $this->assertSame(10, MenuPanel::width($items), '6-wide label + 0 (no shortcut) + 4-column chrome');
     }
 
@@ -142,7 +143,7 @@ final class MenuPanelTest extends TestCase
 
     public function testInnerWidthFloorLeavesNoRoomForALabelAtATooNarrowPanel(): void
     {
-        $items = [new MenuItem('Hi', '', static fn () => null)];
+        $items = [new MenuItem('Hi', '', static fn (): null => null)];
         $segment = MenuPanel::segments($items, 0, 2, new Styles(DarkTheme::definition()))[0]['segment'];
         // inner = max(0, 2 - EDGE_COLS(2)) = 0: no budget for even a
         // truncation ellipsis, just the two edge/gap spaces.
@@ -154,14 +155,14 @@ final class MenuPanelTest extends TestCase
         // The shortcut alone (21 columns) blows well past the 5-column inner
         // budget: the label gets none of it (labelMax floors at 0, not a
         // negative slice) and the gap floors at 1, not 0 or 2.
-        $items = [new MenuItem('Save', 'Ctrl+Alt+Shift+Insert', static fn () => null)];
+        $items = [new MenuItem('Save', 'Ctrl+Alt+Shift+Insert', static fn (): null => null)];
         $segment = MenuPanel::segments($items, 0, 7, new Styles(DarkTheme::definition()))[0]['segment'];
         $this->assertSame('  Ctrl+Alt+Shift+Insert ', AnsiUtils::stripAnsiCodes($segment));
     }
 
     public function testLongLabelWithNoShortcutTruncatesToExactlyTheInnerWidth(): void
     {
-        $items = [new MenuItem(\str_repeat('x', times: 20), '', static fn () => null)];
+        $items = [new MenuItem(\str_repeat('x', times: 20), '', static fn (): null => null)];
         $segment = MenuPanel::segments($items, 0, 14, new Styles(DarkTheme::definition()))[0]['segment'];
         // inner = 12: 11 x's plus the truncation ellipsis exactly fill it.
         $this->assertSame(' xxxxxxxxxxx…  ', AnsiUtils::stripAnsiCodes($segment));
@@ -172,7 +173,7 @@ final class MenuPanelTest extends TestCase
         // Every other fixture in this file gives its item a real shortcut;
         // none of the existing "exact width" assertions can catch a tail
         // that quietly widens from '' to a single space when there is none.
-        $items = [new MenuItem('X', '', static fn () => null)];
+        $items = [new MenuItem('X', '', static fn (): null => null)];
         $width = MenuPanel::width($items);
         $segment = MenuPanel::segments($items, 0, $width, new Styles(DarkTheme::definition()))[0]['segment'];
         $this->assertSame($width, AnsiUtils::visibleWidth($segment), 'the empty-shortcut tail must not widen the row past panelWidth');
@@ -180,7 +181,7 @@ final class MenuPanelTest extends TestCase
 
     public function testSegmentLayoutIsExactlyEdgeLabelGapShortcutEdge(): void
     {
-        $items = [new MenuItem('Ab', 'F2', static fn () => null)];
+        $items = [new MenuItem('Ab', 'F2', static fn (): null => null)];
         $segment = MenuPanel::segments($items, 0, 10, new Styles(DarkTheme::definition()))[0]['segment'];
         // inner=8, labelMax=8-(2+2)=4 (label fits untouched), gap=8-2-2=4.
         $this->assertSame(' Ab    F2 ', AnsiUtils::stripAnsiCodes($segment));
@@ -197,9 +198,9 @@ final class MenuPanelTest extends TestCase
     public function testTheShortcutColumnHoldsWhateverTheLabelEndsWith(): void
     {
         $items = [
-            new MenuItem('יציאה', 'Ctrl+Q', static fn () => null),
-            new MenuItem('הצג TODO', 'Ctrl+Q', static fn () => null),
-            new MenuItem('Git: הסחנה (stash)', 'Ctrl+Q', static fn () => null),
+            new MenuItem('יציאה', 'Ctrl+Q', static fn (): null => null),
+            new MenuItem('הצג TODO', 'Ctrl+Q', static fn (): null => null),
+            new MenuItem('Git: הסחנה (stash)', 'Ctrl+Q', static fn (): null => null),
         ];
 
         $columns = [];
@@ -221,13 +222,13 @@ final class MenuPanelTest extends TestCase
      *
      * @param int<1, max> $width
      */
-    #[\PHPUnit\Framework\Attributes\DataProvider('menuWidthProvider')]
+    #[DataProvider('menuWidthProvider')]
     public function testASegmentIsExactlyThePanelWidth(int $width, BaseDirection $direction): void
     {
         $items = [
-            new MenuItem('הצג TODO', 'Ctrl+Q', static fn () => null),
-            new MenuItem('יציאה', 'Ctrl+Shift+Q', static fn () => null),
-            new MenuItem('Show TODO', 'Ctrl+Q', static fn () => null),
+            new MenuItem('הצג TODO', 'Ctrl+Q', static fn (): null => null),
+            new MenuItem('יציאה', 'Ctrl+Shift+Q', static fn (): null => null),
+            new MenuItem('Show TODO', 'Ctrl+Q', static fn (): null => null),
         ];
 
         foreach (MenuPanel::segments($items, 0, $width, new Styles(DarkTheme::definition()), $direction) as $row) {
@@ -247,7 +248,7 @@ final class MenuPanelTest extends TestCase
     /** A left-to-right menu is untouched — the mark is spent only when mirrored. */
     public function testALeftToRightMenuCarriesNoMark(): void
     {
-        $items = [new MenuItem('Show TODO', 'Ctrl+Q', static fn () => null)];
+        $items = [new MenuItem('Show TODO', 'Ctrl+Q', static fn (): null => null)];
 
         $segment = MenuPanel::segments($items, 0, 30, new Styles(DarkTheme::definition()))[0]['segment'];
 

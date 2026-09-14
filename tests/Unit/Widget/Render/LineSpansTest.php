@@ -80,7 +80,7 @@ final class LineSpansTest extends TestCase
                 [],
                 $styles,
             );
-            $caretSelectionSpans = \array_values(\array_filter($viaCaret['spans'], static fn (array $s) => "\x1b[7m" !== $s[2]));
+            $caretSelectionSpans = \array_values(\array_filter($viaCaret['spans'], static fn (array $s): bool => "\x1b[7m" !== $s[2]));
             $this->assertSame($viaSelection['spans'], $caretSelectionSpans, "line {$line}: one range → one span shape");
         }
     }
@@ -114,7 +114,7 @@ final class LineSpansTest extends TestCase
             new Styles(DarkTheme::definition()),
         );
 
-        $bracketSpan = \array_first(\array_filter($result['spans'], static fn (array $s) => LineDecorator::BRACKET_SGR === $s[2]));
+        $bracketSpan = \array_first(\array_filter($result['spans'], static fn (array $s): bool => LineDecorator::BRACKET_SGR === $s[2]));
         $this->assertSame(3, $bracketSpan[0]);
         $this->assertSame(4, $bracketSpan[1], 'a bracket cell is exactly one column wide');
     }

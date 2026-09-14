@@ -78,7 +78,7 @@ final class FindInFilesModalGeometryTest extends TestCase
      */
     public function testAShortScopeLabelLeavesTheFooterAsTheWidestRow(): void
     {
-        $modal = new FindInFilesModal(static fn () => null, translator: new Translator('fr'));
+        $modal = new FindInFilesModal(static fn (): null => null, translator: new Translator('fr'));
         $modal->open('Find in Files');
         $modal->setScopes(['src'], index: 0);
 
@@ -113,7 +113,7 @@ final class FindInFilesModalGeometryTest extends TestCase
     #[DataProvider('rowWidthLocales')]
     public function testEachFixedRowDrawsExactlyTheWidthItDeclares(string $locale, string $scope): void
     {
-        $modal = new FindInFilesModal(static fn () => null, translator: new Translator($locale));
+        $modal = new FindInFilesModal(static fn (): null => null, translator: new Translator($locale));
         $modal->open('Find in Files');
         $modal->setScopes([$scope], index: 0);
 

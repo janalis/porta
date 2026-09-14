@@ -9,12 +9,15 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\Container\Ansi;
 use Porta\Container\IdeContainerFactory;
+use Porta\Container\LspMode;
 use Porta\History\SessionStore;
 use Porta\I18n\Translator;
+use Porta\Ide;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
 final class IdeContainerFactoryTest extends TestCase
@@ -55,7 +58,7 @@ final class IdeContainerFactoryTest extends TestCase
         }
     }
 
-    private function build(?bool $trackSources = null): object
+    private function build(?bool $trackSources = null): ContainerInterface
     {
         return new IdeContainerFactory($trackSources)->build('/tmp/porta-factory-test', IdeConfig::load('/tmp/porta-factory-test'), Ansi::Enabled);
     }
@@ -75,7 +78,7 @@ final class IdeContainerFactoryTest extends TestCase
         $project = new TempProject();
         \putenv('PORTA_CACHE_DIR='.$project->dir);
 
-        new IdeContainerFactory()->build('/tmp/porta-factory-test', IdeConfig::load('/tmp/porta-factory-test'), Ansi::Enabled, lsp: \Porta\Container\LspMode::Disabled);
+        new IdeContainerFactory()->build('/tmp/porta-factory-test', IdeConfig::load('/tmp/porta-factory-test'), Ansi::Enabled, lsp: LspMode::Disabled);
 
         $this->assertSame('1', $_ENV['PORTA_LSP_DISABLED']);
     }
@@ -131,7 +134,7 @@ final class IdeContainerFactoryTest extends TestCase
             }
         }
         \sort($versions);
-        $hash = \hash('xxh128', \Porta\Ide::VERSION.\PHP_VERSION.$root.'/config'.$project->dir.\implode("\n", $versions));
+        $hash = \hash('xxh128', Ide::VERSION.\PHP_VERSION.$root.'/config'.$project->dir.\implode("\n", $versions));
 
         $this->assertFileExists($project->path("container-{$installKey}-{$hash}.php"), 'the dump filename encodes exactly this hash');
     }

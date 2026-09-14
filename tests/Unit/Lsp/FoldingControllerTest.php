@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Lsp;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
+use Porta\Editor\FoldModel;
 use Porta\I18n\Translator;
 use Porta\Lsp\FoldingController;
 use Porta\Lsp\LspSessionPool;
@@ -15,6 +16,7 @@ use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
+use Symfony\Component\Tui\Tui;
 
 final class FoldingControllerTest extends TestCase
 {
@@ -22,7 +24,7 @@ final class FoldingControllerTest extends TestCase
     private FakeScheduler $scheduler;
     private LspSessionPool $pool;
     private CodeEditorWidget $editor;
-    private \Symfony\Component\Tui\Tui $tui;
+    private Tui $tui;
 
     /** Three lines of a block: the LSP says fold 0-2, the brace scan says 1-3. */
     private const string TEXT = "head\nopen {\n    body;\n}\ntail\n";
@@ -79,7 +81,7 @@ final class FoldingControllerTest extends TestCase
     private function foldEndAt(int $line): ?int
     {
         $foldModel = Probe::get($this->editor, 'foldModel');
-        \assert($foldModel instanceof \Porta\Editor\FoldModel, description: 'the editor exposes a FoldModel for fold queries');
+        \assert($foldModel instanceof FoldModel, description: 'the editor exposes a FoldModel for fold queries');
 
         return $foldModel->foldEndAt($line);
     }

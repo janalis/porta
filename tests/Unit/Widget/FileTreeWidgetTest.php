@@ -756,7 +756,7 @@ final class FileTreeWidgetTest extends TestCase
 
         $tree->handleInput("\x1b[B"); // no entries: early return, no crash
         $this->assertSame([], \array_filter(
-            \array_map(static fn ($l) => \trim(\Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes($l)), \array_slice($tree->render(new RenderContext(20, 4)), offset: 1)),
+            \array_map(static fn (string $l): string => \trim(AnsiUtils::stripAnsiCodes($l)), \array_slice($tree->render(new RenderContext(20, 4)), offset: 1)),
         ));
     }
 

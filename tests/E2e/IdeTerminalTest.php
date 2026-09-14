@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ide;
 use Porta\Run\RunController;
+use Porta\Terminal\TerminalSession;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PreservesShell;
@@ -14,6 +16,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
 
 /**
@@ -35,7 +38,7 @@ final class IdeTerminalTest extends TestCase
         return $sessions->all();
     }
 
-    private function bufferText(\Porta\Terminal\TerminalSession $session): string
+    private function bufferText(TerminalSession $session): string
     {
         return \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $session->buffer->lines));
     }
@@ -92,20 +95,20 @@ final class IdeTerminalTest extends TestCase
                     // The dock strip shows both sessions as first-class tabs.
                     $renderer = Services::resolve($ide, Renderer::class);
                     $stripRect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
-                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($stripRect->columns, 1))[0]);
+                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new RenderContext($stripRect->columns, 1))[0]);
                     $this->assertSame(2, \substr_count($strip, needle: 'sh'), 'both shell tabs render on the dock strip');
                 },
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function ($tui, $terminal, Ide $ide): void {
                     // Ctrl+Page Up cycles back to shell 1 (widget-scope, terminal focused).
                     $tui->handleInput("\x1b[5^");
                     $run = Services::resolve($ide, RunController::class);
-                    $sessionsOf = static fn () => Probe::get($run, 'sessions');
+                    $sessionsOf = static fn (): mixed => Probe::get($run, 'sessions');
                     $this->assertSame('shell:1', $sessionsOf()->active()?->id, 'cycled to the first shell');
 
                     // Click shell 2's dock-strip tab label to activate it (mouse select path).
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
-                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
+                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new RenderContext($rect->columns, 1))[0]);
                     // The second "sh" occurrence is shell 2's tab.
                     $secondTab = (int) \mb_strpos($strip, needle: 'sh', offset: (int) \mb_strpos($strip, needle: 'sh') + 1);
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $secondTab + 1, $rect->row + 1));
@@ -138,7 +141,7 @@ final class IdeTerminalTest extends TestCase
                     // Click the × of the first (inactive) session tab on the dock strip.
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
-                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
+                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new RenderContext($rect->columns, 1))[0]);
                     $closeCol = (int) \mb_strpos($strip, needle: '×');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $closeCol + 1, $rect->row + 1));
 
@@ -175,12 +178,12 @@ final class IdeTerminalTest extends TestCase
                 },
                 600 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
-                    $ids = fn (): array => \array_map(static fn ($s) => $s->id, $this->sessions($ide));
+                    $ids = fn (): array => \array_map(static fn (TerminalSession $s): string => $s->id, $this->sessions($ide));
                     $this->assertSame(['shell:1', 'shell:2'], $ids());
 
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
-                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
+                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new RenderContext($rect->columns, 1))[0]);
                     $firstTab = (int) \mb_strpos($strip, needle: 'sh');
                     $secondTab = (int) \mb_strpos($strip, needle: 'sh', offset: $firstTab + 1);
 
@@ -211,11 +214,11 @@ final class IdeTerminalTest extends TestCase
                 300 => static function ($tui): void {
                     $tui->handleInput("\x1b[96;5u"); // shell 1
                 },
-                600 => function ($tui, $terminal, $ide): void {
+                600 => function ($tui, $terminal, Ide $ide): void {
                     $tui->tick();
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
-                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
+                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new RenderContext($rect->columns, 1))[0]);
 
                     $terminal->clearOutput();
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + (int) \mb_strpos($strip, needle: 'sh') + 1, $rect->row + 1));
@@ -268,7 +271,7 @@ final class IdeTerminalTest extends TestCase
                 900 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
                     $sessions = $this->sessions($ide);
-                    $ids = \array_map(static fn ($s) => $s->id, $sessions);
+                    $ids = \array_map(static fn (TerminalSession $s): string => $s->id, $sessions);
                     $this->assertContains('shell:1', $ids, 'the shell survived the run');
                     $this->assertContains('run:Run current file: run.php', $ids, 'the run got its own session');
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Ui;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\PaneReorder;
 use Porta\Overlay\Region\FloatingRegions;
@@ -133,7 +134,7 @@ final class DifferentialRepaintTest extends TestCase
      *
      * @param list<list<array{string, string}>> $frames
      */
-    #[\PHPUnit\Framework\Attributes\DataProvider('sequences')]
+    #[DataProvider('sequences')]
     public function testAnIncrementallyPaintedScreenEqualsAFreshlyRenderedOne(array $frames, bool $rtl): void
     {
         [$incremental] = $this->play($frames, $rtl);

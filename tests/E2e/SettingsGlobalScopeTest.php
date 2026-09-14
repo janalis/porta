@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
+use Porta\Ide;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\ClearsPortaLsp;
@@ -23,6 +24,8 @@ use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The round trip the global scope exists for: change a setting, it lands in
@@ -68,14 +71,14 @@ final class SettingsGlobalScopeTest extends TestCase
     private function reachTheStickyScrollRow(string $key): array
     {
         return [
-            300 => function ($tui, $terminal, $ide): void {
+            300 => function (Tui $tui, $terminal, Ide $ide): void {
                 Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Global);
                 Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                 $nav = $this->settingsNav($tui);
                 $this->selectSettingsSection($nav, 'interface');
                 $this->frame($tui);
             },
-            500 => function ($tui, $terminal) use ($key): void {
+            500 => function (Tui $tui, $terminal) use ($key): void {
                 $form = $this->settingsForm($tui);
                 $tui->setFocus($form);
                 $this->selectSettingRow($form, 'Sticky scroll');
@@ -96,20 +99,20 @@ final class SettingsGlobalScopeTest extends TestCase
             $this->project,
             $this->project->path('A.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Global);
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $nav = $this->settingsNav($tui);
                     $this->selectSettingsSection($nav, 'interface');
                     $this->frame($tui);
                 },
-                500 => function ($tui, $terminal): void {
+                500 => function (Tui $tui, $terminal): void {
                     $form = $this->settingsForm($tui);
                     $tui->setFocus($form);
 
                     $this->assertStringContainsString(
                         '~/.porta/config.json',
-                        $this->settingRow($form->render(new \Symfony\Component\Tui\Render\RenderContext(110, 22)), 'Save changes to'),
+                        $this->settingRow($form->render(new RenderContext(110, 22)), 'Save changes to'),
                         'the screen says where this is about to go',
                     );
 
@@ -117,7 +120,7 @@ final class SettingsGlobalScopeTest extends TestCase
                     $tui->handleInput("\r"); // toggle it off its default
                     $this->frame($tui);
                 },
-                700 => function ($tui, $terminal, $ide): void {
+                700 => function ($tui, $terminal, Ide $ide): void {
                     $global = $this->home->path('.porta/config.json');
                     $this->assertFileExists($global, 'the global file was created on first write');
 
@@ -175,7 +178,7 @@ final class SettingsGlobalScopeTest extends TestCase
             $this->project->path('A.php'),
             [
                 ...$this->reachTheStickyScrollRow("\r"),
-                700 => function ($tui, $terminal, $ide): void {
+                700 => function (Tui $tui, $terminal, Ide $ide): void {
                     $global = $this->home->path('.porta/config.json');
                     $written = \json_decode((string) \file_get_contents($global), associative: true);
                     $this->assertIsArray($written);
@@ -193,7 +196,7 @@ final class SettingsGlobalScopeTest extends TestCase
                     // what tells them apart.
                     $form = $this->settingsForm($tui);
                     $rows = \array_values(\array_filter(
-                        $form->render(new \Symfony\Component\Tui\Render\RenderContext(110, 22)),
+                        $form->render(new RenderContext(110, 22)),
                         static fn (string $line): bool => \str_contains(AnsiUtils::stripAnsiCodes($line), '['),
                     ));
                     $this->assertStringContainsString(
@@ -240,20 +243,20 @@ final class SettingsGlobalScopeTest extends TestCase
             $this->project->path('A.php'),
             [
                 // No scope change: RunsIde pins every scenario to the project.
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $nav = $this->settingsNav($tui);
                     $this->selectSettingsSection($nav, 'interface');
                     $this->frame($tui);
                 },
-                500 => function ($tui, $terminal): void {
+                500 => function (Tui $tui, $terminal): void {
                     $form = $this->settingsForm($tui);
                     $tui->setFocus($form);
                     $this->selectSettingRow($form, 'Sticky scroll');
                     $tui->handleInput("\r");
                     $this->frame($tui);
                 },
-                700 => function ($tui, $terminal, $ide): void {
+                700 => function ($tui, $terminal, Ide $ide): void {
                     $this->assertFalse(
                         IdeConfig::load($this->project->dir)->settings['stickyScroll'],
                         'the project value moved, which is what was asked',
@@ -295,7 +298,7 @@ final class SettingsGlobalScopeTest extends TestCase
             [
                 // 'r' resets the row to its default rather than toggling it.
                 ...$this->reachTheStickyScrollRow('r'),
-                700 => function ($tui, $terminal, $ide): void {
+                700 => function ($tui, $terminal, Ide $ide): void {
                     $written = \json_decode((string) \file_get_contents($this->home->path('.porta/config.json')), associative: true);
                     $this->assertIsArray($written);
                     $this->assertArrayNotHasKey(
@@ -351,11 +354,11 @@ final class SettingsGlobalScopeTest extends TestCase
             $this->project->path('A.php'),
             [
                 // Project scope, which is where a user would be doing this.
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, PluginLifecycle::class)->enable('noisy');
                     $this->frame($tui);
                 },
-                500 => function ($tui, $terminal, $ide): void {
+                500 => function ($tui, $terminal, Ide $ide): void {
                     $this->assertContains(
                         'noisy',
                         IdeConfig::load($this->project->dir)->disabledPlugins,
@@ -413,15 +416,15 @@ final class SettingsGlobalScopeTest extends TestCase
             $this->project,
             $this->project->path('A.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $nav = $this->settingsNav($tui);
                     $this->selectSettingsSection($nav, 'lang:php');
                     $this->frame($tui);
                 },
-                500 => function ($tui, $terminal): void {
+                500 => function (Tui $tui, $terminal): void {
                     $form = $this->settingsForm($tui);
-                    $rows = $form->render(new \Symfony\Component\Tui\Render\RenderContext(120, 22));
+                    $rows = $form->render(new RenderContext(120, 22));
 
                     $this->assertStringContainsString('from global', $this->settingRow($rows, 'LSP server'));
                     $this->assertStringContainsString('from global', $this->settingRow($rows, 'Debug adapter'));
@@ -457,14 +460,14 @@ final class SettingsGlobalScopeTest extends TestCase
             $this->project,
             $this->project->path('A.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Global);
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $nav = $this->settingsNav($tui);
                     $this->selectSettingsSection($nav, 'keybindings');
                     $this->frame($tui);
                 },
-                500 => function ($tui, $terminal): void {
+                500 => function (Tui $tui, $terminal): void {
                     // Through the real list: walk to the action, Enter to arm
                     // the capture, then the key it should take.
                     $list = $tui->getById('settings-keys');
@@ -480,7 +483,7 @@ final class SettingsGlobalScopeTest extends TestCase
                     $list->handleInput("\x1b[15~"); // F5
                     $this->frame($tui);
                 },
-                700 => function ($tui, $terminal, $ide): void {
+                700 => function ($tui, $terminal, Ide $ide): void {
                     $shown = \implode(' | ', Toasts::all($ide));
                     $this->assertStringContainsString('keeps its binding', $shown, 'the rebind said it did not take');
                     $this->assertStringContainsString('.porta.json', $shown, 'and named the file that binds it');
@@ -541,14 +544,14 @@ final class SettingsGlobalScopeTest extends TestCase
             $this->project,
             $this->project->path('A.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Global);
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $nav = $this->settingsNav($tui);
                     $this->selectSettingsSection($nav, 'plugin:noisy');
                     $this->frame($tui);
                 },
-                500 => function ($tui, $terminal): void {
+                500 => function (Tui $tui, $terminal): void {
                     $form = $this->settingsForm($tui);
                     $tui->setFocus($form);
                     $this->selectSettingRow($form, 'Klaxon volume');

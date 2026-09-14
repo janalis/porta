@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Search;
 use PHPUnit\Framework\TestCase;
 use Porta\Search\EditorFindTarget;
 use Porta\Widget\CodeEditorWidget;
+use Symfony\Component\Tui\Render\RenderContext;
 
 final class EditorFindTargetTest extends TestCase
 {
@@ -33,7 +34,7 @@ final class EditorFindTargetTest extends TestCase
         $target->showSearchMatches([1 => [['start' => 0, 'end' => 4, 'current' => true]]]);
         $this->assertStringContainsString(
             "\x1b[48;5;130m",
-            $editor->render(new \Symfony\Component\Tui\Render\RenderContext(80, 10))[1],
+            $editor->render(new RenderContext(80, 10))[1],
             'the current match background reaches the editor',
         );
 

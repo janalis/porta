@@ -72,7 +72,7 @@ final class PlantUmlEngineTest extends TestCase
     {
         $engine = new PlantUmlEngine(\sys_get_temp_dir(), self::stub());
         $fired = [];
-        $onError = static function (string $message): void {
+        $onError = static function (string $message): never {
             self::fail("unexpected render error: {$message}");
         };
         $engine->render(
@@ -122,7 +122,7 @@ final class PlantUmlEngineTest extends TestCase
         $engine->render(
             self::SMALL_UML,
             96,
-            static function (): void {
+            static function (): never {
                 self::fail('onPng must not fire without a tool');
             },
             static function (string $message) use (&$error): void {

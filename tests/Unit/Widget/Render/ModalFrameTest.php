@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\ModalFrame;
+use Porta\Widget\Render\TabCloseGlyph;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -110,8 +111,8 @@ final class ModalFrameTest extends TestCase
         $this->assertSame(AnsiUtils::stripAnsiCodes($normal), AnsiUtils::stripAnsiCodes($hovered), 'same text, different shade');
         // Direction, not just difference: hovered must be the BRIGHT variant, not
         // merely "a different one" (which a swapped active/inactive would also be).
-        $this->assertStringContainsString(\Porta\Widget\Render\TabCloseGlyph::active(Styles::dark()), $hovered);
-        $this->assertStringContainsString(\Porta\Widget\Render\TabCloseGlyph::inactive(Styles::dark()), $normal);
+        $this->assertStringContainsString(TabCloseGlyph::active(Styles::dark()), $hovered);
+        $this->assertStringContainsString(TabCloseGlyph::inactive(Styles::dark()), $normal);
     }
 
     public function testWrapPadsRailsTheContentAndClosesTheBox(): void

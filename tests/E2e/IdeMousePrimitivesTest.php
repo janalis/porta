@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\CompletionBox;
+use Porta\Editor\CompletionItem;
+use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
@@ -13,6 +16,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
 
 /**
@@ -35,7 +39,7 @@ final class IdeMousePrimitivesTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function ($tui, $terminal, Ide $ide): void {
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('editor'));
 
@@ -71,15 +75,15 @@ final class IdeMousePrimitivesTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui, $terminal, $ide): void {
+                200 => static function ($tui, $terminal, Ide $ide): void {
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('tree'));
                     // Header is relative row 0, a.php (selected) is row 1; hover b.php at row 2.
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + 3, $rect->row + 3));
                 },
-                280 => function ($tui, $terminal, $ide): void {
+                280 => function ($tui, $terminal, Ide $ide): void {
                     $tree = $tui->getById('tree');
-                    $line = $tree->render(new \Symfony\Component\Tui\Render\RenderContext(30, 24))[2];
+                    $line = $tree->render(new RenderContext(30, 24))[2];
                     $this->assertStringContainsString("\x1b[48;5;236m", $line, 'hovered tree row is highlighted');
                     // Move off the tree into the editor → the hover clears.
                     $renderer = Services::resolve($ide, Renderer::class);
@@ -88,7 +92,7 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
                 360 => function ($tui): void {
                     $tree = $tui->getById('tree');
-                    $joined = \implode('', $tree->render(new \Symfony\Component\Tui\Render\RenderContext(30, 24)));
+                    $joined = \implode('', $tree->render(new RenderContext(30, 24)));
                     $this->assertStringNotContainsString("\x1b[48;5;236m", $joined, 'hover cleared after leaving the tree');
                 },
             ],
@@ -103,7 +107,7 @@ final class IdeMousePrimitivesTest extends TestCase
         // Root-level files so the tree lists them directly (dirs sort first,
         // so keeping it flat makes row math simple).
         // Line 3 is long so the horizontal-wheel step has room to scroll.
-        $long = "<?php\n".\implode("\n", \array_map(static fn (int $i) => "// line {$i}".(3 === $i ? \str_repeat(' pad', times: 30) : ''), \range(1, end: 60)))."\n";
+        $long = "<?php\n".\implode("\n", \array_map(static fn (int $i): string => "// line {$i}".(3 === $i ? \str_repeat(' pad', times: 30) : ''), \range(1, end: 60)))."\n";
         $project = new TempProject(['A.php' => $long, 'B.php' => "<?php\n// this is B\n"]);
 
         $terminal = $this->runIde(
@@ -138,7 +142,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     // After two wheel-down steps (6 lines) the top visible line is
                     // no longer line 1.
                     $editor = $tui->getById('editor');
-                    $rendered = $editor->render(new \Symfony\Component\Tui\Render\RenderContext(69, 20));
+                    $rendered = $editor->render(new RenderContext(69, 20));
                     $topLineNumber = (int) \trim(AnsiUtils::stripAnsiCodes($rendered[0]));
                     $this->assertGreaterThan(1, $topLineNumber, 'wheel scrolled the viewport down');
                     $this->assertSame(2, $editor->getDocument()->getCursorLine(), 'wheel scroll left the caret behind');
@@ -467,11 +471,11 @@ final class IdeMousePrimitivesTest extends TestCase
                     $editor = $tui->getById('editor');
                     $editor->getDocument()->setCursor(1, 0);
                     $editor->showCompletions([
-                        new \Porta\Editor\CompletionItem(label: 'alpha', insertText: 'alpha', kind: 'fn', detail: ''),
+                        new CompletionItem(label: 'alpha', insertText: 'alpha', kind: 'fn', detail: ''),
                     ]);
                     $this->assertTrue($editor->isCompletionOpen());
                 },
-                320 => static function ($tui, $terminal, $ide): void {
+                320 => static function ($tui, $terminal, Ide $ide): void {
                     $tui->requestRender();
                     $tui->tick(); // paint the popup so its box geometry is recorded
                     $editor = $tui->getById('editor');
@@ -482,13 +486,13 @@ final class IdeMousePrimitivesTest extends TestCase
                     // the INNER item box, one row below the frame's top border.
                     $completion = Probe::get($editor, 'completion');
                     $box = Probe::get($completion, 'box');
-                    \assert($box instanceof \Porta\Editor\CompletionBox, description: 'the completion overlay laid out its box');
+                    \assert($box instanceof CompletionBox, description: 'the completion overlay laid out its box');
                     $x = $rect->col + $box->col + 2;
                     $y = $rect->row + $box->startRow;
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $x + 1, $y + 1)); // hover tints it
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $x + 1, $y + 1)); // click accepts it
                 },
-                440 => function ($tui, $terminal, $ide): void {
+                440 => function ($tui, $terminal, Ide $ide): void {
                     $editor = $tui->getById('editor');
                     $this->assertFalse($editor->isCompletionOpen(), 'the item click accepted the suggestion');
                     $this->assertStringContainsString('alpha', $editor->getDocument()->getLine(1));
@@ -496,7 +500,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     // Re-open and click far from the popup: falls through to
                     // caret placement, which closes it.
                     $editor->showCompletions([
-                        new \Porta\Editor\CompletionItem(label: 'alpha', insertText: 'alpha', kind: 'fn', detail: ''),
+                        new CompletionItem(label: 'alpha', insertText: 'alpha', kind: 'fn', detail: ''),
                     ]);
                     $this->assertTrue($editor->isCompletionOpen());
                     $renderer = Services::resolve($ide, Renderer::class);
@@ -523,7 +527,7 @@ final class IdeMousePrimitivesTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui, $terminal, $ide): void {
+                200 => static function ($tui, $terminal, Ide $ide): void {
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('tree'));
                     // Button 0 + 16 is Ctrl held, per the SGR modifier bits;
                     // +4 lands on c.php, two rows below the opened a.php.
@@ -538,7 +542,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     );
                     $this->assertStringEndsWith('a.php', (string) $tui->getById('editor')->getFilePath(), 'and did not open it — the editor is what you compare against');
                 },
-                400 => static function ($tui, $terminal, $ide): void {
+                400 => static function ($tui, $terminal, Ide $ide): void {
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('tree'));
                     // Button 0 + 4 is Shift: the range from the last click.
                     $tui->handleInput(\sprintf("\x1b[<4;%d;%dM", $rect->col + 3, $rect->row + 3));

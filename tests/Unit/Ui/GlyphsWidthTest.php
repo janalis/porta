@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Ui;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Ui\Glyphs;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -40,7 +41,7 @@ final class GlyphsWidthTest extends TestCase
         }
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('glyphs')]
+    #[DataProvider('glyphs')]
     public function testEveryGlyphIsOneColumnPerCharacter(string $name, string $glyph): void
     {
         $characters = \preg_split('//u', $glyph, flags: \PREG_SPLIT_NO_EMPTY);

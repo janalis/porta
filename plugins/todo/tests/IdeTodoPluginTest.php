@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Todo\Tests;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
@@ -14,6 +15,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UsesBundledPlugins;
 use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The TODO scan through a real IDE, now that it is a plugin — and above all,
@@ -46,7 +48,7 @@ final class IdeTodoPluginTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                200 => function ($tui, $terminal): void {
+                200 => function (Tui $tui, $terminal): void {
                     $tui->handleInput("\x1b8"); // alt+8 — core's key, the plugin's handler
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'FIXME races'));
                     $this->frame($tui);
@@ -55,7 +57,7 @@ final class IdeTodoPluginTest extends TestCase
                     $this->assertStringContainsString('2 results', $screen);
                     $tui->handleInput("\r");
                 },
-                400 => function ($tui, $terminal) use ($project): void {
+                400 => function (Tui $tui, $terminal) use ($project): void {
                     $this->frame($tui);
                     // grep walks the directory in its own order, so either row
                     // may be the selected one; both are TODO hits.
@@ -110,7 +112,7 @@ final class IdeTodoPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function (Tui $tui, $terminal, Ide $ide): void {
                     $tui->handleInput("\x1b8");
                     $this->pump(0.2); // a genuine negative: prove nothing opened
                     $this->frame($tui);

@@ -8,9 +8,13 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BookmarkActions;
 use Porta\Editor\Bookmarks;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
+use Porta\Editor\Document;
 use Porta\Editor\EditHistory;
 use Porta\History\RecentFilesStore;
+use Porta\Ide;
+use Porta\Overlay\State\MenuOverlayController;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\FindModalReads;
 use Porta\Tests\Support\GitBinary;
@@ -23,7 +27,9 @@ use Porta\Tests\Support\TempProject;
 use Porta\Ui\Glyphs;
 use Porta\Widget\ContextMenu;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -50,7 +56,7 @@ final class IdeContextMenusTest extends TestCase
      */
     private function rightClickTheFirstFolder(): \Closure
     {
-        return static function ($tui, $terminal, $ide): void {
+        return static function ($tui, $terminal, Ide $ide): void {
             $tui->requestRender(force: true);
             $tui->processRender();
             $renderer = Services::resolve($ide, Renderer::class);
@@ -74,7 +80,7 @@ final class IdeContextMenusTest extends TestCase
             $project,
             null, // no file open → the blank editor pane the box bled across
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function (Tui $tui, $terminal, Ide $ide): void {
                     // Right-press col 25, row 1: the 22-wide menu spills past the
                     // sidebar (tree cols 0–29) into the editor (col 31+). Force
                     // a frame first: right-click routing reads the renderer's
@@ -87,7 +93,7 @@ final class IdeContextMenusTest extends TestCase
                     $renderer = Services::resolve($ide, Renderer::class);
                     $editor = $tui->getById('editor');
                     $rect = $renderer->getWidgetRect($editor);
-                    $rows = $editor->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, $rect->rows));
+                    $rows = $editor->render(new RenderContext($rect->columns, $rect->rows));
                     // A menu item row (offset a couple rows below the anchor).
                     $menuRow = $rows[3] ?? '';
                     // The menu background must not be active far into the blank pane:
@@ -115,7 +121,7 @@ final class IdeContextMenusTest extends TestCase
                 },
                 280 => function ($tui): void {
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'tree context menu opened');
-                    $lines = $tui->getById('separator')->render(new \Symfony\Component\Tui\Render\RenderContext(1, 24));
+                    $lines = $tui->getById('separator')->render(new RenderContext(1, 24));
                     $painted = \array_filter($lines, static fn (string $l): bool => ' ' !== $l);
                     $this->assertNotEmpty($painted, 'the context menu paints over the separator column (no hole)');
                 },
@@ -137,11 +143,11 @@ final class IdeContextMenusTest extends TestCase
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[<2;21;3M"); // right-click a tree entry → context menu
                 },
-                280 => function ($tui, $terminal, $ide): void {
+                280 => function ($tui, $terminal, Ide $ide): void {
                     $menu = $tui->getById('context-menu');
                     $this->assertTrue($menu->isOpen(), 'the context menu is open');
 
-                    $overlay = Services::resolve($ide, \Porta\Overlay\State\MenuOverlayController::class);
+                    $overlay = Services::resolve($ide, MenuOverlayController::class);
                     $region = $overlay->contextMenuDropdown();
                     $this->assertNotNull($region, 'the menu overlay was placed');
 
@@ -189,7 +195,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\r");
                 },
-                340 => function ($tui): void {
+                340 => function (Tui $tui): void {
                     $tui->tick();
                     $this->assertTrue($tui->getById('editor')->isFindModalOpen(), 'the find modal opened, scoped to the folder');
                     $this->assertStringContainsString('Scope: sub', $this->modalText($tui), 'the modal is scoped to the clicked folder');
@@ -197,7 +203,7 @@ final class IdeContextMenusTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                650 => function ($tui): void {
+                650 => function (Tui $tui): void {
                     // The grep is a subprocess: await its row in the MODAL (the
                     // results pane holds nothing until promote() moves it there)
                     // instead of asserting a fixed number of ms after the query.
@@ -205,7 +211,7 @@ final class IdeContextMenusTest extends TestCase
                     $this->promote($tui); // modal → results pane
                     // Assert on the results panel itself (the tree sidebar also lists
                     // Outside.php, so the whole screen is the wrong surface).
-                    $panel = AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 14))));
+                    $panel = AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 14))));
                     $this->assertStringContainsString('1 result', $tui->getById('results')->statusText(), 'only the in-folder match counts (root is out of scope)');
                     $this->assertStringContainsString('sub/Inside.php', $panel, 'the in-folder match is listed');
                     $this->assertStringNotContainsString('Outside.php', $panel, 'the root match is excluded');
@@ -248,7 +254,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\r");
                 },
-                360 => function ($tui): void {
+                360 => function (Tui $tui): void {
                     $tui->tick();
                     $this->assertTrue($tui->getById('editor')->isFindModalOpen(), 'the find modal opened, scoped to the folder');
                     $this->assertStringContainsString('Scope: sub', $this->modalText($tui), 'the modal is scoped to the clicked folder');
@@ -256,7 +262,7 @@ final class IdeContextMenusTest extends TestCase
                         $tui->handleInput($ch); // the search term (query field)
                     }
                 },
-                760 => function ($tui): void {
+                760 => function (Tui $tui): void {
                     // The grep is a subprocess: await its row in the MODAL before
                     // acting on it, instead of asserting a fixed number of ms
                     // after the query.
@@ -407,7 +413,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[101;6u"); // ctrl+shift+e → Search Everywhere
                     $this->assertTrue($tui->getById('editor')->isAnyPickerOpen(), 'the picker is up');
                 },
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function ($tui, $terminal, Ide $ide): void {
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('editor'));
                     $this->assertNotNull($rect, 'the editor is laid out');
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 5, $rect->row + 2)); // SGR is 1-based
@@ -440,7 +446,7 @@ final class IdeContextMenusTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                250 => function ($tui, $terminal, $ide): void {
+                250 => function ($tui, $terminal, Ide $ide): void {
                     $tui->tick();
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('tree'));
                     $this->assertNotNull($rect, 'the tree is laid out');
@@ -547,7 +553,7 @@ final class IdeContextMenusTest extends TestCase
                     $this->assertTrue($tui->getById('context-menu')->isOpen());
                     $tui->handleInput("\r"); // New File (first item) → opens the name prompt
                 },
-                360 => function ($tui): void {
+                360 => function (Tui $tui): void {
                     $this->typeString($tui, 'new.php');
                     $tui->handleInput("\r"); // submit
                 },
@@ -558,7 +564,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[B"); // down → New Folder
                     $tui->handleInput("\r");
                 },
-                600 => function ($tui): void {
+                600 => function (Tui $tui): void {
                     $this->typeString($tui, 'pkg');
                     $tui->handleInput("\r");
                 },
@@ -632,7 +638,7 @@ final class IdeContextMenusTest extends TestCase
                     // unchanged is a no-op.
                     $tui->handleInput("\r");
                 },
-                380 => function ($tui, $terminal, $ide) use ($project): void {
+                380 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     $this->assertFileExists($project->path('A.php'), 'renaming to the same name changed nothing');
                     // Mark a line before the real rename, so the assertion below
                     // is about the mark SURVIVING it.
@@ -653,14 +659,14 @@ final class IdeContextMenusTest extends TestCase
                     }
                     $tui->handleInput("\r");
                 },
-                540 => function ($tui): void {
+                540 => function (Tui $tui): void {
                     foreach (\range(1, end: 10) as $_) {
                         $tui->handleInput("\x7f"); // backspace out the prefill
                     }
                     $this->typeString($tui, 'renamed.php');
                     $tui->handleInput("\r");
                 },
-                640 => function ($tui, $terminal, $ide) use ($project): void {
+                640 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     $this->assertStringEndsWith('renamed.php', (string) $tui->getById('editor')->getFilePath(), 'the open buffer followed the rename');
                     // The whole FileRenamed chain: the mark moved with the file
                     // rather than being silently dropped on the dead path.
@@ -671,7 +677,7 @@ final class IdeContextMenusTest extends TestCase
                     );
                     $this->assertStringContainsString(
                         Glyphs::BOOKMARK,
-                        \implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))),
+                        \implode("\n", $tui->getById('editor')->render(new RenderContext(120, 20))),
                         'and is painted on the new buffer',
                     );
 
@@ -720,7 +726,7 @@ final class IdeContextMenusTest extends TestCase
                     // the project root, the collapsed `src/`, then this.
                     $tui->handleInput("\x1b[<0;3;4M");
                 },
-                250 => static function ($tui, $terminal, $ide) use ($inside): void {
+                250 => static function ($tui, $terminal, Ide $ide) use ($inside): void {
                     // Marked through the store rather than the editor: the file
                     // inside the folder is deliberately NOT the active tab.
                     Services::resolve($ide, Bookmarks::class)->toggle($inside, 0);
@@ -735,15 +741,15 @@ final class IdeContextMenusTest extends TestCase
                     }
                     $tui->handleInput("\r");
                 },
-                410 => function ($tui): void {
+                410 => function (Tui $tui): void {
                     foreach (\range(1, end: 10) as $_) {
                         $tui->handleInput("\x7f"); // backspace out the prefilled name
                     }
                     $this->typeString($tui, 'lib');
                     $tui->handleInput("\r");
                 },
-                520 => function ($tui, $terminal, $ide) use ($project, $inside): void {
-                    $open = \array_map(static fn ($b): string => $b->path, Services::resolve($ide, BufferManager::class)->all());
+                520 => function ($tui, $terminal, Ide $ide) use ($project, $inside): void {
+                    $open = \array_map(static fn (Buffer $b): string => $b->path, Services::resolve($ide, BufferManager::class)->all());
                     $this->assertContains((string) \realpath($project->path('lib/A.php')), $open, 'the tab inside the folder followed it');
                     $this->assertNotContains($inside, $open, 'and none is left on the path that is gone');
                     $this->assertContains((string) \realpath($project->path('outside.php')), $open, 'the tab outside the folder was left alone');
@@ -777,7 +783,7 @@ final class IdeContextMenusTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                150 => function ($tui, $terminal, $ide) use ($a): void {
+                150 => function ($tui, $terminal, Ide $ide) use ($a): void {
                     $tui->tick();
                     $tui->getById('editor')->getDocument()->setCursor(0, 0);
                     Services::resolve($ide, BookmarkActions::class)->toggle();
@@ -795,11 +801,11 @@ final class IdeContextMenusTest extends TestCase
                     }
                     $tui->handleInput("\r");
                 },
-                430 => function ($tui): void {
+                430 => function (Tui $tui): void {
                     $this->typeString($tui, 'y');
                     $tui->handleInput("\r");
                 },
-                520 => function ($tui, $terminal, $ide) use ($a): void {
+                520 => function ($tui, $terminal, Ide $ide) use ($a): void {
                     $this->assertStringNotContainsString('A.php', (string) $tui->getById('editor')->getFilePath(), 'the deleted file is not still open');
                     $this->assertSame([], Services::resolve($ide, Bookmarks::class)->all(), 'the bookmark went with the file');
                     $this->assertNotContains($a, Services::resolve($ide, RecentFilesStore::class)->all(), 'the switcher stopped offering it');
@@ -884,7 +890,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[B"); // Rename…
                     $tui->handleInput("\r");
                 },
-                380 => function ($tui): void {
+                380 => function (Tui $tui): void {
                     foreach (\range(1, end: 10) as $_) {
                         $tui->handleInput("\x7f");
                     }
@@ -965,7 +971,7 @@ final class IdeContextMenusTest extends TestCase
                     }
                     $tui->handleInput("\r"); // Delete… → confirm prompt
                 },
-                430 => function ($tui): void {
+                430 => function (Tui $tui): void {
                     $this->typeString($tui, 'y');
                     $tui->handleInput("\r"); // confirmed
                 },
@@ -997,7 +1003,7 @@ final class IdeContextMenusTest extends TestCase
                     }
                     $tui->handleInput("\r"); // Delete…
                 },
-                380 => function ($tui): void {
+                380 => function (Tui $tui): void {
                     $this->typeString($tui, 'yes'); // 'yes' is also accepted
                     $tui->handleInput("\r");
                 },
@@ -1050,7 +1056,7 @@ final class IdeContextMenusTest extends TestCase
             [
                 200 => static function ($tui): void {
                     $tui->tick();
-                    $tui->getById('editor')->showDocument('', new \Porta\Editor\Document(''));
+                    $tui->getById('editor')->showDocument('', new Document(''));
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php (row 1)
                 },
                 300 => static function ($tui): void {
@@ -1071,7 +1077,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[<0;4;17M");
                     $tui->tick();
                 },
-                600 => function ($tui, $terminal): void {
+                600 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertNotNull($this->rowOf($grid, 'late.php'), 'Refresh picked up the new file');
                 },
@@ -1118,7 +1124,7 @@ final class IdeContextMenusTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 in the editor
                     $this->awaitPainted($tui, $terminal, 'Go to Declaration or Usages');
@@ -1128,7 +1134,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b"); // Esc closes it
                     $this->assertFalse($context->isOpen());
                 },
-                350 => function ($tui, $terminal, $ide): void {
+                350 => function (Tui $tui, VirtualTerminal $terminal, $ide): void {
                     $tui->setFocus($tui->getById('tree'));
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 on the tree's selected node
@@ -1136,7 +1142,7 @@ final class IdeContextMenusTest extends TestCase
                     $this->assertStringContainsString('New File', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'tree file operations under the selection');
                     $tui->handleInput("\x1b");
                 },
-                500 => function ($tui, $terminal, $ide): void {
+                500 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_help');
                     $tui->tick();
                     $terminal->clearOutput();

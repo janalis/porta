@@ -6,12 +6,14 @@ namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\PaneReorder;
+use Porta\Overlay\Region\FloatingRegions;
 use Porta\Support\PerfCollector;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\BidiTui;
 use Porta\Ui\PaneSegmenter;
+use Revolt\EventLoop;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
@@ -73,8 +75,8 @@ final class BidiTuiFramePacingTest extends TestCase
     /** One defer-only loop turn (runs already-queued defers, no timers). */
     private function microTurn(): void
     {
-        $suspension = \Revolt\EventLoop::getSuspension();
-        \Revolt\EventLoop::defer($suspension->resume(...));
+        $suspension = EventLoop::getSuspension();
+        EventLoop::defer($suspension->resume(...));
         $suspension->suspend();
     }
 
@@ -225,7 +227,7 @@ final class BidiTuiFramePacingTest extends TestCase
     public function testTheMirroredPathCapsAndStampsTheSameWay(): void
     {
         $tui = $this->pacedTui();
-        $tui->setPaneReorder(new PaneSegmenter($this->renderer, new class implements \Porta\Overlay\Region\FloatingRegions {
+        $tui->setPaneReorder(new PaneSegmenter($this->renderer, new class implements FloatingRegions {
             public function regions(): array
             {
                 return [];
@@ -302,7 +304,7 @@ final class BidiTuiFramePacingTest extends TestCase
         $clock = $this->clock;
         // The regions are asked for INSIDE the reorder stage, so a sleep here is
         // time genuinely spent between the widget tree and the terminal.
-        $tui->setPaneReorder(new PaneSegmenter($this->renderer, new readonly class($clock) implements \Porta\Overlay\Region\FloatingRegions {
+        $tui->setPaneReorder(new PaneSegmenter($this->renderer, new readonly class($clock) implements FloatingRegions {
             public function __construct(
                 private MockClock $clock,
             ) {}
@@ -400,7 +402,7 @@ final class BidiTuiFramePacingTest extends TestCase
 
         $this->assertFalse((bool) Probe::get($tui, 'immediateTickQueued'), 'the flag reset with the cancel');
         $this->assertNull(Probe::get($tui, 'immediateTickId'));
-        $this->assertNotContains($deferId, \Revolt\EventLoop::getIdentifiers(), 'the pending defer was cancelled, not leaked');
+        $this->assertNotContains($deferId, EventLoop::getIdentifiers(), 'the pending defer was cancelled, not leaked');
         $this->assertFalse($tui->isRunning(), 'the override still delegates to the vendor stop');
     }
 

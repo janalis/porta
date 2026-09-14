@@ -60,7 +60,7 @@ final class DotLayoutEngineTest extends TestCase
         $error = null;
         $engine->layout(
             'digraph {',
-            static function (): void {
+            static function (): never {
                 self::fail('onDone must not fire for a failing dot');
             },
             static function (string $message) use (&$error): void {
@@ -80,7 +80,7 @@ final class DotLayoutEngineTest extends TestCase
         $error = null;
         $engine->layout(
             self::SMALL_DOT,
-            static function (): void {
+            static function (): never {
                 self::fail('onDone must not fire for garbage output');
             },
             static function (string $message) use (&$error): void {
@@ -98,7 +98,7 @@ final class DotLayoutEngineTest extends TestCase
     {
         $engine = $this->engine('fake-dot');
         $fired = [];
-        $onError = static function (string $message): void {
+        $onError = static function (string $message): never {
             self::fail("unexpected layout error: {$message}");
         };
         $engine->layout(
@@ -130,7 +130,7 @@ final class DotLayoutEngineTest extends TestCase
         $error = null;
         $engine->layout(
             self::SMALL_DOT,
-            static function (): void {
+            static function (): never {
                 self::fail('onDone must not fire without a binary');
             },
             static function (string $message) use (&$error): void {
@@ -241,7 +241,7 @@ final class DotLayoutEngineTest extends TestCase
         // which is what lets a dot bitmap and its layout share hit-testing.
         $this->assertSame(72, $engine->baseDpi());
         $png = null;
-        $onError = static function (string $message): void {
+        $onError = static function (string $message): never {
             self::fail("unexpected render error: {$message}");
         };
 
@@ -272,7 +272,7 @@ final class DotLayoutEngineTest extends TestCase
         $engine->render(
             self::SMALL_DOT,
             72,
-            static function (): void {
+            static function (): never {
                 self::fail('onPng must not fire for a failing dot');
             },
             static function (string $message) use (&$error): void {
@@ -293,7 +293,7 @@ final class DotLayoutEngineTest extends TestCase
         $engine = $this->engine('fake-dot');
         $layout = null;
         $png = null;
-        $onError = static function (string $message): void {
+        $onError = static function (string $message): never {
             self::fail("unexpected error: {$message}");
         };
         $engine->layout(
@@ -323,7 +323,7 @@ final class DotLayoutEngineTest extends TestCase
     {
         $engine = $this->engine('fake-dot');
         $fired = [];
-        $onError = static function (string $message): void {
+        $onError = static function (string $message): never {
             self::fail("unexpected render error: {$message}");
         };
         $engine->render(
@@ -357,7 +357,7 @@ final class DotLayoutEngineTest extends TestCase
         new DotLayoutEngine(\sys_get_temp_dir(), null)->render(
             self::SMALL_DOT,
             72,
-            static function (): void {
+            static function (): never {
                 self::fail('onPng must not fire without a binary');
             },
             static function (string $message) use (&$error): void {

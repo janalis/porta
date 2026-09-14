@@ -6,8 +6,15 @@ namespace Porta\Tests\Unit\Ui;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\Region\DropdownRegion;
+use Porta\Overlay\Region\FloatingRegions;
 use Porta\Ui\LtrPane;
 use Porta\Ui\PaneSegmenter;
+use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\DockTabsWidget;
+use Porta\Widget\EditorPaneWidget;
+use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\TerminalPanelWidget;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Style\StyleSheet;
@@ -195,12 +202,12 @@ final class PaneSegmenterTest extends TestCase
     public function testTheVerbatimPaneSetIsExactlyThese(): void
     {
         $expected = [
-            \Porta\Widget\CodeEditorWidget::class,
-            \Porta\Widget\DebugPanelWidget::class,
-            \Porta\Widget\DockTabsWidget::class,
-            \Porta\Widget\EditorPaneWidget::class,
-            \Porta\Widget\ResultsPanelWidget::class,
-            \Porta\Widget\TerminalPanelWidget::class,
+            CodeEditorWidget::class,
+            DebugPanelWidget::class,
+            DockTabsWidget::class,
+            EditorPaneWidget::class,
+            ResultsPanelWidget::class,
+            TerminalPanelWidget::class,
             'Porta\\GitPlugin\\Widget\\DiffViewWidget',
         ];
         \sort($expected);
@@ -242,7 +249,7 @@ final class PaneSegmenterTest extends TestCase
         // A freshly built (unrendered) root has no render context, so the walk
         // collects no leaves — mirroring HitTester's detached-widget guard.
         $root = new ContainerWidget();
-        $segmenter = new PaneSegmenter(new Renderer(new StyleSheet()), new class implements \Porta\Overlay\Region\FloatingRegions {
+        $segmenter = new PaneSegmenter(new Renderer(new StyleSheet()), new class implements FloatingRegions {
             public function regions(): array
             {
                 return [];
@@ -263,7 +270,7 @@ final class PaneSegmenterTest extends TestCase
         // slides the pane's whole row sideways.
         $root = new ContainerWidget();
         $region = new DropdownRegion(0, 2, 3, 2);
-        $segmenter = new PaneSegmenter(new Renderer(new StyleSheet()), new readonly class($region) implements \Porta\Overlay\Region\FloatingRegions {
+        $segmenter = new PaneSegmenter(new Renderer(new StyleSheet()), new readonly class($region) implements FloatingRegions {
             public function __construct(
                 private DropdownRegion $region,
             ) {}

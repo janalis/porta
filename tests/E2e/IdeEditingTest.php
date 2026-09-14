@@ -10,6 +10,7 @@ use Porta\Editor\BufferService;
 use Porta\Editor\CloseMode;
 use Porta\Editor\OpenFocus;
 use Porta\Editor\SelectionMode;
+use Porta\Ide;
 use Porta\Support\RevoltScheduler;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
@@ -23,7 +24,10 @@ use Porta\Tests\Support\Toasts;
 use Porta\Ui\Glyphs;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * Editing chrome beyond keystrokes: multi-caret flows, structural
@@ -50,11 +54,11 @@ final class IdeEditingTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function ($tui, $terminal, Ide $ide): void {
                     $tui->tick();
                     $editor = $tui->getById('editor');
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
-                    $screen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))));
+                    $screen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(120, 20))));
 
                     $this->assertStringContainsString(Glyphs::EXPANDED, $screen(), 'the brace line starts an open region');
 
@@ -89,11 +93,11 @@ final class IdeEditingTest extends TestCase
                         $tui->handleInput("\x1b[B"); // scroll deep into the method
                     }
                 },
-                280 => function ($tui, $terminal, $ide): void {
+                280 => function ($tui, $terminal, Ide $ide): void {
                     $editor = $tui->getById('editor');
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($editor);
-                    $rendered = $editor->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, $rect->rows));
+                    $rendered = $editor->render(new RenderContext($rect->columns, $rect->rows));
                     $this->assertStringContainsString('class Service', AnsiUtils::stripAnsiCodes($rendered[0]), 'class header pinned at the top');
                     // Click the pinned class header's TEXT (editor row 0, first
                     // content column — the gutter's own columns route to the
@@ -121,17 +125,17 @@ final class IdeEditingTest extends TestCase
             [
                 200 => function ($tui): void {
                     // Caret at the very top is outside every scope → no bar.
-                    $this->assertSame([], $tui->getById('breadcrumbs')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1)));
+                    $this->assertSame([], $tui->getById('breadcrumbs')->render(new RenderContext(120, 1)));
                     // Navigate into handle() with the keyboard (invalidates the editor → relayout).
                     for ($i = 0; $i < 8; ++$i) {
                         $tui->handleInput("\x1b[B"); // down to line 8 (the `$x` line)
                     }
                 },
                 280 => function ($tui): void {
-                    $plain = AnsiUtils::stripAnsiCodes($tui->getById('breadcrumbs')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))[0]);
+                    $plain = AnsiUtils::stripAnsiCodes($tui->getById('breadcrumbs')->render(new RenderContext(120, 1))[0]);
                     $this->assertStringContainsString('App › Service › handle', $plain, 'the scope path is shown');
                 },
-                340 => static function ($tui, $terminal, $ide): void {
+                340 => static function ($tui, $terminal, Ide $ide): void {
                     $tui->requestRender();
                     $tui->tick();
                     $renderer = Services::resolve($ide, Renderer::class);
@@ -158,7 +162,7 @@ final class IdeEditingTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function (object $tui, $terminal, Ide $ide): void {
                     // A long expiry: the toast dismissing mid-step is a REAL
                     // repaint and would fail the quiescence assert under load.
                     Services::resolve($ide, Notifier::class)->flash('quiesce check', seconds: 60.0);
@@ -203,7 +207,7 @@ final class IdeEditingTest extends TestCase
                     $tui->handleInput('X');
                     $this->await(
                         static function () use ($tui): bool {
-                            $rows = $tui->getById('breadcrumbs')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1));
+                            $rows = $tui->getById('breadcrumbs')->render(new RenderContext(120, 1));
 
                             return [] !== $rows && \str_contains(AnsiUtils::stripAnsiCodes($rows[0]), 'handleX');
                         },
@@ -227,7 +231,7 @@ final class IdeEditingTest extends TestCase
         // The terminal's output ACCUMULATES, so every read here clears it
         // first and repaints. Reading it without clearing finds the opening
         // frame and reports that nothing ever folded.
-        $screen = function ($tui, $terminal): string {
+        $screen = function (Tui $tui, $terminal): string {
             $terminal->clearOutput();
             $tui->requestRender(force: true);
             $this->frame($tui);
@@ -279,7 +283,7 @@ final class IdeEditingTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $document = $tui->getById('editor')->getDocument();
                     // One single-line copy and one spanning two lines, so the
                     // ⏎ has something to mark and the rows differ in shape.
@@ -322,14 +326,14 @@ final class IdeEditingTest extends TestCase
             $project,
             $project->path('src/Svc.php'),
             [
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $tui->getById('editor')->getDocument()->setCursor(8, 8); // inside run()
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[99;8u"); // ctrl+alt+shift+c
 
                     $this->awaitPaintedRaw($tui, $terminal, "\x1b]52;c;".\base64_encode('App\\Http\\Svc::run'));
                 },
-                400 => function ($tui, $terminal): void {
+                400 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[99;6u"); // ctrl+shift+c
 
@@ -360,7 +364,7 @@ final class IdeEditingTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(30, 0);
                     $tui->handleInput('X'); // an edit, deep in A.php
                 },
-                400 => function ($tui, $terminal, $ide) use ($project): void {
+                400 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, BufferService::class)
                         ->openFile($project->path('B.php'), OpenFocus::Editor);
                     $tui->requestRender();
@@ -384,7 +388,7 @@ final class IdeEditingTest extends TestCase
                     $editor->getDocument()->setCursor(2, 0);
                     $tui->handleInput('Z'); // an edit in A.php at line 2
                 },
-                650 => static function ($tui, $terminal, $ide) use ($project): void {
+                650 => static function ($tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, BufferService::class)
                         ->openFile($project->path('B.php'), OpenFocus::Editor);
                     $tui->requestRender();
@@ -392,7 +396,7 @@ final class IdeEditingTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(1, 0);
                     $tui->handleInput('Q'); // an edit in B.php, the newest one
                 },
-                750 => function ($tui, $terminal, $ide) use ($project): void {
+                750 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, BufferService::class)->closeActiveBuffer(CloseMode::Force);
                     \unlink($project->path('B.php'));
                     $tui->requestRender();
@@ -488,7 +492,7 @@ final class IdeEditingTest extends TestCase
                 // The assertion below the run reads ACCUMULATED output, so the
                 // last step has to leave the effect painted — the loop stops
                 // 80 ms later and a tick is not a frame.
-                600 => function ($tui, $terminal): void {
+                600 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'foo([bar])');
                 },
             ],
@@ -507,12 +511,12 @@ final class IdeEditingTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui, $terminal, $ide): void {
+                200 => static function ($tui, $terminal, Ide $ide): void {
                     // The 0.1 s flash will expire; the log is the only way back to it.
                     Services::resolve($ide, Notifier::class)
                         ->flash('the answer is 42', 0.1);
                 },
-                400 => function ($tui, $terminal, $ide): void {
+                400 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_notifications');
                     // The log ROW is the last of the two things asserted: the
                     // tab title can be on screen before the entries render.
@@ -524,7 +528,7 @@ final class IdeEditingTest extends TestCase
                     Services::resolve($ide, Notifier::class)
                         ->flash('a later event', 0.1);
                     $tui->tick();
-                    $panelText = AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12))));
+                    $panelText = AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 12))));
                     $this->assertLessThan(
                         \strpos($panelText, needle: 'the answer is 42'),
                         \strpos($panelText, needle: 'a later event'),
@@ -582,7 +586,7 @@ final class IdeEditingTest extends TestCase
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[118;6u"); // ctrl+shift+v
                 },
-                600 => function ($tui, $terminal): void {
+                600 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->assertTrue(EditorState::pickerOpen($tui->getById('editor')), 'the history opened');
                     $rows = \explode("\n", $this->card($this->screenGrid($tui, $terminal), 'Paste from History'));
                     $offering = \array_values(\array_filter($rows, static fn (string $row): bool => \str_contains($row, '$beta = 2;')));
@@ -601,7 +605,7 @@ final class IdeEditingTest extends TestCase
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\r");
                 },
-                800 => function ($tui, $terminal): void {
+                800 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $document = $tui->getById('editor')->getDocument();
                     $this->assertSame('<?php$alpha = 1;', $document->getLine(0), 'the multi-line entry pasted its first line at the caret');
                     $this->assertSame('$beta = 2;', $document->getLine(1), 'and its second line below — the single-line entry would have pasted neither');

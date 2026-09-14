@@ -140,7 +140,7 @@ final class JsonRpcFramerTest extends TestCase
 
     public function testAFrameExactlyAtTheCapStillDecodes(): void
     {
-        $framer = new JsonRpcFramer(static function (string $reason): void {
+        $framer = new JsonRpcFramer(static function (string $reason): never {
             throw new \RuntimeException('no overflow expected: '.$reason);
         }, maxFrame: 64);
         $json = '{"a":"'.\str_repeat('b', times: 56).'"}'; // exactly 64 bytes — at the cap, not past it

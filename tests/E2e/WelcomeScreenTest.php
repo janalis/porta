@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
+use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
 use Porta\Overlay\Presenter\WelcomeModalController;
 use Porta\Overlay\Region\DropdownRegion;
@@ -14,6 +15,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -84,7 +86,7 @@ final class WelcomeScreenTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
 
         $terminal = $this->runIde($project, $project->path('a.php'), [
-            120 => function ($tui, $terminal): void {
+            120 => function (Tui $tui, $terminal): void {
                 // The modal lays out from the PREVIOUS frame's pane rects, so
                 // it needs two frames: force one, then await the hero.
                 $this->frame($tui);
@@ -108,7 +110,7 @@ final class WelcomeScreenTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
 
         $this->runIde($project, $project->path('a.php'), [
-            120 => function ($tui, $terminal) use ($project): void {
+            120 => function (Tui $tui, $terminal) use ($project): void {
                 $this->frame($tui); // the modal lays out from the first frame's rects
                 $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Welcome to Porta'), what: 'the Welcome modal to paint');
                 $tui->handleInput("\r"); // the selected step: enable highlighting
@@ -133,7 +135,7 @@ final class WelcomeScreenTest extends TestCase
         ]);
 
         $this->runIde($project, $project->path('a.php'), [
-            120 => function ($tui, $terminal) use ($project): void {
+            120 => function (Tui $tui, VirtualTerminal $terminal) use ($project): void {
                 $this->frame($tui); // the modal lays out from the first frame's rects
                 $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Symfony language tools'), what: 'the Symfony card to paint');
                 $this->assertStringContainsString('0 of 5 done', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the extra checkable card joins the count');
@@ -167,7 +169,7 @@ final class WelcomeScreenTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
 
         $terminal = $this->runIde($project, $project->path('a.php'), [
-            120 => function ($tui, $terminal): void {
+            120 => function (Tui $tui, $terminal): void {
                 $this->frame($tui); // the modal needs its second frame before Esc means anything
                 $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Welcome to Porta'), what: 'the Welcome modal to paint');
                 $tui->handleInput("\x1b");
@@ -184,7 +186,7 @@ final class WelcomeScreenTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
 
         $this->runIde($project, $project->path('a.php'), [
-            80 => function ($tui): void {
+            80 => function (Tui $tui): void {
                 $this->frame($tui);
             },
         ]);
@@ -192,7 +194,7 @@ final class WelcomeScreenTest extends TestCase
         $this->assertTrue(new OnboardingState($project->dir)->hasSeenWelcome(), 'the first boot recorded it');
 
         $second = $this->runIde($project, $project->path('a.php'), [
-            80 => function ($tui): void {
+            80 => function (Tui $tui): void {
                 // Two settled frames: if the modal WERE going to paint, this
                 // is when it would — the negative below is then meaningful.
                 $this->frame($tui);
@@ -215,7 +217,7 @@ final class WelcomeScreenTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
 
         $this->runIde($project, $project->path('a.php'), [
-            120 => function ($tui, $terminal, $ide) use ($project): void {
+            120 => function (Tui $tui, $terminal, object $ide) use ($project): void {
                 $this->frame($tui); // the modal lays out from the first frame's rects
                 $region = $this->modalRegion($ide);
 
@@ -255,7 +257,7 @@ final class WelcomeScreenTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
 
         $this->runIde($project, $project->path('a.php'), [
-            120 => function ($tui, $terminal, $ide) use ($project): void {
+            120 => function ($tui, $terminal, Ide $ide) use ($project): void {
                 $tui->handleInput("\r"); // enable highlighting (step 1)
                 $tui->tick();
                 $tui->handleInput("\x1b"); // back to the editor
@@ -287,7 +289,7 @@ final class WelcomeScreenTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
 
         $this->runIde($project, $project->path('a.php'), [
-            120 => function ($tui, $terminal) use ($project): void {
+            120 => function (Tui $tui, VirtualTerminal $terminal) use ($project): void {
                 $tui->handleInput("\x1b[B");
                 $tui->handleInput("\x1b[B"); // down to the third card
                 $tui->handleInput("\r");
@@ -319,7 +321,7 @@ final class WelcomeScreenTest extends TestCase
         \chmod($project->write('vendor/bin/mago', "#!/bin/sh\nexit 0\n"), permissions: 0o755);
 
         $this->runIde($project, $project->path('a.php'), [
-            120 => function ($tui, $terminal) use ($project): void {
+            120 => function (Tui $tui, VirtualTerminal $terminal) use ($project): void {
                 $tui->handleInput("\x1b[B");
                 $tui->handleInput("\x1b[B"); // down to the third card
                 $tui->handleInput("\r");
@@ -376,14 +378,14 @@ final class WelcomeScreenTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
 
         $terminal = $this->runIde($project, $project->path('a.php'), [
-            120 => function ($tui, $terminal, $ide): void {
+            120 => function (Tui $tui, VirtualTerminal $terminal, object $ide): void {
                 $this->frame($tui);
                 $region = $this->modalRegion($ide);
 
                 // A right-press over the box is swallowed: no context menu opens.
                 $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $region->col + 4, $region->top + 5 + 1));
                 $tui->tick();
-                $this->assertInstanceOf(\Porta\Overlay\Region\DropdownRegion::class, $this->modalRegion($ide), 'still open');
+                $this->assertInstanceOf(DropdownRegion::class, $this->modalRegion($ide), 'still open');
 
                 // A click outside the box (the tree pane, top-left) is swallowed too.
                 $tui->handleInput("\x1b[<0;2;3M");
@@ -418,7 +420,7 @@ final class WelcomeScreenTest extends TestCase
                 $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $after->col + $after->width - 3 + 1, $after->top + 1));
                 $tui->tick();
             },
-            240 => function ($tui, $terminal, $ide): void {
+            240 => function ($tui, $terminal, Ide $ide): void {
                 $this->assertFalse(Services::resolve($ide, WelcomeModalController::class)->isOpen(), 'the × closed the modal');
                 $this->assertSame('editor', $tui->getFocus()?->getId(), 'focus returned to the editor');
             },
@@ -432,7 +434,7 @@ final class WelcomeScreenTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
 
         $terminal = $this->runIde($project, $project->path('a.php'), [
-            120 => function ($tui, $t, $ide): void {
+            120 => function (Tui $tui, $t, object $ide): void {
                 $this->frame($tui); // the modal lays out from the first frame's rects
                 $region = $this->modalRegion($ide);
 

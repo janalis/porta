@@ -62,7 +62,7 @@ final class PickerModalPresenterTest extends TestCase
 
     private function openList(): void
     {
-        $this->editor->openListOverlay('Recent Files', [['label' => 'a.php', 'hint' => 'src', 'value' => 'A']], static fn () => null);
+        $this->editor->openListOverlay('Recent Files', [['label' => 'a.php', 'hint' => 'src', 'value' => 'A']], static fn (): null => null);
     }
 
     public function testSyncPushesSpansShadowAndBackdropWhileOpen(): void
@@ -99,8 +99,8 @@ final class PickerModalPresenterTest extends TestCase
     {
         $presenter = $this->presenter();
         $this->frame();
-        $this->editor->openSearch('Search', static fn () => null, static fn () => null, static fn () => null);
-        $this->editor->openPrompt('Go to line', '', static fn () => null);
+        $this->editor->openSearch('Search', static fn (): null => null, static fn (): null => null, static fn (): null => null);
+        $this->editor->openPrompt('Go to line', '', static fn (): null => null);
 
         $presenter->sync();
 

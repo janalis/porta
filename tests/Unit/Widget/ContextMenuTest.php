@@ -107,7 +107,7 @@ final class ContextMenuTest extends TestCase
                 false,
                 static fn (): bool => false,
             ),
-            new MenuItem('Copy', 'Ctrl+C', static fn () => null),
+            new MenuItem('Copy', 'Ctrl+C', static fn (): null => null),
         ]);
 
         $menu->runItem(0); // the disabled Cut
@@ -124,9 +124,9 @@ final class ContextMenuTest extends TestCase
         });
         $ran = [];
         $menu->open([
-            new MenuItem('Cut', 'Ctrl+X', static fn () => null), // 0: selectable (selected)
+            new MenuItem('Cut', 'Ctrl+X', static fn (): null => null), // 0: selectable (selected)
             MenuItem::separator(), // 1: separator
-            new MenuItem('Paste', 'Ctrl+V', static fn () => null, false, static fn (): bool => false), // 2: disabled
+            new MenuItem('Paste', 'Ctrl+V', static fn (): null => null, false, static fn (): bool => false), // 2: disabled
             new MenuItem('Copy', 'Ctrl+C', static function () use (&$ran): void {
                 $ran[] = 'copy';
             }), // 3: selectable

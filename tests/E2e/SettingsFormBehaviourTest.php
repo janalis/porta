@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
+use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\PreservesPath;
@@ -16,6 +17,8 @@ use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The four settings-form behaviours that were only ever checked by hand.
@@ -56,12 +59,12 @@ final class SettingsFormBehaviourTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $this->selectSettingsSection($this->settingsNav($tui), 'keybindings');
                     $this->frame($tui);
                 },
-                500 => function ($tui, $terminal): void {
+                500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $list = $tui->getById('settings-keys');
                     $tui->setFocus($list);
                     $list->handleInput('/');
@@ -91,13 +94,13 @@ final class SettingsFormBehaviourTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $nav = $this->settingsNav($tui);
                     $this->selectSettingsSection($nav, 'interface');
                     $this->frame($tui);
                 },
-                500 => function ($tui, $terminal): void {
+                500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $form = $this->settingsForm($tui);
                     $tui->setFocus($form);
 
@@ -139,11 +142,11 @@ final class SettingsFormBehaviourTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $this->frame($tui);
                 },
-                500 => function ($tui, $terminal) use ($project): void {
+                500 => function (Tui $tui, VirtualTerminal $terminal) use ($project): void {
                     $grid = $this->screenGrid($tui, $terminal);
                     $row = $this->rowOf($grid, 'Inline diagnostics');
                     $this->assertNotNull($row, 'the General page shows the row we are about to click');
@@ -188,13 +191,13 @@ final class SettingsFormBehaviourTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $nav = $this->settingsNav($tui);
                     $this->selectSettingsSection($nav, 'lang:php');
                     $this->frame($tui);
                 },
-                500 => function ($tui, $terminal): void {
+                500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $form = $this->settingsForm($tui);
                     $tui->setFocus($form);
                     $this->selectSettingRow($form, 'Launch config');
@@ -230,13 +233,13 @@ final class SettingsFormBehaviourTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $nav = $this->settingsNav($tui);
                     $this->selectSettingsSection($nav, 'interface');
                     $this->frame($tui);
                 },
-                500 => function ($tui, $terminal): void {
+                500 => function (Tui $tui, $terminal): void {
                     $form = $this->settingsForm($tui);
                     $tui->setFocus($form);
 

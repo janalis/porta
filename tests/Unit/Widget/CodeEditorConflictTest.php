@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\SelectionMode;
 use Porta\Tests\Support\EditorState;
+use Porta\Tests\Support\Probe;
 use Porta\Widget\CodeEditorWidget;
 
 final class CodeEditorConflictTest extends TestCase
@@ -163,7 +165,7 @@ final class CodeEditorConflictTest extends TestCase
         $editor = $this->editor(self::TWO_REGIONS);
         $editor->getDocument()->setCursor(0, 0);
         $editor->getDocument()->beginSelect();
-        $editor->getDocument()->setCursor(0, 3, selection: \Porta\Editor\SelectionMode::Keep);
+        $editor->getDocument()->setCursor(0, 3, selection: SelectionMode::Keep);
 
         $editor->handleInput("\x1b[18~"); // F7
 
@@ -177,7 +179,7 @@ final class CodeEditorConflictTest extends TestCase
 
         $editor->handleInput("\x1bm"); // open the resolve-conflict menu
 
-        $host = \Porta\Tests\Support\Probe::object($editor, 'overlayHost');
+        $host = Probe::object($editor, 'overlayHost');
         $host->layout([0, 0, 24, 80]);
 
         $this->assertTrue(true, 'laying out the open picker must not warn on a missing label key');

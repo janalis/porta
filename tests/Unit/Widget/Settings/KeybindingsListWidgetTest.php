@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Widget\Settings;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\KeybindingRow;
 use Porta\Event\SettingsSectionRequested;
@@ -579,7 +580,7 @@ final class KeybindingsListWidgetTest extends TestCase
      *
      * @param int<1, max> $width
      */
-    #[\PHPUnit\Framework\Attributes\DataProvider('keybindingWidthProvider')]
+    #[DataProvider('keybindingWidthProvider')]
     public function testEveryRowIsExactlyThePaneWidth(int $width, string $locale): void
     {
         $widget = new KeybindingsListWidget(new Translator($locale));

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ide;
 use Porta\Tests\Support\LoopErrors;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
@@ -15,6 +16,8 @@ use Porta\Tests\Support\Toasts;
 use Porta\Workbench\Notifier;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The corner toast surface end-to-end: a real notification renders as a
@@ -36,7 +39,7 @@ final class IdeToastsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $tui->handleInput('X'); // dirty
                     $tui->handleInput("\x13"); // ctrl+s → "Saved a.php"
                     // The toast is set synchronously; the CARD painting is the
@@ -48,11 +51,11 @@ final class IdeToastsTest extends TestCase
                     $this->assertStringContainsString('Saved a.php', $screen, 'the card text reaches the terminal');
                     $this->assertStringContainsString('✓ ', $screen, 'the success glyph on the card border — a save is a success');
                 },
-                400 => function ($tui, $terminal, $ide): void {
+                400 => function ($tui, $terminal, Ide $ide): void {
                     // The presenter's regions place the card; its × sits at the
                     // top border's width − 2 (ModalBox::closeHit).
                     $notifier = Services::resolve($ide, Notifier::class);
-                    $center = \Porta\Tests\Support\Probe::get($notifier, 'toasts');
+                    $center = Probe::get($notifier, 'toasts');
                     $boxes = Probe::get($center, 'boxes');
                     $this->assertNotSame([], $boxes, 'the presenter recorded the card box');
                     $box = $boxes[0]['box'];
@@ -66,7 +69,7 @@ final class IdeToastsTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $box->col + $box->width - 2, $box->startRow + 1));
                     $this->assertSame([], Toasts::all($ide), 'the × dismissed the toast');
                 },
-                500 => function ($tui, $terminal, $ide): void {
+                500 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // A short-lived toast expires on its own timer.
                     $notifier = Services::resolve($ide, Notifier::class);
                     $notifier->error('boom', 0.15);
@@ -95,11 +98,11 @@ final class IdeToastsTest extends TestCase
                 $project->path('a.php'),
                 [
                     200 => static function (): void {
-                        EventLoop::queue(static function (): void {
+                        EventLoop::queue(static function (): never {
                             throw new \RuntimeException('boom-in-callback');
                         });
                     },
-                    300 => function ($tui, $terminal, $ide) use ($project): void {
+                    300 => function (Tui $tui, VirtualTerminal $terminal, $ide) use ($project): void {
                         $this->awaitPainted($tui, $terminal, 'Internal error');
                         $this->assertStringContainsString('boom-in-callback', (string) \file_get_contents($project->dir.'/.porta/error.log'), 'the throwable landed in error.log');
                         $this->assertTrue($tui->isRunning(), 'the loop survived the throw');

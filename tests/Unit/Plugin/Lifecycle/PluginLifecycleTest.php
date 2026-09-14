@@ -16,6 +16,7 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewRegistry;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 
 /**
@@ -207,7 +208,7 @@ final class PluginLifecycleTest extends TestCase
         // disk (that is what makes this a real "removal", not a live reload of
         // the same copy) — without deleting it here, the fallback loop would
         // just find and reactivate the same file it just deactivated.
-        new \Symfony\Component\Filesystem\Filesystem()->remove($this->project->dir.'/.porta/plugins/acme');
+        new Filesystem()->remove($this->project->dir.'/.porta/plugins/acme');
         $lifecycle->deactivate('acme');
 
         $this->assertFalse($this->hasCommand($ide, 'acme:boom'), 'its command dies with it');

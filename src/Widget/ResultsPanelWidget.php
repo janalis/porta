@@ -87,7 +87,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     private array $displayRows = [];
 
     /** @var (\Closure(string, int): list<array{line: int, text: string}>)|null neighbouring source lines around a match (path, line) => lines */
-    private $contextProvider = null;
+    private ?\Closure $contextProvider = null;
 
     public function __construct(
         ?Styles $styles = null,

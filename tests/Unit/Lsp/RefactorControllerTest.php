@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\EditorConfig\ResolvedEditorConfig;
 use Porta\Editor\BufferManager;
+use Porta\Editor\Document;
 use Porta\Editor\SelectionMode;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
@@ -136,7 +137,7 @@ final class RefactorControllerTest extends TestCase
     public function testCodeActionsWithoutAReadyServerSendsNothing(): void
     {
         $controller = $this->controller();
-        $this->editor->showDocument('/tmp/proj/a.php', new \Porta\Editor\Document("<?php\n"));
+        $this->editor->showDocument('/tmp/proj/a.php', new Document("<?php\n"));
         // No notifyDidOpen: the session was never started, so ready() is null,
         // and no session/client is ever built — nothing to send a request to.
 
@@ -484,7 +485,7 @@ final class RefactorControllerTest extends TestCase
     public function testReformatWithoutAReadyServerSendsNothing(): void
     {
         $controller = $this->controller();
-        $this->editor->showDocument('/tmp/proj/a.php', new \Porta\Editor\Document("<?php\n"));
+        $this->editor->showDocument('/tmp/proj/a.php', new Document("<?php\n"));
 
         $controller->requestReformat();
 

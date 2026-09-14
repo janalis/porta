@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ide;
 use Porta\Support\FreezeWatchdog;
+use Porta\Support\PerfCollector;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
@@ -33,7 +35,7 @@ final class IdePerfLogTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     $watchdog = Services::resolve($ide, FreezeWatchdog::class);
                     $this->assertSame(0.25, Probe::get($watchdog, 'interval'), 'the container tightened the heartbeat');
                     $this->assertSame(0.5, Probe::get($watchdog, 'driftThreshold'), 'the container tightened the drift threshold');
@@ -61,7 +63,7 @@ final class IdePerfLogTest extends TestCase
                     // The fields above print 0.0 either way — what proves the
                     // wiring is the collector instance on the widget itself.
                     $this->assertSame(
-                        Services::resolve($ide, \Porta\Support\PerfCollector::class),
+                        Services::resolve($ide, PerfCollector::class),
                         Probe::get($tui->getById('editor'), 'perf'),
                         'the container feeds the editor timer into the one collector',
                     );

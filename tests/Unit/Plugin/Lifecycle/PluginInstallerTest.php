@@ -689,7 +689,7 @@ final class PluginInstallerTest extends TestCase
         // The caller has to know whether to wait BEFORE the subprocess could
         // possibly finish — that is what the return value is for.
         $installer = $this->installer(composer: $this->fakeComposer());
-        $never = static function (int $code): void {
+        $never = static function (int $code): never {
             self::fail('composer ran for a plugin that owes nothing');
         };
 
@@ -719,7 +719,7 @@ final class PluginInstallerTest extends TestCase
         $this->assertFileExists($dir.'/vendor/composer/autoload_psr4.php', 'composer ran in the PLUGIN directory');
 
         // A second call now answers NotNeeded — the vendor tree is there.
-        $this->assertSame(DependencyInstall::NotNeeded, $installer->installDependencies($dir, static fn (int $exit) => null));
+        $this->assertSame(DependencyInstall::NotNeeded, $installer->installDependencies($dir, static fn (int $exit): null => null));
     }
 
     public function testAFailingComposerReportsItsCodeToTheCaller(): void
@@ -751,14 +751,14 @@ final class PluginInstallerTest extends TestCase
 
         $this->assertSame(
             DependencyInstall::Busy,
-            $installer->installDependencies($this->pluginDir('needy', '{"require":{"vend/lib":"^1.0"}}'), static fn (int $exit) => null),
+            $installer->installDependencies($this->pluginDir('needy', '{"require":{"vend/lib":"^1.0"}}'), static fn (int $exit): null => null),
         );
 
         // …and a plugin that owes nothing is NOT refused, because NotNeeded is
         // answered before the slot is ever consulted.
         $this->assertSame(
             DependencyInstall::NotNeeded,
-            $installer->installDependencies($this->pluginDir('nodeps', '{}'), static fn (int $exit) => null),
+            $installer->installDependencies($this->pluginDir('nodeps', '{}'), static fn (int $exit): null => null),
         );
 
         // Let the install finish rather than ending on an armed stream watcher.

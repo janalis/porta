@@ -10,6 +10,8 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\TempProject;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * Clicking the status bar, through the real mouse router.
@@ -36,7 +38,7 @@ final class IdeStatusBarClickTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal) use (&$row, &$col): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal) use (&$row, &$col): void {
                     $this->frame($tui);
                     $grid = $this->screenGrid($tui, $terminal);
                     // The status row is found by its content, not by counting
@@ -50,7 +52,7 @@ final class IdeStatusBarClickTest extends TestCase
                     // SGR mouse columns and rows are 1-based.
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $row + 1));
                 },
-                320 => function ($tui, $terminal): void {
+                320 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->frame($tui);
                     $grid = $this->screenGrid($tui, $terminal);
                     self::assertNotNull(

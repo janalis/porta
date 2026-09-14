@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Workbench;
 
+use Porta\Config\PortaHome;
 use Porta\Container\AsIdeService;
 use Porta\Event\ProjectOpenRequested;
 use Porta\History\RecentProjectsStore;
@@ -127,7 +128,7 @@ final readonly class ProjectSwitcher
     /** `~` is what a person types and what the hints show; nothing else expands it here. */
     private static function expand(string $path): string
     {
-        $home = \Porta\Config\PortaHome::base();
+        $home = PortaHome::base();
         if (null === $home || '~' !== ($path[0] ?? '')) {
             return $path;
         }
@@ -138,7 +139,7 @@ final readonly class ProjectSwitcher
     /** The inverse, for display: a home-relative path is shorter and reads as a place. */
     private static function tilde(string $path): string
     {
-        $home = \Porta\Config\PortaHome::base();
+        $home = PortaHome::base();
 
         return null !== $home && \str_starts_with($path, $home.'/') ? '~'.\substr($path, \strlen($home)) : $path;
     }

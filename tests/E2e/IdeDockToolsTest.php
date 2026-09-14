@@ -11,6 +11,8 @@ use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\OpenFocus;
 use Porta\History\BookmarkPersistence;
 use Porta\History\BookmarkStore;
+use Porta\History\SearchHistoryStore;
+use Porta\Ide;
 use Porta\Lsp\NavigationController;
 use Porta\Lsp\Uri;
 use Porta\Tests\Support\PreservesPath;
@@ -20,11 +22,15 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Glyphs;
 use Porta\Widget\DockTabsWidget;
+use Porta\Widget\ResultsPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockToolHandlers;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * Drives the live bottom-dock list tools through a real Ide: the Problems
@@ -45,7 +51,7 @@ final class IdeDockToolsTest extends TestCase
     /** The panel's rendered line carrying $needle. */
     private static function resultRow(mixed $tui, string $needle): string
     {
-        $rows = $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12));
+        $rows = $tui->getById('results')->render(new RenderContext(160, 12));
         foreach ($rows as $row) {
             if (\str_contains(AnsiUtils::stripAnsiCodes($row), $needle)) {
                 return $row;
@@ -85,7 +91,7 @@ final class IdeDockToolsTest extends TestCase
                     $rect = $renderer->getWidgetRect($tui->getById('results'));
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + 5, $rect->row + 4));
                 },
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function ($tui, $terminal, Ide $ide): void {
                     // Asserted on the hovered ROW, not the whole panel: the
                     // filter field carries the same background, so presence
                     // anywhere would be true whether or not anything is hovered.
@@ -157,7 +163,7 @@ final class IdeDockToolsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $tui->handleInput("\x1b6"); // alt+6 → Show Problems
                     // Await the strip COUNT, which is the last of the two things
                     // asserted; 'Problems' alone can be on screen before it.
@@ -165,7 +171,7 @@ final class IdeDockToolsTest extends TestCase
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Problems', $screen, 'the Problems tab opened on the dock strip');
                 },
-                350 => function ($tui, $terminal, $ide) use ($project): void {
+                350 => function (Tui $tui, VirtualTerminal $terminal, $ide) use ($project): void {
                     $tui->setFocus($tui->getById('editor'));
                     self::bufferService($ide)
                         ->applyDiagnostics(
@@ -182,7 +188,7 @@ final class IdeDockToolsTest extends TestCase
                     // A further refresh that adds an EARLIER row must not move
                     // the selection off the diagnostic the user is on.
                     $results = $tui->getById('results');
-                    \assert($results instanceof \Porta\Widget\ResultsPanelWidget, description: 'the dock shows the results panel');
+                    \assert($results instanceof ResultsPanelWidget, description: 'the dock shows the results panel');
                     $this->assertSame(1, $results->captureViewState()->selectedLine, 'the fresh tab selected its first match');
                     self::bufferService($ide)
                         ->applyDiagnostics(
@@ -195,7 +201,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->tick();
                     $this->assertSame(1, $results->captureViewState()->selectedLine, 'the selection stayed on the same diagnostic through the refresh');
                 },
-                500 => function ($tui, $terminal, $ide) use ($project): void {
+                500 => function (Tui $tui, VirtualTerminal $terminal, $ide) use ($project): void {
                     // Concealed (Esc-hidden dock): the tab still refreshes, so
                     // revealing it shows the fresh rows.
                     $tui->setFocus($tui->getById('results'));
@@ -235,7 +241,7 @@ final class IdeDockToolsTest extends TestCase
                 $tui->handleInput($ch);
             }
         };
-        $dock = static fn ($ide): object => Services::resolve($ide, \Porta\Workbench\Dock\BottomDock::class);
+        $dock = static fn (Ide $ide): object => Services::resolve($ide, BottomDock::class);
 
         $this->runIde(
             $project,
@@ -270,7 +276,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->setFocus($tui->getById('results'));
                     $tui->handleInput("\x1b[15~"); // F5 → reruns 'alpha', not 'beta'
                     $this->await(static fn (): bool => \str_contains($tui->getById('results')->statusText(), '2 results'));
-                    $panel = AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 14))));
+                    $panel = AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 14))));
                     $this->assertStringContainsString('alpha again', $panel, "F5 re-ran the alpha tab's own query");
                     $this->assertStringNotContainsString('beta here', $panel, 'the beta results stayed in their tab');
                 },
@@ -285,7 +291,7 @@ final class IdeDockToolsTest extends TestCase
                         $dock($ide)->closeTab($entry['tab'], $entry['key']);
                     }
                     $tui->tick();
-                    $this->assertContains('beta', new \Porta\History\SearchHistoryStore($project->dir)->all(), '×ing a search tab records its query');
+                    $this->assertContains('beta', new SearchHistoryStore($project->dir)->all(), '×ing a search tab records its query');
                     $labels = \array_column($dock($ide)->aliveTabs(), 'label');
                     $this->assertNotContains('Find in Project: beta', $labels);
                     $this->assertContains('Find in Project: alpha', $labels, 'the alpha tab survives');
@@ -309,7 +315,7 @@ final class IdeDockToolsTest extends TestCase
                 $tui->handleInput($ch);
             }
         };
-        $dock = static fn ($ide): object => Services::resolve($ide, \Porta\Workbench\Dock\BottomDock::class);
+        $dock = static fn (Ide $ide): object => Services::resolve($ide, BottomDock::class);
 
         $this->runIde(
             $project,
@@ -321,7 +327,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->handleInput("\x1b\r"); // alt+enter → a wide "Find in Project: alpha" tab
                     $tui->tick();
                 },
-                450 => function ($tui, $terminal, $ide) use ($search, $dock): void {
+                450 => function (Tui $tui, $terminal, Ide $ide) use ($search, $dock): void {
                     $search($tui, query: 'beta');
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'beta here'));
                     $tui->handleInput("\x1b\r"); // a SECOND wide tab → the two overflow 30 cols
@@ -361,7 +367,7 @@ final class IdeDockToolsTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['src/Main.php' => "<?php\n"]);
-        $dock = static fn ($ide): object => Services::resolve($ide, \Porta\Workbench\Dock\BottomDock::class);
+        $dock = static fn (Ide $ide): object => Services::resolve($ide, BottomDock::class);
 
         $this->runIde(
             $project,
@@ -380,7 +386,7 @@ final class IdeDockToolsTest extends TestCase
                     // model refreshes, so activating it shows the fresh row.
                     self::bufferService($ide)
                         ->applyDiagnostics(
-                            \Porta\Lsp\Uri::fromPath($project->path('src/Main.php')),
+                            Uri::fromPath($project->path('src/Main.php')),
                             [0 => [['severity' => 1, 'message' => 'background boom', 'col' => 0, 'endCol' => 3]]],
                         );
                     $tui->tick();
@@ -411,13 +417,13 @@ final class IdeDockToolsTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['src/Main.php' => "<?php\n"]);
-        $dock = static fn ($ide): object => Services::resolve($ide, \Porta\Workbench\Dock\BottomDock::class);
+        $dock = static fn (Ide $ide): object => Services::resolve($ide, BottomDock::class);
 
         $this->runIde(
             $project,
             $project->path('src/Main.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($dock): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($dock): void {
                     $tui->handleInput("\x1b6"); // alt+6 → Problems
                     Services::resolve($ide, CommandRegistry::class)->run('ide_notifications'); // a second tool joins
                     $tui->tick();
@@ -426,7 +432,7 @@ final class IdeDockToolsTest extends TestCase
 
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
-                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
+                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new RenderContext($rect->columns, 1))[0]);
                     $problems = (int) \mb_strpos($strip, needle: 'Problems');
                     $second = (int) \mb_strpos($strip, needle: 'Notifications');
 
@@ -452,18 +458,18 @@ final class IdeDockToolsTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
-        $dock = static fn ($ide): object => Services::resolve($ide, \Porta\Workbench\Dock\BottomDock::class);
+        $dock = static fn (Ide $ide): object => Services::resolve($ide, BottomDock::class);
 
         $this->runIde(
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($dock): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($dock): void {
                     $tui->handleInput("\x1b6"); // alt+6 → Problems
                     $tui->tick();
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
-                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new \Symfony\Component\Tui\Render\RenderContext($rect->columns, 1))[0]);
+                    $strip = AnsiUtils::stripAnsiCodes($tui->getById('dock-tabs')->render(new RenderContext($rect->columns, 1))[0]);
                     $problems = (int) \mb_strpos($strip, needle: 'Problems');
 
                     $terminal->clearOutput();
@@ -477,7 +483,7 @@ final class IdeDockToolsTest extends TestCase
                     $this->assertSame([], $dock($ide)->aliveTabs(), 'the menu Close really closed the tool');
                     $this->assertFalse($tui->getById('results')->isOpen());
                 },
-                500 => function ($tui, $terminal, $ide): void {
+                500 => function ($tui, $terminal, Ide $ide): void {
                     // The strip's empty tail stays menu-less.
                     $tui->handleInput("\x1b6");
                     $tui->tick();
@@ -514,7 +520,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->tick();
                     $this->assertStringContainsString(
                         "\x1b[48;5;240m",
-                        \implode('', $tui->getById('tabs')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 1))),
+                        \implode('', $tui->getById('tabs')->render(new RenderContext(160, 1))),
                         'the hovered editor tab tints',
                     );
 
@@ -524,7 +530,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->tick();
                     $this->assertStringNotContainsString(
                         "\x1b[48;5;240m",
-                        \implode('', $tui->getById('tabs')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 1))),
+                        \implode('', $tui->getById('tabs')->render(new RenderContext(160, 1))),
                         'leaving the editor strip clears its tint',
                     );
 
@@ -552,7 +558,7 @@ final class IdeDockToolsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($wheel): void {
+                200 => function (Tui $tui, $terminal, Ide $ide) use ($wheel): void {
                     $renderer = Services::resolve($ide, Renderer::class);
 
                     // Go-to-file (the editor's centered search overlay now): the wheel moves its selection.
@@ -601,7 +607,7 @@ final class IdeDockToolsTest extends TestCase
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings'); // back out
                     $tui->tick();
                 },
-                600 => function ($tui, $terminal, $ide) use ($wheel): void {
+                600 => function ($tui, $terminal, Ide $ide) use ($wheel): void {
                     // Dock strip: the wheel cycles the tool tabs.
                     $tui->handleInput("\x1b6"); // Problems
                     Services::resolve($ide, CommandRegistry::class)->run('ide_notifications'); // a second tab joins
@@ -632,7 +638,7 @@ final class IdeDockToolsTest extends TestCase
             $project,
             $project->path('b.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function ($tui, $terminal, Ide $ide): void {
                     $dock = Services::resolve($ide, BottomDock::class);
                     $reruns = 0;
                     $activated = [];
@@ -691,8 +697,8 @@ final class IdeDockToolsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal) use ($project): void {
-                    $editorScreen = static fn (): string => \implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
+                200 => function (Tui $tui, $terminal) use ($project): void {
+                    $editorScreen = static fn (): string => \implode("\n", $tui->getById('editor')->render(new RenderContext(120, 20)));
                     $tui->getById('editor')->getDocument()->setCursor(1, 0);
                     $tui->handleInput("\x1b[23~"); // F11 → toggle bookmark
                     $this->frame($tui);
@@ -713,7 +719,7 @@ final class IdeDockToolsTest extends TestCase
                     $this->assertStringEndsWith('/a.php', (string) $tui->getById('editor')->getFilePath(), 'the row jumped back to the bookmarked file');
                     $this->assertSame(1, $tui->getById('editor')->getDocument()->getCursorLine(), 'and to its line');
                 },
-                420 => function ($tui, $terminal, $ide) use ($project): void {
+                420 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     // The mark outlives the session: teardown writes it, and a
                     // fresh store reads back exactly what was marked.
                     Services::resolve($ide, BookmarkPersistence::class)->save();
@@ -783,7 +789,7 @@ final class IdeDockToolsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function (Tui $tui, $terminal, Ide $ide): void {
                     $tui->getById('editor')->getDocument()->setCursor(6, 0);
                     $this->frame($tui); // the caret settles BEFORE the tab exists
 
@@ -820,7 +826,7 @@ final class IdeDockToolsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function (Tui $tui, $terminal, $ide) use ($project): void {
                     self::bufferService($ide)
                         ->applyDiagnostics(
                             Uri::fromPath($project->path('a.php')),

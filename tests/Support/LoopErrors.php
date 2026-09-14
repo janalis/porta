@@ -18,7 +18,7 @@ final class LoopErrors
 {
     public static function rethrow(): \Closure
     {
-        return static function (\Throwable $error): void {
+        return static function (\Throwable $error): never {
             throw $error; // fail the test loudly — Revolt surfaces this from run()
         };
     }

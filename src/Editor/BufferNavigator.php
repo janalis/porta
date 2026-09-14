@@ -102,7 +102,7 @@ final readonly class BufferNavigator implements BufferNavigationHandler, ViewerT
     public function openRecentFiles(): void
     {
         $open = $this->buffers->recent();
-        $items = \array_map(fn (Buffer $b) => [
+        $items = \array_map(fn (Buffer $b): array => [
             'label' => \basename($b->path).($b->document->isDirty() ? ' '.Glyphs::DIRTY : ''),
             'hint' => $this->paths->relative($b->path),
             'value' => $b->path,
@@ -112,7 +112,7 @@ final readonly class BufferNavigator implements BufferNavigationHandler, ViewerT
         // that makes the switcher worth a keystroke: the file you want back is
         // usually one you just closed. Gone from disk means gone from the list
         // rather than an entry that opens an empty buffer.
-        $openPaths = \array_fill_keys(\array_map(static fn (Buffer $b) => $b->path, $open), value: true);
+        $openPaths = \array_fill_keys(\array_map(static fn (Buffer $b): string => $b->path, $open), value: true);
         foreach ($this->recentFiles->all() as $path) {
             if (($openPaths[$path] ?? null) !== null || !\is_file($path)) {
                 continue;

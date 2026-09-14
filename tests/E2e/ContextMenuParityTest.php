@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ide;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\ContextMenu;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
 
 /**
@@ -49,7 +51,7 @@ final class ContextMenuParityTest extends TestCase
                     $tui->tick();
 
                     // --- The editor: right-click and Ctrl+F10 agree.
-                    $byMouse = $this->menuFor($tui, $terminal, $ide, static function ($tui, $ide): void {
+                    $byMouse = $this->menuFor($tui, $terminal, $ide, static function ($tui, Ide $ide): void {
                         $rect = Services::resolve($ide, Renderer::class)
                             ->getWidgetRect($tui->getById('editor'));
                         $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 1));
@@ -62,7 +64,7 @@ final class ContextMenuParityTest extends TestCase
                     $this->assertSame($byMouse, $byKeyboard, 'the editor offers one menu, however you ask for it');
 
                     // --- The tree: right-click a node vs Ctrl+F10 on the selection.
-                    $byMouse = $this->menuFor($tui, $terminal, $ide, static function ($tui, $ide): void {
+                    $byMouse = $this->menuFor($tui, $terminal, $ide, static function ($tui, Ide $ide): void {
                         $rect = Services::resolve($ide, Renderer::class)
                             ->getWidgetRect($tui->getById('tree'));
                         $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 2, $rect->row + 2));
@@ -94,7 +96,7 @@ final class ContextMenuParityTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function ($tui, $terminal, Ide $ide): void {
                     // The find bar is a focused pane with no context menu (the
                     // go-to-file popup used to be the example; it is a modal
                     // picker now, which owns input outright).
@@ -134,7 +136,7 @@ final class ContextMenuParityTest extends TestCase
     /** The status bar's rendered text, where a flash lands. */
     private function statusLine(mixed $tui): string
     {
-        return AnsiUtils::stripAnsiCodes($tui->getById('status')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 1))[0]);
+        return AnsiUtils::stripAnsiCodes($tui->getById('status')->render(new RenderContext(160, 1))[0]);
     }
 
     /**

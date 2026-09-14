@@ -24,7 +24,7 @@ final readonly class TabListProvider
         $titles = $this->titles($buffers);
 
         return \array_map(
-            fn (Buffer $b, string $title) => [
+            fn (Buffer $b, string $title): array => [
                 // The pin rides the NAME rather than becoming a fourth field: the
                 // strip's width arithmetic already measures the label, and adding a
                 // column to it is the one change that needs no new maths.

@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Ide;
 use Porta\Settings\SettingsSearchEntry;
 use Porta\Settings\SettingsSearchIndex;
 use Porta\Settings\SettingsSearchLauncher;
@@ -16,6 +17,8 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * "Find Setting", end to end: Ctrl+F inside the settings view opens the
@@ -44,17 +47,17 @@ final class SettingsSearchTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => static function ($tui, $terminal, $ide): void {
+                300 => static function ($tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                 },
-                500 => function ($tui, $terminal): void {
+                500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertNotNull($this->rowOf($grid, 'Inline diagnostics'), 'the view opens on General');
                     $this->assertNull($this->rowOf($grid, 'Sticky scroll'), 'and Interface rows are elsewhere');
 
                     $tui->handleInput("\x06"); // ctrl+f
                 },
-                700 => function ($tui, $terminal): void {
+                700 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->assertNotNull(
                         $this->rowOf($this->screenGrid($tui, $terminal), 'Find Setting'),
                         'the picker paints over the full-screen settings view',
@@ -63,14 +66,14 @@ final class SettingsSearchTest extends TestCase
                         $tui->handleInput($char);
                     }
                 },
-                900 => function ($tui, $terminal): void {
+                900 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->assertNotNull(
                         $this->rowOf($this->screenGrid($tui, $terminal), 'Sticky scroll'),
                         'the hit is listed while its page is not the one showing',
                     );
                     $tui->handleInput("\r");
                 },
-                1100 => function ($tui, $terminal): void {
+                1100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertNull($this->rowOf($grid, 'Find Setting'), 'the picker closed');
                     $this->assertNotNull($this->rowOf($grid, 'Sticky scroll'), 'the Interface page is showing');
@@ -105,10 +108,10 @@ final class SettingsSearchTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => static function ($tui, $terminal, $ide): void {
+                300 => static function ($tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, SettingsSearchLauncher::class)->open();
                 },
-                500 => function ($tui, $terminal): void {
+                500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->assertNotNull(
                         $this->rowOf($this->screenGrid($tui, $terminal), 'Find Setting'),
                         'the picker opens over the editor',
@@ -120,7 +123,7 @@ final class SettingsSearchTest extends TestCase
                 700 => static function ($tui): void {
                     $tui->handleInput("\r");
                 },
-                900 => function ($tui, $terminal): void {
+                900 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertNotNull($this->rowOf($grid, 'Sticky scroll'), 'the settings view opened on Interface');
                     $this->assertNull($this->rowOf($grid, 'Inline diagnostics'), 'NOT on General, which is where open() resets to');
@@ -148,10 +151,10 @@ final class SettingsSearchTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => static function ($tui, $terminal, $ide): void {
+                300 => static function ($tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_search_everywhere');
                 },
-                500 => function ($tui, $terminal): void {
+                500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->assertNotNull(
                         $this->rowOf($this->screenGrid($tui, $terminal), 'Search Everywhere'),
                         'the aggregate picker opened',
@@ -160,13 +163,13 @@ final class SettingsSearchTest extends TestCase
                         $tui->handleInput($char);
                     }
                 },
-                800 => function ($tui, $terminal): void {
+                800 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertNotNull($this->rowOf($grid, 'Settings'), 'under a Settings group header');
                     $this->assertNotNull($this->rowOf($grid, 'Sticky scroll'), 'the setting is a hit');
                     $tui->handleInput("\r");
                 },
-                1000 => function ($tui, $terminal): void {
+                1000 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertNotNull($this->rowOf($grid, 'Sticky scroll'), 'picking it opened the settings view on Interface');
 
@@ -197,7 +200,7 @@ final class SettingsSearchTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function ($tui, $terminal, Ide $ide): void {
                     $index = Services::resolve($ide, SettingsSearchIndex::class);
                     $labels = \array_map(
                         static fn (SettingsSearchEntry $e): string => $e->label,
@@ -243,7 +246,7 @@ final class SettingsSearchTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function ($tui, $terminal, Ide $ide): void {
                     $hits = Services::resolve($ide, SettingsSearchIndex::class)->search('klaxon', 10);
 
                     $this->assertNotEmpty($hits, 'a plugin setting is in the index');
@@ -256,7 +259,7 @@ final class SettingsSearchTest extends TestCase
                 500 => static function ($tui): void {
                     $tui->handleInput("\r"); // pick it
                 },
-                700 => function ($tui, $terminal): void {
+                700 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertNotNull($this->rowOf($grid, 'Klaxon volume'), "the plugin's own page is showing");
 

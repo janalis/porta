@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
@@ -16,6 +17,8 @@ use Porta\Workbench\Menu\MenuItem;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * Full-app plugin scenarios: a fixture plugin registering a keyed command, a
@@ -85,7 +88,7 @@ final class IdePluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, $terminal): void {
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugins'));
                     $this->frame($tui);
                     $this->assertStringContainsString('Plugins', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the Plugins menu title is in the bar');
@@ -95,7 +98,7 @@ final class IdePluginTest extends TestCase
                     $this->assertStringContainsString('PLUGGED', $screen, 'the plugin inserted at the caret');
                     $this->assertStringContainsString('hello ran in a.php', $screen, 'action methods reach the live IDE');
                 },
-                340 => function ($tui, $terminal, $ide) use ($project): void {
+                340 => function (Tui $tui, VirtualTerminal $terminal, $ide) use ($project): void {
                     $tui->handleInput("\x13"); // ctrl+s → save → the plugin hook fires
                     $this->frame($tui);
                     $this->assertSame('yes', (string) \file_get_contents($project->path('a.php.hooked')), 'the onFileSaved hook ran');
@@ -127,7 +130,7 @@ final class IdePluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $tui->handleInput("\x1b[97;6u"); // ctrl+shift+a → command palette
                     $this->frame($tui);
                     foreach (\str_split('Say') as $char) {
@@ -137,7 +140,7 @@ final class IdePluginTest extends TestCase
                     $this->assertStringContainsString('Say Hello', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the palette lists the plugin command');
                     $tui->handleInput("\x1b"); // close the palette
                 },
-                380 => function ($tui, $terminal): void {
+                380 => function (Tui $tui, $terminal): void {
                     // F8 is a core debug key, but its `when` guard is false while no
                     // session runs — the key falls through to the user's plugin rebind.
                     $tui->handleInput("\x1b[19~");
@@ -185,7 +188,7 @@ final class IdePluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, $terminal): void {
                     $tui->handleInput("\x1b\x19"); // ctrl+alt+y → the PROJECT demo wins
                     $this->frame($tui); // render its flash before the next one replaces it
                     $tui->handleInput("\x1b\x17"); // ctrl+alt+w → the global-only plugin
@@ -213,7 +216,7 @@ final class IdePluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, $terminal): void {
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugin "broken" failed to load'));
                     $this->frame($tui);
                     $this->assertStringContainsString('Plugin "broken" failed to load', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -269,7 +272,7 @@ final class IdePluginTest extends TestCase
                 PHP,
         ]);
 
-        $this->runIde($project, $project->path('a.php'), [200 => function ($tui): void {
+        $this->runIde($project, $project->path('a.php'), [200 => function (Tui $tui): void {
             $this->frame($tui);
         }]);
 
@@ -315,7 +318,7 @@ final class IdePluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function (Tui $tui, $terminal, Ide $ide): void {
                     $this->frame($tui);
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('editor'));
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 1)); // right-click
@@ -375,7 +378,7 @@ final class IdePluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
                     $renderer = Services::resolve($ide, Renderer::class);
 

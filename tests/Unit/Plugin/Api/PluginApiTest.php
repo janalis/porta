@@ -56,8 +56,10 @@ use Porta\Workbench\Dock\DockToolController;
 use Porta\Workbench\Dock\ToolRun;
 use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Menu\MenuSurface;
+use Porta\Workbench\Menu\ViewMenuSource;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ContributedView;
+use Porta\Workbench\View\ViewPointer;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -226,12 +228,12 @@ final class PluginApiTest extends TestCase
                 return new CodeEditorWidget();
             }
 
-            public function pointer(): ?\Porta\Workbench\View\ViewPointer
+            public function pointer(): ?ViewPointer
             {
                 return null;
             }
 
-            public function contextMenus(): ?\Porta\Workbench\Menu\ViewMenuSource
+            public function contextMenus(): ?ViewMenuSource
             {
                 return null;
             }
@@ -356,7 +358,7 @@ final class PluginApiTest extends TestCase
             ['range on a text', static fn () => $api->registerSetting('r2', 'R', 'text', '', max: 9)],
             ['step on a choice', static fn () => $api->registerSetting('r3', 'R', 'choice', 'a', ['a'], step: 2)],
             ['inverted range', static fn () => $api->registerSetting('r4', 'R', 'int', 1, min: 9, max: 2)],
-            ['unknown read', static fn () => $api->setting('ghost')],
+            ['unknown read', static fn (): bool|int|string => $api->setting('ghost')],
         ] as [$label, $action]) {
             try {
                 $action();
@@ -392,7 +394,7 @@ final class PluginApiTest extends TestCase
             static fn () => $api->updateList('todo', []),
             static fn () => $api->pick('t', [], static function (string $v): void {}),
             static fn () => $api->replaceDocument('x'),
-            static fn () => $api->trans('x'),
+            static fn (): string => $api->trans('x'),
             static fn () => $api->prompt('t', '', static function (string $v): void {}),
         ];
         foreach ($actions as $i => $action) {
@@ -813,12 +815,12 @@ final class PluginApiTest extends TestCase
         // atomically. One arriving later used to append to an array nobody
         // reads again — the listener simply never fired, with nothing said.
         $api = $this->api();
-        $api->onFileSaved(static fn () => null);
+        $api->onFileSaved(static fn (): null => null);
         $api->bufferedHooks(); // what commit() does
 
         $this->expectException(PluginException::class);
         $this->expectExceptionMessage('Listeners must be registered during activate()');
-        $api->onFileSaved(static fn () => null);
+        $api->onFileSaved(static fn (): null => null);
     }
 
     /** A manually-wired runtime for tests that need a collaborator the shared {@see api()} helper does not expose. */

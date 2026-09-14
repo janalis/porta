@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Lsp;
 
 use Porta\Container\AsIdeService;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\Editor\EditorInvalidator;
@@ -321,7 +322,7 @@ final readonly class WorkspaceEditor
         $this->events->dispatch(new BufferRepointRequested($from, $to));
     }
 
-    private function bufferAt(string $path): ?\Porta\Editor\Buffer
+    private function bufferAt(string $path): ?Buffer
     {
         return $this->buffers->get($path) ?? $this->buffers->get(($resolved = \realpath($path)) ? $resolved : $path);
     }

@@ -6,9 +6,12 @@ namespace Porta\Tests\Unit\Terminal;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Terminal\PtyProcess;
+use Porta\Terminal\TerminalBuffer;
+use Porta\Terminal\TerminalSession;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
+use Symfony\Component\Process\ExecutableFinder;
 
 final class TerminalSessionsTest extends TestCase
 {
@@ -62,7 +65,7 @@ final class TerminalSessionsTest extends TestCase
         $sessions->makeActive($a);
         $this->assertSame($a, $sessions->active());
         // A non-member is ignored.
-        $orphan = new \Porta\Terminal\TerminalSession('x', 'x', new \Porta\Terminal\TerminalBuffer());
+        $orphan = new TerminalSession('x', 'x', new TerminalBuffer());
         $sessions->makeActive($orphan);
         $this->assertSame($a, $sessions->active());
     }
@@ -109,7 +112,7 @@ final class TerminalSessionsTest extends TestCase
         $b = $sessions->create('b', 'b');
         $sessions->create('c', 'c');
         $d = $sessions->create('d', 'd'); // active
-        $order = static fn (): array => \array_map(static fn ($s) => $s->id, $sessions->all());
+        $order = static fn (): array => \array_map(static fn (TerminalSession $s): string => $s->id, $sessions->all());
 
         $sessions->move(9, 0);
         $this->assertSame(['a', 'b', 'c', 'd'], $order(), 'an out-of-range source is a no-op');
@@ -136,7 +139,7 @@ final class TerminalSessionsTest extends TestCase
 
     public function testCloseAndStopAllStopTheRunningProcess(): void
     {
-        if (null === new \Symfony\Component\Process\ExecutableFinder()->find('sh')) {
+        if (null === new ExecutableFinder()->find('sh')) {
             $this->markTestSkipped('no shell');
         }
         $sessions = new TerminalSessions();
@@ -162,10 +165,10 @@ final class TerminalSessionsTest extends TestCase
 
     public function testAttachStopsThePreviousProcess(): void
     {
-        if (null === new \Symfony\Component\Process\ExecutableFinder()->find('sh')) {
+        if (null === new ExecutableFinder()->find('sh')) {
             $this->markTestSkipped('no shell');
         }
-        $session = new \Porta\Terminal\TerminalSession('x', 'x', new \Porta\Terminal\TerminalBuffer());
+        $session = new TerminalSession('x', 'x', new TerminalBuffer());
         $this->assertFalse($session->isRunning());
 
         $cwd = \getcwd();

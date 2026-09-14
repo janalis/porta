@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ide;
 use Porta\Support\PerfCollector;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
@@ -34,7 +36,7 @@ final class IdeFramePacingTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function (object $tui, $terminal, Ide $ide): void {
                     $tui->tick(); // a frame, so widget rects exist for the hit-test
 
                     // Two wheel notches with an immediate tick each: the second
@@ -51,7 +53,7 @@ final class IdeFramePacingTest extends TestCase
                     // The trailing wakeup runs on the real RevoltScheduler; the
                     // scrolled viewport must still paint without any forcing.
                     $editor = $tui->getById('editor');
-                    $scroll = \Porta\Tests\Support\EditorState::scroll($editor);
+                    $scroll = EditorState::scroll($editor);
                     $this->assertSame(6, $scroll->vScroll(), 'both notches scrolled the model immediately');
                     $this->await(
                         static fn (): bool => false === (bool) Probe::get($tui, 'renderRequested'),

@@ -7,9 +7,16 @@ namespace Porta\Tests\Unit\Ui;
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Bidi;
 use Porta\I18n\PaneReorder;
+use Porta\Overlay\Region\FloatingRegions;
+use Porta\Support\PerfCollector;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\PumpsLoop;
+use Porta\Tests\Support\TempProject;
 use Porta\Ui\BidiTui;
+use Porta\Ui\NonBlockingTerminal;
 use Porta\Ui\PaneSegmenter;
+use Revolt\EventLoop;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
@@ -25,7 +32,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  */
 final class BidiTuiTest extends TestCase
 {
-    use \Porta\Tests\Support\PumpsLoop;
+    use PumpsLoop;
 
     public const string SHALOM = "\u{05E9}\u{05DC}\u{05D5}\u{05DD}";
     private const string SHALOM_VISUAL = "\u{05DD}\u{05D5}\u{05DC}\u{05E9}";
@@ -52,7 +59,7 @@ final class BidiTuiTest extends TestCase
     /** Enable the per-pane RTL reorder (no dropdown regions in these single-widget frames). */
     private function enableRtl(BidiTui $tui): void
     {
-        $tui->setPaneReorder(new PaneSegmenter($this->renderer, new class implements \Porta\Overlay\Region\FloatingRegions {
+        $tui->setPaneReorder(new PaneSegmenter($this->renderer, new class implements FloatingRegions {
             public function regions(): array
             {
                 return [];
@@ -277,12 +284,12 @@ final class BidiTuiTest extends TestCase
         $pair = \stream_socket_pair(\STREAM_PF_UNIX, \STREAM_SOCK_STREAM, protocol: 0);
         \assert(false !== $pair, description: 'stream_socket_pair created a socket pair');
         \stream_set_blocking($pair[1], enable: false);
-        $terminal = new \Porta\Ui\NonBlockingTerminal(new VirtualTerminal(columns: 20, rows: 2), $pair[0]);
+        $terminal = new NonBlockingTerminal(new VirtualTerminal(columns: 20, rows: 2), $pair[0]);
         $terminal->start(static function (): void {}, static function (): void {}, static function (): void {});
         $tui = $this->tuiWith($terminal);
 
-        $perfProject = new \Porta\Tests\Support\TempProject(); // held: its destructor removes the dir
-        $perf = new \Porta\Support\PerfCollector($perfProject->dir, new \Symfony\Component\Clock\MockClock());
+        $perfProject = new TempProject(); // held: its destructor removes the dir
+        $perf = new PerfCollector($perfProject->dir, new MockClock());
         $tui->setPerfSink($perf);
 
         $terminal->write(\str_repeat('#', times: 524_288)); // a wedged tty: backlog past the socket buffer
@@ -297,15 +304,15 @@ final class BidiTuiTest extends TestCase
         $this->assertSame($backlog, $terminal->pendingBytes(), 'no new frame bytes were generated into the backlog');
 
         // Drain the peer; the writer's watcher empties the queue as the loop runs.
-        $suspension = \Revolt\EventLoop::getSuspension();
-        $drain = \Revolt\EventLoop::repeat(0.01, static function () use ($pair, $terminal, $suspension): void {
+        $suspension = EventLoop::getSuspension();
+        $drain = EventLoop::repeat(0.01, static function () use ($pair, $terminal, $suspension): void {
             \fread($pair[1], length: 65_536);
             if (0 === $terminal->pendingBytes()) {
                 $suspension->resume();
             }
         });
         $suspension->suspend();
-        \Revolt\EventLoop::cancel($drain);
+        EventLoop::cancel($drain);
 
         $tui->processRender();
         $this->assertFalse((bool) Probe::get($tui, 'renderRequested'), 'the queued request rendered once the tty caught up');
@@ -320,7 +327,7 @@ final class BidiTuiTest extends TestCase
         $pair = \stream_socket_pair(\STREAM_PF_UNIX, \STREAM_SOCK_STREAM, protocol: 0);
         \assert(false !== $pair, description: 'stream_socket_pair created a socket pair');
         \stream_set_blocking($pair[1], enable: false);
-        $terminal = new \Porta\Ui\NonBlockingTerminal(new VirtualTerminal(columns: 20, rows: 2), $pair[0]);
+        $terminal = new NonBlockingTerminal(new VirtualTerminal(columns: 20, rows: 2), $pair[0]);
         $tui = $this->tuiWith($terminal);
         $tui->start();
         $this->microTurn(); // first frame out into the socket
@@ -415,8 +422,8 @@ final class BidiTuiTest extends TestCase
      */
     private function microTurn(): void
     {
-        $suspension = \Revolt\EventLoop::getSuspension();
-        \Revolt\EventLoop::defer($suspension->resume(...));
+        $suspension = EventLoop::getSuspension();
+        EventLoop::defer($suspension->resume(...));
         $suspension->suspend();
     }
 
@@ -437,8 +444,8 @@ final class BidiTuiTest extends TestCase
     {
         $terminal = new VirtualTerminal(columns: 20, rows: 2);
         $tui = $this->tuiWith($terminal);
-        $perfProject = new \Porta\Tests\Support\TempProject(); // held: its destructor removes the dir
-        $perf = new \Porta\Support\PerfCollector($perfProject->dir, new \Symfony\Component\Clock\MockClock());
+        $perfProject = new TempProject(); // held: its destructor removes the dir
+        $perf = new PerfCollector($perfProject->dir, new MockClock());
         $tui->setPerfSink($perf);
         $ticks = 0;
         $tui->onTick(static function () use (&$ticks): bool {
@@ -525,12 +532,12 @@ final class BidiTuiTest extends TestCase
         $this->assertGreaterThan(0, $painted);
 
         // Pump real time: no busy loop may replace the torn-down ticker.
-        $suspension = \Revolt\EventLoop::getSuspension();
-        $timer = \Revolt\EventLoop::delay(0.2, $suspension->resume(...));
+        $suspension = EventLoop::getSuspension();
+        $timer = EventLoop::delay(0.2, $suspension->resume(...));
         try {
             $suspension->suspend();
         } finally {
-            \Revolt\EventLoop::cancel($timer);
+            EventLoop::cancel($timer);
         }
 
         $this->assertSame($painted, \strlen($terminal->getOutput()), 'an idle Tui emits no further bytes');

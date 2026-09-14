@@ -8,12 +8,15 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Config\RecommendedPlugins;
+use Porta\Ide;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\ReadsSettingsForm;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The fresh-install path: bundled plugins are opt-in, so a new project has no
@@ -56,7 +59,7 @@ final class HighlightingSettingsTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
 
         $terminal = $this->runIde($project, $project->path('a.php'), [
-            100 => function ($tui, $terminal): void {
+            100 => function (Tui $tui, VirtualTerminal $terminal): void {
                 // The assertion below is a pure negative, and an unpainted
                 // buffer satisfies it for the wrong reason. Await the SOURCE on
                 // screen first: after that, "no keyword colour" means the engine
@@ -73,7 +76,7 @@ final class HighlightingSettingsTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
 
         $this->runIde($project, $project->path('a.php'), [
-            100 => function ($tui, $terminal, $ide): void {
+            100 => function (Tui $tui, $terminal, Ide $ide): void {
                 Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                 $tui->tick();
                 $this->selectSettingsSection($tui->getById('settings-nav'), 'highlighting');
@@ -83,7 +86,7 @@ final class HighlightingSettingsTest extends TestCase
                 $this->assertStringContainsString('No highlighting engine is enabled', $screen);
                 $this->assertStringContainsString('Enable '.RecommendedPlugins::HIGHLIGHTER, $screen);
             },
-            200 => function ($tui, $terminal) use ($project): void {
+            200 => function (Tui $tui, $terminal) use ($project): void {
                 // Swapping the content pane detaches the focused widget, which
                 // hands focus elsewhere — put it back on the form, then onto
                 // the offer row BY NAME. It is no longer the row the selection

@@ -26,7 +26,7 @@ trait ComposesFindModal
 {
     private function modal(): FindInFilesModal
     {
-        return new FindInFilesModal(static fn () => null);
+        return new FindInFilesModal(static fn (): null => null);
     }
 
     /**

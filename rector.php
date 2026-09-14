@@ -55,8 +55,12 @@ return RectorConfig::configure()
     ])
     // Plugin classes resolve from their own manifests, not from composer.
     ->withBootstrapFiles([__DIR__.'/tests/plugin-autoload.php'])
-    // mago's ambiguous-function-call wants `\sprintf()`; importing names would
-    // turn every one back into an ambiguous call.
-    ->withImportNames(importNames: false, importDocBlockNames: false)
+    // A type Rector adds is imported, not spelled `\Symfony\Component\Tui\Tui`
+    // inline — but only in a file Rector is already changing, and only class
+    // names: native functions stay `\sprintf()`, which is what mago's
+    // ambiguous-function-call demands, and global classes stay `\Closure`.
+    // Docblocks are prose here and are left alone.
+    ->withImportNames(importNames: true, importDocBlockNames: false, importShortClasses: false, removeUnusedImports: false)
     ->withPhpSets(php85: true)
+    ->withPreparedSets(typeDeclarations: true)
     ->withParallel();

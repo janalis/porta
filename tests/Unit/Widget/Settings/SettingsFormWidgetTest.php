@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Widget\Settings;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Event\SettingsSectionRequested;
 use Porta\I18n\BaseDirection;
@@ -147,7 +148,7 @@ final class SettingsFormWidgetTest extends TestCase
         AttachedStyles::attach($widget);
         $widget->setFocused(true);
         // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
-        $row = static fn (bool $danger) => [
+        $row = static fn (bool $danger): array => [
             new SettingsRow(key: 'pluginRemove:project:demo', label: 'demo (project)', kind: SettingsRowKind::Action, value: 'Remove', restart: false, danger: $danger),
         ];
 
@@ -1158,7 +1159,7 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertLessThan($tail, $control, 'the whole label sits to the right of the control');
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('mirroredValueProvider')]
+    #[DataProvider('mirroredValueProvider')]
     public function testAValueKeepsItsBracketsWhenMirrored(SettingsRow $row, string $expected): void
     {
         $translator = new Translator('he');

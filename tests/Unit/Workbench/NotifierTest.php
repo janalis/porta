@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Overlay\State\Toast;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Tests\Support\FakeScheduler;
+use Porta\Tests\Support\Probe;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\NotificationLog;
 use Porta\Workbench\Notifier;
@@ -40,8 +42,8 @@ final class NotifierTest extends TestCase
 
         // Without a ToastCenter, notify() falls back to the status-bar flash
         // and still requests a render — both real effects, not just "no crash".
-        $this->assertSame('no log wired', \Porta\Tests\Support\Probe::get($status, 'flash')['text'] ?? null);
-        $this->assertTrue((bool) \Porta\Tests\Support\Probe::get($tui, 'renderRequested'));
+        $this->assertSame('no log wired', Probe::get($status, 'flash')['text'] ?? null);
+        $this->assertTrue((bool) Probe::get($tui, 'renderRequested'));
     }
 
     public function testNotifyIsCallableFromOutsideTheClass(): void
@@ -79,7 +81,7 @@ final class NotifierTest extends TestCase
 
         $this->assertSame(
             [ToastSeverity::Error, ToastSeverity::Warn, ToastSeverity::Success, ToastSeverity::Info],
-            \array_reverse(\array_map(static fn ($t) => $t->severity, $toasts->toasts())),
+            \array_reverse(\array_map(static fn (Toast $t): ToastSeverity => $t->severity, $toasts->toasts())),
         );
         $this->assertSame(['✗ disk full', '▲ slow disk', '✓ saved', 'opened'], \array_column($log->entries(), 'text'), 'non-info entries carry their glyph into the log');
 
@@ -96,12 +98,12 @@ final class NotifierTest extends TestCase
         $toasts = new ToastCenter(new FakeScheduler(), $tui);
         $notifier = new Notifier($status, $tui, $log, $toasts);
 
-        \Porta\Tests\Support\Probe::set($tui, 'renderRequested', false);
+        Probe::set($tui, 'renderRequested', false);
         $notifier->hint('scrolled +3');
 
         $this->assertTrue($toasts->isEmpty(), 'no toast for a hint');
         $this->assertSame([], $log->entries(), 'no log entry either');
-        $this->assertSame('scrolled +3', \Porta\Tests\Support\Probe::get($status, 'flash')['text'] ?? null, 'the status bar carries it');
-        $this->assertTrue((bool) \Porta\Tests\Support\Probe::get($tui, 'renderRequested'), 'a hint still requests a render');
+        $this->assertSame('scrolled +3', Probe::get($status, 'flash')['text'] ?? null, 'the status bar carries it');
+        $this->assertTrue((bool) Probe::get($tui, 'renderRequested'), 'a hint still requests a render');
     }
 }

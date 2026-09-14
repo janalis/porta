@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\FindModalReads;
 use Porta\Tests\Support\PreservesPath;
@@ -14,7 +15,10 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * Find-in-Project (Ctrl+Shift+F) full-app scenarios: scope selection, context
@@ -121,7 +125,7 @@ final class IdeFindInProjectTest extends TestCase
             'other/Outside.php' => "<?php\n// mark at the root\n",
         ]);
 
-        $rightClickFolder = static function ($tui, $terminal, $ide): void {
+        $rightClickFolder = static function ($tui, $terminal, Ide $ide): void {
             $tui->requestRender(force: true); // force a frame so the tree rect is live under load
             $tui->processRender();
             $renderer = Services::resolve($ide, Renderer::class);
@@ -291,7 +295,7 @@ final class IdeFindInProjectTest extends TestCase
     public function testFindInProjectContextLinesFromOpenBuffer(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n\$x = 1;\n// tok here\n\$y = 2;\n"]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 20))));
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 20))));
 
         $this->runIde(
             $project,
@@ -303,7 +307,7 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => function ($tui) use ($panelText): void {
+                600 => function (Tui $tui) use ($panelText): void {
                     $this->promote($tui); // modal → results pane (context lines live on the pane)
                     // The grep is a subprocess: await the match landing before
                     // expanding context on it.
@@ -325,7 +329,7 @@ final class IdeFindInProjectTest extends TestCase
     public function testFindInProjectContextLinesFromDisk(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n// alpha\n// tok here\n// beta\n"]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 20))));
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 20))));
 
         $this->runIde(
             $project,
@@ -337,7 +341,7 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => function ($tui) use ($panelText): void {
+                600 => function (Tui $tui) use ($panelText): void {
                     $this->promote($tui); // modal → results pane (context lines live on the pane)
                     // The grep is a subprocess: await the match landing before
                     // expanding context on it.
@@ -427,7 +431,7 @@ final class IdeFindInProjectTest extends TestCase
                     $tui->handleInput('x');
                     $tui->handleInput("\x1ba"); // alt+a with a multiline query but no matches
                 },
-                900 => function ($tui, $terminal): void {
+                900 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'Nothing to replace');
                     $this->assertStringContainsString('Nothing to replace', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
@@ -463,7 +467,7 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                1050 => function ($tui): void {
+                1050 => function (Tui $tui): void {
                     $tui->tick();
                     $modal = $this->modalText($tui);
                     $this->assertStringContainsString('A.php', $modal, 'the PHP file still matches in the modal preview');
@@ -492,7 +496,7 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => function ($tui): void {
+                600 => function (Tui $tui): void {
                     $tui->tick();
                     // Replace directly in the modal (no promote): the preview flips to old → new.
                     $this->assertStringContainsString('$foo = 1;', $this->modalText($tui), 'the modal previews the matches');
@@ -530,12 +534,12 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => function ($tui): void {
+                600 => function (Tui $tui): void {
                     $this->promote($tui); // modal → results pane (export runs from the pane)
                     // The grep is a subprocess: await both matches landing
                     // before exporting them.
                     $this->await(static function () use ($tui): bool {
-                        $panel = AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 20))));
+                        $panel = AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 20))));
 
                         return \str_contains($panel, 'src/A.php') && \str_contains($panel, 'src/B.php');
                     }, what: 'both matches to land');
@@ -551,17 +555,17 @@ final class IdeFindInProjectTest extends TestCase
                     $this->assertStringContainsString('2: // tok here', $content, 'line numbers are 1-based');
                     $this->assertStringContainsString('search-results.txt', (string) $tui->getById('editor')->getFilePath(), 'the export opens in the editor');
                 },
-                1000 => static function ($tui, $terminal, $ide): void {
+                1000 => static function ($tui, $terminal, Ide $ide): void {
                     // A grouped panel that is NOT a search. Alt+X is offered on
                     // it because the key is gated on grouping, which Problems
                     // turns on to read its list by file.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_problems');
                 },
-                1100 => function ($tui, $terminal, $ide): void {
+                1100 => function (Tui $tui, VirtualTerminal $terminal, $ide): void {
                     $this->awaitPainted($tui, $terminal, 'Problems');
                     $tui->handleInput("\x1bx"); // alt+x on the Problems panel
                 },
-                1250 => function ($tui, $terminal, $ide): void {
+                1250 => function (Tui $tui, $terminal, Ide $ide): void {
                     // It used to export the last GREP — which is still in
                     // memory from the step above — close the panel you were
                     // reading and open that file over it.
@@ -586,7 +590,7 @@ final class IdeFindInProjectTest extends TestCase
             'src/A.php' => "<?php\n// tok here\n",
             'other/B.php' => "<?php\n// tok here\n",
         ]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 16))));
 
         $this->runIde(
             $project,
@@ -614,7 +618,7 @@ final class IdeFindInProjectTest extends TestCase
                 1000 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // reopen
                 },
-                1200 => function ($tui): void {
+                1200 => function (Tui $tui): void {
                     $tui->tick();
                     $modal = $this->modalText($tui); // the reopened modal restores the config
                     $this->assertStringContainsString('Scope: Directory', $modal, 'the last scope is restored');
@@ -629,7 +633,7 @@ final class IdeFindInProjectTest extends TestCase
     public function testFindInProjectF5RerunsPicksUpDiskChanges(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n// tok here\n"]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 16))));
 
         $this->runIde(
             $project,
@@ -641,7 +645,7 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => function ($tui) use ($panelText, $project): void {
+                600 => function (Tui $tui) use ($panelText, $project): void {
                     $tui->tick();
                     $this->promote($tui); // modal → results pane (F5 rerun lives on the pane)
                     $this->assertStringContainsString('1 result', $tui->getById('results')->statusText());
@@ -674,7 +678,7 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => function ($tui): void {
+                600 => function (Tui $tui): void {
                     // The grep is a subprocess: await its match landing in the
                     // MODAL before acting on it, instead of a fixed gap. (The
                     // query field itself already echoes "oldname", so await
@@ -721,12 +725,12 @@ final class IdeFindInProjectTest extends TestCase
                 700 => static function ($tui): void {
                     $tui->handleInput("\x1b[102;6u"); // reopen (fresh, empty query)
                 },
-                900 => function ($tui): void {
+                900 => function (Tui $tui): void {
                     $tui->tick();
                     $this->assertStringNotContainsString('tok', $this->modalText($tui), 'reopens empty');
                     $tui->handleInput("\x1bp"); // legacy alt+up → recall the prior query in the modal
                 },
-                1100 => function ($tui): void {
+                1100 => function (Tui $tui): void {
                     $tui->tick();
                     $this->assertStringContainsString('tok', $this->modalText($tui), 'the prior search is recalled');
                 },
@@ -750,7 +754,7 @@ final class IdeFindInProjectTest extends TestCase
             200 => static function ($tui): void {
                 $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
             },
-            500 => function ($tui, $terminal, $ide): void {
+            500 => function (Tui $tui, $terminal, Ide $ide): void {
                 $this->frame($tui);
                 $editor = $tui->getById('editor');
                 $box = $editor->findModal()->lastBox();
@@ -801,7 +805,7 @@ final class IdeFindInProjectTest extends TestCase
                 $renderer = Services::resolve($ide, Renderer::class);
                 $treeRect = $renderer->getWidgetRect($tui->getById('tree'));
                 $this->assertNotNull($treeRect);
-                $treeRows = $tui->getById('tree')->render(new \Symfony\Component\Tui\Render\RenderContext($treeRect->columns, $treeRect->rows));
+                $treeRows = $tui->getById('tree')->render(new RenderContext($treeRect->columns, $treeRect->rows));
                 $treeText = AnsiUtils::stripAnsiCodes(\implode("\n", $treeRows));
                 $this->assertStringContainsString('Find in Files', $treeText, "the modal's title bar paints over the tree pane");
                 $this->assertStringContainsString("\x1b[2m", \implode('', $treeRows), 'the tree renders dimmed beneath the modal');

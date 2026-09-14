@@ -6,9 +6,11 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\History\SessionRestorer;
+use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
@@ -16,6 +18,8 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The F1 help browser: docs render styled in the help viewer (no markdown
@@ -51,7 +55,7 @@ final class IdeDocsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, $terminal): void {
                     $tui->handleInput("\x1bOP"); // F1
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -67,7 +71,7 @@ final class IdeDocsTest extends TestCase
                     $this->frame($tui);
                     $this->assertStringNotContainsString('xGuides', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
-                600 => function ($tui, $terminal) use ($docs): void {
+                600 => function (Tui $tui, VirtualTerminal $terminal) use ($docs): void {
                     $tui->handleInput("\t"); // focus the [Editor] link
                     $tui->handleInput("\r"); // follow it
                     $this->frame($tui);
@@ -91,7 +95,7 @@ final class IdeDocsTest extends TestCase
                     $this->awaitPainted($tui, $terminal, 'Guides');
                     $this->assertStringContainsString('Guides', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'and the help tab returns rendered');
                 },
-                900 => function ($tui, $terminal, $ide): void {
+                900 => function (Tui $tui, $terminal, Ide $ide): void {
                     $this->frame($tui);
                     // Re-focus the pane with a click on a blank body row, then
                     // follow the link again: still ONE help tab, page swapped in place.
@@ -102,7 +106,7 @@ final class IdeDocsTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 1, $rect->row + 4));
                     $tui->handleInput("\r"); // the focused link is still [Editor] (restored by the earlier back)
                     $this->frame($tui);
-                    $paths = \array_map(static fn ($b): string => $b->path, Services::resolve($ide, BufferManager::class)->all());
+                    $paths = \array_map(static fn (Buffer $b): string => $b->path, Services::resolve($ide, BufferManager::class)->all());
                     $this->assertCount(2, $paths, 'navigation reuses the single help tab (a.php + Documentation)');
                     $this->assertStringEndsWith('editor.md', (string) $tui->getById('help-viewer')->path(), 'the page swapped in place');
 
@@ -118,7 +122,7 @@ final class IdeDocsTest extends TestCase
                     $this->frame($tui);
                     $this->assertStringEndsWith('README.md', (string) $tui->getById('help-viewer')->path(), 'the ‹ arrow still navigates after the round trip');
                 },
-                1200 => function ($tui, $terminal): void {
+                1200 => function (Tui $tui, $terminal): void {
                     $this->frame($tui);
                     // F10: the app-menu dropdown composites OVER the help viewer.
                     $tui->handleInput("\x1b[21~");
@@ -149,7 +153,7 @@ final class IdeDocsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal, $ide): void {
+                100 => function (Tui $tui, $terminal, Ide $ide): void {
                     // The 300 ms here was a bet on the boot having opened the
                     // file; the editor says so itself.
                     $editor = $tui->getById('editor');
@@ -187,7 +191,7 @@ final class IdeDocsTest extends TestCase
                 },
                 // 1100 ms of gap stood here for a rect read that the frame at
                 // the end of the step above already produced.
-                200 => function ($tui, $terminal, $ide) use ($captureFile): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($captureFile): void {
                     // Click the ‹ arrow in the header (row 0, column 1 of the
                     // pane) to go back to the README, then Enter on the https link.
                     $rect = Services::resolve($ide, Renderer::class)
@@ -203,7 +207,7 @@ final class IdeDocsTest extends TestCase
                 },
                 // And 1200 more in front of a step that opens by awaiting its
                 // own effect, so the gap was never what made it safe.
-                300 => function ($tui, $terminal, $ide) use ($captureFile, $docs): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($captureFile, $docs): void {
                     $this->awaitPainted($tui, $terminal, 'Opened https://example.com/x');
                     $this->assertStringContainsString('Opened https://example.com/x', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // The shim runs as an independent OS process — poll for its
@@ -248,7 +252,7 @@ final class IdeDocsTest extends TestCase
             $project,
             $project->path('src/Foo.php'),
             [
-                300 => function ($tui): void {
+                300 => function (Tui $tui): void {
                     // Real caret movement into bar()'s body populates the code
                     // breadcrumbs bar — its rect then covers the row where the
                     // help header will sit after F1 (the bar collapses to zero
@@ -259,7 +263,7 @@ final class IdeDocsTest extends TestCase
                     $tui->handleInput("\x1b[C");
                     $this->frame($tui);
                 },
-                600 => function ($tui, $terminal, $ide): void {
+                600 => function (Tui $tui, $terminal, Ide $ide): void {
                     $tui->handleInput("\x1bOP"); // F1
                     $this->frame($tui);
                     $tui->handleInput("\t");
@@ -292,7 +296,7 @@ final class IdeDocsTest extends TestCase
             $project,
             $project->path('notes.md'),
             [
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, $terminal): void {
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('# Notes', $screen, 'a project .md opens as editable source');
@@ -303,7 +307,7 @@ final class IdeDocsTest extends TestCase
                     $this->assertStringContainsString('Porta documentation', $screen);
                     $this->assertStringNotContainsString('# Porta documentation', $screen, 'rendered, not source');
                 },
-                600 => function ($tui, $terminal, $ide): void {
+                600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // A page in the internals SUBDIRECTORY renders. Those pages
                     // are reachable only through a folder README, which is also
                     // what gives the header its folder crumb — a flat browser
@@ -335,7 +339,7 @@ final class IdeDocsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, $terminal): void {
                     $tui->handleInput("\x1bOP"); // F1 → the docs page
                     $this->frame($tui);
                     $this->assertSame('help-viewer', $tui->getFocus()?->getId(), 'the docs page is focused');

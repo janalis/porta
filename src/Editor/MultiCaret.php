@@ -363,7 +363,7 @@ final class MultiCaret
         $doc = $this->document;
         $records = $this->caretRecords();
         // Numbered top-to-bottom first...
-        \usort($records, static fn (Caret $a, Caret $b) => [$a->line, $a->col] <=> [$b->line, $b->col]);
+        \usort($records, static fn (Caret $a, Caret $b): int => [$a->line, $a->col] <=> [$b->line, $b->col]);
         // ...then walked bottom-to-top, keeping those numbers, so earlier
         // (higher) edits never invalidate the positions of carets still to be
         // processed.
@@ -492,7 +492,7 @@ final class MultiCaret
      */
     private function rebuildFromRecords(array $records): void
     {
-        \usort($records, static fn (Caret $a, Caret $b) => [$a->line, $a->col] <=> [$b->line, $b->col]);
+        \usort($records, static fn (Caret $a, Caret $b): int => [$a->line, $a->col] <=> [$b->line, $b->col]);
         $seen = [];
         $unique = [];
         foreach ($records as $record) {
@@ -580,7 +580,7 @@ final class MultiCaret
     public function selectedBlockText(): string
     {
         $records = $this->caretRecords();
-        \usort($records, static fn (Caret $a, Caret $b) => [$a->line, $a->col] <=> [$b->line, $b->col]);
+        \usort($records, static fn (Caret $a, Caret $b): int => [$a->line, $a->col] <=> [$b->line, $b->col]);
 
         return \implode("\n", \array_map($this->rangeText(...), $records));
     }
@@ -596,7 +596,7 @@ final class MultiCaret
     /** Delete every caret's selection (block cut) as one atomic undo step. */
     public function deleteSelections(): void
     {
-        $this->applyEdit(static fn (Document $d) => $d->deleteBackward());
+        $this->applyEdit(static fn (Document $d): bool => $d->deleteBackward());
     }
 
     private function dedupeCarets(): void

@@ -160,7 +160,7 @@ final class PortaCommandTest extends TestCase
     {
         $project = new TempProject(['a.php' => '']);
         $command = new PortaCommand(
-            launch: static function (Workspace $workspace, ?string $lsp, LspMode $mode, Ansi $ansi, \Closure $onBooted): void {
+            launch: static function (Workspace $workspace, ?string $lsp, LspMode $mode, Ansi $ansi, \Closure $onBooted): never {
                 throw new \RuntimeException('You have requested a synthetic service ("renderer").');
             },
             isInteractive: static fn (): bool => true,
@@ -177,7 +177,7 @@ final class PortaCommandTest extends TestCase
     {
         $project = new TempProject(['a.php' => '']);
         $command = new PortaCommand(
-            launch: static function (Workspace $workspace, ?string $lsp, LspMode $mode, Ansi $ansi, \Closure $onBooted): void {
+            launch: static function (Workspace $workspace, ?string $lsp, LspMode $mode, Ansi $ansi, \Closure $onBooted): never {
                 $onBooted(); // the IDE constructed fine — the session died later
                 throw new \RuntimeException('poll tick exploded');
             },
@@ -196,7 +196,7 @@ final class PortaCommandTest extends TestCase
     {
         $project = new TempProject(['a.php' => '']);
         $command = new PortaCommand(
-            launch: static function (Workspace $workspace, ?string $lsp, LspMode $mode, Ansi $ansi, \Closure $onBooted): void {
+            launch: static function (Workspace $workspace, ?string $lsp, LspMode $mode, Ansi $ansi, \Closure $onBooted): never {
                 throw new \RuntimeException('boom');
             },
             isInteractive: static fn (): bool => true,

@@ -12,6 +12,7 @@ use Porta\I18n\Translator;
 use Porta\Layout\PaneLayout;
 use Porta\Layout\ResponsiveLayout;
 use Porta\Layout\ViewRegions;
+use Porta\Layout\WorkspaceLayout;
 use Porta\Overlay\Region\FloatingRegions;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestWorkspaceLayout;
@@ -36,7 +37,7 @@ final class ResponsiveLayoutTest extends TestCase
     private FileTreeWidget $tree;
     private CodeEditorWidget $editor;
     private MenuBarWidget $menuBar;
-    private \Porta\Layout\WorkspaceLayout $layout;
+    private WorkspaceLayout $layout;
     private TabBarWidget $tabBar;
     private BidiTui $bidi;
     private PaneLayout $paneLayout;

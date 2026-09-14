@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Overlay\State;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\Region\ModalBox;
+use Porta\Overlay\State\Toast;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Tests\Support\FakeScheduler;
@@ -43,14 +44,14 @@ final class ToastCenterTest extends TestCase
         $center->push('first', ToastSeverity::Info);
         $center->push('second', ToastSeverity::Error);
 
-        $ids = \array_map(static fn ($t) => $t->id, $center->toasts());
+        $ids = \array_map(static fn (Toast $t): int => $t->id, $center->toasts());
         $this->assertSame([2, 1], $ids, 'ids climb with each push, never fall');
-        $this->assertSame(['second', 'first'], \array_map(static fn ($t) => $t->message, $center->toasts()));
+        $this->assertSame(['second', 'first'], \array_map(static fn (Toast $t): string => $t->message, $center->toasts()));
         $this->assertFalse($center->isEmpty());
 
         Probe::set($this->tui, 'renderRequested', false);
         $this->scheduler->fire(); // the FIRST toast's expiry
-        $this->assertSame(['second'], \array_map(static fn ($t) => $t->message, $center->toasts()));
+        $this->assertSame(['second'], \array_map(static fn (Toast $t): string => $t->message, $center->toasts()));
         $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'the timer expiry itself asks for a frame');
     }
 
@@ -72,7 +73,7 @@ final class ToastCenterTest extends TestCase
         }
 
         $this->assertCount(5, $center->toasts(), 'the cap holds');
-        $this->assertSame('t2', \array_map(static fn ($t) => $t->message, $center->toasts())[4], 'the oldest was evicted');
+        $this->assertSame('t2', \array_map(static fn (Toast $t): string => $t->message, $center->toasts())[4], 'the oldest was evicted');
         $this->assertSame(['1'], $this->scheduler->cancelled, "the evicted toast's timer was cancelled");
     }
 
@@ -148,11 +149,11 @@ final class ToastCenterTest extends TestCase
         $center->push('a', ToastSeverity::Info);
         $center->push('b', ToastSeverity::Info);
         $center->push('c', ToastSeverity::Info);
-        [$idC, $idB, $idA] = \array_map(static fn ($t) => $t->id, $center->toasts());
+        [$idC, $idB, $idA] = \array_map(static fn (Toast $t): int => $t->id, $center->toasts());
 
         $center->dismiss($idB);
 
-        $this->assertSame(['c', 'a'], \array_map(static fn ($t) => $t->message, $center->toasts()), 'only the middle toast was removed');
+        $this->assertSame(['c', 'a'], \array_map(static fn (Toast $t): string => $t->message, $center->toasts()), 'only the middle toast was removed');
         $this->assertContains((string) $idB, $this->scheduler->cancelled);
     }
 }

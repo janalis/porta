@@ -30,6 +30,7 @@ use Porta\Search\FileIndex;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsProvenance;
+use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
 use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\EditorState;
@@ -42,6 +43,7 @@ use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
+use Porta\Tests\Support\Toasts;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\StyleSheetThemer;
@@ -557,7 +559,7 @@ final class SettingsControllerTest extends TestCase
 
         $settings->toggle('doesNotExist');
 
-        $toasts = \Porta\Tests\Support\Toasts::all($ide);
+        $toasts = Toasts::all($ide);
         $this->assertStringContainsString('Unknown setting "doesNotExist"', $toasts[0] ?? '');
         $this->assertCount(1, $toasts, 'toggle() must not fall through into changeSetting() and flash a second, redundant warning');
 
@@ -616,7 +618,7 @@ final class SettingsControllerTest extends TestCase
     }
 
     /** @param list<\Porta\Settings\SettingsRow> $rows */
-    private function rowFor(array $rows, string $key): \Porta\Settings\SettingsRow
+    private function rowFor(array $rows, string $key): SettingsRow
     {
         foreach ($rows as $row) {
             if ($key === $row->key) {

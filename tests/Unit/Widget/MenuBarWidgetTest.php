@@ -368,7 +368,7 @@ final class MenuBarWidgetTest extends TestCase
                 false,
                 static fn (): bool => false,
             ),
-            new MenuItem('Quit', 'Ctrl+Q', static fn () => null),
+            new MenuItem('Quit', 'Ctrl+Q', static fn (): null => null),
         ])]);
 
         $bar->open(0); // firstSelectable skips disabled Save → selects Quit

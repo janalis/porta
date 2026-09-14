@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Command;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
@@ -102,7 +103,7 @@ final class ViewCommandsTest extends TestCase
             $buffers->open($c, "<?php\n");
             $buffers->setActive($b); // land in the middle, not an edge
 
-            $order = static fn (): array => \array_map(static fn ($buf) => $buf->path, $buffers->all());
+            $order = static fn (): array => \array_map(static fn (Buffer $buf): string => $buf->path, $buffers->all());
             $this->assertSame([$a, $b, $c], $order());
 
             $commands->run('move_tab_left');

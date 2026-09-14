@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Editor\LineNumberMode;
+use Porta\Ide;
 use Porta\Settings\SettingsController;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
@@ -18,6 +19,9 @@ use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The settings view and live-applied settings: theme recolor,
@@ -59,7 +63,7 @@ final class IdeSettingsThemeTest extends TestCase
                     $this->assertSame(LineNumberMode::Relative, EditorState::display($editor)->lineNumbers(), 'setting applied from file');
                     // Inline diagnostics disabled: even with a diagnostic, no inline text.
                     $editor->decorations()->setDiagnostics([1 => [['severity' => 1, 'message' => 'boom', 'col' => 0]]]);
-                    $rendered = $editor->render(new \Symfony\Component\Tui\Render\RenderContext(80, 5));
+                    $rendered = $editor->render(new RenderContext(80, 5));
                     $this->assertStringNotContainsString('boom', AnsiUtils::stripAnsiCodes($rendered[1]));
                 },
             ],
@@ -83,12 +87,12 @@ final class IdeSettingsThemeTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => static function ($tui, $terminal, $ide): void {
+                100 => static function ($tui, $terminal, Ide $ide): void {
                     // Open via the command registry (the ide_settings closure),
                     // then the mouse steps below exercise the routing.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                 },
-                200 => function ($tui, $terminal): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // A bare tick() is not a frame, and every assertion below
                     // reads the ACCUMULATED output — so without a real paint
                     // they were reading whatever the boot happened to leave.
@@ -113,7 +117,7 @@ final class IdeSettingsThemeTest extends TestCase
                     // Hover the nav sidebar (a tint).
                     $tui->handleInput("\x1b[<35;5;3M");
                 },
-                300 => function ($tui): void {
+                300 => function (Tui $tui): void {
                     // frame(), not tick(): the click below is hit-tested against
                     // the rects the LAST RENDER produced.
                     $this->frame($tui);
@@ -122,7 +126,7 @@ final class IdeSettingsThemeTest extends TestCase
                     $tui->handleInput("\x1b[<0;5;5M");
                     $tui->handleInput("\x1b[<0;5;5m");
                 },
-                400 => function ($tui, $terminal): void {
+                400 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'actions');
                     $this->assertSame('settings-nav', $tui->getFocus()?->getId(), 'clicking the nav focuses it');
                     // Hover + wheel + click the keybindings list (content pane), a nav miss too.
@@ -131,7 +135,7 @@ final class IdeSettingsThemeTest extends TestCase
                     $tui->handleInput("\x1b[<0;40;5M"); // click a list row
                     $tui->handleInput("\x1b[<0;40;5m");
                 },
-                500 => function ($tui): void {
+                500 => function (Tui $tui): void {
                     $this->frame($tui);
                     // Select PHP in the nav (screen row 8, after Interface +
                     // Highlighting + Plugins and the Languages header) → the
@@ -141,7 +145,7 @@ final class IdeSettingsThemeTest extends TestCase
                     $tui->handleInput("\x1b[<0;5;8M");
                     $tui->handleInput("\x1b[<0;5;8m");
                 },
-                600 => function ($tui, $terminal): void {
+                600 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'Indent style');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('LSP server', $screen, 'and its LSP server row');
@@ -175,7 +179,7 @@ final class IdeSettingsThemeTest extends TestCase
                     $tui->handleInput("\r"); // commit → persists + reconfigures the LSP pool live
                     $tui->handleInput("\x1b[21~"); // F10 opens the app menu OVER the settings view
                 },
-                700 => function ($tui, $terminal): void {
+                700 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'Settings…');
                     $tui->handleInput("\x1b[<35;5;3M"); // hover a dropdown row: the menu rides along
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -199,18 +203,18 @@ final class IdeSettingsThemeTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // Dark theme baseline: the `return` keyword is the dark KEYWORD color.
                     $this->awaitPaintedRaw($tui, $terminal, "\x1b[38;5;176m");
                     $terminal->clearOutput(); // capture only the frames rendered after the switch
                 },
-                500 => static function ($tui, $terminal, $ide): void {
+                500 => static function ($tui, $terminal, Ide $ide): void {
                     // Change the theme setting live, as the settings form would.
                     Services::resolve($ide, SettingsController::class)
                         ->changeSetting('theme', 'light');
                     $tui->tick();
                 },
-                700 => function ($tui, $terminal, $ide): void {
+                700 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // The buffer re-highlighted: light KEYWORD color in, dark gone.
                     // The POSITIVE is the barrier — without a frame the cleared
                     // buffer is empty and "dark gone" passes for the wrong reason.
@@ -227,7 +231,7 @@ final class IdeSettingsThemeTest extends TestCase
                         ->changeSetting('theme', 'high-contrast');
                     $tui->tick();
                 },
-                900 => function ($tui, $terminal): void {
+                900 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPaintedRaw($tui, $terminal, "\x1b[38;5;213m");
                     $out = $terminal->getOutput(); // only post-high-contrast frames
                     $this->assertStringNotContainsString("\x1b[38;5;91m", $out, 'no light syntax remains');
@@ -254,10 +258,10 @@ final class IdeSettingsThemeTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                300 => static function ($tui, $terminal, $ide): void {
+                300 => static function ($tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                 },
-                600 => function ($tui): void {
+                600 => function (Tui $tui): void {
                     $this->frame($tui);
                     $this->assertSame(40, $tui->getById('settings-nav')->width(), 'the seeded percent applied at startup');
                     // Drag the settings separator (SGR col 41 with a 40-wide nav) in to col 31.
@@ -283,7 +287,7 @@ final class IdeSettingsThemeTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // ScreenWriter converts the zero-width marker into a hardware
                     // cursor position plus a DECSCUSR shape: 5 = bar (default).
                     $this->awaitPaintedRaw($tui, $terminal, "\x1b[5 q");
@@ -293,16 +297,16 @@ final class IdeSettingsThemeTest extends TestCase
                     $terminal->clearOutput();
                     $tui->tick();
                 },
-                400 => function ($tui, $terminal): void {
+                400 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPaintedRaw($tui, $terminal, "\x1b[1 q");
                     $out = $terminal->getOutput();
                     $this->assertStringNotContainsString("\x1b[5 q", $out, 'no stale bar shape survives the cache flush');
                 },
-                600 => function ($tui, $terminal, $ide): void {
+                600 => function ($tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_terminal');
                     $terminal->clearOutput();
                     $tui->tick();
-                    $rows = $tui->getById('terminal')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12));
+                    $rows = $tui->getById('terminal')->render(new RenderContext(160, 12));
                     $this->assertSame(1, $this->caretMarkerCount($rows), 'the focused terminal panel places the hardware cursor');
                 },
             ],

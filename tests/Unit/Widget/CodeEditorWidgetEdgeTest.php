@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\EditorConfig\ResolvedEditorConfig;
+use Porta\Config\LanguageIndent;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\Document;
@@ -327,7 +329,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     private function screenRows(CodeEditorWidget $editor, int $w = 60, int $h = 10): array
     {
         return \array_map(
-            static fn (string $r) => \rtrim(AnsiUtils::stripAnsiCodes($r)),
+            static fn (string $r): string => \rtrim(AnsiUtils::stripAnsiCodes($r)),
             $editor->render(new RenderContext($w, $h)),
         );
     }
@@ -513,7 +515,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $this->assertSame('1', $picked);
 
         // Empty overlay refuses to open
-        $editor->openListOverlay('Empty', [], static fn () => null);
+        $editor->openListOverlay('Empty', [], static fn (): null => null);
         $this->assertFalse(EditorState::pickerOpen($editor));
     }
 
@@ -616,7 +618,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
     public function testScrollClampsWhenJumpingBackToTop(): void
     {
-        $lines = \implode("\n", \array_map(static fn (int $i) => "row {$i}", \range(0, end: 99)));
+        $lines = \implode("\n", \array_map(static fn (int $i): string => "row {$i}", \range(0, end: 99)));
         $editor = $this->editor($lines);
         $editor->getDocument()->setCursor(80, 0);
         $editor->render(new RenderContext(40, 10)); // scrolls down
@@ -697,7 +699,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         for ($i = 0; $i < 20; ++$i) {
             $items[] = ['label' => "entry{$i}", 'hint' => '', 'value' => (string) $i];
         }
-        $editor->openListOverlay('Big', $items, static fn () => null);
+        $editor->openListOverlay('Big', $items, static fn (): null => null);
 
         $rendered = $editor->render(new RenderContext(50, 4)); // 4 rows can't fit title+items
         $this->assertCount(4, $rendered);
@@ -1009,12 +1011,12 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testApplyEffectiveIndentSpacesArmOverridesAnEditorConfigThatSaysTabs(): void
     {
         $editor = $this->editor(path: 'demo.php');
-        $editorConfig = \Porta\Config\EditorConfig\ResolvedEditorConfig::fromProps(['indent_style' => 'tab', 'indent_size' => '8']);
+        $editorConfig = ResolvedEditorConfig::fromProps(['indent_style' => 'tab', 'indent_size' => '8']);
         $editor->showDocument('demo.php', new Document('a'), editorConfig: $editorConfig);
 
         // If the 'spaces' arm were removed, this would fall through to the
         // default arm and pick up the .editorconfig's usesTabs=true instead.
-        $editor->setLanguageIndents(['php' => new \Porta\Config\LanguageIndent(indentStyle: 'spaces', indentSize: 2)]);
+        $editor->setLanguageIndents(['php' => new LanguageIndent(indentStyle: 'spaces', indentSize: 2)]);
 
         $this->assertNotSame("\t", $editor->getDocument()->indentUnit(), 'explicit spaces must win over an editorconfig that says tabs');
     }
@@ -1025,7 +1027,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         // LanguageIndent's own type is int|string; the widget must (int) cast
         // a string value before handing it to Document::setIndent(int $size),
         // which is a hard int type under strict_types.
-        $editor->setLanguageIndents(['php' => new \Porta\Config\LanguageIndent(indentStyle: 'spaces', indentSize: '5')]);
+        $editor->setLanguageIndents(['php' => new LanguageIndent(indentStyle: 'spaces', indentSize: '5')]);
 
         $this->assertSame(5, $editor->getDocument()->indentSize());
     }

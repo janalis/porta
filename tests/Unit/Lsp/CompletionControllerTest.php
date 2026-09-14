@@ -350,7 +350,7 @@ final class CompletionControllerTest extends TestCase
         $controller = $this->controller(capabilities: ['completionProvider' => ['triggerCharacters' => ['>']]]);
         $this->readyOn($controller, '/p/a.php', "<?php\n\$t->\n");
 
-        $controller->resolveCompletionDetail(['label' => 'greet'], static function (string $detail): void {
+        $controller->resolveCompletionDetail(['label' => 'greet'], static function (string $detail): never {
             self::fail('nothing should answer: '.$detail);
         });
 

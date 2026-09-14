@@ -14,6 +14,8 @@ use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\TempProject;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * A user's own config, with no project file anywhere, actually steers the IDE.
@@ -58,7 +60,7 @@ final class GlobalConfigBootTest extends TestCase
             $this->project,
             $this->project->path('A.php'),
             [
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // Through the env channel into a service: the editor's
                     // gutter mode is not something the settings screen set
                     // this session, it is what the IDE booted with.
@@ -109,7 +111,7 @@ final class GlobalConfigBootTest extends TestCase
             $this->project,
             $this->project->path('A.php'),
             [
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $editor = $tui->getById('editor');
                     $this->assertSame(
                         LineNumberMode::Absolute,

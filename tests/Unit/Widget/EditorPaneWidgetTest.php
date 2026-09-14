@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget;
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RecordingViewerTabHandler;
+use Porta\Widget\EditorPaneWidget;
 use Porta\Widget\NavigablePaneWidget;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -97,7 +98,7 @@ final class EditorPaneWidgetTest extends TestCase
         // The bare base: `wheelBy` is a no-op, which is what a pane showing a
         // single fitted picture wants. NavigablePaneWidget overrides it to pan,
         // and the help pane to scroll whole rows.
-        $pane = new class extends \Porta\Widget\EditorPaneWidget {
+        $pane = new class extends EditorPaneWidget {
             public function paneId(): string
             {
                 return 'inert';

@@ -55,7 +55,7 @@ final class TabBarWidgetTest extends TestCase
     public function testRendersTabsWithDirtyDotAndActiveStyle(): void
     {
         $bar = new TabBarWidget();
-        $bar->setProvider(static fn () => [
+        $bar->setProvider(static fn (): array => [
             ['name' => 'a.php', 'dirty' => false, 'active' => false],
             ['name' => 'b.php', 'dirty' => true, 'active' => true],
         ]);
@@ -74,7 +74,7 @@ final class TabBarWidgetTest extends TestCase
     {
         $tabs = [['name' => 'a.php', 'dirty' => false, 'active' => true]];
         $bar = new TabBarWidget();
-        $bar->setProvider(static function () use (&$tabs) {
+        $bar->setProvider(static function () use (&$tabs): array {
             return $tabs;
         });
 
@@ -95,7 +95,7 @@ final class TabBarWidgetTest extends TestCase
             $tabs[] = ['name' => \sprintf('very-long-filename-%02d.php', $i), 'dirty' => false, 'active' => 0 === $i];
         }
         $bar = new TabBarWidget();
-        $bar->setProvider(static fn () => $tabs);
+        $bar->setProvider(static fn (): array => $tabs);
         $bar->beforeRender();
 
         $line = $bar->render(new RenderContext(60, 1))[0];
@@ -123,7 +123,7 @@ final class TabBarWidgetTest extends TestCase
             $tabs[] = ['name' => \sprintf('very-long-filename-%02d.php', $i), 'dirty' => false, 'active' => 11 === $i];
         }
         $bar = new TabBarWidget();
-        $bar->setProvider(static fn () => $tabs);
+        $bar->setProvider(static fn (): array => $tabs);
         $bar->beforeRender();
 
         $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(60, 1))[0]);
@@ -141,7 +141,7 @@ final class TabBarWidgetTest extends TestCase
         }
         $bar = new TabBarWidget();
         $bar->setPosition(TabBarPosition::Left);
-        $bar->setProvider(static fn () => $tabs);
+        $bar->setProvider(static fn (): array => $tabs);
         $bar->beforeRender();
 
         $plain = AnsiUtils::stripAnsiCodes(\implode("\n", $bar->render(new RenderContext(24, 10))));
@@ -169,7 +169,7 @@ final class TabBarWidgetTest extends TestCase
             ['name' => 'a.php', 'dirty' => false, 'active' => false],
         ];
         $bar = new TabBarWidget();
-        $bar->setProvider(static fn () => $tabs);
+        $bar->setProvider(static fn (): array => $tabs);
         $bar->beforeRender();
 
         $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(40, 1))[0]);
@@ -182,7 +182,7 @@ final class TabBarWidgetTest extends TestCase
     public function testTabIndexAtColumn(): void
     {
         $bar = new TabBarWidget();
-        $bar->setProvider(static fn () => [
+        $bar->setProvider(static fn (): array => [
             ['name' => 'a.php', 'dirty' => false, 'active' => true],
             ['name' => 'b.php', 'dirty' => false, 'active' => false],
         ]);
@@ -198,7 +198,7 @@ final class TabBarWidgetTest extends TestCase
     public function testTabAnchorMirrorsTheRenderedLayout(): void
     {
         $bar = new TabBarWidget();
-        $bar->setProvider(static fn () => [
+        $bar->setProvider(static fn (): array => [
             ['name' => 'a.php', 'dirty' => false, 'active' => true],
             ['name' => 'b.php', 'dirty' => false, 'active' => false],
         ]);
@@ -215,7 +215,7 @@ final class TabBarWidgetTest extends TestCase
     public function testRendersACloseIconOnEveryTab(): void
     {
         $bar = new TabBarWidget();
-        $bar->setProvider(static fn () => [
+        $bar->setProvider(static fn (): array => [
             ['name' => 'a.php', 'dirty' => false, 'active' => false],
             ['name' => 'b.php', 'dirty' => true, 'active' => true],
         ]);
@@ -237,7 +237,7 @@ final class TabBarWidgetTest extends TestCase
     public function testCloseZonesLandOnTheRenderedCloseGlyphForWideNames(): void
     {
         $bar = new TabBarWidget();
-        $bar->setProvider(static fn () => [
+        $bar->setProvider(static fn (): array => [
             ['name' => '日本語.php', 'dirty' => false, 'active' => true],
             ['name' => 'b.php', 'dirty' => true, 'active' => false],
         ]);
@@ -260,7 +260,7 @@ final class TabBarWidgetTest extends TestCase
         // Tab a ' a.php × ' (cols 0-9): × at col 7. Tab b ' b.php ●× ' (starts col
         // 10): dirty ● at col 17, × at col 18.
         $bar = new TabBarWidget();
-        $bar->setProvider(static fn () => [
+        $bar->setProvider(static fn (): array => [
             ['name' => 'a.php', 'dirty' => false, 'active' => true],
             ['name' => 'b.php', 'dirty' => true, 'active' => false],
         ]);
@@ -279,7 +279,7 @@ final class TabBarWidgetTest extends TestCase
     public function testMenuOverlayCompositesOverTabsKeepingWidth(): void
     {
         $bar = new TabBarWidget();
-        $bar->setProvider(static fn () => [
+        $bar->setProvider(static fn (): array => [
             ['name' => 'a.php', 'dirty' => false, 'active' => true],
         ]);
         $bar->beforeRender();
@@ -317,7 +317,7 @@ final class TabBarWidgetTest extends TestCase
             $tabs[] = ['name' => \sprintf('very-long-filename-%02d.php', $i), 'dirty' => false, 'active' => 11 === $i];
         }
         $bar = new TabBarWidget();
-        $bar->setProvider(static fn () => $tabs);
+        $bar->setProvider(static fn (): array => $tabs);
         $bar->beforeRender();
 
         $line = $bar->render(new RenderContext(60, 1))[0];
@@ -335,7 +335,7 @@ final class TabBarWidgetTest extends TestCase
     {
         $bar = new TabBarWidget();
         $bar->setPosition(TabBarPosition::Left);
-        $bar->setProvider(static fn () => $tabs);
+        $bar->setProvider(static fn (): array => $tabs);
         $bar->beforeRender();
 
         return $bar;
@@ -585,7 +585,7 @@ final class TabBarWidgetTest extends TestCase
     public function testScrollByRevealsClippedTrailingTabsAndSurvivesParkedFrames(): void
     {
         $bar = new TabBarWidget();
-        $bar->setProvider(static fn () => self::manyTabs(12));
+        $bar->setProvider(static fn (): array => self::manyTabs(12));
         $bar->beforeRender();
         $bar->render(new RenderContext(60, 1)); // active (first) tab followed → window at 0
 
@@ -605,7 +605,7 @@ final class TabBarWidgetTest extends TestCase
     public function testScrollClampsAtBothEnds(): void
     {
         $bar = new TabBarWidget();
-        $bar->setProvider(static fn () => self::manyTabs(12));
+        $bar->setProvider(static fn (): array => self::manyTabs(12));
         $bar->beforeRender();
         $bar->render(new RenderContext(60, 1));
 
@@ -623,7 +623,7 @@ final class TabBarWidgetTest extends TestCase
     {
         $active = 0;
         $bar = new TabBarWidget();
-        $bar->setProvider(static function () use (&$active) {
+        $bar->setProvider(static function () use (&$active): array {
             return self::manyTabs(12, $active);
         });
         $bar->beforeRender();
@@ -640,7 +640,7 @@ final class TabBarWidgetTest extends TestCase
     public function testHitMapReflectsTheScrolledWindow(): void
     {
         $bar = new TabBarWidget();
-        $bar->setProvider(static fn () => self::manyTabs(12));
+        $bar->setProvider(static fn (): array => self::manyTabs(12));
         $bar->beforeRender();
         $bar->render(new RenderContext(60, 1));
 
@@ -674,7 +674,7 @@ final class TabBarWidgetTest extends TestCase
     public function testHorizontalIndicatorsMarkOnlyTheClippedSides(): void
     {
         $bar = new TabBarWidget();
-        $bar->setProvider(static fn () => self::manyTabs(12));
+        $bar->setProvider(static fn (): array => self::manyTabs(12));
         $bar->beforeRender();
 
         // Window at the first tab: only the trailing side is clipped.
@@ -697,7 +697,7 @@ final class TabBarWidgetTest extends TestCase
     public function testHorizontalFittingTabsRenderNoIndicators(): void
     {
         $bar = new TabBarWidget();
-        $bar->setProvider(static fn () => self::manyShortTabs(2));
+        $bar->setProvider(static fn (): array => self::manyShortTabs(2));
         $bar->beforeRender();
 
         $plain = $this->plainRender($bar);
@@ -744,7 +744,7 @@ final class TabBarWidgetTest extends TestCase
     public function testSetPositionResetsTheScroll(): void
     {
         $bar = new TabBarWidget();
-        $bar->setProvider(static fn () => self::manyShortTabs(12));
+        $bar->setProvider(static fn (): array => self::manyShortTabs(12));
         $bar->beforeRender();
         $bar->render(new RenderContext(60, 1));
         $bar->scrollBy(5);
@@ -756,7 +756,7 @@ final class TabBarWidgetTest extends TestCase
     public function testHoverTintsTheInactiveTabAndClears(): void
     {
         $bar = new TabBarWidget();
-        $bar->setProvider(static fn () => [
+        $bar->setProvider(static fn (): array => [
             ['name' => 'a.php', 'dirty' => false, 'active' => true],
             ['name' => 'b.php', 'dirty' => false, 'active' => false],
         ]);
@@ -781,7 +781,7 @@ final class TabBarWidgetTest extends TestCase
             ['name' => 'b.php', 'dirty' => false, 'active' => false],
         ];
         $bar = new TabBarWidget();
-        $bar->setProvider(static function () use (&$tabs) {
+        $bar->setProvider(static function () use (&$tabs): array {
             return $tabs;
         });
         $bar->beforeRender();
@@ -802,7 +802,7 @@ final class TabBarWidgetTest extends TestCase
             ['name' => 'b.php', 'dirty' => false, 'active' => false],
         ];
         $bar = new TabBarWidget();
-        $bar->setProvider(static function () use (&$tabs) {
+        $bar->setProvider(static function () use (&$tabs): array {
             return $tabs;
         });
         $bar->beforeRender();

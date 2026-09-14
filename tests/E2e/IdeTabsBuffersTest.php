@@ -9,6 +9,8 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
+use Porta\Ide;
+use Porta\Overlay\State\MenuOverlayController;
 use Porta\Settings\SettingsController;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
@@ -22,6 +24,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Widget\TabBarWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -46,10 +49,10 @@ final class IdeTabsBuffersTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                300 => function ($tui, $terminal, $ide) use ($project): void {
+                300 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     // Open the deep file as a background tab (does not reveal it).
-                    Services::resolve($ide, \Porta\Editor\BufferService::class)
-                        ->openFile($project->path('src/deep/Target.php'), \Porta\Editor\OpenFocus::Keep);
+                    Services::resolve($ide, BufferService::class)
+                        ->openFile($project->path('src/deep/Target.php'), OpenFocus::Keep);
                     $tui->requestRender();
                     $tui->tick();
 
@@ -174,7 +177,7 @@ final class IdeTabsBuffersTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, $terminal): void {
                     $terminal->clearOutput();
                     $tui->handleInput("\x05"); // ctrl+e
                     $this->frame($tui);
@@ -205,7 +208,7 @@ final class IdeTabsBuffersTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui, $terminal, $ide) use ($project): void {
+                200 => static function ($tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, BufferService::class)
                         ->openFile($project->path('b.php'), OpenFocus::Editor);
                 },
@@ -218,7 +221,7 @@ final class IdeTabsBuffersTest extends TestCase
                     $terminal->clearOutput();
                     $tui->handleInput("\x05"); // ctrl+e
                 },
-                500 => function ($tui, $terminal): void {
+                500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->assertTrue(EditorState::pickerOpen($tui->getById('editor')));
                     // The CARD, not the screen: `b.php` is in the file tree
                     // beside the picker, so a screen-wide assertion passes
@@ -306,11 +309,11 @@ final class IdeTabsBuffersTest extends TestCase
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n"]);
 
-        $changePosition = static function ($ide, string $position): void {
+        $changePosition = static function (Ide $ide, string $position): void {
             Services::resolve($ide, SettingsController::class)
                 ->changeSetting('tabBarPosition', $position);
         };
-        $rects = static function ($tui, $ide): array {
+        $rects = static function ($tui, Ide $ide): array {
             $renderer = Services::resolve($ide, Renderer::class);
 
             return [$renderer->getWidgetRect($tui->getById('tabs')), $renderer->getWidgetRect($tui->getById('editor'))];
@@ -371,7 +374,7 @@ final class IdeTabsBuffersTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function ($tui, $terminal, Ide $ide): void {
                     $tui->tick();
                     $renderer = Services::resolve($ide, Renderer::class);
                     $tabs = $renderer->getWidgetRect($tui->getById('tabs'));
@@ -395,14 +398,14 @@ final class IdeTabsBuffersTest extends TestCase
             '.porta.json' => \json_encode(['settings' => ['tabBarPosition' => 'left']]),
         ]);
 
-        $tabsRect = static fn ($tui, $ide) => Services::resolve($ide, Renderer::class)
+        $tabsRect = static fn ($tui, Ide $ide) => Services::resolve($ide, Renderer::class)
             ->getWidgetRect($tui->getById('tabs'));
 
         $this->runIde(
             $project,
             $project->path('A.php'),
             [
-                150 => function ($tui, $terminal, $ide) use ($project): void {
+                150 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     $service = Services::resolve($ide, BufferService::class);
                     $service->openFile($project->path('B.php'), OpenFocus::Editor);
                     $service->openFile($project->path('C.php'), OpenFocus::Editor);
@@ -417,14 +420,14 @@ final class IdeTabsBuffersTest extends TestCase
                     $tui->tick();
                     $this->assertStringEndsWith('A.php', (string) $tui->getById('editor')->getFilePath(), 'clicking a list row switches to that tab');
                 },
-                450 => function ($tui, $terminal, $ide) use ($tabsRect): void {
+                450 => function (Tui $tui, $terminal, $ide) use ($tabsRect): void {
                     $rect = $tabsRect($tui, $ide);
                     // The × of row 1 (B) sits in the right-aligned close zone.
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + TabBarWidget::VERTICAL_WIDTH - 1, $rect->row + 2));
                     $tui->tick();
                     $this->assertSame(['A.php', 'C.php'], $this->tabNames($tui), "clicking a row's × closed that tab");
                 },
-                600 => function ($tui, $terminal, $ide) use ($tabsRect): void {
+                600 => function (Tui $tui, $terminal, $ide) use ($tabsRect): void {
                     $rect = $tabsRect($tui, $ide);
                     // Press row 0 (A), drag onto row 1 (C), release → A moves last.
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 3, $rect->row + 1));
@@ -433,7 +436,7 @@ final class IdeTabsBuffersTest extends TestCase
                     $tui->tick();
                     $this->assertSame(['C.php', 'A.php'], $this->tabNames($tui), 'dragging down the list reordered the tabs');
                 },
-                750 => function ($tui, $terminal, $ide) use ($tabsRect): void {
+                750 => function (Tui $tui, VirtualTerminal $terminal, $ide) use ($tabsRect): void {
                     $terminal->clearOutput();
                     $rect = $tabsRect($tui, $ide);
                     // Right-click row 0 (C) → the tab context menu.
@@ -442,7 +445,7 @@ final class IdeTabsBuffersTest extends TestCase
                     $this->assertTrue($tui->getById('context-menu')->isOpen(), 'right-clicking a list row opened the tab menu');
                     $tui->handleInput("\x1b"); // Esc closes it
                 },
-                900 => function ($tui, $terminal, $ide): void {
+                900 => function ($tui, $terminal, Ide $ide): void {
                     // A content swap (the help viewer) lands inside the editor body,
                     // not beside the vertical list in the horizontal editor pane.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_help');
@@ -468,7 +471,7 @@ final class IdeTabsBuffersTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function ($tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_help');
                     $tui->tick();
                     $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 on the help viewer: the tab menu
@@ -478,7 +481,7 @@ final class IdeTabsBuffersTest extends TestCase
                     // its own row so the overlay's overflow flip opens the panel above it.
                     $renderer = Services::resolve($ide, Renderer::class);
                     $tabsRow = $renderer->getWidgetRect($tui->getById('tabs'))->row;
-                    $overlay = Services::resolve($ide, \Porta\Overlay\State\MenuOverlayController::class);
+                    $overlay = Services::resolve($ide, MenuOverlayController::class);
                     $this->assertSame($tabsRow, Probe::get($overlay, 'contextAnchorRow'));
                 },
             ],
@@ -588,13 +591,13 @@ final class IdeTabsBuffersTest extends TestCase
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;3;4M"); // open B (tree row 2)
                 },
-                300 => function ($tui): void {
+                300 => function (Tui $tui): void {
                     $tui->tick();
                     $this->assertSame(['A.php', 'B.php'], $this->tabNames($tui));
                     // Tab A ' A.php × ': its × sits at SGR col 39 (0-based 38 = rel 7).
                     $tui->handleInput("\x1b[<0;39;2M");
                 },
-                400 => function ($tui): void {
+                400 => function (Tui $tui): void {
                     $this->assertSame(['B.php'], $this->tabNames($tui), 'clicking A\'s × closed it');
                     $this->assertStringEndsWith('B.php', (string) $tui->getById('editor')->getFilePath());
                 },
@@ -617,7 +620,7 @@ final class IdeTabsBuffersTest extends TestCase
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;3;4M"); // open B (tree row 2)
                 },
-                300 => function ($tui): void {
+                300 => function (Tui $tui): void {
                     $tui->tick();
                     $this->assertSame(['A.php', 'B.php'], $this->tabNames($tui));
                     // Press tab A's body and let this frame render, so the press's
@@ -626,7 +629,7 @@ final class IdeTabsBuffersTest extends TestCase
                     $tui->handleInput("\x1b[<0;34;2M");
                     $tui->tick();
                 },
-                450 => function ($tui, $terminal): void {
+                450 => function (Tui $tui, $terminal): void {
                     $terminal->clearOutput(); // capture only the frames after the reorder
                     $tui->handleInput("\x1b[<32;45;2M"); // drag A over tab B
                     $tui->handleInput("\x1b[<0;45;2m"); // release
@@ -679,7 +682,7 @@ final class IdeTabsBuffersTest extends TestCase
             $project->path('A.php'),
             [
                 ...$this->openThreeTabsInOrder(),
-                350 => function ($tui): void {
+                350 => function (Tui $tui): void {
                     $tui->tick();
                     $this->assertSame(['A.php', 'B.php', 'C.php'], $this->tabNames($tui));
                     // Press tab A's body, drag onto tab C's slot, release → A moves last.
@@ -687,7 +690,7 @@ final class IdeTabsBuffersTest extends TestCase
                     $tui->handleInput("\x1b[<32;55;2M"); // drag over tab C
                     $tui->handleInput("\x1b[<0;55;2m"); // release
                 },
-                450 => function ($tui): void {
+                450 => function (Tui $tui): void {
                     $this->assertSame(['B.php', 'C.php', 'A.php'], $this->tabNames($tui), 'A dragged to the end');
                 },
             ],
@@ -706,18 +709,18 @@ final class IdeTabsBuffersTest extends TestCase
             $project->path('A.php'),
             [
                 ...$this->openThreeTabsInOrder(),
-                350 => function ($tui): void {
+                350 => function (Tui $tui): void {
                     $tui->tick();
                     $this->assertSame(['A.php', 'B.php', 'C.php'], $this->tabNames($tui));
                     $tui->handleInput("\x1b[1;6D"); // ctrl+shift+left → [A, C, B]
                     $tui->handleInput("\x1b[1;6D"); // → [C, A, B]
                     $tui->handleInput("\x1b[1;6D"); // C already first → no move
                 },
-                420 => function ($tui): void {
+                420 => function (Tui $tui): void {
                     $this->assertSame(['C.php', 'A.php', 'B.php'], $this->tabNames($tui), 'C moved to the front and stopped at the end');
                     $tui->handleInput("\x1b[1;6C"); // ctrl+shift+right → [A, C, B]
                 },
-                500 => function ($tui): void {
+                500 => function (Tui $tui): void {
                     $this->assertSame(['A.php', 'C.php', 'B.php'], $this->tabNames($tui), 'moved back right');
                 },
             ],

@@ -6,13 +6,18 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Config\IdeConfig;
 use Porta\Editor\BufferService;
+use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Toasts;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The shipped php-cs-fixer plugin (plugins/php-cs-fixer/plugin.php),
@@ -94,14 +99,14 @@ final class PhpCsFixerPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal, $ide) use ($project): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('php-cs-fixer:toggle-on-save');
                     $this->awaitPainted($tui, $terminal, 'php-cs-fixer on save: on');
                     $this->assertStringContainsString('php-cs-fixer on save: on', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $this->assertTrue((bool) (\Porta\Config\IdeConfig::load($project->dir)->plugins['php-cs-fixer']['autoFormat'] ?? false), 'the toggle persisted to .porta.json');
+                    $this->assertTrue((bool) (IdeConfig::load($project->dir)->plugins['php-cs-fixer']['autoFormat'] ?? false), 'the toggle persisted to .porta.json');
                     $tui->handleInput("\x13"); // ctrl+s → save → the hook runs the fixer
                 },
-                300 => function ($tui, $terminal, $ide) use ($project): void {
+                300 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     $this->await(
                         static fn (): bool => \substr_count((string) (\is_file($project->path('a.php')) ? \file_get_contents($project->path('a.php')) : false), needle: '// fixed') >= 1,
                         what: 'the on-save fixer to run',
@@ -111,7 +116,7 @@ final class PhpCsFixerPluginTest extends TestCase
                     // Toggling off stops the hook.
                     Services::resolve($ide, CommandRegistry::class)->run('php-cs-fixer:toggle-on-save');
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'php-cs-fixer on save: off'), what: 'the toggle-off flash');
-                    $this->assertFalse((bool) (\Porta\Config\IdeConfig::load($project->dir)->plugins['php-cs-fixer']['autoFormat'] ?? true), 'the off state persisted');
+                    $this->assertFalse((bool) (IdeConfig::load($project->dir)->plugins['php-cs-fixer']['autoFormat'] ?? true), 'the off state persisted');
                     // Await the RELOAD LANDING IN THE BUFFER, not just the poll
                     // call: saving an un-reloaded buffer would write back the
                     // unfixed text and zero the count below.
@@ -138,9 +143,9 @@ final class PhpCsFixerPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal, $ide): void {
+                100 => function ($tui, $terminal, Ide $ide): void {
                     $tui->handleInput("\x1b\x06");
-                    $this->await(static fn (): bool => \str_contains(\Porta\Tests\Support\Toasts::last($ide), 'php-cs-fixer not found (vendor/bin or PATH)'), what: 'the missing-binary toast');
+                    $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'php-cs-fixer not found (vendor/bin or PATH)'), what: 'the missing-binary toast');
                 },
             ],
         );

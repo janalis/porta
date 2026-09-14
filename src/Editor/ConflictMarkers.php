@@ -62,7 +62,7 @@ final class ConflictMarkers
      */
     public static function regionAt(array $lines, int $line): ?array
     {
-        return \array_find(self::find($lines), static fn ($region) => $line >= $region['start'] && $line <= $region['end']);
+        return \array_find(self::find($lines), static fn ($region): bool => $line >= $region['start'] && $line <= $region['end']);
     }
 
     /**

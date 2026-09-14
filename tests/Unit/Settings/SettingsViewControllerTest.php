@@ -91,6 +91,7 @@ use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -412,7 +413,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->selectSettingsSection($this->nav, 'highlighting');
         $this->assertSame('highlighting', $this->nav->selectedId());
 
-        $screen = \implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 12)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 12)));
         $this->assertStringContainsString('Default highlighter', $screen);
 
         $this->form->handleInput("\x1b[B"); // past the "Save changes to" lead row
@@ -431,7 +432,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame(['settings-keys'], $this->ids($this->content));
         $this->assertSame($this->keymapList, $controller->focusTarget());
 
-        $screen = \implode("\n", $this->keymapList->render(new \Symfony\Component\Tui\Render\RenderContext(80, 20)));
+        $screen = \implode("\n", $this->keymapList->render(new RenderContext(80, 20)));
         $this->assertStringContainsString('actions', $screen, 'the keybindings list is populated');
     }
 
@@ -447,7 +448,7 @@ final class SettingsViewControllerTest extends TestCase
         // Tall enough for the whole page: the assertion below names its LAST
         // row, so a viewport that merely fits today's count would start failing
         // the next time the page gains one.
-        $screen = \implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 24)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 24)));
         $this->assertStringContainsString('Theme', $screen);
         $this->assertStringContainsString('Line numbers', $screen);
         $this->assertStringContainsString('Sticky scroll', $screen);
@@ -474,7 +475,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame('lang:php', $this->nav->selectedId());
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
-        $screen = \implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 8)));
         $this->assertStringContainsString('Indent style', $screen);
         $this->assertStringContainsString('Indent size', $screen);
         $this->assertStringContainsString('LSP server', $screen, 'the language section also shows its LSP server row');
@@ -627,7 +628,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->form->handleInput("\r"); // commit → the controller refuses
 
         $this->assertNotNull(Probe::get($this->form, 'editing'), 'still editing, so the value can be corrected');
-        $screen = AnsiUtils::stripAnsiCodes(\implode('', $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 10))));
+        $screen = AnsiUtils::stripAnsiCodes(\implode('', $this->form->render(new RenderContext(80, 10))));
         $this->assertStringContainsString('{not json', $screen, 'and the typing survived the refusal');
     }
 
@@ -757,7 +758,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame('plugins', $this->nav->selectedId());
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
-        $screen = \implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 8)));
         $this->assertStringContainsString('Save changes to', $screen);
         $this->assertStringContainsString('Install plugin', $screen);
         $this->assertMatchesRegularExpression('/demo \(project\)\s+\[Remove\]/', $screen);
@@ -769,7 +770,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->form->handleInput("\r");
         $this->form->handleInput("\r");
         $this->assertDirectoryDoesNotExist($this->project->dir.'/.porta/plugins/demo');
-        $screen = \implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 8)));
         $this->assertStringNotContainsString('demo (project)', $screen);
     }
 
@@ -787,7 +788,7 @@ final class SettingsViewControllerTest extends TestCase
         \mkdir($this->project->dir.'/.porta/plugins/late', permissions: 0o777, recursive: true);
         \file_put_contents($this->project->dir.'/.porta/plugins/late/plugin.php', data: "<?php\n");
         $controller->refresh(); // re-reads the rows: the late plugin appears
-        $screen = \implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 8)));
         $this->assertMatchesRegularExpression('/late \(project\)\s+\[Remove\]/', $screen);
     }
 
@@ -804,7 +805,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->nav->setPluginEntries(['demo']);
         $this->selectSettingsSection($this->nav, 'plugin:demo');
         $this->assertSame('plugin:demo', $this->nav->selectedId());
-        $screen = \implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 8)));
         $this->assertStringContainsString('Enabled', $screen);
         $this->assertStringContainsString('Binary path', $screen);
 
@@ -821,7 +822,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->lifecycle->names = [];
         $controller->refresh();
         $this->assertSame('plugins', $this->nav->selectedId());
-        $screen = \implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 8)));
         $this->assertStringContainsString('Install plugin', $screen);
     }
 
@@ -1021,7 +1022,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller->refresh();
 
         $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'refresh() on the plugins section must request a render');
-        $screen = \implode("\n", $this->form->render(new \Symfony\Component\Tui\Render\RenderContext(80, 8)));
+        $screen = \implode("\n", $this->form->render(new RenderContext(80, 8)));
         $this->assertMatchesRegularExpression('/late \(project\)\s+\[Remove\]/', $screen);
     }
 

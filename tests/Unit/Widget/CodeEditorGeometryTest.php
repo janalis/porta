@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\BreadcrumbScanner;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\EditorScroll;
 use Porta\Editor\LineNumberMode;
+use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
+use Porta\Support\IntMath;
 use Porta\Tests\Support\FakeEditorCompletion;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersExactWidth;
@@ -225,7 +229,7 @@ final class CodeEditorGeometryTest extends TestCase
         $editor = $this->editor();
         $before = $editor->getRenderRevision();
         $scheduled = false;
-        $editor->setCallbacks(new EditorCallbacks(completion: new \Porta\Tests\Support\FakeEditorCompletion(
+        $editor->setCallbacks(new EditorCallbacks(completion: new FakeEditorCompletion(
             scheduleDidChange: static function () use (&$scheduled): void {
                 $scheduled = true;
             },
@@ -271,8 +275,8 @@ final class CodeEditorGeometryTest extends TestCase
             $scroll = Probe::get($editor, 'scroll');
             $foldModel = Probe::get($editor, 'foldModel');
             $top = $foldModel->docLineAtRow($scroll->vScroll(), 0) ?? 0;
-            $budget = \Porta\Support\IntMath::clamp($rows - 4, 0, \Porta\Editor\EditorScroll::MAX_STICKY_ROWS);
-            $expected = \Porta\Editor\BreadcrumbScanner::stickyHeaders($editor->scopes(), $top, $budget);
+            $budget = IntMath::clamp($rows - 4, 0, EditorScroll::MAX_STICKY_ROWS);
+            $expected = BreadcrumbScanner::stickyHeaders($editor->scopes(), $top, $budget);
 
             $actual = Probe::get($editor, 'stickyLines');
             $this->assertSame(\array_map(static fn (array $h): int => $h['line'], $expected), $actual, "rows={$rows}");
@@ -493,7 +497,7 @@ final class CodeEditorGeometryTest extends TestCase
     public function testRenderEmptyStateCentersTheHintHorizontallyFlooringAtZero(): void
     {
         $editor = new CodeEditorWidget();
-        $translator = new \Porta\I18n\Translator('en');
+        $translator = new Translator('en');
         $hint = $translator->trans('No file open · press %key% to open a file', ['%key%' => 'Ctrl+Shift+N']);
         $text = AnsiText::truncate($hint, 200);
         $textWidth = AnsiUtils::visibleWidth($text);

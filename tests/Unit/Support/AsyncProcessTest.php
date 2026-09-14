@@ -100,7 +100,7 @@ final class AsyncProcessTest extends TestCase
             $exits[] = $code;
         });
 
-        $this->await(static fn () => '' !== $process->output(), what: 'the child to speak before its deadline');
+        $this->await(static fn (): bool => '' !== $process->output(), what: 'the child to speak before its deadline');
         $this->await(static function () use (&$exits): bool {
             return [] !== $exits;
         }, what: 'the deadline to cancel the hung child');

@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferService;
+use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\IsolatesPluginDiscovery;
 use Porta\Tests\Support\NavigatesSettings;
@@ -15,6 +16,8 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The bundled PHP language-server plugins (phpantom/phpactor): a plugin
@@ -59,13 +62,13 @@ final class IdePhpLspPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'LSP:');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('LSP:', $screen);
                     $this->assertStringNotContainsString('enable a PHP server', $screen, 'phpantom serves PHP, so no install hint');
                 },
-                450 => function ($tui, $terminal, $ide): void {
+                450 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // Open the phpantom settings page: it lists the binary row.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
@@ -83,7 +86,7 @@ final class IdePhpLspPluginsTest extends TestCase
                     $this->awaitPainted($tui, $terminal, 'Plugin "phpantom" disabled');
                     $this->assertStringContainsString('Plugin "phpantom" disabled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
-                600 => function ($tui, $terminal): void {
+                600 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'enable a PHP server in Settings');
                     $this->assertStringContainsString('enable a PHP server in Settings', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'disabling the provider unserves PHP → the hint returns');
 
@@ -93,7 +96,7 @@ final class IdePhpLspPluginsTest extends TestCase
                     $this->awaitPainted($tui, $terminal, 'Plugin "phpantom" enabled');
                     $this->assertStringContainsString('Plugin "phpantom" enabled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
-                750 => function ($tui, $terminal): void {
+                750 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'LSP:');
                     $this->assertStringNotContainsString('enable a PHP server', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpantom serves PHP again');
                 },
@@ -114,7 +117,7 @@ final class IdePhpLspPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'LSP:none (enable a PHP server in Settings)');
                     $this->assertStringContainsString('LSP:none (enable a PHP server in Settings)', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
@@ -134,7 +137,7 @@ final class IdePhpLspPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
                     $this->selectSettingsSection($tui->getById('settings-nav'), 'plugins');
@@ -179,10 +182,10 @@ final class IdePhpLspPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => static function ($tui, $terminal, $ide): void {
+                100 => static function ($tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('phpantom:fix');
                 },
-                300 => function ($tui, $terminal, $ide) use ($project): void {
+                300 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'phpantom: fixed a.php'));
                     $tui->tick();
                     $this->assertStringContainsString('phpantom: fixed a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));

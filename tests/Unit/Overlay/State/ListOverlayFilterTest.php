@@ -122,7 +122,7 @@ final class ListOverlayFilterTest extends TestCase
     public function testTheHintIsMatchedAsWellAsTheLabel(): void
     {
         $host = $this->host();
-        $host->openList('File Structure', self::symbols(), static fn () => null);
+        $host->openList('File Structure', self::symbols(), static fn (): null => null);
 
         $this->type($host, 'method');
 
@@ -161,7 +161,7 @@ final class ListOverlayFilterTest extends TestCase
     public function testEscClearsTheFilterFirstAndClosesOnTheSecondPress(): void
     {
         $host = $this->host();
-        $host->openList('L', self::symbols(), static fn () => null);
+        $host->openList('L', self::symbols(), static fn (): null => null);
 
         $this->type($host, 'zz');
         $host->handleInput("\x1b", $this->keys());
@@ -175,7 +175,7 @@ final class ListOverlayFilterTest extends TestCase
     public function testBackspaceWidensTheFilterAgain(): void
     {
         $host = $this->host();
-        $host->openList('L', self::symbols(), static fn () => null);
+        $host->openList('L', self::symbols(), static fn (): null => null);
 
         $this->type($host, 'hyd');
         $this->assertStringNotContainsString('handle', \implode("\n", $this->canvas($host)));
@@ -224,7 +224,7 @@ final class ListOverlayFilterTest extends TestCase
     public function testTheFilterRowReadsExactlyAsWritten(): void
     {
         $host = $this->host();
-        $host->openList('File Structure', self::symbols(), static fn () => null);
+        $host->openList('File Structure', self::symbols(), static fn (): null => null);
 
         $this->type($host, 'hyd');
 
@@ -260,7 +260,7 @@ final class ListOverlayFilterTest extends TestCase
     public function testTheEmptyStateRowReadsExactlyAsWritten(): void
     {
         $host = $this->host();
-        $host->openList('File Structure', self::symbols(), static fn () => null);
+        $host->openList('File Structure', self::symbols(), static fn (): null => null);
 
         $this->type($host, 'zz');
 
@@ -298,19 +298,19 @@ final class ListOverlayFilterTest extends TestCase
         ];
 
         $host = $this->host();
-        $host->openList('L', $items, static fn () => null);
+        $host->openList('L', $items, static fn (): null => null);
         $this->type($host, 'éla'); // lowercase needle, uppercase label
         $this->assertStringContainsString('Élan', \implode('
 ', $this->canvas($host)), 'the label folded');
 
         $host = $this->host();
-        $host->openList('L', $items, static fn () => null);
+        $host->openList('L', $items, static fn (): null => null);
         $this->type($host, 'ÉLA'); // uppercase needle
         $this->assertStringContainsString('Élan', \implode('
 ', $this->canvas($host)), 'the needle folded');
 
         $host = $this->host();
-        $host->openList('L', $items, static fn () => null);
+        $host->openList('L', $items, static fn (): null => null);
         // The HINT, and its uppercase letter has to be the NON-ASCII one:
         // `strtolower('Größe')` already lowercases the ASCII `G` and leaves the
         // rest, which is indistinguishable from the multibyte fold.
@@ -359,7 +359,7 @@ final class ListOverlayFilterTest extends TestCase
     public function testYouCanKeepTypingAfterTheFilterStopsMatching(): void
     {
         $host = $this->host();
-        $host->openList('L', self::symbols(), static fn () => null);
+        $host->openList('L', self::symbols(), static fn (): null => null);
 
         $this->type($host, 'zx'); // `z` already matches nothing; `x` must still land
 
@@ -414,7 +414,7 @@ final class ListOverlayFilterTest extends TestCase
                 ['label' => 'AVeryLongSymbolNameIndeed', 'hint' => 'Class', 'value' => 'C'],
                 ['label' => 'hy', 'hint' => 'Method', 'value' => 'Y'],
             ],
-            static fn () => null,
+            static fn (): null => null,
         );
 
         $host->layout([0, 0, 24, 100]);
@@ -437,7 +437,7 @@ final class ListOverlayFilterTest extends TestCase
     public function testAnUnfilteredListLooksExactlyAsItDidBefore(): void
     {
         $host = $this->host();
-        $host->openList('L', self::symbols(), static fn () => null);
+        $host->openList('L', self::symbols(), static fn (): null => null);
 
         $rows = \array_values(\array_filter($this->canvas($host), static fn (string $l): bool => '' !== \trim($l)));
         $this->assertStringContainsString('L', $rows[0], 'the title bar');

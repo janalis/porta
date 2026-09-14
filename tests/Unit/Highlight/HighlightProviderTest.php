@@ -12,6 +12,7 @@ use Porta\Highlight\HighlightRequest;
 use Porta\Highlight\LightTerminalTheme;
 use Porta\Highlight\PlainTextHighlightProvider;
 use Porta\Highlight\SwitchableTerminalTheme;
+use Porta\Highlight\SyntaxHighlightProvider;
 use Porta\Highlight\TempestHighlightProvider;
 use Porta\Highlight\ThemeAwareHighlightProvider;
 use Porta\Tests\Support\ClosureHighlightProvider;
@@ -103,7 +104,7 @@ final class HighlightProviderTest extends TestCase
     }
 
     /** Drive a provider through the sink and return what it delivered. */
-    private function markup(\Porta\Highlight\SyntaxHighlightProvider $provider, string $source): string
+    private function markup(SyntaxHighlightProvider $provider, string $source): string
     {
         $sink = new CapturingHighlightSink();
         $provider->highlight(new HighlightRequest('/x/a.php', 'php', $source, 1), $sink);

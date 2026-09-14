@@ -54,7 +54,7 @@ final class InlineValueRequestTest extends TestCase
         // error, for nothing.
         $request = $this->request([]);
 
-        $request->forRange('/p/a.php', 0, 40, frameId: 1, stoppedLine: 12, deliver: static function (array $lookups): void {
+        $request->forRange('/p/a.php', 0, 40, frameId: 1, stoppedLine: 12, deliver: static function (array $lookups): never {
             self::fail('a server that cannot answer should not be asked');
         });
 

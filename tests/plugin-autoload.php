@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use Porta\Plugin\Runtime\PluginAutoloader;
+use Porta\Plugin\Runtime\PluginManifest;
+
 // Required by tests/bootstrap.php AND rector.php: Rector has to resolve plugin
 // classes for the same reason PHPUnit does, and one copy of this loop is what
 // keeps the two from drifting apart.
@@ -12,8 +15,8 @@ declare(strict_types=1);
 // plugin's own tests are loaded by path, but the code they exercise is not.
 $pluginFiles = glob(dirname(__DIR__).'/plugins/*/plugin.php');
 foreach (false === $pluginFiles ? [] : $pluginFiles as $pluginFile) {
-    $manifest = Porta\Plugin\Runtime\PluginManifest::beside($pluginFile);
-    Porta\Plugin\Runtime\PluginAutoloader::register($manifest);
+    $manifest = PluginManifest::beside($pluginFile);
+    PluginAutoloader::register($manifest);
     // And the plugin's own test SUPPORT, under `<prefix>Tests\`. Test CASES are
     // loaded by path, so no plugin needed this until one grew a shared double;
     // it is test-only, which is why it is wired here rather than in the
@@ -22,8 +25,8 @@ foreach (false === $pluginFiles ? [] : $pluginFiles as $pluginFile) {
         foreach ($directories as $directory) {
             $testsDir = \dirname($directory).'/tests';
             if (is_dir($testsDir)) {
-                Porta\Plugin\Runtime\PluginAutoloader::register(
-                    new Porta\Plugin\Runtime\PluginManifest($manifest->name, \dirname($directory), [$prefix.'Tests\\' => ['tests']]),
+                PluginAutoloader::register(
+                    new PluginManifest($manifest->name, \dirname($directory), [$prefix.'Tests\\' => ['tests']]),
                 );
             }
         }

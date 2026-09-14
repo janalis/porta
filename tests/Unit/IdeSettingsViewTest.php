@@ -15,6 +15,7 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UsesBundledPlugins;
 use Porta\Workbench\View\ContributedView;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
@@ -44,7 +45,7 @@ final class IdeSettingsViewTest extends TestCase
         new OnboardingState($project->dir)->markWelcomeSeen();
         $this->ide = new Ide($project->dir, $project->path('a.php'), new VirtualTerminal(columns: 100, rows: 24));
         $this->commands = Services::resolve($this->ide, CommandRegistry::class);
-        $views = Services::resolve($this->ide, \Porta\Workbench\View\ViewRegistry::class);
+        $views = Services::resolve($this->ide, ViewRegistry::class);
         // find(), not reflection: the registry no longer keeps a concrete
         // field per view, which is what dissolved the seven-class cycle.
         $git = $views->find('git');

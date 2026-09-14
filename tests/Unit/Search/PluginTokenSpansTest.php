@@ -11,6 +11,7 @@ use Porta\Plugin\Api\PluginException;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Search\TokenClassifier;
+use Porta\Search\TokenSpanProvider;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
@@ -105,7 +106,7 @@ final class PluginTokenSpansTest extends TestCase
     /** A throwing provider seen through TokenClassifier still yields the built-in result. */
     public function testTokenClassifierSurvivesAThrowingProvider(): void
     {
-        $throwing = new class implements \Porta\Search\TokenSpanProvider {
+        $throwing = new class implements TokenSpanProvider {
             public function commentStringSpans(string $content, string $language): ?array
             {
                 throw new \RuntimeException('provider exploded');

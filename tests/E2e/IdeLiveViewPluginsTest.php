@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Ide;
 use Porta\Layout\ViewRegions;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Tests\Support\ClearsPortaLsp;
@@ -16,6 +17,8 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Workbench\View\ViewRegistry;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * A plugin-contributed full-screen view and top-level menu across a LIVE
@@ -163,7 +166,7 @@ final class IdeLiveViewPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $views = Services::resolve($ide, ViewRegistry::class);
                     $regions = Services::resolve($ide, ViewRegions::class);
                     $this->frame($tui);
@@ -227,7 +230,7 @@ final class IdeLiveViewPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function ($tui, VirtualTerminal $terminal, Ide $ide): void {
                     $views = Services::resolve($ide, ViewRegistry::class);
                     $regions = Services::resolve($ide, ViewRegions::class);
                     $lifecycle = Services::resolve($ide, PluginLifecycle::class);
@@ -304,7 +307,7 @@ final class IdeLiveViewPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     Services::resolve($ide, PluginLifecycle::class)->enable('demo');
 
                     $this->awaitPainted($tui, $terminal, 'Plugin "demo" failed');

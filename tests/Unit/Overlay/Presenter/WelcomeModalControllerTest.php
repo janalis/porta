@@ -28,6 +28,7 @@ use Porta\Tests\Support\RendersRoot;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestOverlayPane;
 use Porta\Ui\BidiTui;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Theme\Theme;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\MenuBarWidget;
@@ -385,9 +386,9 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertTrue($controller->hoverAt($region->top + $region->count - 2, $region->col + $region->width - 2), 'onto the corner (inside the shadow-widened region)');
         $spans = $this->pane->modalSpans;
         $joined = \implode('', \array_column($spans, 'segment'));
-        $this->assertStringContainsString(\Porta\Ui\Glyphs::MODAL_RESIZE_GRAB, $joined, 'the corner heavied');
+        $this->assertStringContainsString(Glyphs::MODAL_RESIZE_GRAB, $joined, 'the corner heavied');
         $this->assertTrue($controller->hoverAt(0, 0), 'off it again');
-        $this->assertStringNotContainsString(\Porta\Ui\Glyphs::MODAL_RESIZE_GRAB, \implode('', \array_column($this->pane->modalSpans, 'segment')));
+        $this->assertStringNotContainsString(Glyphs::MODAL_RESIZE_GRAB, \implode('', \array_column($this->pane->modalSpans, 'segment')));
     }
 
     public function testAFreshPressCancelsAnArmedDrag(): void

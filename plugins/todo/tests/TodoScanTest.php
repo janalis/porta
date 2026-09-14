@@ -7,6 +7,8 @@ namespace Porta\Todo\Tests;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ConfigFiles;
 use Porta\Config\ConfigScope;
+use Porta\Editor\BufferManager;
+use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
@@ -25,6 +27,7 @@ use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestTui;
 use Porta\Todo\TodoScan;
+use Porta\Todo\TodoTags;
 use Porta\Tree\FileStatuses;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
@@ -73,7 +76,7 @@ final class TodoScanTest extends TestCase
         $this->dock = TestBottomDock::create($tui, new TerminalPanelWidget(), $this->results, new DebugPanelWidget());
         $manager->wireRuntime(new PluginRuntime(
             new Notifier(new StatusBarWidget(), $tui),
-            new \Porta\I18n\Translator('en'),
+            new Translator('en'),
             new CodeEditorWidget(),
             new RecordingFileOpener(),
             $tui,
@@ -81,7 +84,7 @@ final class TodoScanTest extends TestCase
             new CodeEditorWidget()->decorations(),
             new RecordingChangeMarkSink(),
             new FileStatuses(),
-            new \Porta\Editor\BufferManager(),
+            new BufferManager(),
             new DockToolController($manager, $this->dock, new ProjectPaths($project->dir)),
             TestDockTools::replacer(),
             new CodeEditorWidget(),
@@ -95,7 +98,7 @@ final class TodoScanTest extends TestCase
         ));
 
         $api = new PluginApi('todo', $manager, $project->dir, $settings);
-        $api->registerSetting('tags', 'Tags', 'text', '' === $tags ? \Porta\Todo\TodoTags::DEFAULT : $tags);
+        $api->registerSetting('tags', 'Tags', 'text', '' === $tags ? TodoTags::DEFAULT : $tags);
         $api->registerListTool(TodoScan::TOOL, 'TODO');
         $manager->commit($api);
 

@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\Terminal\TerminalBuffer;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestTui;
@@ -129,11 +130,11 @@ final class FocusRingTest extends TestCase
         // genuine no-op, so only cycle()'s own explicit call is left to prove.
         $ring = $this->ring();
         $this->tui->setFocus($this->editor); // already the ring's last member
-        \Porta\Tests\Support\Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, 'renderRequested', false);
 
         $ring->cycle(0);
 
         $this->assertSame($this->editor, $this->tui->getFocus(), 'sanity: still the same member');
-        $this->assertTrue((bool) \Porta\Tests\Support\Probe::get($this->tui, 'renderRequested'));
+        $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'));
     }
 }

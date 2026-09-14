@@ -6,13 +6,17 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\Document;
+use Porta\Editor\EditorCompletion;
 use Porta\Editor\OccurrenceHighlights;
+use Porta\Overlay\Region\ModalBox;
 use Porta\Overlay\State\FindModalCallbacks;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Search\Everywhere\SearchHit;
 use Porta\Search\Everywhere\SearchRow;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\Probe;
+use Porta\Ui\CaretVisibility;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -77,7 +81,7 @@ final class CodeEditorOverlaysTest extends TestCase
     public function testListOverlayEscapeCloses(): void
     {
         $editor = $this->editor();
-        $editor->openListOverlay('X', [['label' => 'a', 'hint' => '', 'value' => 'a']], static fn () => null);
+        $editor->openListOverlay('X', [['label' => 'a', 'hint' => '', 'value' => 'a']], static fn (): null => null);
 
         $editor->handleInput("\x1b");
         $this->assertFalse(EditorState::pickerOpen($editor));
@@ -88,8 +92,8 @@ final class CodeEditorOverlaysTest extends TestCase
     {
         return [
             SearchRow::header('Files'),
-            SearchRow::hit(new SearchHit(SearchCategory::Files, 'alpha.php', 'src', static fn () => null)),
-            SearchRow::hit(new SearchHit(SearchCategory::Files, 'beta.php', 'src', static fn () => null)),
+            SearchRow::hit(new SearchHit(SearchCategory::Files, 'alpha.php', 'src', static fn (): null => null)),
+            SearchRow::hit(new SearchHit(SearchCategory::Files, 'beta.php', 'src', static fn (): null => null)),
         ];
     }
 
@@ -99,11 +103,11 @@ final class CodeEditorOverlaysTest extends TestCase
         $picked = null;
         $editor->openSearch(
             'Search Everywhere',
-            static fn () => null,
+            static fn (): null => null,
             static function (SearchHit $h) use (&$picked): void {
                 $picked = $h->label;
             },
-            static fn () => null,
+            static fn (): null => null,
         );
         $this->assertTrue($editor->isSearchOverlayOpen());
         $editor->setSearchRows($this->searchRows());
@@ -127,11 +131,11 @@ final class CodeEditorOverlaysTest extends TestCase
         $picked = null;
         $editor->openSearch(
             'Search',
-            static fn () => null,
+            static fn (): null => null,
             static function (SearchHit $h) use (&$picked): void {
                 $picked = $h->label;
             },
-            static fn () => null,
+            static fn (): null => null,
         );
         $editor->setSearchRows($this->searchRows());
         $editor->layoutPickers([0, 0, 20, 80]);
@@ -174,7 +178,7 @@ final class CodeEditorOverlaysTest extends TestCase
                 ['path' => 'src/A.php', 'line' => 4, 'text' => 'foo one', 'ranges' => []],
                 ['path' => 'src/A.php', 'line' => 9, 'text' => 'foo two', 'ranges' => []],
             ]);
-        $editor->findModal()->layout([0, 0, 40, 100], \Porta\Ui\CaretVisibility::Shown); // records the screen-space box
+        $editor->findModal()->layout([0, 0, 40, 100], CaretVisibility::Shown); // records the screen-space box
 
         $box = $editor->findModal()->lastBox();
         $this->assertNotNull($box);
@@ -198,15 +202,15 @@ final class CodeEditorOverlaysTest extends TestCase
         $editor->findModal()->open('Find in Files');
         $this->assertTrue($editor->isFindModalOpen());
 
-        $editor->openListOverlay('Recent Files', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn () => null);
+        $editor->openListOverlay('Recent Files', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn (): null => null);
         $this->assertFalse($editor->isFindModalOpen(), 'the list overlay displaced the find modal');
 
         $editor->findModal()->open('Find in Files');
-        $editor->openSearch('Search', static fn () => null, static fn () => null, static fn () => null);
+        $editor->openSearch('Search', static fn (): null => null, static fn (): null => null, static fn (): null => null);
         $this->assertFalse($editor->isFindModalOpen(), 'the search modal displaced it too');
 
         $editor->findModal()->open('Find in Files');
-        $editor->openPrompt('Go to line', '', static fn () => null);
+        $editor->openPrompt('Go to line', '', static fn (): null => null);
         $this->assertFalse($editor->isFindModalOpen(), 'and so did the prompt');
     }
 
@@ -264,7 +268,7 @@ final class CodeEditorOverlaysTest extends TestCase
     public function testPromptClickOnItsBoxIsSwallowedAndElsewhereDismisses(): void
     {
         $editor = $this->editor();
-        $editor->openPrompt('Go to line', '', static fn () => null);
+        $editor->openPrompt('Go to line', '', static fn (): null => null);
         $editor->layoutPickers([0, 0, 20, 80]); // records the centered prompt box (row 6, cols 25..55)
 
         $this->assertTrue(EditorState::promptOpen($editor));
@@ -658,12 +662,12 @@ final class CodeEditorOverlaysTest extends TestCase
     public function testPromptHoverRoutesToTheOverlayHost(): void
     {
         $editor = $this->editor();
-        $editor->openPrompt('Go to line', '', static fn () => null);
+        $editor->openPrompt('Go to line', '', static fn (): null => null);
         $editor->layoutPickers([0, 0, 20, 80]); // records the prompt box
 
         $host = Probe::get($editor, 'overlayHost');
         $box = Probe::get($host, 'promptBox');
-        \assert($box instanceof \Porta\Overlay\Region\ModalBox, description: 'the overlay laid out a modal box');
+        \assert($box instanceof ModalBox, description: 'the overlay laid out a modal box');
 
         $this->assertTrue($editor->handlePickerHover($box->startRow, $box->col + $box->width - 2), 'onto the ×');
         $this->assertFalse($editor->handlePickerHover($box->startRow, $box->col + $box->width - 2), 'unchanged on the same cell');
@@ -728,7 +732,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $this->assertSame('C', $picked, 'a wheel-up from the first row wraps to the last');
 
         // Search Everywhere modal: the wheel reaches its selection too.
-        $editor->openSearch('Search', static fn () => null, static fn () => null, static fn () => null);
+        $editor->openSearch('Search', static fn (): null => null, static fn (): null => null, static fn (): null => null);
         $this->assertTrue($editor->movePopupSelection(1), 'the search modal consumed the wheel');
         $editor->handleSearchOverlayInput("\x1b");
     }
@@ -740,7 +744,7 @@ final class CodeEditorOverlaysTest extends TestCase
         Probe::get($editor, 'completion')->show([new CompletionItem('abcdef', 'abcdef', 'var', '')]);
         $this->assertTrue($editor->isCompletionOpen(), 'sanity: the popup is actually open before the swap');
 
-        $editor->showDocument('other.php', new \Porta\Editor\Document("<?php\n"));
+        $editor->showDocument('other.php', new Document("<?php\n"));
 
         // Note: this passes even without the explicit closeCompletion() call
         // at the end of showDocument(), because the completion collaborator
@@ -756,7 +760,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $editor->openListOverlay('Recent', [['label' => 'a', 'hint' => '', 'value' => 'a']], static function (string $v): void {});
         $this->assertTrue(Probe::get($editor, 'overlayHost')->anyOpen(), 'sanity: the list overlay is actually open before the swap');
 
-        $editor->showDocument('other.php', new \Porta\Editor\Document("<?php\n"));
+        $editor->showDocument('other.php', new Document("<?php\n"));
 
         $this->assertFalse(Probe::get($editor, 'overlayHost')->anyOpen(), 'showDocument must close a list overlay left open from the old buffer');
     }
@@ -765,8 +769,8 @@ final class CodeEditorOverlaysTest extends TestCase
     {
         // Directly on the collaborator: an empty candidate list must not
         // divide by zero when a stray wheel reaches it.
-        $completion = new \Porta\Editor\EditorCompletion(
-            new \Porta\Editor\Document(''),
+        $completion = new EditorCompletion(
+            new Document(''),
             static function (): void {},
             static function (): void {},
             static fn (): bool => true,

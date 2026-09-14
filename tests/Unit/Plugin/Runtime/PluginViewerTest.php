@@ -188,10 +188,10 @@ final class PluginViewerTest extends TestCase
         $api->registerListTool(
             'todo',
             'TODO',
-            rerun: static function (): void {
+            rerun: static function (): never {
                 throw new \RuntimeException('scan exploded');
             },
-            activate: static function (string $path, int $line): void {
+            activate: static function (string $path, int $line): never {
                 throw new \RuntimeException('jump exploded');
             },
         );

@@ -184,7 +184,7 @@ final class SourcesTest extends TestCase
         $this->assertSame([9, 0], $jumped);
 
         // Symbols (empty kind filter) keeps everything.
-        $symbols = new WorkspaceSymbolSource($search, SearchCategory::Symbols, [], new ProjectPaths('/proj'), static fn () => null, static fn () => null);
+        $symbols = new WorkspaceSymbolSource($search, SearchCategory::Symbols, [], new ProjectPaths('/proj'), static fn (): null => null, static fn (): null => null);
         $this->assertCount(2, $this->collect(static fn (\Closure $emit) => $symbols->query('u', $emit)));
     }
 
@@ -194,7 +194,7 @@ final class SourcesTest extends TestCase
         $search = static function (string $query, \Closure $onResult) use (&$stashed): void {
             $stashed[] = $onResult; // don't answer yet
         };
-        $source = new WorkspaceSymbolSource($search, SearchCategory::Symbols, [], new ProjectPaths('/proj'), static fn () => null, static fn () => null);
+        $source = new WorkspaceSymbolSource($search, SearchCategory::Symbols, [], new ProjectPaths('/proj'), static fn (): null => null, static fn (): null => null);
 
         $seen = [];
         $emit = static function (array $hits) use (&$seen): void {

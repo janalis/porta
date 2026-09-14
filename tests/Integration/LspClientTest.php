@@ -6,6 +6,7 @@ namespace Porta\Tests\Integration;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Lsp\LspClient;
+use Porta\Support\JsonRpcFramer;
 use Porta\Support\Outcome;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
@@ -321,7 +322,7 @@ final class LspClientTest extends TestCase
             $echoed = $params;
         });
 
-        $client->start(static fn () => null);
+        $client->start(static fn (): null => null);
 
         // The demanding server sends configuration/applyEdit/unknown requests
         // after initialize, then echoes our replies back as a notification.
@@ -447,7 +448,7 @@ final class LspClientTest extends TestCase
 
         // The loop stays live: this timer would never fire on the blocking code.
         $ticked = false;
-        \Revolt\EventLoop::delay(0.05, static function () use (&$ticked): void {
+        EventLoop::delay(0.05, static function () use (&$ticked): void {
             $ticked = true;
         });
         $this->await(static function () use (&$ticked): bool {
@@ -604,7 +605,7 @@ final class LspClientTest extends TestCase
         $expected = [];
         foreach (['x', 'y', 'z'] as $fill) {
             $message = ['jsonrpc' => '2.0', 'method' => 'porta/blob', 'params' => ['data' => \str_repeat($fill, times: 131_072)]];
-            $frame = \Porta\Support\JsonRpcFramer::encode($message);
+            $frame = JsonRpcFramer::encode($message);
             $expected[] = \md5(\substr($frame, \strpos($frame, needle: "\r\n\r\n") + 4));
             $client->notify('porta/blob', $message['params']);
         }
@@ -653,13 +654,13 @@ final class LspClientTest extends TestCase
      */
     public function testPeerExitClearsEveryLoopWatcher(): void
     {
-        $baseline = \count(\Revolt\EventLoop::getIdentifiers());
+        $baseline = \count(EventLoop::getIdentifiers());
         $client = $this->client('crashing-lsp-server.php');
         $client->start(static function (): void {});
-        $this->assertGreaterThan($baseline, \count(\Revolt\EventLoop::getIdentifiers()), 'the pipe watchers are armed');
+        $this->assertGreaterThan($baseline, \count(EventLoop::getIdentifiers()), 'the pipe watchers are armed');
 
         // The crashing server exits immediately; EOF must retire the watchers.
-        $this->await(static fn (): bool => \count(\Revolt\EventLoop::getIdentifiers()) <= $baseline, 5.0, 'the EOF path to cancel both pipe watchers');
-        $this->assertSame($baseline, \count(\Revolt\EventLoop::getIdentifiers()), 'no watcher survives the peer');
+        $this->await(static fn (): bool => \count(EventLoop::getIdentifiers()) <= $baseline, 5.0, 'the EOF path to cancel both pipe watchers');
+        $this->assertSame($baseline, \count(EventLoop::getIdentifiers()), 'no watcher survives the peer');
     }
 }

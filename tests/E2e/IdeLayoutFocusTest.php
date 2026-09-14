@@ -6,6 +6,8 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Ide;
+use Porta\Terminal\TerminalBuffer;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
@@ -14,8 +16,11 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Glyphs;
 use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\Dock\ResultsPanelMode;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Tui;
 
 /**
  * Layout persistence and the focus ring: pane resizes by mouse
@@ -37,7 +42,7 @@ final class IdeLayoutFocusTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui): void {
+                200 => function (Tui $tui): void {
                     $this->assertSame(30, $tui->getById('tree')->width());
                     // Force a frame so the separator has a live rect for the arm.
                     $this->frame($tui);
@@ -66,9 +71,9 @@ final class IdeLayoutFocusTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function (Tui $tui, $terminal, Ide $ide): void {
                     $tp = $tui->getById('terminal');
-                    $tp->open('sh', new \Porta\Terminal\TerminalBuffer());
+                    $tp->open('sh', new TerminalBuffer());
                     // A FORCED frame, not requestRender+tick: a rect is always
                     // a frame behind, and a bare tick paints only when
                     // something already asked for one. Under the coverage run
@@ -105,10 +110,10 @@ final class IdeLayoutFocusTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui, $terminal, $ide) use (&$expected): void {
+                200 => static function ($tui, $terminal, Ide $ide) use (&$expected): void {
                     $results = $tui->getById('results');
-                    Services::resolve($ide, \Porta\Workbench\Dock\BottomDock::class)
-                        ->showList(\Porta\Workbench\Dock\ResultsPanelMode::Search, 'Find in Project', [
+                    Services::resolve($ide, BottomDock::class)
+                        ->showList(ResultsPanelMode::Search, 'Find in Project', [
                             ['path' => 'b.php', 'line' => 0, 'text' => 'one'],
                             ['path' => 'c.php', 'line' => 0, 'text' => 'two'],
                         ]);
@@ -144,11 +149,11 @@ final class IdeLayoutFocusTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui, $terminal, $ide) use (&$expected): void {
+                200 => static function ($tui, $terminal, Ide $ide) use (&$expected): void {
                     // An empty tool (no results): it used to render no rows, so the
                     // dock had no rect to grab. It now reserves its full height.
-                    Services::resolve($ide, \Porta\Workbench\Dock\BottomDock::class)
-                        ->showList(\Porta\Workbench\Dock\ResultsPanelMode::Search, 'Find in Project', []);
+                    Services::resolve($ide, BottomDock::class)
+                        ->showList(ResultsPanelMode::Search, 'Find in Project', []);
                     $tui->requestRender();
                     $tui->tick();
                     $renderer = Services::resolve($ide, Renderer::class);
@@ -224,8 +229,8 @@ final class IdeLayoutFocusTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui): void {
-                    $ctx = new \Symfony\Component\Tui\Render\RenderContext(1, 5);
+                200 => function (Tui $tui): void {
+                    $ctx = new RenderContext(1, 5);
                     $this->assertStringContainsString(Glyphs::PANE_DIVIDER, $tui->getById('separator')->render($ctx)[0], 'a thin rule at rest');
 
                     // Force a full frame so the separator has a live WidgetRect for
@@ -236,14 +241,14 @@ final class IdeLayoutFocusTest extends TestCase
                     $tui->handleInput("\x1b[<35;31;5M");
                 },
                 280 => function ($tui): void {
-                    $line = $tui->getById('separator')->render(new \Symfony\Component\Tui\Render\RenderContext(1, 5))[0];
+                    $line = $tui->getById('separator')->render(new RenderContext(1, 5))[0];
                     $this->assertStringContainsString(Glyphs::PANE_DIVIDER_ACTIVE, $line, 'heavy under the pointer — the boundary announces it is draggable');
                     $this->assertSame(1, AnsiUtils::visibleWidth($line), 'still exactly one column');
 
                     $tui->handleInput("\x1b[<35;60;5M"); // into the editor
                 },
                 360 => function ($tui): void {
-                    $line = $tui->getById('separator')->render(new \Symfony\Component\Tui\Render\RenderContext(1, 5))[0];
+                    $line = $tui->getById('separator')->render(new RenderContext(1, 5))[0];
                     $this->assertStringContainsString(Glyphs::PANE_DIVIDER, $line, 'thin again once the pointer leaves');
                     $this->assertStringNotContainsString(Glyphs::PANE_DIVIDER_ACTIVE, $line);
                 },
@@ -269,7 +274,7 @@ final class IdeLayoutFocusTest extends TestCase
                     $tui->handleInput("\x1b[17~"); // F6: tree → editor
                     $this->assertSame('editor', $tui->getFocus()?->getId());
                 },
-                350 => function ($tui, $terminal, $ide): void {
+                350 => function ($tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_terminal');
                     $this->assertSame('terminal', $tui->getFocus()?->getId());
                     $tui->handleInput("\x1b[17;5~"); // Ctrl+F6: terminal → editor (backward)
@@ -278,7 +283,7 @@ final class IdeLayoutFocusTest extends TestCase
                     $this->assertSame('terminal', $tui->getFocus()?->getId());
                     Services::resolve($ide, CommandRegistry::class)->run('ide_terminal'); // close it again
                 },
-                500 => function ($tui, $terminal, $ide): void {
+                500 => function ($tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $this->assertSame('settings-form', $tui->getFocus()?->getId(), 'settings opens on the form');
                     $tui->handleInput("\x1b[17~"); // F6 delegates to the settings view
@@ -304,7 +309,7 @@ final class IdeLayoutFocusTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function ($tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_recent_locations');
                     $tui->requestRender();
                     $tui->tick();
@@ -320,7 +325,7 @@ final class IdeLayoutFocusTest extends TestCase
                     $tui->handleInput("\x1b[39;6u"); // and back
                     $this->assertSame($before, $panel->visibleRows(), 'restored to the exact height it had');
                 },
-                350 => function ($tui, $terminal, $ide) use ($project): void {
+                350 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     // A hand-chosen height ends maximised mode, so the next
                     // toggle does not snap back to a size left behind.
                     $panel = Services::resolve($ide, BottomDock::class)->visiblePanel();
@@ -368,7 +373,7 @@ final class IdeLayoutFocusTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function ($tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_recent_locations');
                     $tui->requestRender();
                     $tui->tick();
@@ -416,7 +421,7 @@ final class IdeLayoutFocusTest extends TestCase
                     $tui->handleInput("\x1b[23;2~"); // Shift+F11 shrinks it back
                     $this->assertSame(30, $tui->getById('tree')->width());
                 },
-                350 => function ($tui, $terminal, $ide): void {
+                350 => function ($tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_terminal');
                     $tui->tick(); // render a frame so the panel has a rect to resize from
                     $rows = Probe::get($tui->getById('terminal'), 'visibleRows');

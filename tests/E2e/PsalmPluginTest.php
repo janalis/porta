@@ -6,6 +6,9 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Config\IdeConfig;
+use Porta\Ide;
+use Porta\Plugin\Runtime\PluginHost;
 use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
@@ -13,6 +16,9 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The shipped psalm plugin (plugins/psalm/plugin.php) against stub
@@ -83,7 +89,7 @@ final class PsalmPluginTest extends TestCase
                 100 => static function ($tui): void {
                     $tui->handleInput("\x1b\x10"); // ctrl+alt+p → psalm:analyse
                 },
-                300 => function ($tui, $terminal) use ($project): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal) use ($project): void {
                     // TWO paints, not one: the status line reports the run, and
                     // the inline diagnostic lands in the editor separately. Await
                     // the LAST thing asserted, not the first.
@@ -110,7 +116,7 @@ final class PsalmPluginTest extends TestCase
                 450 => function ($tui, $terminal): void {
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'psalm: no issues in a.php'), what: 'psalm to report the clean run');
                     $this->assertStringContainsString('psalm: no issues in a.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $editorScreen = \implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20)));
+                    $editorScreen = \implode("\n", $tui->getById('editor')->render(new RenderContext(120, 20)));
                     $this->assertStringNotContainsString('Boom detected', AnsiUtils::stripAnsiCodes($editorScreen), 'the clean run cleared the diagnostic');
                 },
             ],
@@ -127,14 +133,14 @@ final class PsalmPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal, $ide) use ($project): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('psalm:toggle-on-save');
                     $this->awaitPainted($tui, $terminal, 'psalm on save: on');
                     $this->assertStringContainsString('psalm on save: on', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $this->assertTrue((bool) (\Porta\Config\IdeConfig::load($project->dir)->plugins['psalm']['autoLint'] ?? false), 'the toggle persisted to .porta.json');
+                    $this->assertTrue((bool) (IdeConfig::load($project->dir)->plugins['psalm']['autoLint'] ?? false), 'the toggle persisted to .porta.json');
 
                     // The persisted setting shows on the plugin's settings page.
-                    $rows = Services::resolve($ide, \Porta\Plugin\Runtime\PluginHost::class)
+                    $rows = Services::resolve($ide, PluginHost::class)
                         ->settings()
                         ->rows('psalm');
                     $byKey = \array_column($rows, null, 'key');

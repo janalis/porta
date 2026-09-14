@@ -15,6 +15,7 @@ use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The verb's two refusals and its one shortcut, which an E2e cannot reach: it
@@ -27,7 +28,7 @@ final class LastEditNavigatorTest extends TestCase
     private StatusBarWidget $status;
     private CodeEditorWidget $editor;
     private RecordingFileOpener $files;
-    private \Symfony\Component\Tui\Tui $tui;
+    private Tui $tui;
 
     private function navigator(EditHistory $history): LastEditNavigator
     {

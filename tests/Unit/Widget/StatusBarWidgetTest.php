@@ -19,7 +19,7 @@ final class StatusBarWidgetTest extends TestCase
     // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
     private static function provider(bool $menus, string $right = 'R'): callable
     {
-        $spans = $menus ? [new StatusMenuSpan(0, 6, static fn (): array => [new MenuItem('Switch', '', static fn () => null)])] : [];
+        $spans = $menus ? [new StatusMenuSpan(0, 6, static fn (): array => [new MenuItem('Switch', '', static fn (): null => null)])] : [];
 
         return static fn (): array => ['left' => "\u{e0a0} main  file.php", 'right' => $right, 'menus' => $spans];
     }
@@ -27,7 +27,7 @@ final class StatusBarWidgetTest extends TestCase
     public function testRendersProviderContentAtExactWidth(): void
     {
         $status = new StatusBarWidget();
-        $status->setProvider(static fn () => ['left' => 'file.php ●', 'right' => '12:3 LSP:phpactor']);
+        $status->setProvider(static fn (): array => ['left' => 'file.php ●', 'right' => '12:3 LSP:phpactor']);
         $status->beforeRender();
 
         $line = $status->render(new RenderContext(60, 1))[0];
@@ -41,7 +41,7 @@ final class StatusBarWidgetTest extends TestCase
     {
         $clock = new MockClock('2020-01-01T00:00:00+00:00');
         $status = new StatusBarWidget($clock);
-        $status->setProvider(static fn () => ['left' => 'normal', 'right' => 'R']);
+        $status->setProvider(static fn (): array => ['left' => 'normal', 'right' => 'R']);
         $status->beforeRender();
 
         $status->flash('Saved!', 0.05);
@@ -58,7 +58,7 @@ final class StatusBarWidgetTest extends TestCase
     public function testAFlashOutranksTheRightSideLegend(): void
     {
         $status = new StatusBarWidget(new MockClock('2020-01-01T00:00:00+00:00'));
-        $status->setProvider(static fn () => ['left' => 'file.php', 'right' => '1:1  LSP:none  Ctrl+S save  Ctrl+T panel  Ctrl+Q quit']);
+        $status->setProvider(static fn (): array => ['left' => 'file.php', 'right' => '1:1  LSP:none  Ctrl+S save  Ctrl+T panel  Ctrl+Q quit']);
         $status->beforeRender();
 
         $status->flash('Saved a/really/long/path/src/Demo.php', 1.0);
@@ -71,7 +71,7 @@ final class StatusBarWidgetTest extends TestCase
     public function testLongLeftContentTruncates(): void
     {
         $status = new StatusBarWidget();
-        $status->setProvider(static fn () => ['left' => \str_repeat('x', times: 200), 'right' => 'RIGHT']);
+        $status->setProvider(static fn (): array => ['left' => \str_repeat('x', times: 200), 'right' => 'RIGHT']);
         $status->beforeRender();
 
         $line = $status->render(new RenderContext(50, 1))[0];
@@ -153,7 +153,7 @@ final class StatusBarWidgetTest extends TestCase
     {
         $clock = new MockClock('2020-01-01T00:00:00+00:00');
         $status = new StatusBarWidget($clock);
-        $status->setProvider(static fn () => ['left' => 'normal', 'right' => 'R']);
+        $status->setProvider(static fn (): array => ['left' => 'normal', 'right' => 'R']);
         $status->beforeRender();
 
         $status->flash('Saved!', 10.0);
@@ -177,7 +177,7 @@ final class StatusBarWidgetTest extends TestCase
     {
         $clock = new MockClock('2020-01-01T00:00:00+00:00');
         $status = new StatusBarWidget($clock);
-        $status->setProvider(static fn () => ['left' => 'normal', 'right' => 'R']);
+        $status->setProvider(static fn (): array => ['left' => 'normal', 'right' => 'R']);
         $status->beforeRender();
 
         $status->flash('Saved!', 0.0); // until == now, exactly
@@ -191,7 +191,7 @@ final class StatusBarWidgetTest extends TestCase
     {
         $clock = new MockClock('2020-01-01T00:00:00+00:00');
         $status = new StatusBarWidget($clock);
-        $status->setProvider(static fn () => ['left' => 'normal', 'right' => 'R']);
+        $status->setProvider(static fn (): array => ['left' => 'normal', 'right' => 'R']);
         $status->beforeRender();
         $status->flash('Saved!', 0.01);
         $clock->sleep(0.02);
@@ -241,7 +241,7 @@ final class StatusBarWidgetTest extends TestCase
         // right side gains an extra character.
         $clock = new MockClock('2020-01-01T00:00:00+00:00');
         $status = new StatusBarWidget($clock);
-        $status->setProvider(static fn () => ['left' => 'x', 'right' => \str_repeat('R', times: 30)]);
+        $status->setProvider(static fn (): array => ['left' => 'x', 'right' => \str_repeat('R', times: 30)]);
         $status->beforeRender();
         $status->flash(\str_repeat('F', times: 25), 5.0);
 
@@ -253,7 +253,7 @@ final class StatusBarWidgetTest extends TestCase
     {
         $clock = new MockClock('2020-01-01T00:00:00+00:00');
         $status = new StatusBarWidget($clock);
-        $status->setProvider(static fn () => ['left' => 'x', 'right' => \str_repeat('R', times: 30)]);
+        $status->setProvider(static fn (): array => ['left' => 'x', 'right' => \str_repeat('R', times: 30)]);
         $status->beforeRender();
         $status->flash('SAVED', 5.0); // visibleWidth 5, well under the columns-3 cap
 
@@ -266,7 +266,7 @@ final class StatusBarWidgetTest extends TestCase
     public function testLeftMaxLeavesExactlyThreeColumnsForThePadAndRightMargin(): void
     {
         $status = new StatusBarWidget();
-        $status->setProvider(static fn () => ['left' => \str_repeat('L', times: 30), 'right' => 'RR']);
+        $status->setProvider(static fn (): array => ['left' => \str_repeat('L', times: 30), 'right' => 'RR']);
         $status->beforeRender();
 
         // leftMax = max(0, 20 - 2 - 3) = 15, spent from both ends now: 7 + the
@@ -347,7 +347,7 @@ final class StatusBarWidgetTest extends TestCase
     public function testNoCellIsClickableOnceTheLeftWasElided(): void
     {
         $status = new StatusBarWidget();
-        $span = new StatusMenuSpan(0, 6, static fn (): array => [new MenuItem('Switch', '', static fn () => null)]);
+        $span = new StatusMenuSpan(0, 6, static fn (): array => [new MenuItem('Switch', '', static fn (): null => null)]);
         $status->setProvider(static fn (): array => ['left' => "\u{e0a0} main  src/Some/Deep/Namespace/ExampleClass.php", 'right' => \str_repeat('R', times: 40), 'menus' => [$span]]);
         $status->beforeRender();
         $status->render(new RenderContext(60, 1));
@@ -360,8 +360,8 @@ final class StatusBarWidgetTest extends TestCase
         $status = new StatusBarWidget();
         // 'abcde' is 5 columns; a span ending exactly at column 5 (the boundary,
         // not past it) must still count as fully on-screen.
-        $span = new StatusMenuSpan(0, 5, static fn (): array => [new MenuItem('Item', '', static fn () => null)]);
-        $status->setProvider(static fn () => ['left' => 'abcde', 'right' => 'R', 'menus' => [$span]]);
+        $span = new StatusMenuSpan(0, 5, static fn (): array => [new MenuItem('Item', '', static fn (): null => null)]);
+        $status->setProvider(static fn (): array => ['left' => 'abcde', 'right' => 'R', 'menus' => [$span]]);
         $status->beforeRender();
         $status->render(new RenderContext(40, 1));
 
@@ -371,7 +371,7 @@ final class StatusBarWidgetTest extends TestCase
     public function testGapFillsExactlyToTheRemainingWidth(): void
     {
         $status = new StatusBarWidget();
-        $status->setProvider(static fn () => ['left' => \str_repeat('L', times: 5), 'right' => \str_repeat('R', times: 5)]);
+        $status->setProvider(static fn (): array => ['left' => \str_repeat('L', times: 5), 'right' => \str_repeat('R', times: 5)]);
         $status->beforeRender();
 
         $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(20, 1))[0]);
@@ -382,7 +382,7 @@ final class StatusBarWidgetTest extends TestCase
     public function testTheRowIsAssembledAsPadLeftGapRightPadInThatExactOrder(): void
     {
         $status = new StatusBarWidget();
-        $status->setProvider(static fn () => ['left' => 'AAA', 'right' => 'BBB']);
+        $status->setProvider(static fn (): array => ['left' => 'AAA', 'right' => 'BBB']);
         $status->beforeRender();
 
         $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(12, 1))[0]);

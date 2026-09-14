@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Ide;
 use Porta\Settings\Section\GeneralSection;
 use Porta\Settings\Section\HighlightingSection;
 use Porta\Settings\Section\InterfaceSection;
@@ -21,7 +22,9 @@ use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\Settings\SettingsFormWidget;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Tui;
 
 /**
  * Locks what every settings page actually SAYS, with both config layers in
@@ -176,7 +179,7 @@ final class SettingsPagesGoldenTest extends TestCase
             $this->project,
             $this->project->path('A.php'),
             [
-                300 => function ($tui, $terminal, $ide) use (&$pages): void {
+                300 => function (Tui $tui, $terminal, Ide $ide) use (&$pages): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $nav = $this->settingsNav($tui);
                     $form = $this->settingsForm($tui);
@@ -199,7 +202,7 @@ final class SettingsPagesGoldenTest extends TestCase
     {
         $lines = [];
         foreach ($form->render(new RenderContext(110, 22)) as $line) {
-            $lines[] = \rtrim(\Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes($line));
+            $lines[] = \rtrim(AnsiUtils::stripAnsiCodes($line));
         }
 
         return $lines;

@@ -14,6 +14,7 @@ use Porta\Event\TerminalRevealRequested;
 use Porta\Event\TerminalSessionCloseRequested;
 use Porta\Terminal\PtyProcess;
 use Porta\Terminal\TerminalBuffer;
+use Porta\Terminal\TerminalSession;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestBottomDock;
@@ -29,6 +30,7 @@ use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockPanels;
 use Porta\Workbench\Dock\DockTab;
 use Porta\Workbench\Dock\DockToolHandlers;
+use Porta\Workbench\Dock\DockToolTab;
 use Porta\Workbench\Dock\DockToolTabs;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\EditorArea;
@@ -216,14 +218,14 @@ final class BottomDockTest extends TestCase
         $dock->showList(ResultsPanelMode::Notifications, 'Notifications', []);
 
         $this->strip->moveTab(DockTab::Results, 0, 1); // the wired widget callback lands in DockToolTabs::move
-        $this->assertSame(['Notifications', 'Problems'], \array_map(static fn ($tab) => $tab->title, $this->tools->all()));
+        $this->assertSame(['Notifications', 'Problems'], \array_map(static fn (DockToolTab $tab): string => $tab->title, $this->tools->all()));
         $this->assertSame('Notifications', $this->tools->active()?->title, 'the active pointer follows its tab');
 
         $this->strip->moveTab(DockTab::Terminal, 0, 1); // and the Terminal family lands in TerminalSessions::move
-        $this->assertSame(['shell:2', 'shell:1'], \array_map(static fn ($session) => $session->id, $this->sessions->all()));
+        $this->assertSame(['shell:2', 'shell:1'], \array_map(static fn (TerminalSession $session): string => $session->id, $this->sessions->all()));
 
         $this->strip->moveTab(DockTab::Debug, 0, 1); // a single fixed tab: nothing to reorder
-        $this->assertSame(['Notifications', 'Problems'], \array_map(static fn ($tab) => $tab->title, $this->tools->all()));
+        $this->assertSame(['Notifications', 'Problems'], \array_map(static fn (DockToolTab $tab): string => $tab->title, $this->tools->all()));
     }
 
     public function testReinvokingAToolReusesItsTabAndRefreshes(): void

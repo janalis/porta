@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget\Render;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\Document;
+use Porta\Highlight\CodeHighlighter;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\CursorVisibility;
@@ -177,7 +178,7 @@ final class EditorRendererTest extends TestCase
         for ($i = 0; $i < 12; ++$i) {
             $hints[] = ['col' => 3 + ($i * 7), 'text' => 'p:'];
         }
-        $highlighter = new \Porta\Highlight\CodeHighlighter();
+        $highlighter = new CodeHighlighter();
         $highlighter->setFile('a.php');
         $hlLine = $highlighter->highlight([\str_repeat('fn(x), ', times: 12)], 1)[0];
 
@@ -249,7 +250,7 @@ final class EditorRendererTest extends TestCase
         $doc = new Document($indent."x\n");
         $doc->setCursor(0, 0);
         $styles = $this->styles();
-        $highlighter = new \Porta\Highlight\CodeHighlighter();
+        $highlighter = new CodeHighlighter();
         $highlighter->setFile('a.md');
         $hlLine = $highlighter->highlight([$indent.'x'], 1)[0];
 
@@ -257,7 +258,7 @@ final class EditorRendererTest extends TestCase
 
         $this->assertLessThan(2_048, \strlen($guided), 'guide overlay must stay linear, never double per glyph');
         $this->assertSame(
-            \str_repeat(\Porta\Ui\Glyphs::INDENT_GUIDE.'   ', times: 8).'x',
+            \str_repeat(Glyphs::INDENT_GUIDE.'   ', times: 8).'x',
             AnsiUtils::stripAnsiCodes($guided),
             'one guide per indent level, visible text otherwise untouched',
         );

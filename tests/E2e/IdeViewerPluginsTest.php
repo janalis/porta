@@ -9,6 +9,7 @@ use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\EditorPanes;
+use Porta\Ide;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
@@ -17,6 +18,8 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UsesBundledPlugins;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The bundled viewer plugins' enable/disable round-trips: a disabled
@@ -48,7 +51,7 @@ final class IdeViewerPluginsTest extends TestCase
             $project,
             $project->path('g.dot'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $this->awaitPainted($tui, $terminal, 'digraph G');
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'a .dot file opens in the TEXT editor when the graph viewer is off');
 
@@ -80,7 +83,7 @@ final class IdeViewerPluginsTest extends TestCase
             $project,
             $project->path('a.dot'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout');
                     $buffers = Services::resolve($ide, BufferManager::class);
                     $aPath = (string) \realpath($project->path('a.dot'));
@@ -125,7 +128,7 @@ final class IdeViewerPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     $panes = Services::resolve($ide, EditorPanes::class);
                     $this->assertNull($panes->paneFor('image'), 'disabled at boot: no pane was built');
 
@@ -164,7 +167,7 @@ final class IdeViewerPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     $panes = Services::resolve($ide, EditorPanes::class);
                     $pane = $panes->paneFor('demo');
                     $this->assertNotNull($pane, 'the plugin\'s pane is registered under its id');
@@ -221,7 +224,7 @@ final class IdeViewerPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $service = Services::resolve($ide, BufferService::class);
 
                     // A RuntimeException is the pane's polite no: verbatim flash.

@@ -9,9 +9,11 @@ use Porta\Editor\Document;
 use Porta\Event\LspStatusChanged;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
+use Porta\Support\Outcome;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Presence;
+use Revolt\EventLoop;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class LspSessionPoolTest extends TestCase
@@ -22,12 +24,12 @@ final class LspSessionPoolTest extends TestCase
     private int $statusRepaints = 0;
 
     /** What every factory-built client's start() reports; steer to Failed for retry scenarios. */
-    private \Porta\Support\Outcome $clientOutcome = \Porta\Support\Outcome::Ok;
+    private Outcome $clientOutcome = Outcome::Ok;
 
     private function pool(array $servers, Presence $configure = Presence::With): LspSessionPool
     {
         $this->clients = [];
-        $this->clientOutcome = \Porta\Support\Outcome::Ok;
+        $this->clientOutcome = Outcome::Ok;
         $dispatcher = new EventDispatcher();
         $dispatcher->addListener(LspStatusChanged::class, function (): void {
             ++$this->statusRepaints;
@@ -149,7 +151,7 @@ final class LspSessionPoolTest extends TestCase
         // is evicted so a later didOpen relaunches — bounded, so a
         // crash-looping binary is not respawned on every buffer switch.
         $pool = $this->pool(self::SERVERS);
-        $this->clientOutcome = \Porta\Support\Outcome::Failed;
+        $this->clientOutcome = Outcome::Failed;
 
         $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
         $this->assertCount(1, $this->clients);
@@ -169,11 +171,11 @@ final class LspSessionPoolTest extends TestCase
     public function testASuccessResetsTheRetryBudgetAndAMidSessionDeathRelaunches(): void
     {
         $pool = $this->pool(self::SERVERS);
-        $this->clientOutcome = \Porta\Support\Outcome::Failed;
+        $this->clientOutcome = Outcome::Failed;
         $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1); // failure 1
         $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 2); // failure 2 — one attempt left
 
-        $this->clientOutcome = \Porta\Support\Outcome::Ok;
+        $this->clientOutcome = Outcome::Ok;
         $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 3);
         $this->assertCount(3, $this->clients);
         $this->assertSame('php-ls', $pool->statusFor('/tmp/proj/a.php'), 'recovered');
@@ -181,7 +183,7 @@ final class LspSessionPoolTest extends TestCase
         // Mid-session death: the same start callback fires a second time.
         $onReady = $this->clients[2]['client']->lastOnReady;
         $this->assertNotNull($onReady);
-        $onReady(\Porta\Support\Outcome::Failed);
+        $onReady(Outcome::Failed);
         $this->assertSame('failed', $pool->statusFor('/tmp/proj/a.php'));
 
         $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 4);
@@ -376,13 +378,13 @@ final class LspSessionPoolTest extends TestCase
         $pool = $this->pool(self::SERVERS);
         $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
         $doc = new Document('x');
-        $before = \count(\Revolt\EventLoop::getIdentifiers());
+        $before = \count(EventLoop::getIdentifiers());
         $pool->scheduleDidChange($doc, static fn (): string => '/tmp/proj/a.php', static function (): void {});
-        $this->assertGreaterThan($before, \count(\Revolt\EventLoop::getIdentifiers()), 'the debounce armed');
+        $this->assertGreaterThan($before, \count(EventLoop::getIdentifiers()), 'the debounce armed');
 
         $pool->flushPendingChange('/tmp/proj/a.php', $doc);
 
-        $this->assertSame($before, \count(\Revolt\EventLoop::getIdentifiers()), 'flushing cancelled the pending debounce');
+        $this->assertSame($before, \count(EventLoop::getIdentifiers()), 'flushing cancelled the pending debounce');
     }
 
     public function testWorkspaceLevelRequestsFallBackToTheCatchAllOverPhp(): void
@@ -419,7 +421,7 @@ final class LspSessionPoolTest extends TestCase
                 #[\Override]
                 public function start(callable $onReady): void
                 {
-                    $onReady(\Porta\Support\Outcome::Failed);
+                    $onReady(Outcome::Failed);
                 }
             },
         );

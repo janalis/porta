@@ -6,11 +6,12 @@ namespace Porta\Tests\Unit\Config\EditorConfig;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\EditorConfig\EditorConfigResolver;
+use Porta\Config\EditorConfig\ResolvedEditorConfig;
 use Porta\Tests\Support\TempProject;
 
 final class EditorConfigResolverTest extends TestCase
 {
-    private function resolve(TempProject $project, string $relative)
+    private function resolve(TempProject $project, string $relative): ResolvedEditorConfig
     {
         return new EditorConfigResolver()->resolve($project->path($relative));
     }

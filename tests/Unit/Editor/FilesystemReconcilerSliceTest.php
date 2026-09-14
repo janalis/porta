@@ -18,6 +18,9 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\Toasts;
 use Porta\Widget\FileTreeWidget;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The poll timer's amortized reconciliation path: bounded slices of buffers
@@ -170,7 +173,7 @@ final class FilesystemReconcilerSliceTest extends TestCase
     {
         $tree = Services::resolve($this->ide, FileTreeWidget::class);
         \assert($tree instanceof FileTreeWidget, description: 'the locator serves the file tree');
-        $tui = Services::resolve($this->ide, \Symfony\Component\Tui\Tui::class);
+        $tui = Services::resolve($this->ide, Tui::class);
         Probe::invoke($tui, 'processRender'); // settle: clear any pending request
 
         $this->project->write('new-entry.php', "<?php\n");
@@ -178,8 +181,8 @@ final class FilesystemReconcilerSliceTest extends TestCase
 
         $this->assertTrue((bool) Probe::get($tui, 'renderRequested'), 'the tree refresh asked for a repaint');
         $this->assertStringContainsString('new-entry.php', \implode("\n", \array_map(
-            \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(...),
-            $tree->render(new \Symfony\Component\Tui\Render\RenderContext(30, 20)),
+            AnsiUtils::stripAnsiCodes(...),
+            $tree->render(new RenderContext(30, 20)),
         )));
     }
 }

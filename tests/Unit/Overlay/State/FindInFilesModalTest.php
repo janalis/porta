@@ -6,11 +6,13 @@ namespace Porta\Tests\Unit\Overlay\State;
 
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
+use Porta\Overlay\Region\ModalBox;
 use Porta\Overlay\State\FindInFilesModal;
 use Porta\Overlay\State\FindModalCallbacks;
 use Porta\Tests\Support\ComposesFindModal;
 use Porta\Tests\Support\Probe;
 use Porta\Ui\CaretVisibility;
+use Porta\Ui\CursorStyle;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
@@ -383,11 +385,11 @@ final class FindInFilesModalTest extends TestCase
         }
         $modal->setPreview($many);
 
-        $box = function () use ($modal): \Porta\Overlay\Region\ModalBox {
+        $box = function () use ($modal): ModalBox {
             $this->compose($modal);
 
             $box = $modal->lastBox();
-            \assert($box instanceof \Porta\Overlay\Region\ModalBox, description: 'the overlay laid out a modal box');
+            \assert($box instanceof ModalBox, description: 'the overlay laid out a modal box');
 
             return $box;
         };
@@ -411,11 +413,11 @@ final class FindInFilesModalTest extends TestCase
         }
         $modal->setPreview($many); // 15 display rows (1 header + 14 matches), 10 visible
 
-        $box = function () use ($modal): \Porta\Overlay\Region\ModalBox {
+        $box = function () use ($modal): ModalBox {
             $this->compose($modal);
 
             $box = $modal->lastBox();
-            \assert($box instanceof \Porta\Overlay\Region\ModalBox, description: 'the overlay laid out a modal box');
+            \assert($box instanceof ModalBox, description: 'the overlay laid out a modal box');
 
             return $box;
         };
@@ -444,11 +446,11 @@ final class FindInFilesModalTest extends TestCase
         }
         $modal->setPreview($many); // selection on the first match (display index 1)
 
-        $box = function () use ($modal): \Porta\Overlay\Region\ModalBox {
+        $box = function () use ($modal): ModalBox {
             $this->compose($modal);
 
             $box = $modal->lastBox();
-            \assert($box instanceof \Porta\Overlay\Region\ModalBox, description: 'the overlay laid out a modal box');
+            \assert($box instanceof ModalBox, description: 'the overlay laid out a modal box');
 
             return $box;
         };
@@ -944,7 +946,7 @@ final class FindInFilesModalTest extends TestCase
 
     public function testCustomTranslatorIsUsedNotTheEnglishDefault(): void
     {
-        $modal = new FindInFilesModal(static fn () => null, translator: new Translator('fr'));
+        $modal = new FindInFilesModal(static fn (): null => null, translator: new Translator('fr'));
         $modal->open('Find in Files');
 
         $this->assertStringContainsString('Projet entier', $this->screen($modal), 'the injected translator (fr), not the English default, seeded the scope label');
@@ -1285,10 +1287,10 @@ final class FindInFilesModalTest extends TestCase
         }
         $modal->setPreview($many); // displayRows: [hdr, hit0..hit13]; selected starts at index 1 ("hit 0")
 
-        $box = function () use ($modal): \Porta\Overlay\Region\ModalBox {
+        $box = function () use ($modal): ModalBox {
             $this->compose($modal);
             $box = $modal->lastBox();
-            \assert($box instanceof \Porta\Overlay\Region\ModalBox, description: 'the overlay laid out a modal box');
+            \assert($box instanceof ModalBox, description: 'the overlay laid out a modal box');
 
             return $box;
         };
@@ -1496,7 +1498,7 @@ final class FindInFilesModalTest extends TestCase
         // showing here" — a relative same/different comparison between states
         // can't tell a genuine flip from the ternary's two branches simply
         // swapping which state shows it.
-        $marker = new \Porta\Ui\CursorStyle()->marker();
+        $marker = new CursorStyle()->marker();
 
         $modal = $this->modal();
         $modal->open('Find in Files');

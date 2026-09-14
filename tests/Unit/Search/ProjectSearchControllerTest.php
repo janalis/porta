@@ -7,14 +7,26 @@ namespace Porta\Tests\Unit\Search;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
+use Porta\Editor\DocumentReplacer;
+use Porta\History\SearchHistoryStore;
+use Porta\History\SearchPrefsStore;
+use Porta\History\SearchScopeStore;
+use Porta\I18n\Translator;
+use Porta\Lsp\LspSessionPool;
+use Porta\Search\LanguageFilter;
 use Porta\Search\ProjectSearch;
 use Porta\Search\ProjectSearchController;
 use Porta\Search\SearchOptions;
+use Porta\Search\SearchScopeResolver;
 use Porta\Search\SearchTabState;
+use Porta\Search\TokenClassifier;
+use Porta\Support\ProjectPaths;
+use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
+use Porta\Ui\CaretVisibility;
 use Porta\Ui\ScopeKind;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
@@ -26,6 +38,7 @@ use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockToolTab;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -56,29 +69,29 @@ final class ProjectSearchControllerTest extends TestCase
             $this->editor,
             $this->statusBar,
             $tui,
-            new \Porta\I18n\Translator('en'),
+            new Translator('en'),
             $buffers,
-            new \Porta\Support\ProjectPaths($rootDir),
-            new \Porta\Editor\DocumentReplacer($buffers, $this->editor, new \Porta\Lsp\LspSessionPool($rootDir, new \Porta\Tests\Support\FixedActiveFile(), new \Porta\I18n\Translator('en'))),
-            new \Porta\History\SearchHistoryStore($rootDir),
-            new \Porta\History\SearchPrefsStore($rootDir),
-            new \Porta\Search\SearchScopeResolver($buffers, $this->editor, new \Porta\Support\ProjectPaths($rootDir)),
-            new \Porta\Search\LanguageFilter(new \Porta\Search\TokenClassifier(), $projectSearch, new \Porta\Support\ProjectPaths($rootDir)),
-            new \Porta\History\SearchScopeStore($rootDir),
+            new ProjectPaths($rootDir),
+            new DocumentReplacer($buffers, $this->editor, new LspSessionPool($rootDir, new FixedActiveFile(), new Translator('en'))),
+            new SearchHistoryStore($rootDir),
+            new SearchPrefsStore($rootDir),
+            new SearchScopeResolver($buffers, $this->editor, new ProjectPaths($rootDir)),
+            new LanguageFilter(new TokenClassifier(), $projectSearch, new ProjectPaths($rootDir)),
+            new SearchScopeStore($rootDir),
         );
     }
 
     /** The modal's own panel text — it floats over the workspace now, not inside the editor's lines. */
     private function modal(): string
     {
-        $placed = $this->editor->findModal()->layout([0, 0, 40, 100], \Porta\Ui\CaretVisibility::Shown);
+        $placed = $this->editor->findModal()->layout([0, 0, 40, 100], CaretVisibility::Shown);
 
         return null === $placed ? '' : AnsiUtils::stripAnsiCodes(\implode("\n", $placed['rows']));
     }
 
     private function panelText(): string
     {
-        return AnsiUtils::stripAnsiCodes(\implode("\n", $this->panel->render(new \Symfony\Component\Tui\Render\RenderContext(100, 14))));
+        return AnsiUtils::stripAnsiCodes(\implode("\n", $this->panel->render(new RenderContext(100, 14))));
     }
 
     private function awaitModalShows(string $needle, float $timeout = 3.0): void
@@ -93,7 +106,7 @@ final class ProjectSearchControllerTest extends TestCase
 
     private function flashed(): string
     {
-        return AnsiUtils::stripAnsiCodes(\implode('', $this->statusBar->render(new \Symfony\Component\Tui\Render\RenderContext(100, 1))));
+        return AnsiUtils::stripAnsiCodes(\implode('', $this->statusBar->render(new RenderContext(100, 1))));
     }
 
     public function testOpenShowsTheFindModal(): void
@@ -224,7 +237,7 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->search('needle');
         $controller->cancel(); // panel closed → history recorded
 
-        $this->assertSame(['needle'], new \Porta\History\SearchHistoryStore($project->dir)->all());
+        $this->assertSame(['needle'], new SearchHistoryStore($project->dir)->all());
     }
 
     /**
@@ -310,7 +323,7 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->setMask('*.php');
         $this->await(fn (): bool => !\str_contains($this->modal(), '.js'), what: 'the mask-filtered re-run to land');
         $this->assertStringContainsString('A.php', $this->modal());
-        $this->assertSame('*.php', new \Porta\History\SearchPrefsStore($project->dir)->lastMask(), 'the mask is persisted for next time');
+        $this->assertSame('*.php', new SearchPrefsStore($project->dir)->lastMask(), 'the mask is persisted for next time');
     }
 
     public function testSetScopeIndexResolvesAndReRuns(): void
@@ -695,8 +708,8 @@ final class ProjectSearchControllerTest extends TestCase
 
         $controller->closeSearch(new SearchTabState('kept-query', new SearchOptions(), ['.'], '*.tpl', ScopeKind::Project));
 
-        $this->assertContains('kept-query', new \Porta\History\SearchHistoryStore($project->dir)->all(), '×ing a search tab records its query');
-        $this->assertContains('*.tpl', Probe::get(new \Porta\History\SearchPrefsStore($project->dir), 'recentMasks'), 'and its mask');
+        $this->assertContains('kept-query', new SearchHistoryStore($project->dir)->all(), '×ing a search tab records its query');
+        $this->assertContains('*.tpl', Probe::get(new SearchPrefsStore($project->dir), 'recentMasks'), 'and its mask');
     }
 
     /**
@@ -712,7 +725,7 @@ final class ProjectSearchControllerTest extends TestCase
     public function testASavedScopeIsRestoredOnReopen(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n\$needle = 1;\n"]);
-        new \Porta\History\SearchScopeStore($project->dir)->addPinned('src', ['src']);
+        new SearchScopeStore($project->dir)->addPinned('src', ['src']);
         $controller = $this->controller($project->dir);
 
         $controller->open();
@@ -741,7 +754,7 @@ final class ProjectSearchControllerTest extends TestCase
     public function testChoosingABuiltInAfterASavedScopeForgetsIt(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n"]);
-        new \Porta\History\SearchScopeStore($project->dir)->addPinned('src', ['src']);
+        new SearchScopeStore($project->dir)->addPinned('src', ['src']);
         $controller = $this->controller($project->dir);
         $controller->open();
         $controller->setScopeIndex(\count(Probe::getStatic(ProjectSearchController::class, 'BUILT_INS')));
@@ -761,13 +774,13 @@ final class ProjectSearchControllerTest extends TestCase
     public function testAVanishedSavedScopeFallsBackToTheBuiltInKind(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n"]);
-        new \Porta\History\SearchScopeStore($project->dir)->addPinned('src', ['src']);
+        new SearchScopeStore($project->dir)->addPinned('src', ['src']);
         $controller = $this->controller($project->dir);
         $controller->open();
         $controller->setScopeIndex(\count(Probe::getStatic(ProjectSearchController::class, 'BUILT_INS')));
 
         // The scope is removed from the store between sessions.
-        new \Porta\History\SearchScopeStore($project->dir)->forget('src');
+        new SearchScopeStore($project->dir)->forget('src');
         $reopened = $this->controller($project->dir);
         $reopened->open();
 

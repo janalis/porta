@@ -6,8 +6,10 @@ namespace Porta\Tests\Unit\Search;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
+use Porta\Editor\Document;
 use Porta\Editor\DocumentReplacer;
 use Porta\Editor\EditorPanes;
+use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
 use Porta\Event\ResultRowActivated;
 use Porta\Event\ResultsExportRequested;
@@ -95,7 +97,7 @@ final class SearchUiWiringTest extends TestCase
 
         $this->opened = [];
         $editor = $this->editor;
-        $opener = new class($this->opened, $editor) implements \Porta\Editor\FileOpener {
+        $opener = new class($this->opened, $editor) implements FileOpener {
             /** @param list<string> $opened */
             public function __construct(
                 private array &$opened,
@@ -105,7 +107,7 @@ final class SearchUiWiringTest extends TestCase
             public function openFile(string $path, OpenFocus $focus = OpenFocus::Keep): void
             {
                 $this->opened[] = $path;
-                $this->editor->showDocument($path, new \Porta\Editor\Document((string) \file_get_contents($path)));
+                $this->editor->showDocument($path, new Document((string) \file_get_contents($path)));
             }
         };
 
@@ -163,7 +165,7 @@ final class SearchUiWiringTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n"]);
         $wiring = $this->wiring($project->dir);
         $tools = Probe::get($this->dock, 'tools');
-        $tab = $tools->openOrReuse(\Porta\Workbench\Dock\ResultsPanelMode::LspLog, 'LSP Log', \Porta\Widget\Support\ResultsPanelFields::resultsOnly());
+        $tab = $tools->openOrReuse(ResultsPanelMode::LspLog, 'LSP Log', ResultsPanelFields::resultsOnly());
         $this->dock->show($tab);
 
         $wiring->onRowActivated(new ResultRowActivated('a.php', 0));

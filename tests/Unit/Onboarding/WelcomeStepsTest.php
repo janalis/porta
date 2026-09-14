@@ -7,12 +7,15 @@ namespace Porta\Tests\Unit\Onboarding;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\RecommendedPlugins;
+use Porta\Highlight\HighlightRequest;
+use Porta\Highlight\HighlightSink;
 use Porta\Highlight\NoHighlightPlugins;
 use Porta\Highlight\SyntaxHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\I18n\Translator;
 use Porta\Onboarding\MagoDetector;
 use Porta\Onboarding\SymfonyDetector;
+use Porta\Onboarding\WelcomeStep;
 use Porta\Onboarding\WelcomeSteps;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\TempProject;
@@ -91,7 +94,7 @@ final class WelcomeStepsTest extends TestCase
                             return true;
                         }
 
-                        public function highlight(\Porta\Highlight\HighlightRequest $request, \Porta\Highlight\HighlightSink $sink): void
+                        public function highlight(HighlightRequest $request, HighlightSink $sink): void
                         {
                             $sink->deliver($request->documentId, $request->version, $request->text);
                         }
@@ -103,7 +106,7 @@ final class WelcomeStepsTest extends TestCase
 
     public function testOffersTheSetupStepsInOrder(): void
     {
-        $titles = \array_map(static fn ($step): string => $step->title, $this->steps()->all());
+        $titles = \array_map(static fn (WelcomeStep $step): string => $step->title, $this->steps()->all());
 
         $this->assertSame(['Syntax highlighting', 'PHP language server', 'Code style fixer', 'Static analysis', 'Read the guide'], $titles);
     }
@@ -113,7 +116,7 @@ final class WelcomeStepsTest extends TestCase
         $this->withSymfony();
 
         $steps = $this->steps()->all();
-        $titles = \array_map(static fn ($step): string => $step->title, $steps);
+        $titles = \array_map(static fn (WelcomeStep $step): string => $step->title, $steps);
 
         $this->assertSame(['Syntax highlighting', 'PHP language server', 'Symfony language tools', 'Code style fixer', 'Static analysis', 'Read the guide'], $titles);
         $this->assertSame('Enable symfony-lsp', $steps[2]->actionLabel);
@@ -272,7 +275,7 @@ final class WelcomeStepsTest extends TestCase
     public function testTheStepTitlesAreTheSameWithMago(): void
     {
         $this->withMago();
-        $titles = \array_map(static fn ($step): string => $step->title, $this->steps()->all());
+        $titles = \array_map(static fn (WelcomeStep $step): string => $step->title, $this->steps()->all());
 
         $this->assertSame(['Syntax highlighting', 'PHP language server', 'Code style fixer', 'Static analysis', 'Read the guide'], $titles);
     }

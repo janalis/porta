@@ -256,13 +256,13 @@ final class BufferManager
     public function recent(): array
     {
         $buffers = \array_values($this->buffers);
-        \usort($buffers, static fn (Buffer $a, Buffer $b) => $b->lastFocused <=> $a->lastFocused);
+        \usort($buffers, static fn (Buffer $a, Buffer $b): int => $b->lastFocused <=> $a->lastFocused);
 
         return $buffers;
     }
 
     public function dirtyCount(): int
     {
-        return \count(\array_filter($this->buffers, static fn (Buffer $b) => $b->document->isDirty()));
+        return \count(\array_filter($this->buffers, static fn (Buffer $b): bool => $b->document->isDirty()));
     }
 }

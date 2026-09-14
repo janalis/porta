@@ -236,7 +236,7 @@ final class EditorRenderer
         foreach ($lineHints as $i => $hint) {
             $placed[] = [$doc->displayColAt($line, $hint['col']), -$i, $styles->of(Role::Inlay)->apply($hint['text'])];
         }
-        \usort($placed, static fn (array $a, array $b) => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
+        \usort($placed, static fn (array $a, array $b): int => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
 
         $lineWidth = AnsiUtils::visibleWidth($hlLine);
         $out = '';

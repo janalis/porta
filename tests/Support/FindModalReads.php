@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Support;
 
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -36,7 +37,7 @@ trait FindModalReads
         // frame so a mutation made this step is on the pane before reading.
         $this->frame($tui);
 
-        return AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 40))));
+        return AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('editor')->render(new RenderContext(160, 40))));
     }
 
     /** The editor pane's raw (styled) rendered rows (after a frame — see modalText). */
@@ -44,7 +45,7 @@ trait FindModalReads
     {
         $this->frame($tui);
 
-        return $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 40));
+        return $tui->getById('editor')->render(new RenderContext(160, 40));
     }
 
     /**

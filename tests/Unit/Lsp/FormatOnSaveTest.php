@@ -24,6 +24,7 @@ use Porta\Workbench\Notifier;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Tui;
 
 final class FormatOnSaveTest extends TestCase
 {
@@ -31,7 +32,7 @@ final class FormatOnSaveTest extends TestCase
     private FakeScheduler $scheduler;
     private LspSessionPool $pool;
     private CodeEditorWidget $editor;
-    private \Symfony\Component\Tui\Tui $tui;
+    private Tui $tui;
     private int $saves = 0;
     private StatusBarWidget $status;
     private int $invalidations = 0;
@@ -192,7 +193,7 @@ final class FormatOnSaveTest extends TestCase
         $this->scheduler->fire(); // the 2 s guard
 
         $this->assertSame(1, $this->saves, 'the save proceeded unformatted');
-        $flash = \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(\implode(' ', $this->status->render(new \Symfony\Component\Tui\Render\RenderContext(100, 1))));
+        $flash = AnsiUtils::stripAnsiCodes(\implode(' ', $this->status->render(new RenderContext(100, 1))));
         $this->assertStringContainsString('Formatting timed out — saved unformatted', $flash, 'the skipped format is visible');
 
         $this->respond([[

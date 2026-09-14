@@ -85,7 +85,7 @@ final class CommandRegistryTest extends TestCase
     public function testRunOnAnUnknownIdIsANoOp(): void
     {
         $registry = new CommandRegistry();
-        $registry->add('save', static function (): void {
+        $registry->add('save', static function (): never {
             self::fail('unreachable');
         });
 

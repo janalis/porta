@@ -229,7 +229,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
                     return;
                 }
                 /** @var list<array<string, mixed>> $actions */
-                $actions = \array_values(\array_filter($result, static fn ($a) => \is_array($a) && '' !== (string) ($a['title'] ?? '')));
+                $actions = \array_values(\array_filter($result, static fn ($a): bool => \is_array($a) && '' !== (string) ($a['title'] ?? '')));
                 if ([] === $actions) {
                     $this->flash($this->trans($empty));
 
@@ -328,7 +328,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
     private function pick(string $title, array $actions): void
     {
         $items = \array_map(
-            static fn (array $a, int $i) => [
+            static fn (array $a, int $i): array => [
                 'label' => (string) $a['title'],
                 'hint' => self::kindLabel((string) ($a['kind'] ?? '')),
                 'value' => (string) $i,

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\FindModalReads;
 use Porta\Tests\Support\PreservesPath;
@@ -13,7 +14,9 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\Support\ResultsPanelFields;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -36,7 +39,7 @@ final class IdeFindUiTest extends TestCase
             $project,
             $project->path('src/A.php'), // a file is open → the editor is focused and draws its own caret
             [
-                200 => function ($tui): void {
+                200 => function (Tui $tui): void {
                     // While editing, the editor owns the single caret.
                     $this->assertSame(1, $this->caretMarkerCount($this->editorRows($tui)), 'the editor caret shows while editing');
 
@@ -72,7 +75,7 @@ final class IdeFindUiTest extends TestCase
             $project,
             null, // no file open → the tree is focused, the editor pane is not
             [
-                200 => function ($tui): void {
+                200 => function (Tui $tui): void {
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
                     $tui->tick();
                     $rows = $this->editorRows($tui);
@@ -105,7 +108,7 @@ final class IdeFindUiTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                700 => function ($tui): void {
+                700 => function (Tui $tui): void {
                     // The grep is a subprocess: await the matches landing
                     // instead of a fixed gap.
                     $this->await(fn (): bool => \str_contains($this->modalText($tui), 'tok 0'), what: 'the matches to land');
@@ -132,7 +135,7 @@ final class IdeFindUiTest extends TestCase
             $files["src/File{$i}.php"] = "<?php\n// tok\n";
         }
         $project = new TempProject($files);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 16))));
 
         $this->runIde(
             $project,
@@ -144,14 +147,14 @@ final class IdeFindUiTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                700 => function ($tui) use ($panelText): void {
+                700 => function (Tui $tui) use ($panelText): void {
                     $this->promote($tui); // Alt+Enter → results tool window
                     // The grep is a subprocess: await the matches landing
                     // instead of a fixed gap.
                     $this->await(static fn (): bool => \str_contains($panelText($tui), 'File0.php'), what: 'the matches to land');
                     $this->assertStringContainsString('File0.php', $panelText($tui), 'the first files show initially');
                 },
-                900 => function ($tui, $terminal, $ide) use ($panelText): void {
+                900 => function ($tui, $terminal, Ide $ide) use ($panelText): void {
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('results'));
                     $this->assertNotNull($rect, 'the results pane has a rect');
@@ -174,7 +177,7 @@ final class IdeFindUiTest extends TestCase
             'src/A.php' => "<?php\n// tok here\n",
             'other/B.php' => "<?php\n// tok here\n",
         ]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 16))));
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 16))));
 
         $this->runIde(
             $project,
@@ -186,7 +189,7 @@ final class IdeFindUiTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => function ($tui) use ($panelText): void {
+                600 => function (Tui $tui) use ($panelText): void {
                     // Await in the MODAL — the results pane holds nothing until
                     // promote() moves the rows onto it.
                     $this->await(fn (): bool => \str_contains($this->modalText($tui), 'other/B.php'), what: 'both search hits to land');
@@ -218,7 +221,7 @@ final class IdeFindUiTest extends TestCase
     private function findBarRow(Tui $tui): string
     {
         return AnsiUtils::stripAnsiCodes(
-            \implode('', $tui->getById('find-bar')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))),
+            \implode('', $tui->getById('find-bar')->render(new RenderContext(120, 1))),
         );
     }
 
@@ -234,7 +237,7 @@ final class IdeFindUiTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $tui->getById('editor')->getDocument()->setCursor(1, 3); // inside $total
                     $tui->handleInput("\x06"); // ctrl+f
 
@@ -254,7 +257,7 @@ final class IdeFindUiTest extends TestCase
                     );
                     $tui->handleInput("\x1b"); // esc
                 },
-                320 => function ($tui): void {
+                320 => function (Tui $tui): void {
                     // A DIFFERENT word replaces the last query rather than
                     // appending to it or being ignored.
                     //
@@ -269,7 +272,7 @@ final class IdeFindUiTest extends TestCase
 
                     $this->assertStringContainsString('Find: echo', $this->findBarRow($tui));
                 },
-                420 => function ($tui): void {
+                420 => function (Tui $tui): void {
                     // A caret standing in NO word contributes nothing, so the
                     // field keeps the query it had — reopening the bar has
                     // always remembered one, and prefilling must not take that
@@ -307,7 +310,7 @@ final class IdeFindUiTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $tui->handleInput("\x06"); // ctrl+f
                     foreach (\str_split('foo') as $ch) {
                         $tui->handleInput($ch);
@@ -320,7 +323,7 @@ final class IdeFindUiTest extends TestCase
                     $rect = $renderer->getWidgetRect($tui->getById('find-bar'));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $rect->columns - 2, $rect->row + 1));
                 },
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // The re-run count is what the toggle produces; awaiting it
                     // is awaiting the effect, not a gap after the click.
                     $this->awaitPainted($tui, $terminal, '[1/2]');
@@ -351,12 +354,12 @@ final class IdeFindUiTest extends TestCase
                         $tui->handleInput($ch); // a regex; as a literal it matches nothing
                     }
                 },
-                750 => function ($tui, $terminal): void {
+                750 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, '0 results');
                     $this->assertStringContainsString('0 results', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\x1br"); // alt+r -> enable regex, re-runs the search
                 },
-                1150 => function ($tui, $terminal): void {
+                1150 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // Enabling regex re-runs the grep subprocess: await the
                     // widened result instead of a fixed gap.
                     $this->awaitPainted($tui, $terminal, '2 results');
@@ -385,7 +388,7 @@ final class IdeFindUiTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                700 => function ($tui): void {
+                700 => function (Tui $tui): void {
                     // The grep is a subprocess: await its match landing in the
                     // MODAL before acting on it, instead of a fixed gap. (The
                     // query field itself already echoes "foo", so await the
@@ -431,7 +434,7 @@ final class IdeFindUiTest extends TestCase
                     }
                     $tui->handleInput("\x1ba"); // alt+a -> replace all
                 },
-                1000 => function ($tui, $terminal): void {
+                1000 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'Replaced in 1 file');
                     $this->assertStringContainsString('Replaced in 1 file', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
@@ -452,7 +455,7 @@ final class IdeFindUiTest extends TestCase
                     $tui->handleInput("\t"); // query → replace
                     $tui->handleInput("\x1ba"); // replace all with no query/results
                 },
-                500 => function ($tui, $terminal): void {
+                500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'Nothing to replace');
                     $this->assertStringContainsString('Nothing to replace', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
@@ -512,7 +515,7 @@ final class IdeFindUiTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => static function ($tui, $terminal, $ide): void {
+                200 => static function ($tui, $terminal, Ide $ide): void {
                     $results = $tui->getById('results');
                     $results->open('Usages', ResultsPanelFields::resultsOnly());
                     $results->setResults([

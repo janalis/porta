@@ -11,6 +11,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UsesBundledPlugins;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Tui;
 
 /**
  * A key the catalog binds, that nothing answers to.
@@ -47,7 +48,7 @@ final class IdeUnimplementedVerbTest extends TestCase
                     $tui->tick();
                     $tui->handleInput(self::ALT_8);
                 },
-                340 => function ($tui, $terminal) use ($assert): void {
+                340 => function (Tui $tui, $terminal) use ($assert): void {
                     $this->frame($tui);
                     $assert(AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },

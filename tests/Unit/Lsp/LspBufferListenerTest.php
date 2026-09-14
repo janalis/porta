@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Lsp;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
+use Porta\Editor\Document;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
 use Porta\I18n\Translator;
@@ -78,7 +79,7 @@ final class LspBufferListenerTest extends TestCase
     public function testNonViewerSwitchRequestsInlayHints(): void
     {
         [$listener, $pool] = $this->listener();
-        $this->editor->showDocument('/p/a.php', new \Porta\Editor\Document("<?php\n\$x = 1;\n"));
+        $this->editor->showDocument('/p/a.php', new Document("<?php\n\$x = 1;\n"));
         $this->activeFile->set('/p/a.php');
         $pool->notifyDidOpen('/p/a.php', "<?php\n\$x = 1;\n", 'php', 1);
         $buffers = new BufferManager();
@@ -92,7 +93,7 @@ final class LspBufferListenerTest extends TestCase
     public function testViewerSwitchSkipsInlayHints(): void
     {
         [$listener, $pool] = $this->listener();
-        $this->editor->showDocument('/p/a.php', new \Porta\Editor\Document("<?php\n"));
+        $this->editor->showDocument('/p/a.php', new Document("<?php\n"));
         $this->activeFile->set('/p/a.php');
         $pool->notifyDidOpen('/p/a.php', "<?php\n", 'php', 1);
 

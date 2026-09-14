@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Plugin\Runtime;
 
+use Acme\Tools\Greeting;
+use Acme\Vendored\Greeter;
 use PHPUnit\Framework\TestCase;
 use Porta\Plugin\Runtime\PluginAutoloader;
 use Porta\Plugin\Runtime\PluginManifest;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
+use Symfony\Component\Clock\NativeClock;
+use Vend\Lib\Helper;
+use Vend\Mapped\Thing;
 
 /** Classes shipped by a plugin, from a directory composer knows nothing about. */
 final class PluginAutoloaderTest extends TestCase
@@ -69,7 +74,7 @@ final class PluginAutoloaderTest extends TestCase
 
         $this->assertArrayHasKey('Acme\\Tools\\', self::registered());
         $this->assertTrue(\class_exists('Acme\\Tools\\Greeting'), 'loaded from the plugin, not from composer');
-        $this->assertSame('hello from acme-tools', \Acme\Tools\Greeting::text());
+        $this->assertSame('hello from acme-tools', Greeting::text());
     }
 
     public function testAPluginWithoutANamespaceRegistersNothing(): void
@@ -98,9 +103,9 @@ final class PluginAutoloaderTest extends TestCase
         PluginAutoloader::register(PluginManifest::beside(self::vendored()));
 
         $this->assertArrayHasKey('Vend\\Lib\\', self::registered(), 'the PSR-4 map was adopted');
-        $this->assertSame('psr4-ok', \Vend\Lib\Helper::text());
-        $this->assertSame('classmap-ok', \Vend\Mapped\Thing::text(), 'and the classmap half too');
-        $this->assertSame('acme psr4-ok classmap-ok', \Acme\Vendored\Greeter::greet(), "the plugin's own class reaches both");
+        $this->assertSame('psr4-ok', Helper::text());
+        $this->assertSame('classmap-ok', Thing::text(), 'and the classmap half too');
+        $this->assertSame('acme psr4-ok classmap-ok', Greeter::greet(), "the plugin's own class reaches both");
     }
 
     public function testPortasCopyOfAPackageWinsOverAPluginsVendoredOne(): void
@@ -111,8 +116,8 @@ final class PluginAutoloaderTest extends TestCase
         // answers before we are asked.
         PluginAutoloader::register(PluginManifest::beside(self::vendored()));
 
-        $this->assertTrue(\class_exists(\Symfony\Component\Clock\NativeClock::class));
-        $reflection = new \ReflectionClass(\Symfony\Component\Clock\NativeClock::class);
+        $this->assertTrue(\class_exists(NativeClock::class));
+        $reflection = new \ReflectionClass(NativeClock::class);
         $this->assertStringContainsString('/vendor/symfony/clock/', (string) $reflection->getFileName(), "Porta's copy, not the plugin's");
     }
 

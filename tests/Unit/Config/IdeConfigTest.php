@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Config;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ConfigFiles;
 use Porta\Config\ConfigScope;
@@ -746,7 +747,7 @@ final class IdeConfigTest extends TestCase
         // The three ids must reach three DISTINCT shapes (a dropped or repeated
         // id collapses the count), and anything else falls back to Bar.
         $shapes = \array_map(CursorStyle::shapeFromSetting(...), IdeConfig::CHOICE_SETTINGS['cursorShape']);
-        $this->assertCount(3, \array_unique(\array_map(static fn ($s): int => $s->value, $shapes)));
+        $this->assertCount(3, \array_unique(\array_map(static fn (CursorShape $s): int => $s->value, $shapes)));
         $this->assertSame(CursorShape::Bar, CursorStyle::shapeFromSetting('anything-else'));
     }
 
@@ -943,7 +944,7 @@ final class IdeConfigTest extends TestCase
         yield 'trailing non-digit' => ['2x', null];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('indentSizeStringProvider')]
+    #[DataProvider('indentSizeStringProvider')]
     public function testIndentSizeFromAStringValue(string $raw, ?int $expected): void
     {
         $project = new TempProject(['.porta.json' => \json_encode([

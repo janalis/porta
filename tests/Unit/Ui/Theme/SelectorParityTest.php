@@ -47,7 +47,7 @@ final class SelectorParityTest extends TestCase
         $this->assertSame('.role-add-emphasis-bg', Role::AddEmphasisBg->selector());
         $this->assertSame('.role-diag-error-underline', Role::DiagErrorUnderline->selector());
 
-        $selectors = \array_map(static fn (Role $role) => $role->selector(), Role::cases());
+        $selectors = \array_map(static fn (Role $role): string => $role->selector(), Role::cases());
         $this->assertSame($selectors, \array_unique($selectors), 'no two roles may share a selector');
     }
 }

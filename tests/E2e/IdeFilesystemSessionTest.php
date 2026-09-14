@@ -54,7 +54,7 @@ final class IdeFilesystemSessionTest extends TestCase
         $tui = Services::resolve($ide, Tui::class);
 
         EventLoop::delay(0.2, static fn () => $tui->handleInput("\x11")); // Ctrl+Q
-        $watchdog = EventLoop::delay(3.0, static function () use ($tui): void {
+        $watchdog = EventLoop::delay(3.0, static function () use ($tui): never {
             $tui->stop();
             throw new \RuntimeException('quit did not stop the app');
         });
@@ -107,7 +107,7 @@ final class IdeFilesystemSessionTest extends TestCase
             $project,
             $project->path('ok.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     // A file at exactly the cap still opens (boundary is >, not
                     // >=) — checked directly, independent of the tree's
                     // click-navigation flow below.
@@ -181,7 +181,7 @@ final class IdeFilesystemSessionTest extends TestCase
                     $tui->handleInput('E'); // dirty the single open buffer
                     $tui->handleInput("\x11"); // ctrl+q -> first press warns
                 },
-                400 => function ($tui, $terminal): void {
+                400 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, '1 file has edits');
                     $this->assertStringContainsString('1 file has edits', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
@@ -210,7 +210,7 @@ final class IdeFilesystemSessionTest extends TestCase
             $tui->getById('editor')->getDocument()->setCursor(0, 2);
             $tui->handleInput("\x11"); // ctrl+q (clean buffers -> quits)
         });
-        $watchdog = EventLoop::delay(3.0, static function () use ($tui): void {
+        $watchdog = EventLoop::delay(3.0, static function () use ($tui): never {
             $tui->stop();
             throw new \RuntimeException('did not quit');
         });
@@ -381,7 +381,7 @@ final class IdeFilesystemSessionTest extends TestCase
         EventLoop::delay(0.2, static function (): void {
             \exec('kill -s TERM '.\getmypid());
         });
-        $watchdog = EventLoop::delay(5.0, static function () use ($tui): void {
+        $watchdog = EventLoop::delay(5.0, static function () use ($tui): never {
             $tui->stop();
             throw new \RuntimeException('SIGTERM did not stop the app');
         });
@@ -561,7 +561,7 @@ final class IdeFilesystemSessionTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, $ide) use ($project): void {
                     $tui->tick();
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertNull($this->rowOf($grid, 'fresh.php'), 'not there yet');
@@ -569,7 +569,7 @@ final class IdeFilesystemSessionTest extends TestCase
                     $ide->pollFilesystem();
                     $tui->tick();
                 },
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertNotNull($this->rowOf($grid, 'fresh.php'), 'poll refreshed the tree');
                 },

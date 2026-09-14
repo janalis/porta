@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use Porta\Tests\Support\LoopErrors;
+use Revolt\EventLoop;
+
 require __DIR__.'/../vendor/autoload.php';
 
 require __DIR__.'/plugin-autoload.php';
@@ -61,4 +64,4 @@ if (false === getenv('PORTA_CONTAINER_CACHE') && '1' === ini_get('pcov.enabled')
 // production handler (toast + error.log, loop survives) only when none is
 // present — and under test this one is, so a throwing await() stays a
 // failure instead of becoming a toast over a hung worker.
-Revolt\EventLoop::setErrorHandler(Porta\Tests\Support\LoopErrors::rethrow());
+EventLoop::setErrorHandler(LoopErrors::rethrow());

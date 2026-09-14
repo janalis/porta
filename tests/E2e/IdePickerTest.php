@@ -10,6 +10,8 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\TempProject;
+use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The centered pickers, read off the composed screen.
@@ -52,11 +54,11 @@ final class IdePickerTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                400 => function ($tui): void {
+                400 => function (Tui $tui): void {
                     // The eleventh row is the one the shared cap made
                     // unreachable without activating a grow row first.
                     $this->await(
-                        static fn (): bool => \str_contains(\implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 30))), 'Thing11.php'),
+                        static fn (): bool => \str_contains(\implode("\n", $tui->getById('editor')->render(new RenderContext(120, 30))), 'Thing11.php'),
                         what: 'the picker to fill its box',
                     );
 

@@ -73,7 +73,7 @@ final class FileIndex
                 $scored[] = [$score, $entry['path']];
             }
         }
-        \usort($scored, static fn (array $a, array $b) => $b[0] <=> $a[0] ? $b[0] <=> $a[0] : \strlen($a[1]) <=> \strlen($b[1]));
+        \usort($scored, static fn (array $a, array $b): int => $b[0] <=> $a[0] ? $b[0] <=> $a[0] : \strlen($a[1]) <=> \strlen($b[1]));
 
         return \array_map(static fn (array $row): string => $row[1], \array_slice($scored, offset: 0, length: $limit));
     }

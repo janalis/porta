@@ -6,6 +6,8 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Config\IdeConfig;
+use Porta\Ide;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\FakeComposer;
@@ -18,6 +20,8 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * Plugins bundled with Porta (the embedded source, PORTA_EMBEDDED_PLUGINS):
@@ -78,7 +82,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal, $ide) use ($embedded): void {
+                100 => function ($tui, $terminal, Ide $ide) use ($embedded): void {
                     $this->frame($tui);
                     $titles = \array_column($this->menus($tui), 'title');
                     // No Git: this project is not a repository, and git's group
@@ -104,7 +108,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $this->frame($tui);
                     $this->assertDirectoryExists($embedded->path('bundled'), 'nothing was removed');
                 },
-                150 => function ($tui, $terminal, $ide) use ($project): void {
+                150 => function ($tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     // The plugin's settings page: set the binary → the menu entry enables.
                     $tui->handleInput("\t"); // form → nav (on Plugins)
                     $tui->handleInput("\x1b[B"); // → the bundled sub-item
@@ -131,7 +135,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $this->awaitPainted($tui, $terminal, 'bundled ran /opt/tool');
                     $this->assertStringContainsString('bundled ran /opt/tool', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     // Back to the plugin's page to disable it live: menu + palette
                     // die and the choice persists.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
@@ -202,7 +206,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal, $ide): void {
+                100 => function (Tui $tui, $terminal, Ide $ide): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $labels = \array_column($commands->paletteCommands(), 'label');
                     $this->assertContains('Project Run', $labels, 'the project copy shadows the embedded one');
@@ -230,7 +234,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $this->assertStringContainsString('Plugin "shadowfail" failed to load', $screen);
                     $this->assertNotContains('Shadow OK', \array_column($commands->paletteCommands(), 'label'));
                 },
-                150 => function ($tui, $terminal): void {
+                150 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // Enabling a disabled plugin whose file is broken flashes too.
                     $tui->handleInput("\t"); // form → nav (on Plugins)
                     $tui->handleInput("\x1b[B"); // bundled
@@ -262,7 +266,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal, $ide): void {
+                100 => function ($tui, $terminal, Ide $ide): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $this->assertNotContains('Bundled Run', \array_column($commands->paletteCommands(), 'label'), 'skipped at boot');
                     $this->assertNotContains('Plugins', \array_column($this->menus($tui), 'title'));
@@ -299,7 +303,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal, $ide): void {
+                100 => function ($tui, $terminal, Ide $ide): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $this->assertContains('Acme: Greet', \array_column($commands->paletteCommands(), 'label'), 'the plugin loaded');
 
@@ -330,7 +334,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal, $ide): void {
+                100 => function ($tui, $terminal, Ide $ide): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $this->assertContains('Acme: Greet', \array_column($commands->paletteCommands(), 'label'), 'the plugin loaded');
                     $commands->run('acme-vendored:greet');
@@ -397,7 +401,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal, $ide): void {
+                100 => function ($tui, $terminal, Ide $ide): void {
                     $labels = \array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label');
                     $this->assertContains('Zbase Run', $labels);
                     $this->assertContains('App Run', $labels);
@@ -434,7 +438,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal, $ide): void {
+                100 => function ($tui, $terminal, Ide $ide): void {
                     $lifecycle = Services::resolve($ide, PluginLifecycle::class);
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $this->assertNotContains('App Run', \array_column($commands->paletteCommands(), 'label'), 'both start off');
@@ -483,7 +487,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal, $ide): void {
+                100 => function ($tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, PluginLifecycle::class)->enable('not-installed-anywhere');
 
                     $this->assertContains('Plugin "not-installed-anywhere" is not installed', Toasts::all($ide));
@@ -509,7 +513,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $labels = static fn (): array => \array_column($commands->paletteCommands(), 'label');
                     $this->assertNotContains('Needy Run', $labels(), 'disabled to start with');
@@ -545,7 +549,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function ($tui, $terminal, Ide $ide): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $labels = static fn (): array => \array_column($commands->paletteCommands(), 'label');
 
@@ -580,14 +584,14 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, PluginLifecycle::class)->enable('needy');
 
                     $toasts = Toasts::all($ide);
                     $this->assertContains('Plugin "needy" enabled, but composer is not available to install its dependencies', $toasts);
                     $this->assertNotContains('Plugin "needy" is not installed', $toasts, 'it IS installed; only its packages are missing');
                     $this->assertNotContains('Needy Run', \array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label'));
-                    $this->assertSame([], \Porta\Config\IdeConfig::load($project->dir)->disabledPlugins, 'the choice stands');
+                    $this->assertSame([], IdeConfig::load($project->dir)->disabledPlugins, 'the choice stands');
                 },
             ],
         );
@@ -608,7 +612,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, PluginLifecycle::class)->enable('needy');
                     $this->await(static fn (): bool => \in_array('Plugin "needy" enabled, but composer install failed (exit code 3)', Toasts::all($ide), strict: true), what: 'the failure report');
 
@@ -618,7 +622,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                         \array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label'),
                         'not loaded: it would fatal on the first missing symbol',
                     );
-                    $this->assertSame([], \Porta\Config\IdeConfig::load($project->dir)->disabledPlugins, 'the choice stands');
+                    $this->assertSame([], IdeConfig::load($project->dir)->disabledPlugins, 'the choice stands');
                 },
             ],
         );
@@ -640,7 +644,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     $lifecycle = Services::resolve($ide, PluginLifecycle::class);
                     $lifecycle->enable('needy');
                     $lifecycle->disable('needy'); // before the subprocess can exit
@@ -680,7 +684,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     // Another plugin's enable takes the slot; this one asks for
                     // it while composer is still running.
                     $lifecycle = Services::resolve($ide, PluginLifecycle::class);
@@ -714,7 +718,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     $lifecycle = Services::resolve($ide, PluginLifecycle::class);
                     $vendor = $project->path('.porta/plugins/needy/vendor');
 
@@ -749,7 +753,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($vendor): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($vendor): void {
                     Services::resolve($ide, PluginLifecycle::class)->disable('shipped');
 
                     $this->assertFileExists($vendor.'/vend/Thing.php', 'no marker, no deletion');
@@ -775,7 +779,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     $lifecycle = Services::resolve($ide, PluginLifecycle::class);
                     $vendor = $project->path('.porta/plugins/needy/vendor');
 
@@ -807,11 +811,11 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, PluginLifecycle::class)->disable('ghost');
 
                     $this->assertContains('Plugin "ghost" disabled', Toasts::all($ide));
-                    $this->assertSame(['ghost'], \Porta\Config\IdeConfig::load($project->dir)->disabledPlugins);
+                    $this->assertSame(['ghost'], IdeConfig::load($project->dir)->disabledPlugins);
                 },
             ],
         );
@@ -835,7 +839,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function ($tui, $terminal, Ide $ide): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $labels = static fn (): array => \array_column($commands->paletteCommands(), 'label');
 
@@ -861,7 +865,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function ($tui, $terminal, Ide $ide): void {
                     $this->await(static fn (): bool => \in_array('Plugin "zbase" enabled, but composer install failed (exit code 4)', Toasts::all($ide), strict: true), what: 'the failure report');
 
                     $labels = \array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label');
@@ -889,7 +893,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function ($tui, $terminal, Ide $ide): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $labels = static fn (): array => \array_column($commands->paletteCommands(), 'label');
 
@@ -922,7 +926,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function ($tui, $terminal, Ide $ide): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $labels = static fn (): array => \array_column($commands->paletteCommands(), 'label');
 

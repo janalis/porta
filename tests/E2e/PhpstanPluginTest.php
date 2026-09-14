@@ -6,12 +6,17 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Config\IdeConfig;
+use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The shipped phpstan plugin (plugins/phpstan/plugin.php) against stub
@@ -85,7 +90,7 @@ final class PhpstanPluginTest extends TestCase
                     // The toast and the inline diagnostic land on different
                     // invalidation paths — await the diagnostic itself.
                     $editor = $tui->getById('editor');
-                    $rendered = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))));
+                    $rendered = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(120, 20))));
                     $this->await(static fn (): bool => \str_contains($rendered(), 'Boom detected'), what: 'the diagnostic to render inline in the editor');
 
                     // The Problems panel aggregates it like any LSP diagnostic.
@@ -114,11 +119,11 @@ final class PhpstanPluginTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal, $ide) use ($project): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('phpstan:toggle-on-save');
                     $this->awaitPainted($tui, $terminal, 'phpstan on save: on');
                     $this->assertStringContainsString('phpstan on save: on', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $this->assertTrue((bool) (\Porta\Config\IdeConfig::load($project->dir)->plugins['phpstan']['autoLint'] ?? false), 'the toggle persisted to .porta.json');
+                    $this->assertTrue((bool) (IdeConfig::load($project->dir)->plugins['phpstan']['autoLint'] ?? false), 'the toggle persisted to .porta.json');
                     $tui->handleInput("\x13"); // ctrl+s → save → analyse
                 },
                 300 => function ($tui, $terminal): void {

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ide;
+use Porta\Run\RunController;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
@@ -18,6 +20,8 @@ use Porta\Ui\Glyphs;
 use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * The integrated terminal and run configurations: sessions,
@@ -49,7 +53,7 @@ final class IdeTerminalRunTest extends TestCase
                     $tui->handleInput("\x1b[<0;40;3M");
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'clicking the editor moved focus off the terminal');
                 },
-                360 => function ($tui, $terminal, $ide): void {
+                360 => function ($tui, $terminal, Ide $ide): void {
                     $tui->tick();
                     // Click the centre of the terminal pane → focus returns to it.
                     $renderer = Services::resolve($ide, Renderer::class);
@@ -82,7 +86,7 @@ final class IdeTerminalRunTest extends TestCase
                         $tui->handleInput($ch); // produce more than a screenful of output
                     }
                 },
-                900 => function ($tui, $terminal, $ide): void {
+                900 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // Wait for the PTY to actually deliver seq 30's output. Until
                     // more lines exist than the pane shows, scroll() clamps
                     // scrollBack to 0 and there is nothing to scroll into.
@@ -188,13 +192,13 @@ final class IdeTerminalRunTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                350 => function ($tui, $terminal, $ide): void {
+                350 => function ($tui, $terminal, Ide $ide): void {
                     // The shell's exit ripples through PTY EOF + reap; await
                     // the MODEL (the session's own running flag), then force a
                     // frame and assert the paint — one indirection fewer than
                     // awaiting the rendered glyph, and a genuinely stuck exit
                     // still throws.
-                    $sessions = \Porta\Tests\Support\Probe::get(Services::resolve($ide, \Porta\Run\RunController::class), 'sessions');
+                    $sessions = Probe::get(Services::resolve($ide, RunController::class), 'sessions');
                     $this->await(static fn (): bool => false === ($sessions->active()?->isRunning() ?? true), timeout: 20.0, what: 'the shell exit to be reaped');
                     // Assert the label on the MODEL, not on the painted strip.
                     // aliveTabs() returns [] whenever no dock panel is visible,
@@ -275,7 +279,7 @@ final class IdeTerminalRunTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                500 => function ($tui, $terminal): void {
+                500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'Open Terminal');
                     $this->assertStringContainsString('Open Terminal', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\r"); // run it
@@ -303,7 +307,7 @@ final class IdeTerminalRunTest extends TestCase
                     $tui->handleInput("\x1b[114;6u"); // ctrl+shift+r run menu
                     $this->assertTrue(EditorState::pickerOpen($tui->getById('editor')));
                 },
-                400 => function ($tui, $terminal): void {
+                400 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'Run current file: hello.php');
                     $this->assertStringContainsString('Run current file: hello.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\r"); // run it -> terminal panel
@@ -311,7 +315,7 @@ final class IdeTerminalRunTest extends TestCase
                 450 => function ($tui): void {
                     $this->assertTrue($tui->getById('terminal')->isOpen());
                 },
-                900 => function ($tui, $terminal): void {
+                900 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'run-output-ok');
                     $this->assertStringContainsString('run-output-ok', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
@@ -329,7 +333,7 @@ final class IdeTerminalRunTest extends TestCase
             $project,
             $project->path('hello.php'),
             [
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // Run Last with no prior run flashes a hint.
                     $tui->handleInput("\x1b[21;2~"); // shift+f10
                     $this->awaitPainted($tui, $terminal, 'No previous run');
@@ -362,7 +366,7 @@ final class IdeTerminalRunTest extends TestCase
             $project,
             $project->path('notes.txt'),
             [
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $tui->handleInput("\x1b[114;6u"); // ctrl+shift+r
                     // The POSITIVE first: "no picker" is equally true before the
                     // command has decided there is nothing to run.

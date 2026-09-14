@@ -12,6 +12,7 @@ use Porta\Lsp\LspSession;
 use Porta\Support\Outcome;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\PumpsLoop;
+use Revolt\EventLoop;
 
 /**
  * Unit tests for {@see LspSession} using an injected fake transport — no server
@@ -262,12 +263,12 @@ final class LspSessionTest extends TestCase
     public function testScheduleDidChangeWithoutAClientIsANoOp(): void
     {
         $session = $this->session(new FakeLspClient());
-        $before = \count(\Revolt\EventLoop::getIdentifiers());
+        $before = \count(EventLoop::getIdentifiers());
         // Never started: no client, so nothing to debounce against.
         $session->scheduleDidChange(new Document('x'), static fn (): ?string => '/tmp/project/a.php', static function (): void {});
 
         $this->assertFalse($session->isActive());
-        $this->assertSame($before, \count(\Revolt\EventLoop::getIdentifiers()), 'no debounce timer is armed without a client');
+        $this->assertSame($before, \count(EventLoop::getIdentifiers()), 'no debounce timer is armed without a client');
     }
 
     public function testEveryTransportCallIsInertBeforeStart(): void
@@ -314,14 +315,14 @@ final class LspSessionTest extends TestCase
         $doc = new Document('x');
 
         $session->scheduleDidChange($doc, static fn (): ?string => '/tmp/project/a.php', static function (): void {});
-        $before = \count(\Revolt\EventLoop::getIdentifiers());
+        $before = \count(EventLoop::getIdentifiers());
 
         $session->ready('/tmp/project/a.php', $doc, FlushMode::Keep);
-        $this->assertSame($before, \count(\Revolt\EventLoop::getIdentifiers()), 'Keep leaves the debounce armed');
+        $this->assertSame($before, \count(EventLoop::getIdentifiers()), 'Keep leaves the debounce armed');
         $this->assertSame([], \array_column($client->notifications, 'method'), 'and sends nothing yet');
 
         $session->ready('/tmp/project/a.php', $doc, FlushMode::Flush);
-        $this->assertLessThan($before, \count(\Revolt\EventLoop::getIdentifiers()), 'Flush (the default) cancels the pending debounce');
+        $this->assertLessThan($before, \count(EventLoop::getIdentifiers()), 'Flush (the default) cancels the pending debounce');
         $this->assertSame(['textDocument/didChange'], \array_column($client->notifications, 'method'), 'and sends the pending edit immediately');
     }
 
@@ -412,13 +413,13 @@ final class LspSessionTest extends TestCase
         $client = new FakeLspClient();
         $session = $this->session($client);
         $this->start($session);
-        $before = \count(\Revolt\EventLoop::getIdentifiers());
+        $before = \count(EventLoop::getIdentifiers());
 
         $session->scheduleDidChange(new Document('x'), static fn (): ?string => '/tmp/project/a.php', static function (): void {});
-        $this->assertGreaterThan($before, \count(\Revolt\EventLoop::getIdentifiers()), 'the 0.3s debounce is armed');
+        $this->assertGreaterThan($before, \count(EventLoop::getIdentifiers()), 'the 0.3s debounce is armed');
 
         $session->stop();
-        $this->assertSame($before, \count(\Revolt\EventLoop::getIdentifiers()), 'stop() cancels the debounce — nothing may fire into the next loop consumer');
+        $this->assertSame($before, \count(EventLoop::getIdentifiers()), 'stop() cancels the debounce — nothing may fire into the next loop consumer');
 
         $this->pump(0.35); // past the debounce window
         $sent = \array_column($client->notifications, 'method');

@@ -16,6 +16,7 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Toasts;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -81,7 +82,7 @@ final class EditorConfigIntegrationTest extends TestCase
     private function flashText(Ide $ide): ?string
     {
         // Notifications are corner toasts now; read the newest one unwrapped.
-        $last = \Porta\Tests\Support\Toasts::last($ide);
+        $last = Toasts::last($ide);
 
         return '' === $last ? null : $last;
     }

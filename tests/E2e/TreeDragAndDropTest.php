@@ -9,6 +9,7 @@ use Porta\Editor\BookmarkActions;
 use Porta\Editor\Bookmarks;
 use Porta\Event\TreeDropRequested;
 use Porta\Event\WorkingTreeChanged;
+use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
@@ -17,8 +18,13 @@ use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
+use Porta\Tree\TreePathClipboard;
 use Porta\Widget\FileTreeWidget;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * Dragging a file in the tree, end to end, through the real mouse bytes.
@@ -62,7 +68,7 @@ final class TreeDragAndDropTest extends TestCase
             $project,
             $project->path('top.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     $this->frame($tui);
                     // A bookmark on the file about to move: the assertion below
                     // is about it SURVIVING, which only happens if the drop
@@ -84,7 +90,7 @@ final class TreeDragAndDropTest extends TestCase
                     $tui->handleInput("\x1b[<32;3;3M"); // drag onto src/ (relative row 1)
                     $tui->handleInput("\x1b[<0;3;3m"); // release there
                 },
-                420 => function ($tui, $terminal, $ide) use ($project): void {
+                420 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     $this->assertFileDoesNotExist($project->path('top.php'), 'the file left its old home');
                     $this->assertFileExists($project->path('src/top.php'), 'and landed in the folder it was dropped on');
                     $this->assertSame(
@@ -117,7 +123,7 @@ final class TreeDragAndDropTest extends TestCase
             $project,
             $project->path('top.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     $this->frame($tui);
                     Services::resolve($ide, BookmarkActions::class)->toggle();
                 },
@@ -128,33 +134,33 @@ final class TreeDragAndDropTest extends TestCase
                     // rightly means cut TEXT.
                     $tui->handleInput("\x1b1");
                     $focus = $tui->getFocus();
-                    $this->assertInstanceOf(\Porta\Widget\FileTreeWidget::class, $focus, 'the tree has focus');
+                    $this->assertInstanceOf(FileTreeWidget::class, $focus, 'the tree has focus');
                 },
-                340 => function ($tui, $terminal, $ide) use ($project): void {
+                340 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     // With the EDITOR focused, Ctrl+X is the editor's own cut
                     // and must not touch the tree's clipboard — the two share a
                     // chord and are separated only by focus.
                     $tui->setFocus($tui->getById('editor'));
                     $tui->handleInput("\x18");
-                    $idle = Services::resolve($ide, \Porta\Tree\TreePathClipboard::class);
-                    \assert($idle instanceof \Porta\Tree\TreePathClipboard, description: 'the IDE exposes the tree clipboard');
+                    $idle = Services::resolve($ide, TreePathClipboard::class);
+                    \assert($idle instanceof TreePathClipboard, description: 'the IDE exposes the tree clipboard');
                     $this->assertSame([], $idle->paths(), 'the editor kept its own Ctrl+X');
 
                     $tui->handleInput("\x1b1"); // back to the tree
                     $this->selectRow($tui, $project->path('top.php'));
 
                     $tui->handleInput("\x18"); // Ctrl+X
-                    $clip = Services::resolve($ide, \Porta\Tree\TreePathClipboard::class);
-                    \assert($clip instanceof \Porta\Tree\TreePathClipboard, description: 'the IDE exposes the tree clipboard');
+                    $clip = Services::resolve($ide, TreePathClipboard::class);
+                    \assert($clip instanceof TreePathClipboard, description: 'the IDE exposes the tree clipboard');
                     $this->assertSame([$project->path('top.php')], $clip->paths(), 'the cut took the selected row');
                 },
-                380 => function ($tui) use ($project): void {
+                380 => function (Tui $tui) use ($project): void {
                     $this->selectRow($tui, $project->path('src'));
                     $tui->handleInput("\x16"); // Ctrl+V
                 },
-                460 => function ($tui, $terminal, $ide) use ($project): void {
-                    $spent = Services::resolve($ide, \Porta\Tree\TreePathClipboard::class);
-                    \assert($spent instanceof \Porta\Tree\TreePathClipboard, description: 'the IDE exposes the tree clipboard');
+                460 => function ($tui, $terminal, Ide $ide) use ($project): void {
+                    $spent = Services::resolve($ide, TreePathClipboard::class);
+                    \assert($spent instanceof TreePathClipboard, description: 'the IDE exposes the tree clipboard');
                     $this->assertTrue($spent->isEmpty(), 'a cut is spent by its paste — those files are not there any more');
 
                     $this->assertFileDoesNotExist($project->path('top.php'), 'the file left its old home');
@@ -174,7 +180,7 @@ final class TreeDragAndDropTest extends TestCase
      * Walk the tree's selection onto $path with the arrow keys, the way a
      * keyboard user reaches a row.
      */
-    private function selectRow(\Symfony\Component\Tui\Tui $tui, string $path): void
+    private function selectRow(Tui $tui, string $path): void
     {
         $tree = $tui->getFocus();
         $this->assertInstanceOf(FileTreeWidget::class, $tree, 'the tree has focus');
@@ -206,11 +212,11 @@ final class TreeDragAndDropTest extends TestCase
             $project,
             $project->path('top.php'),
             [
-                200 => function ($tui): void {
+                200 => function (Tui $tui): void {
                     $this->frame($tui);
                     $tui->handleInput("\x1b1"); // Focus Project Tree
                 },
-                240 => function ($tui, $terminal): void {
+                240 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // Nothing copied yet, so the menu must not offer a Paste —
                     // the floor under the assertion below that it appears.
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click src/
@@ -219,35 +225,35 @@ final class TreeDragAndDropTest extends TestCase
                     $tui->handleInput("\x1b"); // dismiss
                     $tui->handleInput("\x1b1"); // back to the tree
                 },
-                260 => function ($tui, $terminal, $ide) use ($project): void {
+                260 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     $this->selectRow($tui, $project->path('top.php'));
                     $tui->handleInput("\x03"); // Ctrl+C
-                    $clip = Services::resolve($ide, \Porta\Tree\TreePathClipboard::class);
-                    \assert($clip instanceof \Porta\Tree\TreePathClipboard, description: 'the IDE exposes the tree clipboard');
+                    $clip = Services::resolve($ide, TreePathClipboard::class);
+                    \assert($clip instanceof TreePathClipboard, description: 'the IDE exposes the tree clipboard');
                     $this->assertSame([$project->path('top.php')], $clip->paths(), 'the copy took the selected row');
                     $this->assertTrue($clip->isCopy(), 'and remembered that it copies');
                 },
-                320 => function ($tui, $terminal): void {
+                320 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click src/
                     $tui->tick();
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertNotNull($this->rowOf($grid, 'Paste'), 'the menu offers Paste now there is something to paste');
                 },
-                380 => function ($tui) use ($project): void {
+                380 => function (Tui $tui) use ($project): void {
                     $tui->handleInput("\x1b"); // dismiss the menu
                     $tui->handleInput("\x1b1"); // back to the tree
                     $this->selectRow($tui, $project->path('src'));
                     $tui->handleInput("\x16"); // Ctrl+V
                 },
-                460 => function ($tui, $terminal, $ide) use ($project): void {
+                460 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     $this->assertFileExists($project->path('src/top.php'), 'the copy landed');
                     $this->assertFileExists($project->path('top.php'), 'and the original stayed, because it was a copy');
 
-                    $kept = Services::resolve($ide, \Porta\Tree\TreePathClipboard::class);
-                    \assert($kept instanceof \Porta\Tree\TreePathClipboard, description: 'the IDE exposes the tree clipboard');
+                    $kept = Services::resolve($ide, TreePathClipboard::class);
+                    \assert($kept instanceof TreePathClipboard, description: 'the IDE exposes the tree clipboard');
                     $this->assertSame([$project->path('top.php')], $kept->paths(), 'a copy survives its paste, so it can go to several places');
                 },
-                520 => function ($tui) use ($project): void {
+                520 => function (Tui $tui) use ($project): void {
                     // Pasting onto a FILE row means that file's FOLDER, the same
                     // rule a drop onto a file follows. The first copy is removed
                     // first, or the assertion below would be satisfied by it and
@@ -279,7 +285,7 @@ final class TreeDragAndDropTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                200 => function ($tui): void {
+                200 => function (Tui $tui): void {
                     $this->frame($tui);
                     $tui->handleInput("\x1b[<0;3;4M"); // press top.php
                     $tui->handleInput("\x1b[<0;3;4m"); // release, no motion
@@ -309,7 +315,7 @@ final class TreeDragAndDropTest extends TestCase
             $project,
             $project->path('keep.php'),
             [
-                200 => function ($tui): void {
+                200 => function (Tui $tui): void {
                     $this->frame($tui);
                     // A real click is a press AND a release: a folder's toggle
                     // waits for the release now, so that a drag off it does not
@@ -325,7 +331,7 @@ final class TreeDragAndDropTest extends TestCase
                     $tui->handleInput("\x1b[<32;3;4M"); // drag onto its own child
                     $tui->handleInput("\x1b[<0;3;4m"); // release
                 },
-                420 => function ($tui, $terminal, $ide) use ($project): void {
+                420 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     $this->assertDirectoryExists($project->path('src/deep'), 'the child is where it was');
                     $this->assertDirectoryDoesNotExist($project->path('src/deep/src'), 'and src/ did not go inside it');
                     $this->assertStringContainsString('into itself', \implode(' | ', Toasts::all($ide)), 'the refusal says why');
@@ -355,7 +361,7 @@ final class TreeDragAndDropTest extends TestCase
             $project,
             $project->path('pkg/A.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     $this->frame($tui);
                     Services::resolve($ide, BookmarkActions::class)->toggle();
                     $this->assertSame(
@@ -376,7 +382,7 @@ final class TreeDragAndDropTest extends TestCase
                     $tui->handleInput("\x1b[<32;3;3M"); // drag onto dest/
                     $tui->handleInput("\x1b[<0;3;3m"); // release
                 },
-                460 => function ($tui, $terminal, $ide) use ($project): void {
+                460 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     $this->assertDirectoryDoesNotExist($project->path('pkg'), 'the folder left its old place');
                     $this->assertFileExists($project->path('dest/pkg/A.php'), 'and arrived whole');
                     $this->assertStringEndsWith(
@@ -416,13 +422,13 @@ final class TreeDragAndDropTest extends TestCase
             $project,
             $project->path('src/dup.php'),
             [
-                200 => function ($tui): void {
+                200 => function (Tui $tui): void {
                     $this->frame($tui);
                     $tui->handleInput("\x1b[<0;3;4M"); // press the root dup.php
                     $tui->handleInput("\x1b[<32;3;3M"); // drag onto src/
                     $tui->handleInput("\x1b[<0;3;3m"); // release
                 },
-                320 => function ($tui, $terminal): void {
+                320 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $screen = \implode("\n", $this->screenGrid($tui, $terminal));
                     $this->assertStringContainsString('already exists', $screen, 'the prompt is up');
                     $tui->handleInput("\x1b[B"); // → Rename…
@@ -470,7 +476,7 @@ final class TreeDragAndDropTest extends TestCase
             $project,
             $project->path('dest/keep.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project, &$moved): void {
+                200 => function (Tui $tui, $terminal, Ide $ide) use ($project, &$moved): void {
                     $this->frame($tui);
                     Services::resolve($ide, EventDispatcherInterface::class)->addListener(
                         WorkingTreeChanged::class,
@@ -555,7 +561,7 @@ final class TreeDragAndDropTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                200 => function ($tui): void {
+                200 => function (Tui $tui): void {
                     $this->frame($tui);
                     $tui->handleInput("\x1b[<0;3;4M"); // press top.php
                     $tui->handleInput("\x1b[<32;80;10M"); // drag out over the editor
@@ -595,7 +601,7 @@ final class TreeDragAndDropTest extends TestCase
                     $tui->handleInput("\x1b[<32;3;3M"); // drag onto src/
                     $tui->handleInput("\x1b[<0;3;3m"); // release
                 },
-                320 => function ($tui, $terminal) use ($project): void {
+                320 => function (Tui $tui, VirtualTerminal $terminal) use ($project): void {
                     $this->assertFileExists($project->path('dup.php'), 'nothing moved while the question is open');
                     $screen = \implode("\n", $this->screenGrid($tui, $terminal));
                     $this->assertStringContainsString('already exists', $screen, 'the prompt names the collision');
@@ -624,7 +630,7 @@ final class TreeDragAndDropTest extends TestCase
             $project,
             $project->path('top.php'),
             [
-                200 => function ($tui): void {
+                200 => function (Tui $tui): void {
                     $this->frame($tui);
                     $tui->handleInput("\x1b[<0;3;3M"); // click src/ open
                     $tui->handleInput("\x1b[<0;3;3m");
@@ -636,7 +642,7 @@ final class TreeDragAndDropTest extends TestCase
                     $tui->handleInput("\x1b[<32;3;3M"); // drag onto src/, where it already is
                     $tui->handleInput("\x1b[<0;3;3m");
                 },
-                420 => function ($tui, $terminal, $ide) use ($project): void {
+                420 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $this->assertFileExists($project->path('src/A.php'), 'still there');
                     $this->assertSame([], Toasts::all($ide), 'and nothing was announced — a no-op says nothing');
                     // Nor a QUESTION. Without the already-there filter the file
@@ -670,7 +676,7 @@ final class TreeDragAndDropTest extends TestCase
             $project,
             $project->path('src/a.php'),
             [
-                200 => function ($tui): void {
+                200 => function (Tui $tui): void {
                     $this->frame($tui);
                     $tui->handleInput("\x1b[<0;3;4M"); // click a.php
                     $tui->handleInput("\x1b[<0;3;4m");
@@ -682,7 +688,7 @@ final class TreeDragAndDropTest extends TestCase
                     $tui->handleInput("\x1b[<32;3;3M"); // drag both onto src/
                     $tui->handleInput("\x1b[<0;3;3m");
                 },
-                420 => function ($tui, $terminal) use ($project): void {
+                420 => function (Tui $tui, VirtualTerminal $terminal) use ($project): void {
                     $screen = \implode("\n", $this->screenGrid($tui, $terminal));
                     $this->assertStringContainsString('2 files already exist', $screen, 'one question, naming the count');
                     $this->assertStringNotContainsString('Rename', $screen, 'and no Rename… — it has no single answer for a set');
@@ -708,7 +714,7 @@ final class TreeDragAndDropTest extends TestCase
             $project,
             $project->path('src/dup.php'),
             [
-                200 => function ($tui): void {
+                200 => function (Tui $tui): void {
                     $this->frame($tui);
                     $tui->handleInput("\x1b[<0;3;4M");
                     $tui->handleInput("\x1b[<32;3;3M");
@@ -752,7 +758,7 @@ final class TreeDragAndDropTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                200 => function ($tui): void {
+                200 => function (Tui $tui): void {
                     $this->frame($tui);
                     $tui->handleInput("\x1b[<0;3;4M"); // press top.php
                     $tui->handleInput("\x1b[<32;3;3M"); // drag onto src/
@@ -785,7 +791,7 @@ final class TreeDragAndDropTest extends TestCase
             $project,
             $project->path('top.php'),
             [
-                200 => function ($tui): void {
+                200 => function (Tui $tui): void {
                     $this->frame($tui);
                     $tui->handleInput('EDIT');
                     $this->assertTrue($tui->getById('editor')->getDocument()->isDirty(), 'the buffer is dirty');
@@ -811,8 +817,8 @@ final class TreeDragAndDropTest extends TestCase
     /** The status bar's left segment, ANSI stripped — what file the editor is showing. */
     private function statusText(mixed $tui): string
     {
-        return \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(
-            $tui->getById('status')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))[0],
+        return AnsiUtils::stripAnsiCodes(
+            $tui->getById('status')->render(new RenderContext(120, 1))[0],
         );
     }
 
@@ -820,8 +826,8 @@ final class TreeDragAndDropTest extends TestCase
     private function treeRows(mixed $tui): array
     {
         $rows = [];
-        foreach ($tui->getById('tree')->render(new \Symfony\Component\Tui\Render\RenderContext(30, 12)) as $line) {
-            $rows[] = \rtrim(\Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes($line));
+        foreach ($tui->getById('tree')->render(new RenderContext(30, 12)) as $line) {
+            $rows[] = \rtrim(AnsiUtils::stripAnsiCodes($line));
         }
 
         return $rows;
@@ -846,7 +852,7 @@ final class TreeDragAndDropTest extends TestCase
             $project,
             $project->path('src/keep.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     $this->frame($tui);
                     Services::resolve($ide, EventDispatcherInterface::class)->dispatch(new TreeDropRequested(
                         [$project->path('src/keep.php')],

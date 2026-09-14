@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\ActionCatalog;
 use Porta\Config\ActionRegistry;
 use Porta\Config\CommandRegistry;
 use Porta\Config\ConfigFiles;
@@ -26,6 +27,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestPane;
+use Porta\Ui\ShortcutFormatter;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\StatusBarWidget;
@@ -99,7 +101,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $rows = $controller->rows();
         $byAction = \array_column($rows, null, 'action');
 
-        $this->assertCount(\count(\Porta\Config\ActionCatalog::ACTIONS), $rows, 'one row per catalog action — no plugin registered any here');
+        $this->assertCount(\count(ActionCatalog::ACTIONS), $rows, 'one row per catalog action — no plugin registered any here');
         $this->assertSame('ctrl+d', $byAction['duplicate_line']->binding, 'editor binding wins');
         $this->assertSame('Duplicate Line or Selection', $byAction['duplicate_line']->label);
         $this->assertSame('ctrl+6', $byAction['ide_problems']->binding, 'ide binding fills in when the editor has none');
@@ -147,7 +149,7 @@ final class SettingsKeymapControllerTest extends TestCase
 
         $this->assertSame([], IdeConfig::load($project->dir)->keymap, 'no override was created');
         $this->assertStringContainsString(
-            'Move Caret Left already uses '.\Porta\Ui\ShortcutFormatter::format('left'),
+            'Move Caret Left already uses '.ShortcutFormatter::format('left'),
             $this->flashText($status),
             'and it says why, rather than reporting a save that did not happen',
         );

@@ -282,7 +282,7 @@ final class DocumentTest extends TestCase
         // compound group, which the assertions below verify.
         // @mago-expect lint:no-empty-catch-clause
         try {
-            $doc->transact(static function () use ($doc): void {
+            $doc->transact(static function () use ($doc): never {
                 $doc->insert('x');
                 throw new \RuntimeException('boom');
             });
@@ -922,7 +922,7 @@ final class DocumentTest extends TestCase
         $bump($doc->deleteLines(...));
 
         $bump($doc->duplicateLines(...));
-        $bump(static fn () => $doc->moveLines(1));
+        $bump(static fn (): bool => $doc->moveLines(1));
         $bump($doc->insertNewLine(...));
         $bump(static fn () => $doc->insert('x'));
         $bump($doc->deleteBackward(...));

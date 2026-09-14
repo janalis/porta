@@ -8,6 +8,9 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\ConfigScope;
 use Porta\I18n\BaseDirection;
+use Porta\I18n\Bidi;
+use Porta\I18n\PaneReorder;
+use Porta\Ide;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\ClearsPortaLsp;
@@ -17,8 +20,13 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\PaneSegmenter;
+use Porta\Widget\ContextMenu;
+use Porta\Widget\MenuBarWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * RTL locale mirroring: layout, per-pane row reordering, and
@@ -49,7 +57,7 @@ final class IdeRtlLocaleTest extends TestCase
                     $this->assertSame(['tree', 'separator', 'editor-pane'], $ids, 'LTR at boot');
                     $this->assertStringContainsString('File', AnsiUtils::stripAnsiCodes(\implode('', $tui->getById('menu')->render(new RenderContext(120, 1)))));
                 },
-                400 => static function ($tui, $terminal, $ide): void {
+                400 => static function ($tui, $terminal, Ide $ide): void {
                     // The session scope defaults to Global for a project with
                     // no settings block, and Global here is the suite's SHARED
                     // fixture home — persisting 'he' there leaks Hebrew into
@@ -105,7 +113,7 @@ final class IdeRtlLocaleTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui): void {
+                200 => function (Tui $tui): void {
                     $this->assertSame(30, $tui->getById('tree')->width());
                     // Force a full frame so the mirrored separator has a live rect
                     // for the arm to hit — without it the drag routes against a null
@@ -154,7 +162,7 @@ final class IdeRtlLocaleTest extends TestCase
             $project,
             $project->path('demo.php'),
             [
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, '<?php');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     // The code pane stays LTR: the open tag is intact, its
@@ -182,12 +190,12 @@ final class IdeRtlLocaleTest extends TestCase
             'demo.php' => "<?php\necho \$name;\n",
         ]);
 
-        $assertFrozen = function ($tui, $ide): void {
+        $assertFrozen = function (object $tui, Ide $ide): void {
             $tui->tick();
             $renderer = Probe::get($tui, 'renderer');
             $root = Probe::get($tui, 'root');
-            $segmenter = Services::resolve($ide, \Porta\Ui\PaneSegmenter::class);
-            $reorder = Services::resolve($ide, \Porta\I18n\PaneReorder::class);
+            $segmenter = Services::resolve($ide, PaneSegmenter::class);
+            $reorder = Services::resolve($ide, PaneReorder::class);
             $terminal = $tui->getTerminal();
             $columns = $terminal->getColumns();
             $rows = $terminal->getRows();
@@ -199,7 +207,7 @@ final class IdeRtlLocaleTest extends TestCase
                 $this->assertSame($columns, AnsiUtils::visibleWidth($frozen), "row {$row} kept its width");
                 if (1 === \preg_match('/[\x{0590}-\x{05FF}]/u', AnsiUtils::stripAnsiCodes($frozen))) {
                     $this->assertStringContainsString(
-                        \Porta\I18n\Bidi::LTR_OVERRIDE,
+                        Bidi::LTR_OVERRIDE,
                         $frozen,
                         "row {$row} carries Hebrew and would be reordered again",
                     );
@@ -211,11 +219,11 @@ final class IdeRtlLocaleTest extends TestCase
             $project,
             $project->path('demo.php'),
             [
-                300 => static function ($tui, $terminal, $ide) use ($assertFrozen): void {
+                300 => static function ($tui, $terminal, Ide $ide) use ($assertFrozen): void {
                     $assertFrozen($tui, $ide);
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                 },
-                400 => static function ($tui, $terminal, $ide) use ($assertFrozen): void {
+                400 => static function ($tui, $terminal, Ide $ide) use ($assertFrozen): void {
                     $assertFrozen($tui, $ide);
                     // The help viewer renders prose against a left-hand border,
                     // so its rows do NOT begin with padding — the one surface
@@ -241,12 +249,12 @@ final class IdeRtlLocaleTest extends TestCase
             'demo.php' => "<?php\necho \$name;\n",
         ]);
 
-        $assertWidths = function ($tui, $ide): void {
+        $assertWidths = function (object $tui, Ide $ide): void {
             $tui->tick();
             $renderer = Probe::get($tui, 'renderer');
             $root = Probe::get($tui, 'root');
-            $segmenter = Services::resolve($ide, \Porta\Ui\PaneSegmenter::class);
-            $reorder = Services::resolve($ide, \Porta\I18n\PaneReorder::class);
+            $segmenter = Services::resolve($ide, PaneSegmenter::class);
+            $reorder = Services::resolve($ide, PaneReorder::class);
             $terminal = $tui->getTerminal();
             $columns = $terminal->getColumns();
             $lines = \array_values($renderer->render($root, $columns, $terminal->getRows()));
@@ -260,7 +268,7 @@ final class IdeRtlLocaleTest extends TestCase
             $project,
             $project->path('demo.php'),
             [
-                300 => static function ($tui, $terminal, $ide) use ($assertWidths): void {
+                300 => static function ($tui, $terminal, Ide $ide) use ($assertWidths): void {
                     $assertWidths($tui, $ide); // editor view
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                 },
@@ -300,11 +308,11 @@ final class IdeRtlLocaleTest extends TestCase
             $project,
             $project->path('demo.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function (object $tui, $terminal, Ide $ide): void {
                     $tui->tick();
                     $root = Probe::get($tui, 'root');
-                    $segmenter = Services::resolve($ide, \Porta\Ui\PaneSegmenter::class);
-                    \assert($segmenter instanceof \Porta\Ui\PaneSegmenter, description: 'the IDE exposes the segmenter');
+                    $segmenter = Services::resolve($ide, PaneSegmenter::class);
+                    \assert($segmenter instanceof PaneSegmenter, description: 'the IDE exposes the segmenter');
                     $runs = $segmenter->segment($root, $terminal->getColumns(), $terminal->getRows());
 
                     // The editor body: code on one side, the mirrored sidebar on
@@ -349,15 +357,15 @@ final class IdeRtlLocaleTest extends TestCase
             $project,
             $project->path('demo.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function ($tui, $terminal, Ide $ide): void {
                     $this->assertSame(
                         BaseDirection::Rtl,
-                        Probe::get(Services::resolve($ide, \Porta\Widget\MenuBarWidget::class), 'direction'),
+                        Probe::get(Services::resolve($ide, MenuBarWidget::class), 'direction'),
                         'the menu bar was told the locale mirrors',
                     );
                     $this->assertSame(
                         BaseDirection::Rtl,
-                        Probe::get(Services::resolve($ide, \Porta\Widget\ContextMenu::class), 'direction'),
+                        Probe::get(Services::resolve($ide, ContextMenu::class), 'direction'),
                         'and so was the context menu',
                     );
                 },
@@ -377,19 +385,19 @@ final class IdeRtlLocaleTest extends TestCase
             $project,
             $project->path('demo.php'),
             [
-                300 => function ($tui, $terminal, $ide): void {
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     // The view opens on General; Theme lives on Interface.
                     $this->selectSettingsSection($this->settingsNav($tui), 'interface');
                 },
-                500 => function ($tui, $terminal, $ide): void {
+                500 => function (object $tui, $terminal, Ide $ide): void {
                     $tui->tick();
                     $renderer = Probe::get($tui, 'renderer');
                     $root = Probe::get($tui, 'root');
-                    $segmenter = Services::resolve($ide, \Porta\Ui\PaneSegmenter::class);
-                    $reorder = Services::resolve($ide, \Porta\I18n\PaneReorder::class);
-                    \assert($segmenter instanceof \Porta\Ui\PaneSegmenter, description: 'the IDE exposes the segmenter');
-                    \assert($reorder instanceof \Porta\I18n\PaneReorder, description: 'the IDE exposes the reorder');
+                    $segmenter = Services::resolve($ide, PaneSegmenter::class);
+                    $reorder = Services::resolve($ide, PaneReorder::class);
+                    \assert($segmenter instanceof PaneSegmenter, description: 'the IDE exposes the segmenter');
+                    \assert($reorder instanceof PaneReorder, description: 'the IDE exposes the reorder');
 
                     $columns = $terminal->getColumns();
                     $rows = $terminal->getRows();
@@ -427,13 +435,13 @@ final class IdeRtlLocaleTest extends TestCase
             $project,
             $project->path('demo.php'),
             [
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, $terminal): void {
                     $this->frame($tui);
                     $terminal->simulateResize(120, 24);
                     $tui->requestRender();
                     $this->frame($tui);
                 },
-                500 => function ($tui, $terminal, $ide): void {
+                500 => function (object $tui, $terminal, Ide $ide): void {
                     $ids = \array_map(static fn ($w) => $w->getId(), $tui->getById('main')->all());
                     $this->assertSame(['editor-pane', 'separator', 'tree'], $ids, 'still mirrored after the resize');
 
@@ -447,8 +455,8 @@ final class IdeRtlLocaleTest extends TestCase
                     // bug violated by bleeding one pane across another.
                     $renderer = Probe::get($tui, 'renderer');
                     $root = Probe::get($tui, 'root');
-                    $segmenter = Services::resolve($ide, \Porta\Ui\PaneSegmenter::class);
-                    $reorder = Services::resolve($ide, \Porta\I18n\PaneReorder::class);
+                    $segmenter = Services::resolve($ide, PaneSegmenter::class);
+                    $reorder = Services::resolve($ide, PaneReorder::class);
                     $this->assertSame(120, $terminal->getColumns());
                     $lines = \array_values($renderer->render($root, 120, $terminal->getRows()));
                     $runs = $segmenter->segment($root, 120, $terminal->getRows());
@@ -484,7 +492,7 @@ final class IdeRtlLocaleTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui): void {
+                300 => function (object $tui): void {
                     $tui->tick();
                     $renderer = Probe::get($tui, 'renderer');
                     $rect = $renderer->getWidgetRect($tui->getById('tree'));
@@ -528,7 +536,7 @@ final class IdeRtlLocaleTest extends TestCase
             $project,
             $project->path('move.php'),
             [
-                300 => function ($tui) use ($project): void {
+                300 => function (object $tui) use ($project): void {
                     $tui->tick();
                     $renderer = Probe::get($tui, 'renderer');
                     $rect = $renderer->getWidgetRect($tui->getById('tree'));

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\I18n;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\BaseDirection;
 use Porta\I18n\Bidi;
@@ -214,7 +215,7 @@ final class BidiTest extends TestCase
      * @param non-empty-string $glyph
      * @param non-empty-string $mirrored
      */
-    #[\PHPUnit\Framework\Attributes\DataProvider('directionalGlyphProvider')]
+    #[DataProvider('directionalGlyphProvider')]
     public function testDirectionalGlyphsMirrorInsideARightToLeftRun(string $glyph, string $mirrored): void
     {
         $out = self::strip(Bidi::reorder($glyph.self::SHALOM, BaseDirection::Rtl));
@@ -488,7 +489,7 @@ final class BidiTest extends TestCase
      *
      * @param int<0, 1114111> $codepoint
      */
-    #[\PHPUnit\Framework\Attributes\DataProvider('neutralRangeEdgeProvider')]
+    #[DataProvider('neutralRangeEdgeProvider')]
     public function testTheNeutralRangesEndWhereTheySay(int $codepoint, bool $neutral): void
     {
         $class = Probe::invokeStatic(Bidi::class, 'classify', \mb_chr($codepoint, encoding: 'UTF-8'));
@@ -581,7 +582,7 @@ final class BidiTest extends TestCase
         yield 'N6 end (0x257F)' => [0x257F, true];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('classifyBoundaryProvider')]
+    #[DataProvider('classifyBoundaryProvider')]
     public function testClassifyBoundary(int $codepoint, bool $expectedNonL): void
     {
         $char = \mb_chr($codepoint, encoding: 'UTF-8');

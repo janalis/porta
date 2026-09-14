@@ -25,9 +25,15 @@ use Porta\Ui\Sgr;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorCallbacks;
 use Porta\Widget\Render\LineDecorator;
+use Porta\Workbench\Menu\ViewMenuSource;
+use Porta\Workbench\View\ContributedView;
+use Porta\Workbench\View\ViewPointer;
+use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
+use Symfony\Component\Tui\Widget\AbstractWidget;
+use Symfony\Component\Tui\Widget\FocusableInterface;
 
 final class CodeEditorWidgetTest extends TestCase
 {
@@ -1197,7 +1203,7 @@ final class CodeEditorWidgetTest extends TestCase
 
     public function testJumpToCentersAndConverts(): void
     {
-        $lines = \implode("\n", \array_map(static fn (int $i) => "line {$i}", \range(0, end: 99)));
+        $lines = \implode("\n", \array_map(static fn (int $i): string => "line {$i}", \range(0, end: 99)));
         $editor = $this->editor($lines);
         $editor->jumpTo(50, 3);
 
@@ -1468,7 +1474,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor();
         $before = Probe::get($editor, 'multiCaret');
 
-        $newDoc = new \Porta\Editor\Document("<?php\n");
+        $newDoc = new Document("<?php\n");
         $editor->showDocument('other.php', $newDoc);
 
         $after = Probe::get($editor, 'multiCaret');
@@ -1478,7 +1484,7 @@ final class CodeEditorWidgetTest extends TestCase
 
     public function testCloseSiblingFloatersClosesTheWelcomeView(): void
     {
-        $welcome = new class implements \Porta\Workbench\View\ContributedView {
+        $welcome = new class implements ContributedView {
             private bool $open = false;
 
             public function viewId(): string
@@ -1511,17 +1517,17 @@ final class CodeEditorWidgetTest extends TestCase
                 $this->open = !$this->open;
             }
 
-            public function pointer(): ?\Porta\Workbench\View\ViewPointer
+            public function pointer(): ?ViewPointer
             {
                 return null;
             }
 
-            public function contextMenus(): ?\Porta\Workbench\Menu\ViewMenuSource
+            public function contextMenus(): ?ViewMenuSource
             {
                 return null;
             }
 
-            public function focusTarget(): \Symfony\Component\Tui\Widget\AbstractWidget&\Symfony\Component\Tui\Widget\FocusableInterface
+            public function focusTarget(): AbstractWidget&FocusableInterface
             {
                 throw new \LogicException('not exercised by this test');
             }
@@ -1531,7 +1537,7 @@ final class CodeEditorWidgetTest extends TestCase
                 return false;
             }
         };
-        $views = new \Porta\Workbench\View\ViewRegistry();
+        $views = new ViewRegistry();
         $views->register($welcome);
         $views->open('welcome');
         $this->assertTrue($views->isOpen('welcome'), 'sanity: the welcome view is actually open before the picker opens');

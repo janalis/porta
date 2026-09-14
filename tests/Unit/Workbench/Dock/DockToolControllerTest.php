@@ -14,6 +14,7 @@ use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\Dock\DockTab;
 use Porta\Workbench\Dock\DockToolController;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\Dock\ToolRun;
@@ -84,7 +85,7 @@ final class DockToolControllerTest extends TestCase
         $this->assertSame('landed', $tab->rows[0]['text']);
 
         // The staleness guard: the user ×s the tab while a scan is still out.
-        $this->dock->closeTab(\Porta\Workbench\Dock\DockTab::Results, (string) $tab->id);
+        $this->dock->closeTab(DockTab::Results, (string) $tab->id);
         $controller->update('demo:todo', [['path' => 'b.php', 'line' => 0, 'text' => 'too late']]);
 
         $this->assertNull($this->dock->findTool('demo:todo'), 'the late answer did not resurrect the tab');

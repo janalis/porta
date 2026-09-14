@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\ImageViewer\ImageData;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestPane;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\HelpViewerWidget;
@@ -95,10 +96,10 @@ final class EditorAreaTest extends TestCase
     public function testFocusRequestsARender(): void
     {
         $this->tui->add($this->editor);
-        \Porta\Tests\Support\Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, 'renderRequested', false);
 
         $this->area->focus();
 
-        $this->assertTrue((bool) \Porta\Tests\Support\Probe::get($this->tui, 'renderRequested'));
+        $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'));
     }
 }

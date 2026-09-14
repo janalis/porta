@@ -407,8 +407,8 @@ final class EditorCompletion
                 $scored[] = ['score' => $score, 'index' => $index, 'item' => $item];
             }
         }
-        \usort($scored, static fn (array $a, array $b) => ($cmp = $b['score'] <=> $a['score']) ? $cmp : $a['index'] <=> $b['index']);
+        \usort($scored, static fn (array $a, array $b): int => ($cmp = $b['score'] <=> $a['score']) ? $cmp : $a['index'] <=> $b['index']);
 
-        return \array_map(static fn (array $e) => $e['item'], $scored);
+        return \array_map(static fn (array $e): CompletionItem => $e['item'], $scored);
     }
 }

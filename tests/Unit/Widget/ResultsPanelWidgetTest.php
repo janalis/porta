@@ -11,7 +11,9 @@ use Porta\Event\ResultsRerunRequested;
 use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\Probe;
 use Porta\Widget\ResultsPanelWidget;
+use Porta\Widget\Support\ResultGrouping;
 use Porta\Widget\Support\ResultsPanelFields;
+use Porta\Widget\Support\ResultsViewState;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -23,7 +25,7 @@ final class ResultsPanelWidgetTest extends TestCase
     private function results(int $count): array
     {
         return \array_map(
-            static fn (int $i) => ['path' => "src/File{$i}.php", 'line' => $i, 'text' => "match {$i}"],
+            static fn (int $i): array => ['path' => "src/File{$i}.php", 'line' => $i, 'text' => "match {$i}"],
             \range(0, $count - 1),
         );
     }
@@ -402,7 +404,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setResults($this->results(15));
 
         $lines = $panel->render(new RenderContext(60, 24));
-        $resultRows = \array_filter($lines, static fn (string $l) => \str_contains(AnsiUtils::stripAnsiCodes($l), '.php:'));
+        $resultRows = \array_filter($lines, static fn (string $l): bool => \str_contains(AnsiUtils::stripAnsiCodes($l), '.php:'));
         $this->assertCount(10, $resultRows, 'the un-configured default is exactly 10 rows');
     }
 
@@ -433,7 +435,7 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $panel->setVisibleRows(3);
         $lines = $panel->render(new RenderContext(60, 24));
-        $resultRows = \array_filter($lines, static fn (string $l) => \str_contains(AnsiUtils::stripAnsiCodes($l), '.php:'));
+        $resultRows = \array_filter($lines, static fn (string $l): bool => \str_contains(AnsiUtils::stripAnsiCodes($l), '.php:'));
         $this->assertCount(3, $resultRows, 'only the resized number of result rows render');
     }
 
@@ -1437,7 +1439,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $state = $panel->captureViewState();
         $panel->open('Find in Project', ResultsPanelFields::searchResults());
         $panel->setResults($this->groupedResults());
-        $panel->restoreViewState(new \Porta\Widget\Support\ResultsViewState('', $state->grouping, [], 'does/not/exist.php', 999, null, 0, [], []));
+        $panel->restoreViewState(new ResultsViewState('', $state->grouping, [], 'does/not/exist.php', 999, null, 0, [], []));
 
         $this->assertTrue($panel->isOpen(), 'no crash walking header rows while looking for a (path,line) match');
     }
@@ -1448,13 +1450,13 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel = new ResultsPanelWidget();
         $panel->open('Find in Project', ResultsPanelFields::resultsOnly());
         $panel->setResults($this->results(3));
-        $state = new \Porta\Widget\Support\ResultsViewState('', \Porta\Widget\Support\ResultGrouping::File, [], null, null, null, 999, [], []);
+        $state = new ResultsViewState('', ResultGrouping::File, [], null, null, null, 999, [], []);
 
         $panel->restoreViewState($state); // fallbackIndex way past the end
 
         $this->assertSame(2, Probe::get($panel, 'list')->selected(), 'clamped to the last row, count-1');
 
-        $state2 = new \Porta\Widget\Support\ResultsViewState('', \Porta\Widget\Support\ResultGrouping::File, [], null, null, null, -5, [], []);
+        $state2 = new ResultsViewState('', ResultGrouping::File, [], null, null, null, -5, [], []);
         $panel->restoreViewState($state2); // fallbackIndex before the start
 
         $this->assertSame(0, Probe::get($panel, 'list')->selected(), 'clamped to the first row, not left negative');
@@ -1466,7 +1468,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel = new ResultsPanelWidget();
         $panel->open('Find in Project', ResultsPanelFields::resultsOnly());
         $panel->setResults([]);
-        $state = new \Porta\Widget\Support\ResultsViewState('', \Porta\Widget\Support\ResultGrouping::File, [], null, null, null, 5, [], []);
+        $state = new ResultsViewState('', ResultGrouping::File, [], null, null, null, 5, [], []);
 
         $panel->restoreViewState($state);
 
@@ -1477,7 +1479,7 @@ final class ResultsPanelWidgetTest extends TestCase
     public function testRebuildViewClampsSelectionWhenTheListShrinksUnderIt(): void
     {
         $panel = new ResultsPanelWidget();
-        $panel->open('Find in Project', new \Porta\Widget\Support\ResultsPanelFields(grouped: false, filter: true));
+        $panel->open('Find in Project', new ResultsPanelFields(grouped: false, filter: true));
         $panel->setResults([
             ['path' => 'src/A.php', 'line' => 0, 'text' => 'keep me', 'ranges' => []],
             ['path' => 'src/B.php', 'line' => 1, 'text' => 'keep too', 'ranges' => []],
@@ -1501,7 +1503,7 @@ final class ResultsPanelWidgetTest extends TestCase
         $panel->setResults($this->results(3));
         // A deliberately wrong fallback index (99) proves the selection came
         // FROM identity relocation, not by coincidentally clamping there.
-        $state = new \Porta\Widget\Support\ResultsViewState('', \Porta\Widget\Support\ResultGrouping::File, [], 'src/File0.php', 0, null, 99, [], []);
+        $state = new ResultsViewState('', ResultGrouping::File, [], 'src/File0.php', 0, null, 99, [], []);
 
         $panel->restoreViewState($state);
 

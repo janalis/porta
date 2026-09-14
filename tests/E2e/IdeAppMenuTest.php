@@ -16,6 +16,7 @@ use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -47,20 +48,20 @@ final class IdeAppMenuTest extends TestCase
                     }
                 },
                 280 => function ($tui): void {
-                    $crumb = AnsiUtils::stripAnsiCodes($tui->getById('breadcrumbs')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))[0]);
+                    $crumb = AnsiUtils::stripAnsiCodes($tui->getById('breadcrumbs')->render(new RenderContext(120, 1))[0]);
                     $this->assertStringContainsString('handle', $crumb, 'breadcrumb is visible');
                     // Open View: its dropdown reaches down over the breadcrumb
                     // row's columns. The column is read from the rendered bar
                     // rather than hard-coded — the menu set is not fixed (Git's
                     // group is absent outside a repository, as here).
-                    $bar = AnsiUtils::stripAnsiCodes($tui->getById('menu')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))[0]);
+                    $bar = AnsiUtils::stripAnsiCodes($tui->getById('menu')->render(new RenderContext(120, 1))[0]);
                     $view = \mb_strpos($bar, needle: 'View');
                     self::assertIsInt($view, 'the View menu is on the bar');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;1M", $view + 2));
                 },
                 360 => function ($tui): void {
                     $this->assertTrue($tui->getById('menu')->isOpen());
-                    $row = AnsiUtils::stripAnsiCodes($tui->getById('breadcrumbs')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))[0]);
+                    $row = AnsiUtils::stripAnsiCodes($tui->getById('breadcrumbs')->render(new RenderContext(120, 1))[0]);
                     $this->assertStringContainsString('Show Problems', $row, 'the dropdown composites over the breadcrumb row (breadcrumb no longer in front)');
                     // Switch to File (left edge): with the full-width menu row its
                     // dropdown now floats over the TREE columns instead.
@@ -70,7 +71,7 @@ final class IdeAppMenuTest extends TestCase
                     $this->assertTrue($tui->getById('menu')->isOpen());
                     // Tree row 0 carries the frame's top border; the first item
                     // row sits one below it.
-                    $treeTop = AnsiUtils::stripAnsiCodes($tui->getById('tree')->render(new \Symfony\Component\Tui\Render\RenderContext(30, 20))[1]);
+                    $treeTop = AnsiUtils::stripAnsiCodes($tui->getById('tree')->render(new RenderContext(30, 20))[1]);
                     // The File menu's FIRST item, whatever it is — the row is
                     // read by index, so this names what the menu opens with
                     // rather than what it happens to contain. It was Save File
@@ -241,14 +242,14 @@ final class IdeAppMenuTest extends TestCase
                 },
                 280 => function ($tui): void {
                     $menu = $tui->getById('menu');
-                    $row = $menu->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))[0];
+                    $row = $menu->render(new RenderContext(120, 1))[0];
                     $this->assertStringContainsString("\x1b[48;5;240m", $row, 'closed title highlights on hover');
                     // Move off the bar (into the editor body) → the highlight clears.
                     $tui->handleInput("\x1b[<35;60;10M");
                 },
                 360 => function ($tui): void {
                     $menu = $tui->getById('menu');
-                    $row = $menu->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))[0];
+                    $row = $menu->render(new RenderContext(120, 1))[0];
                     $this->assertStringNotContainsString("\x1b[48;5;240m", $row, 'moving off the bar cleared the highlight');
                     $tui->handleInput("\x1b[<0;9;1M"); // click the Edit title (cols 7-12) to open it
                 },
@@ -302,7 +303,7 @@ final class IdeAppMenuTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $tui->tick();
 
                     $before = $this->screenGrid($tui, $terminal);
@@ -368,7 +369,7 @@ final class IdeAppMenuTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                450 => function ($tui, $terminal): void {
+                450 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // 'Save All' is a filtered ROW inside the palette, so it
                     // paints after the palette chrome that carries 'Find Action'.
                     $this->awaitPainted($tui, $terminal, 'Save All');
@@ -378,7 +379,7 @@ final class IdeAppMenuTest extends TestCase
                     $tui->getById('editor')->getDocument()->insert('X');
                     $tui->handleInput("\r");
                 },
-                600 => function ($tui, $terminal) use ($project): void {
+                600 => function (Tui $tui, VirtualTerminal $terminal) use ($project): void {
                     $this->awaitPainted($tui, $terminal, 'Saved');
                     $this->assertStringContainsString('X', (string) \file_get_contents($project->path('A.php')));
                 },
@@ -406,7 +407,7 @@ final class IdeAppMenuTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                500 => function ($tui, $terminal): void {
+                500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'Save File');
                     $card = $this->card($this->screenGrid($tui, $terminal), 'Find Action');
 
@@ -435,12 +436,12 @@ final class IdeAppMenuTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                450 => function ($tui, $terminal): void {
+                450 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'Cycle Line Numbers');
                     $this->assertStringContainsString('Cycle Line Numbers', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\r"); // run the cycle: absolute → relative
                 },
-                600 => function ($tui, $terminal) use ($project): void {
+                600 => function (Tui $tui, VirtualTerminal $terminal) use ($project): void {
                     $this->awaitPainted($tui, $terminal, 'Line numbers relative');
                     $this->assertSame(LineNumberMode::Relative, EditorState::display($tui->getById('editor'))->lineNumbers());
                     // Persisted into .porta.json.

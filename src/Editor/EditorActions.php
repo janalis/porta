@@ -189,7 +189,7 @@ final readonly class EditorActions
 
         // With multiple carets active, most editing/movement keys apply to
         // every caret; unhandled keys collapse back to a single caret.
-        return $this->multiCaret->hasMultiple() && $this->multiCaret->handleInput($keys, $kb, $this->clipboard->latest(), fn (string $d) => $this->host->isInsertable($d));
+        return $this->multiCaret->hasMultiple() && $this->multiCaret->handleInput($keys, $kb, $this->clipboard->latest(), fn (string $d): bool => $this->host->isInsertable($d));
     }
 
     /** Whether keyboard column selection is on — the status bar says so. */

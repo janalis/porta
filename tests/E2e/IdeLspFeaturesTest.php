@@ -22,10 +22,12 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Toasts;
 use Porta\Ui\Sgr;
 use Revolt\EventLoop;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -138,7 +140,7 @@ final class IdeLspFeaturesTest extends TestCase
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[116;6u");
                 },
-                340 => function ($tui, $terminal): void {
+                340 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'No test found');
                     $this->assertStringContainsString('No test found', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
@@ -153,7 +155,7 @@ final class IdeLspFeaturesTest extends TestCase
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[116;6u");
                 },
-                340 => function ($tui, $terminal): void {
+                340 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'No test subject found');
                     $this->assertStringContainsString('No test subject found', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
@@ -179,7 +181,7 @@ final class IdeLspFeaturesTest extends TestCase
                 100 => static function ($tui): void {
                     $tui->handleInput("\x1b[116;6u");
                 },
-                200 => function ($tui, $terminal): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'Choose target');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('tests/E2e/MultiTest.php', $screen);
@@ -208,7 +210,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $tui
                         ->getById('editor')
                         ->decorations()
@@ -249,7 +251,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     $tui->handleInput('x'); // schedules a didChange debounce
@@ -275,7 +277,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Tall.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     $tui->getById('editor')->getDocument()->setCursor(91, 0);
@@ -307,7 +309,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Plain.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     $editor = $tui->getById('editor');
@@ -398,7 +400,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Snip.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     $tui->getById('editor')->getDocument()->setCursor(1, 0);
@@ -440,7 +442,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Inlay.php'),
             [
-                600 => function ($tui, $terminal): void {
+                600 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // Inlay hints are an LSP round trip, so this was a bet on the
                     // response AND on the frame that draws it.
                     $this->awaitPainted($tui, $terminal, ': int');
@@ -463,13 +465,13 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Demo.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     $tui->getById('editor')->getDocument()->setCursor(4, 20);
                     $tui->handleInput("\x1b\x02"); // ctrl+alt+b -> implementation (2 results)
                 },
-                200 => function ($tui, $terminal): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'Choose target');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Target.php', $screen);
@@ -502,7 +504,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Big.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     $editor = $tui->getById('editor');
@@ -545,7 +547,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Fmt.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     $doc = $tui->getById('editor')->getDocument();
@@ -580,13 +582,13 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Big.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     $tui->getById('editor')->getDocument()->setCursor(96, 0); // >= 95 -> prepareRename null
                     $tui->handleInput("\x1b[17;2~"); // shift+f6
                 },
-                400 => function ($tui, $terminal): void {
+                400 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // A flash (not a prompt) proves prepareRename was rejected.
                     $this->awaitPainted($tui, $terminal, 'Cannot rename this element');
                     $this->assertStringContainsString('Cannot rename this element', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -624,7 +626,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/app.js'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'LSP:mock-lsp-server');
                     $tui->getById('editor')->getDocument()->setCursor(5, 4); // inside greet()
 
@@ -633,14 +635,14 @@ final class IdeLspFeaturesTest extends TestCase
                         static function () use ($tui, $crumbs): bool {
                             $tui->requestRender();
                             $tui->tick();
-                            $rows = $crumbs->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1));
+                            $rows = $crumbs->render(new RenderContext(120, 1));
 
                             return \str_contains(AnsiUtils::stripAnsiCodes($rows[0] ?? ''), 'Demo');
                         },
                         what: "the server's symbols to reach the trail",
                     );
 
-                    $plain = AnsiUtils::stripAnsiCodes($crumbs->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))[0]);
+                    $plain = AnsiUtils::stripAnsiCodes($crumbs->render(new RenderContext(120, 1))[0]);
                     $this->assertStringContainsString('Demo › greet', $plain, 'a JavaScript file gets a trail');
                 },
                 300 => function ($tui): void {
@@ -648,7 +650,7 @@ final class IdeLspFeaturesTest extends TestCase
                     // on the server's endLine (0-based 6, the `}` line).
                     $editor = $tui->getById('editor');
                     $editor->display()->setMethodSeparators(true);
-                    $rows = $editor->render(new \Symfony\Component\Tui\Render\RenderContext(80, 12));
+                    $rows = $editor->render(new RenderContext(80, 12));
                     $ruled = \array_keys(\array_filter($rows, static fn (string $row): bool => \str_contains($row, Sgr::UNDERLINE)));
 
                     $this->assertSame([6], $ruled, "one rule, on the member's last line");
@@ -672,7 +674,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Semantic.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'LSP:mock-lsp-server');
 
                     $editor = $tui->getById('editor');
@@ -708,7 +710,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project->path('src/Q.php'),
             [
                 // Edit-based action: "Import class" inserts a use statement
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // alt+enter against a session that has not initialised is
                     // dropped in silence, and every barrier after this one then
                     // waits for a request that was never sent. The status bar
@@ -718,7 +720,7 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(2, 6);
                     $tui->handleInput("\x1b\r"); // alt+enter
                 },
-                200 => function ($tui, $terminal): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // The picker opens on the server's codeAction RESPONSE, so
                     // this was a 200 ms bet standing in front of the paint
                     // barrier that follows it.
@@ -731,7 +733,7 @@ final class IdeLspFeaturesTest extends TestCase
                     $this->assertStringContainsString('Import class', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\r"); // pick "Import class"
                 },
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // Accepting sends the edit; it lands when the server
                     // answers, which is what this used to bet 150 ms on.
                     $editor = $tui->getById('editor');
@@ -768,7 +770,7 @@ final class IdeLspFeaturesTest extends TestCase
                     $editor->getDocument()->setCursor(95, 0);
                     $tui->handleInput("\x1b\r");
                 },
-                600 => function ($tui, $terminal): void {
+                600 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // The POSITIVE first. "No picker is open" is also true
                     // before the server has answered at all, so asserting it
                     // ahead of the flash proved nothing.
@@ -796,7 +798,7 @@ final class IdeLspFeaturesTest extends TestCase
                 // Wait for the mock's published diagnostic on line 0, then request
                 // quick fixes from that line: the request range comes from the
                 // diagnostic (covered branch), and the actions apply normally.
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     $tui->getById('editor')->getDocument()->setCursor(0, 0);
@@ -829,12 +831,12 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Demo.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     $tui->handleInput("\x1b[24;5~"); // ctrl+f12
                 },
-                200 => function ($tui, $terminal): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // The popup opens on the documentSymbol response. This is
                     // the specific barrier: awaiting 'greet' alone is weak here,
                     // because the fixture's own source contains `greet` and the
@@ -885,12 +887,12 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Empty.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     $tui->handleInput("\x1b7"); // alt+7
                 },
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')));
                     $this->awaitPainted($tui, $terminal, 'No symbols in this file');
                     $this->assertStringContainsString('No symbols in this file', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -913,7 +915,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Demo.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     // Ctrl+Alt+Shift+N, this action's primary and PhpStorm's own
@@ -924,7 +926,7 @@ final class IdeLspFeaturesTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                200 => function ($tui, $terminal): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->assertTrue($tui->getById('editor')->isSearchOverlayOpen(), 'go-to-symbol opens the centered picker');
                     // The workspace-symbol query is an LSP round trip: await it
                     // landing instead of a fixed gap.
@@ -964,7 +966,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project->path('src/A.php'),
             [
                 // Open B too so both buffers carry the mock's line-0 diagnostic
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     $tui->handleInput("\x14"); // tree (selection on src/)
@@ -1020,12 +1022,12 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Messy.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     $tui->handleInput("\x1b\x0c"); // ctrl+alt+l
                 },
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // The formatted text lands on the server's response, so
                     // await it rather than reading it before the flash barrier.
                     $editor = $tui->getById('editor');
@@ -1054,13 +1056,13 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Demo.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     $tui->getById('editor')->getDocument()->setCursor(1, 4);
                     $tui->handleInput("\x1b[105;6u"); // ctrl+shift+i peek
                 },
-                200 => function ($tui, $terminal): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // The peek popup opens on the definition response.
                     $editor = $tui->getById('editor');
                     $this->await(
@@ -1100,13 +1102,13 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/T.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     $tui->getById('editor')->getDocument()->setCursor(91, 0); // mock: 90-94 -> no definition
                     $tui->handleInput("\x1b[105;6u");
                 },
-                300 => function ($tui, $terminal): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')));
                     $this->awaitPainted($tui, $terminal, 'Nothing to peek');
                     $this->assertStringContainsString('Nothing to peek', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -1114,7 +1116,7 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(96, 0); // mock: >=95 untitled uri
                     $tui->handleInput("\x1b[105;6u");
                 },
-                500 => function ($tui, $terminal): void {
+                500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'Peek target outside the filesystem');
                     $this->assertStringContainsString('Peek target outside the filesystem', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
@@ -1207,7 +1209,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Tall.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     // Every negative path is a mock-server round trip; await
@@ -1265,11 +1267,11 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->handleInput("\x1b[<16;41;4M");
                     $tui->handleInput("\x1b[<16;41;4m");
                 },
-                900 => function ($tui, $terminal, $ide) use ($captureFile): void {
+                900 => function ($tui, $terminal, Ide $ide) use ($captureFile): void {
                     // The shim opener is an async subprocess: under load its
                     // second write can land after the loop would stop.
                     $this->await(static fn (): bool => \is_file($captureFile) && 2 === \substr_count((string) \file_get_contents($captureFile), needle: "\n"));
-                    $this->assertStringContainsString('Opened https://www.php.net', \implode("\n", \Porta\Tests\Support\Toasts::all($ide)));
+                    $this->assertStringContainsString('Opened https://www.php.net', \implode("\n", Toasts::all($ide)));
                 },
             ],
         );
@@ -1293,13 +1295,13 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(0, 2); // inside 'JSON'
                     $tui->handleInput("\x1b[24~");
                 },
-                600 => function ($tui, $terminal, $ide) use ($captureFile): void {
+                600 => function ($tui, $terminal, Ide $ide) use ($captureFile): void {
                     $tui->tick();
                     $tui->getById('editor')->getDocument()->setCursor(0, 6); // 'parse': not curated, no LSP
                     $tui->handleInput("\x1b[24~");
                     // The opener shim is an independent OS process — await its write.
                     $this->await(static fn (): bool => \str_contains((string) (\is_file($captureFile) ? \file_get_contents($captureFile) : false), 'mozilla.org'));
-                    $this->assertStringContainsString('Opened https://developer.mozilla.org', \implode("\n", \Porta\Tests\Support\Toasts::all($ide)));
+                    $this->assertStringContainsString('Opened https://developer.mozilla.org', \implode("\n", Toasts::all($ide)));
                 },
             ],
         );
@@ -1322,10 +1324,10 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(1, 2); // inside 'array_map'
                     $tui->handleInput("\x1b[24~");
                 },
-                420 => function ($tui, $terminal, $ide): void {
+                420 => function ($tui, $terminal, Ide $ide): void {
                     $this->assertStringContainsString(
                         'Docs: https://www.php.net/manual/en/function.array-map.php',
-                        \Porta\Tests\Support\Toasts::last($ide),
+                        Toasts::last($ide),
                     );
                 },
             ],
@@ -1363,7 +1365,7 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(1, 2); // on greet
                     $tui->handleInput("\x1b[24~"); // php server resolves Target.php
                 },
-                700 => function ($tui, $terminal, $ide) use ($project): void {
+                700 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     // Await the actual jump rather than asserting at a fixed delay:
                     // the mock LSP server is a separate process and lags under a
                     // loaded/pcov run, so the definition may not have landed yet.
@@ -1374,7 +1376,7 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(0, 2); // on doWork
                     $tui->handleInput("\x1b[24~"); // js server resolves Target.php too
                 },
-                1400 => function ($tui, $terminal, $ide) use ($project): void {
+                1400 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $this->await(static fn (): bool => \str_ends_with((string) $tui->getById('editor')->getFilePath(), 'Target.php'), timeout: 8.0, what: 'the js-routed definition jump');
                     Services::resolve($ide, BufferService::class)->openFile($project->path('notes.md'), OpenFocus::Keep);
                     // The status bar readings after the run need this paint.
@@ -1400,7 +1402,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Demo.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     $tui->tick(); // ensure a frame rendered so widget rects exist
@@ -1440,7 +1442,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Tall.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     // Mock convention: definition at lines 85-89 contains the
@@ -1449,7 +1451,7 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->getById('editor')->getDocument()->setCursor(86, 2);
                     $tui->handleInput("\x1b[24~"); // F12: declaration or usages
                 },
-                200 => function ($tui, $terminal): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // "Still on Tall.php" is equally true before F12 has been
                     // answered at all, so the usages panel — the thing that
                     // proves the server replied — has to land first.
@@ -1507,7 +1509,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/Demo.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
                     // Overfill the jump stack (cap is 50)
@@ -1564,7 +1566,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, $ide) use ($project): void {
                     // No LSP server exists (empty PATH): the format round is
                     // skipped and Ctrl+S still saves exactly once, immediately.
                     $tui->handleInput('x');
@@ -1586,7 +1588,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, $ide): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // No server ran (PATH is empty): the tool opens empty and
                     // will live-tail — the exact "why is my server silent" flow.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_lsp_log');
@@ -1595,10 +1597,10 @@ final class IdeLspFeaturesTest extends TestCase
                     $this->assertStringContainsString('LSP Server Log', $screen, 'the dock tab opened');
 
                     // Output arrives while the tab is open: it appears without re-running the command.
-                    Services::resolve($ide, \Porta\Lsp\LspLog::class)->append("[php-ls] fatal: cannot index\n");
-                    Services::resolve($ide, \Porta\Lsp\LspLog::class)->append("[php-ls] retrying\n");
+                    Services::resolve($ide, LspLog::class)->append("[php-ls] fatal: cannot index\n");
+                    Services::resolve($ide, LspLog::class)->append("[php-ls] retrying\n");
                     $tui->tick();
-                    $panelText = AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new \Symfony\Component\Tui\Render\RenderContext(160, 12))));
+                    $panelText = AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('results')->render(new RenderContext(160, 12))));
                     $this->assertStringContainsString('[php-ls] fatal: cannot index', $panelText, 'the captured server line appeared live');
                     $this->assertLessThan(
                         \strpos($panelText, needle: 'fatal: cannot index'),
@@ -1640,7 +1642,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('src/H.php'),
             [
-                100 => function ($tui, $terminal): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // The file being OPEN is not the server being ready, and
                     // ctrl+shift+h against a session that has not initialised
                     // is dropped in silence — no flash, so the await below then
@@ -1654,20 +1656,20 @@ final class IdeLspFeaturesTest extends TestCase
                     // No symbol at the caret → flash, no panel.
                     $tui->getById('editor')->getDocument()->setCursor(70, 0);
                     $tui->handleInput("\x1b[104;6u"); // ctrl+shift+h → call hierarchy
-                    $this->await(static fn () => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No callers found'));
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No callers found'));
 
                     // A symbol nobody calls → the incoming list is empty.
                     $terminal->clearOutput();
                     $tui->getById('editor')->getDocument()->setCursor(88, 0);
                     $tui->handleInput("\x1b[104;6u");
-                    $this->await(static fn () => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No callers found'));
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'No callers found'));
 
                     // The happy path: callers of greet land in the results panel.
                     $tui->getById('editor')->getDocument()->setCursor(2, 10); // on "greet"
                     $tui->handleInput("\x1b[104;6u");
                     $this->await(static fn (): bool => 'results' === $tui->getFocus()?->getId());
                 },
-                200 => function ($tui, $terminal): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // The step above awaits FOCUS reaching the results panel;
                     // the panel painting its title is a separate moment, and a
                     // bare tick() is not a frame.
@@ -1678,7 +1680,7 @@ final class IdeLspFeaturesTest extends TestCase
                 },
                 300 => function ($tui, $terminal) use ($palette): void {
                     // Fold All: the LSP foldingRange says 2-4 → the body line hides.
-                    $editorScreen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('editor')->render(new \Symfony\Component\Tui\Render\RenderContext(120, 20))));
+                    $editorScreen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $tui->getById('editor')->render(new RenderContext(120, 20))));
                     $this->assertStringContainsString("return 'hi '", $editorScreen());
                     $palette($tui, label: 'Fold All');
                     $this->await(static fn (): bool => !\str_contains($editorScreen(), "return 'hi '"));
@@ -1763,7 +1765,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                400 => function ($tui, $terminal) use (&$text): void {
+                400 => function (Tui $tui, VirtualTerminal $terminal) use (&$text): void {
                     $this->awaitLspReady($tui, $terminal);
                     $tui->getById('editor')->getDocument()->setCursor(2, 0);
                     $tui->handleInput("\x1b\x0f"); // ctrl+alt+o
@@ -1804,7 +1806,7 @@ final class IdeLspFeaturesTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal, $ide) use ($project, $old): void {
+                100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project, $old): void {
                     $this->awaitLspReady($tui, $terminal);
                     $log = Services::resolve($ide, LspLog::class);
                     $this->assertSame(

@@ -302,7 +302,7 @@ final class IdeTest extends TestCase
             $tui->handleInput("\x11");
         });
 
-        $watchdog = EventLoop::delay(9.0, static function () use ($tui): void {
+        $watchdog = EventLoop::delay(9.0, static function () use ($tui): never {
             $tui->stop();
             throw new \RuntimeException('watchdog: IDE did not quit before timeout');
         });
@@ -379,7 +379,7 @@ final class IdeTest extends TestCase
 
         $this->step(2.1, static fn () => $tui->handleInput("\x11")); // ctrl+q
 
-        $watchdog = EventLoop::delay(9.0, static function () use ($tui): void {
+        $watchdog = EventLoop::delay(9.0, static function () use ($tui): never {
             $tui->stop();
 
             throw new \RuntimeException('watchdog: IDE did not quit before timeout');

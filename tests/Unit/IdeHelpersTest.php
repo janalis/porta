@@ -8,14 +8,19 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\ConfigScope;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\Document;
 use Porta\Editor\OpenFocus;
 use Porta\Event\BufferRepointRequested;
+use Porta\Help\HelpViewerActions;
 use Porta\History\SessionRestorer;
+use Porta\History\SessionStore;
 use Porta\Ide;
+use Porta\Lsp\LspClient;
 use Porta\Lsp\LspMapper;
+use Porta\Lsp\LspSession;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\NavigationController;
 use Porta\Lsp\RefactorController;
@@ -23,6 +28,7 @@ use Porta\Lsp\Uri;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Search\SearchActions;
 use Porta\Settings\SettingsScope;
+use Porta\Support\PerfCollector;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\AwaitsGit;
 use Porta\Tests\Support\BootsIde;
@@ -31,8 +37,13 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\Toasts;
+use Porta\Ui\NonBlockingTerminal;
+use Porta\Widget\HelpViewerWidget;
+use Porta\Workbench\EditorArea;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewRegistry;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -83,10 +94,10 @@ final class IdeHelpersTest extends TestCase
     {
         $stream = \fopen('php://memory', mode: 'w+');
         \assert(false !== $stream, description: 'php://memory always opens');
-        $terminal = new \Porta\Ui\NonBlockingTerminal(new VirtualTerminal(columns: 80, rows: 24), $stream);
+        $terminal = new NonBlockingTerminal(new VirtualTerminal(columns: 80, rows: 24), $stream);
         $ide = new Ide($this->project->dir, null, $terminal);
         try {
-            $perf = Services::resolve($ide, \Porta\Support\PerfCollector::class);
+            $perf = Services::resolve($ide, PerfCollector::class);
             $this->assertNotNull(Probe::get($perf, 'pendingBytes'), 'the real-terminal boot wired the backlog probe');
         } finally {
             Services::resolve($ide, ViewRegistry::class)->closeAll();
@@ -106,7 +117,7 @@ final class IdeHelpersTest extends TestCase
         // Ide must hook that moment so the screen is repainted from scratch.
         $stream = \fopen('php://memory', mode: 'w+');
         \assert(false !== $stream, description: 'php://memory always opens');
-        $terminal = new \Porta\Ui\NonBlockingTerminal(new VirtualTerminal(columns: 80, rows: 24), $stream);
+        $terminal = new NonBlockingTerminal(new VirtualTerminal(columns: 80, rows: 24), $stream);
         $ide = new Ide($this->project->dir, null, $terminal);
         try {
             $this->assertNotNull(Probe::get($terminal, 'onKittyActivated'), 'the boot wired the kitty resync');
@@ -275,7 +286,7 @@ final class IdeHelpersTest extends TestCase
     public function testThePerfCollectorIsWiredAsSinkAndInputListener(): void
     {
         $tui = Services::resolve($this->ide, Tui::class);
-        $perf = Services::resolve($this->ide, \Porta\Support\PerfCollector::class);
+        $perf = Services::resolve($this->ide, PerfCollector::class);
 
         // The sink handed to BidiTui is the shared collector instance...
         $this->assertSame($perf, Probe::get($tui, 'perf'), 'setPerfSink received the collector');
@@ -570,13 +581,13 @@ final class IdeHelpersTest extends TestCase
     {
         // Write a session referencing one real and one missing file.
         $real = $this->project->write('src/Real.php', "hi\n");
-        new \Porta\History\SessionStore($this->project->dir)->save([
+        new SessionStore($this->project->dir)->save([
             ['path' => '/does/not/exist.php', 'line' => 0, 'col' => 0],
             ['path' => $real, 'line' => 0, 'col' => 1],
         ], $real);
 
         $restorer = Services::resolve($this->ide, SessionRestorer::class);
-        \assert($restorer instanceof \Porta\History\SessionRestorer, description: 'the sessionRestorer property holds a SessionRestorer');
+        \assert($restorer instanceof SessionRestorer, description: 'the sessionRestorer property holds a SessionRestorer');
         $this->assertTrue($restorer->restore(), 'restored at least the real file');
         $this->assertStringEndsWith('Real.php', (string) Services::resolve($this->ide, Tui::class)->getById('editor')->getFilePath());
     }
@@ -597,7 +608,7 @@ final class IdeHelpersTest extends TestCase
         $this->assertFileDoesNotExist($sessionFile, 'nothing has written one');
 
         $restorer = Services::resolve($this->ide, SessionRestorer::class);
-        \assert($restorer instanceof \Porta\History\SessionRestorer, description: 'the locator serves a SessionRestorer');
+        \assert($restorer instanceof SessionRestorer, description: 'the locator serves a SessionRestorer');
 
         $this->assertFalse($restorer->restore(), 'there was nothing to restore');
     }
@@ -605,11 +616,11 @@ final class IdeHelpersTest extends TestCase
     /** A session file recording NO buffers is the same answer by the other arm. */
     public function testRestoreWithAnEmptyBufferListDoesNothing(): void
     {
-        new \Porta\History\SessionStore($this->project->dir)->save([['path' => '/gone.php', 'line' => 0, 'col' => 0]], null);
-        new \Porta\History\SessionStore($this->project->dir)->save([], null); // empties it again
+        new SessionStore($this->project->dir)->save([['path' => '/gone.php', 'line' => 0, 'col' => 0]], null);
+        new SessionStore($this->project->dir)->save([], null); // empties it again
 
         $restorer = Services::resolve($this->ide, SessionRestorer::class);
-        \assert($restorer instanceof \Porta\History\SessionRestorer, description: 'the locator serves a SessionRestorer');
+        \assert($restorer instanceof SessionRestorer, description: 'the locator serves a SessionRestorer');
 
         $this->assertFalse($restorer->restore());
     }
@@ -619,7 +630,7 @@ final class IdeHelpersTest extends TestCase
         $tui = Services::resolve($this->ide, Tui::class);
         $focusBefore = $tui->getFocus();
 
-        new \Porta\History\SessionStore($this->project->dir)->save([
+        new SessionStore($this->project->dir)->save([
             ['path' => '/does/not/exist-a.php', 'line' => 0, 'col' => 0],
             ['path' => '/does/not/exist-b.php', 'line' => 0, 'col' => 0],
         ], '/does/not/exist-a.php');
@@ -632,7 +643,7 @@ final class IdeHelpersTest extends TestCase
     public function testRestoreSetsTheCursorFromTheRecordedPosition(): void
     {
         $real = $this->project->write('src/Cursor.php', "line0\nline1\nline2\nline3\n");
-        new \Porta\History\SessionStore($this->project->dir)->save([
+        new SessionStore($this->project->dir)->save([
             ['path' => $real, 'line' => 3, 'col' => 5],
         ], null);
 
@@ -648,7 +659,7 @@ final class IdeHelpersTest extends TestCase
         // $activePath is null: a realpath(null) call here would be a
         // TypeError under strict_types — this is that guard's own test.
         $real = $this->project->write('src/NoActive.php', "hi\n");
-        new \Porta\History\SessionStore($this->project->dir)->save([
+        new SessionStore($this->project->dir)->save([
             ['path' => $real, 'line' => 0, 'col' => 0],
         ], null);
 
@@ -666,7 +677,7 @@ final class IdeHelpersTest extends TestCase
         $second = $this->project->write('src/Second.php', "hi\n");
         $messyActivePath = \dirname($first).'/./'.\basename($first);
 
-        new \Porta\History\SessionStore($this->project->dir)->save([
+        new SessionStore($this->project->dir)->save([
             ['path' => $first, 'line' => 0, 'col' => 0],
             ['path' => $second, 'line' => 0, 'col' => 0],
         ], $messyActivePath);
@@ -675,13 +686,13 @@ final class IdeHelpersTest extends TestCase
 
         $tui = Services::resolve($this->ide, Tui::class);
         $this->assertStringEndsWith('First.php', (string) $tui->getById('editor')->getFilePath(), 'the recorded active buffer wins over the last-opened one');
-        $this->assertSame(Services::resolve($this->ide, \Porta\Workbench\EditorArea::class)->widget(), $tui->getFocus(), 'focus lands on the editor area');
+        $this->assertSame(Services::resolve($this->ide, EditorArea::class)->widget(), $tui->getFocus(), 'focus lands on the editor area');
     }
 
     public function testProviderPriorityOrderMatchesTheContractualPaletteOrder(): void
     {
         $registry = Services::resolve($this->ide, CommandRegistry::class);
-        \assert($registry instanceof \Porta\Config\CommandRegistry, description: 'the IDE exposes a CommandRegistry');
+        \assert($registry instanceof CommandRegistry, description: 'the IDE exposes a CommandRegistry');
         $labels = \array_column($registry->paletteCommands(), 'label');
 
         // The tagged providers register in #[AsTaggedItem] priority order:
@@ -703,7 +714,7 @@ final class IdeHelpersTest extends TestCase
         // than being swallowed by a command that would do nothing. The same
         // gate `open_as_text` uses for a viewer tab.
         $registry = Services::resolve($this->ide, CommandRegistry::class);
-        \assert($registry instanceof \Porta\Config\CommandRegistry, description: 'the IDE exposes a CommandRegistry');
+        \assert($registry instanceof CommandRegistry, description: 'the IDE exposes a CommandRegistry');
 
         $this->assertFalse($registry->isEnabled('ide_maximise_panel'), 'no panel open, no maximise');
 
@@ -794,7 +805,7 @@ final class IdeHelpersTest extends TestCase
     public function testApplyCodeActionBareCommandAndCommandError(): void
     {
         // Inject a started mock LSP so the command paths run for real.
-        $client = new \Porta\Lsp\LspClient(
+        $client = new LspClient(
             [\PHP_BINARY, \dirname(__DIR__).'/Support/command-lsp-server.php'],
             $this->project->dir,
         );
@@ -826,9 +837,9 @@ final class IdeHelpersTest extends TestCase
     }
 
     /** Inject a live client into the Ide's session pool so feature code runs for real. */
-    private function injectLspClient(\Porta\Lsp\LspClient $client): void
+    private function injectLspClient(LspClient $client): void
     {
-        $session = new \Porta\Lsp\LspSession(\sys_get_temp_dir());
+        $session = new LspSession(\sys_get_temp_dir());
         Probe::set($session, 'client', $client);
 
         $pool = Services::resolve($this->ide, LspSessionPool::class);
@@ -853,8 +864,8 @@ final class IdeHelpersTest extends TestCase
 
         $panel = Services::resolve($this->ide, Tui::class)->getById('results');
         $this->assertTrue($panel->isOpen());
-        $rendered = \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(
-            \implode("\n", $panel->render(new \Symfony\Component\Tui\Render\RenderContext(120, 14))),
+        $rendered = AnsiUtils::stripAnsiCodes(
+            \implode("\n", $panel->render(new RenderContext(120, 14))),
         );
         $this->assertSame('Problems', $panel->getTitle(), 'the dock tab carries the tool title');
         $this->assertStringContainsString('✗ top error', $rendered);
@@ -868,7 +879,7 @@ final class IdeHelpersTest extends TestCase
     {
         Services::resolve($this->ide, SearchActions::class)->goToTest();
 
-        $this->assertStringContainsString('No test found', \Porta\Tests\Support\Toasts::last($this->ide));
+        $this->assertStringContainsString('No test found', Toasts::last($this->ide));
     }
 
     public function testGoToTestFromATestFileWithNoSubjectFlashesTheTestVariant(): void
@@ -878,7 +889,7 @@ final class IdeHelpersTest extends TestCase
 
         Services::resolve($this->ide, SearchActions::class)->goToTest();
 
-        $this->assertStringContainsString('No test subject found', \Porta\Tests\Support\Toasts::last($this->ide), 'from a test file, the message names the subject, not the test');
+        $this->assertStringContainsString('No test subject found', Toasts::last($this->ide), 'from a test file, the message names the subject, not the test');
     }
 
     public function testGoToTestWithExactlyOneCandidateOpensItDirectly(): void
@@ -904,7 +915,7 @@ final class IdeHelpersTest extends TestCase
         $panel = Services::resolve($this->ide, Tui::class)->getById('results');
         $this->assertTrue($panel->isOpen());
         $this->assertSame('Choose target', $panel->getTitle());
-        $rendered = \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new \Symfony\Component\Tui\Render\RenderContext(120, 14))));
+        $rendered = AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(120, 14))));
         $this->assertStringContainsString('tests/E2e/BarTest.php', $rendered);
         $this->assertStringContainsString('tests/Unit/BarTest.php', $rendered);
     }
@@ -926,7 +937,7 @@ final class IdeHelpersTest extends TestCase
 
         $this->assertStringEndsWith('ParentClass.php', (string) $editor->getFilePath(), 'the parent file is open — found by its class name, which in a PSR-4 project IS its file name');
         $this->assertSame(4, $editor->getDocument()->getCursorLine(), 'and the caret is on its declaration');
-        $this->assertStringContainsString('ParentClass::handle', \Porta\Tests\Support\Toasts::last($this->ide));
+        $this->assertStringContainsString('ParentClass::handle', Toasts::last($this->ide));
     }
 
     public function testGoToSuperMethodFromAMethodThatOverridesNothingSaysSo(): void
@@ -938,7 +949,7 @@ final class IdeHelpersTest extends TestCase
 
         Services::resolve($this->ide, SearchActions::class)->goToSuperMethod();
 
-        $this->assertStringContainsString('overrides nothing', \Porta\Tests\Support\Toasts::last($this->ide));
+        $this->assertStringContainsString('overrides nothing', Toasts::last($this->ide));
         $this->assertStringEndsWith('Solo.php', (string) Services::resolve($this->ide, Tui::class)->getById('editor')->getFilePath(), 'and nothing moved');
     }
 
@@ -950,7 +961,7 @@ final class IdeHelpersTest extends TestCase
 
     public function testReformatUnsupportedFlashesNotSupported(): void
     {
-        $client = new \Porta\Lsp\LspClient(
+        $client = new LspClient(
             [\PHP_BINARY, \dirname(__DIR__).'/Support/mock-lsp-server.php'],
             $this->project->dir,
         );
@@ -974,9 +985,9 @@ final class IdeHelpersTest extends TestCase
         $this->refactor()->requestReformat();
         // The message is a toast now, so await the toast stack itself — polling
         // the status bar (where it no longer lands) made this timing-fragile.
-        $this->await(fn () => \str_contains(\implode("\n", \Porta\Tests\Support\Toasts::all($this->ide)), 'Formatting not supported'), 2.0);
+        $this->await(fn (): bool => \str_contains(\implode("\n", Toasts::all($this->ide)), 'Formatting not supported'), 2.0);
 
-        $this->assertStringContainsString('Formatting not supported by mock-lsp-server', \Porta\Tests\Support\Toasts::last($this->ide));
+        $this->assertStringContainsString('Formatting not supported by mock-lsp-server', Toasts::last($this->ide));
         $client->stop();
     }
 
@@ -1015,7 +1026,7 @@ final class IdeHelpersTest extends TestCase
         /** @var \Porta\Editor\BufferService $buffers */
         $buffers = Services::resolve($this->ide, BufferService::class);
         /** @var \Porta\Widget\HelpViewerWidget $viewer */
-        $viewer = Services::resolve($this->ide, \Porta\Widget\HelpViewerWidget::class);
+        $viewer = Services::resolve($this->ide, HelpViewerWidget::class);
         /** @var \Porta\Editor\BufferManager $manager */
         $manager = Services::resolve($this->ide, BufferManager::class);
 
@@ -1037,7 +1048,7 @@ final class IdeHelpersTest extends TestCase
         $binary = (string) \realpath($this->project->write('docs/binary.md', "\xff\xfe\x00# not text"));
         $buffers->openHelp($binary);
         $this->assertSame($readme, $manager->active()?->path, 'the corrupt page opened no tab');
-        $this->assertStringContainsString('Not a UTF-8 text file', \Porta\Tests\Support\Toasts::last($this->ide));
+        $this->assertStringContainsString('Not a UTF-8 text file', Toasts::last($this->ide));
 
         // A page changed on disk reloads through the filesystem poller.
         \file_put_contents($readme, data: "# Guides v2\n");
@@ -1062,7 +1073,7 @@ final class IdeHelpersTest extends TestCase
         /** @var \Porta\Editor\BufferService $buffers */
         $buffers = Services::resolve($this->ide, BufferService::class);
         /** @var \Porta\Widget\HelpViewerWidget $viewer */
-        $viewer = Services::resolve($this->ide, \Porta\Widget\HelpViewerWidget::class);
+        $viewer = Services::resolve($this->ide, HelpViewerWidget::class);
         /** @var \Porta\Editor\BufferManager $manager */
         $manager = Services::resolve($this->ide, BufferManager::class);
 
@@ -1100,18 +1111,18 @@ final class IdeHelpersTest extends TestCase
         $buffers->showHelpPage($editor);
         $buffers->closeTabsExcept($code);
         $this->assertNull($viewer->path(), 'closing the help tab via close-others clears the viewer');
-        $this->assertSame([$code], \array_map(static fn ($b): string => $b->path, $manager->all()));
+        $this->assertSame([$code], \array_map(static fn (Buffer $b): string => $b->path, $manager->all()));
     }
 
     public function testViewerHandlerHooksDelegateToTheBufferStack(): void
     {
         $tui = Services::resolve($this->ide, Tui::class);
-        $flash = fn (): string => \Porta\Tests\Support\Toasts::last($this->ide);
+        $flash = fn (): string => Toasts::last($this->ide);
 
         $file = $this->project->write('src/Hooked.php', "<?php\n");
-        $helpViewer = Services::resolve($this->ide, \Porta\Widget\HelpViewerWidget::class);
+        $helpViewer = Services::resolve($this->ide, HelpViewerWidget::class);
         $help = Probe::get($helpViewer, 'handler');
-        \assert($help instanceof \Porta\Help\HelpViewerActions, description: 'the help viewer exposes its actions handler');
+        \assert($help instanceof HelpViewerActions, description: 'the help viewer exposes its actions handler');
 
         $help->openFile($file);
         $this->assertStringEndsWith('Hooked.php', (string) $tui->getById('editor')->getFilePath(), 'a plain-file link opens in the editor');
@@ -1156,7 +1167,7 @@ final class IdeHelpersTest extends TestCase
         \rename($old, $new);
         $service->onBufferRepointRequested(new BufferRepointRequested($old, $new));
 
-        $paths = \array_map(static fn ($buffer) => $buffer->path, $buffers->all());
+        $paths = \array_map(static fn (Buffer $buffer): string => $buffer->path, $buffers->all());
         $this->assertNotContains((string) \realpath(\dirname($old)).'/Before.php', $paths, 'the stale buffer is gone');
         $this->assertContains((string) \realpath($new), $paths, 'and the new path is open in its place');
     }
@@ -1181,7 +1192,7 @@ final class IdeHelpersTest extends TestCase
         \rename($old, $new = $this->project->path('new'));
         $service->onBufferRepointRequested(new BufferRepointRequested($old, $new));
 
-        $paths = \array_map(static fn ($buffer) => $buffer->path, $buffers->all());
+        $paths = \array_map(static fn (Buffer $buffer): string => $buffer->path, $buffers->all());
         $this->assertContains((string) \realpath($this->project->path('new/Deep.php')), $paths, 'the buffer followed its folder');
         $this->assertNotContains($old.'/Deep.php', $paths, 'and nothing is left on the path that is gone');
         $this->assertContains((string) \realpath($outside), $paths, 'a buffer outside the folder was left alone');

@@ -6,6 +6,7 @@ namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\FakeComposer;
 use Porta\Tests\Support\GitBinary;
@@ -14,8 +15,11 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Toasts;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Terminal\VirtualTerminal;
+use Symfony\Component\Tui\Tui;
 
 /**
  * Settings → Plugins: installing (local path, git URL) with live activation,
@@ -76,7 +80,7 @@ final class IdePluginInstallTest extends TestCase
     }
 
     /** Open settings and select the Plugins section, leaving focus on the form. */
-    private function openPluginsSection($tui, $ide): void
+    private function openPluginsSection($tui, Ide $ide): void
     {
         Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
         $tui->handleInput("\t"); // form → nav
@@ -106,7 +110,7 @@ final class IdePluginInstallTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal, $ide) use ($project): void {
+                100 => function ($tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $this->openPluginsSection($tui, $ide);
                     // A bare tick() is not a frame, and these read ACCUMULATED
                     // output — so without a real paint they asserted against
@@ -121,13 +125,13 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\r"); // start inline editing
                     $this->type($tui, $project->path('plugin-src/installee'));
                     $tui->handleInput("\r"); // commit → async composer require + live activation
-                    $this->await(static fn (): bool => \str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed'));
+                    $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'Plugin installed'));
                     // The toast is the MODEL saying so; the re-listed section is
                     // a later paint, and a bare tick() is not a frame.
                     $this->awaitPainted($tui, $terminal, 'installee (project)');
 
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Plugin installed', \Porta\Tests\Support\Toasts::last($ide));
+                    $this->assertStringContainsString('Plugin installed', Toasts::last($ide));
                     $this->assertFileExists($project->path('.porta/plugins/installee/plugin.php'));
                     $this->assertMatchesRegularExpression('/installee \(project\)\s+\[Remove\]/', $screen, 'the new plugin lists with a Remove button');
 
@@ -151,11 +155,11 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\r"); // the install row is still selected
                     $this->type($tui, $project->path('plugin-src/broken'));
                     $tui->handleInput("\r");
-                    $this->await(static fn (): bool => \str_contains(\Porta\Tests\Support\Toasts::last($ide), 'failed to load'));
+                    $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'failed to load'));
                     $tui->tick();
-                    $this->assertStringContainsString('Plugin "broken" failed to load: plugin.php must return a PortaPlugin instance', \Porta\Tests\Support\Toasts::last($ide));
+                    $this->assertStringContainsString('Plugin "broken" failed to load: plugin.php must return a PortaPlugin instance', Toasts::last($ide));
                 },
-                200 => function ($tui, $terminal, $ide) use ($project): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, $ide) use ($project): void {
                     // A project-scope plugin toggles Enabled via the opt-out `disabledPlugins`
                     // list (bundled plugins use the opt-in `enabledPlugins` instead).
                     $tui->handleInput("\t"); // form → nav
@@ -195,7 +199,7 @@ final class IdePluginInstallTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal, $ide) use ($project): void {
+                100 => function ($tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $this->assertContains('Hi from demo', \array_column($commands->paletteCommands(), 'label'), 'active before removal');
 
@@ -204,12 +208,12 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\x1b[B"); // demo's Remove row
                     $tui->handleInput("\r"); // arm
                     $tui->tick();
-                    $this->assertStringContainsString('Press Enter again to remove "demo"', \Porta\Tests\Support\Toasts::last($ide));
+                    $this->assertStringContainsString('Press Enter again to remove "demo"', Toasts::last($ide));
                     $this->assertDirectoryExists($project->path('.porta/plugins/demo'));
 
                     $tui->handleInput("\r"); // confirm
                     $tui->tick();
-                    $this->assertStringContainsString('Plugin "demo" removed', \Porta\Tests\Support\Toasts::last($ide));
+                    $this->assertStringContainsString('Plugin "demo" removed', Toasts::last($ide));
                     $this->assertDirectoryDoesNotExist($project->path('.porta/plugins/demo'));
 
                     // The loaded code cannot be unloaded: the command still runs.
@@ -231,7 +235,7 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\r");
                     $this->type($tui, $project->path('plugin-src/demo'));
                     $tui->handleInput("\r");
-                    $this->await(static fn (): bool => \str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed'));
+                    $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'Plugin installed'));
                     $tui->tick();
                     $this->assertContains('Hi from demo', \array_column($commands->paletteCommands(), 'label'), 'reinstalled live');
                     $commands->run('demo:hi');
@@ -267,18 +271,18 @@ final class IdePluginInstallTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal, $ide) use ($host): void {
+                100 => function ($tui, $terminal, Ide $ide) use ($host): void {
                     $this->openPluginsSection($tui, $ide);
                     $tui->handleInput("\x1b[B"); // install row
                     $tui->handleInput("\r");
                     $this->type($tui, 'file://'.$host->path('cloned'));
                     $tui->handleInput("\r"); // commit → async clone
                 },
-                300 => function ($tui, $terminal, $ide) use ($project): void {
-                    $this->await(static fn (): bool => \str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed'));
+                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
+                    $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'Plugin installed'));
                     $this->awaitPainted($tui, $terminal, 'cloned (project)');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('Plugin installed', \Porta\Tests\Support\Toasts::last($ide));
+                    $this->assertStringContainsString('Plugin installed', Toasts::last($ide));
                     $this->assertFileExists($project->path('.porta/plugins/cloned/plugin.php'));
                     $this->assertMatchesRegularExpression('/cloned \(project\)\s+\[Remove\]/', $screen, 'the async refresh re-listed the section');
 
@@ -307,7 +311,7 @@ final class IdePluginInstallTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal, $ide) use ($project, $home): void {
+                100 => function ($tui, VirtualTerminal $terminal, Ide $ide) use ($project, $home): void {
                     $this->openPluginsSection($tui, $ide);
                     $tui->handleInput("\r"); // cycle the scope row: project → global
                     // A substring that does not spell the gap: the value column is aligned
@@ -320,7 +324,7 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\r");
                     $this->type($tui, $project->path('plugin-src/worldwide'));
                     $tui->handleInput("\r");
-                    $this->await(static fn (): bool => \str_contains(\Porta\Tests\Support\Toasts::last($ide), 'Plugin installed'));
+                    $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'Plugin installed'));
                     $this->awaitPainted($tui, $terminal, 'worldwide (global)');
 
                     $this->assertFileExists($home->dir.'/.porta/plugins/worldwide/plugin.php');

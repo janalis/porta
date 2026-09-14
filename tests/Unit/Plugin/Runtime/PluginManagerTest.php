@@ -16,6 +16,8 @@ use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
 use Porta\I18n\Translator;
+use Porta\Plugin\Api\AbstractPlugin;
+use Porta\Plugin\Api\DisposablePlugin;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
 use Porta\Plugin\Runtime\PluginManager;
@@ -38,6 +40,8 @@ use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 
 final class PluginManagerTest extends TestCase
 {
@@ -226,7 +230,7 @@ final class PluginManagerTest extends TestCase
         $api = new PluginApi('demo', $manager, '/p', $settings);
         $api->registerCommand('hi', 'Say Hi', static function (): void {});
         $api->addMenuItem('hi');
-        $plugin = new class('demo') extends \Porta\Plugin\Api\AbstractPlugin implements \Porta\Plugin\Api\DisposablePlugin {
+        $plugin = new class('demo') extends AbstractPlugin implements DisposablePlugin {
             public function activate(PluginApi $api): void {}
 
             public function deactivate(): void
@@ -279,7 +283,7 @@ final class PluginManagerTest extends TestCase
     /** @return \Porta\Plugin\Api\AbstractPlugin&\Porta\Plugin\Api\DisposablePlugin&object{tornDown: int} */
     private function disposablePlugin(string $name): object
     {
-        return new class($name) extends \Porta\Plugin\Api\AbstractPlugin implements \Porta\Plugin\Api\DisposablePlugin {
+        return new class($name) extends AbstractPlugin implements DisposablePlugin {
             public int $tornDown = 0;
 
             public function activate(PluginApi $api): void {}
@@ -463,7 +467,7 @@ final class PluginManagerTest extends TestCase
         $api->registerCommand('ok', 'Ok', static function () use (&$ran): void {
             $ran = true;
         });
-        $api->registerCommand('boom', 'Boom', static function (): void {
+        $api->registerCommand('boom', 'Boom', static function (): never {
             throw new \RuntimeException('kaboom');
         });
         $manager->commit($api);
@@ -486,7 +490,7 @@ final class PluginManagerTest extends TestCase
         $api->onFileSaved(static function (string $p) use (&$seen): void {
             $seen[] = $p;
         });
-        $api->onFileOpened(static function (): void {
+        $api->onFileOpened(static function (): never {
             throw new \LogicException('bad hook');
         });
         $api->onBufferSwitched(static function (string $p) use (&$seen): void {
@@ -511,7 +515,7 @@ final class PluginManagerTest extends TestCase
 
     private function renderedStatus(): string
     {
-        return \Symfony\Component\Tui\Ansi\AnsiUtils::stripAnsiCodes(\implode(' ', $this->status->render(new \Symfony\Component\Tui\Render\RenderContext(120, 1))));
+        return AnsiUtils::stripAnsiCodes(\implode(' ', $this->status->render(new RenderContext(120, 1))));
     }
 
     public function testDeactivatingOnePluginLeavesAnothersListenerOnTheSameEventAlive(): void
@@ -567,7 +571,7 @@ final class PluginManagerTest extends TestCase
 
         $this->expectException(PluginException::class);
         $this->expectExceptionMessage('is not a plugin-observable event');
-        $api->on(BufferSaved::class, static fn () => null);
+        $api->on(BufferSaved::class, static fn (): null => null);
     }
 
     public function testOnSubscribesToAnObservableEvent(): void

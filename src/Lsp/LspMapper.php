@@ -82,7 +82,7 @@ final class LspMapper
      */
     public static function mapCompletionItems(array $items): array
     {
-        \usort($items, static fn (array $a, array $b) => (string) ($a['sortText'] ?? $a['label'] ?? '') <=> (string) ($b['sortText'] ?? $b['label'] ?? ''));
+        \usort($items, static fn (array $a, array $b): int => (string) ($a['sortText'] ?? $a['label'] ?? '') <=> (string) ($b['sortText'] ?? $b['label'] ?? ''));
 
         $mapped = [];
         foreach (\array_slice($items, offset: 0, length: 80) as $item) {
@@ -228,7 +228,7 @@ final class LspMapper
             $label = $hint['label'] ?? '';
             if (\is_array($label)) {
                 // label is an InlayHintLabelPart[]; concatenate the parts' text.
-                $label = \implode('', \array_map(static fn ($part) => \is_array($part) ? (string) ($part['value'] ?? '') : (string) $part, $label));
+                $label = \implode('', \array_map(static fn ($part): string => \is_array($part) ? (string) ($part['value'] ?? '') : (string) $part, $label));
             }
             $label = \trim((string) $label);
             if ('' === $label) {

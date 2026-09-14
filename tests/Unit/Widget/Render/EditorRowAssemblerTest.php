@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\Caret;
 use Porta\Editor\ChangeMarkKind;
+use Porta\Editor\DecorationStore;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
 use Porta\Editor\LineNumberMode;
@@ -25,10 +27,10 @@ final class EditorRowAssemblerTest extends TestCase
         bool $vcsGutter = false,
         bool $indentGuides = false,
         LineNumberMode $lineNumbers = LineNumberMode::Absolute,
-        ?\Porta\Editor\DecorationStore $store = null,
+        ?DecorationStore $store = null,
     ): array {
         $foldModel = new FoldModel($document);
-        $store ??= new \Porta\Editor\DecorationStore(static function (): void {});
+        $store ??= new DecorationStore(static function (): void {});
         $assembler = new EditorRowAssembler(
             $document,
             $foldModel,
@@ -163,7 +165,7 @@ final class EditorRowAssemblerTest extends TestCase
     public function testGutterCellShowsTheLogpointGlyphWhenOnlyALogpointIsSet(): void
     {
         $doc = new Document("a\nb\n");
-        $store = new \Porta\Editor\DecorationStore(static function (): void {});
+        $store = new DecorationStore(static function (): void {});
         $store->setBreakpointLines([], [], [1]); // line 1: logpoint only
         [$assembler] = $this->assembler($doc, store: $store);
         $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 5, stripeCol: 0);
@@ -176,7 +178,7 @@ final class EditorRowAssemblerTest extends TestCase
     public function testGutterCellShowsTheConditionalBreakpointGlyphWhenOnlyOneIsSet(): void
     {
         $doc = new Document("a\nb\n");
-        $store = new \Porta\Editor\DecorationStore(static function (): void {});
+        $store = new DecorationStore(static function (): void {});
         $store->setBreakpointLines([], [1], []); // line 1: conditional breakpoint only
         [$assembler] = $this->assembler($doc, store: $store);
         $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 5, stripeCol: 0);
@@ -212,7 +214,7 @@ final class EditorRowAssemblerTest extends TestCase
         // equivalent here; this just exercises the padding branch at all).
         $doc = new Document("ab\n");
         [$assembler] = $this->assembler($doc);
-        $decorations = new EditorDecorations(false, null, [\Porta\Editor\Caret::point(0, 5)], [], null);
+        $decorations = new EditorDecorations(false, null, [Caret::point(0, 5)], [], null);
         $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 20, stripeCol: 0);
 
         $rows = $assembler->assemble($geo, $decorations, sticky: [], highlighted: ['ab'], stripe: [''], contentRows: 1, vScroll: 0, cursorLine: -1, cursorDisplayCol: 0, hScroll: 0);

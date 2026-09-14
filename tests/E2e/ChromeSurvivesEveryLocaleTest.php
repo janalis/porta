@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\I18n\Translator;
+use Porta\Ide;
 use Porta\Layout\ResponsiveLayout;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\NavigatesSettings;
@@ -94,7 +95,7 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
                     $this->assertStatusBarKeepsTheFileName($tui, $locale);
                     $this->assertMenuBarDropsNoTitle($tui, $locale);
                 },
-                600 => function ($tui, $terminal, $ide) use ($locale): void {
+                600 => function ($tui, $terminal, Ide $ide) use ($locale): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $this->frame($tui);
                     $this->assertSettingsNavFitsItsOwnRows($tui, $locale);

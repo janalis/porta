@@ -18,6 +18,7 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorNavigationHandler;
 use Porta\Widget\Support\ResultsPanelFields;
 use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\Dock\DockToolTab;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\Notifier;
 use Symfony\Component\Tui\Tui;
@@ -361,7 +362,7 @@ final class NavigationController extends AbstractLspController implements Editor
                 // selection — so slicing the text to twelve threw away
                 // documentation the surface was perfectly able to show, and
                 // did it silently.
-                $items = \array_map(static fn (string $l) => ['label' => $l, 'hint' => '', 'value' => ''], \explode("\n", $text));
+                $items = \array_map(static fn (string $l): array => ['label' => $l, 'hint' => '', 'value' => ''], \explode("\n", $text));
                 $this->editor->openListOverlay($this->trans('Documentation'), $items, static function (): void {});
                 $this->tui->requestRender();
 
@@ -582,7 +583,7 @@ final class NavigationController extends AbstractLspController implements Editor
             // an ungrouped row prints `path:line` in front of its text. The
             // header says it once; the filter is how you reach a method in a
             // forty-method class.
-            fn (array $rows) => $this->panels->showList(ResultsPanelMode::Structure, $title, $rows, ResultsPanelFields::searchResults()),
+            fn (array $rows): DockToolTab => $this->panels->showList(ResultsPanelMode::Structure, $title, $rows, ResultsPanelFields::searchResults()),
             fn () => $this->flash($this->trans('No symbols in this file')),
         );
     }

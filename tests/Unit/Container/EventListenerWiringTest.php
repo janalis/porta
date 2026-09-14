@@ -11,18 +11,23 @@ use Porta\Container\IdeContainerFactory;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
+use Porta\Event\CursorShapeChanged;
 use Porta\Event\IdeReady;
 use Porta\Event\IdeShuttingDown;
 use Porta\Event\LocaleChanged;
 use Porta\Event\PluginObservable;
+use Porta\Event\TabBarPositionChanged;
 use Porta\Event\ThemeChanged;
 use Porta\Highlight\HighlightThemeListener;
 use Porta\Plugin\Runtime\PluginManager;
+use Porta\Support\BootTrace;
+use Porta\Ui\BidiTui;
 use Porta\Workbench\ChromeRefreshListener;
 use Porta\Workbench\Menu\MenuLayoutRefreshListener;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -63,10 +68,10 @@ final class EventListenerWiringTest extends TestCase
         $container->set(Renderer::class, new Renderer(new StyleSheet()));
         $container->set(IdeConfig::class, IdeConfig::load('/tmp/porta-event-wiring'));
         $container->set(
-            \Porta\Ui\BidiTui::class,
-            new \Porta\Ui\BidiTui(terminal: new VirtualTerminal(columns: 80, rows: 10), keybindings: new \Symfony\Component\Tui\Input\Keybindings([]), renderer: new Renderer(new StyleSheet())),
+            BidiTui::class,
+            new BidiTui(terminal: new VirtualTerminal(columns: 80, rows: 10), keybindings: new Keybindings([]), renderer: new Renderer(new StyleSheet())),
         );
-        $container->set(\Porta\Support\BootTrace::class, new \Porta\Support\BootTrace());
+        $container->set(BootTrace::class, new BootTrace());
         $locator = $container->get('porta.ide');
         \assert($locator instanceof ServiceLocator, description: 'the public boundary is a ServiceLocator');
         $dispatcher = $locator->get(EventDispatcherInterface::class);
@@ -223,7 +228,7 @@ final class EventListenerWiringTest extends TestCase
     {
         $dispatcher = $this->dispatcher();
 
-        foreach ([\Porta\Event\CursorShapeChanged::class, \Porta\Event\TabBarPositionChanged::class] as $event) {
+        foreach ([CursorShapeChanged::class, TabBarPositionChanged::class] as $event) {
             $listeners = $dispatcher->getListeners($event);
             $this->assertNotEmpty($listeners, $event.' has compiled listeners');
             $last = \end($listeners);

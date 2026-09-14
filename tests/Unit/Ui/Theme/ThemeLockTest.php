@@ -11,6 +11,7 @@ use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\HighContrastTheme;
 use Porta\Ui\Theme\LightTheme;
 use Porta\Ui\Theme\MonochromeTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\ThemeDefinition;
 use Symfony\Component\Tui\Style\Style;
 
@@ -362,7 +363,7 @@ final class ThemeLockTest extends TestCase
     public function testAnUnknownRuleResolvesPlain(): void
     {
         $this->assertEquals(new Style(), DarkTheme::definition()->rule('.no-such::rule'));
-        $this->assertEquals(new Style(background: 233), \Porta\Ui\Theme\Styles::dark()->rule('.modal::shadow'), 'Styles delegates to the active definition');
+        $this->assertEquals(new Style(background: 233), Styles::dark()->rule('.modal::shadow'), 'Styles delegates to the active definition');
     }
 
     public function testHasColor(): void
