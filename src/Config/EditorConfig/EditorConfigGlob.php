@@ -58,19 +58,12 @@ final class EditorConfigGlob
                 $out .= '[^/]*';
                 continue;
             }
-            if ('?' === $c) {
-                $out .= '[^/]';
-                continue;
-            }
-            if ('[' === $c) {
-                $out .= self::compileClass($s, $i);
-                continue;
-            }
-            if ('{' === $c) {
-                $out .= self::compileBrace($s, $i);
-                continue;
-            }
-            $out .= \preg_quote($c, delimiter: '#');
+            $out .= match ($c) {
+                '?' => '[^/]',
+                '[' => self::compileClass($s, $i),
+                '{' => self::compileBrace($s, $i),
+                default => \preg_quote($c, delimiter: '#'),
+            };
         }
 
         return $out;
