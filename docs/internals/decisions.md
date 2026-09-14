@@ -9474,3 +9474,41 @@ repoint cases assert the TAB follows a rename and never the TEXT. And
 which reads the overlay host's field whether or not the widget holding it is on
 screen — it passed with the guard removed, and the fix was to assert the EFFECT
 (the editor is back in the slot) instead.
+
+### Driven, at last — and what that showed
+
+Both rounds had shipped on tests alone, which `testing.md:375` asks nobody to
+do. A real pty (`script -q`, `stty cols 120 rows 32`, `PORTA_FRAME_DUMP`)
+against a scratch project settled four things a double could not:
+
+- **Live git marks are right on screen.** `┆` on the one line differing from
+  HEAD, and on the line just typed into, with no save.
+- **The split unsaved-changes string renders as one sentence.** It was
+  refactored into prefix + `%repeat%` across seven catalogs, and only a frame
+  can say the join reads correctly.
+- **The project switch really does reboot in-process.** Clean buffer, typed
+  path, Enter: the tree becomes the new project and Welcome opens on its first
+  visit. Dirty buffer: it stays put. A second ask inside the window goes
+  through. That is the whole contract of the round's headline fix, confirmed
+  where it matters.
+- **The dead key is dead no more:** `Ctrl+Shift+O` from a viewer tab hops back
+  to the text tab and opens the picker, or says "Not available in this view"
+  when there is no text tab to hop to.
+
+Two things the driving found that reading had not:
+
+**The gutter read 1, 1, 2, 3, 4 and looked off by one.** It is not: this
+machine's `~/.porta/config.json` sets `lineNumbers: relative`, so the caret's
+line is absolute and the rest are distances. The third "looks wrong, is
+correct" of the round — check the config before the code.
+
+**A file barely over the cap reads oddly.** 2,097,216 bytes formats as "2.0 MB"
+and so does the 2,097,152-byte prefix, so the banner says *"is 2.0 MB, showing
+the first 2.0 MB"*. True and useless. Cosmetic, at a boundary, and left
+unfixed — recorded so the next reader knows it was seen.
+
+**And a caution for the next driver:** a real run writes to the REAL global
+state. This one put two scratch roots into `~/.porta/recent-projects.json` and
+they had to be cleaned out by hand. Point `PORTA_HOME` at a temp directory
+first.
+
