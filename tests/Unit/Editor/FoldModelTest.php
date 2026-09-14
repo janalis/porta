@@ -54,6 +54,24 @@ final class FoldModelTest extends TestCase
         $this->assertSame(1, $model->snapVisible($count));
     }
 
+    /**
+     * The region search keeps looking past regions that do not contain the
+     * caret: a caret in the SECOND block folds that block even though an
+     * earlier region was checked first and missed.
+     */
+    public function testToggleFindsTheCaretsRegionPastAnEarlierOneThatMisses(): void
+    {
+        $doc = new Document("a {\n}\nb {\n  x\n}\n");
+        $model = new FoldModel($doc);
+        $model->setRegions([[0, 1], [2, 4]], $doc->version);
+        $doc->setCursor(3, 0);
+
+        $model->toggle();
+
+        $this->assertSame(4, $model->foldEndAt(2), 'the second block folded');
+        $this->assertSame(2, $doc->cursorLine, 'and the caret moved to its visible start line');
+    }
+
     public function testToggleCreatesAndRemovesFoldAtCaret(): void
     {
         $doc = new Document(\str_repeat("l\n", times: 10));
