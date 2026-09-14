@@ -787,4 +787,204 @@ final class ProjectSearchControllerTest extends TestCase
 
         $this->assertSame(0, Probe::get($reopened, 'scopeIndex'), 'back to the first built-in');
     }
+
+    /**
+     * The replace flash counts every file it changed — open buffers and closed
+     * files alike, all of them, each once.
+     *
+     * Every replace test read the edited text and none read the count, so the
+     * counter could start at -1, decrement, skip the buffers, stop at the first
+     * file or never be flashed, and the suite stayed green.
+     */
+    public function testReplaceAllCountsEveryFileItChanged(): void
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\n\$needle = 1;\n",
+            'src/B.php' => "<?php\n\$needle = 2;\n",
+            'src/C.php' => "<?php\n\$needle = 3;\n",
+        ]);
+        $controller = $this->controller($project->dir);
+        $a = $this->buffers->open($project->path('src/A.php'), "<?php\n\$needle = 1;\n");
+        $b = $this->buffers->open($project->path('src/B.php'), "<?php\n\$needle = 2;\n");
+        $controller->open();
+        $controller->search('needle');
+        $this->awaitModalShows('$needle = 3;');
+
+        $controller->replaceAll('found');
+
+        $this->assertStringContainsString('$found = 1;', $a->document->getText());
+        $this->assertStringContainsString('$found = 2;', $b->document->getText(), 'the second open buffer too');
+        $this->assertStringContainsString('$found = 3;', (string) \file_get_contents($project->path('src/C.php')), 'and the closed file on disk');
+        $this->assertStringContainsString('Replaced in 3 files', $this->flashed());
+    }
+
+    /** Excluding the FIRST match skips only that one: the scan goes on to the matches after it. */
+    public function testExcludingTheFirstMatchStillReplacesTheOnesAfterIt(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$needle = 1;\n\$needle = 2;\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search('needle');
+        $this->awaitModalShows('$needle = 2;');
+
+        $controller->replaceAll('found', excluded: [0]);
+
+        $this->assertSame("<?php\n\$needle = 1;\n\$found = 2;\n", (string) \file_get_contents($project->path('src/A.php')));
+    }
+
+    /** A multiline replace counts a file once however many matches it held, and edits an open buffer in memory. */
+    public function testAMultilineReplaceCountsAFileOnceAndEditsTheOpenBuffers(): void
+    {
+        $text = "<?php\nfunction foo()\n{\n}\nfunction foo()\n{\n}\n";
+        $project = new TempProject(['src/A.php' => $text, 'src/B.php' => $text, 'src/C.php' => $text]);
+        $controller = $this->controller($project->dir);
+        $a = $this->buffers->open($project->path('src/A.php'), $text);
+        $b = $this->buffers->open($project->path('src/B.php'), $text);
+        $controller->open();
+        $controller->search("foo()\n{");
+        $this->await(static fn (): bool => 6 === \count(Probe::get($controller, 'lastSearchResults')), what: 'both matches in all three files');
+
+        // The replacement still CONTAINS the query, so a file visited twice
+        // would be rewritten twice — visible, where an idempotent one hides it.
+        $controller->replaceAll("foo()\n{ // seen");
+
+        $this->assertSame(2, \substr_count($a->document->getText(), needle: '// seen'), 'one open buffer rewritten once, in memory');
+        $this->assertSame(2, \substr_count($b->document->getText(), needle: '// seen'), 'so was the other — the scan does not stop after the first buffer');
+        $this->assertSame(2, \substr_count((string) \file_get_contents($project->path('src/C.php')), needle: '// seen'), 'and the closed file on disk');
+        $this->assertStringContainsString('Replaced in 3 files', $this->flashed(), 'three files, six matches: counted per file');
+    }
+
+    /** replaceLines() skips an index past the end and still reaches the valid ones after it. */
+    public function testReplaceLinesGoesOnPastAnOutOfRangeIndex(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $controller = $this->controller($project->dir);
+        Probe::set($controller, 'lastSearchQuery', 'needle');
+
+        $this->assertSame("a\nx", Probe::invoke($controller, 'replaceLines', "a\nneedle", [5, 1], 'x'));
+    }
+
+    /**
+     * A token-scoped replace rewrites an occurrence at COLUMN 0.
+     *
+     * A block comment's inner line starts inside the comment, so its match is
+     * approved at offset 0 — the one offset where clamping the splice start to
+     * 1 instead of 0 visibly corrupts the line.
+     */
+    public function testATokenScopedReplaceRewritesAnOccurrenceAtColumnZero(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n/*\nfoo\nfoo\n*/\n\$foo = 1;\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->toggleOption(SearchOption::Tokens); // any → in comments/strings
+        $controller->search('foo');
+        $this->awaitModalShows('foo');
+
+        $controller->replaceAll('bar');
+
+        $this->assertSame("<?php\n/*\nbar\nbar\n*/\n\$foo = 1;\n", (string) \file_get_contents($project->path('src/A.php')), 'both approved lines, not only the first');
+    }
+
+    /** The exported file ends with exactly one newline, and an empty export says why nothing was written. */
+    public function testTheExportEndsInOneNewlineAndAnEmptyOneSaysSo(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n// needle\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $this->assertSame('', $controller->exportResults());
+        $this->assertStringContainsString('Nothing to export', $this->flashed());
+
+        $controller->search('needle');
+        $this->awaitModalShows('// needle');
+        $content = (string) \file_get_contents($controller->exportResults());
+
+        $this->assertStringEndsWith("  2: // needle\n", $content, 'one trailing newline after the last row, none before the header');
+        $this->assertStringStartsWith('Search: needle', $content);
+    }
+
+    /** Adding a folder to the scopes pins it under its own path and says so. */
+    public function testAddSearchScopePinsTheFolderAndFlashesIt(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $controller = $this->controller($project->dir);
+
+        $controller->addSearchScope($project->dir.'/src');
+
+        $this->assertStringContainsString('Added src to search scopes', $this->flashed());
+        $this->assertSame([['label' => 'src', 'paths' => ['src'], 'pinned' => true]], new SearchScopeStore($project->dir)->scopes);
+    }
+
+    /** A folder search records the folder as a recent scope that searches that folder. */
+    public function testOpenInFolderRecordsTheFolderAsARecentScopeOverItsOwnPath(): void
+    {
+        $project = new TempProject(['src/sub/A.php' => "<?php\n"]);
+        $this->controller($project->dir)->openInFolder($project->dir.'/src/sub');
+
+        $this->assertSame([['label' => 'src/sub', 'paths' => ['src/sub'], 'pinned' => false]], new SearchScopeStore($project->dir)->scopes);
+    }
+
+    /** An out-of-range scope index falls back to the FIRST choice, the whole project. */
+    public function testAnOutOfRangeScopeIndexFallsBackToTheWholeProject(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+
+        $first = Probe::get($controller, 'scopeChoices')[0];
+        $this->assertNotSame($first->kind, Probe::get($controller, 'scopeChoices')[1]->kind, 'sanity: the first two choices differ');
+
+        $controller->setScopeIndex(99);
+
+        $this->assertSame($first->kind, Probe::get($controller, 'scopeKind'), 'it fell back to choice 0, not choice 1');
+        $this->assertSame(['.'], Probe::get($controller, 'scope'));
+    }
+
+    /** Of two saved scopes, the one that was last chosen is the one a reopen restores — not merely the first saved one. */
+    public function testReopenRestoresTheSavedScopeByNameNotTheFirstSavedOne(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n", 'other/B.php' => "<?php\n"]);
+        $store = new SearchScopeStore($project->dir);
+        $store->addPinned('src', ['src']);
+        $store->addPinned('other', ['other']);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        // Whichever saved scope the list puts SECOND is the one chosen: restoring
+        // "the first saved scope" must not pass by coincidence.
+        $saved = \array_values(\array_filter(Probe::get($controller, 'scopeChoices'), static fn (object $choice): bool => null === $choice->kind));
+        $this->assertCount(2, $saved);
+        $second = $saved[1]->label;
+        $index = \array_search($second, \array_map(static fn (object $choice): string => $choice->label, Probe::get($controller, 'scopeChoices')), strict: true);
+        $this->assertIsInt($index);
+        $controller->setScopeIndex($index);
+
+        $reopened = $this->controller($project->dir);
+        $reopened->open();
+
+        $this->assertSame([$second], Probe::get($reopened, 'scope'));
+    }
+
+    /** Toggling an option shows it in the open modal, not only in the controller's state. */
+    public function testToggleOptionIsReflectedInTheModalsOwnOptions(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+
+        $controller->toggleOption(SearchOption::Regex);
+
+        $this->assertTrue(Probe::get($this->editor->findModal, 'options')['regex']);
+    }
+
+    /** Closing the panel records the mask in use. */
+    public function testCancelRecordsTheMaskInUse(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->setMask('*.tpl');
+
+        $controller->cancel();
+
+        $this->assertContains('*.tpl', Probe::get(new SearchPrefsStore($project->dir), 'recentMasks'));
+    }
 }
