@@ -1012,4 +1012,31 @@ final class FindBarWidgetTest extends TestCase
 
         $this->assertSame($before, $doc->getText(), 'one undo restored every match at once');
     }
+
+    /**
+     * The compound has to be CLOSED, not merely opened. An unbalanced
+     * `beginCompound()` still collapses the replace into one undo entry, so the
+     * case above passes either way — what it leaves behind is a compound that
+     * never ends, swallowing every edit the user makes next. Typing one
+     * character after a Replace All and undoing must give back the replaced
+     * text, not the text from before the replace.
+     */
+    public function testAnEditAfterReplaceAllIsItsOwnUndoStep(): void
+    {
+        $doc = new Document("aaa bbb aaa\nccc aaa\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace, initialQuery: 'aaa');
+        $bar->handleInput("\t");
+        $this->type($bar, 'XX');
+        $bar->handleInput("\x1ba");
+        $replaced = $doc->getText();
+
+        $doc->setCursor(0, 0);
+        $doc->insert('Z');
+        $this->assertSame('Z'.$replaced, $doc->getText());
+
+        $doc->undo();
+
+        $this->assertSame($replaced, $doc->getText(), 'the typing undid on its own, without taking the replace with it');
+    }
 }
