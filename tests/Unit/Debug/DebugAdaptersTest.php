@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Debug;
 use PHPUnit\Framework\TestCase;
 use Porta\Debug\DebugAdapterProvider;
 use Porta\Debug\DebugAdapters;
+use Porta\Debug\DebugConfig;
 
 final class DebugAdaptersTest extends TestCase
 {
@@ -19,7 +20,7 @@ final class DebugAdaptersTest extends TestCase
         ]);
 
         $php = $adapters->adapterFor('php');
-        $this->assertNotNull($php);
+        $this->assertInstanceOf(DebugConfig::class, $php);
         $this->assertSame(['node', '/x/phpDebug.js'], $php->adapterArgv, 'command split on whitespace runs');
         $this->assertSame(['runtimeExecutable' => 'php'], $php->launch);
 

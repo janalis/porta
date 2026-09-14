@@ -47,7 +47,7 @@ final class SettingsScopeRowTest extends TestCase
     {
         $row = $this->row()->row();
 
-        $this->assertNotNull($row);
+        $this->assertInstanceOf(SettingsRow::class, $row);
         $this->assertSame(SettingsRowKind::Choice, $row->kind);
         $this->assertSame(['global', 'project'], $row->options);
         $this->assertSame('~/.porta/config.json', $row->optionLabels['global'] ?? null);
@@ -63,7 +63,7 @@ final class SettingsScopeRowTest extends TestCase
     {
         $row = $this->row()->row(also: 'new plugins install here too');
 
-        $this->assertNotNull($row);
+        $this->assertInstanceOf(SettingsRow::class, $row);
         $this->assertSame('for this session · new plugins install here too', $row->hint);
     }
 

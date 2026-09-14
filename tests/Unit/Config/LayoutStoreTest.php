@@ -23,7 +23,7 @@ final class LayoutStoreTest extends TestCase
         )));
 
         $loaded = $store->load();
-        $this->assertNotNull($loaded);
+        $this->assertInstanceOf(LayoutPrefs::class, $loaded);
         $this->assertSame(22, $loaded->sidebarWidthPercent);
         $this->assertSame(35, $loaded->bottomPanelHeightPercent);
         $this->assertSame(['git' => 28, 'settings' => 19], $loaded->viewSidebarWidthPercent);
@@ -44,7 +44,7 @@ final class LayoutStoreTest extends TestCase
         \file_put_contents($project->path('.porta/layout.json'), \json_encode(['sidebarWidthPercent' => 'nope']));
 
         $loaded = new LayoutStore($project->dir)->load();
-        $this->assertNotNull($loaded);
+        $this->assertInstanceOf(LayoutPrefs::class, $loaded);
         $this->assertNull($loaded->sidebarWidthPercent, 'non-numeric value is ignored');
         $this->assertNull($loaded->bottomPanelHeightPercent, 'absent key is null');
         $this->assertSame([], $loaded->viewSidebarWidthPercent, 'no view has been resized');

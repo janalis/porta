@@ -143,7 +143,7 @@ final class TreeDragAndDropTest extends TestCase
                     $tui->setFocus($tui->getById('editor'));
                     $tui->handleInput("\x18");
                     $idle = Services::resolve($ide, TreePathClipboard::class);
-                    \assert($idle instanceof TreePathClipboard, description: 'the IDE exposes the tree clipboard');
+                    $this->assertInstanceOf(TreePathClipboard::class, $idle, 'the IDE exposes the tree clipboard');
                     $this->assertSame([], $idle->paths(), 'the editor kept its own Ctrl+X');
 
                     $tui->handleInput("\x1b1"); // back to the tree
@@ -151,7 +151,7 @@ final class TreeDragAndDropTest extends TestCase
 
                     $tui->handleInput("\x18"); // Ctrl+X
                     $clip = Services::resolve($ide, TreePathClipboard::class);
-                    \assert($clip instanceof TreePathClipboard, description: 'the IDE exposes the tree clipboard');
+                    $this->assertInstanceOf(TreePathClipboard::class, $clip, 'the IDE exposes the tree clipboard');
                     $this->assertSame([$project->path('top.php')], $clip->paths(), 'the cut took the selected row');
                 },
                 380 => function (Tui $tui) use ($project): void {
@@ -160,7 +160,7 @@ final class TreeDragAndDropTest extends TestCase
                 },
                 460 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     $spent = Services::resolve($ide, TreePathClipboard::class);
-                    \assert($spent instanceof TreePathClipboard, description: 'the IDE exposes the tree clipboard');
+                    $this->assertInstanceOf(TreePathClipboard::class, $spent, 'the IDE exposes the tree clipboard');
                     $this->assertTrue($spent->isEmpty(), 'a cut is spent by its paste — those files are not there any more');
 
                     $this->assertFileDoesNotExist($project->path('top.php'), 'the file left its old home');
@@ -229,7 +229,7 @@ final class TreeDragAndDropTest extends TestCase
                     $this->selectRow($tui, $project->path('top.php'));
                     $tui->handleInput("\x03"); // Ctrl+C
                     $clip = Services::resolve($ide, TreePathClipboard::class);
-                    \assert($clip instanceof TreePathClipboard, description: 'the IDE exposes the tree clipboard');
+                    $this->assertInstanceOf(TreePathClipboard::class, $clip, 'the IDE exposes the tree clipboard');
                     $this->assertSame([$project->path('top.php')], $clip->paths(), 'the copy took the selected row');
                     $this->assertTrue($clip->isCopy(), 'and remembered that it copies');
                 },
@@ -250,7 +250,7 @@ final class TreeDragAndDropTest extends TestCase
                     $this->assertFileExists($project->path('top.php'), 'and the original stayed, because it was a copy');
 
                     $kept = Services::resolve($ide, TreePathClipboard::class);
-                    \assert($kept instanceof TreePathClipboard, description: 'the IDE exposes the tree clipboard');
+                    $this->assertInstanceOf(TreePathClipboard::class, $kept, 'the IDE exposes the tree clipboard');
                     $this->assertSame([$project->path('top.php')], $kept->paths(), 'a copy survives its paste, so it can go to several places');
                 },
                 520 => function (Tui $tui) use ($project): void {

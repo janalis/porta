@@ -55,7 +55,7 @@ final class ContextMenuTest extends TestCase
         $width = $menu->panelWidth();
         $segments = $menu->segments($width);
 
-        $this->assertSame(3, \count(Probe::get($menu, 'items')));
+        $this->assertCount(3, Probe::get($menu, 'items'));
         $this->assertCount(3, $segments);
         $this->assertFalse($segments[0]['separator']);
         $this->assertTrue($segments[1]['separator']);
@@ -73,7 +73,7 @@ final class ContextMenuTest extends TestCase
         $menu = new ContextMenu();
         $this->assertSame(0, $menu->panelWidth());
         $this->assertSame([], $menu->segments(20));
-        $this->assertSame(0, \count(Probe::get($menu, 'items')));
+        $this->assertCount(0, Probe::get($menu, 'items'));
     }
 
     public function testOpenWithNoItemsIsNoOp(): void

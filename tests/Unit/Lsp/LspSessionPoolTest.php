@@ -384,7 +384,7 @@ final class LspSessionPoolTest extends TestCase
 
         $pool->flushPendingChange('/tmp/proj/a.php', $doc);
 
-        $this->assertSame($before, \count(EventLoop::getIdentifiers()), 'flushing cancelled the pending debounce');
+        $this->assertCount($before, EventLoop::getIdentifiers(), 'flushing cancelled the pending debounce');
     }
 
     public function testWorkspaceLevelRequestsFallBackToTheCatchAllOverPhp(): void

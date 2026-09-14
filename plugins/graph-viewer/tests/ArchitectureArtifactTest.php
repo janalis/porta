@@ -135,8 +135,8 @@ final class ArchitectureArtifactTest extends TestCase
         // side because dependency direction runs this way only: the plugin may
         // know about core, never the reverse.
         $this->assertSame(
-            Probe::getStatic(BufferService::class, 'ARCHITECTURE_FILENAME'),
             ArchitectureArtifact::FILENAME,
+            Probe::getStatic(BufferService::class, 'ARCHITECTURE_FILENAME'),
             'rename one and the tab silently loses its title',
         );
     }

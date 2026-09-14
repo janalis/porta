@@ -76,7 +76,7 @@ final class WelcomeScreenTest extends TestCase
         }, what: 'the Welcome modal to be placed');
 
         $region = $controller->region();
-        $this->assertNotNull($region, 'the Welcome modal is open and placed');
+        $this->assertInstanceOf(DropdownRegion::class, $region, 'the Welcome modal is open and placed');
 
         return $region;
     }

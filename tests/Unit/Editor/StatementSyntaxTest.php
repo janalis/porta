@@ -109,7 +109,7 @@ final class StatementSyntaxTest extends TestCase
     public function testOnlyTheLeadingWordOpensABlock(): void
     {
         $php = StatementSyntax::forGrammar('php');
-        \assert($php instanceof StatementSyntax, description: 'php is in the table');
+        $this->assertInstanceOf(StatementSyntax::class, $php, 'php is in the table');
 
         $this->assertTrue($php->opensABlock('if ($x)'));
         $this->assertTrue($php->opensABlock('    foreach ($a as $b)'), 'indented, still the first word');

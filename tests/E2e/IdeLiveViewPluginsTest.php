@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Ide;
+use Porta\Layout\ViewRegion;
 use Porta\Layout\ViewRegions;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Tests\Support\ClearsPortaLsp;
@@ -185,7 +186,7 @@ final class IdeLiveViewPluginsTest extends TestCase
                     $this->awaitPainted($tui, $terminal, 'Plugin "demo" enabled');
 
                     $this->assertNotNull($views->find('demo-view'), 'the view was built from the Settings screen');
-                    $this->assertNotNull($regions->find('demo-view'), 'and its region minted');
+                    $this->assertInstanceOf(ViewRegion::class, $regions->find('demo-view'), 'and its region minted');
                     $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
                     $this->assertSame(['demo'], \is_array($config) ? $config['enabledPlugins'] ?? null : null, 'and the choice persisted');
 

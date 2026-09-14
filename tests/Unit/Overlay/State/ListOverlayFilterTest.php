@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Overlay\State;
 
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\Region\ModalBox;
 use Porta\Overlay\State\OverlayHost;
@@ -388,7 +389,7 @@ final class ListOverlayFilterTest extends TestCase
         $this->type($host, 'method');
         $this->canvas($host); // a box to hit-test against
         $box = Probe::get($host, 'overlayBox');
-        \assert($box instanceof ModalBox, description: 'the layout recorded a box to hit-test');
+        Assert::assertInstanceOf(ModalBox::class, $box, 'the layout recorded a box to hit-test');
 
         // The SECOND row of what is drawn: `hydrate`, which is item index 2 of
         // the full list and index 1 of the filtered one.
@@ -419,12 +420,12 @@ final class ListOverlayFilterTest extends TestCase
 
         $host->layout([0, 0, 24, 100]);
         $before = Probe::get($host, 'overlayBox');
-        \assert($before instanceof ModalBox, description: 'a box before typing');
+        $this->assertInstanceOf(ModalBox::class, $before, 'a box before typing');
 
         $this->type($host, 'hy');
         $host->layout([0, 0, 24, 100]);
         $after = Probe::get($host, 'overlayBox');
-        \assert($after instanceof ModalBox, description: 'and one after');
+        $this->assertInstanceOf(ModalBox::class, $after, 'and one after');
 
         $this->assertSame($before->width, $after->width, 'same width');
         $this->assertSame($before->col, $after->col, 'and the same place');

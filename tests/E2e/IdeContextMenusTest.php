@@ -14,6 +14,7 @@ use Porta\Editor\Document;
 use Porta\Editor\EditHistory;
 use Porta\History\RecentFilesStore;
 use Porta\Ide;
+use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\FindModalReads;
@@ -29,6 +30,7 @@ use Porta\Widget\ContextMenu;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -149,7 +151,7 @@ final class IdeContextMenusTest extends TestCase
 
                     $overlay = Services::resolve($ide, MenuOverlayController::class);
                     $region = $overlay->contextMenuDropdown();
-                    $this->assertNotNull($region, 'the menu overlay was placed');
+                    $this->assertInstanceOf(DropdownRegion::class, $region, 'the menu overlay was placed');
 
                     $before = Probe::get($menu, 'selected');
 
@@ -415,7 +417,7 @@ final class IdeContextMenusTest extends TestCase
                 },
                 300 => function ($tui, $terminal, Ide $ide): void {
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('editor'));
-                    $this->assertNotNull($rect, 'the editor is laid out');
+                    $this->assertInstanceOf(WidgetRect::class, $rect, 'the editor is laid out');
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 5, $rect->row + 2)); // SGR is 1-based
 
                     $this->assertFalse($tui->getById('context-menu')->isOpen(), 'no menu opened under the picker');
@@ -449,7 +451,7 @@ final class IdeContextMenusTest extends TestCase
                 250 => function ($tui, $terminal, Ide $ide): void {
                     $tui->tick();
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('tree'));
-                    $this->assertNotNull($rect, 'the tree is laid out');
+                    $this->assertInstanceOf(WidgetRect::class, $rect, 'the tree is laid out');
                     $tree = $tui->getById('tree');
                     $dirRow = null;
                     $fileRow = null;

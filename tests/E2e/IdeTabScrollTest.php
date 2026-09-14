@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\E2e;
 
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
@@ -54,7 +55,7 @@ final class IdeTabScrollTest extends TestCase
     {
         $rect = Services::resolve($ide, Renderer::class)
             ->getWidgetRect($tui->getById('tabs'));
-        \assert($rect instanceof WidgetRect, description: 'the strip rendered, so its rect exists');
+        Assert::assertInstanceOf(WidgetRect::class, $rect, 'the strip rendered, so its rect exists');
 
         return $rect;
     }

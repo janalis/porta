@@ -79,7 +79,7 @@ final class WorkspaceResolverTest extends TestCase
     public function testColonSuffixOnAMissingFileIsNotSplit(): void
     {
         // "nope:5" matches the regex but "nope" is not a file → not split → missing.
-        $this->expectExceptionMessage('no such file or directory: /nope:5');
+        $this->expectExceptionMessageIsOrContains('no such file or directory: /nope:5');
         $this->resolver->resolve('/nope:5', '/nowhere');
     }
 
@@ -108,7 +108,7 @@ final class WorkspaceResolverTest extends TestCase
     public function testMissingTargetThrows(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('no such file or directory: /does/not/exist');
+        $this->expectExceptionMessageIsOrContains('no such file or directory: /does/not/exist');
         $this->resolver->resolve('/does/not/exist', '/nowhere');
     }
 }

@@ -57,7 +57,7 @@ final class ContainerSmokeTest extends ContainerTestCase
             }
 
             $locator = $container->get('porta.ide');
-            \assert($locator instanceof ServiceLocator, description: 'porta.ide is the ide-service locator');
+            $this->assertInstanceOf(ServiceLocator::class, $locator, 'porta.ide is the ide-service locator');
             foreach (\array_keys($locator->getProvidedServices()) as $id) {
                 $this->assertNotNull($locator->get($id), \sprintf('porta.ide locator entry "%s" resolves', $id));
                 ++$resolved;

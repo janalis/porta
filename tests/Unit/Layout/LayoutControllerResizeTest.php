@@ -24,7 +24,7 @@ final class LayoutControllerResizeTest extends TestCase
     private function press(int $col): MouseEvent
     {
         $event = MouseEvent::parse(\sprintf("\x1b[<0;%d;%dM", $col + 1, 6));
-        $this->assertNotNull($event);
+        $this->assertInstanceOf(MouseEvent::class, $event);
 
         return $event;
     }
@@ -32,7 +32,7 @@ final class LayoutControllerResizeTest extends TestCase
     private function drag(int $col): MouseEvent
     {
         $event = MouseEvent::parse(\sprintf("\x1b[<32;%d;%dM", $col + 1, 6));
-        $this->assertNotNull($event);
+        $this->assertInstanceOf(MouseEvent::class, $event);
 
         return $event;
     }
@@ -40,7 +40,7 @@ final class LayoutControllerResizeTest extends TestCase
     private function release(int $col): MouseEvent
     {
         $event = MouseEvent::parse(\sprintf("\x1b[<0;%d;%dm", $col + 1, 6));
-        $this->assertNotNull($event);
+        $this->assertInstanceOf(MouseEvent::class, $event);
 
         return $event;
     }
@@ -227,10 +227,10 @@ final class LayoutControllerResizeTest extends TestCase
         $this->tui->requestRender();
         $this->tui->processRender();
         $rect = $this->renderer->getWidgetRect($panel);
-        $this->assertNotNull($rect, 'the panel actually rendered somewhere');
+        $this->assertInstanceOf(WidgetRect::class, $rect, 'the panel actually rendered somewhere');
 
         $mouse = MouseEvent::parse(\sprintf("\x1b[<0;%d;%dM", $rect->col + 1, $rect->row + 1));
-        $this->assertNotNull($mouse);
+        $this->assertInstanceOf(MouseEvent::class, $mouse);
 
         // No explicit $grabRowOffset: the default must be exactly 0, so a
         // press on the rect's own top row (not one above or below it) arms it.
@@ -246,14 +246,14 @@ final class LayoutControllerResizeTest extends TestCase
         $this->tui->requestRender();
         $this->tui->processRender();
         $rect = $this->renderer->getWidgetRect($panel);
-        $this->assertNotNull($rect, 'sanity: it rendered while visible');
+        $this->assertInstanceOf(WidgetRect::class, $rect, 'sanity: it rendered while visible');
 
         // Now hide it WITHOUT detaching it — the renderer's cached rect from
         // the render above is still there, so the visibility guard itself
         // (not "no rect") is what must refuse the resize.
         Probe::set($panel, 'open', false);
         $mouse = MouseEvent::parse(\sprintf("\x1b[<0;%d;%dM", $rect->col + 1, $rect->row + 1));
-        $this->assertNotNull($mouse);
+        $this->assertInstanceOf(MouseEvent::class, $mouse);
 
         $this->assertFalse($layout->armPanelResize($panel, $mouse), 'invisible, despite the stale rect still resolving');
     }

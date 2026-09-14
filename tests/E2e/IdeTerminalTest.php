@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Ide;
 use Porta\Run\RunController;
+use Porta\Terminal\PtyProcess;
 use Porta\Terminal\TerminalSession;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
@@ -148,7 +149,7 @@ final class IdeTerminalTest extends TestCase
                     $this->assertCount(1, $this->sessions($ide), 'the clicked tab closed');
                     $this->assertSame('shell:2', $this->sessions($ide)[0]->id, 'the survivor is shell 2');
                     $this->assertTrue($tui->getById('terminal')->isOpen(), 'the panel stays open with one session left');
-                    self::assertNotNull($sessionTwoProcess);
+                    $this->assertInstanceOf(PtyProcess::class, $sessionTwoProcess);
                 },
                 900 => function ($tui, $terminal, $ide): void {
                     $tui->tick();
@@ -283,7 +284,7 @@ final class IdeTerminalTest extends TestCase
 
                         $run = $session;
                     }
-                    self::assertNotNull($run);
+                    $this->assertInstanceOf(TerminalSession::class, $run);
                     $this->await(fn (): bool => \str_contains($this->bufferText($run), 'RAN-'));
                     $firstOutput = $this->bufferText($run);
                     $this->await(fn (): bool => \str_contains($this->bufferText($run), '(0)') || null === $run->process() || !$run->isRunning());

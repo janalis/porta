@@ -175,7 +175,7 @@ final class DocumentReplacerTest extends TestCase
 
         $replacer->replace($buffer, "two\n");
 
-        $this->assertNotNull($client);
+        $this->assertInstanceOf(FakeLspClient::class, $client);
         $this->assertSame(
             ['textDocument/didOpen', 'textDocument/didChange'],
             \array_column($client->notifications, 'method'),

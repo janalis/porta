@@ -17,6 +17,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UsesBundledPlugins;
+use Porta\Widget\EditorPaneWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -87,24 +88,24 @@ final class IdeViewerPluginsTest extends TestCase
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the graph layout');
                     $buffers = Services::resolve($ide, BufferManager::class);
                     $aPath = (string) \realpath($project->path('a.dot'));
-                    $this->assertTrue('graph' === $buffers->get($aPath)?->paneId, 'default-enabled: the viewer routed the initial file');
+                    $this->assertSame('graph', $buffers->get($aPath)?->paneId, 'default-enabled: the viewer routed the initial file');
 
                     $lifecycle = Services::resolve($ide, PluginLifecycle::class);
                     $lifecycle->disable('graph-viewer');
-                    $this->assertTrue('graph' === $buffers->get($aPath)?->paneId, 'the open tab STAYS a graph tab');
+                    $this->assertSame('graph', $buffers->get($aPath)?->paneId, 'the open tab STAYS a graph tab');
                     $this->assertNull(Services::resolve($ide, CommandRegistry::class)->label('graph-viewer:architecture'), 'the plugin commands left the registry live');
 
                     $service = Services::resolve($ide, BufferService::class);
                     $bPath = (string) \realpath($project->path('b.dot'));
                     $service->openFile($bPath);
                     $tui->tick();
-                    $this->assertFalse('graph' === $buffers->get($bPath)?->paneId, 'a NEW .dot open routes to text while disabled');
+                    $this->assertNotSame('graph', $buffers->get($bPath)?->paneId, 'a NEW .dot open routes to text while disabled');
 
                     $lifecycle->enable('graph-viewer');
                     $this->assertNotNull(Services::resolve($ide, CommandRegistry::class)->label('graph-viewer:architecture'), 're-enable restores the commands live');
                     $cPath = (string) \realpath($project->path('c.dot'));
                     $service->openFile($cPath);
-                    $this->assertTrue('graph' === $buffers->get($cPath)?->paneId, 'routing resumed for files opened afterwards');
+                    $this->assertSame('graph', $buffers->get($cPath)?->paneId, 'routing resumed for files opened afterwards');
                 },
             ],
         );
@@ -170,7 +171,7 @@ final class IdeViewerPluginsTest extends TestCase
                 200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     $panes = Services::resolve($ide, EditorPanes::class);
                     $pane = $panes->paneFor('demo');
-                    $this->assertNotNull($pane, 'the plugin\'s pane is registered under its id');
+                    $this->assertInstanceOf(EditorPaneWidget::class, $pane, 'the plugin\'s pane is registered under its id');
                     $this->assertSame('demo', $pane->paneId());
 
                     $loader = $panes->loaderFor('demo');
@@ -189,7 +190,7 @@ final class IdeViewerPluginsTest extends TestCase
                     // contract this suite already pins for the bundled viewers.
                     $lifecycle = Services::resolve($ide, PluginLifecycle::class);
                     $lifecycle->disable('demo-pane');
-                    $this->assertNotNull($panes->paneFor('demo'), 'a disabled plugin keeps its pane for tabs already open in it');
+                    $this->assertInstanceOf(EditorPaneWidget::class, $panes->paneFor('demo'), 'a disabled plugin keeps its pane for tabs already open in it');
 
                     // Removal is the other half: the code is gone from disk, so
                     // nothing may route to it again.

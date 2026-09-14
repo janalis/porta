@@ -74,11 +74,11 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget = $this->widget($rebinds);
         $widget->handleInput("\x1b[B"); // select duplicate_line
         $widget->handleInput("\r"); // Enter arms capture
-        $this->assertTrue(null !== Probe::get($widget, 'capturingIndex'));
+        $this->assertNotNull(Probe::get($widget, 'capturingIndex'));
         $this->assertStringContainsString('Press a key', $this->plain($widget->render(new RenderContext(60, 8))));
 
         $widget->handleInput("\x04"); // ctrl+d pressed → captured raw
-        $this->assertFalse(null !== Probe::get($widget, 'capturingIndex'));
+        $this->assertNull(Probe::get($widget, 'capturingIndex'));
         $this->assertSame([['duplicate_line', "\x04"]], $rebinds);
     }
 
@@ -92,7 +92,7 @@ final class KeybindingsListWidgetTest extends TestCase
 
         $widget->handleInput("\r"); // arm
         $widget->handleInput("\x1b"); // Esc cancels capture
-        $this->assertFalse(null !== Probe::get($widget, 'capturingIndex'));
+        $this->assertNull(Probe::get($widget, 'capturingIndex'));
         $this->assertSame([], $rebinds, 'nothing rebound');
         $this->assertFalse($exited, 'Esc during capture does not leave the view');
     }
@@ -131,10 +131,10 @@ final class KeybindingsListWidgetTest extends TestCase
 
         $widget->handleClick(2); // row 0 is header; render row 2 → index 1
         $this->assertSame('duplicate_line', $this->selectedAction($widget));
-        $this->assertFalse(null !== Probe::get($widget, 'capturingIndex'), 'first click only selects');
+        $this->assertNull(Probe::get($widget, 'capturingIndex'), 'first click only selects');
 
         $widget->handleClick(2); // click the selected row again arms capture
-        $this->assertTrue(null !== Probe::get($widget, 'capturingIndex'));
+        $this->assertNotNull(Probe::get($widget, 'capturingIndex'));
 
         // A click while capturing selects (does not re-arm on a different row).
         $widget->handleClick(1);
@@ -160,7 +160,7 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->onInput(static fn (string $data): bool => true);
         $widget->handleInput("\r"); // swallowed: no capture armed
-        $this->assertFalse(null !== Probe::get($widget, 'capturingIndex'));
+        $this->assertNull(Probe::get($widget, 'capturingIndex'));
     }
 
     public function testArmingIsANoOpWithNoRows(): void
@@ -168,7 +168,7 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget = new KeybindingsListWidget(new Translator('en'));
         $widget->setRows([]);
         $widget->handleInput("\r");
-        $this->assertFalse(null !== Probe::get($widget, 'capturingIndex'));
+        $this->assertNull(Probe::get($widget, 'capturingIndex'));
         $this->assertNull($this->selectedAction($widget));
     }
 
@@ -181,7 +181,7 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget->handleInput("\x1b"); // no onExit
         $widget->handleInput("\r"); // arm (no onRebind)
         $widget->handleInput('a'); // capture with no onRebind is safe
-        $this->assertFalse(null !== Probe::get($widget, 'capturingIndex'));
+        $this->assertNull(Probe::get($widget, 'capturingIndex'));
     }
 
     public function testSetRowsDropsCaptureAndHover(): void
@@ -189,9 +189,9 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->hoverRow(2);
         $widget->handleInput("\r");
-        $this->assertTrue(null !== Probe::get($widget, 'capturingIndex'));
+        $this->assertNotNull(Probe::get($widget, 'capturingIndex'));
         $widget->setRows($this->rows());
-        $this->assertFalse(null !== Probe::get($widget, 'capturingIndex'));
+        $this->assertNull(Probe::get($widget, 'capturingIndex'));
     }
 
     public function testScrollFollowsSelectionInAShortViewport(): void

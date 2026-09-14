@@ -38,6 +38,7 @@ use Porta\Tests\Support\TestBottomDock;
 use Porta\Ui\ScopeKind;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
+use Porta\Widget\DockPanelWidget;
 use Porta\Widget\FindBarWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
@@ -280,6 +281,6 @@ final class SearchUiWiringTest extends TestCase
         $wiring->onExportRequested(new ResultsExportRequested());
 
         $this->assertSame([], $this->opened, 'nothing was written and nothing was opened');
-        $this->assertNotNull($this->dock->visiblePanel(), 'and the panel being read is still there');
+        $this->assertInstanceOf(DockPanelWidget::class, $this->dock->visiblePanel(), 'and the panel being read is still there');
     }
 }

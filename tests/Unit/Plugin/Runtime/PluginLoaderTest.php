@@ -188,7 +188,7 @@ final class PluginLoaderTest extends TestCase
 
         $error = $loader->loadFile($project->path('future/plugin.php'), $manager);
 
-        $this->assertNotNull($error);
+        $this->assertInstanceOf(ConfigWarning::class, $error);
         $this->assertStringContainsString('needs PHP >=99.0', self::render($error));
         $this->assertFalse($manager->hasPlugin('future'));
     }
@@ -267,7 +267,7 @@ final class PluginLoaderTest extends TestCase
 
         $error = $loader->loadFile($project->path('corrupt/plugin.php'), $manager);
 
-        $this->assertNotNull($error);
+        $this->assertInstanceOf(ConfigWarning::class, $error);
         $this->assertStringContainsString('Plugin "corrupt" failed to load', self::render($error));
         $this->assertFalse($manager->hasPlugin('corrupt'));
     }

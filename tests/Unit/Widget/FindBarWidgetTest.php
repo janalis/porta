@@ -42,7 +42,7 @@ final class FindBarWidgetTest extends TestCase
         // greedy match reports `[0/0]` as the query and every assertion about
         // clearing the field passes against it.
         $m = [];
-        self::assertSame(1, \preg_match('/Find:([^\[]*)/', $plain, $m), 'the bar draws a Find field');
+        $this->assertSame(1, \preg_match('/Find:([^\[]*)/', $plain, $m), 'the bar draws a Find field');
 
         return \trim($m[1]);
     }
@@ -587,7 +587,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->handleInput("\x1bx");
         $this->type($bar, 'a');
 
-        $this->assertSame(5000, \count(\array_merge(...\array_values($bar->getMatchesByLine()))), 'the scan stops at the cap');
+        $this->assertCount(5000, \array_merge(...\array_values($bar->getMatchesByLine())), 'the scan stops at the cap');
     }
 
     public function testRegexReplaceExpandsBackreferences(): void

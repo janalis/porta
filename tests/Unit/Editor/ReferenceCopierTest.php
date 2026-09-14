@@ -117,7 +117,7 @@ final class ReferenceCopierTest extends TestCase
         $copier->copyReference();
 
         $terminal = $this->tui->getTerminal();
-        \assert($terminal instanceof VirtualTerminal, description: 'TestTui builds a virtual terminal');
+        $this->assertInstanceOf(VirtualTerminal::class, $terminal, 'TestTui builds a virtual terminal');
         $this->assertStringContainsString(
             "\x1b]52;c;".\base64_encode('App\\Http\\Svc::run')."\x07",
             $terminal->getOutput(),

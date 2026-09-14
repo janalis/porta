@@ -16,6 +16,7 @@ use Porta\Widget\Support\ResultsPanelFields;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -157,7 +158,7 @@ final class IdeFindUiTest extends TestCase
                 900 => function ($tui, $terminal, Ide $ide) use ($panelText): void {
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('results'));
-                    $this->assertNotNull($rect, 'the results pane has a rect');
+                    $this->assertInstanceOf(WidgetRect::class, $rect, 'the results pane has a rect');
 
                     // Wheel down over the pane scrolls its list past the first files.
                     for ($i = 0; $i < 8; ++$i) {

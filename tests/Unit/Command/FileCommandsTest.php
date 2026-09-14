@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Command;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Ide;
@@ -120,7 +121,7 @@ final class FileCommandsTest extends TestCase
             // passing with the guard removed. What the guard actually does is
             // put the editor back in the slot, and that is observable.
             $active = $buffers->active();
-            $this->assertNotNull($active);
+            $this->assertInstanceOf(Buffer::class, $active);
             $this->assertFalse($active->isViewer(), 'the switcher hopped back to a text tab, so its overlay has a widget that renders');
             $this->assertTrue(EditorState::pickerOpen($editor) || EditorState::promptOpen($editor), 'and the picker is up');
         } finally {

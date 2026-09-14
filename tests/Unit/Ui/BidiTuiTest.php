@@ -109,9 +109,9 @@ final class BidiTuiTest extends TestCase
         $tui->requestRender();
         $tui->processRender();
         $arranged = Probe::get($tui, 'arranged');
-        self::assertIsArray($arranged);
-        self::assertArrayHasKey(0, $arranged, 'the first frame remembered what it mirrored');
-        self::assertIsArray($arranged[0]);
+        $this->assertIsArray($arranged);
+        $this->assertArrayHasKey(0, $arranged, 'the first frame remembered what it mirrored');
+        $this->assertIsArray($arranged[0]);
         Probe::set($tui, 'arranged', [0 => [...$arranged[0], ...$perturb, 'out' => self::MARKER]]);
     }
 

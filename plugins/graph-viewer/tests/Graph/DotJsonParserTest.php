@@ -6,6 +6,7 @@ namespace Porta\GraphViewer\Tests\Graph;
 
 use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\Graph\DotJsonParser;
+use Porta\GraphViewer\Graph\GraphEdge;
 use Porta\GraphViewer\Graph\GraphParseException;
 
 final class DotJsonParserTest extends TestCase
@@ -91,9 +92,9 @@ final class DotJsonParserTest extends TestCase
                 $dotted = $edge;
             }
         }
-        $this->assertNotNull($uses);
+        $this->assertInstanceOf(GraphEdge::class, $uses);
         $this->assertSame('#00aa00', $uses->color);
-        $this->assertNotNull($dotted, 'style=dotted renders dashed');
+        $this->assertInstanceOf(GraphEdge::class, $dotted, 'style=dotted renders dashed');
     }
 
     public function testParsesTheEmptyGraph(): void

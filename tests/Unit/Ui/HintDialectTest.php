@@ -31,7 +31,7 @@ final class HintDialectTest extends TestCase
     private function sources(): array
     {
         $xml = \simplexml_load_file(self::CATALOG);
-        self::assertNotFalse($xml, 'messages.en.xlf is not valid XML');
+        $this->assertNotFalse($xml, 'messages.en.xlf is not valid XML');
         $xml->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
 
         $sources = [];
@@ -44,7 +44,7 @@ final class HintDialectTest extends TestCase
                 $sources[] = (string) $node[0];
             }
         }
-        self::assertNotEmpty($sources, 'the catalog scan found nothing to guard');
+        $this->assertNotEmpty($sources, 'the catalog scan found nothing to guard');
 
         return $sources;
     }

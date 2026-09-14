@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Overlay\State;
 
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\Region\ModalBox;
 use Porta\Overlay\State\OverlayHost;
@@ -96,7 +97,7 @@ final class OverlayHostTest extends TestCase
     {
         $host = new OverlayHost();
         $host->openList('L', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn (): null => null);
-        $this->assertTrue(null !== Probe::get($host, 'overlay'), 'no crash without a tui');
+        $this->assertNotNull(Probe::get($host, 'overlay'), 'no crash without a tui');
     }
 
     public function testOpenPromptDefaultsToNotDanger(): void
@@ -125,7 +126,7 @@ final class OverlayHostTest extends TestCase
         $this->clearRepaint();
         $host->promptClickAt(9, 0); // promptBox is still null (layout() never ran) → the dismiss branch
         $this->assertTrue($this->repainted(), 'promptClickAt dismiss');
-        $this->assertFalse(null !== Probe::get($host, 'prompt'));
+        $this->assertNull(Probe::get($host, 'prompt'));
 
         $this->clearRepaint();
         $host->openSearch('S', static fn (): null => null, static fn (): null => null, static fn (): null => null);
@@ -144,7 +145,7 @@ final class OverlayHostTest extends TestCase
     {
         $host = $this->host();
         $host->openList('Empty', [], static fn (): null => null);
-        $this->assertFalse(null !== Probe::get($host, 'overlay'));
+        $this->assertNull(Probe::get($host, 'overlay'));
         $this->assertFalse($this->repainted(), 'nothing to repaint');
     }
 
@@ -172,7 +173,7 @@ final class OverlayHostTest extends TestCase
         $this->assertTrue($host->handleInput("\r", $this->keybindings()));
         $this->assertSame('old', $submitted);
         $this->assertNull($picked);
-        $this->assertTrue(null !== Probe::get($host, 'overlay'), 'the list overlay survives the prompt');
+        $this->assertNotNull(Probe::get($host, 'overlay'), 'the list overlay survives the prompt');
     }
 
     public function testCloseListLeavesThePromptOpen(): void
@@ -182,7 +183,7 @@ final class OverlayHostTest extends TestCase
         $host->openList('L', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn (): null => null);
 
         $host->closeList();
-        $this->assertFalse(null !== Probe::get($host, 'overlay'));
+        $this->assertNull(Probe::get($host, 'overlay'));
         // The prompt still swallows and edits input.
         $this->assertTrue($host->handleInput('4', $this->keybindings()));
         $lines = $this->canvas($host, 40, 5);
@@ -259,7 +260,7 @@ final class OverlayHostTest extends TestCase
 
         $this->clearRepaint();
         $this->assertTrue($host->handleInput("\x1b", $this->keybindings()));
-        $this->assertFalse(null !== Probe::get($host, 'overlay'), 'select_cancel closed the list');
+        $this->assertNull(Probe::get($host, 'overlay'), 'select_cancel closed the list');
         $this->assertNull($picked);
         $this->assertTrue($this->repainted(), 'select_cancel requests a render');
     }
@@ -281,7 +282,7 @@ final class OverlayHostTest extends TestCase
         $this->clearRepaint();
         $this->assertTrue($host->handleInput("\r", $kb));
         $this->assertSame('B', $picked, 'the selected item, not the first one');
-        $this->assertFalse(null !== Probe::get($host, 'overlay'), 'accept closes the list');
+        $this->assertNull(Probe::get($host, 'overlay'), 'accept closes the list');
         $this->assertTrue($this->repainted(), 'accept_completion requests a render');
     }
 
@@ -322,12 +323,12 @@ final class OverlayHostTest extends TestCase
         $host->layout([0, 0, 2, 40]); // framed box: rows 0-4, inner width 30 at col 3
 
         $this->assertTrue($host->promptClickAt(0, 5), 'a click on the frame title bar is consumed');
-        $this->assertTrue(null !== Probe::get($host, 'prompt'), 'and does not dismiss it — the caret stays');
+        $this->assertNotNull(Probe::get($host, 'prompt'), 'and does not dismiss it — the caret stays');
         $this->assertTrue($host->promptClickAt(2, 5), 'a click on the field row is consumed');
-        $this->assertTrue(null !== Probe::get($host, 'prompt'));
+        $this->assertNotNull(Probe::get($host, 'prompt'));
 
         $this->assertTrue($host->promptClickAt(5, 5), 'a click below the box is consumed');
-        $this->assertFalse(null !== Probe::get($host, 'prompt'), 'and dismisses it, like every sibling overlay');
+        $this->assertNull(Probe::get($host, 'prompt'), 'and dismisses it, like every sibling overlay');
     }
 
     public function testPromptClickBeyondTheBoxWidthDismisses(): void
@@ -337,7 +338,7 @@ final class OverlayHostTest extends TestCase
         $host->layout([0, 0, 2, 40]);
 
         $this->assertTrue($host->promptClickAt(0, 37), 'row 0 but past the box width is outside');
-        $this->assertFalse(null !== Probe::get($host, 'prompt'));
+        $this->assertNull(Probe::get($host, 'prompt'));
     }
 
     public function testThePromptCloseButtonDismisses(): void
@@ -347,7 +348,7 @@ final class OverlayHostTest extends TestCase
         $host->layout([0, 0, 2, 40]); // box [4, 36): × at col 34
 
         $this->assertTrue($host->promptClickAt(0, 34), 'the title bar ×');
-        $this->assertFalse(null !== Probe::get($host, 'prompt'));
+        $this->assertNull(Probe::get($host, 'prompt'));
     }
 
     /** Hovering a picker's × brightens it, exactly like the tab strips' close glyph. */
@@ -357,7 +358,7 @@ final class OverlayHostTest extends TestCase
         $host->openList('Title', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn (): null => null);
         $lines = $this->canvas($host, 80, 20);
         $box = Probe::get($host, 'overlayBox');
-        \assert($box instanceof ModalBox, description: 'the overlay laid out a modal box');
+        $this->assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
         $normalBar = $lines[$box->startRow];
 
         $this->assertTrue($host->hoverAt($box->startRow, $box->col + $box->width - 2), 'onto the ×');
@@ -378,7 +379,7 @@ final class OverlayHostTest extends TestCase
         $host->openPrompt('Go to line', '', static fn (): null => null);
         $host->layout([0, 0, 8, 40]);
         $box = Probe::get($host, 'promptBox');
-        \assert($box instanceof ModalBox, description: 'the overlay laid out a modal box');
+        $this->assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
 
         $this->assertTrue($host->promptHoverAt($box->startRow, $box->col + $box->width - 2), 'onto the ×');
         $this->assertTrue($host->promptHoverAt($box->startRow + 2, $box->col + 2), 'off it');
@@ -394,9 +395,9 @@ final class OverlayHostTest extends TestCase
         $host->openPrompt('P', '', static fn (): null => null);
         $host->layout([0, 0, 8, 40]);
         $box = Probe::get($host, 'promptBox');
-        \assert($box instanceof ModalBox, description: 'the overlay laid out a modal box');
+        $this->assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
         $host->promptClickAt($box->startRow, $box->col + $box->width - 2); // the × → dismiss
-        $this->assertFalse(null !== Probe::get($host, 'prompt'));
+        $this->assertNull(Probe::get($host, 'prompt'));
 
         $this->clearRepaint();
         $this->assertFalse($host->promptHoverAt($box->startRow, $box->col + $box->width - 2), 'nothing open to hover');
@@ -412,11 +413,11 @@ final class OverlayHostTest extends TestCase
         });
         $host->layout([0, 0, 20, 80]);
         $box = Probe::get($host, 'overlayBox');
-        \assert($box instanceof ModalBox, description: 'the overlay laid out a modal box');
+        Assert::assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
 
         $this->clearRepaint();
         $this->assertTrue($host->clickAt($box->startRow, $box->col + $box->width - 2), 'the title bar ×');
-        $this->assertFalse(null !== Probe::get($host, 'overlay'));
+        $this->assertNull(Probe::get($host, 'overlay'));
         $this->assertNull($picked, 'the close click never picks an item');
         $this->assertTrue($this->repainted(), 'closing via × requests a render');
     }
@@ -434,12 +435,12 @@ final class OverlayHostTest extends TestCase
         });
         $host->layout([0, 0, 20, 80]);
         $box = Probe::get($host, 'overlayBox');
-        \assert($box instanceof ModalBox, description: 'the overlay laid out a modal box');
+        Assert::assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
 
         $this->clearRepaint();
         $this->assertTrue($host->clickAt($box->windowTop() + 1, $box->col + 1), 'the second row');
         $this->assertSame('B', $picked, 'the item under the click, not the first one, and not the close path');
-        $this->assertFalse(null !== Probe::get($host, 'overlay'), 'picking closes the overlay');
+        $this->assertNull(Probe::get($host, 'overlay'), 'picking closes the overlay');
         $this->assertTrue($this->repainted(), 'picking an item requests a render');
     }
 
@@ -453,7 +454,7 @@ final class OverlayHostTest extends TestCase
         $host->openList('Title', $items, static fn (): null => null);
         $host->layout([0, 0, 20, 80]);
         $box = Probe::get($host, 'overlayBox');
-        \assert($box instanceof ModalBox, description: 'the overlay laid out a modal box');
+        $this->assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
 
         $this->clearRepaint();
         $this->assertTrue($host->hoverAt($box->windowTop() + 1, $box->col + 1), 'the second row');
@@ -470,7 +471,7 @@ final class OverlayHostTest extends TestCase
         $host->openList('L', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn (): null => null);
         $host->layout([0, 0, 20, 80]);
         $box = Probe::get($host, 'overlayBox');
-        \assert($box instanceof ModalBox, description: 'the overlay laid out a modal box');
+        $this->assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
         $host->closeList();
 
         $this->clearRepaint();
@@ -488,7 +489,7 @@ final class OverlayHostTest extends TestCase
 
         $this->assertFalse($host->hoverAt(0, 0), 'no box yet — nothing to hover');
         $this->assertTrue($host->clickAt(0, 0), 'no box yet — falls through to "click elsewhere"');
-        $this->assertFalse(null !== Probe::get($host, 'overlay'));
+        $this->assertNull(Probe::get($host, 'overlay'));
         $this->assertNull($picked);
     }
 
@@ -503,7 +504,7 @@ final class OverlayHostTest extends TestCase
 
         $this->clearRepaint();
         $this->assertTrue($host->clickAt(19, 79), 'far outside the box');
-        $this->assertFalse(null !== Probe::get($host, 'overlay'));
+        $this->assertNull(Probe::get($host, 'overlay'));
         $this->assertNull($picked);
         $this->assertTrue($this->repainted());
     }
@@ -517,7 +518,7 @@ final class OverlayHostTest extends TestCase
         });
         $host->layout([0, 0, 20, 80]);
         $box = Probe::get($host, 'searchBox');
-        \assert($box instanceof ModalBox, description: 'the overlay laid out a modal box');
+        Assert::assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
 
         $this->assertTrue($host->searchClickAt($box->startRow, $box->col + $box->width - 2), 'the title bar ×');
         $this->assertSame(1, $closed, 'exactly once — a removed early return would fall through to the elsewhere-click close too');
@@ -1066,8 +1067,8 @@ final class OverlayHostTest extends TestCase
 
         // The prompt owns the pointer: an outside click dismisses IT, not the list.
         $this->assertTrue($host->pickerClickAt(23, 0));
-        $this->assertFalse(null !== Probe::get($host, 'prompt'));
-        $this->assertTrue(null !== Probe::get($host, 'overlay'), 'the click never reached the list overlay');
+        $this->assertNull(Probe::get($host, 'prompt'));
+        $this->assertNotNull(Probe::get($host, 'overlay'), 'the click never reached the list overlay');
         $this->assertNull($picked);
 
         // With the prompt gone the list is topmost; hover routes to its rows.
@@ -1075,7 +1076,7 @@ final class OverlayHostTest extends TestCase
         $this->assertSame(PickerSurface::ListOverlay, $host->topmostSurface());
         $host->pickerHoverAt(0, 0);
         $this->assertTrue($host->pickerClickAt(23, 0), 'an outside click dismisses the list');
-        $this->assertFalse(null !== Probe::get($host, 'overlay'));
+        $this->assertNull(Probe::get($host, 'overlay'));
     }
 
     public function testPickerClickAndHoverRouteToTheSearchModalWhenItIsTopmost(): void
@@ -1089,7 +1090,7 @@ final class OverlayHostTest extends TestCase
         $host->layout([0, 0, 20, 80]);
         $this->assertSame(PickerSurface::Search, $host->topmostSurface());
         $box = Probe::get($host, 'searchBox');
-        \assert($box instanceof ModalBox, description: 'the search modal laid out a modal box');
+        Assert::assertInstanceOf(ModalBox::class, $box, 'the search modal laid out a modal box');
 
         $this->assertTrue($host->pickerHoverAt($box->windowTop() + 1, $box->col + 1), 'routes to searchHoverAt, not the list/prompt path');
         $this->assertTrue($host->pickerClickAt($box->startRow, $box->col + $box->width - 2), 'routes to searchClickAt: the × closes it');
@@ -1156,7 +1157,7 @@ final class OverlayHostTest extends TestCase
         $host->openPrompt('P', '', static fn (): null => null);
         $host->layout([0, 0, 24, 100]);
         $listBox = Probe::get($host, 'overlayBox');
-        \assert($listBox instanceof ModalBox, description: 'the overlay laid out a modal box');
+        $this->assertInstanceOf(ModalBox::class, $listBox, 'the overlay laid out a modal box');
 
         $host->hoverAt($listBox->startRow, $listBox->col + $listBox->width - 2); // only the list's ×
         [$listPlaced, $searchPlaced, $promptPlaced] = $host->layout([0, 0, 24, 100]);

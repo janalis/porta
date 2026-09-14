@@ -369,7 +369,7 @@ final class CatalogCoverageTest extends TestCase
     private function englishSources(): array
     {
         $xml = \simplexml_load_file(self::ROOT.'/translations/messages.en.xlf');
-        self::assertNotFalse($xml, 'messages.en.xlf is not valid XML');
+        $this->assertNotFalse($xml, 'messages.en.xlf is not valid XML');
         $xml->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
 
         $sources = [];

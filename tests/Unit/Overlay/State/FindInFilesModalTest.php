@@ -365,7 +365,7 @@ final class FindInFilesModalTest extends TestCase
 
             return AnsiUtils::stripAnsiCodes(\implode("\n", $out));
         })();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $this->assertGreaterThan(0, $box->windowStart, 'the window scrolled to keep the selection visible');
         $this->assertStringContainsString('hit 11', $screen);
 
@@ -389,7 +389,7 @@ final class FindInFilesModalTest extends TestCase
             $this->compose($modal);
 
             $box = $modal->lastBox();
-            \assert($box instanceof ModalBox, description: 'the overlay laid out a modal box');
+            $this->assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
 
             return $box;
         };
@@ -417,7 +417,7 @@ final class FindInFilesModalTest extends TestCase
             $this->compose($modal);
 
             $box = $modal->lastBox();
-            \assert($box instanceof ModalBox, description: 'the overlay laid out a modal box');
+            $this->assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
 
             return $box;
         };
@@ -450,7 +450,7 @@ final class FindInFilesModalTest extends TestCase
             $this->compose($modal);
 
             $box = $modal->lastBox();
-            \assert($box instanceof ModalBox, description: 'the overlay laid out a modal box');
+            $this->assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
 
             return $box;
         };
@@ -506,7 +506,7 @@ final class FindInFilesModalTest extends TestCase
         $this->screen($modal); // composite → sets the box geometry
 
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
 
         // Click the first option tag (options row is windowTop() - 3; inner col 1 sits past the rail and padding).
         $this->assertTrue($modal->clickAt($box->windowTop() - 3, $box->col + 3));
@@ -535,7 +535,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($many);
         $this->screen($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
 
         $this->assertFalse($modal->continueDragTo(0, 0, release: false), 'nothing armed yet');
 
@@ -551,7 +551,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertTrue($modal->continueDragTo($box->startRow + $box->rows + 1, $box->col + $box->width + 9, release: false));
         $this->screen($modal);
         $grown = $modal->lastBox();
-        $this->assertNotNull($grown);
+        $this->assertInstanceOf(ModalBox::class, $grown);
         $this->assertSame($box->width + 10, $grown->width, 'the width followed the pointer');
         $this->assertSame(11, $grown->count, 'one more preview row — the 24-row screen budget caps the second');
 
@@ -559,7 +559,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertTrue($modal->continueDragTo($box->startRow, $box->col, release: true));
         $this->screen($modal);
         $floor = $modal->lastBox();
-        $this->assertNotNull($floor);
+        $this->assertInstanceOf(ModalBox::class, $floor);
         $this->assertSame(48 + 4, $floor->width, 'inner width floored at 48 (+ chrome)');
         $this->assertSame(3, $floor->count, 'the preview floor');
         $this->assertFalse($modal->continueDragTo(0, 0, release: false), 'the release disarmed the resize');
@@ -569,7 +569,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($many);
         $this->screen($modal);
         $reopened = $modal->lastBox();
-        $this->assertNotNull($reopened);
+        $this->assertInstanceOf(ModalBox::class, $reopened);
         $this->assertSame(10, $reopened->count, 'the reopen dropped the user preview rows');
     }
 
@@ -580,7 +580,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->open('Find in Files');
         $this->screen($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
 
         // Press the title bar (off the ×), drag down-left, release.
         $this->assertTrue($modal->clickAt($box->startRow, $box->col + 2), 'a title-bar press is consumed');
@@ -588,7 +588,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertTrue($modal->continueDragTo($box->startRow + 3, $box->col - 2, release: false));
         $this->screen($modal);
         $moved = $modal->lastBox();
-        $this->assertNotNull($moved);
+        $this->assertInstanceOf(ModalBox::class, $moved);
         $this->assertSame($box->startRow + 3, $moved->startRow, 'the box followed the pointer');
         $this->assertSame($box->col - 4, $moved->col, 'grabbed at col+2, pointer at col−2 → the box moved 4 left');
 
@@ -596,7 +596,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertTrue($modal->continueDragTo(-50, -50, release: true));
         $this->screen($modal);
         $pinned = $modal->lastBox();
-        $this->assertNotNull($pinned);
+        $this->assertInstanceOf(ModalBox::class, $pinned);
         $this->assertSame(0, $pinned->startRow, 'clamped to the pane top');
         $this->assertSame(0, $pinned->col, 'clamped to the pane left edge');
         $this->assertFalse($modal->continueDragTo(5, 5, release: false), 'the release disarmed the move');
@@ -605,7 +605,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->open('Find in Files');
         $this->screen($modal);
         $reopened = $modal->lastBox();
-        $this->assertNotNull($reopened);
+        $this->assertInstanceOf(ModalBox::class, $reopened);
         $this->assertSame($box->startRow, $reopened->startRow, 'the reopen recentered');
         $this->assertSame($box->col, $reopened->col);
     }
@@ -616,7 +616,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->open('Find in Files');
         $this->screen($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
 
         $modal->clickAt($box->startRow + $box->rows - 1, $box->col + $box->width - 1); // arm the resize
         $modal->cancelDrag();
@@ -633,7 +633,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->open('Find in Files');
         $this->screen($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
 
         $this->assertTrue($modal->hoverAt($box->startRow + $box->rows - 1, $box->col + $box->width - 1), 'onto the corner');
         $this->assertStringContainsString(Glyphs::MODAL_RESIZE_GRAB, $this->screen($modal), 'the corner heavied');
@@ -655,7 +655,7 @@ final class FindInFilesModalTest extends TestCase
             return '';
         })();
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
 
         // The direction matters, not just "it changed": the × starts dim and
         // only the active variant is bright, never the reverse.
@@ -684,7 +684,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->open('Find in Files');
         $this->screen($modal); // composite → sets the box geometry
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
 
         $this->assertTrue($modal->clickAt($box->startRow, $box->col + $box->width - 2), 'the title bar ×');
         $this->assertTrue($closed);
@@ -710,7 +710,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($this->results());
         $this->screen($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $optionsRow = $box->windowTop() - 3;
 
         // Click the Replace row (optionsRow - 1) → focus it; typing has no callback, observe via render.
@@ -743,7 +743,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($this->results());
         $lines = $this->compose($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $optionsRow = $box->windowTop() - 3;
         $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
 
@@ -767,7 +767,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($this->results());
         $lines = $this->compose($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $optionsRow = $box->windowTop() - 3;
 
         // Hover the first option tag (inner col 1, past the rail and padding) →
@@ -808,7 +808,7 @@ final class FindInFilesModalTest extends TestCase
         }
         $this->screen($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
 
         // Click the [x] checkbox on the first match row (inner cols 2-4,
         // past the rail and padding) → exclude it, and ONLY exclude it — not
@@ -840,7 +840,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($this->results()); // replace field empty: NOT in preview mode
         $this->screen($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
 
         // innerCol 2 is inside the checkbox range, but inPreview() is false:
         // must still jump, not toggle an invisible exclude flag.
@@ -1017,7 +1017,7 @@ final class FindInFilesModalTest extends TestCase
 
         $this->compose($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $optionsRow = $box->windowTop() - 3;
         $modal->clickAt($optionsRow - 2, $box->col + 3); // setActiveField('query') via a click
         $this->assertSame(++$expected, $this->invalidateCount, 'setActiveField()');
@@ -1042,7 +1042,7 @@ final class FindInFilesModalTest extends TestCase
 
         $this->compose($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $modal->clickAt($box->startRow + $box->rows - 1, $box->col + $box->width - 1); // arm resize
         $modal->continueDragTo($box->startRow + $box->rows + 1, $box->col + $box->width + 1, release: true);
         $this->assertSame($expected + 1, $this->invalidateCount, 'continueDragTo() resizing branch');
@@ -1050,7 +1050,7 @@ final class FindInFilesModalTest extends TestCase
 
         $this->compose($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $modal->clickAt($box->startRow, $box->col + 2); // arm a title-bar move
         $modal->continueDragTo($box->startRow + 1, $box->col + 1, release: true);
         $this->assertSame($expected + 1, $this->invalidateCount, 'continueDragTo() moving branch');
@@ -1058,7 +1058,7 @@ final class FindInFilesModalTest extends TestCase
 
         $this->compose($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $modal->hoverAt($box->startRow, $box->col + $box->width - 2); // onto the × → hotspot changes
         $this->assertSame($expected + 1, $this->invalidateCount, 'hoverAt() hotspot change');
         $expected = $this->invalidateCount;
@@ -1206,19 +1206,19 @@ final class FindInFilesModalTest extends TestCase
 
         $modal->layout([0, 10, 24, 100], CaretVisibility::Shown); // columns = 90
         $boxA = $modal->lastBox();
-        $this->assertNotNull($boxA);
+        $this->assertInstanceOf(ModalBox::class, $boxA);
         $modal->layout([0, 20, 24, 110], CaretVisibility::Shown); // columns = 90 too
         $boxB = $modal->lastBox();
-        $this->assertNotNull($boxB);
+        $this->assertInstanceOf(ModalBox::class, $boxB);
         $this->assertSame($boxA->width, $boxB->width, 'width is driven by columns (right-left), independent of absolute position');
         $this->assertSame($boxA->col + 10, $boxB->col, 'the box shifted by exactly the pane-left delta');
 
         $modal->layout([10, 0, 34, 100], CaretVisibility::Shown); // rows = 24
         $boxC = $modal->lastBox();
-        $this->assertNotNull($boxC);
+        $this->assertInstanceOf(ModalBox::class, $boxC);
         $modal->layout([20, 0, 44, 100], CaretVisibility::Shown); // rows = 24 too
         $boxD = $modal->lastBox();
-        $this->assertNotNull($boxD);
+        $this->assertInstanceOf(ModalBox::class, $boxD);
         $this->assertSame($boxC->rows, $boxD->rows, 'popup row count is driven by rows (bottom-top), independent of absolute position');
         $this->assertSame($boxC->startRow + 10, $boxD->startRow, 'the box shifted by exactly the pane-top delta');
     }
@@ -1231,7 +1231,7 @@ final class FindInFilesModalTest extends TestCase
         $this->screen($modal); // default 100×24 bounds; box width comfortably unclamped
 
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $innerWidth = $box->width - ModalFrame::CHROME_COLS;
         $expectedCol = \max(0, \intdiv(100 - $innerWidth - ModalFrame::CHROME_COLS, num2: 2));
         $this->assertSame($expectedCol, $box->col, 'centering follows (columns - width - CHROME_COLS) / 2 exactly');
@@ -1245,12 +1245,12 @@ final class FindInFilesModalTest extends TestCase
 
         $modal->layout([0, 0, 13, 100], CaretVisibility::Shown); // rows=13 → rows-13=0
         $boxFloor = $modal->lastBox();
-        $this->assertNotNull($boxFloor);
+        $this->assertInstanceOf(ModalBox::class, $boxFloor);
         $this->assertSame(1, $boxFloor->count, 'the max(1, ...) floor kept exactly one preview row, not zero');
 
         $modal->layout([0, 0, 14, 100], CaretVisibility::Shown); // rows=14 → rows-13=1
         $boxOne = $modal->lastBox();
-        $this->assertNotNull($boxOne);
+        $this->assertInstanceOf(ModalBox::class, $boxOne);
         $this->assertSame(1, $boxOne->count, 'the natural minimum of 1 stayed 1, not 2');
     }
 
@@ -1261,7 +1261,7 @@ final class FindInFilesModalTest extends TestCase
         $placed = $modal->layout([0, 0, 24, 100], CaretVisibility::Shown);
         $this->assertNotNull($placed);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
 
         $titleBar = AnsiUtils::stripAnsiCodes($placed['rows'][0]);
         $this->assertSame($box->width, \mb_strwidth($titleBar), 'the title bar spans width + CHROME_COLS, matching the rest of the box');
@@ -1290,7 +1290,7 @@ final class FindInFilesModalTest extends TestCase
         $box = function () use ($modal): ModalBox {
             $this->compose($modal);
             $box = $modal->lastBox();
-            \assert($box instanceof ModalBox, description: 'the overlay laid out a modal box');
+            $this->assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
 
             return $box;
         };
@@ -1316,7 +1316,7 @@ final class FindInFilesModalTest extends TestCase
 
         $modal->layout([0, 0, 24, 100], CaretVisibility::Shown);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $expectedStartRow = \max(0, \intdiv(24 - $box->rows, num2: 3));
         $this->assertSame($expectedStartRow, $box->startRow, 'startRow follows (rows - popupRows) / 3 exactly');
     }
@@ -1330,7 +1330,7 @@ final class FindInFilesModalTest extends TestCase
         // is deeply negative here, so the max(0, ...) floor must bind.
         $modal->layout([0, 0, 5, 100], CaretVisibility::Shown);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $this->assertGreaterThan(5, $box->rows, 'sanity: the popup genuinely does not fit in 5 rows');
         $this->assertSame(0, $box->startRow, 'the floor kept startRow at 0, not negative');
     }
@@ -1341,7 +1341,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->open('Find in Files');
         $this->screen($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $centeredRow = $box->startRow;
         $centeredCol = $box->col;
 
@@ -1352,7 +1352,7 @@ final class FindInFilesModalTest extends TestCase
         Probe::set($modal, 'userCol', null);
         $this->screen($modal);
         $half = $modal->lastBox();
-        $this->assertNotNull($half);
+        $this->assertInstanceOf(ModalBox::class, $half);
         $this->assertSame($centeredRow, $half->startRow, 'a null userCol keeps the layout centered, ignoring a stray userRow');
         $this->assertSame($centeredCol, $half->col);
     }
@@ -1363,13 +1363,13 @@ final class FindInFilesModalTest extends TestCase
         $modal->open('Find in Files');
         $this->screen($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
 
         $modal->clickAt($box->startRow, $box->col + 2);
         $modal->continueDragTo(1000, 1000, release: true);
         $this->screen($modal);
         $pinned = $modal->lastBox();
-        $this->assertNotNull($pinned);
+        $this->assertInstanceOf(ModalBox::class, $pinned);
         $this->assertSame(24 - $pinned->rows, $pinned->startRow, 'clamped so the box still ends within the 24-row pane');
         $this->assertSame(100 - $pinned->width, $pinned->col, 'clamped so the box still ends within the 100-column pane');
     }
@@ -1381,7 +1381,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($this->results());
         $this->screen($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
 
         $modal->clickAt($box->startRow + $box->rows - 1, $box->col + $box->width - 1);
         $relRow = $box->startRow + 20; // comfortably above the max(3, ...) floor
@@ -1400,7 +1400,7 @@ final class FindInFilesModalTest extends TestCase
 
         $this->screen($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $statusW = \mb_strwidth($translator->trans('%count% results', ['%count%' => 0]));
         $expectedInner = \max(\mb_strwidth($title) + $statusW + 10, \mb_strwidth('') + 9, PopupMetrics::FIND_MIN_WIDTH);
         $this->assertSame($expectedInner, $box->width - ModalFrame::CHROME_COLS, 'title_w + status_w + 10, exactly');
@@ -1417,7 +1417,7 @@ final class FindInFilesModalTest extends TestCase
 
         $this->screen($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $this->assertSame(\mb_strwidth($query) + 9, $box->width - ModalFrame::CHROME_COLS, 'a long query widens the box by query_w + 9');
     }
 
@@ -1430,7 +1430,7 @@ final class FindInFilesModalTest extends TestCase
 
         $this->screen($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $this->assertSame(\mb_strwidth($text) + 8, $box->width - ModalFrame::CHROME_COLS, 'a long match line widens the box by text_w + 8');
     }
 
@@ -1442,7 +1442,7 @@ final class FindInFilesModalTest extends TestCase
 
         $this->compose($modal, columns: 60, rows: 24);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $this->assertSame(60 - PopupMetrics::CENTERED_MARGIN, $box->width - ModalFrame::CHROME_COLS, 'clamped to columns - CENTERED_MARGIN, not beyond');
     }
 
@@ -1454,7 +1454,7 @@ final class FindInFilesModalTest extends TestCase
 
         $this->compose($modal, columns: 200, rows: 24);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $this->assertSame(80, $box->width - ModalFrame::CHROME_COLS, 'capped at exactly 80, not 79 or 81');
     }
 
@@ -1465,13 +1465,13 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($this->results());
         $this->screen($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
 
         $modal->clickAt($box->startRow + $box->rows - 1, $box->col + $box->width - 1);
         $modal->continueDragTo($box->startRow + $box->rows, $box->col + 1000, release: true);
         $this->screen($modal);
         $grown = $modal->lastBox();
-        $this->assertNotNull($grown);
+        $this->assertInstanceOf(ModalBox::class, $grown);
         $this->assertSame(100 - PopupMetrics::CENTERED_MARGIN, $grown->width - ModalFrame::CHROME_COLS, 'a huge user width still clamps to columns - CENTERED_MARGIN');
     }
 
@@ -1504,7 +1504,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->open('Find in Files');
         $this->compose($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $optionsRow = $box->windowTop() - 3;
         $rows = ['query' => $optionsRow - 2, 'replace' => $optionsRow - 1, 'mask' => $optionsRow + 1];
         $order = ['query', 'replace', 'mask'];
@@ -1559,7 +1559,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview([...$this->results(), ['path' => 'w.php', 'line' => 0, 'text' => \str_repeat('W', times: 80), 'ranges' => []]]);
         $lines = $this->compose($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $optionsRow = $box->windowTop() - 3;
         $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
         $scopeCol = \mb_strpos($optionsLine, needle: 'Scope:');
@@ -1585,7 +1585,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($this->results());
         $lines = $this->compose($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $optionsRow = $box->windowTop() - 3;
 
         $this->assertStringContainsString($offRegex, $lines[$optionsRow], 'the regex tag starts off, not hovered');
@@ -1604,7 +1604,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($this->results());
         $lines = $this->compose($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $optionsRow = $box->windowTop() - 3;
 
         $this->assertStringContainsString($normalLabel, $lines[$optionsRow], 'the scope label starts in its plain accent styling');
@@ -1639,7 +1639,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview([...$this->results(), ['path' => 'w.php', 'line' => 0, 'text' => \str_repeat('W', times: 150), 'ranges' => []]]);
         $lines = $this->compose($modal, columns: 200);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $optionsRow = $box->windowTop() - 3;
         $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
         $scopeCol = \mb_strpos($optionsLine, needle: 'Scope:');
@@ -1675,7 +1675,7 @@ final class FindInFilesModalTest extends TestCase
         $placed = $modal->layout([0, 0, 24, 100], CaretVisibility::Shown);
         $this->assertNotNull($placed);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         // rows: title(0), pad(1), find(2), replace(3), options(4), mask(5), ...
         $optionsRawRow = $placed['rows'][4];
 
@@ -1748,7 +1748,7 @@ final class FindInFilesModalTest extends TestCase
         $placed = $modal->layout([0, 0, 24, 100], CaretVisibility::Shown);
         $this->assertNotNull($placed);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         // wrapSections ends every popup with [..., footerRow, pad, bottomBorder].
         $footerRawRow = $placed['rows'][\count($placed['rows']) - 3];
 
@@ -1779,7 +1779,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($this->results());
         $this->screen($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $queryRow = $box->windowTop() - 3 - 2;
 
         // Left edge: exactly at box->col is inside (focuses the query field, does not close).
@@ -1797,7 +1797,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->open('Find in Files'); // lays out a box (below), then closes without clearing it
         $this->screen($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $modal->close();
 
         $this->assertFalse($modal->hoverAt($box->startRow, $box->col + $box->width - 2), 'closed: the × hover-hotspot must not compute against a stale box');
@@ -1810,7 +1810,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($this->results());
         $lines = $this->compose($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $footerLine = AnsiUtils::stripAnsiCodes($lines[$box->footerRow]);
         $fwCol = \mb_strpos($footerLine, needle: 'Find window');
         $this->assertIsInt($fwCol);
@@ -1842,7 +1842,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($this->results());
         $lines = $this->compose($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $optionsRow = $box->windowTop() - 3;
         $optionsLine = AnsiUtils::stripAnsiCodes($lines[$optionsRow]);
         $scopeCol = \mb_strpos($optionsLine, needle: 'Scope:');
@@ -1865,7 +1865,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview($many);
         $this->compose($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
 
         $this->assertFalse($modal->hoverAt($box->windowTop() + $box->count, $box->col + 3), 'exactly one row past the last visible row is outside the preview area');
     }
@@ -1882,7 +1882,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->scrollPreview(20); // scroll past the header, so windowStart's row (i=0) is a genuine match
         $this->compose($modal);
         $box = $modal->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $this->assertGreaterThan(0, $box->windowStart, 'sanity: scrolled past the file header');
         // Prime hoveredRow with a DIFFERENT row first, so a wrongly-null result
         // at i=0 still shows up as a change (a boolean return alone can't tell

@@ -161,7 +161,7 @@ final class ViewCommandsTest extends TestCase
             $this->assertNotSame($activeBefore, $activeAfterPrev, 'dock_prev_panel must move to the OTHER tab (direction -1, not -0)');
         } finally {
             $sessions = Probe::get($dock, 'sessions');
-            \assert($sessions instanceof TerminalSessions, description: 'BottomDock holds its TerminalSessions collaborator under that property');
+            $this->assertInstanceOf(TerminalSessions::class, $sessions, 'BottomDock holds its TerminalSessions collaborator under that property');
             $sessions->stopAll();
             $this->closeIde($ide);
         }

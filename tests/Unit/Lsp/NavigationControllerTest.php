@@ -249,7 +249,7 @@ final class NavigationControllerTest extends TestCase
     {
         /** @var array{items: list<array{label: string, hint: string, value: string}>}|null $overlay */
         $overlay = Probe::get(Probe::object($this->editor, 'overlayHost'), 'overlay');
-        self::assertNotNull($overlay);
+        $this->assertNotNull($overlay);
 
         return $overlay['items'];
     }

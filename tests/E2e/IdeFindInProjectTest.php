@@ -13,10 +13,12 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Widget\DockPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -570,7 +572,8 @@ final class IdeFindInProjectTest extends TestCase
                     // memory from the step above — close the panel you were
                     // reading and open that file over it.
                     $this->frame($tui);
-                    $this->assertNotNull(
+                    $this->assertInstanceOf(
+                        DockPanelWidget::class,
                         Services::resolve($ide, BottomDock::class)->visiblePanel(),
                         'the panel you were reading is still open',
                     );
@@ -804,7 +807,7 @@ final class IdeFindInProjectTest extends TestCase
                 $this->assertSame(0, $left->col, 'clamped to the screen edge — over the tree');
                 $renderer = Services::resolve($ide, Renderer::class);
                 $treeRect = $renderer->getWidgetRect($tui->getById('tree'));
-                $this->assertNotNull($treeRect);
+                $this->assertInstanceOf(WidgetRect::class, $treeRect);
                 $treeRows = $tui->getById('tree')->render(new RenderContext($treeRect->columns, $treeRect->rows));
                 $treeText = AnsiUtils::stripAnsiCodes(\implode("\n", $treeRows));
                 $this->assertStringContainsString('Find in Files', $treeText, "the modal's title bar paints over the tree pane");

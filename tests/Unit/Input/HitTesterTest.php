@@ -9,6 +9,7 @@ use Porta\Input\HitTester;
 use Porta\Input\MouseEvent;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -44,7 +45,7 @@ final class HitTesterTest extends TestCase
 
         $tester = new HitTester($renderer);
 
-        $this->assertNotNull($tester->rect($widget), 'rect() is callable from outside the class');
+        $this->assertInstanceOf(WidgetRect::class, $tester->rect($widget), 'rect() is callable from outside the class');
     }
 
     public function testRectOfAnAttachedRenderedWidgetIsNotNull(): void

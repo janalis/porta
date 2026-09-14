@@ -29,6 +29,7 @@ use Porta\Workbench\Dock\ResultsPanelMode;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -188,7 +189,7 @@ final class IdeDockToolsTest extends TestCase
                     // A further refresh that adds an EARLIER row must not move
                     // the selection off the diagnostic the user is on.
                     $results = $tui->getById('results');
-                    \assert($results instanceof ResultsPanelWidget, description: 'the dock shows the results panel');
+                    $this->assertInstanceOf(ResultsPanelWidget::class, $results, 'the dock shows the results panel');
                     $this->assertSame(1, $results->captureViewState()->selectedLine, 'the fresh tab selected its first match');
                     self::bufferService($ide)
                         ->applyDiagnostics(
@@ -338,7 +339,7 @@ final class IdeDockToolsTest extends TestCase
                     /** @var DockTabsWidget $dockTabs */
                     $dockTabs = $tui->getById('dock-tabs');
                     $rect = $renderer->getWidgetRect($dockTabs);
-                    $this->assertNotNull($rect, 'the dock strip is laid out');
+                    $this->assertInstanceOf(WidgetRect::class, $rect, 'the dock strip is laid out');
                     $lastCol = $rect->columns - 1;
 
                     // The strip overflows: exactly one end shows an indicator (the

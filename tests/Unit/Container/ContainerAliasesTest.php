@@ -66,11 +66,12 @@ final class ContainerAliasesTest extends ContainerTestCase
         // — true, and true for the wrong reason. `X::class` is a string even
         // when X does not exist, so nothing caught it.
         $this->assertFalse($builder->hasAlias(ContributedView::class), 'multi-impl interfaces stay unaliased');
-        $this->assertTrue(
-            2 <= \count(\array_filter(
+        $this->assertLessThanOrEqual(
+            \count(\array_filter(
                 $builder->getDefinitions(),
                 static fn (Definition $definition): bool => \is_a((string) $definition->getClass(), ContributedView::class, allow_string: true),
             )),
+            2,
             'and there really is more than one implementation, or the assertion above proves nothing',
         );
     }

@@ -390,7 +390,7 @@ final class IdeContainerFactoryTest extends TestCase
         // A directly-served builder must resolve %env()% at build time — a
         // leaked placeholder here would corrupt every $rootDir in the app.
         $locator = $container->get('porta.ide');
-        \assert($locator instanceof ServiceLocator, description: 'porta.ide resolves to a service locator');
+        $this->assertInstanceOf(ServiceLocator::class, $locator, 'porta.ide resolves to a service locator');
         $store = $locator->get(SessionStore::class);
         $this->assertSame('/tmp/porta-factory-test/.porta/session.json', Probe::get($store, 'file'));
     }

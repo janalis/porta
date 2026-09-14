@@ -251,7 +251,7 @@ final class NonBlockingTerminalTest extends TestCase
         $this->assertContains('write:teardown-bytes', $calls, 'post-stop writes reach the tty via the inner terminal');
         $this->assertSame('frame', \fread($peer, length: 8192), 'queued bytes were flushed by stop()');
         $terminal->stop(); // double-stop is harmless
-        $this->assertSame(2, \count(\array_filter($calls, static fn (string $c): bool => 'stop' === $c)));
+        $this->assertCount(2, \array_filter($calls, static fn (string $c): bool => 'stop' === $c));
         \fclose($peer);
     }
 

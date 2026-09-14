@@ -16,6 +16,7 @@ use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockTab;
 use Porta\Workbench\Dock\DockToolController;
+use Porta\Workbench\Dock\DockToolTab;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\Dock\ToolRun;
 use Symfony\Component\Tui\Tui;
@@ -53,7 +54,7 @@ final class DockToolControllerTest extends TestCase
         $controller->open('demo:todo', [['path' => 'a.php', 'line' => 3, 'text' => '// TODO one']]);
 
         $tab = $this->dock->findTool('demo:todo');
-        $this->assertNotNull($tab);
+        $this->assertInstanceOf(DockToolTab::class, $tab);
         $this->assertSame('TODO', $tab->title, 'the title is the registration\'s, not the caller\'s');
         $this->assertSame([['path' => 'a.php', 'line' => 3, 'text' => '// TODO one', 'ranges' => []]], $tab->rows);
         $this->assertNull($tab->mode, 'a contributed tool is not one of core\'s modes');
@@ -77,7 +78,7 @@ final class DockToolControllerTest extends TestCase
         $controller = $this->controller(self::tool());
         $controller->open('demo:todo', [], ToolRun::Running);
         $tab = $this->dock->findTool('demo:todo');
-        $this->assertNotNull($tab);
+        $this->assertInstanceOf(DockToolTab::class, $tab);
         $this->assertTrue($tab->searching, 'work in flight shows as searching');
 
         $controller->update('demo:todo', [['path' => 'a.php', 'line' => 0, 'text' => 'landed']]);
@@ -120,7 +121,7 @@ final class DockToolControllerTest extends TestCase
         ]);
 
         $tab = $this->dock->findTool('demo:todo');
-        $this->assertNotNull($tab);
+        $this->assertInstanceOf(DockToolTab::class, $tab);
         $this->assertSame(
             [['path' => 'ok.php', 'line' => 1, 'text' => 'must survive', 'ranges' => []]],
             $tab->rows,
@@ -139,7 +140,7 @@ final class DockToolControllerTest extends TestCase
         ]);
 
         $tab = $this->dock->findTool('demo:todo');
-        $this->assertNotNull($tab);
+        $this->assertInstanceOf(DockToolTab::class, $tab);
         $this->assertSame([], $tab->rows[0]['ranges']);
     }
 
@@ -154,7 +155,7 @@ final class DockToolControllerTest extends TestCase
         ]);
 
         $tab = $this->dock->findTool('demo:todo');
-        $this->assertNotNull($tab);
+        $this->assertInstanceOf(DockToolTab::class, $tab);
         $this->assertSame([['start' => 0, 'length' => 0]], $tab->rows[0]['ranges']);
     }
 
@@ -166,7 +167,7 @@ final class DockToolControllerTest extends TestCase
         ]);
 
         $tab = $this->dock->findTool('demo:todo');
-        $this->assertNotNull($tab);
+        $this->assertInstanceOf(DockToolTab::class, $tab);
         $this->assertSame(
             [['start' => 1, 'length' => 2], ['start' => 5, 'length' => 3]],
             $tab->rows[0]['ranges'],
@@ -189,7 +190,7 @@ final class DockToolControllerTest extends TestCase
         ]);
 
         $tab = $this->dock->findTool('demo:todo');
-        $this->assertNotNull($tab);
+        $this->assertInstanceOf(DockToolTab::class, $tab);
         $this->assertSame(
             [
                 ['path' => \basename(__FILE__), 'line' => 0, 'text' => 'absolute path, negative line', 'ranges' => []],
@@ -208,7 +209,7 @@ final class DockToolControllerTest extends TestCase
         $controller->open('demo:todo', [['path' => 'a.php', 'line' => 1, 'text' => 'TODO']]);
 
         $this->assertCount(2, $this->dock->aliveTabs(), 'tools coexist — opening one never closes another');
-        $this->assertNotNull($this->dock->findTool('demo:todo'));
+        $this->assertInstanceOf(DockToolTab::class, $this->dock->findTool('demo:todo'));
         $this->assertNull($this->dock->mode(), 'the contributed tab is the bound one');
     }
 }

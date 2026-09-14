@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Support;
 
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use Porta\Support\JsonRpcFramer;
 use Porta\Support\JsonRpcTransport;
@@ -48,7 +49,7 @@ final class JsonRpcTransportTest extends TestCase
         });
 
         $framer = Probe::object($transport, 'framer');
-        \assert($framer instanceof JsonRpcFramer, description: 'the transport owns a framer');
+        Assert::assertInstanceOf(JsonRpcFramer::class, $framer, 'the transport owns a framer');
         $framer->feed(\str_repeat('x', JsonRpcFramer::MAX_FRAME + 1));
 
         $this->assertCount(1, $lines, 'the transport wires the framer overflow into its logger');

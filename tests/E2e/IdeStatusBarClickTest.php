@@ -44,9 +44,9 @@ final class IdeStatusBarClickTest extends TestCase
                     // The status row is found by its content, not by counting
                     // rows: the dock and the find bar move it.
                     $row = $this->rowOf($grid, 'LSP:');
-                    self::assertNotNull($row, 'the status bar is on screen');
+                    $this->assertNotNull($row, 'the status bar is on screen');
                     $col = \mb_strpos($grid[$row], needle: '1:1');
-                    self::assertIsInt($col, 'the caret position cell is on the status bar');
+                    $this->assertIsInt($col, 'the caret position cell is on the status bar');
                 },
                 260 => static function ($tui) use (&$row, &$col): void {
                     // SGR mouse columns and rows are 1-based.
@@ -55,10 +55,7 @@ final class IdeStatusBarClickTest extends TestCase
                 320 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->frame($tui);
                     $grid = $this->screenGrid($tui, $terminal);
-                    self::assertNotNull(
-                        $this->rowOf($grid, 'Go to line'),
-                        'clicking the caret cell opens the Go to line prompt',
-                    );
+                    $this->assertNotNull($this->rowOf($grid, 'Go to line'), 'clicking the caret cell opens the Go to line prompt');
                 },
             ],
         );

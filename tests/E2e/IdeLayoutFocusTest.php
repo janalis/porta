@@ -15,6 +15,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Glyphs;
+use Porta\Widget\DockPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -315,7 +316,7 @@ final class IdeLayoutFocusTest extends TestCase
                     $tui->tick();
 
                     $panel = Services::resolve($ide, BottomDock::class)->visiblePanel();
-                    $this->assertNotNull($panel);
+                    $this->assertInstanceOf(DockPanelWidget::class, $panel);
                     $before = $panel->visibleRows();
 
                     $tui->handleInput("\x1b[39;6u"); // ctrl+shift+'
@@ -329,7 +330,7 @@ final class IdeLayoutFocusTest extends TestCase
                     // A hand-chosen height ends maximised mode, so the next
                     // toggle does not snap back to a size left behind.
                     $panel = Services::resolve($ide, BottomDock::class)->visiblePanel();
-                    $this->assertNotNull($panel);
+                    $this->assertInstanceOf(DockPanelWidget::class, $panel);
                     $tui->setFocus($panel);
                     $tui->handleInput("\x1b[39;6u"); // maximise
                     $tui->handleInput("\x1b[23;2~"); // shift+F11
@@ -379,7 +380,7 @@ final class IdeLayoutFocusTest extends TestCase
                     $tui->tick();
 
                     $panel = Services::resolve($ide, BottomDock::class)->visiblePanel();
-                    $this->assertNotNull($panel, 'the results panel is showing');
+                    $this->assertInstanceOf(DockPanelWidget::class, $panel, 'the results panel is showing');
                     // The rect is not WRONG here — it reports the same 10 the
                     // panel holds. It is just a frame behind, which is enough.
                     $this->assertSame(

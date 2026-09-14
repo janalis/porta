@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\EditorConfig\ResolvedEditorConfig;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
@@ -67,7 +68,7 @@ final class EditorConfigIntegrationTest extends TestCase
     {
         Services::resolve($ide, BufferService::class)->openFile($path, OpenFocus::Keep);
         $buffers = Services::resolve($ide, BufferManager::class);
-        \assert($buffers instanceof BufferManager, description: 'the buffers property is a BufferManager');
+        $this->assertInstanceOf(BufferManager::class, $buffers, 'the buffers property is a BufferManager');
 
         return $buffers->active();
     }
@@ -75,7 +76,7 @@ final class EditorConfigIntegrationTest extends TestCase
     private function save(Ide $ide, Buffer $buffer): void
     {
         $service = Services::resolve($ide, BufferService::class);
-        \assert($service instanceof BufferService, description: 'the bufferService property is a BufferService');
+        $this->assertInstanceOf(BufferService::class, $service, 'the bufferService property is a BufferService');
         $service->saveBuffer($buffer);
     }
 
@@ -100,7 +101,7 @@ final class EditorConfigIntegrationTest extends TestCase
 
         $this->assertSame(2, $buffer->document->indentSize());
         $this->assertSame('  ', $buffer->document->indentUnit());
-        $this->assertNotNull($buffer->editorConfig);
+        $this->assertInstanceOf(ResolvedEditorConfig::class, $buffer->editorConfig);
     }
 
     public function testSaveAppliesTrimEolAndFinalNewline(): void
@@ -133,7 +134,7 @@ final class EditorConfigIntegrationTest extends TestCase
 
         // .editorconfig still applies: to the document and stashed on the buffer.
         $this->assertSame(2, $buffer->document->indentSize());
-        $this->assertNotNull($buffer->editorConfig);
+        $this->assertInstanceOf(ResolvedEditorConfig::class, $buffer->editorConfig);
 
         // The legacy key raised no boot warning.
         $this->assertStringNotContainsString('Unknown setting', (string) $this->flashText($ide));

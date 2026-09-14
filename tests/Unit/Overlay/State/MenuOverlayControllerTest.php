@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Overlay\State;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Tests\Support\RendersRoot;
@@ -48,7 +49,7 @@ final class MenuOverlayControllerTest extends TestCase
         $controller->setContextAnchor(5, 10);
         $controller->refreshContextMenu();
 
-        $this->assertNotNull($controller->contextMenuDropdown());
+        $this->assertInstanceOf(DropdownRegion::class, $controller->contextMenuDropdown());
         $rendered = \implode("\n", $pane->render(new RenderContext(100, 24)));
         $this->assertStringContainsString('Copy', $rendered, 'the framed dropdown composited onto the pane');
     }

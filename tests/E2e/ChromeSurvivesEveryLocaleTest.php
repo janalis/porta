@@ -114,7 +114,7 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
     private function assertStatusBarKeepsTheFileName(mixed $tui, string $locale): void
     {
         $bar = $tui->getById('status');
-        \assert($bar instanceof StatusBarWidget, description: 'the status bar is the status widget');
+        $this->assertInstanceOf(StatusBarWidget::class, $bar, 'the status bar is the status widget');
         foreach (self::WIDTHS as $width) {
             $row = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext($width, 1))[0]);
             $this->assertStringContainsString(
@@ -138,7 +138,7 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
     private function assertMenuBarDropsNoTitle(mixed $tui, string $locale): void
     {
         $bar = $tui->getById('menu');
-        \assert($bar instanceof MenuBarWidget, description: 'the menu bar is the menu widget');
+        $this->assertInstanceOf(MenuBarWidget::class, $bar, 'the menu bar is the menu widget');
         /** @var list<object> $menus */
         $menus = Probe::get($bar, 'menus');
         $this->assertNotEmpty($menus, 'the menu bar has menus to lose');
@@ -173,7 +173,7 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
     private function assertSettingsNavFitsItsOwnRows(mixed $tui, string $locale): void
     {
         $nav = $tui->getById('settings-nav');
-        \assert($nav instanceof SettingsNavWidget, description: 'the settings view owns the nav');
+        $this->assertInstanceOf(SettingsNavWidget::class, $nav, 'the settings view owns the nav');
         // setWidth, not just a narrow RenderContext: the widget renders at
         // min(its own width, the context) — handing it a context alone measures
         // the default 22 and says nothing about the floor.
@@ -200,7 +200,7 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
         $this->selectSettingsSection($this->settingsNav($tui), 'keybindings');
         $this->frame($tui);
         $list = $tui->getById('settings-keys');
-        \assert($list instanceof KeybindingsListWidget, description: 'the keybindings page owns the list');
+        $this->assertInstanceOf(KeybindingsListWidget::class, $list, 'the keybindings page owns the list');
         foreach (self::WIDTHS as $width) {
             $header = AnsiUtils::stripAnsiCodes($list->render(new RenderContext($width, 8))[0]);
             $this->assertStringContainsString(

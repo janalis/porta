@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Overlay\Presenter;
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\Presenter\FindModalPresenter;
 use Porta\Overlay\Presenter\OverlayDelivery;
+use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Tests\Support\RendersRoot;
 use Porta\Tests\Support\TestOverlayPane;
@@ -61,7 +62,7 @@ final class FindModalPresenterTest extends TestCase
         $this->assertNotSame([], $this->pane->modalSpans, 'the framed box was pushed onto the pane');
         $this->assertTrue($this->pane->backdrop, 'the workspace dims beneath it');
         $region = $presenter->region();
-        $this->assertNotNull($region);
+        $this->assertInstanceOf(DropdownRegion::class, $region);
         $this->assertTrue($region->ltr, 'code content: an LTR region, never mirrored');
     }
 

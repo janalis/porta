@@ -68,7 +68,7 @@ final class PopupFrameTest extends TestCase
         ));
 
         $this->assertSame(['╭────╮', '│Cut │', '├────┤', '│Copy│', '╰────╯'], $rows);
-        $this->assertSame(3 + PopupFrame::CHROME_ROWS, \count($rows), 'the chrome constants match the emitted frame');
+        $this->assertCount(3 + PopupFrame::CHROME_ROWS, $rows, 'the chrome constants match the emitted frame');
     }
 
     /** A degenerate width still closes the box instead of underflowing. */

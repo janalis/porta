@@ -23,7 +23,7 @@ final class CatalogCompletenessTest extends TestCase
     private function sources(string $locale): array
     {
         $xml = \simplexml_load_file(self::DIR.'/messages.'.$locale.'.xlf');
-        self::assertNotFalse($xml, "messages.{$locale}.xlf is not valid XML");
+        $this->assertNotFalse($xml, "messages.{$locale}.xlf is not valid XML");
         $xml->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
 
         $sources = [];
@@ -109,7 +109,7 @@ final class CatalogCompletenessTest extends TestCase
             $this->assertNotFalse($xml);
             $files = $xml->xpath('//*[local-name()="file"]');
             $file = ($files ? $files : [])[0] ?? null;
-            $this->assertNotNull($file);
+            $this->assertInstanceOf(\SimpleXMLElement::class, $file);
             $this->assertSame($locale, (string) $file['target-language']);
         }
     }

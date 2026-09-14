@@ -20,6 +20,7 @@ use Porta\Ui\Glyphs;
 use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -58,7 +59,7 @@ final class IdeTerminalRunTest extends TestCase
                     // Click the centre of the terminal pane → focus returns to it.
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('terminal'));
-                    $this->assertNotNull($rect, 'terminal pane is laid out');
+                    $this->assertInstanceOf(WidgetRect::class, $rect, 'terminal pane is laid out');
                     $row = $rect->row + \intdiv($rect->rows, num2: 2);
                     $col = $rect->col + \intdiv($rect->columns, num2: 2);
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $row + 1)); // SGR is 1-based

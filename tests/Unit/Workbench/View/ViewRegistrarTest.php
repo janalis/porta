@@ -12,6 +12,7 @@ use Porta\I18n\Translator;
 use Porta\Input\HitTester;
 use Porta\Layout\EditorAreaPanes;
 use Porta\Layout\LayoutController;
+use Porta\Layout\ViewRegion;
 use Porta\Layout\ViewRegions;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\TempProject;
@@ -217,7 +218,7 @@ final class ViewRegistrarTest extends TestCase
             $regions,
         )->register();
 
-        $this->assertNotNull($registry->find('vcs'), 'registered under the id it claimed');
+        $this->assertInstanceOf(ContributedView::class, $registry->find('vcs'), 'registered under the id it claimed');
         $this->assertInstanceOf(ViewServices::class, $seen);
         $this->assertSame($regions->mint('vcs'), $seen->region, 'and handed the region for that id');
     }
@@ -238,7 +239,7 @@ final class ViewRegistrarTest extends TestCase
 
         $this->assertNull($registry->find('bad'));
         $this->assertNull($regions->find('bad'), 'the failed view\'s mint is rolled back — an empty region left mounted renders as a blank workspace');
-        $this->assertNotNull($registry->find('good'), 'one plugin\'s fault does not cost the others theirs');
+        $this->assertInstanceOf(ContributedView::class, $registry->find('good'), 'one plugin\'s fault does not cost the others theirs');
         $this->assertCount(1, $this->reported);
         $this->assertSame('broken', $this->reported[0]['plugin'], 'reported through the registering plugin\'s own barrier');
     }
@@ -289,7 +290,7 @@ final class ViewRegistrarTest extends TestCase
         $registrar->registerFor('acme');
         $registrar->registerFor('acme');
 
-        $this->assertNotNull($registry->find('vcs'));
+        $this->assertInstanceOf(ContributedView::class, $registry->find('vcs'));
         $this->assertNull($registry->find('docs'), 'a live enable builds one plugin, not everyone');
         $this->assertSame(1, $builds, 'the second drain is a no-op, not a rebuild');
     }
@@ -402,8 +403,8 @@ final class ViewRegistrarTest extends TestCase
 
         $this->assertNull($registry->find('vcs'), 'a match after a non-match must still be retracted');
         $this->assertNull($regions->find('vcs'));
-        $this->assertNotNull($registry->find('docs'), 'and the other plugin keeps its view');
-        $this->assertNotNull($regions->find('docs'));
+        $this->assertInstanceOf(ContributedView::class, $registry->find('docs'), 'and the other plugin keeps its view');
+        $this->assertInstanceOf(ViewRegion::class, $regions->find('docs'));
     }
 
     public function testReEnableMintsAFreshRegion(): void
@@ -424,8 +425,8 @@ final class ViewRegistrarTest extends TestCase
 
         $registrar->registerFor('acme');
 
-        $this->assertNotNull($registry->find('vcs'));
-        $this->assertNotNull($regions->find('vcs'));
+        $this->assertInstanceOf(ContributedView::class, $registry->find('vcs'));
+        $this->assertInstanceOf(ViewRegion::class, $regions->find('vcs'));
         $this->assertNotSame($first, $regions->find('vcs'), 'a fresh region, not the dead one');
     }
 }

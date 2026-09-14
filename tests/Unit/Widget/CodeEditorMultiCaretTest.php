@@ -127,7 +127,7 @@ final class CodeEditorMultiCaretTest extends TestCase
         $editor->getDocument()->setCursor(0, 0); // on first "xy"
 
         $editor->handleInput("\x1b[106;8u"); // ctrl+alt+shift+j (CSI-u)
-        $this->assertSame(2, \count(EditorState::multiCaret($editor)->carets()), 'three occurrences -> primary + 2 extras');
+        $this->assertCount(2, EditorState::multiCaret($editor)->carets(), 'three occurrences -> primary + 2 extras');
 
         $editor->handleInput('!');
         $this->assertSame("xy! = xy! + xy!\n", $editor->getDocument()->getText());

@@ -6,6 +6,7 @@ namespace Porta\GraphViewer\Tests\Graph;
 
 use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\Graph\PlantUmlEngine;
+use Porta\ImageViewer\ImageData;
 use Porta\ImageViewer\ImageDecoder;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PumpsLoop;
@@ -52,7 +53,7 @@ final class PlantUmlEngineTest extends TestCase
         [$png, $error] = $this->render($engine, self::SMALL_UML, 192);
         $this->assertNull($error);
         $image = new ImageDecoder()->decodeBytes((string) $png);
-        $this->assertNotNull($image, 'the bytes decode as an image — no temp file in between');
+        $this->assertInstanceOf(ImageData::class, $image, 'the bytes decode as an image — no temp file in between');
         // The stub renders 120×80 at 96 dpi, so twice that at 192.
         $this->assertSame([240, 160], [$image->width, $image->height]);
     }

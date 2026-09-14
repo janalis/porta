@@ -40,7 +40,7 @@ final class FilesystemReconcilerSliceTest extends TestCase
     private function buffers(): BufferService
     {
         $buffers = Services::resolve($this->ide, BufferService::class);
-        \assert($buffers instanceof BufferService, description: 'the locator serves the buffer service');
+        $this->assertInstanceOf(BufferService::class, $buffers, 'the locator serves the buffer service');
 
         return $buffers;
     }
@@ -58,7 +58,7 @@ final class FilesystemReconcilerSliceTest extends TestCase
         $buffers->pollFilesystemSlice();
 
         $manager = Services::resolve($this->ide, BufferManager::class);
-        \assert($manager instanceof BufferManager, description: 'the locator serves the buffer manager');
+        $this->assertInstanceOf(BufferManager::class, $manager, 'the locator serves the buffer manager');
         $this->assertSame("<?php // b v2\n", $manager->get($b)?->document->getText(), 'one slice covered both open buffers');
     }
 
@@ -71,7 +71,7 @@ final class FilesystemReconcilerSliceTest extends TestCase
         $buffers = $this->buffers();
         $buffers->openFile($a, focus: OpenFocus::Editor);
         $manager = Services::resolve($this->ide, BufferManager::class);
-        \assert($manager instanceof BufferManager, description: 'the locator serves the buffer manager');
+        $this->assertInstanceOf(BufferManager::class, $manager, 'the locator serves the buffer manager');
 
         $backoff = Probe::object(Probe::object($buffers, 'reconciler'), 'backoff');
         Probe::set($backoff, 'skips', 2); // as a slow slice would have left it
@@ -102,7 +102,7 @@ final class FilesystemReconcilerSliceTest extends TestCase
         $buffers->openFile($a, focus: OpenFocus::Editor);
         $buffers->openFile($b, focus: OpenFocus::Editor);
         $manager = Services::resolve($this->ide, BufferManager::class);
-        \assert($manager instanceof BufferManager, description: 'the locator serves the buffer manager');
+        $this->assertInstanceOf(BufferManager::class, $manager, 'the locator serves the buffer manager');
         Services::resolve($this->ide, EventDispatcherInterface::class)->addListener(
             BufferReloaded::class,
             // Twenty percent over the budget: enough that no machine reads this
@@ -161,7 +161,7 @@ final class FilesystemReconcilerSliceTest extends TestCase
     {
         $deep = $this->project->write('d1/d2/d3/d4/d5/d6/d7/d8/d9/leaf.php', "<?php\n");
         $tree = Services::resolve($this->ide, FileTreeWidget::class);
-        \assert($tree instanceof FileTreeWidget, description: 'the locator serves the file tree');
+        $this->assertInstanceOf(FileTreeWidget::class, $tree, 'the locator serves the file tree');
         $tree->revealPath((string) \realpath($deep)); // ten scanned dirs: root + d1..d9
 
         $this->buffers()->pollFilesystemSlice();
@@ -172,7 +172,7 @@ final class FilesystemReconcilerSliceTest extends TestCase
     public function testATreeChangeFoundByTheSliceRequestsARender(): void
     {
         $tree = Services::resolve($this->ide, FileTreeWidget::class);
-        \assert($tree instanceof FileTreeWidget, description: 'the locator serves the file tree');
+        $this->assertInstanceOf(FileTreeWidget::class, $tree, 'the locator serves the file tree');
         $tui = Services::resolve($this->ide, Tui::class);
         Probe::invoke($tui, 'processRender'); // settle: clear any pending request
 

@@ -204,7 +204,7 @@ final class PortaCommandTest extends TestCase
         $tester = new CommandTester($command);
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('boom');
+        $this->expectExceptionMessageIsOrContains('boom');
         $tester->execute(['path' => $project->dir], ['verbosity' => OutputInterface::VERBOSITY_VERBOSE]);
     }
 

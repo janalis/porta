@@ -133,7 +133,7 @@ final class IdeHelpersTest extends TestCase
         /** @var \Porta\Editor\BufferManager $manager */
         $manager = Services::resolve($this->ide, BufferManager::class);
         $buffer = $manager->active();
-        $this->assertNotNull($buffer);
+        $this->assertInstanceOf(Buffer::class, $buffer);
 
         $buffer->document->replaceAll("<?php\n// mine\n");
         $this->assertTrue($buffer->isDirty());
@@ -170,7 +170,7 @@ final class IdeHelpersTest extends TestCase
         /** @var \Porta\Editor\BufferManager $manager */
         $manager = Services::resolve($this->ide, BufferManager::class);
         $buffer = $manager->active();
-        $this->assertNotNull($buffer);
+        $this->assertInstanceOf(Buffer::class, $buffer);
         $buffer->diskChangedUnderEdit = true; // as if an edit had been warned about
 
         // A different LENGTH: the stamp is mtime:size, and two writes in the
@@ -192,7 +192,7 @@ final class IdeHelpersTest extends TestCase
         /** @var \Porta\Editor\BufferManager $manager */
         $manager = Services::resolve($this->ide, BufferManager::class);
         $buffer = $manager->active();
-        $this->assertNotNull($buffer);
+        $this->assertInstanceOf(Buffer::class, $buffer);
         $buffer->document->replaceAll("<?php\n// edited\n");
 
         $this->assertTrue($buffers->saveBuffer($buffer), 'no warning, no second press');
@@ -575,7 +575,7 @@ final class IdeHelpersTest extends TestCase
         ], $real);
 
         $restorer = Services::resolve($this->ide, SessionRestorer::class);
-        \assert($restorer instanceof SessionRestorer, description: 'the sessionRestorer property holds a SessionRestorer');
+        $this->assertInstanceOf(SessionRestorer::class, $restorer, 'the sessionRestorer property holds a SessionRestorer');
         $this->assertTrue($restorer->restore(), 'restored at least the real file');
         $this->assertStringEndsWith('Real.php', (string) Services::resolve($this->ide, Tui::class)->getById('editor')->getFilePath());
     }
@@ -596,7 +596,7 @@ final class IdeHelpersTest extends TestCase
         $this->assertFileDoesNotExist($sessionFile, 'nothing has written one');
 
         $restorer = Services::resolve($this->ide, SessionRestorer::class);
-        \assert($restorer instanceof SessionRestorer, description: 'the locator serves a SessionRestorer');
+        $this->assertInstanceOf(SessionRestorer::class, $restorer, 'the locator serves a SessionRestorer');
 
         $this->assertFalse($restorer->restore(), 'there was nothing to restore');
     }
@@ -608,7 +608,7 @@ final class IdeHelpersTest extends TestCase
         new SessionStore($this->project->dir)->save([], null); // empties it again
 
         $restorer = Services::resolve($this->ide, SessionRestorer::class);
-        \assert($restorer instanceof SessionRestorer, description: 'the locator serves a SessionRestorer');
+        $this->assertInstanceOf(SessionRestorer::class, $restorer, 'the locator serves a SessionRestorer');
 
         $this->assertFalse($restorer->restore());
     }
@@ -680,7 +680,7 @@ final class IdeHelpersTest extends TestCase
     public function testProviderPriorityOrderMatchesTheContractualPaletteOrder(): void
     {
         $registry = Services::resolve($this->ide, CommandRegistry::class);
-        \assert($registry instanceof CommandRegistry, description: 'the IDE exposes a CommandRegistry');
+        $this->assertInstanceOf(CommandRegistry::class, $registry, 'the IDE exposes a CommandRegistry');
         $labels = \array_column($registry->paletteCommands(), 'label');
 
         // The tagged providers register in #[AsTaggedItem] priority order:
@@ -702,7 +702,7 @@ final class IdeHelpersTest extends TestCase
         // than being swallowed by a command that would do nothing. The same
         // gate `open_as_text` uses for a viewer tab.
         $registry = Services::resolve($this->ide, CommandRegistry::class);
-        \assert($registry instanceof CommandRegistry, description: 'the IDE exposes a CommandRegistry');
+        $this->assertInstanceOf(CommandRegistry::class, $registry, 'the IDE exposes a CommandRegistry');
 
         $this->assertFalse($registry->isEnabled('ide_maximise_panel'), 'no panel open, no maximise');
 
@@ -1020,8 +1020,8 @@ final class IdeHelpersTest extends TestCase
 
         $buffers->openHelp($readme);
         $active = $manager->active();
-        $this->assertNotNull($active);
-        $this->assertTrue('help' === $active->paneId);
+        $this->assertInstanceOf(Buffer::class, $active);
+        $this->assertSame('help', $active->paneId);
         $this->assertSame($readme, $viewer->path(), 'the viewer shows the page');
         $this->assertFalse($active->isDirty(), 'the backing document stays empty');
         $this->assertFalse($buffers->saveBuffer($active), 'help tabs never save');
@@ -1049,7 +1049,7 @@ final class IdeHelpersTest extends TestCase
         $buffers->closeActiveBuffer();
         $buffers->openFile($readme, focus: OpenFocus::Editor);
         $buffers->openHelp($readme);
-        $this->assertFalse('help' === $manager->active()?->paneId, 'the editable source tab wins');
+        $this->assertNotSame('help', $manager->active()?->paneId, 'the editable source tab wins');
     }
 
     public function testHelpNavigationStaysInOneTabAndSurvivesTabSwitches(): void
@@ -1110,7 +1110,7 @@ final class IdeHelpersTest extends TestCase
         $file = $this->project->write('src/Hooked.php', "<?php\n");
         $helpViewer = Services::resolve($this->ide, HelpViewerWidget::class);
         $help = Probe::get($helpViewer, 'handler');
-        \assert($help instanceof HelpViewerActions, description: 'the help viewer exposes its actions handler');
+        $this->assertInstanceOf(HelpViewerActions::class, $help, 'the help viewer exposes its actions handler');
 
         $help->openFile($file);
         $this->assertStringEndsWith('Hooked.php', (string) $tui->getById('editor')->getFilePath(), 'a plain-file link opens in the editor');
@@ -1212,7 +1212,7 @@ final class IdeHelpersTest extends TestCase
         $service->onBufferRepointRequested(new BufferRepointRequested($old, $new));
 
         $moved = $buffers->get((string) \realpath($new));
-        $this->assertNotNull($moved);
+        $this->assertInstanceOf(Buffer::class, $moved);
         $this->assertStringContainsString('// edited', $moved->document->getText(), 'the edits followed the file');
         $this->assertTrue($moved->document->isDirty(), 'and are still unsaved, which is where the user left them');
     }

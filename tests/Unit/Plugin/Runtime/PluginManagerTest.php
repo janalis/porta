@@ -154,8 +154,8 @@ final class PluginManagerTest extends TestCase
         $manager->registerCommands($registry);
 
         $labels = \array_column($registry->paletteCommands(), 'label');
-        $this->assertSame(1, \count(\array_keys($labels, 'Command A', true)), 'no palette duplicate from re-registration');
-        $this->assertSame(1, \count(\array_keys($labels, 'Command B', true)));
+        $this->assertCount(1, \array_keys($labels, 'Command A', true), 'no palette duplicate from re-registration');
+        $this->assertCount(1, \array_keys($labels, 'Command B', true));
     }
 
     public function testDeactivateUndoesEverythingAndAllowsAReinstall(): void
@@ -203,7 +203,7 @@ final class PluginManagerTest extends TestCase
         $manager->commit($again);
         $manager->registerCommands($registry);
         $labels = \array_column($registry->paletteCommands(), 'label');
-        $this->assertSame(1, \count(\array_keys($labels, 'Say Hi Again', true)));
+        $this->assertCount(1, \array_keys($labels, 'Say Hi Again', true));
         $this->assertNotContains('Say Hi', $labels, 'no stale duplicate came back');
     }
 
@@ -570,7 +570,7 @@ final class PluginManagerTest extends TestCase
         $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', []));
 
         $this->expectException(PluginException::class);
-        $this->expectExceptionMessage('is not a plugin-observable event');
+        $this->expectExceptionMessageIsOrContains('is not a plugin-observable event');
         $api->on(BufferSaved::class, static fn (): null => null);
     }
 

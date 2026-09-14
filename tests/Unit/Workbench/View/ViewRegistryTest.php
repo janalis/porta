@@ -254,7 +254,7 @@ final class ViewRegistryTest extends TestCase
         $views->register($this->fakeView('welcome'));
 
         $event = MouseEvent::parse("\x1b[<0;10;5M");
-        $this->assertNotNull($event);
+        $this->assertInstanceOf(MouseEvent::class, $event);
 
         $this->assertFalse($pointers->of('welcome')->press($event));
         $this->assertNull($menus->of('welcome'));

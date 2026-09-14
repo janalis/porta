@@ -33,7 +33,7 @@ final class IdeLocatorMembershipTest extends ContainerTestCase
         $this->assertNotEmpty($targets, 'Ide resolves services through the locator');
 
         $locator = $this->buildContainer()->get('porta.ide');
-        \assert($locator instanceof ServiceLocator, description: 'the public boundary is a ServiceLocator');
+        $this->assertInstanceOf(ServiceLocator::class, $locator, 'the public boundary is a ServiceLocator');
 
         $missing = [];
         foreach ($targets as $short) {

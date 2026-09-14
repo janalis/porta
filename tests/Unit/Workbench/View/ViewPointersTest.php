@@ -25,7 +25,7 @@ final class ViewPointersTest extends TestCase
     private function press(): MouseEvent
     {
         $event = MouseEvent::parse("\x1b[<0;10;5M");
-        \assert($event instanceof MouseEvent, description: 'the parser produced a mouse event');
+        $this->assertInstanceOf(MouseEvent::class, $event, 'the parser produced a mouse event');
 
         return $event;
     }

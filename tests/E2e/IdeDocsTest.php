@@ -18,6 +18,7 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -102,7 +103,7 @@ final class IdeDocsTest extends TestCase
                     // follow the link again: still ONE help tab, page swapped in place.
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('help-viewer'));
-                    $this->assertNotNull($rect, 'the help viewer pane is laid out');
+                    $this->assertInstanceOf(WidgetRect::class, $rect, 'the help viewer pane is laid out');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 1, $rect->row + 4));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 1, $rect->row + 4));
                     $tui->handleInput("\r"); // the focused link is still [Editor] (restored by the earlier back)
@@ -177,7 +178,7 @@ final class IdeDocsTest extends TestCase
                     // derive the screen position from the pane's rect.
                     $rect = Services::resolve($ide, Renderer::class)
                         ->getWidgetRect($tui->getById('help-viewer'));
-                    $this->assertNotNull($rect, 'the help viewer pane is laid out');
+                    $this->assertInstanceOf(WidgetRect::class, $rect, 'the help viewer pane is laid out');
                     [$linkCol, $linkRow] = [$rect->col + 6 + 1, $rect->row + 1 + 7 + 1]; // 0-based rect → 1-based SGR
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $linkCol, $linkRow));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $linkCol, $linkRow));
@@ -197,7 +198,7 @@ final class IdeDocsTest extends TestCase
                     // pane) to go back to the README, then Enter on the https link.
                     $rect = Services::resolve($ide, Renderer::class)
                         ->getWidgetRect($tui->getById('help-viewer'));
-                    $this->assertNotNull($rect, 'the help viewer pane is laid out');
+                    $this->assertInstanceOf(WidgetRect::class, $rect, 'the help viewer pane is laid out');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 1 + 1, $rect->row + 1));
                     // 0-based rect → 1-based SGR
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 1 + 1, $rect->row + 1));
@@ -278,7 +279,7 @@ final class IdeDocsTest extends TestCase
                     // The ‹ arrow must navigate despite the stale breadcrumbs rect.
                     $rect = Services::resolve($ide, Renderer::class)
                         ->getWidgetRect($viewer);
-                    $this->assertNotNull($rect);
+                    $this->assertInstanceOf(WidgetRect::class, $rect);
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 2, $rect->row + 1));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 2, $rect->row + 1));
                     $this->frame($tui);
@@ -317,7 +318,7 @@ final class IdeDocsTest extends TestCase
                     // would leave the whole section unreachable.
                     $docs = \dirname(__DIR__, levels: 2).'/docs';
                     $buffers = Services::resolve($ide, BufferService::class);
-                    \assert($buffers instanceof BufferService, description: 'the IDE exposes a BufferService');
+                    $this->assertInstanceOf(BufferService::class, $buffers, 'the IDE exposes a BufferService');
 
                     $buffers->showHelpPage($docs.'/internals/README.md');
                     $this->awaitPainted($tui, $terminal, 'Settled questions');

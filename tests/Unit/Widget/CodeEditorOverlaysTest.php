@@ -181,7 +181,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $editor->findModal()->layout([0, 0, 40, 100], CaretVisibility::Shown); // records the screen-space box
 
         $box = $editor->findModal()->lastBox();
-        $this->assertNotNull($box);
+        $this->assertInstanceOf(ModalBox::class, $box);
         $this->assertFalse($editor->handlePopupHover($box->windowTop() + 2, $box->col + 3), 'the popup hover path no longer owns the modal');
 
         // The modal's own screen-space hit-tests carry the behavior.
@@ -667,7 +667,7 @@ final class CodeEditorOverlaysTest extends TestCase
 
         $host = Probe::get($editor, 'overlayHost');
         $box = Probe::get($host, 'promptBox');
-        \assert($box instanceof ModalBox, description: 'the overlay laid out a modal box');
+        $this->assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
 
         $this->assertTrue($editor->handlePickerHover($box->startRow, $box->col + $box->width - 2), 'onto the ×');
         $this->assertFalse($editor->handlePickerHover($box->startRow, $box->col + $box->width - 2), 'unchanged on the same cell');

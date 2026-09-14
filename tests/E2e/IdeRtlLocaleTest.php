@@ -312,7 +312,7 @@ final class IdeRtlLocaleTest extends TestCase
                     $tui->tick();
                     $root = Probe::get($tui, 'root');
                     $segmenter = Services::resolve($ide, PaneSegmenter::class);
-                    \assert($segmenter instanceof PaneSegmenter, description: 'the IDE exposes the segmenter');
+                    $this->assertInstanceOf(PaneSegmenter::class, $segmenter, 'the IDE exposes the segmenter');
                     $runs = $segmenter->segment($root, $terminal->getColumns(), $terminal->getRows());
 
                     // The editor body: code on one side, the mirrored sidebar on
@@ -396,8 +396,8 @@ final class IdeRtlLocaleTest extends TestCase
                     $root = Probe::get($tui, 'root');
                     $segmenter = Services::resolve($ide, PaneSegmenter::class);
                     $reorder = Services::resolve($ide, PaneReorder::class);
-                    \assert($segmenter instanceof PaneSegmenter, description: 'the IDE exposes the segmenter');
-                    \assert($reorder instanceof PaneReorder, description: 'the IDE exposes the reorder');
+                    $this->assertInstanceOf(PaneSegmenter::class, $segmenter, 'the IDE exposes the segmenter');
+                    $this->assertInstanceOf(PaneReorder::class, $reorder, 'the IDE exposes the reorder');
 
                     $columns = $terminal->getColumns();
                     $rows = $terminal->getRows();

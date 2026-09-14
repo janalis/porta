@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\E2e;
 
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\CompletionBox;
 use Porta\Editor\CompletionItem;
@@ -486,7 +487,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     // the INNER item box, one row below the frame's top border.
                     $completion = Probe::get($editor, 'completion');
                     $box = Probe::get($completion, 'box');
-                    \assert($box instanceof CompletionBox, description: 'the completion overlay laid out its box');
+                    Assert::assertInstanceOf(CompletionBox::class, $box, 'the completion overlay laid out its box');
                     $x = $rect->col + $box->col + 2;
                     $y = $rect->row + $box->startRow;
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $x + 1, $y + 1)); // hover tints it

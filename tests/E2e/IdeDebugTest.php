@@ -19,6 +19,7 @@ use Porta\Tests\Support\TempProject;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -205,7 +206,7 @@ final class IdeDebugTest extends TestCase
                     // Drag the debug panel's top edge up: all three bottom panels resize.
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('debug'));
-                    $this->assertNotNull($rect);
+                    $this->assertInstanceOf(WidgetRect::class, $rect);
                     $top = $rect->row; // 1-based screen row of the dock strip — the resize grab
                     $tui->handleInput(\sprintf("\x1b[<0;60;%dM", $top)); // col 60: the strip's empty tail
                     $tui->handleInput(\sprintf("\x1b[<32;60;%dM", $top - 2));

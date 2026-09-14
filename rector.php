@@ -24,6 +24,10 @@ use Rector\DeadCode\Rector\Stmt\RemoveUnreachableStatementRector;
 use Rector\Instanceof_\Rector\Ternary\FlipNegatedTernaryInstanceofRector;
 use Rector\Php55\Rector\String_\StringClassNameToClassConstantRector;
 use Rector\Php74\Rector\Closure\ClosureToArrowFunctionRector;
+use Rector\PHPUnit\CodeQuality\Rector\MethodCall\FlipAssertRector;
+use Rector\PHPUnit\CodeQuality\Rector\MethodCall\AssertEqualsOrAssertSameFloatParameterToSpecificMethodsTypeRector;
+use Rector\PHPUnit\CodeQuality\Rector\MethodCall\StringCastAssertStringContainsStringRector;
+use Rector\PHPUnit\PHPUnit60\Rector\ClassMethod\AddDoesNotPerformAssertionToNonAssertingTestRector;
 use Rector\Php53\Rector\Ternary\TernaryToElvisRector;
 
 // `composer rector:check` is a gate: a dry run that fails on any change Rector
@@ -119,6 +123,21 @@ return RectorConfig::configure()
         // cast is the narrowing.
         RecastingRemovalRector::class,
         RemoveConcatAutocastRector::class,
+        // E2e tests assert inside the step closures they hand to runIde(); the
+        // rule cannot see that, and a test marked as asserting nothing that
+        // does assert is risky — failOnRisky makes it a failure.
+        AddDoesNotPerformAssertionToNonAssertingTestRector::class,
+        // Turns an exact `assertSame(1.0, $ratio)` into a delta comparison;
+        // those ratios are pinned exactly on purpose.
+        AssertEqualsOrAssertSameFloatParameterToSpecificMethodsTypeRector::class,
+        // Wraps already-string arguments in `(string)` because the widget came
+        // from getById(); noise, and enough of it tips IdeTest's pinned
+        // halstead volume.
+        StringCastAssertStringContainsStringRector::class,
+        // Puts the literal first as "expected" — right for assertSame, wrong for
+        // assertStringContainsString, where a variable needle checked against
+        // a literal haystack is the whole assertion.
+        FlipAssertRector::class,
         ArrowFunctionDelegatingCallToFirstClassCallableRector::class => [
             __DIR__.'/src/Debug/DebugStateStore.php',
         ],
@@ -132,5 +151,6 @@ return RectorConfig::configure()
     // Docblocks are prose here and are left alone.
     ->withImportNames(importNames: true, importDocBlockNames: false, importShortClasses: false, removeUnusedImports: false)
     ->withPhpSets(php85: true)
-    ->withPreparedSets(typeDeclarations: true, codeQuality: true, deadCode: true)
+    ->withPreparedSets(typeDeclarations: true, codeQuality: true, deadCode: true, phpunitCodeQuality: true)
+    ->withComposerBased(phpunit: true)
     ->withParallel();

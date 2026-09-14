@@ -141,7 +141,7 @@ final class SettingsViewControllerTest extends TestCase
             $rows = Probe::get($this->form, 'rows');
             \assert(\is_array($rows) && [] !== $rows, description: 'every settings page renders at least one row');
             $first = $rows[0];
-            \assert($first instanceof SettingsRow, description: 'the form holds SettingsRow objects');
+            $this->assertInstanceOf(SettingsRow::class, $first, 'the form holds SettingsRow objects');
             $this->assertSame(SettingsScopeRow::KEY, $first->key, $page.' leads with the chooser');
             $this->assertSame('project', $first->value, $page.' shows the pinned scope');
 
@@ -849,7 +849,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller(sections: []);
 
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('No settings section claimed general');
+        $this->expectExceptionMessageIsOrContains('No settings section claimed general');
         $controller->open();
     }
 
@@ -858,7 +858,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->controller();
 
         $sidebar = $this->regions->find('settings')?->sidebar();
-        $this->assertNotNull($sidebar);
+        $this->assertInstanceOf(ContainerWidget::class, $sidebar);
         $this->assertSame([$this->nav], $sidebar->all(), 'the nav widget is actually added to the sidebar container');
         $this->assertSame($this->nav, $this->regions->find('settings')?->sidebarPanes(), 'the nav is registered as the resizable sidebar unit');
     }

@@ -25,6 +25,7 @@ use Porta\Widget\DockTabsWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\Support\ResultsPanelFields;
+use Porta\Widget\Support\ResultsViewState;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockPanels;
@@ -236,12 +237,12 @@ final class BottomDockTest extends TestCase
 
         $again = $dock->showList(ResultsPanelMode::Problems, 'Problems', [['path' => 'b.php', 'line' => 1, 'text' => 'boom']]);
         $this->assertSame($first, $again, 'same (mode, title) reuses the tab');
-        $this->assertSame(2, \count(Probe::get($this->tools, 'tabs')), 'no duplicate appended');
+        $this->assertCount(2, Probe::get($this->tools, 'tabs'), 'no duplicate appended');
         $this->assertSame($first, $dock->activeTool(), 'the reused tab took the slot back');
         $this->assertSame([['path' => 'b.php', 'line' => 1, 'text' => 'boom']], $first->rows, 'and its content refreshed');
 
         $other = $dock->showList(ResultsPanelMode::Search, 'Usages: other', []);
-        $this->assertSame(3, \count(Probe::get($this->tools, 'tabs')), 'a different title appends a new tab');
+        $this->assertCount(3, Probe::get($this->tools, 'tabs'), 'a different title appends a new tab');
         $this->assertSame($other, $dock->activeTool());
     }
 
@@ -479,7 +480,7 @@ final class BottomDockTest extends TestCase
         $this->results->handleInput("\x1b[B"); // move the selection off the first match
 
         $dock->showList(ResultsPanelMode::Notifications, 'Notifications', [['path' => 't.php', 'line' => 1, 'text' => 'todo']]);
-        $this->assertNotNull($problems->viewState, 'switching away froze the outgoing tab\'s view state');
+        $this->assertInstanceOf(ResultsViewState::class, $problems->viewState, 'switching away froze the outgoing tab\'s view state');
         $this->assertSame('src/A.php', $problems->viewState->selectedPath);
         $this->assertSame(4, $problems->viewState->selectedLine);
 

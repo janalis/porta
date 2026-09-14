@@ -49,7 +49,7 @@ final class IdeSettingsViewTest extends TestCase
         // find(), not reflection: the registry no longer keeps a concrete
         // field per view, which is what dissolved the seven-class cycle.
         $git = $views->find('git');
-        self::assertNotNull($git, 'the git plugin registered its view');
+        $this->assertInstanceOf(ContributedView::class, $git, 'the git plugin registered its view');
         $this->gitView = $git;
         $this->settingsView = $views->find('settings');
         $this->main = Services::resolve($this->ide, WorkspaceLayout::class)->main();

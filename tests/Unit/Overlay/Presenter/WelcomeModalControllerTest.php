@@ -21,6 +21,7 @@ use Porta\Onboarding\SymfonyDetector;
 use Porta\Onboarding\WelcomeSteps;
 use Porta\Overlay\Presenter\OverlayDelivery;
 use Porta\Overlay\Presenter\WelcomeModalController;
+use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\Probe;
@@ -128,7 +129,7 @@ final class WelcomeModalControllerTest extends TestCase
 
         $controller->open();
         $this->assertNotSame([], $this->pane->modalSpans, 'the framed box was composited onto the pane');
-        $this->assertNotNull($controller->region());
+        $this->assertInstanceOf(DropdownRegion::class, $controller->region());
         $this->assertSame($this->welcome, $this->tui->getFocus());
 
         $controller->close();
@@ -297,7 +298,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->frame(80);
         $controller->open();
         $region = $controller->region();
-        $this->assertNotNull($region);
+        $this->assertInstanceOf(DropdownRegion::class, $region);
 
         // The region is one column wider than the box (the shadow band), so
         // the × sits at region width − 3.
@@ -313,21 +314,21 @@ final class WelcomeModalControllerTest extends TestCase
         $this->frame(80);
         $controller->open();
         $region = $controller->region();
-        $this->assertNotNull($region);
+        $this->assertInstanceOf(DropdownRegion::class, $region);
 
         // Press on the title bar (off the ×), drag down-and-left one column
         // (the 76-wide, 22-row box on an 80×24 pane leaves little room).
         $this->assertTrue($controller->clickAt($region->top, $region->col + 2));
         $this->assertTrue($controller->continueDragTo($region->top + 2, $region->col + 1, release: false));
         $moved = $controller->region();
-        $this->assertNotNull($moved);
+        $this->assertInstanceOf(DropdownRegion::class, $moved);
         $this->assertSame($region->top + 2, $moved->top, 'the box followed the pointer');
         $this->assertSame($region->col - 1, $moved->col);
 
         // Dragging far past the bottom-right pins to the pane union's edge.
         $this->assertTrue($controller->continueDragTo(500, 500, release: true));
         $pinned = $controller->region();
-        $this->assertNotNull($pinned);
+        $this->assertInstanceOf(DropdownRegion::class, $pinned);
         $this->assertSame(24 - $pinned->count, $pinned->top, 'clamped to the pane bottom');
         $this->assertSame(80 - $pinned->width, $pinned->col, 'clamped to the pane right edge');
         // The two lines above re-derive their expected value from the same
@@ -347,7 +348,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->frame(80);
         $controller->open();
         $region = $controller->region();
-        $this->assertNotNull($region);
+        $this->assertInstanceOf(DropdownRegion::class, $region);
         $box = ['top' => $region->top, 'col' => $region->col, 'width' => $region->width - 1, 'rows' => $region->count - 1];
 
         // Press the bottom-right corner, drag up-left to shrink, release.
@@ -355,14 +356,14 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertTrue($controller->clickAt($corner[0], $corner[1]));
         $this->assertTrue($controller->continueDragTo($corner[0] - 4, $corner[1] - 10, release: false));
         $shrunk = $controller->region();
-        $this->assertNotNull($shrunk);
+        $this->assertInstanceOf(DropdownRegion::class, $shrunk);
         $this->assertSame($box['width'] - 10, $shrunk->width - 1, 'the width followed the pointer');
         $this->assertSame($box['rows'] - 4, $shrunk->count - 1, 'the height followed the pointer');
 
         // Dragging into the box's top-left corner pins at the 20×5 floors.
         $this->assertTrue($controller->continueDragTo($box['top'], $box['col'], release: true));
         $floor = $controller->region();
-        $this->assertNotNull($floor);
+        $this->assertInstanceOf(DropdownRegion::class, $floor);
         $this->assertSame(20 + 4 + 1, $floor->width, 'inner width floored at 20 (+ chrome + shadow)');
         $this->assertSame(5 + 4 + 1, $floor->count, 'inner height floored at 5 (+ chrome + shadow)');
         $this->assertFalse($controller->continueDragTo(0, 0, release: false), 'the release disarmed the resize');
@@ -371,7 +372,7 @@ final class WelcomeModalControllerTest extends TestCase
         $controller->close();
         $controller->open();
         $reopened = $controller->region();
-        $this->assertNotNull($reopened);
+        $this->assertInstanceOf(DropdownRegion::class, $reopened);
         $this->assertSame($region->width, $reopened->width, 'the reopen dropped the user size');
     }
 
@@ -381,7 +382,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->frame(80);
         $controller->open();
         $region = $controller->region();
-        $this->assertNotNull($region);
+        $this->assertInstanceOf(DropdownRegion::class, $region);
 
         $this->assertTrue($controller->hoverAt($region->top + $region->count - 2, $region->col + $region->width - 2), 'onto the corner (inside the shadow-widened region)');
         $spans = $this->pane->modalSpans;
@@ -397,7 +398,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->frame(80);
         $controller->open();
         $region = $controller->region();
-        $this->assertNotNull($region);
+        $this->assertInstanceOf(DropdownRegion::class, $region);
 
         $controller->clickAt($region->top, $region->col + 2); // arm
         $controller->cancelDrag();
@@ -412,7 +413,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->frame(80);
         $controller->open();
         $region = $controller->region();
-        $this->assertNotNull($region);
+        $this->assertInstanceOf(DropdownRegion::class, $region);
 
         // Box rows: title bar 0, pad 1, then content (hero 2-4, first card
         // 5-6, spacer 7, second card 8-9 — the window is ≥ HERO_MIN_ROWS).
@@ -440,7 +441,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->frame(80);
         $controller->open();
         $region = $controller->region();
-        $this->assertNotNull($region);
+        $this->assertInstanceOf(DropdownRegion::class, $region);
 
         $this->assertTrue($controller->hoverAt($region->top, $region->col + $region->width - 3), 'onto the ×'); // region width − 3: the shadow band
         $this->assertTrue($controller->hoverAt($region->top + 10, $region->col - 1), 'off the box again');
@@ -453,7 +454,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->frame(80);
         $controller->open();
         $region = $controller->region();
-        $this->assertNotNull($region);
+        $this->assertInstanceOf(DropdownRegion::class, $region);
 
         $this->assertTrue($controller->wheelAt($region->top + 4, $region->col + 4, 3), 'over the box');
         $this->assertTrue($controller->wheelAt(0, 79, 3), 'outside: consumed all the same (modal)');
@@ -698,7 +699,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->frame(80);
         $controller->open();
         $before = $controller->region();
-        $this->assertNotNull($before);
+        $this->assertInstanceOf(DropdownRegion::class, $before);
 
         // Narrow enough to floor innerWidth at 20 (24-8=16 < 20), which is
         // the one regime where the auto-centered column isn't coincidentally
@@ -706,13 +707,13 @@ final class WelcomeModalControllerTest extends TestCase
         $this->frame(columns: 24);
         $controller->refresh();
         $afterNarrower = $controller->region();
-        $this->assertNotNull($afterNarrower);
+        $this->assertInstanceOf(DropdownRegion::class, $afterNarrower);
         $this->assertNotSame($before->col, $afterNarrower->col, 'still auto-centering: a narrower pane re-centers the column, not frozen at the old one');
 
         $this->frame(80);
         $controller->refresh();
         $afterBack = $controller->region();
-        $this->assertNotNull($afterBack);
+        $this->assertInstanceOf(DropdownRegion::class, $afterBack);
         $this->assertSame($before->col, $afterBack->col, 'and un-resizing lands back on the original center, not a frozen value');
     }
 
@@ -746,7 +747,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->frame(80);
         $controller->open();
         $region = $controller->region();
-        $this->assertNotNull($region);
+        $this->assertInstanceOf(DropdownRegion::class, $region);
 
         $consumed = $controller->clickAt($region->top, $region->col + $region->width - 3);
         $this->assertTrue($consumed);
@@ -765,20 +766,20 @@ final class WelcomeModalControllerTest extends TestCase
         $this->frame(80);
         $controller->open();
         $region = $controller->region();
-        $this->assertNotNull($region);
+        $this->assertInstanceOf(DropdownRegion::class, $region);
 
         // The box is 22 of 24 rows tall, leaving only 2 rows of vertical
         // room to move in before clamping — small, deliberate deltas.
         $this->assertTrue($controller->clickAt($region->top, $region->col + 2));
         $this->assertTrue($controller->continueDragTo($region->top + 1, $region->col, release: true));
         $moved = $controller->region();
-        $this->assertNotNull($moved);
+        $this->assertInstanceOf(DropdownRegion::class, $moved);
         $this->assertSame($region->top + 1, $moved->top, 'the box really did move off row 0');
 
         $this->assertTrue($controller->clickAt($moved->top, $moved->col + 2));
         $this->assertTrue($controller->continueDragTo($moved->top + 1, $moved->col, release: true));
         $movedAgain = $controller->region();
-        $this->assertNotNull($movedAgain);
+        $this->assertInstanceOf(DropdownRegion::class, $movedAgain);
         $this->assertSame($moved->top + 1, $movedAgain->top, 'the second drag tracked the pointer from its new starting row');
     }
 
@@ -789,7 +790,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->frame(80);
         $controller->open();
         $region = $controller->region();
-        $this->assertNotNull($region);
+        $this->assertInstanceOf(DropdownRegion::class, $region);
         $this->tui->setFocus($this->menuBar); // move focus away first
 
         $before = $this->pane->modalSpans;
@@ -879,7 +880,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->frame(80);
         $controller->open();
         $region = $controller->region();
-        $this->assertNotNull($region);
+        $this->assertInstanceOf(DropdownRegion::class, $region);
         $before = $this->pane->modalSpans;
 
         $controller->wheelAt($region->top + 4, $region->col + 4, 3);
@@ -898,7 +899,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->frame(80);
         $controller->open();
         $region = $controller->region();
-        $this->assertNotNull($region);
+        $this->assertInstanceOf(DropdownRegion::class, $region);
 
         // Only 1 row / 4 columns of room to move in (box is 22x76 of 24x80),
         // so a small move, then shrink (plenty of floor room at 20x5) rather
@@ -906,7 +907,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertTrue($controller->clickAt($region->top, $region->col + 2));
         $this->assertTrue($controller->continueDragTo($region->top + 1, $region->col + 1, release: true));
         $moved = $controller->region();
-        $this->assertNotNull($moved);
+        $this->assertInstanceOf(DropdownRegion::class, $moved);
 
         $box = ['top' => $moved->top, 'col' => $moved->col, 'width' => $moved->width - 1, 'rows' => $moved->count - 1];
         $corner = [$box['top'] + $box['rows'] - 1, $box['col'] + $box['width'] - 1];
@@ -914,7 +915,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertTrue($controller->continueDragTo($corner[0] - 5, $corner[1] - 5, release: true));
 
         $resized = $controller->region();
-        $this->assertNotNull($resized);
+        $this->assertInstanceOf(DropdownRegion::class, $resized);
         $this->assertSame($box['width'] - 5, $resized->width - 1, 'the width shrank by exactly the pointer delta from the anchored corner');
         $this->assertSame($box['rows'] - 5, $resized->count - 1, 'the height shrank by exactly the pointer delta from the anchored corner');
     }
@@ -966,7 +967,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'refresh() requests a render');
 
         $region = $controller->region();
-        $this->assertNotNull($region);
+        $this->assertInstanceOf(DropdownRegion::class, $region);
 
         Probe::set($this->tui, 'renderRequested', false);
         $controller->wheelAt($region->top + 4, $region->col + 4, 3);
@@ -980,7 +981,7 @@ final class WelcomeModalControllerTest extends TestCase
         // The drag moved the box — re-read its geometry before arming the
         // resize corner, or the click lands on stale coordinates.
         $moved = $controller->region();
-        $this->assertNotNull($moved);
+        $this->assertInstanceOf(DropdownRegion::class, $moved);
         $box = ['top' => $moved->top, 'col' => $moved->col, 'width' => $moved->width - 1, 'rows' => $moved->count - 1];
         $corner = [$box['top'] + $box['rows'] - 1, $box['col'] + $box['width'] - 1];
         $this->assertTrue($controller->clickAt($corner[0], $corner[1]), 'the corner click was consumed (armed the resize)');
@@ -1008,7 +1009,7 @@ final class WelcomeModalControllerTest extends TestCase
         $controller->open();
 
         $region = $controller->region();
-        $this->assertNotNull($region);
+        $this->assertInstanceOf(DropdownRegion::class, $region);
         $this->assertSame(0, $region->top, 'auto-centered row');
         $this->assertSame(2, $region->col, 'auto-centered column');
         $this->assertSame(77, $region->width, 'shadow-inclusive width (box width 76 + 1)');
@@ -1041,7 +1042,7 @@ final class WelcomeModalControllerTest extends TestCase
         $controller->open();
 
         $region = $controller->region();
-        $this->assertNotNull($region);
+        $this->assertInstanceOf(DropdownRegion::class, $region);
         $this->assertSame(12, $region->top, 'boundTop(0) + intdiv(boundBottom(60)-boundTop(0)-rows(22), 3) = 12');
         $this->assertSame(60, $region->col, 'boundLeft(0) + intdiv(boundRight(200)-boundLeft(0)-width(80), 2) = 60');
     }

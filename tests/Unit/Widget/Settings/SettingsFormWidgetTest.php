@@ -430,7 +430,7 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $widget = $this->textWidget($changes);
         $widget->handleInput("\r"); // Enter starts editing row 0
-        $this->assertTrue(null !== Probe::get($widget, 'editing'));
+        $this->assertNotNull(Probe::get($widget, 'editing'));
 
         $widget->handleInput('-');
         $widget->handleInput('x');
@@ -438,7 +438,7 @@ final class SettingsFormWidgetTest extends TestCase
 
         $widget->handleInput("\x7f"); // backspace
         $widget->handleInput("\r"); // Enter commits
-        $this->assertFalse(null !== Probe::get($widget, 'editing'));
+        $this->assertNull(Probe::get($widget, 'editing'));
         $this->assertSame([['lspServer', 'phpactor-']], $changes);
     }
 
@@ -486,7 +486,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->handleInput("\r"); // edit
         $widget->handleInput('z');
         $widget->handleInput("\x1b"); // Esc cancels
-        $this->assertFalse(null !== Probe::get($widget, 'editing'));
+        $this->assertNull(Probe::get($widget, 'editing'));
         $this->assertSame([], $changes);
     }
 
@@ -496,7 +496,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->handleClick(2); // pane row 2 = the empty text row: selects it
         $this->assertNull(Probe::get($widget, 'editing'), 'the first click only selects');
         $widget->handleClick(2); // the second opens the editor
-        $this->assertTrue(null !== Probe::get($widget, 'editing'));
+        $this->assertNotNull(Probe::get($widget, 'editing'));
         $this->assertSame(1, Probe::object($widget, 'list')->selected());
 
         $widget->handleInput("\x1b[B"); // arrow ignored while editing
@@ -510,9 +510,9 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $widget = $this->textWidget();
         $widget->handleInput("\r");
-        $this->assertTrue(null !== Probe::get($widget, 'editing'));
+        $this->assertNotNull(Probe::get($widget, 'editing'));
         $widget->setRows([new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'x', restart: false)]);
-        $this->assertFalse(null !== Probe::get($widget, 'editing'));
+        $this->assertNull(Probe::get($widget, 'editing'));
     }
 
     public function testEditingWithoutAChangeHandlerIsSafe(): void
@@ -532,7 +532,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->onInput(static fn (string $d): bool => true);
         $widget->handleInput('q'); // swallowed
         $widget->handleInput("\r"); // swallowed too, so no commit
-        $this->assertTrue(null !== Probe::get($widget, 'editing'));
+        $this->assertNotNull(Probe::get($widget, 'editing'));
         $this->assertSame([], $changes);
     }
 
@@ -803,7 +803,7 @@ final class SettingsFormWidgetTest extends TestCase
         $lines = $this->widget()->render(new RenderContext(60, 8)); // 5 real rows + 3 blank
 
         $this->assertStringContainsString('Inline diagnostics', AnsiUtils::stripAnsiCodes($this->body($lines)[0]), 'the first real row still renders after the loop keeps going past index bounds');
-        $this->assertSame(8, \count($lines));
+        $this->assertCount(8, $lines);
         $this->assertStringContainsString('Tab width', AnsiUtils::stripAnsiCodes($this->body($lines)[4]), 'the last real row (index 4) is reached — a break at row 0 would prevent this');
     }
 

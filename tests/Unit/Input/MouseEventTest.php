@@ -13,7 +13,7 @@ final class MouseEventTest extends TestCase
     {
         $e = MouseEvent::parse("\x1b[<0;10;5M");
 
-        $this->assertNotNull($e);
+        $this->assertInstanceOf(MouseEvent::class, $e);
         $this->assertSame(MouseEvent::LEFT, $e->button);
         $this->assertSame(9, $e->col, '1-based 10 -> 0-based 9');
         $this->assertSame(4, $e->row);
@@ -26,7 +26,7 @@ final class MouseEventTest extends TestCase
     {
         $e = MouseEvent::parse("\x1b[<0;10;5m");
 
-        $this->assertNotNull($e);
+        $this->assertInstanceOf(MouseEvent::class, $e);
         $this->assertFalse($e->pressed);
         $this->assertFalse($e->isLeftPress());
     }
@@ -112,7 +112,7 @@ final class MouseEventTest extends TestCase
     {
         // Mode 1003 reports a no-button motion as code 35 (32 motion + 3 "no button").
         $move = MouseEvent::parse("\x1b[<35;7;4M");
-        $this->assertNotNull($move);
+        $this->assertInstanceOf(MouseEvent::class, $move);
         $this->assertSame(3, $move->button, 'no button held → button bits 3');
         $this->assertTrue($move->isMove());
         $this->assertFalse($move->isLeftDrag());

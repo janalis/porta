@@ -21,11 +21,11 @@ final class DockToolTabsTest extends TestCase
     {
         $tabs = new DockToolTabs();
         $this->assertNull($tabs->active(), 'no tabs yet');
-        $this->assertSame(0, \count(Probe::get($tabs, 'tabs')));
+        $this->assertCount(0, Probe::get($tabs, 'tabs'));
 
         $foo = $tabs->openOrReuse(ResultsPanelMode::Search, 'foo', ResultsPanelFields::searchResults());
         $bar = $tabs->openOrReuse(ResultsPanelMode::Search, 'bar', ResultsPanelFields::searchResults());
-        $this->assertSame(2, \count(Probe::get($tabs, 'tabs')), 'a different title appends');
+        $this->assertCount(2, Probe::get($tabs, 'tabs'), 'a different title appends');
         $this->assertSame($bar, $tabs->active(), 'the newest tab is active');
         $this->assertSame([1, 2], \array_map(static fn (DockToolTab $tab): int => $tab->id, $tabs->all()), 'ids are monotonic');
 
@@ -74,7 +74,7 @@ final class DockToolTabsTest extends TestCase
 
         $this->assertSame($a, $tabs->close($c), 'closing an unknown tab is a no-op');
         $this->assertNull($tabs->close($a), 'the last close empties the strip');
-        $this->assertSame(0, \count(Probe::get($tabs, 'tabs')));
+        $this->assertCount(0, Probe::get($tabs, 'tabs'));
     }
 
     /**

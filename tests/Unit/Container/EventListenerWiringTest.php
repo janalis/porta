@@ -73,9 +73,9 @@ final class EventListenerWiringTest extends TestCase
         );
         $container->set(BootTrace::class, new BootTrace());
         $locator = $container->get('porta.ide');
-        \assert($locator instanceof ServiceLocator, description: 'the public boundary is a ServiceLocator');
+        $this->assertInstanceOf(ServiceLocator::class, $locator, 'the public boundary is a ServiceLocator');
         $dispatcher = $locator->get(EventDispatcherInterface::class);
-        \assert($dispatcher instanceof EventDispatcherInterface, description: 'the locator yields the event dispatcher');
+        $this->assertInstanceOf(EventDispatcherInterface::class, $dispatcher, 'the locator yields the event dispatcher');
 
         return $dispatcher;
     }
@@ -84,7 +84,7 @@ final class EventListenerWiringTest extends TestCase
     {
         $container = new IdeContainerFactory()->build('/tmp/porta-event-wiring', IdeConfig::load('/tmp/porta-event-wiring'), Ansi::Enabled);
         $locator = $container->get('porta.ide');
-        \assert($locator instanceof ServiceLocator, description: 'the public boundary is a ServiceLocator');
+        $this->assertInstanceOf(ServiceLocator::class, $locator, 'the public boundary is a ServiceLocator');
 
         $dispatcher = $locator->get(EventDispatcherInterface::class);
 
@@ -156,8 +156,8 @@ final class EventListenerWiringTest extends TestCase
                     continue;
                 }
                 $this->assertSame(
-                    $allowed[$event] ?? null,
                     $listener[0]::class,
+                    $allowed[$event] ?? null,
                     \sprintf('%s: a core listener at %d runs after plugin listeners', $event, (int) $dispatcher->getListenerPriority($event, $listener)),
                 );
             }

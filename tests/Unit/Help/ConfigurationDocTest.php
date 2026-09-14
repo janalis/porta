@@ -109,7 +109,7 @@ final class ConfigurationDocTest extends TestCase
     {
         $doc = (string) \file_get_contents(self::DOC);
         $start = \strpos($doc, needle: '### `languages.<id>`');
-        self::assertNotFalse($start, 'the languages section is where this test expects it');
+        $this->assertNotFalse($start, 'the languages section is where this test expects it');
         $end = \strpos($doc, needle: "\n## ", offset: $start);
 
         return \substr($doc, $start, false === $end ? null : $end - $start);
@@ -123,7 +123,7 @@ final class ConfigurationDocTest extends TestCase
     {
         $doc = (string) \file_get_contents(self::DOC);
         $start = \strpos($doc, needle: '| Key | Default | Effect |');
-        self::assertNotFalse($start, 'the settings table is where this test expects it');
+        $this->assertNotFalse($start, 'the settings table is where this test expects it');
         $end = \strpos($doc, needle: "\n\n", offset: $start);
 
         return \substr($doc, $start, false === $end ? null : $end - $start);

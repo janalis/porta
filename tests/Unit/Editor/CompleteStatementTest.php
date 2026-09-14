@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Editor;
 
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
 use Porta\Editor\LineOperations;
@@ -24,7 +25,7 @@ final class CompleteStatementTest extends TestCase
     private static function php(): StatementSyntax
     {
         $php = StatementSyntax::forGrammar('php');
-        \assert($php instanceof StatementSyntax, description: 'php is in the table');
+        Assert::assertInstanceOf(StatementSyntax::class, $php, 'php is in the table');
 
         return $php;
     }
@@ -137,7 +138,7 @@ final class CompleteStatementTest extends TestCase
     public function testALanguageWhoseBlockHasNoCloserGetsNoClosingLine(): void
     {
         $python = StatementSyntax::forGrammar('python');
-        \assert($python instanceof StatementSyntax, description: 'python is in the table');
+        $this->assertInstanceOf(StatementSyntax::class, $python, 'python is in the table');
 
         $doc = new Document("    if x > 1\n");
         $doc->setCursor(0, 6);
@@ -155,7 +156,7 @@ final class CompleteStatementTest extends TestCase
     public function testALanguageWithBracesAndNoTerminatorGetsOnlyTheBraces(): void
     {
         $go = StatementSyntax::forGrammar('go');
-        \assert($go instanceof StatementSyntax, description: 'go is in the table');
+        $this->assertInstanceOf(StatementSyntax::class, $go, 'go is in the table');
 
         $doc = new Document("    y := f(1\n");
         $doc->setCursor(0, 4);
@@ -258,7 +259,7 @@ final class CompleteStatementTest extends TestCase
     public function testALineThatAlreadyHasItsBlockGainsNothing(): void
     {
         $python = StatementSyntax::forGrammar('python');
-        \assert($python instanceof StatementSyntax, description: 'python is in the table');
+        $this->assertInstanceOf(StatementSyntax::class, $python, 'python is in the table');
 
         foreach ([
             ['    if ($x) {', self::php()],

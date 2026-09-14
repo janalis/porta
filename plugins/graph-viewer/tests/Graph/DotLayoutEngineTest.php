@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\Graph\DotLayoutEngine;
 use Porta\GraphViewer\Graph\GraphExportFormat;
 use Porta\GraphViewer\Graph\GraphLayout;
+use Porta\ImageViewer\ImageData;
 use Porta\ImageViewer\ImageDecoder;
 use Porta\Tests\Support\GraphvizBinary;
 use Porta\Tests\Support\PreservesPath;
@@ -50,7 +51,7 @@ final class DotLayoutEngineTest extends TestCase
         }, what: 'layout to complete');
 
         $this->assertNull($error);
-        $this->assertNotNull($layout);
+        $this->assertInstanceOf(GraphLayout::class, $layout);
         $this->assertSame(3, $layout->nodeCount());
     }
 
@@ -258,7 +259,7 @@ final class DotLayoutEngineTest extends TestCase
         }, what: 'the PNG bytes');
 
         $image = new ImageDecoder()->decodeBytes((string) $png);
-        $this->assertNotNull($image, 'the bytes decode as an image — no temp file in between');
+        $this->assertInstanceOf(ImageData::class, $image, 'the bytes decode as an image — no temp file in between');
         // The stub sizes its PNG from -Gdpi: 10 px per 72 dpi.
         $this->assertSame(20, $image->width, 'the dpi reached dot as an argument');
     }
@@ -390,7 +391,7 @@ final class DotLayoutEngineTest extends TestCase
         }, what: 'real dot layout');
 
         $this->assertNull($error);
-        $this->assertNotNull($layout);
+        $this->assertInstanceOf(GraphLayout::class, $layout);
         $this->assertSame(3, $layout->nodeCount());
         $this->assertSame(2, $layout->edgeCount());
     }
@@ -420,7 +421,7 @@ final class DotLayoutEngineTest extends TestCase
             $this->markTestSkipped('this dot has no PNG support: '.$error);
         }
         $image = new ImageDecoder()->decodeBytes((string) $png);
-        $this->assertNotNull($image, 'real dot emitted a decodable PNG');
+        $this->assertInstanceOf(ImageData::class, $image, 'real dot emitted a decodable PNG');
         $this->assertGreaterThan(0, $image->width);
     }
 }

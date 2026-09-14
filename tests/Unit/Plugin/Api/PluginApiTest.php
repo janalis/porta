@@ -53,6 +53,7 @@ use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\DockToolController;
+use Porta\Workbench\Dock\DockToolTab;
 use Porta\Workbench\Dock\ToolRun;
 use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Menu\MenuSurface;
@@ -687,7 +688,7 @@ final class PluginApiTest extends TestCase
 
         $api->showList('todo', [['path' => 'a.php', 'line' => 0, 'text' => 'first']], ToolRun::Running);
         $tab = $dock->findTool('demo:todo');
-        $this->assertNotNull($tab, 'the bare id was namespaced on the way out');
+        $this->assertInstanceOf(DockToolTab::class, $tab, 'the bare id was namespaced on the way out');
         $this->assertTrue($tab->searching);
 
         $api->updateList('todo', [['path' => 'a.php', 'line' => 0, 'text' => 'second']]);
@@ -819,7 +820,7 @@ final class PluginApiTest extends TestCase
         $api->bufferedHooks(); // what commit() does
 
         $this->expectException(PluginException::class);
-        $this->expectExceptionMessage('Listeners must be registered during activate()');
+        $this->expectExceptionMessageIsOrContains('Listeners must be registered during activate()');
         $api->onFileSaved(static fn (): null => null);
     }
 

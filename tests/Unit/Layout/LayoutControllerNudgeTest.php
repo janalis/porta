@@ -251,7 +251,7 @@ final class LayoutControllerNudgeTest extends TestCase
     {
         $layout = $this->controller();
         $press = MouseEvent::parse("\x1b[<0;10;20M");
-        $this->assertNotNull($press);
+        $this->assertInstanceOf(MouseEvent::class, $press);
 
         $this->assertFalse($layout->armPanelResize(new TerminalPanelWidget(), $press), 'a closed panel has no resize grab');
     }

@@ -27,6 +27,7 @@ use Porta\I18n\Translator;
 use Porta\Lsp\InlineValueRequest;
 use Porta\Lsp\LspSessionPool;
 use Porta\Support\ProjectPaths;
+use Porta\Terminal\TerminalSession;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FakeDapClient;
@@ -273,9 +274,9 @@ final class DebugControllerTest extends TestCase
         $this->assertTrue($controller->isActive());
         $controller->startForCurrentFile();
         $this->assertStringContainsString('Debugger already running', $this->flashed());
-        $this->assertSame(
+        $this->assertCount(
             1,
-            \count(\array_filter($this->client->commands(), static fn (string $c): bool => 'initialize' === $c)),
+            \array_filter($this->client->commands(), static fn (string $c): bool => 'initialize' === $c),
             'the guard stops before a second session is spun up',
         );
     }
@@ -329,7 +330,7 @@ final class DebugControllerTest extends TestCase
 
         $this->pauseAtBreakpoint($controller);
         $debugSession = $this->sessions->find('debug');
-        $this->assertNotNull($debugSession);
+        $this->assertInstanceOf(TerminalSession::class, $debugSession);
         $this->client->emit('output', ['category' => 'stdout', 'output' => "hello\n"]);
         $this->assertGreaterThan(1, $debugSession->buffer->lineCount(), 'output landed in the buffer');
 
@@ -809,7 +810,7 @@ final class DebugControllerTest extends TestCase
         $this->assertContains('restart', $this->client->commands(), 'the adapter restarts in place');
         $this->assertTrue($requested);
         $this->assertNotContains('disconnect', $this->client->commands(), 'the native path does not also fall through to stop+relaunch');
-        $this->assertSame(1, \count(\array_filter($this->client->commands(), static fn (string $c): bool => 'initialize' === $c)), 'no second session was spun up');
+        $this->assertCount(1, \array_filter($this->client->commands(), static fn (string $c): bool => 'initialize' === $c), 'no second session was spun up');
     }
 
     public function testRestartFallsBackToStopAndRelaunchWithoutNativeSupport(): void
@@ -820,7 +821,7 @@ final class DebugControllerTest extends TestCase
         $controller->restart();
         // The old session disconnected and a fresh launch began.
         $this->assertContains('disconnect', $this->client->commands(), 'the old session was ended');
-        $this->assertSame(2, \count(\array_filter($this->client->commands(), static fn (string $c): bool => 'initialize' === $c)), 'a new session was launched');
+        $this->assertCount(2, \array_filter($this->client->commands(), static fn (string $c): bool => 'initialize' === $c), 'a new session was launched');
     }
 
     public function testRestartWithoutASessionFlashes(): void
@@ -863,9 +864,9 @@ final class DebugControllerTest extends TestCase
         $this->editor->handleInput("\r");
 
         $this->assertStringContainsString('invalid value', $this->flashed(), 'the adapter error reaches the status bar');
-        $this->assertSame(
+        $this->assertCount(
             $variablesRequestsBefore,
-            \count(\array_filter($this->client->commands(), static fn (string $c): bool => 'variables' === $c)),
+            \array_filter($this->client->commands(), static fn (string $c): bool => 'variables' === $c),
             'an error does not re-fetch the container',
         );
     }
@@ -917,7 +918,7 @@ final class DebugControllerTest extends TestCase
         $requested = $this->requestedRenderSince(function (): void {
             $this->panel->handleClick(2); // the #1 frame row (no header row)
         });
-        $this->assertSame($evaluatesBefore + 1, \count(\array_filter($this->client->commands(), static fn (string $c): bool => 'evaluate' === $c)));
+        $this->assertCount($evaluatesBefore + 1, \array_filter($this->client->commands(), static fn (string $c): bool => 'evaluate' === $c));
         $this->assertSame(['expression' => '$x', 'context' => 'watch', 'frameId' => 2], $this->client->argumentsOf('evaluate'));
         $this->assertTrue($requested, 'the re-evaluated watch result requests a render');
         $panelScreen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->panel->render(new RenderContext(100, 14))));
@@ -979,7 +980,7 @@ final class DebugControllerTest extends TestCase
         $controller = $this->controller();
         $this->pauseAtBreakpoint($controller);
         $debugSession = $this->sessions->find('debug');
-        $this->assertNotNull($debugSession);
+        $this->assertInstanceOf(TerminalSession::class, $debugSession);
         $linesBefore = $debugSession->buffer->lineCount();
 
         Probe::set($this->terminalPanel, 'scrollBack', 3);

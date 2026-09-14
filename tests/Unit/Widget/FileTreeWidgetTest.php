@@ -15,6 +15,7 @@ use Porta\Tests\Support\RendersWidget;
 use Porta\Tests\Support\TempProject;
 use Porta\Tree\FileDecorations;
 use Porta\Tree\FileStatuses;
+use Porta\Tree\FileTreeNode;
 use Porta\Ui\Glyphs;
 use Porta\Widget\FileTreeWidget;
 use Symfony\Component\Clock\MockClock;
@@ -772,7 +773,7 @@ final class FileTreeWidgetTest extends TestCase
         $this->assertNull($tree->nodeAt(999), 'a click past the last entry targets nothing');
 
         $sub = $tree->nodeAt(1);
-        $this->assertNotNull($sub);
+        $this->assertInstanceOf(FileTreeNode::class, $sub);
         $this->assertSame('sub', $sub->name);
         $this->assertTrue($sub->isDir);
 

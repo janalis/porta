@@ -56,7 +56,7 @@ final class IdeAppMenuTest extends TestCase
                     // group is absent outside a repository, as here).
                     $bar = AnsiUtils::stripAnsiCodes($tui->getById('menu')->render(new RenderContext(120, 1))[0]);
                     $view = \mb_strpos($bar, needle: 'View');
-                    self::assertIsInt($view, 'the View menu is on the bar');
+                    $this->assertIsInt($view, 'the View menu is on the bar');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;1M", $view + 2));
                 },
                 360 => function ($tui): void {

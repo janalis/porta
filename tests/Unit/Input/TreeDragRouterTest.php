@@ -133,7 +133,7 @@ final class TreeDragRouterTest extends TestCase
     private function at(int $code, int $relRow, string $end = 'M', int $col = 2): MouseEvent
     {
         $event = MouseEvent::parse(\sprintf("\x1b[<%d;%d;%d%s", $code, $col + 1, $relRow + 1, $end));
-        $this->assertNotNull($event);
+        $this->assertInstanceOf(MouseEvent::class, $event);
 
         return $event;
     }

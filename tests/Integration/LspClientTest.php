@@ -665,6 +665,6 @@ final class LspClientTest extends TestCase
 
         // The crashing server exits immediately; EOF must retire the watchers.
         $this->await(static fn (): bool => \count(EventLoop::getIdentifiers()) <= $baseline, 5.0, 'the EOF path to cancel both pipe watchers');
-        $this->assertSame($baseline, \count(EventLoop::getIdentifiers()), 'no watcher survives the peer');
+        $this->assertCount($baseline, EventLoop::getIdentifiers(), 'no watcher survives the peer');
     }
 }

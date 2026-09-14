@@ -105,7 +105,7 @@ final class DapSessionTest extends TestCase
         $this->assertContains('continue', $client->commands());
 
         $session->stepOver();
-        $this->assertSame(1, \count(\array_filter($client->commands(), static fn (string $c): bool => 'next' === $c)), 'steps while running are ignored');
+        $this->assertCount(1, \array_filter($client->commands(), static fn (string $c): bool => 'next' === $c), 'steps while running are ignored');
     }
 
     public function testStoppedWithoutAThreadIdAsksTheAdapterForThreads(): void
@@ -172,7 +172,7 @@ final class DapSessionTest extends TestCase
         $client->emit('terminated');
         $client->emit('exited', ['exitCode' => 0]);
         $client->close();
-        $this->assertSame(1, \count(\array_filter($this->events, static fn (string $e): bool => 'terminated' === $e)), 'reported exactly once');
+        $this->assertCount(1, \array_filter($this->events, static fn (string $e): bool => 'terminated' === $e), 'reported exactly once');
         $this->assertSame(DebugState::Terminated, $session->state());
 
         $client->emit('continued'); // a straggler event after termination stays ignored
@@ -514,7 +514,7 @@ final class DapSessionTest extends TestCase
         // A live toggle re-sends.
         $this->exceptionFiltersProvider = static fn (): array => [];
         $session->syncExceptionBreakpoints();
-        $this->assertSame(2, \count(\array_filter($client->commands(), static fn (string $c): bool => 'setExceptionBreakpoints' === $c)));
+        $this->assertCount(2, \array_filter($client->commands(), static fn (string $c): bool => 'setExceptionBreakpoints' === $c));
     }
 
     public function testAdaptersWithoutFiltersNeverGetTheRequest(): void
@@ -619,6 +619,6 @@ final class DapSessionTest extends TestCase
 
         $session->disconnect(); // no double reporting, no second request
         $this->assertSame(['terminated'], $this->events);
-        $this->assertSame(1, \count(\array_filter($client->commands(), static fn (string $c): bool => 'disconnect' === $c)));
+        $this->assertCount(1, \array_filter($client->commands(), static fn (string $c): bool => 'disconnect' === $c));
     }
 }

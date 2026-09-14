@@ -471,7 +471,7 @@ final class SettingsGlobalScopeTest extends TestCase
                     // Through the real list: walk to the action, Enter to arm
                     // the capture, then the key it should take.
                     $list = $tui->getById('settings-keys');
-                    \assert($list instanceof KeybindingsListWidget, description: 'the keybindings page owns the list');
+                    $this->assertInstanceOf(KeybindingsListWidget::class, $list, 'the keybindings page owns the list');
                     $tui->setFocus($list);
                     for ($i = 0; $i < 200; ++$i) {
                         if ('save_all' === (Probe::get($list, 'rows')[Probe::object($list, 'list')->selected()] ?? null)?->action) {

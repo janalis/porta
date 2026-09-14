@@ -81,7 +81,7 @@ final class FoldingControllerTest extends TestCase
     private function foldEndAt(int $line): ?int
     {
         $foldModel = Probe::get($this->editor, 'foldModel');
-        \assert($foldModel instanceof FoldModel, description: 'the editor exposes a FoldModel for fold queries');
+        $this->assertInstanceOf(FoldModel::class, $foldModel, 'the editor exposes a FoldModel for fold queries');
 
         return $foldModel->foldEndAt($line);
     }

@@ -268,7 +268,7 @@ final class LspSessionTest extends TestCase
         $session->scheduleDidChange(new Document('x'), static fn (): ?string => '/tmp/project/a.php', static function (): void {});
 
         $this->assertFalse($session->isActive());
-        $this->assertSame($before, \count(EventLoop::getIdentifiers()), 'no debounce timer is armed without a client');
+        $this->assertCount($before, EventLoop::getIdentifiers(), 'no debounce timer is armed without a client');
     }
 
     public function testEveryTransportCallIsInertBeforeStart(): void
@@ -318,7 +318,7 @@ final class LspSessionTest extends TestCase
         $before = \count(EventLoop::getIdentifiers());
 
         $session->ready('/tmp/project/a.php', $doc, FlushMode::Keep);
-        $this->assertSame($before, \count(EventLoop::getIdentifiers()), 'Keep leaves the debounce armed');
+        $this->assertCount($before, EventLoop::getIdentifiers(), 'Keep leaves the debounce armed');
         $this->assertSame([], \array_column($client->notifications, 'method'), 'and sends nothing yet');
 
         $session->ready('/tmp/project/a.php', $doc, FlushMode::Flush);
@@ -419,7 +419,7 @@ final class LspSessionTest extends TestCase
         $this->assertGreaterThan($before, \count(EventLoop::getIdentifiers()), 'the 0.3s debounce is armed');
 
         $session->stop();
-        $this->assertSame($before, \count(EventLoop::getIdentifiers()), 'stop() cancels the debounce — nothing may fire into the next loop consumer');
+        $this->assertCount($before, EventLoop::getIdentifiers(), 'stop() cancels the debounce — nothing may fire into the next loop consumer');
 
         $this->pump(0.35); // past the debounce window
         $sent = \array_column($client->notifications, 'method');

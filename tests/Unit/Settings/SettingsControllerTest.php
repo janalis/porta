@@ -555,7 +555,7 @@ final class SettingsControllerTest extends TestCase
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, null, new VirtualTerminal(columns: 80, rows: 24));
         $settings = Services::resolve($ide, SettingsController::class);
-        \assert($settings instanceof SettingsController, description: 'the settings property is a SettingsController');
+        $this->assertInstanceOf(SettingsController::class, $settings, 'the settings property is a SettingsController');
 
         $settings->toggle('doesNotExist');
 

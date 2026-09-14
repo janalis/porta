@@ -41,7 +41,7 @@ abstract class ContainerTestCase extends TestCase
     protected function buildContainer(string $rootDir = '/tmp/porta-container-test'): ContainerBuilder
     {
         $container = new IdeContainerFactory()->build($rootDir, IdeConfig::load($rootDir), Ansi::Enabled);
-        \assert($container instanceof ContainerBuilder, description: 'PORTA_CONTAINER_CACHE=off yields the introspectable builder');
+        $this->assertInstanceOf(ContainerBuilder::class, $container, 'PORTA_CONTAINER_CACHE=off yields the introspectable builder');
 
         return $container;
     }

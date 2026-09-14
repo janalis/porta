@@ -84,7 +84,7 @@ final class StatusBarClickRouterTest extends TestCase
     {
         $row = $this->statusBar->render(new RenderContext(40, 1))[0];
         $col = \mb_strpos(AnsiUtils::stripAnsiCodes($row), $needle);
-        self::assertNotFalse($col);
+        $this->assertNotFalse($col);
 
         return self::pressAt($col, 0);
     }

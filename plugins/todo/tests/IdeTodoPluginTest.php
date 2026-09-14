@@ -14,6 +14,7 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UsesBundledPlugins;
 use Porta\Workbench\Dock\BottomDock;
+use Porta\Workbench\Menu\Menu;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Tui;
 
@@ -138,7 +139,7 @@ final class IdeTodoPluginTest extends TestCase
 
                         $view = $candidate;
                     }
-                    $this->assertNotNull($view, 'the View menu is there to inspect');
+                    $this->assertInstanceOf(Menu::class, $view, 'the View menu is there to inspect');
                     $labels = \array_map(static fn (object $item): string => $item->label, $view->items);
                     $this->assertContains('Show Problems', $labels, 'and it really is the View menu');
                     $this->assertNotContains('Show TODOs', $labels, 'no dead menu entry for a verb nothing answers');

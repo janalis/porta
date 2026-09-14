@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\TextPreview;
@@ -43,7 +44,7 @@ final class LargeFilePreviewTest extends TestCase
         Services::resolve($ide, BufferService::class)->openFile($path);
 
         $buffer = Services::resolve($ide, BufferManager::class)->active();
-        $this->assertNotNull($buffer);
+        $this->assertInstanceOf(Buffer::class, $buffer);
         // realpath: the IDE canonicalises on open, and macOS resolves the temp
         // directory's /var symlink to /private/var.
         $this->assertSame(\realpath($path), $buffer->path, 'the file opened');
@@ -104,7 +105,7 @@ final class LargeFilePreviewTest extends TestCase
         Services::resolve($ide, BufferService::class)->openFile($path);
 
         $buffer = Services::resolve($ide, BufferManager::class)->active();
-        $this->assertNotNull($buffer);
+        $this->assertInstanceOf(Buffer::class, $buffer);
         $preview = $buffer->panePayload;
         $this->assertInstanceOf(TextPreview::class, $preview);
         $this->assertSame(Files::MAX_TEXT_BYTES, \strlen($preview->text), 'the whole prefix, uncut');
