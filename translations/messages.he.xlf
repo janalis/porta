@@ -1286,6 +1286,10 @@
         <source>Select a commit file</source>
         <target>בחר קובץ מהקומיט</target>
       </trans-unit>
+      <trans-unit id="878">
+        <source>No commits</source>
+        <target>אין קומיטים</target>
+      </trans-unit>
       <trans-unit id="279">
         <source>No files in this commit</source>
         <target>אין קבצים בקומיט זה</target>

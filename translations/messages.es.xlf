@@ -1286,6 +1286,10 @@
         <source>Select a commit file</source>
         <target>Selecciona un archivo del commit</target>
       </trans-unit>
+      <trans-unit id="878">
+        <source>No commits</source>
+        <target>No hay commits</target>
+      </trans-unit>
       <trans-unit id="279">
         <source>No files in this commit</source>
         <target>No hay archivos en este commit</target>
