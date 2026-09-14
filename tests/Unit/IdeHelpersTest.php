@@ -33,7 +33,6 @@ use Porta\Support\PerfCollector;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\AwaitsGit;
 use Porta\Tests\Support\BootsIde;
-use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\Services;
@@ -727,7 +726,7 @@ final class IdeHelpersTest extends TestCase
         // the other panel-opening commands focus their widget.
         $byLabel['Find in Project']();
         $this->assertTrue($tui->getById('editor')->isFindModalOpen(), 'find-in-project opens the modal');
-        $tui->getById('editor')->findModal()->close();
+        $tui->getById('editor')->findModal->close();
 
         $byLabel['Go to Symbol in Project']();
         $this->assertTrue($tui->getById('editor')->isSearchOverlayOpen(), 'go-to-symbol opens the centered picker over the editor');
@@ -739,17 +738,17 @@ final class IdeHelpersTest extends TestCase
 
         // Cycle line numbers (absolute → relative) and toggle a bool setting.
         $editor = $tui->getById('editor');
-        $before = EditorState::display($editor)->lineNumbers();
+        $before = $editor->display->lineNumbers();
         $byLabel['Cycle Line Numbers']();
-        $this->assertNotSame($before, EditorState::display($editor)->lineNumbers());
+        $this->assertNotSame($before, $editor->display->lineNumbers());
 
         $byLabel['Toggle Inline Diagnostics']();
         // Toggling back and forth is a no-op-free round trip.
         $byLabel['Toggle Inline Diagnostics']();
 
-        $autoBefore = EditorState::display($editor)->autoPairs();
+        $autoBefore = $editor->display->autoPairs();
         $byLabel['Toggle Auto-Pairs']();
-        $this->assertNotSame($autoBefore, EditorState::display($editor)->autoPairs());
+        $this->assertNotSame($autoBefore, $editor->display->autoPairs());
 
         // Save-family and reformat commands are safe no-ops without a file/LSP.
         $byLabel['Save File']();

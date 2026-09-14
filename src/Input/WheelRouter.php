@@ -79,7 +79,7 @@ final readonly class WheelRouter
 
                 return;
             }
-            if ($this->hit->contains($tabsRect, $mouse) && !$this->panes->tabBar()->position()->isSide()) {
+            if ($this->hit->contains($tabsRect, $mouse) && !$this->panes->tabBar->position()->isSide()) {
                 // MEASURED 2026-09-11, and the comment this replaces was
                 // wrong: a strip of LATIN tab names is not mirrored under RTL,
                 // only right-anchored — "‹ a.php │ b.php ›" keeps its order and
@@ -90,13 +90,13 @@ final readonly class WheelRouter
                 // cannot be right for both. Left as it stands because
                 // IdeTabScrollTest pins the current choice and changing it is a
                 // behaviour decision, not a comment fix.
-                $this->panes->tabBar()->scrollBy($this->bidi->isMirrored() ? -$mouse->wheelHDelta : $mouse->wheelHDelta);
+                $this->panes->tabBar->scrollBy($this->bidi->isMirrored() ? -$mouse->wheelHDelta : $mouse->wheelHDelta);
                 $this->tui->requestRender();
 
                 return;
             }
             if ($this->hit->contains($editorRect, $mouse)) {
-                $this->panes->editor()->scrollHBy(WheelStep::cols($mouse));
+                $this->panes->editor->scrollHBy(WheelStep::cols($mouse));
                 $this->tui->requestRender();
 
                 return;
@@ -130,8 +130,8 @@ final readonly class WheelRouter
         // A floating picker owns the wheel wherever the pointer is — the
         // workspace beneath is dimmed and must not scroll away under it.
         // Only the menu dropdowns (which paint above it) win first.
-        if ($this->panes->editor()->isAnyPickerOpen()) {
-            $this->panes->editor()->movePopupSelection(WheelStep::rows($mouse));
+        if ($this->panes->editor->isAnyPickerOpen()) {
+            $this->panes->editor->movePopupSelection(WheelStep::rows($mouse));
             $this->tui->requestRender();
 
             return;
@@ -142,7 +142,7 @@ final readonly class WheelRouter
         if ($this->hit->contains($tabsRect, $mouse)) {
             // The side strip is a list of rows; the horizontal one moves one
             // whole TAB per notch — a different unit, not the same constant.
-            $tabBar = $this->panes->tabBar();
+            $tabBar = $this->panes->tabBar;
             $tabBar->scrollBy($tabBar->position()->isSide() ? WheelStep::rows($mouse) : $mouse->wheelDelta);
             $this->tui->requestRender();
 
@@ -151,9 +151,9 @@ final readonly class WheelRouter
 
         // The Find modal floats over the workspace and owns input while
         // open — scroll its preview instead of the editor behind it.
-        $findBox = $this->panes->editor()->isFindModalOpen() ? $this->panes->editor()->findModal()->lastBox() : null;
+        $findBox = $this->panes->editor->isFindModalOpen() ? $this->panes->editor->findModal->lastBox() : null;
         if (null !== $findBox && $findBox->contains($mouse->row, $mouse->col)) {
-            $this->panes->editor()->scrollFindModal(WheelStep::rows($mouse));
+            $this->panes->editor->scrollFindModal(WheelStep::rows($mouse));
             $this->tui->requestRender();
 
             return;
@@ -183,8 +183,8 @@ final readonly class WheelRouter
             // An open editor popup (completion, list overlay, search modal)
             // owns the wheel — its selection moves instead of the buffer
             // scrolling away underneath it.
-            if (!$this->panes->editor()->movePopupSelection($step)) {
-                $this->panes->editor()->scrollBy($step);
+            if (!$this->panes->editor->movePopupSelection($step)) {
+                $this->panes->editor->scrollBy($step);
             }
             $this->tui->requestRender();
 
@@ -205,7 +205,7 @@ final readonly class WheelRouter
             return;
         }
         if ($this->hit->contains($treeRect, $mouse)) {
-            $this->panes->tree()->scrollBy($step);
+            $this->panes->tree->scrollBy($step);
             $this->tui->requestRender();
 
             return;

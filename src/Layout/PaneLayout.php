@@ -54,7 +54,7 @@ final class PaneLayout implements EditorAreaPanes
 
     public function arrangeEditorArea(): void
     {
-        $this->setPanes($this->layout->main(), $this->currentEditorPanes());
+        $this->setPanes($this->layout->main, $this->currentEditorPanes());
     }
 
     /**

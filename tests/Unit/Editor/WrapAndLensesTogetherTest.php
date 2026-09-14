@@ -32,9 +32,9 @@ final class WrapAndLensesTogetherTest extends TestCase
         $this->editor = new CodeEditorWidget();
         $this->editor->showDocument('/p/a.php', new Document("top\n".\str_repeat('W', times: 60)."\nlast\n"));
         $this->editor->setFocused(true);
-        $this->editor->display()->setSoftWrap(true);
+        $this->editor->display->setSoftWrap(true);
         $lens = static fn (string $t): array => ['title' => $t, 'command' => '', 'arguments' => []];
-        $this->editor->decorations()->setCodeLenses([1 => [$lens('3 usages'), $lens('2 implementations')]]);
+        $this->editor->decorations->setCodeLenses([1 => [$lens('3 usages'), $lens('2 implementations')]]);
         $this->editor->render(new RenderContext(30, $rows));
 
         return $this->editor;

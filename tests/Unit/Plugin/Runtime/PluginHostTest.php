@@ -36,15 +36,15 @@ final class PluginHostTest extends TestCase
         ]);
         $host = $this->host($project);
 
-        $this->assertFalse($host->manager()->hasPlugin('greeter'), 'nothing loads until ensureLoaded()');
+        $this->assertFalse($host->manager->hasPlugin('greeter'), 'nothing loads until ensureLoaded()');
         $host->ensureLoaded();
-        $this->assertTrue($host->manager()->hasPlugin('greeter'));
+        $this->assertTrue($host->manager->hasPlugin('greeter'));
 
         $host->ensureLoaded(); // idempotent: a second call must not re-activate
-        $this->assertTrue($host->manager()->hasPlugin('greeter'));
-        $this->assertSame([], $host->manager()->warnings(), 'a second load must not even attempt to re-discover, let alone warn about a "duplicate" plugin');
-        $this->assertSame($host->settings(), $host->settings());
-        $this->assertSame($host->loader(), $host->loader());
+        $this->assertTrue($host->manager->hasPlugin('greeter'));
+        $this->assertSame([], $host->manager->warnings(), 'a second load must not even attempt to re-discover, let alone warn about a "duplicate" plugin');
+        $this->assertSame($host->settings, $host->settings);
+        $this->assertSame($host->loader, $host->loader);
     }
 
     public function testKeybindingsFactoryMergesDefaultsPluginKeysAndUserKeymap(): void
@@ -64,9 +64,9 @@ final class PluginHostTest extends TestCase
         ]);
         $config = IdeConfig::load($project->dir);
         $host = new PluginHost($config, new EventDispatcher(), $project->dir);
-        $keybindings = new KeybindingsFactory($host, $config, new ActionRegistry($host->manager()))->create();
+        $keybindings = new KeybindingsFactory($host, $config, new ActionRegistry($host->manager))->create();
 
-        $this->assertTrue($host->manager()->hasPlugin('keyed'), 'creating the map forces the plugin load');
+        $this->assertTrue($host->manager->hasPlugin('keyed'), 'creating the map forces the plugin load');
         $this->assertSame(['ctrl+shift+s'], $keybindings->getBindings('save'), 'user keymap wins');
         $this->assertSame(['ctrl+alt+b'], $keybindings->getBindings('keyed:boom'), 'plugin default keys merge in');
         $this->assertSame(ActionCatalog::ideDefaults()['ide_quit'], $keybindings->getBindings('ide_quit'), 'IDE defaults survive');

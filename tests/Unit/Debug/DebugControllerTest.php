@@ -144,7 +144,7 @@ final class DebugControllerTest extends TestCase
             },
             $dispatcher,
             $state,
-            new EditorDecorations($breakpoints, $state, $this->editor->decorations()),
+            new EditorDecorations($breakpoints, $state, $this->editor->decorations),
             new WatchStore(),
             $this->filters = new ExceptionFilterStore(),
             $this->sessions,
@@ -155,7 +155,7 @@ final class DebugControllerTest extends TestCase
             // test.
             new InlineValues(
                 new InlineValueRequest($lsp ?? new LspSessionPool(\sys_get_temp_dir(), new FixedActiveFile(), new Translator())),
-                $this->editor->decorations(),
+                $this->editor->decorations,
                 $tui,
                 $this->editor,
             ),
@@ -401,7 +401,7 @@ final class DebugControllerTest extends TestCase
             'range' => ['start' => ['line' => 2, 'character' => 0], 'end' => ['line' => 2, 'character' => 2]],
             'variableName' => '$x',
         ]]);
-        $this->assertSame([2 => '$x = 42'], $this->editor->decorations()->debugValues());
+        $this->assertSame([2 => '$x = 42'], $this->editor->decorations->debugValues());
     }
 
     public function testCONTINUINGTakesTheInlineValuesOffTheScreen(): void
@@ -409,21 +409,21 @@ final class DebugControllerTest extends TestCase
         // They were facts about a frame that is running again, and left on
         // screen they look live.
         $controller = $this->controller();
-        $this->editor->decorations()->setDebugValues([2 => '$x = 42']);
+        $this->editor->decorations->setDebugValues([2 => '$x = 42']);
 
         $controller->onContinued();
 
-        $this->assertSame([], $this->editor->decorations()->debugValues());
+        $this->assertSame([], $this->editor->decorations->debugValues());
     }
 
     public function testTERMINATINGTakesThemTooEvenWithoutAContinue(): void
     {
         $controller = $this->controller();
-        $this->editor->decorations()->setDebugValues([2 => '$x = 42']);
+        $this->editor->decorations->setDebugValues([2 => '$x = 42']);
 
         $controller->onTerminated();
 
-        $this->assertSame([], $this->editor->decorations()->debugValues());
+        $this->assertSame([], $this->editor->decorations->debugValues());
     }
 
     public function testStoppedMarshalsEditorPanelStatusAndFrameJumps(): void

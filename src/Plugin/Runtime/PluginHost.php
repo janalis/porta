@@ -26,11 +26,11 @@ final class PluginHost
 {
     private bool $loaded = false;
 
-    private readonly PluginSettings $settings;
+    public readonly PluginSettings $settings;
 
-    private readonly PluginManager $manager;
+    public readonly PluginManager $manager;
 
-    private readonly PluginLoader $loader;
+    public readonly PluginLoader $loader;
 
     public function __construct(IdeConfig $config, EventDispatcherInterface $events, string $rootDir, ?TerminalTheme $syntaxTheme = null, ?PortaJsonWriter $writer = null, ?SettingsScope $scope = null)
     {
@@ -47,20 +47,5 @@ final class PluginHost
         }
         $this->loaded = true;
         $this->loader->loadInto($this->manager);
-    }
-
-    public function settings(): PluginSettings
-    {
-        return $this->settings;
-    }
-
-    public function manager(): PluginManager
-    {
-        return $this->manager;
-    }
-
-    public function loader(): PluginLoader
-    {
-        return $this->loader;
     }
 }

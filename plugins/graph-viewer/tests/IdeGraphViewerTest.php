@@ -115,7 +115,7 @@ final class IdeGraphViewerTest extends TestCase
 
                     // Point it at the working stub through the Settings path.
                     $lifecycle = Services::resolve($ide, PluginLifecycle::class);
-                    $settings = Services::resolve($ide, PluginHost::class)->settings();
+                    $settings = Services::resolve($ide, PluginHost::class)->settings;
                     $settings->change('graph-viewer', 'dotPath', self::fakeDot());
                     $lifecycle->onPluginSettingChanged('graph-viewer', 'dotPath', self::fakeDot());
 

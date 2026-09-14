@@ -112,7 +112,7 @@ final class PluginApiTest extends TestCase
                     $this->files,
                     $tui,
                     $this->diagnostics,
-                    $this->editor->decorations(),
+                    $this->editor->decorations,
                     $this->changeMarks = new RecordingChangeMarkSink(),
                     $this->fileStatuses = new FileStatuses(),
                     $this->buffers,
@@ -422,7 +422,7 @@ final class PluginApiTest extends TestCase
                 new RecordingFileOpener(),
                 $tui,
                 new RecordingDiagnosticsSink(),
-                new CodeEditorWidget()->decorations(),
+                new CodeEditorWidget()->decorations,
                 $this->changeMarks = new RecordingChangeMarkSink(),
                 new FileStatuses(),
                 new BufferManager(),
@@ -555,12 +555,12 @@ final class PluginApiTest extends TestCase
         // strip does. The setting behind this exists to remove the empty
         // one-column indent a plugin that publishes nothing would leave.
         $api = $this->api();
-        $this->editor->decorations()->setVcsMarks([0 => ChangeMarkKind::Added]);
+        $this->editor->decorations->setVcsMarks([0 => ChangeMarkKind::Added]);
 
         $api->showChangeMarkGutter(false);
 
         $this->assertFalse(Probe::get($this->editor, 'display')->vcsGutter(), 'the strip is hidden');
-        $this->assertSame([], Probe::get($this->editor, 'decorations')->vcsMarks(), 'and it took the stale marks with it');
+        $this->assertSame([], $this->editor->decorations->vcsMarks(), 'and it took the stale marks with it');
     }
 
     public function testShowingTheChangeMarkGutterIsTheDefaultAndIsIdempotent(): void
@@ -571,11 +571,11 @@ final class PluginApiTest extends TestCase
         $api = $this->api();
 
         $api->showChangeMarkGutter(true);
-        $this->editor->decorations()->setVcsMarks([0 => ChangeMarkKind::Added]);
+        $this->editor->decorations->setVcsMarks([0 => ChangeMarkKind::Added]);
         $api->showChangeMarkGutter(true);
 
         $this->assertTrue(Probe::get($this->editor, 'display')->vcsGutter());
-        $this->assertSame([0 => ChangeMarkKind::Added], Probe::get($this->editor, 'decorations')->vcsMarks(), 'turning on what is already on clears nothing');
+        $this->assertSame([0 => ChangeMarkKind::Added], $this->editor->decorations->vcsMarks(), 'turning on what is already on clears nothing');
     }
 
     public function testSetLineAnnotationsReachesTheEditorAndClearsWithAnEmptyMap(): void
@@ -585,12 +585,12 @@ final class PluginApiTest extends TestCase
         $api->setLineAnnotations([0 => 'abc123 alice 2026-01-01']);
         $this->assertSame(
             [0 => 'abc123 alice 2026-01-01'],
-            Probe::get($this->editor, 'decorations')->lineAnnotations(),
+            $this->editor->decorations->lineAnnotations(),
             'the annotations reached the active editor',
         );
 
         $api->setLineAnnotations([]);
-        $this->assertSame([], Probe::get($this->editor, 'decorations')->lineAnnotations(), 'an empty map clears them');
+        $this->assertSame([], $this->editor->decorations->lineAnnotations(), 'an empty map clears them');
     }
 
     public function testSetDiagnosticsNormalizesIntoTheByLineShape(): void
@@ -668,7 +668,7 @@ final class PluginApiTest extends TestCase
             new RecordingFileOpener(),
             $tui,
             new RecordingDiagnosticsSink(),
-            new CodeEditorWidget()->decorations(),
+            new CodeEditorWidget()->decorations,
             $this->changeMarks = new RecordingChangeMarkSink(),
             new FileStatuses(),
             new BufferManager(),
@@ -713,7 +713,7 @@ final class PluginApiTest extends TestCase
             new RecordingFileOpener(),
             $tui,
             new RecordingDiagnosticsSink(),
-            new CodeEditorWidget()->decorations(),
+            new CodeEditorWidget()->decorations,
             new RecordingChangeMarkSink(),
             new FileStatuses(),
             new BufferManager(),
@@ -836,7 +836,7 @@ final class PluginApiTest extends TestCase
             new RecordingFileOpener(),
             $tui,
             new RecordingDiagnosticsSink(),
-            $editor->decorations(),
+            $editor->decorations,
             new RecordingChangeMarkSink(),
             new FileStatuses(),
             $buffers,

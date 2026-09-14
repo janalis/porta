@@ -92,7 +92,7 @@ final class InlineValues
     private function variablesFromSemanticTokens(int $fromLine, int $toLine): array
     {
         $document = $this->editor->getDocument();
-        $decorations = $this->editor->decorations();
+        $decorations = $this->editor->decorations;
 
         $lookups = [];
         foreach (\range($fromLine, $toLine) as $line) {

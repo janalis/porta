@@ -23,18 +23,13 @@ use Porta\Workbench\EditorArea;
 final readonly class EditorLayoutPanes
 {
     public function __construct(
-        private FileTreeWidget $tree,
-        private TabBarWidget $tabBar,
-        private CodeEditorWidget $editor,
-        private BreadcrumbsWidget $breadcrumbs,
+        public FileTreeWidget $tree,
+        public TabBarWidget $tabBar,
+        public CodeEditorWidget $editor,
+        public BreadcrumbsWidget $breadcrumbs,
         private EditorArea $editorArea,
-        private FindBarWidget $findBar,
+        public FindBarWidget $findBar,
     ) {}
-
-    public function findBar(): FindBarWidget
-    {
-        return $this->findBar;
-    }
 
     /**
      * The pane currently holding the editor slot, or null when the code editor
@@ -55,25 +50,5 @@ final readonly class EditorLayoutPanes
         $pane = $this->pane();
 
         return $pane instanceof NavigablePaneWidget ? $pane : null;
-    }
-
-    public function tree(): FileTreeWidget
-    {
-        return $this->tree;
-    }
-
-    public function tabBar(): TabBarWidget
-    {
-        return $this->tabBar;
-    }
-
-    public function editor(): CodeEditorWidget
-    {
-        return $this->editor;
-    }
-
-    public function breadcrumbs(): BreadcrumbsWidget
-    {
-        return $this->breadcrumbs;
     }
 }

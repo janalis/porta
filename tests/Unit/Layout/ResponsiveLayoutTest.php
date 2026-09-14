@@ -88,7 +88,7 @@ final class ResponsiveLayoutTest extends TestCase
     /** @return list<string> */
     private function mainIds(): array
     {
-        return \array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->layout->main()->all());
+        return \array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->layout->main->all());
     }
 
     public function testApplyingDirectionBeforeAnyViewMintsARegionIsANoOp(): void
@@ -119,7 +119,7 @@ final class ResponsiveLayoutTest extends TestCase
         $this->assertSame([], $regions->all(), 'nothing minted, so nothing to arrange');
         $this->assertSame(
             ['tree', 'separator', 'editor-pane'],
-            \array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->layout->main()->all()),
+            \array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->layout->main->all()),
             'and the editor area was left in its build-time order',
         );
 
@@ -130,7 +130,7 @@ final class ResponsiveLayoutTest extends TestCase
         $paneLayout->applyDirection();
         $this->assertSame(
             ['editor-pane', 'separator', 'tree'],
-            \array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->layout->main()->all()),
+            \array_map(static fn (AbstractWidget $w): string => $w->getId(), $this->layout->main->all()),
         );
     }
 

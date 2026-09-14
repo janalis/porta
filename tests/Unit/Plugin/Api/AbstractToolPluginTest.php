@@ -159,7 +159,7 @@ final class AbstractToolPluginTest extends TestCase
             new RecordingFileOpener(),
             $tui,
             new RecordingDiagnosticsSink(),
-            $this->editor->decorations(),
+            $this->editor->decorations,
             new RecordingChangeMarkSink(),
             new FileStatuses(),
             $this->buffers,

@@ -171,7 +171,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     private EditorStructural $structural;
 
     /** The six display toggles; the public verbs below delegate here. */
-    private readonly EditorDisplayOptions $display;
+    public readonly EditorDisplayOptions $display;
 
     private readonly AutoPairService $autoPair;
 
@@ -182,8 +182,19 @@ final class CodeEditorWidget extends AbstractWidget implements
     /** Outbound hooks into the coordinator, replaced wholesale by wiring/tests. */
     private EditorCallbacks $callbacks;
 
-    /** The buffer's decoration overlays (git marks, diagnostics, breakpoints, …). */
-    private readonly DecorationStore $decorations;
+    /**
+     * The decoration layers for the buffer on display — git marks, breakpoints,
+     * bookmarks, diagnostics, search matches, inlay hints, blame.
+     *
+     * One property in place of eight forwarding setters: this widget used to
+     * IMPLEMENT {@see EditorDecorationSink}, so every new decoration was a
+     * method on the largest class in the codebase and moved its
+     * `too-many-methods` ceiling. The store implements the interface now, and
+     * the container binds it through here ({@see \Porta\Container\PropertyFactory})
+     * so that consumers get the instance this widget actually renders — not a
+     * second one built beside it.
+     */
+    public readonly DecorationStore $decorations;
 
     /** @var array{int, int}|null caret (line, col) at the last render, to gate hScroll following */
     private ?array $lastFollowedCursor = null;
@@ -197,8 +208,11 @@ final class CodeEditorWidget extends AbstractWidget implements
     /** Modal list-overlay + prompt chrome composited over the editor pane. */
     private readonly OverlayHost $overlayHost;
 
-    /** The PhpStorm-style Find-in-Files search dialog composited over the editor pane. */
-    private readonly FindInFilesModal $findModal;
+    /**
+     * The PhpStorm-style Find-in-Files search dialog composited over the editor
+     * pane, public so the project-search controller can drive it.
+     */
+    public readonly FindInFilesModal $findModal;
 
     /** Editor-level action dispatch (keymap actions + menu items). */
     private readonly EditorActionRouter $actionRouter;
@@ -392,12 +406,6 @@ final class CodeEditorWidget extends AbstractWidget implements
     public function handleSearchOverlayInput(string $data): void
     {
         $this->overlayHost->handleSearchInput($data, $this->getKeybindings());
-    }
-
-    /** The Find-in-Files search dialog, so the project-search controller can drive it. */
-    public function findModal(): FindInFilesModal
-    {
-        return $this->findModal;
     }
 
     public function isFindModalOpen(): bool
@@ -868,22 +876,6 @@ final class CodeEditorWidget extends AbstractWidget implements
     }
 
     /**
-     * The decoration layers for the buffer on display — git marks, breakpoints,
-     * bookmarks, diagnostics, search matches, inlay hints, blame.
-     *
-     * One accessor in place of eight forwarding setters: this widget used to
-     * IMPLEMENT {@see EditorDecorationSink}, so every new decoration was a
-     * method on the largest class in the codebase and moved its
-     * `too-many-methods` ceiling. The store implements the interface now, and
-     * the container binds it through here so that consumers get the instance
-     * this widget actually renders — not a second one built beside it.
-     */
-    public function decorations(): DecorationStore
-    {
-        return $this->decorations;
-    }
-
-    /**
      * The view options for this editor — line numbers, sticky scroll, indent
      * guides, the vcs gutter, inline diagnostics, auto-pairs, soft wrap.
      *
@@ -904,11 +896,6 @@ final class CodeEditorWidget extends AbstractWidget implements
         $width = $this->scroll->contentWidth();
 
         return $this->display->softWrap() && $width > 0 ? $width : null;
-    }
-
-    public function display(): EditorDisplayOptions
-    {
-        return $this->display;
     }
 
     /**

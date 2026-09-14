@@ -20,7 +20,7 @@ final class BookmarkPathListenerTest extends TestCase
         $bookmarks->toggle('/p/kept.php', 1);
         $editor = new CodeEditorWidget();
 
-        new BookmarkPathListener($bookmarks, new BookmarkDecorations($bookmarks, $editor->decorations()))
+        new BookmarkPathListener($bookmarks, new BookmarkDecorations($bookmarks, $editor->decorations))
             ->onFileDeleted(new FileDeleted('/p/gone.php'));
 
         $this->assertSame(['/p/kept.php' => [1]], $bookmarks->all());

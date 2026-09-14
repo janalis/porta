@@ -132,7 +132,7 @@ final class EditorRowAssemblerWrapTest extends TestCase
 
         $this->assertSame(1, $rowsOfAs(), 'unwrapped, the long line occupies one row');
 
-        $editor->display()->setSoftWrap(true);
+        $editor->display->setSoftWrap(true);
 
         $this->assertGreaterThan(1, $rowsOfAs(), 'wrapped, it occupies several');
     }
@@ -147,7 +147,7 @@ final class EditorRowAssemblerWrapTest extends TestCase
         $editor = new CodeEditorWidget();
         $editor->showDocument('/p/a.php', new Document("<?php\nclass A {}\nfunction b() {}\n"));
         $lens = static fn (string $title): array => ['title' => $title, 'command' => 'x', 'arguments' => []];
-        $editor->decorations()->setCodeLenses([1 => [$lens('3 usages')], 2 => [$lens('1 usage'), $lens('2 implementations')]]);
+        $editor->decorations->setCodeLenses([1 => [$lens('3 usages')], 2 => [$lens('1 usage'), $lens('2 implementations')]]);
 
         $rows = \array_map(
             static fn (string $r): string => \trim(AnsiUtils::stripAnsiCodes($r)),

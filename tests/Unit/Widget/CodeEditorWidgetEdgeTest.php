@@ -670,7 +670,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testDiagnosticSpanningToLineEnd(): void
     {
         $editor = $this->editor("<?php\nbroken line here\n");
-        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'multi-line issue', 'col' => 2, 'endCol' => \PHP_INT_MAX]]]);
+        $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'multi-line issue', 'col' => 2, 'endCol' => \PHP_INT_MAX]]]);
 
         $rendered = $editor->render(new RenderContext(60, 5));
         $this->assertStringContainsString("\x1b[4:5m\x1b[58;5;179m", $rendered[1], 'dashed amber underline to line end');
@@ -732,13 +732,13 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testInlineDiagnosticRendersAndCanBeDisabled(): void
     {
         $editor = $this->editor("<?php\n\$x = 1;\n");
-        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'undefined variable', 'col' => 0, 'endCol' => 2]]]);
+        $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'undefined variable', 'col' => 0, 'endCol' => 2]]]);
 
         $rendered = $editor->render(new RenderContext(80, 5));
         $this->assertStringContainsString('undefined variable', AnsiUtils::stripAnsiCodes($rendered[1]));
         $this->assertSame(80, AnsiUtils::visibleWidth($rendered[1]));
 
-        $editor->display()->setInlineDiagnostics(false);
+        $editor->display->setInlineDiagnostics(false);
         $rendered = $editor->render(new RenderContext(80, 5));
         $this->assertStringNotContainsString('undefined variable', AnsiUtils::stripAnsiCodes($rendered[1]));
     }
@@ -746,36 +746,36 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testDiagnosticAndRelativeNumberTogglesAreIdempotentBothWays(): void
     {
         $editor = $this->editor("<?php\n\$x = 1;\n");
-        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'undefined variable', 'col' => 0, 'endCol' => 2]]]);
+        $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'undefined variable', 'col' => 0, 'endCol' => 2]]]);
 
         // inlineDiagnostics defaults on: disable (set), disable again (skip), enable (set), enable again (skip).
-        $editor->display()->setInlineDiagnostics(false);
+        $editor->display->setInlineDiagnostics(false);
         $this->assertStringNotContainsString('undefined variable', AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(80, 5)))));
-        $editor->display()->setInlineDiagnostics(false);
-        $editor->display()->setInlineDiagnostics(true);
+        $editor->display->setInlineDiagnostics(false);
+        $editor->display->setInlineDiagnostics(true);
         $this->assertStringContainsString('undefined variable', AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(80, 5)))));
-        $editor->display()->setInlineDiagnostics(true);
+        $editor->display->setInlineDiagnostics(true);
         $this->assertStringContainsString('undefined variable', AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(80, 5)))));
 
         // lineNumbers defaults to absolute: change to relative, set relative again (no-op), then absolute, then off.
-        $editor->display()->setLineNumbers(LineNumberMode::Relative);
-        $this->assertSame(LineNumberMode::Relative, EditorState::display($editor)->lineNumbers());
-        $editor->display()->setLineNumbers(LineNumberMode::Relative); // same → guard skips
-        $this->assertSame(LineNumberMode::Relative, EditorState::display($editor)->lineNumbers());
-        $editor->display()->setLineNumbers(LineNumberMode::Off);
-        $this->assertSame(LineNumberMode::Off, EditorState::display($editor)->lineNumbers());
+        $editor->display->setLineNumbers(LineNumberMode::Relative);
+        $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers());
+        $editor->display->setLineNumbers(LineNumberMode::Relative); // same → guard skips
+        $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers());
+        $editor->display->setLineNumbers(LineNumberMode::Off);
+        $this->assertSame(LineNumberMode::Off, $editor->display->lineNumbers());
 
         // Sticky scroll and indent guides default on: disable (set), disable again (skip), enable (set), enable again (skip).
         foreach ([
             [
-                static fn (): bool => $editor->display()->setStickyScroll(false),
-                static fn (): bool => $editor->display()->setStickyScroll(true),
-                static fn (): bool => EditorState::display($editor)->stickyScroll(),
+                static fn (): bool => $editor->display->setStickyScroll(false),
+                static fn (): bool => $editor->display->setStickyScroll(true),
+                $editor->display->stickyScroll(...),
             ],
             [
-                static fn (): bool => $editor->display()->setIndentGuides(false),
-                static fn (): bool => $editor->display()->setIndentGuides(true),
-                static fn (): bool => EditorState::display($editor)->indentGuides(),
+                static fn (): bool => $editor->display->setIndentGuides(false),
+                static fn (): bool => $editor->display->setIndentGuides(true),
+                $editor->display->indentGuides(...),
             ],
         ] as [$off, $on, $has]) {
             $off();
@@ -795,7 +795,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         // after the *display* width of the code, not its byte/character width
         // (which would overprint the code's tail).
         $editor = $this->editor("<?php\n\t\t\$x = 1;\n");
-        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'undefined variable', 'col' => 0]]]);
+        $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'undefined variable', 'col' => 0]]]);
 
         $rendered = $editor->render(new RenderContext(80, 5));
         $plain = AnsiUtils::stripAnsiCodes($rendered[1]);
@@ -815,8 +815,8 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $hint = ': SomeType';
         $message = 'undefined variable';
         $editor = $this->editor("<?php\n\$x = 1;\n");
-        $editor->decorations()->setInlayHints([1 => [['col' => 7, 'text' => $hint]]]);
-        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => $message, 'col' => 0]]]);
+        $editor->decorations->setInlayHints([1 => [['col' => 7, 'text' => $hint]]]);
+        $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => $message, 'col' => 0]]]);
 
         $plain = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(80, 5))[1]);
         $this->assertStringContainsString('$x = 1;', $plain, 'the code itself is intact');
@@ -833,7 +833,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $long = \str_repeat('x', times: 70);
         $editor = $this->editor("<?php\n{$long}\n");
         $editor->getDocument()->setCursor(1, 0);
-        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'a warning here', 'col' => 0]]]);
+        $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'a warning here', 'col' => 0]]]);
 
         $rendered = $editor->render(new RenderContext(40, 5));
         $this->assertStringNotContainsString('a warning here', AnsiUtils::stripAnsiCodes($rendered[1]));
@@ -843,7 +843,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testInlineDiagnosticWithEmptyMessageRendersNothingExtra(): void
     {
         $editor = $this->editor("<?php\n\$x = 1;\n");
-        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => '', 'col' => 0]]]);
+        $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => '', 'col' => 0]]]);
 
         $rendered = $editor->render(new RenderContext(80, 5));
         // Still an exact-width line, just no message text appended.
@@ -871,7 +871,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testGitGutterMarksRenderForEveryChangeKind(): void
     {
         $editor = $this->editor("<?php\n\$a = 1;\n\$b = 2;\n\$c = 3;\n");
-        $editor->decorations()->setVcsMarks([0 => ChangeMarkKind::Modified, 1 => ChangeMarkKind::Added, 2 => ChangeMarkKind::Deleted]);
+        $editor->decorations->setVcsMarks([0 => ChangeMarkKind::Modified, 1 => ChangeMarkKind::Added, 2 => ChangeMarkKind::Deleted]);
 
         $rendered = $editor->render(new RenderContext(60, 6));
         $this->assertStringContainsString("\x1b[38;5;75m┆", $rendered[0], 'modified: blue dashed bar');
@@ -976,12 +976,12 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testHandleFindModalInputFeedsTheOpenModal(): void
     {
         $editor = $this->editor();
-        $editor->findModal()->open('demo');
-        $this->assertTrue($editor->findModal()->isOpen(), 'sanity: modal open');
+        $editor->findModal->open('demo');
+        $this->assertTrue($editor->findModal->isOpen(), 'sanity: modal open');
 
         $editor->handleFindModalInput('x');
 
-        $this->assertSame('x', Probe::get($editor->findModal(), 'query')->value(), 'the keystroke must actually reach the modal');
+        $this->assertSame('x', Probe::get($editor->findModal, 'query')->value(), 'the keystroke must actually reach the modal');
     }
 
     // --- Display toggles --------------------------------------------------------

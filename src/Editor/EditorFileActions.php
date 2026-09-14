@@ -67,7 +67,7 @@ final readonly class EditorFileActions implements EditorFileActionHandler
         // its first line alone would search for something nobody asked for.
         $initial = '' === $selected ? CaretWord::at($document) : $selected;
         $this->findBar->open(
-            new EditorFindTarget($document, $this->editor->decorations()),
+            new EditorFindTarget($document, $this->editor->decorations),
             $mode,
             \str_contains($initial, "\n") ? '' : $initial,
         );

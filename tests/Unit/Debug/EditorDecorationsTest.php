@@ -26,7 +26,7 @@ final class EditorDecorationsTest extends TestCase
         $state = new DebugSessionState();
         $state->stopAt('/p/a.php', 1);
 
-        new EditorDecorations($breakpoints, $state, $editor->decorations())->apply('/p/a.php');
+        new EditorDecorations($breakpoints, $state, $editor->decorations)->apply('/p/a.php');
 
         $lines = $editor->render(new RenderContext(40, 6));
         $this->assertStringContainsString('▶', $lines[1], 'the stopped-line marker was applied, not just the breakpoint dot');
@@ -39,12 +39,12 @@ final class EditorDecorationsTest extends TestCase
 
         $breakpoints = new BreakpointStore();
         $breakpoints->toggle('/p/a.php', 1);
-        $decorations = new EditorDecorations($breakpoints, new DebugSessionState(), $editor->decorations());
+        $decorations = new EditorDecorations($breakpoints, new DebugSessionState(), $editor->decorations);
 
         $decorations->onBufferSwitched(new BufferSwitched(new Buffer('/p/a.php', new Document(''))));
         $this->assertStringContainsString('●', \implode("\n", $editor->render(new RenderContext(40, 6))), 'a plain text buffer switch applies decorations');
 
-        $editor->decorations()->setBreakpointLines([]); // reset before the viewer case, isolating its effect
+        $editor->decorations->setBreakpointLines([]); // reset before the viewer case, isolating its effect
         $decorations->onBufferSwitched(new BufferSwitched(new Buffer('/p/a.php', new Document(''), paneId: 'graph')));
         $this->assertStringNotContainsString('●', \implode("\n", $editor->render(new RenderContext(40, 6))), 'a viewer tab has no gutter, so it is skipped');
     }

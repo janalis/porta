@@ -190,13 +190,12 @@ final class SearchUiWiring
     /** Wire the Find-in-Files modal callbacks to the project-search controller. */
     private function wireFindModal(): void
     {
-        $this->editor
-            ->findModal()
+        $this->editor->findModal
             ->setCallbacks(new FindModalCallbacks(
                 // The query and mask edits re-run the search, debounced like the pane.
                 onQuery: function (string $query): void {
                     $this->cancelDebounce();
-                    $this->editor->findModal()->setSearching();
+                    $this->editor->findModal->setSearching();
                     $this->searchDebounce = $this->scheduler->delay(0.25, function () use ($query): void {
                         $this->searchDebounce = null;
                         $this->projectSearch->search($query);
@@ -204,7 +203,7 @@ final class SearchUiWiring
                 },
                 onMaskChanged: function (string $mask): void {
                     $this->cancelDebounce();
-                    $this->editor->findModal()->setSearching();
+                    $this->editor->findModal->setSearching();
                     $this->searchDebounce = $this->scheduler->delay(0.25, function () use ($mask): void {
                         $this->searchDebounce = null;
                         $this->projectSearch->setMask($mask);
@@ -217,7 +216,7 @@ final class SearchUiWiring
                     $this->projectSearch->toggleOption($option);
                 },
                 onJump: function (string $relativePath, int $line): void {
-                    $this->editor->findModal()->close();
+                    $this->editor->findModal->close();
                     $this->bufferService->openFile($this->paths->absolute($relativePath), focus: OpenFocus::Editor);
                     $this->editor->jumpTo($line, 0);
                     $this->tui->requestRender();
@@ -231,7 +230,7 @@ final class SearchUiWiring
                 },
                 previewReplacement: fn (string $text, string $replacement): string => $this->projectSearch->previewLine($text, $replacement),
                 onClose: function (): void {
-                    $this->editor->findModal()->close();
+                    $this->editor->findModal->close();
                     $this->projectSearch->cancel();
                 },
             ));

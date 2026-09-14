@@ -55,7 +55,7 @@ final class BookmarkActionsTest extends TestCase
             $this->buffers,
             $this->dock,
             new Translator('en'),
-            new BookmarkDecorations($this->bookmarks, $this->editor->decorations()),
+            new BookmarkDecorations($this->bookmarks, $this->editor->decorations),
             new Notifier($this->status = new StatusBarWidget(), TestTui::create(100, 24)),
             $this->keys ?? new Keybindings(['toggle_bookmark' => ['f11']]),
         );

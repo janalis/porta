@@ -74,7 +74,7 @@ final readonly class CodeLensController implements EditorCodeLensHandler
     #[\Override]
     public function runCodeLens(int $line, int $index): void
     {
-        $lens = $this->editor->decorations()->codeLensesAt($line)[$index] ?? null;
+        $lens = $this->editor->decorations->codeLensesAt($line)[$index] ?? null;
         if (null === $lens || '' === $lens['command']) {
             $this->notifier->flash($this->translator->trans('This lens has nothing to run'));
 

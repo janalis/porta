@@ -16,7 +16,7 @@ final class EditorFindTargetTest extends TestCase
         $editor = new CodeEditorWidget();
         $editor->openFile('demo.php', "alpha\nbeta\n");
         $doc = $editor->getDocument();
-        $target = new EditorFindTarget($doc, $editor->decorations());
+        $target = new EditorFindTarget($doc, $editor->decorations);
 
         $lines = $target->findLines();
         $this->assertContains('alpha', $lines);

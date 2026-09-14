@@ -41,7 +41,7 @@ final class LiveKeybindingsTest extends TestCase
     {
         $config = IdeConfig::load($project->dir);
         $host = new PluginHost($config, new EventDispatcher(), $project->dir);
-        $factory = new KeybindingsFactory($host, $config, new ActionRegistry($host->manager()));
+        $factory = new KeybindingsFactory($host, $config, new ActionRegistry($host->manager));
 
         return [new LiveKeybindings($factory, $factory->create(), $project->dir), $host];
     }
@@ -82,7 +82,7 @@ final class LiveKeybindingsTest extends TestCase
 
         // The plugin lands after boot (a live install) and loads.
         $file = $project->write('.porta/plugins/keyed/plugin.php', self::PLUGIN);
-        $host->loader()->loadFile($file, $host->manager());
+        $host->loader->loadFile($file, $host->manager);
         $this->assertFalse($live->matches("\x1b\x02", 'keyed:boom'), 'the frozen map does not know the new keys yet');
 
         $live->rebuild();
@@ -98,7 +98,7 @@ final class LiveKeybindingsTest extends TestCase
         [$live, $host] = $this->live($project);
         $this->assertSame(['ctrl+alt+b'], $live->getBindings('keyed:boom'), 'boot merged the installed plugin');
 
-        $host->manager()->deactivate('keyed', new CommandRegistry());
+        $host->manager->deactivate('keyed', new CommandRegistry());
         $live->rebuild();
         $this->assertSame([], $live->getBindings('keyed:boom'), 'rebuild dropped the deactivated defaults');
         $this->assertSame(['ctrl+shift+s'], $live->getBindings('save'), 'the user keymap still wins after a rebuild');

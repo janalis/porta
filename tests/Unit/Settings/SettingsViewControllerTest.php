@@ -207,7 +207,7 @@ final class SettingsViewControllerTest extends TestCase
         );
         $settings = new SettingsController(
             IdeConfig::DEFAULT_SETTINGS,
-            $editor->display(),
+            $editor->display,
             $notifier,
             new Translator('en'),
             new PortaJsonWriter(ConfigFiles::for($this->project->dir)),
@@ -219,7 +219,7 @@ final class SettingsViewControllerTest extends TestCase
         );
         $bootKeys = new Keybindings([]);
         $keysHost = new PluginHost(IdeConfig::load($this->project->dir), new EventDispatcher(), $this->project->dir);
-        $keysFactory = new KeybindingsFactory($keysHost, IdeConfig::load($this->project->dir), new ActionRegistry($keysHost->manager()));
+        $keysFactory = new KeybindingsFactory($keysHost, IdeConfig::load($this->project->dir), new ActionRegistry($keysHost->manager));
         $liveKeys = new LiveKeybindings($keysFactory, $bootKeys, $this->project->dir);
         $keymapRebuilder = new MenuRebuilder(
             new MenuBarWidget(),
@@ -232,7 +232,7 @@ final class SettingsViewControllerTest extends TestCase
             new MenuContributions(),
         );
         $keymap = new SettingsKeymapController(
-            new ActionRegistry($keysHost->manager()),
+            new ActionRegistry($keysHost->manager),
             new CommandRegistry(),
             $editor,
             new EditorPanes(),

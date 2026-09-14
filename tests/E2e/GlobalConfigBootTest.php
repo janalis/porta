@@ -8,7 +8,6 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\IdeConfig;
 use Porta\Editor\LineNumberMode;
 use Porta\Tests\Support\ClearsPortaLsp;
-use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\RunsIde;
@@ -67,7 +66,7 @@ final class GlobalConfigBootTest extends TestCase
                     $editor = $tui->getById('editor');
                     $this->assertSame(
                         LineNumberMode::Relative,
-                        EditorState::display($editor)->lineNumbers(),
+                        $editor->display->lineNumbers(),
                         'the editor booted from the user file',
                     );
 
@@ -115,7 +114,7 @@ final class GlobalConfigBootTest extends TestCase
                     $editor = $tui->getById('editor');
                     $this->assertSame(
                         LineNumberMode::Absolute,
-                        EditorState::display($editor)->lineNumbers(),
+                        $editor->display->lineNumbers(),
                         'the project overrode the key it names',
                     );
 

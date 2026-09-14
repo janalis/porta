@@ -57,7 +57,7 @@ final class SettingsKeymapControllerTest extends TestCase
     {
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
         $this->host = new PluginHost(IdeConfig::load($rootDir), new EventDispatcher(), $rootDir);
-        $this->actions = new ActionRegistry($this->host->manager());
+        $this->actions = new ActionRegistry($this->host->manager);
         $this->live = new LiveKeybindings(new KeybindingsFactory($this->host, IdeConfig::load($rootDir), $this->actions), $boot, $rootDir);
 
         $this->menuBar = new MenuBarWidget();

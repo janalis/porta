@@ -234,7 +234,7 @@ final class NarrowPaneRenderTest extends TestCase
         $editor = new CodeEditorWidget();
         $editor->openFile('/narrow.php', "<?php\n".\str_repeat("// a line\n", times: 120));
         $editor->setFocused(true);
-        $editor->display()->setVcsGutter(true);
+        $editor->display->setVcsGutter(true);
 
         $this->assertFitsEveryWidth($editor);
     }

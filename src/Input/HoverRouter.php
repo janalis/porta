@@ -73,8 +73,8 @@ final readonly class HoverRouter
         // A floating picker owns hover while open (screen coordinates); the
         // workspace beneath is dimmed, so its pane tints would be invisible
         // anyway. The menu bar keeps first refusal, like the other modals.
-        if ($this->panes->editor()->isAnyPickerOpen()) {
-            if (!$this->handleMenuHover($mouse) && $this->panes->editor()->handlePickerHover($mouse->row, $mouse->col)) {
+        if ($this->panes->editor->isAnyPickerOpen()) {
+            if (!$this->handleMenuHover($mouse) && $this->panes->editor->handlePickerHover($mouse->row, $mouse->col)) {
                 $this->tui->requestRender();
             }
 
@@ -84,8 +84,8 @@ final readonly class HoverRouter
         // The floating Find-in-Files modal owns hover while open (screen
         // coordinates); the workspace beneath is dimmed, so its pane tints
         // would be invisible anyway. The menu bar keeps first refusal.
-        if ($this->panes->editor()->isFindModalOpen()) {
-            if (!$this->handleMenuHover($mouse) && $this->panes->editor()->findModal()->hoverAt($mouse->row, $mouse->col)) {
+        if ($this->panes->editor->isFindModalOpen()) {
+            if (!$this->handleMenuHover($mouse) && $this->panes->editor->findModal->hoverAt($mouse->row, $mouse->col)) {
                 $this->tui->requestRender();
             }
 
@@ -134,7 +134,7 @@ final readonly class HoverRouter
 
     private function updateTreeHover(MouseEvent $mouse): void
     {
-        if ($this->hit->hover($mouse->row, $mouse->col, $this->panes->tree())) {
+        if ($this->hit->hover($mouse->row, $mouse->col, $this->panes->tree)) {
             $this->tui->requestRender();
         }
     }
@@ -147,9 +147,9 @@ final readonly class HoverRouter
      */
     private function updateStripHover(MouseEvent $mouse): void
     {
-        $tabsRect = $this->hit->rect($this->panes->tabBar());
+        $tabsRect = $this->hit->rect($this->panes->tabBar);
         $tabsRel = null !== $tabsRect && $tabsRect->contains($mouse->row, $mouse->col) ? $tabsRect->toRelative($mouse->row, $mouse->col) : null;
-        $tabsChanged = null !== $tabsRel ? $this->panes->tabBar()->hoverTab($tabsRel['row'], $tabsRel['col']) : $this->panes->tabBar()->clearHover();
+        $tabsChanged = null !== $tabsRel ? $this->panes->tabBar->hoverTab($tabsRel['row'], $tabsRel['col']) : $this->panes->tabBar->clearHover();
 
         $stripCol = $this->dockStripRelCol($mouse);
         $onStrip = null !== $stripCol;
@@ -164,16 +164,16 @@ final readonly class HoverRouter
         // The breadcrumbs are a strip too: each crumb is a click target, so
         // each crumb tints. The bar renders no rows without a scope, so a
         // stale rect is possible — the crumb hit-test itself is the guard.
-        $crumbRect = $this->hit->rect($this->panes->breadcrumbs());
+        $crumbRect = $this->hit->rect($this->panes->breadcrumbs);
         $crumbRel = null !== $crumbRect && $crumbRect->contains($mouse->row, $mouse->col) ? $crumbRect->toRelative($mouse->row, $mouse->col) : null;
-        $crumbsChanged = null !== $crumbRel ? $this->panes->breadcrumbs()->hoverAt($crumbRel['col']) : $this->panes->breadcrumbs()->clearHover();
+        $crumbsChanged = null !== $crumbRel ? $this->panes->breadcrumbs->hoverAt($crumbRel['col']) : $this->panes->breadcrumbs->clearHover();
 
         // The find bar's option tags. It renders zero rows when closed and the
         // renderer keeps the last non-empty rect, so its own liveness gates
         // the hit-test rather than a null rect.
-        $findRect = $this->panes->findBar()->isOpen() ? $this->hit->rect($this->panes->findBar()) : null;
+        $findRect = $this->panes->findBar->isOpen() ? $this->hit->rect($this->panes->findBar) : null;
         $findRel = null !== $findRect && $findRect->contains($mouse->row, $mouse->col) ? $findRect->toRelative($mouse->row, $mouse->col) : null;
-        $findChanged = null !== $findRel ? $this->panes->findBar()->hoverAt($findRel['col']) : $this->panes->findBar()->clearHover();
+        $findChanged = null !== $findRel ? $this->panes->findBar->hoverAt($findRel['col']) : $this->panes->findBar->clearHover();
 
         if ($tabsChanged || $dockChanged || $crumbsChanged || $findChanged) {
             $this->tui->requestRender();
@@ -246,9 +246,9 @@ final readonly class HoverRouter
             return;
         }
 
-        if ($this->panes->editor()->isCompletionOpen() && null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
+        if ($this->panes->editor->isCompletionOpen() && null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
             $rel = $editorRect->toRelative($mouse->row, $mouse->col);
-            if ($this->panes->editor()->handlePopupHover($rel['row'], $rel['col'])) {
+            if ($this->panes->editor->handlePopupHover($rel['row'], $rel['col'])) {
                 $this->tui->requestRender();
             }
 

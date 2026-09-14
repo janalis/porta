@@ -66,7 +66,7 @@ final class InlineValuesTest extends TestCase
 
         return new InlineValues(
             new InlineValueRequest($pool),
-            $this->editor->decorations(),
+            $this->editor->decorations,
             $this->tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 10)),
             $this->editor,
         );
@@ -86,7 +86,7 @@ final class InlineValuesTest extends TestCase
     private function painted(): array
     {
         /** @var array<int, string> */
-        return $this->editor->decorations()->debugValues();
+        return $this->editor->decorations->debugValues();
     }
 
     public function testAVariableIsShownAgainstTheLineThatAssignsIt(): void
@@ -267,7 +267,7 @@ final class InlineValuesTest extends TestCase
 
         return new InlineValues(
             new InlineValueRequest($pool),
-            $this->editor->decorations(),
+            $this->editor->decorations,
             $this->tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 10)),
             $this->editor,
         );
@@ -278,8 +278,7 @@ final class InlineValuesTest extends TestCase
         $values = $this->withoutInlineValueSupport("<?php\n\$count = 41;\n");
         // What SemanticTokensController stored for this file: the `$count` at
         // column 0..6, typed as a local.
-        $this->editor
-            ->decorations()
+        $this->editor->decorations
             ->setSemanticTokens([
                 1 => [['col' => 0, 'endCol' => 6, 'type' => 'variable', 'modifiers' => []]],
             ]);
@@ -296,8 +295,7 @@ final class InlineValuesTest extends TestCase
         // frame's variables are listed under. The declaration `public string
         // $name` is a property too, and is not a local at all.
         $values = $this->withoutInlineValueSupport("<?php\nreturn \$this->name;\n");
-        $this->editor
-            ->decorations()
+        $this->editor->decorations
             ->setSemanticTokens([
                 1 => [
                     ['col' => 7, 'endCol' => 12, 'type' => 'variable', 'modifiers' => []],
@@ -317,8 +315,7 @@ final class InlineValuesTest extends TestCase
     public function testAPARAMETERCountsAsALocal(): void
     {
         $values = $this->withoutInlineValueSupport("<?php\nfunction f(int \$times) {}\n");
-        $this->editor
-            ->decorations()
+        $this->editor->decorations
             ->setSemanticTokens([
                 1 => [['col' => 15, 'endCol' => 21, 'type' => 'parameter', 'modifiers' => []]],
             ]);
@@ -348,8 +345,7 @@ final class InlineValuesTest extends TestCase
         // edit. A token pointing past the end of a shortened line slices to '',
         // which would otherwise join against nothing and paint " = 41".
         $values = $this->withoutInlineValueSupport("<?php\n\$c;\n");
-        $this->editor
-            ->decorations()
+        $this->editor->decorations
             ->setSemanticTokens([
                 1 => [['col' => 40, 'endCol' => 46, 'type' => 'variable', 'modifiers' => []]],
             ]);
@@ -366,8 +362,7 @@ final class InlineValuesTest extends TestCase
         // token pointing past the end of the line, and then the local that
         // actually matters. Skipping is the normal case on any real line.
         $values = $this->withoutInlineValueSupport("<?php\n\$this->name = \$c;\n");
-        $this->editor
-            ->decorations()
+        $this->editor->decorations
             ->setSemanticTokens([
                 1 => [
                     ['col' => 7, 'endCol' => 11, 'type' => 'property', 'modifiers' => []],
@@ -390,8 +385,7 @@ final class InlineValuesTest extends TestCase
         $values = $this->withoutInlineValueSupport("<?php\n\$s = 'héllo'; \$count = 41;\n");
         $line = "\$s = 'héllo'; \$count = 41;";
         $at = \mb_strpos($line, needle: '$count');
-        $this->editor
-            ->decorations()
+        $this->editor->decorations
             ->setSemanticTokens([
                 1 => [['col' => $at, 'endCol' => $at + 6, 'type' => 'variable', 'modifiers' => []]],
             ]);
@@ -405,8 +399,7 @@ final class InlineValuesTest extends TestCase
     public function testTWOVariablesOnALineBothComeThrough(): void
     {
         $values = $this->withoutInlineValueSupport("<?php\n\$a = \$b;\n");
-        $this->editor
-            ->decorations()
+        $this->editor->decorations
             ->setSemanticTokens([
                 1 => [
                     ['col' => 0, 'endCol' => 2, 'type' => 'variable', 'modifiers' => []],
@@ -430,8 +423,7 @@ final class InlineValuesTest extends TestCase
         // variable the server deliberately left out.
         $this->lookups = [['line' => 1, 'endCol' => 6, 'name' => '$count']];
         $values = $this->values();
-        $this->editor
-            ->decorations()
+        $this->editor->decorations
             ->setSemanticTokens([
                 1 => [['col' => 0, 'endCol' => 6, 'type' => 'variable', 'modifiers' => []]],
                 2 => [['col' => 0, 'endCol' => 5, 'type' => 'variable', 'modifiers' => []]],
@@ -455,8 +447,7 @@ final class InlineValuesTest extends TestCase
         // left out, on exactly the lines it had looked at.
         $this->lookups = [];
         $values = $this->values();
-        $this->editor
-            ->decorations()
+        $this->editor->decorations
             ->setSemanticTokens([
                 1 => [['col' => 0, 'endCol' => 6, 'type' => 'variable', 'modifiers' => []]],
             ]);

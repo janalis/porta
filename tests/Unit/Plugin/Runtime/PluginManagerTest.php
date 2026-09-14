@@ -65,7 +65,7 @@ final class PluginManagerTest extends TestCase
                 new RecordingFileOpener(),
                 $tui,
                 new RecordingDiagnosticsSink(),
-                new CodeEditorWidget()->decorations(),
+                new CodeEditorWidget()->decorations,
                 new RecordingChangeMarkSink(),
                 new FileStatuses(),
                 new BufferManager(),

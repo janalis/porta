@@ -760,7 +760,7 @@ final class IdeFindInProjectTest extends TestCase
             500 => function (Tui $tui, $terminal, Ide $ide): void {
                 $this->frame($tui);
                 $editor = $tui->getById('editor');
-                $box = $editor->findModal()->lastBox();
+                $box = $editor->findModal->lastBox();
                 $this->assertNotNull($box);
 
                 // The box is SCREEN-space (the modal floats over the whole
@@ -772,7 +772,7 @@ final class IdeFindInProjectTest extends TestCase
                 $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col + 6, $row + 1)); // release
                 $this->frame($tui);
 
-                $grown = $editor->findModal()->lastBox();
+                $grown = $editor->findModal->lastBox();
                 $this->assertNotNull($grown);
                 $this->assertSame($box->width + 6, $grown->width, 'the drag widened the box through the router');
                 $this->assertTrue($editor->isFindModalOpen(), 'resizing never dismissed it');
@@ -786,7 +786,7 @@ final class IdeFindInProjectTest extends TestCase
                 $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $barCol, $barRow + 2));
                 $this->frame($tui);
 
-                $movedBox = $editor->findModal()->lastBox();
+                $movedBox = $editor->findModal->lastBox();
                 $this->assertNotNull($movedBox);
                 $this->assertSame($grown->startRow + 2, $movedBox->startRow, 'the title-bar drag moved the box through the router');
                 $this->assertSame($grown->col, $movedBox->col, 'a vertical drag leaves the column');
@@ -802,7 +802,7 @@ final class IdeFindInProjectTest extends TestCase
                 $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", 3, $barRow2));
                 $this->frame($tui);
 
-                $left = $editor->findModal()->lastBox();
+                $left = $editor->findModal->lastBox();
                 $this->assertNotNull($left);
                 $this->assertSame(0, $left->col, 'clamped to the screen edge — over the tree');
                 $renderer = Services::resolve($ide, Renderer::class);

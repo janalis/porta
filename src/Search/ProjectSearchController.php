@@ -104,7 +104,7 @@ final class ProjectSearchController
         $this->lastSearchQuery = '';
         $this->mask = $this->prefs->lastMask();
         $this->lastSearchResults = [];
-        $modal = $this->editor->findModal();
+        $modal = $this->editor->findModal;
         $modal->open($this->translator->trans('Find in Files'));
         $modal->setScopes($this->scopeLabels(), $this->scopeIndex);
         $modal->setOptions($this->searchOptions->panelState());
@@ -120,7 +120,7 @@ final class ProjectSearchController
      */
     public function promoteToPane(): void
     {
-        $this->editor->findModal()->close();
+        $this->editor->findModal->close();
         $this->showResultsPane();
     }
 
@@ -329,7 +329,7 @@ final class ProjectSearchController
     public function toggleOption(SearchOption $option): void
     {
         $this->searchOptions = $this->searchOptions->toggled($option);
-        $this->editor->findModal()->setOptions($this->searchOptions->panelState());
+        $this->editor->findModal->setOptions($this->searchOptions->panelState());
         $this->run($this->lastSearchQuery);
         $this->tui->requestRender();
     }
@@ -479,7 +479,7 @@ final class ProjectSearchController
     private function finishReplace(int $touched): void
     {
         $this->statusBar->flash($this->translator->trans('Replaced in %count% file|Replaced in %count% files', ['%count%' => $touched]));
-        $this->editor->findModal()->close(); // replace runs from the modal
+        $this->editor->findModal->close(); // replace runs from the modal
         $this->tui->setFocus($this->editor);
         $this->tui->requestRender();
     }
@@ -591,7 +591,7 @@ final class ProjectSearchController
                 if ($this->projectSearch->gaveUp()) {
                     $this->statusBar->flash($this->translator->trans('pattern too complex'));
                 }
-                $modal = $this->editor->findModal();
+                $modal = $this->editor->findModal;
                 if ($modal->isOpen()) {
                     $modal->setPreview($results);
                     $this->tui->requestRender();

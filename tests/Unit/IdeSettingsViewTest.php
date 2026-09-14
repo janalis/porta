@@ -52,7 +52,7 @@ final class IdeSettingsViewTest extends TestCase
         $this->assertInstanceOf(ContributedView::class, $git, 'the git plugin registered its view');
         $this->gitView = $git;
         $this->settingsView = $views->find('settings');
-        $this->main = Services::resolve($this->ide, WorkspaceLayout::class)->main();
+        $this->main = Services::resolve($this->ide, WorkspaceLayout::class)->main;
     }
 
     /** @return list<string> */

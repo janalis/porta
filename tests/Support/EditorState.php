@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
-use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\EditorScroll;
 use Porta\Editor\MultiCaret;
 use Porta\Overlay\State\OverlayHost;
@@ -27,15 +26,6 @@ final class EditorState
     public static function promptOpen(object $editor): bool
     {
         return null !== Probe::get(self::host($editor), 'prompt');
-    }
-
-    /** The display toggles (line numbers, indent guides, git gutter, …). */
-    public static function display(object $editor): EditorDisplayOptions
-    {
-        $display = Probe::object($editor, 'display');
-        \assert($display instanceof EditorDisplayOptions, description: 'the editor holds its display options');
-
-        return $display;
     }
 
     /** The viewport scroll state. */

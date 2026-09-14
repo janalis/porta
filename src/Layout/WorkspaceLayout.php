@@ -40,13 +40,13 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
 #[AsIdeService]
 final class WorkspaceLayout
 {
-    private readonly ContainerWidget $main;
+    public readonly ContainerWidget $main;
 
     private readonly ContainerWidget $editorPane;
 
-    private readonly ContainerWidget $editorBody;
+    public readonly ContainerWidget $editorBody;
 
-    private readonly SeparatorWidget $separator;
+    public readonly SeparatorWidget $separator;
 
     public function __construct(
         private readonly FileTreeWidget $tree,
@@ -177,20 +177,5 @@ final class WorkspaceLayout
     public function editorPanes(): array
     {
         return [$this->tree, $this->separator, $this->editorPane];
-    }
-
-    public function main(): ContainerWidget
-    {
-        return $this->main;
-    }
-
-    public function editorBody(): ContainerWidget
-    {
-        return $this->editorBody;
-    }
-
-    public function separator(): SeparatorWidget
-    {
-        return $this->separator;
     }
 }

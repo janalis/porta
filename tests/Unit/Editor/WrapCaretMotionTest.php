@@ -29,7 +29,7 @@ final class WrapCaretMotionTest extends TestCase
         $this->editor = new CodeEditorWidget();
         $this->editor->showDocument('/p/a.php', new Document("first\n".\str_repeat('x', times: 60)."\nlast\n"));
         $this->editor->setFocused(true);
-        $this->editor->display()->setSoftWrap($wrap);
+        $this->editor->display->setSoftWrap($wrap);
         $this->editor->render(new RenderContext(30, 12)); // establishes the content width
 
         return $this->editor;
@@ -121,7 +121,7 @@ final class WrapCaretMotionTest extends TestCase
         $long = \str_repeat('x', times: 60);
         $editor->showDocument('/p/a.php', new Document("{$long}\n{$long}\n"));
         $editor->setFocused(true);
-        $editor->display()->setSoftWrap(true);
+        $editor->display->setSoftWrap(true);
         $editor->render(new RenderContext(30, 12));
         $this->editor = $editor;
 
@@ -150,7 +150,7 @@ final class WrapCaretMotionTest extends TestCase
             \str_repeat('A', times: 80)."\n".\str_repeat('B', times: 80)."\n".\str_repeat('C', times: 80)."\n",
         ));
         $editor->setFocused(true);
-        $editor->display()->setSoftWrap(true);
+        $editor->display->setSoftWrap(true);
         $screen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(30, 6))));
         $screen();
 
@@ -176,7 +176,7 @@ final class WrapCaretMotionTest extends TestCase
         $editor = new CodeEditorWidget();
         $editor->showDocument('/p/a.php', new Document("aaa\nbbb\n".\str_repeat('X', times: 80)."\n"));
         $editor->setFocused(true);
-        $editor->display()->setSoftWrap(true);
+        $editor->display->setSoftWrap(true);
         $screen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(30, 5))));
         $screen();
 
@@ -207,7 +207,7 @@ final class WrapCaretMotionTest extends TestCase
         $editor->showDocument('/p/a.php', new Document("aaa\nBBB\n"));
         $editor->setFocused(true);
         $lens = static fn (string $t): array => ['title' => $t, 'command' => '', 'arguments' => []];
-        $editor->decorations()->setCodeLenses([1 => [$lens('lens one'), $lens('lens two')]]);
+        $editor->decorations->setCodeLenses([1 => [$lens('lens one'), $lens('lens two')]]);
         $screen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(30, 5))));
 
         // aaa, two lenses, BBB — four rows in five, so nothing needs to scroll.
@@ -231,7 +231,7 @@ final class WrapCaretMotionTest extends TestCase
         $editor = new CodeEditorWidget();
         $editor->showDocument('/p/a.php', new Document(\str_repeat('X', times: 120)."\nafter\n"));
         $editor->setFocused(true);
-        $editor->display()->setSoftWrap(true);
+        $editor->display->setSoftWrap(true);
         $editor->render(new RenderContext(30, 4));
 
         $editor->getDocument()->setCursor(0, 110);
@@ -257,7 +257,7 @@ final class WrapCaretMotionTest extends TestCase
         $editor = new CodeEditorWidget();
         $editor->showDocument('/p/a.php', new Document(\str_repeat('X', times: 120)."\nafter\n"));
         $editor->setFocused(true);
-        $editor->display()->setSoftWrap(true);
+        $editor->display->setSoftWrap(true);
         $editor->render(new RenderContext(30, 4));
         $editor->getDocument()->setCursor(0, 110);
         $editor->render(new RenderContext(30, 4));
@@ -275,7 +275,7 @@ final class WrapCaretMotionTest extends TestCase
         $editor = new CodeEditorWidget();
         $editor->showDocument('/p/a.php', new Document(\str_repeat('X', times: 120)."\nafter\nlast\n"));
         $editor->setFocused(true);
-        $editor->display()->setSoftWrap(true);
+        $editor->display->setSoftWrap(true);
         $editor->render(new RenderContext(30, 4));
         $editor->getDocument()->setCursor(0, 110);
         $editor->render(new RenderContext(30, 4));

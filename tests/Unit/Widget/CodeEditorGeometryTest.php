@@ -371,7 +371,7 @@ final class CodeEditorGeometryTest extends TestCase
     public function testComputeGeometryNumberWidthIsZeroWhenLineNumbersAreOff(): void
     {
         $editor = $this->editor("<?php\n");
-        $editor->display()->setLineNumbers(LineNumberMode::Off);
+        $editor->display->setLineNumbers(LineNumberMode::Off);
         $editor->setVcsGutter(false);
 
         $editor->render(new RenderContext(80, 5));
@@ -385,7 +385,7 @@ final class CodeEditorGeometryTest extends TestCase
     public function testComputeGeometryGutterWidthIncludesTheVcsColumnWhenEnabled(): void
     {
         $editor = $this->editor("<?php\n");
-        $editor->display()->setLineNumbers(LineNumberMode::Off);
+        $editor->display->setLineNumbers(LineNumberMode::Off);
         $editor->setVcsGutter(false);
         $editor->render(new RenderContext(80, 5));
         $without = $editor->gutterWidth();
@@ -474,7 +474,7 @@ final class CodeEditorGeometryTest extends TestCase
     {
         $editor = $this->editor("<?php\n\$x = foo();\n");
         $editor->getDocument()->setCursor(1, 11); // just after "foo()"
-        $editor->decorations()->setInlayHints([1 => [['col' => 11, 'text' => ': int']]]);
+        $editor->decorations->setInlayHints([1 => [['col' => 11, 'text' => ': int']]]);
 
         $editor->render(new RenderContext(80, 10));
 
@@ -485,7 +485,7 @@ final class CodeEditorGeometryTest extends TestCase
         // narrow edge in view.
         $narrow = $this->editor("<?php\n\$x = foo();\n");
         $narrow->getDocument()->setCursor(1, 11);
-        $narrow->decorations()->setInlayHints([1 => [['col' => 11, 'text' => ': int']]]);
+        $narrow->decorations->setInlayHints([1 => [['col' => 11, 'text' => ': int']]]);
         $narrow->render(new RenderContext(15, 10));
         $scroll = Probe::get($narrow, 'scroll');
 

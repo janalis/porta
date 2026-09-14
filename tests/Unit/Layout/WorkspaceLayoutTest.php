@@ -40,12 +40,12 @@ final class WorkspaceLayoutTest extends TestCase
     {
         $layout = $this->layout();
 
-        $this->assertSame('main', $layout->main()->getId());
+        $this->assertSame('main', $layout->main->getId());
         $this->assertSame(['tabs', 'editor-body'], $this->ids(Probe::get($layout, 'editorPane')), 'top position at boot');
-        $this->assertSame(['breadcrumbs', 'find-bar', 'editor'], $this->ids($layout->editorBody()), 'the find bar sits below the breadcrumbs, above the content slot');
+        $this->assertSame(['breadcrumbs', 'find-bar', 'editor'], $this->ids($layout->editorBody), 'the find bar sits below the breadcrumbs, above the content slot');
         // A full-screen view's own sidebar/separator/content is ViewRegions'
         // now, minted at runtime — see ViewRegionsTest.
-        $this->assertSame('separator', $layout->separator()->getId());
+        $this->assertSame('separator', $layout->separator->getId());
         $this->assertSame(['tree', 'separator', 'editor-pane'], \array_map(static fn (AbstractWidget $w): string => $w->getId(), $layout->editorPanes()));
     }
 

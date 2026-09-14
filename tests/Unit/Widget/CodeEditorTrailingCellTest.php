@@ -46,9 +46,9 @@ final class CodeEditorTrailingCellTest extends TestCase
         // their other surfaces: the diagnostic has its squiggle, its gutter
         // mark, its stripe cell and the Problems panel; blame has Alt+B.
         $editor = $this->editor("<?php\n\$count = 41;\n", 'debug.php');
-        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
-        $editor->decorations()->setLineAnnotations([1 => 'you, 3 days ago']);
-        $editor->decorations()->setDebugValues([1 => '$count = 41']);
+        $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
+        $editor->decorations->setLineAnnotations([1 => 'you, 3 days ago']);
+        $editor->decorations->setDebugValues([1 => '$count = 41']);
 
         $rows = $editor->render(new RenderContext(80, 10));
         $row = AnsiUtils::stripAnsiCodes($rows[1]);
@@ -65,9 +65,9 @@ final class CodeEditorTrailingCellTest extends TestCase
         // debugger running takes this path, and a precedence chain that got the
         // empty case wrong would blank the inline diagnostics everywhere.
         $editor = $this->editor("<?php\n\$count = 41;\n\$other = 1;\n", 'debug.php');
-        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
-        $editor->decorations()->setLineAnnotations([2 => 'you, 3 days ago']);
-        $editor->decorations()->setDebugValues([]);
+        $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
+        $editor->decorations->setLineAnnotations([2 => 'you, 3 days ago']);
+        $editor->decorations->setDebugValues([]);
 
         $rows = $editor->render(new RenderContext(80, 10));
 
@@ -81,8 +81,8 @@ final class CodeEditorTrailingCellTest extends TestCase
         // Per line, not per file: stopping on line 2 must not silence a
         // diagnostic on line 1.
         $editor = $this->editor("<?php\n\$count = 41;\n\$other = 1;\n", 'debug.php');
-        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
-        $editor->decorations()->setDebugValues([2 => '$other = 1']);
+        $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
+        $editor->decorations->setDebugValues([2 => '$other = 1']);
 
         $rows = $editor->render(new RenderContext(80, 10));
 
@@ -99,8 +99,8 @@ final class CodeEditorTrailingCellTest extends TestCase
         // silently dropped. Pre-existing, and inherited by every consumer of
         // that cell; found by rendering the combination rather than the pieces.
         $editor = $this->editor("<?php\n\$total = 'aaaa' . 'bbbb' . 'cccc' . 'dddd';\n", 'wrapped.php');
-        $editor->display()->setSoftWrap(true);
-        $editor->decorations()->setLineAnnotations([1 => 'you, 3 days ago']);
+        $editor->display->setSoftWrap(true);
+        $editor->decorations->setLineAnnotations([1 => 'you, 3 days ago']);
 
         $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(40, 10)));
 
@@ -111,8 +111,8 @@ final class CodeEditorTrailingCellTest extends TestCase
     public function testADebugValueOnASoftWrappedLineFollowsTheSameRule(): void
     {
         $editor = $this->editor("<?php\n\$total = 'aaaa' . 'bbbb' . 'cccc' . 'dddd';\n", 'wrapped.php');
-        $editor->display()->setSoftWrap(true);
-        $editor->decorations()->setDebugValues([1 => 'V = 1']);
+        $editor->display->setSoftWrap(true);
+        $editor->decorations->setDebugValues([1 => 'V = 1']);
 
         $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(40, 10)));
 
@@ -128,8 +128,8 @@ final class CodeEditorTrailingCellTest extends TestCase
         // into them. The debug value rides the same slot as the inline
         // diagnostic and inherits the same rule.
         $editor = $this->editor("<?php\n\$r = add(1, 2);\n", 'hints.php');
-        $editor->decorations()->setInlayHints([1 => [['col' => 9, 'text' => 'a:'], ['col' => 12, 'text' => 'b:']]]);
-        $editor->decorations()->setDebugValues([1 => '$r = 3']);
+        $editor->decorations->setInlayHints([1 => [['col' => 9, 'text' => 'a:'], ['col' => 12, 'text' => 'b:']]]);
+        $editor->decorations->setDebugValues([1 => '$r = 3']);
 
         $row = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(60, 5))[1]);
 
@@ -143,8 +143,8 @@ final class CodeEditorTrailingCellTest extends TestCase
         // value is what it currently HOLDS and only while stopped. Reading the
         // same would make a live value look like part of the source.
         $editor = $this->editor("<?php\n\$count = 41;\n\$other = 1;\n", 'pen.php');
-        $editor->decorations()->setDebugValues([1 => '$count = 41']);
-        $editor->decorations()->setLineAnnotations([2 => 'you, 3 days ago']);
+        $editor->decorations->setDebugValues([1 => '$count = 41']);
+        $editor->decorations->setLineAnnotations([2 => 'you, 3 days ago']);
 
         $rows = $editor->render(new RenderContext(80, 10));
 

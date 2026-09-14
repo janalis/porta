@@ -126,12 +126,12 @@ final class CodeEditorInputRoutingTest extends TestCase
     public function testCancelFindModalDragDisarmsAnArmedDrag(): void
     {
         $editor = $this->editor();
-        $editor->findModal()->open('demo');
-        Probe::set($editor->findModal(), 'resizing', true);
+        $editor->findModal->open('demo');
+        Probe::set($editor->findModal, 'resizing', true);
 
         $editor->cancelFindModalDrag();
 
-        $this->assertFalse(Probe::get($editor->findModal(), 'resizing'), 'cancelFindModalDrag must reach findModal->cancelDrag() and clear resizing');
+        $this->assertFalse(Probe::get($editor->findModal, 'resizing'), 'cancelFindModalDrag must reach findModal->cancelDrag() and clear resizing');
     }
 
     public function testClearSnippetSessionActuallyClearsIt(): void

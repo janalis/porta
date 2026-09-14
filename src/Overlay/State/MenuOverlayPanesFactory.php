@@ -69,7 +69,7 @@ final readonly class MenuOverlayPanesFactory
             // can composite over the strip and the visible bottom panel.
             [
                 $this->tree,
-                $this->layout->separator(),
+                $this->layout->separator,
                 $this->tabBar,
                 $this->editor,
                 $this->breadcrumbs,

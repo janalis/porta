@@ -36,7 +36,7 @@ final class BookmarkDecorationsTest extends TestCase
         $bookmarks = new Bookmarks();
         $bookmarks->toggle('/p/a.php', 1);
 
-        new BookmarkDecorations($bookmarks, $editor->decorations())->apply('/p/a.php');
+        new BookmarkDecorations($bookmarks, $editor->decorations)->apply('/p/a.php');
 
         $lines = $editor->render(new RenderContext(40, 8));
         $this->assertStringContainsString(Glyphs::BOOKMARK, $lines[1], 'the marked line carries the diamond');
@@ -54,16 +54,16 @@ final class BookmarkDecorationsTest extends TestCase
         $editor = $this->editor();
         $bookmarks = new Bookmarks();
         $bookmarks->toggle('/p/a.php', 1);
-        new BookmarkDecorations($bookmarks, $editor->decorations())->apply('/p/a.php');
+        new BookmarkDecorations($bookmarks, $editor->decorations)->apply('/p/a.php');
 
-        $editor->decorations()->setDiagnostics([1 => [['col' => 0, 'endCol' => 3, 'message' => 'unused', 'severity' => DiagnosticSeverity::Hint]]]);
+        $editor->decorations->setDiagnostics([1 => [['col' => 0, 'endCol' => 3, 'message' => 'unused', 'severity' => DiagnosticSeverity::Hint]]]);
 
         $lines = $editor->render(new RenderContext(40, 8));
         $this->assertStringContainsString(Glyphs::BOOKMARK, $lines[1], 'the mark is still there under a hint');
 
         // And an ERROR does not take it either — the strongest severity is the
         // case someone would reach for to argue the other way.
-        $editor->decorations()->setDiagnostics([1 => [['col' => 0, 'endCol' => 3, 'message' => 'broken', 'severity' => DiagnosticSeverity::Error]]]);
+        $editor->decorations->setDiagnostics([1 => [['col' => 0, 'endCol' => 3, 'message' => 'broken', 'severity' => DiagnosticSeverity::Error]]]);
 
         $this->assertStringContainsString(
             Glyphs::BOOKMARK,
@@ -79,7 +79,7 @@ final class BookmarkDecorationsTest extends TestCase
         $editor = $this->editor();
         $bookmarks = new Bookmarks();
         $bookmarks->toggle('/p/a.php', 1);
-        $decorations = new BookmarkDecorations($bookmarks, $editor->decorations());
+        $decorations = new BookmarkDecorations($bookmarks, $editor->decorations);
 
         $decorations->onBufferSwitched(new BufferSwitched(new Buffer('/p/a.php', new Document(''))));
         $this->assertStringContainsString(Glyphs::BOOKMARK, $this->painted($editor));
@@ -93,7 +93,7 @@ final class BookmarkDecorationsTest extends TestCase
         $editor = $this->editor();
         $bookmarks = new Bookmarks();
         $bookmarks->toggle('/p/a.php', 1);
-        $decorations = new BookmarkDecorations($bookmarks, $editor->decorations());
+        $decorations = new BookmarkDecorations($bookmarks, $editor->decorations);
         $decorations->apply('/p/a.php');
 
         // A DIFFERENT path, so skipping and repainting are distinguishable:

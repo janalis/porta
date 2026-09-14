@@ -55,7 +55,7 @@ final class FindModalPresenterTest extends TestCase
     {
         $presenter = $this->presenter();
         $this->frame();
-        $this->editor->findModal()->open('Find in Files');
+        $this->editor->findModal->open('Find in Files');
 
         $presenter->sync();
 
@@ -73,7 +73,7 @@ final class FindModalPresenterTest extends TestCase
         // automatic in the real app.
         $this->presenter();
         $this->frame();
-        $this->editor->findModal()->open('Find in Files');
+        $this->editor->findModal->open('Find in Files');
 
         $this->tui->processRender(); // not $presenter->sync() — the frame hook must do it
 
@@ -84,7 +84,7 @@ final class FindModalPresenterTest extends TestCase
     public function testSyncBeforeAnyFrameRetriesWithoutPushing(): void
     {
         $presenter = $this->presenter();
-        $this->editor->findModal()->open('Find in Files');
+        $this->editor->findModal->open('Find in Files');
 
         $presenter->sync();
 
@@ -97,10 +97,10 @@ final class FindModalPresenterTest extends TestCase
     {
         $presenter = $this->presenter();
         $this->frame();
-        $this->editor->findModal()->open('Find in Files');
+        $this->editor->findModal->open('Find in Files');
         $presenter->sync();
 
-        $this->editor->findModal()->close();
+        $this->editor->findModal->close();
         $presenter->sync();
         $this->assertSame([], $this->pane->modalSpans, 'closing cleared the overlay');
         $this->assertFalse($this->pane->backdrop);

@@ -50,7 +50,7 @@ final class CodeLensControllerTest extends TestCase
             static fn (array $edit): bool => false,
         );
 
-        return new CodeLensController($pool, $this->editor, $this->editor->decorations(), $tui, new Notifier($this->status = new StatusBarWidget(), $tui), new Translator('en'));
+        return new CodeLensController($pool, $this->editor, $this->editor->decorations, $tui, new Notifier($this->status = new StatusBarWidget(), $tui), new Translator('en'));
     }
 
     private function readyOn(CodeLensController $controller, string $path = '/p/a.php'): void
@@ -90,7 +90,7 @@ final class CodeLensControllerTest extends TestCase
         $controller->requestCodeLenses();
         $this->answer([self::lens(1, '3 usages'), self::lens(2, '1 usage'), self::lens(1, '2 implementations')]);
 
-        $store = $this->editor->decorations();
+        $store = $this->editor->decorations;
         $this->assertSame(['3 usages', '2 implementations'], \array_column($store->codeLensesAt(1), 'title'), 'server order is kept within a line');
         $this->assertSame(['1 usage'], \array_column($store->codeLensesAt(2), 'title'));
         $this->assertSame([], $store->codeLensesAt(0), 'a line with no lens has none');
@@ -114,7 +114,7 @@ final class CodeLensControllerTest extends TestCase
             self::lens(1, 'the real one'),
         ]);
 
-        $this->assertSame(['the real one'], \array_column($this->editor->decorations()->codeLensesAt(1), 'title'));
+        $this->assertSame(['the real one'], \array_column($this->editor->decorations->codeLensesAt(1), 'title'));
     }
 
     /**
@@ -130,7 +130,7 @@ final class CodeLensControllerTest extends TestCase
         $this->editor->showDocument('/p/other.php', new Document("<?php\n"));
         $this->answer([self::lens(1, '3 usages')]);
 
-        $this->assertSame([], $this->editor->decorations()->codeLensesAt(1));
+        $this->assertSame([], $this->editor->decorations->codeLensesAt(1));
     }
 
     /** A non-array answer (an error) leaves whatever was showing alone. */
@@ -144,7 +144,7 @@ final class CodeLensControllerTest extends TestCase
         $controller->requestCodeLenses();
         \end($this->client->requests)['respond'](null);
 
-        $this->assertSame(['first'], \array_column($this->editor->decorations()->codeLensesAt(1), 'title'));
+        $this->assertSame(['first'], \array_column($this->editor->decorations->codeLensesAt(1), 'title'));
     }
 
     /**
@@ -157,7 +157,7 @@ final class CodeLensControllerTest extends TestCase
     {
         $controller = $this->controller();
         $this->readyOn($controller);
-        $display = $this->editor->display();
+        $display = $this->editor->display;
 
         $refresher = new CodeLensRefresher($controller, $display);
         $refresher->onBufferSaved(new BufferSaved(new Buffer('/p/a.php', new Document("<?php\n"))));
@@ -180,7 +180,7 @@ final class CodeLensControllerTest extends TestCase
     {
         $controller = $this->controller();
         $this->readyOn($controller);
-        $display = $this->editor->display();
+        $display = $this->editor->display;
         $display->setCodeLenses(true);
 
         $refresher = new CodeLensRefresher($controller, $display);
@@ -195,9 +195,9 @@ final class CodeLensControllerTest extends TestCase
     {
         $controller = $this->controller();
         $this->readyOn($controller);
-        $this->editor->display()->setCodeLenses(true);
+        $this->editor->display->setCodeLenses(true);
 
-        new CodeLensRefresher($controller, $this->editor->display())
+        new CodeLensRefresher($controller, $this->editor->display)
             ->onActiveBufferChanged(new ActiveBufferChanged($this->editor->getFilePath() ?? ''));
 
         $this->assertCount(1, $this->client->requests);

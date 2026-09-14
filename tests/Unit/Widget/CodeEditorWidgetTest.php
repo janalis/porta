@@ -138,7 +138,7 @@ final class CodeEditorWidgetTest extends TestCase
     public function testDisablingStickyScrollRemovesThePinnedBand(): void
     {
         $editor = $this->stickyEditor();
-        $editor->display()->setStickyScroll(false);
+        $editor->display->setStickyScroll(false);
         $editor->getDocument()->setCursor(24, 8); // deep inside handle()
         $rendered = $editor->render(new RenderContext(60, 12));
 
@@ -155,7 +155,7 @@ final class CodeEditorWidgetTest extends TestCase
         $absolute = $editor->render(new RenderContext(60, 12));
         $this->assertMatchesRegularExpression('/^\s*\d+/', AnsiUtils::stripAnsiCodes($absolute[2]), 'a line number by default');
 
-        $editor->display()->setLineNumbers(LineNumberMode::Off);
+        $editor->display->setLineNumbers(LineNumberMode::Off);
         $rendered = $editor->render(new RenderContext(60, 12));
 
         $this->assertExactWidth($rendered, 60);
@@ -170,7 +170,7 @@ final class CodeEditorWidgetTest extends TestCase
     public function testDisablingIndentGuidesRemovesTheGuides(): void
     {
         $editor = $this->editor("<?php\nif (true) {\n        deep();\n");
-        $editor->display()->setIndentGuides(false);
+        $editor->display->setIndentGuides(false);
         $line2 = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(80, 10))[2]);
 
         $this->assertStringNotContainsString('│', $line2, 'the Interface setting off → no indent guides');
@@ -187,7 +187,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor("<?php\n\t\$tab = 1;\n    \$spaces = 2;\n", 'mixed.php');
 
         $off = $editor->render(new RenderContext(80, 8));
-        $editor->display()->setShowWhitespace(true);
+        $editor->display->setShowWhitespace(true);
         $rows = $editor->render(new RenderContext(80, 8));
 
         $this->assertStringNotContainsString(
@@ -208,7 +208,7 @@ final class CodeEditorWidgetTest extends TestCase
     public function testShowWhitespaceMarksTRAILINGSpaceButNotInnerOnes(): void
     {
         $editor = $this->editor("<?php\n\$x = 1;   \n", 'trail.php');
-        $editor->display()->setShowWhitespace(true);
+        $editor->display->setShowWhitespace(true);
 
         $line = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(80, 8))[1]);
 
@@ -225,7 +225,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor($source, 'members.php');
 
         $off = $editor->render(new RenderContext(80, 14));
-        $editor->display()->setMethodSeparators(true);
+        $editor->display->setMethodSeparators(true);
         $on = $editor->render(new RenderContext(80, 14));
 
         // one() closes on document line 6, two() on line 10.
@@ -256,7 +256,7 @@ final class CodeEditorWidgetTest extends TestCase
         // enough to push the number field past its floor of three. A fixture
         // with neither would pass a clamp that only half works.
         $editor = $this->editor("<?php\n".\str_repeat("// a line\n", times: 120), 'narrow.php');
-        $editor->display()->setVcsGutter(true);
+        $editor->display->setVcsGutter(true);
 
         foreach (\range(start: 1, end: 20) as $columns) {
             $rows = $editor->render(new RenderContext($columns, 6));
@@ -271,7 +271,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor("<?php\n".\str_repeat("// a line\n", times: 120), 'narrow.php');
 
         foreach ([LineNumberMode::Off, LineNumberMode::Absolute, LineNumberMode::Relative] as $mode) {
-            $editor->display()->setLineNumbers($mode);
+            $editor->display->setLineNumbers($mode);
             foreach ([1, 2, 3, 6, 9, 11] as $columns) {
                 $rows = $editor->render(new RenderContext($columns, 4));
                 $this->assertExactWidth($rows, $columns, "{$mode->name} at {$columns} columns");
@@ -291,9 +291,9 @@ final class CodeEditorWidgetTest extends TestCase
             "<?php\n\nclass A\n{\n    public function one(): void\n    {\n\t\$s = \"日本語{$long}\";   \n    }\n}\n",
             'everything.php',
         );
-        $editor->display()->setShowWhitespace(true);
-        $editor->display()->setMethodSeparators(true);
-        $editor->display()->setSoftWrap(true);
+        $editor->display->setShowWhitespace(true);
+        $editor->display->setMethodSeparators(true);
+        $editor->display->setSoftWrap(true);
 
         $rows = $editor->render(new RenderContext(46, 14));
 
@@ -323,8 +323,8 @@ final class CodeEditorWidgetTest extends TestCase
             "<?php\n\nclass A\n{\n    public function one(): void { \$x = \"{$long}\"; }\n}\n",
             'wrapped.php',
         );
-        $editor->display()->setMethodSeparators(true);
-        $editor->display()->setSoftWrap(true);
+        $editor->display->setMethodSeparators(true);
+        $editor->display->setSoftWrap(true);
 
         $rows = $editor->render(new RenderContext(50, 12));
         $ruled = \array_keys(\array_filter($rows, static fn (string $row): bool => \str_contains($row, Sgr::UNDERLINE)));
@@ -827,8 +827,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor("<?php\n\$x = f();\n");
         $doc = $editor->getDocument();
         // Hints at the very start (col 0), mid-line (col 2) and end (append).
-        $editor
-            ->decorations()
+        $editor->decorations
             ->setInlayHints([
                 1 => [
                     ['col' => 0, 'text' => '»'],
@@ -849,7 +848,7 @@ final class CodeEditorWidgetTest extends TestCase
     public function testDiagnostics(): void
     {
         $editor = $this->editor();
-        $editor->decorations()->setDiagnostics([2 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0]]]);
+        $editor->decorations->setDiagnostics([2 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0]]]);
 
         $counts = $editor->getDiagnosticCounts();
         $this->assertSame(1, $counts['errors']);
@@ -947,7 +946,7 @@ final class CodeEditorWidgetTest extends TestCase
     public function testDiagnosticRangeUnderline(): void
     {
         $editor = $this->editor("<?php\nfunction f(array \$a): void\n{\n}\n", 'diag.php');
-        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Bad type', 'col' => 11, 'endCol' => 16]]]);
+        $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Bad type', 'col' => 11, 'endCol' => 16]]]);
 
         $rendered = $editor->render(new RenderContext(80, 10));
         $this->assertStringContainsString("\x1b[4:3m", $rendered[1], 'curly underline');
@@ -961,8 +960,7 @@ final class CodeEditorWidgetTest extends TestCase
         // at severity 2, the same severity as a warning about code that runs.
         // Measured from it: `tags: [1]` on `worse.unused_import`.
         $editor = $this->editor("<?php\nuse App\\Unused;\nold_function();\n", 'tags.php');
-        $editor
-            ->decorations()
+        $editor->decorations
             ->setDiagnostics([
                 1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'Unused import', 'col' => 4, 'endCol' => 14, 'tags' => [1]]],
                 2 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'Deprecated', 'col' => 0, 'endCol' => 12, 'tags' => [2]]],
@@ -986,7 +984,7 @@ final class CodeEditorWidgetTest extends TestCase
         // rather than replace it — at both ends, because a close that drops one
         // leaves it bleeding down the rest of the line.
         $editor = $this->editor("<?php\nuse App\\Old;\n", 'both.php');
-        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'Unused deprecated import', 'col' => 4, 'endCol' => 11, 'tags' => [1, 2]]]]);
+        $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'Unused deprecated import', 'col' => 4, 'endCol' => 11, 'tags' => [1, 2]]]]);
 
         $row = $editor->render(new RenderContext(80, 10))[1];
 
@@ -1004,7 +1002,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor = $this->editor("<?php
 \$a = f();
 ", 'plain.php');
-        $editor->decorations()->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 2]]]);
+        $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 2]]]);
 
         $rendered = $editor->render(new RenderContext(80, 10));
 
@@ -1021,8 +1019,7 @@ final class CodeEditorWidgetTest extends TestCase
         // still draws nothing. This payload is phpactor's, as measured — an
         // unused import at severity 2 with `tags: [1]`.
         $editor = $this->editor("<?php\nuse App\\Thing;\n", 'wire.php');
-        $editor
-            ->decorations()
+        $editor->decorations
             ->setDiagnostics(LspMapper::diagnosticsByLine([
                 'diagnostics' => [[
                     'severity' => DiagnosticSeverity::Warning,
@@ -1042,8 +1039,7 @@ final class CodeEditorWidgetTest extends TestCase
         // line 1: an error and a warning share the line → error (worst) wins the
         // gutter/inline; line 2: a lone info; line 3: a lone hint.
         $editor = $this->editor("<?php\n\$a = f();\n\$b = g();\n\$c = h();\n", 'sev.php');
-        $editor
-            ->decorations()
+        $editor->decorations
             ->setDiagnostics([
                 1 => [
                     ['severity' => DiagnosticSeverity::Warning, 'message' => 'maybe null', 'col' => 5, 'endCol' => 8],
@@ -1087,8 +1083,7 @@ final class CodeEditorWidgetTest extends TestCase
     {
         $src = "<?php\n".\str_repeat("\$x = 1;\n", times: 60);
         $editor = $this->editor($src, 'stripe.php');
-        $editor
-            ->decorations()
+        $editor->decorations
             ->setDiagnostics([
                 5 => [['severity' => DiagnosticSeverity::Error, 'message' => 'err', 'col' => 0, 'endCol' => 2]],
                 55 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'warn', 'col' => 0, 'endCol' => 2]],
@@ -1118,7 +1113,7 @@ final class CodeEditorWidgetTest extends TestCase
     public function testSearchMatchHighlights(): void
     {
         $editor = $this->editor("<?php\necho 'needle';\n", 'search.php');
-        $editor->decorations()->setSearchMatches([1 => [['start' => 6, 'end' => 12, 'current' => true]]]);
+        $editor->decorations->setSearchMatches([1 => [['start' => 6, 'end' => 12, 'current' => true]]]);
 
         $rendered = $editor->render(new RenderContext(80, 10));
         $this->assertStringContainsString("\x1b[48;5;130m", $rendered[1], 'current match background');
@@ -1447,20 +1442,20 @@ final class CodeEditorWidgetTest extends TestCase
     public function testLineAnnotationsRenderAndYieldToDiagnostics(): void
     {
         $editor = $this->editor("alpha;\nbeta;\n", '/tmp/a.php');
-        $editor->decorations()->setLineAnnotations([0 => 'abc12345 tester 2026-01-01', 1 => 'abc12345 tester 2026-01-01']);
+        $editor->decorations->setLineAnnotations([0 => 'abc12345 tester 2026-01-01', 1 => 'abc12345 tester 2026-01-01']);
 
         $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
         $this->assertSame(2, \substr_count($screen, needle: 'abc12345 tester'), 'both annotations render in the trailing space');
 
         // A diagnostic on line 0 wins the trailing slot; line 1 keeps its blame.
-        $editor->display()->setInlineDiagnostics(true);
-        $editor->decorations()->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0]]]);
+        $editor->display->setInlineDiagnostics(true);
+        $editor->decorations->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0]]]);
         $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 6))));
         $this->assertStringContainsString('Boom', $screen);
         $this->assertSame(1, \substr_count($screen, needle: 'abc12345 tester'), 'the diagnosed line dropped its annotation');
 
         // Too narrow: the annotation is dropped rather than truncated to noise.
-        $editor->decorations()->setDiagnostics([]);
+        $editor->decorations->setDiagnostics([]);
         $narrow = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(16, 6))));
         $this->assertStringNotContainsString('abc12345', $narrow);
 
@@ -1582,7 +1577,7 @@ final class CodeEditorWidgetTest extends TestCase
         $widget = new CodeEditorWidget();
         $document = new Document("a\nb\nc\nd\ne\n");
         $widget->showDocument('/tmp/x.php', $document);
-        $widget->decorations()->setVcsMarks([3 => ChangeMarkKind::Modified]);
+        $widget->decorations->setVcsMarks([3 => ChangeMarkKind::Modified]);
 
         $document->setCursor(1, 1);
         $document->insertNewLine();
@@ -1590,7 +1585,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         $this->assertSame(
             [1 => ChangeMarkKind::Modified, 2 => ChangeMarkKind::Added, 4 => ChangeMarkKind::Modified],
-            $widget->decorations()->vcsMarks(),
+            $widget->decorations->vcsMarks(),
             'the split line is Modified, the line it made is Added, and the mark below moved down one',
         );
     }
@@ -1607,7 +1602,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         $short = new Document("a\nb\nc\n");
         $widget->showDocument('/tmp/short.php', $short);
-        $widget->decorations()->setVcsMarks([2 => ChangeMarkKind::Added]);
+        $widget->decorations->setVcsMarks([2 => ChangeMarkKind::Added]);
 
         $short->setCursor(0, 1);
         $short->insert('!');
@@ -1615,7 +1610,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         $this->assertSame(
             [0 => ChangeMarkKind::Modified, 2 => ChangeMarkKind::Added],
-            $widget->decorations()->vcsMarks(),
+            $widget->decorations->vcsMarks(),
             'the 37-line difference between the two buffers is not an edit',
         );
     }

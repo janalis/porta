@@ -63,7 +63,7 @@ final class StickyScrollLanguagesTest extends TestCase
         $scopes = new DocumentScopes();
         self::serverScopes('/p/a.ts', $scopes);
         $editor = $this->editor($scopes, '/p/a.ts');
-        $editor->display()->setMethodSeparators(true);
+        $editor->display->setMethodSeparators(true);
         $editor->getDocument()->setCursor(0, 0); // back to the top, nothing scrolled off
 
         $rows = $editor->render(new RenderContext(60, 26));

@@ -85,7 +85,7 @@ final class ProjectSearchControllerTest extends TestCase
     /** The modal's own panel text — it floats over the workspace now, not inside the editor's lines. */
     private function modal(): string
     {
-        $placed = $this->editor->findModal()->layout([0, 0, 40, 100], CaretVisibility::Shown);
+        $placed = $this->editor->findModal->layout([0, 0, 40, 100], CaretVisibility::Shown);
 
         return null === $placed ? '' : AnsiUtils::stripAnsiCodes(\implode("\n", $placed['rows']));
     }
@@ -208,7 +208,7 @@ final class ProjectSearchControllerTest extends TestCase
     private function scopeLabel(int $index): string
     {
         /** @var list<string> $labels */
-        $labels = Probe::get($this->editor->findModal(), 'scopeLabels');
+        $labels = Probe::get($this->editor->findModal, 'scopeLabels');
 
         return $labels[$index] ?? '';
     }

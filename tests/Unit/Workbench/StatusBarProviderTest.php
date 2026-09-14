@@ -272,8 +272,7 @@ final class StatusBarProviderTest extends TestCase
     {
         $provider = $this->provider();
         $this->editor->openFile($this->project->path('t.php'), "<?php\n\n");
-        $this->editor
-            ->decorations()
+        $this->editor->decorations
             ->setDiagnostics([
                 0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 0]],
                 1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'w', 'col' => 0]],
@@ -294,8 +293,7 @@ final class StatusBarProviderTest extends TestCase
     {
         $provider = $this->provider();
         $this->editor->openFile($this->project->path('t.php'), "<?php\n\n");
-        $this->editor
-            ->decorations()
+        $this->editor->decorations
             ->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 0]]]);
 
         $segments = $provider->segments();
@@ -364,7 +362,7 @@ final class StatusBarProviderTest extends TestCase
     {
         $provider = $this->provider();
         $this->editor->openFile($this->project->path('t.php'), "aa\nbb\n");
-        $this->editor->decorations()->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 0]]]);
+        $this->editor->decorations->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 0]]]);
         $this->editor->getDocument()->setCursor(1, 0);
 
         $expectedProblems = Styles::dark()->of(Role::StatusError)->apply(Glyphs::SEVERITY_ERROR.' 1').' ';

@@ -17,7 +17,6 @@ use Porta\Ide;
 use Porta\Lsp\NavigationController;
 use Porta\Lsp\Uri;
 use Porta\Tests\Support\PreservesPath;
-use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -126,7 +125,7 @@ final class IdeDockToolsTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function ($tui, $terminal, $ide) use ($project): void {
-                    $decorations = Probe::get($tui->getById('editor'), 'decorations');
+                    $decorations = $tui->getById('editor')->decorations;
                     $this->assertSame([], $decorations->vcsMarks(), 'nothing published yet');
 
                     self::bufferService($ide)->applyChangeMarks((string) \realpath($project->path('a.php')), [1 => ChangeMarkKind::Modified]);

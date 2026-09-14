@@ -23,7 +23,7 @@ final class BreakpointPathListenerTest extends TestCase
         $editor->showDocument('/p/New.php', new Document("<?php\n\$a = 1;\n"));
         $breakpoints = new BreakpointStore();
         $breakpoints->toggle('/p/Old.php', 1);
-        $decorations = new EditorDecorations($breakpoints, new DebugSessionState(), $editor->decorations());
+        $decorations = new EditorDecorations($breakpoints, new DebugSessionState(), $editor->decorations);
         // Showing the new path first proves the repaint below is the listener's
         // doing: nothing has painted a dot for it yet.
         $decorations->apply('/p/New.php');
@@ -44,7 +44,7 @@ final class BreakpointPathListenerTest extends TestCase
         $breakpoints = new BreakpointStore();
         $breakpoints->toggle('/p/gone.php', 1);
         $breakpoints->toggle('/p/kept.php', 2);
-        $decorations = new EditorDecorations($breakpoints, new DebugSessionState(), new CodeEditorWidget()->decorations());
+        $decorations = new EditorDecorations($breakpoints, new DebugSessionState(), new CodeEditorWidget()->decorations);
 
         new BreakpointPathListener($breakpoints, $decorations)->onFileDeleted(new FileDeleted('/p/gone.php'));
 

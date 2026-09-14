@@ -164,33 +164,31 @@ final class CodeEditorOverlaysTest extends TestCase
     {
         $editor = $this->editor();
         $jumped = null;
-        $editor
-            ->findModal()
+        $editor->findModal
             ->setCallbacks(new FindModalCallbacks(
                 onJump: static function (string $p, int $l) use (&$jumped): void {
                     $jumped = [$p, $l];
                 },
             ));
-        $editor->findModal()->open('Find in Files');
-        $editor
-            ->findModal()
+        $editor->findModal->open('Find in Files');
+        $editor->findModal
             ->setPreview([
                 ['path' => 'src/A.php', 'line' => 4, 'text' => 'foo one', 'ranges' => []],
                 ['path' => 'src/A.php', 'line' => 9, 'text' => 'foo two', 'ranges' => []],
             ]);
-        $editor->findModal()->layout([0, 0, 40, 100], CaretVisibility::Shown); // records the screen-space box
+        $editor->findModal->layout([0, 0, 40, 100], CaretVisibility::Shown); // records the screen-space box
 
-        $box = $editor->findModal()->lastBox();
+        $box = $editor->findModal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $box);
         $this->assertFalse($editor->handlePopupHover($box->windowTop() + 2, $box->col + 3), 'the popup hover path no longer owns the modal');
 
         // The modal's own screen-space hit-tests carry the behavior.
-        $this->assertTrue($editor->findModal()->hoverAt($box->windowTop() + 2, $box->col + 3));
-        $this->assertTrue($editor->findModal()->clickAt($box->windowTop() + 1, $box->col + 3));
+        $this->assertTrue($editor->findModal->hoverAt($box->windowTop() + 2, $box->col + 3));
+        $this->assertTrue($editor->findModal->clickAt($box->windowTop() + 1, $box->col + 3));
         $this->assertSame(['src/A.php', 4], $jumped);
 
         // The drag delegates still relay (armed by a corner press).
-        $this->assertTrue($editor->findModal()->clickAt($box->startRow + $box->rows - 1, $box->col + $box->width - 1));
+        $this->assertTrue($editor->findModal->clickAt($box->startRow + $box->rows - 1, $box->col + $box->width - 1));
         $this->assertTrue($editor->continueFindModalDrag($box->startRow + $box->rows, $box->col + $box->width + 2, true));
         $editor->cancelFindModalDrag();
     }
@@ -199,17 +197,17 @@ final class CodeEditorOverlaysTest extends TestCase
     public function testOpeningAPickerClosesTheFindModal(): void
     {
         $editor = $this->editor();
-        $editor->findModal()->open('Find in Files');
+        $editor->findModal->open('Find in Files');
         $this->assertTrue($editor->isFindModalOpen());
 
         $editor->openListOverlay('Recent Files', [['label' => 'a', 'hint' => '', 'value' => 'A']], static fn (): null => null);
         $this->assertFalse($editor->isFindModalOpen(), 'the list overlay displaced the find modal');
 
-        $editor->findModal()->open('Find in Files');
+        $editor->findModal->open('Find in Files');
         $editor->openSearch('Search', static fn (): null => null, static fn (): null => null, static fn (): null => null);
         $this->assertFalse($editor->isFindModalOpen(), 'the search modal displaced it too');
 
-        $editor->findModal()->open('Find in Files');
+        $editor->findModal->open('Find in Files');
         $editor->openPrompt('Go to line', '', static fn (): null => null);
         $this->assertFalse($editor->isFindModalOpen(), 'and so did the prompt');
     }

@@ -77,9 +77,9 @@ final class FindModalPresenter
             return;
         }
         // The modal owns the caret while open, wherever pane focus sits.
-        $placed = $this->editor->findModal()->layout($bounds, CaretVisibility::Shown);
+        $placed = $this->editor->findModal->layout($bounds, CaretVisibility::Shown);
         \assert(null !== $placed, description: 'layout() is non-null while the modal is open — checked above');
-        $width = $this->editor->findModal()->lastBox()->width ?? 0;
+        $width = $this->editor->findModal->lastBox()->width ?? 0;
 
         $this->delivery->deliverModal([['rows' => $placed['rows'], 'top' => $placed['top'], 'col' => $placed['col'], 'width' => $width]]);
         $this->shown = true;

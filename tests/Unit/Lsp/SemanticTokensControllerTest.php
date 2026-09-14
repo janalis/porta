@@ -58,7 +58,7 @@ final class SemanticTokensControllerTest extends TestCase
             static fn (array $edit): bool => false,
         );
 
-        return new SemanticTokensController($pool, $this->editor, $this->editor->decorations(), $tui);
+        return new SemanticTokensController($pool, $this->editor, $this->editor->decorations, $tui);
     }
 
     private function readyOn(SemanticTokensController $controller, string $path = '/p/a.php'): void
@@ -131,7 +131,7 @@ final class SemanticTokensControllerTest extends TestCase
 
         \end($this->client->requests)['respond'](['data' => 'not a list']);
 
-        $this->assertSame([], $this->editor->decorations()->semanticTokensAt(1));
+        $this->assertSame([], $this->editor->decorations->semanticTokensAt(1));
     }
 
     public function testWithNoFileOpenNothingIsAsked(): void
@@ -210,7 +210,7 @@ final class SemanticTokensControllerTest extends TestCase
         // Type index 1 is 'property' in THIS legend, and bit 1 is 'deprecated'.
         $this->assertSame(
             [['col' => 4, 'endCol' => 9, 'type' => 'property', 'modifiers' => ['deprecated']]],
-            $this->editor->decorations()->semanticTokensAt(1),
+            $this->editor->decorations->semanticTokensAt(1),
         );
     }
 
@@ -237,7 +237,7 @@ final class SemanticTokensControllerTest extends TestCase
         $this->editor->showDocument('/p/other.php', new Document("<?php\n"));
         \end($this->client->requests)['respond'](['data' => [1, 4, 5, 1, 0]]);
 
-        $this->assertSame([], $this->editor->decorations()->semanticTokensAt(1));
+        $this->assertSame([], $this->editor->decorations->semanticTokensAt(1));
     }
 
     public function testAMalformedStreamIsRefusedWholeRatherThanShifted(): void
@@ -248,7 +248,7 @@ final class SemanticTokensControllerTest extends TestCase
 
         \end($this->client->requests)['respond'](['data' => [1, 4, 'five', 1, 0]]);
 
-        $this->assertSame([], $this->editor->decorations()->semanticTokensAt(1));
+        $this->assertSame([], $this->editor->decorations->semanticTokensAt(1));
     }
 
     public function testANonArrayAnswerIsIgnored(): void
@@ -259,7 +259,7 @@ final class SemanticTokensControllerTest extends TestCase
 
         \end($this->client->requests)['respond'](null);
 
-        $this->assertSame([], $this->editor->decorations()->semanticTokensAt(1));
+        $this->assertSame([], $this->editor->decorations->semanticTokensAt(1));
     }
 
     public function testAServerBecomingReadyRefreshesTheLaunchFile(): void

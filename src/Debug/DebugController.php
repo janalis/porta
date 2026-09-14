@@ -205,7 +205,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
     private function syncBreakpoints(string $path): void
     {
         if ($path === $this->editor->getFilePath()) {
-            $this->editor->decorations()->setBreakpointLines($this->breakpoints->linesFor($path), $this->breakpoints->conditionalLinesFor($path), $this->breakpoints->logpointLinesFor($path));
+            $this->editor->decorations->setBreakpointLines($this->breakpoints->linesFor($path), $this->breakpoints->conditionalLinesFor($path), $this->breakpoints->logpointLinesFor($path));
         }
         $this->session?->setBreakpoints($path, $this->breakpoints->breakpointsFor($path));
         $this->tui->requestRender();
@@ -582,7 +582,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         $this->state->clear();
         // The values were facts about a frame that is running again.
         $this->inlineValues->clear();
-        $this->editor->decorations()->setDebugLine(null);
+        $this->editor->decorations->setDebugLine(null);
         $this->panel->setSessionState(DebugState::Running, null);
         $this->dispatcher->dispatch(new DebugStatusChanged());
         $this->tui->requestRender();
@@ -605,7 +605,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         $this->state->clear();
         $this->frames = [];
         $this->inlineValues->clear();
-        $this->editor->decorations()->setDebugLine(null);
+        $this->editor->decorations->setDebugLine(null);
         $this->panel->setSessionState(DebugState::Terminated, null);
         $this->dispatcher->dispatch(new DebugStatusChanged());
         $this->tui->requestRender();

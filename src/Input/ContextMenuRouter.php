@@ -53,7 +53,7 @@ final readonly class ContextMenuRouter
 
         // A floating picker (list overlay / Search Everywhere / prompt) owns
         // input while open, so a right-click opens no menu over it.
-        if ($this->panes->editor()->isAnyPickerOpen()) {
+        if ($this->panes->editor->isAnyPickerOpen()) {
             $this->opener->flashNoMenu();
 
             return;
@@ -64,19 +64,19 @@ final readonly class ContextMenuRouter
         if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
             $handled = true;
             $rel = $editorRect->toRelative($mouse->row, $mouse->col);
-            $this->tui->setFocus($this->panes->editor());
+            $this->tui->setFocus($this->panes->editor);
             // Keep an existing selection (so Cut/Copy act on it); otherwise place
             // the caret at the click, like PhpStorm.
-            if (!$this->panes->editor()->getDocument()->hasSelection()) {
-                $this->panes->editor()->clearExtraCarets();
-                $this->panes->editor()->clickAt($rel['row'], $rel['col']);
+            if (!$this->panes->editor->getDocument()->hasSelection()) {
+                $this->panes->editor->clearExtraCarets();
+                $this->panes->editor->clickAt($rel['row'], $rel['col']);
             }
             $items = $this->contextItems->editorItems();
         }
         if (!$handled && null !== $tabsRect && $tabsRect->contains($mouse->row, $mouse->col)) {
             $handled = true;
             $rel = $tabsRect->toRelative($mouse->row, $mouse->col);
-            $index = $this->panes->tabBar()->tabIndexAt($rel['row'], $rel['col']);
+            $index = $this->panes->tabBar->tabIndexAt($rel['row'], $rel['col']);
             $buffers = $this->buffers->all();
             if (null === $index || !\array_key_exists($index, $buffers)) {
                 $this->opener->flashNoMenu(); // the strip's empty tail
@@ -88,8 +88,8 @@ final readonly class ContextMenuRouter
         if (!$handled && null !== $treeRect && $treeRect->contains($mouse->row, $mouse->col)) {
             $handled = true;
             $rel = $treeRect->toRelative($mouse->row, $mouse->col);
-            $this->tui->setFocus($this->panes->tree());
-            $node = $this->panes->tree()->nodeAt($rel['row']);
+            $this->tui->setFocus($this->panes->tree);
+            $node = $this->panes->tree->nodeAt($rel['row']);
             if (null === $node) {
                 $this->opener->flashNoMenu(); // below the last node
 

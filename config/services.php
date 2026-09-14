@@ -8,6 +8,7 @@ use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\LineAnnotationSink;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Config\KeybindingsFactory;
+use Porta\Container\PropertyFactory;
 use Porta\Container\AsWidget;
 use Porta\Highlight\ColorMode;
 use Porta\Highlight\SwitchableTerminalTheme;
@@ -205,18 +206,18 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // binding is a factory that hands back the widget's own store.
     $services
         ->set(EditorDecorationSink::class)
-        ->factory([service(CodeEditorWidget::class), 'decorations']);
+        ->factory([PropertyFactory::class, 'read'])->args([service(CodeEditorWidget::class), 'decorations']);
     // The plugin-facing slice of the same store, and the same reason.
     $services
         ->set(LineAnnotationSink::class)
-        ->factory([service(CodeEditorWidget::class), 'decorations']);
+        ->factory([PropertyFactory::class, 'read'])->args([service(CodeEditorWidget::class), 'decorations']);
 
     // The editor's view options, for the same reason and the same shape: the
     // widget builds its own with that widget's invalidate closure, so the
     // container must hand back THAT one rather than build a second.
     $services
         ->set(EditorDisplayOptions::class)
-        ->factory([service(CodeEditorWidget::class), 'display']);
+        ->factory([PropertyFactory::class, 'read'])->args([service(CodeEditorWidget::class), 'display']);
 
     // The IDE color scheme: the active theme's tui Styles per Role, one
     // swappable holder (built from the PORTA_ANSI/PORTA_THEME env placeholders) so
@@ -265,9 +266,9 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
 
     // The plugin subsystem triple is built by PluginHost (its scalar inputs
     // come from IdeConfig + the environment); expose the members as services.
-    $services->set(PluginManager::class)->factory([service(PluginHost::class), 'manager']);
-    $services->set(PluginLoader::class)->factory([service(PluginHost::class), 'loader']);
-    $services->set(PluginSettings::class)->factory([service(PluginHost::class), 'settings']);
+    $services->set(PluginManager::class)->factory([PropertyFactory::class, 'read'])->args([service(PluginHost::class), 'manager']);
+    $services->set(PluginLoader::class)->factory([PropertyFactory::class, 'read'])->args([service(PluginHost::class), 'loader']);
+    $services->set(PluginSettings::class)->factory([PropertyFactory::class, 'read'])->args([service(PluginHost::class), 'settings']);
 
     // The installers resolve their plugin dirs and git binary from the
     // environment in a static named constructor, self-declared on each class
@@ -276,15 +277,15 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // Duplicate-typed widgets from the composite tree: exposed per getter so
     // a consumer can name the one it wants at the parameter with
     // #[LayoutSlot('…')] (see the _defaults comment above — no central binds).
-    $services->set('porta.widget.editor_body', ContainerWidget::class)->factory([service(WorkspaceLayout::class), 'editorBody']);
+    $services->set('porta.widget.editor_body', ContainerWidget::class)->factory([PropertyFactory::class, 'read'])->args([service(WorkspaceLayout::class), 'editorBody']);
     // The main editor area is a chrome root too, but it is a getter service
     // (a bare ContainerWidget, not a class that can carry #[AsChromeRoot]), so
     // it is tagged here — the Keybindings/event_dispatcher exception pattern.
     $services
         ->set('porta.widget.main', ContainerWidget::class)
-        ->factory([service(WorkspaceLayout::class), 'main'])
+        ->factory([PropertyFactory::class, 'read'])->args([service(WorkspaceLayout::class), 'main'])
         ->tag('porta.chrome_root');
-    $services->set('porta.widget.separator', SeparatorWidget::class)->factory([service(WorkspaceLayout::class), 'separator']);
+    $services->set('porta.widget.separator', SeparatorWidget::class)->factory([PropertyFactory::class, 'read'])->args([service(WorkspaceLayout::class), 'separator']);
 
     // The mouse routers (and the hover router split out of the main one) share
     // the parameter name $separator with different instances; each names the one

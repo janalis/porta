@@ -214,8 +214,7 @@ final class IdeLspFeaturesTest extends TestCase
                 200 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $tui
                         ->getById('editor')
-                        ->decorations()
-                        ->setDiagnostics([
+                        ->decorations->setDiagnostics([
                             1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'unused variable', 'col' => 0, 'endCol' => 2]],
                         ]);
                     $tui->requestRender(); // what Ide::handleDiagnostics does after mutating
@@ -650,7 +649,7 @@ final class IdeLspFeaturesTest extends TestCase
                     // Same scopes, a second reader: the rule closes off greet()
                     // on the server's endLine (0-based 6, the `}` line).
                     $editor = $tui->getById('editor');
-                    $editor->display()->setMethodSeparators(true);
+                    $editor->display->setMethodSeparators(true);
                     $rows = $editor->render(new RenderContext(80, 12));
                     $ruled = \array_keys(\array_filter($rows, static fn (string $row): bool => \str_contains($row, Sgr::UNDERLINE)));
 
@@ -680,7 +679,7 @@ final class IdeLspFeaturesTest extends TestCase
 
                     $editor = $tui->getById('editor');
                     $this->await(
-                        static fn (): bool => [] !== $editor->decorations()->semanticTokensAt(1),
+                        static fn (): bool => [] !== $editor->decorations->semanticTokensAt(1),
                         what: 'the server semantic tokens to land on the buffer',
                     );
 
@@ -691,7 +690,7 @@ final class IdeLspFeaturesTest extends TestCase
                             ['col' => 4, 'endCol' => 9, 'type' => 'property', 'modifiers' => []],
                             ['col' => 11, 'endCol' => 14, 'type' => 'method', 'modifiers' => ['static', 'deprecated']],
                         ],
-                        $editor->decorations()->semanticTokensAt(1),
+                        $editor->decorations->semanticTokensAt(1),
                     );
                 },
             ],
