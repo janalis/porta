@@ -633,6 +633,33 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertGreaterThan($revision, $widget->getRenderRevision());
     }
 
+    /**
+     * The legend row at the bottom is chrome, not a setting — this file's own
+     * header says so. `ListSelection::rowIndexAt()` bounds by the ROW COUNT
+     * rather than by what was drawn, so a click there mapped to
+     * `scroll + lastRows`: the first setting BELOW the window. The second click
+     * then actuated it, which is the exact "a stray click used to toggle a
+     * setting or arm a plugin removal outright" that handleClick's
+     * select-then-actuate rule exists to prevent.
+     */
+    public function testClickingTheKeyLegendSelectsAndActuatesNothing(): void
+    {
+        $widget = $this->widget($changes);
+        $rows = [];
+        for ($i = 0; $i < 8; ++$i) {
+            $rows[] = new SettingsRow(key: "t{$i}", label: "Toggle {$i}", kind: SettingsRowKind::Bool, value: false, restart: false);
+        }
+        $widget->setRows($rows);
+        $widget->render(new RenderContext(60, 6)); // 1 title + 4 settings + the legend
+
+        $widget->handleClick(5); // the legend
+        $widget->handleClick(5); // again — on an already-selected row this ACTUATES
+
+        $this->assertSame(0, Probe::object($widget, 'list')->selected(), 'the legend is not a setting');
+        $this->assertSame([], $changes, 'and clicking it writes no config');
+        $this->assertFalse($widget->hoverRow(5), 'nor does it tint a row that was never drawn');
+    }
+
     public function testClickActuatesAChoiceRowByExactlyOneStep(): void
     {
         $widget = $this->widget($changes);

@@ -233,9 +233,29 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $this->invalidate();
     }
 
-    /** The row index under a pane-relative row, accounting for the header and the scroll. */
+    /**
+     * The row index under a pane-relative row, accounting for the header, the
+     * scroll — and the legend.
+     *
+     * `ListSelection::rowIndexAt()` bounds by how many rows the list HAS, not
+     * by how many were drawn, and the last line of this pane is the key legend.
+     * So a click there resolved to `scroll + lastRows`: the first setting BELOW
+     * the window. One click selected a setting you could not see; the second
+     * actuated it, which is exactly the "stray click toggles a setting or arms
+     * a plugin removal" that {@see handleClick()}'s select-then-actuate rule
+     * exists to prevent.
+     *
+     * Bounded here rather than in `ListSelection`, which the tree and the
+     * changes list also use — widening a shared helper's contract changes their
+     * behaviour too. {@see \Porta\Widget\Settings\SettingsNavWidget} carries
+     * the same guard for the same reason, against its trailing ▼.
+     */
     private function rowIndexAt(int $relRow): ?int
     {
+        if ($relRow >= ($this->headerRowCount() + $this->lastRows)) {
+            return null;
+        }
+
         return $this->list->rowIndexAt($relRow, \count($this->rows), $this->headerRowCount());
     }
 
