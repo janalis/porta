@@ -552,12 +552,24 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface
         if (!$this->withReplace || null === $doc || [] === $this->matches) {
             return;
         }
-        // Bottom-up so earlier offsets stay valid
-        foreach (array_reverse($this->matches) as $match) {
-            $doc->setCursor($match['line'], $match['start']);
-            $doc->beginSelect();
-            $doc->setCursor($match['line'], $match['end'], selection: SelectionMode::Keep);
-            $doc->insert($this->insertionFor($doc, $match));
+        // ONE undo step for the whole operation. `Document::insert()` coalesces
+        // only with no selection and four characters or fewer, and every insert
+        // here replaces a selection — so a forty-match replace pushed forty
+        // entries, and undoing it meant forty Ctrl+Z. The project-wide replace
+        // has been a single undoable edit all along (DocumentReplacer), so the
+        // two Replace Alls behaved differently for the same verb.
+        $doc->beginCompound();
+
+        try {
+            // Bottom-up so earlier offsets stay valid
+            foreach (array_reverse($this->matches) as $match) {
+                $doc->setCursor($match['line'], $match['start']);
+                $doc->beginSelect();
+                $doc->setCursor($match['line'], $match['end'], selection: SelectionMode::Keep);
+                $doc->insert($this->insertionFor($doc, $match));
+            }
+        } finally {
+            $doc->endCompound();
         }
         $this->recompute(jumpToNearest: MatchJump::None);
     }

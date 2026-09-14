@@ -985,4 +985,31 @@ final class FindBarWidgetTest extends TestCase
         }
         $this->assertNotSame([], $zones, 'the tags are hit-testable at all');
     }
+
+    /**
+     * Replace All is ONE undo step, not one per match.
+     *
+     * `Document::insert()` coalesces only with no selection and four characters
+     * or fewer, and every insert in the loop replaces a selection — so a
+     * forty-match replace pushed forty entries and undoing it took forty
+     * Ctrl+Z. The project-wide replace has been a single undoable edit all
+     * along, so the same verb behaved differently depending on which one you
+     * reached for.
+     */
+    public function testReplaceAllUndoesInOneStep(): void
+    {
+        $doc = new Document("aaa bbb aaa\nccc aaa\n");
+        $before = $doc->getText();
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace, initialQuery: 'aaa');
+        $bar->handleInput("\t");
+        $this->type($bar, 'XX');
+
+        $bar->handleInput("\x1ba"); // replace all three
+        $this->assertSame("XX bbb XX\nccc XX\n", $doc->getText());
+
+        $doc->undo();
+
+        $this->assertSame($before, $doc->getText(), 'one undo restored every match at once');
+    }
 }
